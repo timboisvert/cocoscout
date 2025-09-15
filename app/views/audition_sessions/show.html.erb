@@ -52,28 +52,18 @@
         </div>
         <div class="w-full sm:w-[40%] flex flex-col">
 
-          <%= render "shared/person_card", person: @person, show_delete: false %>
+          <%= render "people/person_card", person: @person %>
 
           <% if @answers.any? %>
-            <% @answers.each do |answer| %>
-              <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all mt-2">
-                <div class="text-md"><%= answer.question.text %></div>
-                <div class="text-md font-medium">
-                  <% if answer.question.question_type == "yesno" %>
-                    <%= answer.value.capitalize %>
-                  <% elsif answer.question.question_type == "multiple-multiple" %>
-                    <% answer.value_as_array.each do |value| %>
-                      <div class="inline-block mb-1 px-2 bg-pink-100 rounded-lg"><%= value %></div>
-                    <% end %>
-                  <% elsif answer.question.question_type == "multiple-single" %>
-                    <div class="inline-block mb-1 px-2 bg-pink-100 rounded-lg"><%= answer.value %></div>
-                  <% else %>
-                    <%= answer.value %>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
+            <div class="mt-2">
+              <%= render "audition_requests/answers", answers: @answers %>
+            </div>
           <% end %>
+
+          <div class="mt-2">
+            <%= render "casts/cast_membership_card", production: @production, person: @person %>
+          </div>
+
       </div>
     </div>
 

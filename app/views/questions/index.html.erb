@@ -27,10 +27,10 @@
                 Yes/No
               <% elsif question.question_type == "multiple-multiple" %>
                 Select Multiple Options
-                <span class="ml-1 text-gray-400">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
+                <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
               <% elsif question.question_type == "multiple-single" %>
                 Select Single Option
-                <span class="ml-1 text-gray-400">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
+                <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
               <% end %>
             </p>
           </div>

@@ -8,22 +8,42 @@
     links: []
   } %>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1 md:gap-2 lg:gap-4">
+  <div class="grid grid-cols-1 gap-1">
     <% @production.shows.order(:date_and_time).each do |show| %>
       <%= link_to production_show_path(@production, show) do %>
-        <div class="p-4 min-h-24 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-          <p class="font-bold text-md"><%= show.date_and_time.strftime("%A, %B %-d, %Y") %></p>
-          <p class="font-bold text-md mt-1"><%= show.date_and_time.strftime("%l:%M %p") %></p>
-          <% if show.secondary_name.present? %>
-            <p class="font-bold text-2xl"><%= show.secondary_name %></p>
-          <% end %>
+        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+
+          <div class="flex items-top">
+            <div class="w-1/3" >
+              <p class="font-bold text-lg"><%= show.date_and_time.strftime("%A, %B %-d, %Y") %></p>
+              <p class="font-bold text-lg"><%= show.date_and_time.strftime("%l:%M %p") %></p>
+              <% if show.secondary_name.present? %>
+                <p class="text-sm text-gray-500"><%= show.secondary_name %></p>
+              <% end %>
+            </div>
+            <div class="w-2/3 flex">
+              <% show.show_person_role_assignments.each do |assignment| %>
+                <div class="flex flex-col mr-1 items-center p-3 border border-gray-200 min-w-24 rounded-lg hover:border-gray-400 transition-all bg-[#f9f9f7] group relative">
+                  <% if assignment.person.headshot.present? %>
+                    <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.stage_name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
+                  <% else %>
+                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                      <%= assignment.person.initials %>
+                    </div>
+                  <% end %>
+                  <span class="font-medium text-xs text-center mt-1"><%= assignment.role.name %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
         </div>
       <% end %>
     <% end %>
-    <%= link_to new_production_show_path(@production) do %>
-      <div class="flex min-h-24 bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-lg items-center">
-        <p class="text-center text-sm text-white w-full">+ Schedule a Show</p>
-      </div>
-    <% end %>
+
+
+    <div class="mt-2">
+      <%= render partial: "shared/link_button", locals: {text: "+ Schedule a Show", path: new_production_show_path(@production)} %>
+    </div>
   </div>
 </div>

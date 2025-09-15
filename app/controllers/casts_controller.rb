@@ -40,7 +40,7 @@ class CastsController < ApplicationController
     redirect_to production_casts_path(@production), notice: "Cast was successfully deleted.", status: :see_other
   end
 
-  def add_person
+   def add_person
     @cast = @production.casts.find(params[:id])
     person = Person.find(params[:person_id])
     @cast.people << person unless @cast.people.exists?(person.id)

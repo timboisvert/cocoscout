@@ -52,6 +52,8 @@ class PeopleController < ApplicationController
     render partial: "shared/people_search_results", locals: { people: @people, result_partial: result_partial, result_locals: result_locals }
   end
 
+
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_person

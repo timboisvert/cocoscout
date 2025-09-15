@@ -37,7 +37,7 @@
                 <% end %>
 
                 <% if (!audition_session.is_full? && !audition_session.is_overbooked?) %>
-                    <span class="inline-flex items-center text-xs text-gray-400 h-full text-center ml-2">
+                    <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
                         <div class="flex flex-col items-center justify-center">
                             Add up to<br><%= audition_session.maximum_auditionees - audition_session.auditions.count %> more
                         </div>

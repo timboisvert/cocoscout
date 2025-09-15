@@ -1,0 +1,28 @@
+<div class="p-5 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+
+    <% unique_id = "answers-#{SecureRandom.hex(6)}" %>
+    <h1 class="font-bold text-lg cursor-pointer" onclick="document.getElementById('<%= unique_id %>').classList.toggle('hidden')">
+        Answers
+    </h1>
+
+    <div id="<%= unique_id %>" class="hidden">
+        <% answers.each do |answer| %>
+            <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all mt-2">
+                <div class="text-md"><%= answer.question.text %></div>
+                <div class="text-md font-medium">
+                    <% if answer.question.question_type == "yesno" %>
+                        <%= answer.value.capitalize %>
+                    <% elsif answer.question.question_type == "multiple-multiple" %>
+                        <% answer.value_as_array.each do |value| %>
+                            <div class="inline-block mb-1 px-2 bg-pink-100 rounded-lg"><%= value %></div>
+                        <% end %>
+                    <% elsif answer.question.question_type == "multiple-single" %>
+                        <div class="inline-block mb-1 px-2 bg-pink-100 rounded-lg"><%= answer.value %></div>
+                    <% else %>
+                        <%= answer.value %>
+                    <% end %>
+                </div>
+            </div>
+        <% end %>
+    </div>
+</div>

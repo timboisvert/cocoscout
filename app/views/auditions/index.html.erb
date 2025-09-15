@@ -122,7 +122,7 @@
                         <% end %>
 
                         <% if (!session.is_full? && !session.is_overbooked?) %>
-                          <span class="inline-flex items-center text-xs text-gray-400 h-full text-center ml-2">
+                          <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
                               <div class="flex flex-col items-center justify-center">
                                   Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
                               </div>
@@ -131,7 +131,7 @@
 
                       </div>
                     <% else %>
-                      <p class="text-gray-400 font-semibold text-xs">No auditions scheduled for this session.</p>
+                      <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
                     <% end %>
                   </div>
                 <% end %>
