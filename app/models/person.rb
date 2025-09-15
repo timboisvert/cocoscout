@@ -18,6 +18,11 @@ class Person < ApplicationRecord
   validate :resume_content_type
   validate :headshot_content_type
 
+  def initials
+    return "" if stage_name.blank?
+    stage_name.split.map { |word| word[0] }.join.upcase
+  end
+
   private
 
   def resume_content_type
