@@ -1,20 +1,82 @@
-<%# Only the roles list for AJAX update %>
-<% show.production.roles.each do |role| %>
-  <div class="mb-3 p-3 bg-white border rounded shadow min-h-[60px] flex flex-col justify-between"
-       data-drop-role-target="role"
-       data-role-id="<%= role.id %>"
-       data-action="drop->drop-role#assign dragover->drop-role#allowDrop">
-    <div class="font-semibold"><%= role.name %></div>
-    <div class="text-xs text-gray-500 mt-1">
-      Assigned:
-      <% assignments = show.show_person_role_assignments.where(role: role) %>
-      <% if assignments.any? %>
-        <% assignments.each do |assignment| %>
-          <span class="inline-block bg-pink-100 text-pink-700 rounded px-2 py-1 mr-1"><%= assignment.person.stage_name %></span>
-        <% end %>
+<div id="show-roles" data-controller="drop-role" data-show-id="<%= @show.id %>">
+
+  <%
+    assignment_count = show.show_person_role_assignments.count
+    role_count = show.production.roles.count
+    full = assignment_count == role_count
+  %>
+
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-bold text-lg">Roles</h2>
+    <span class="text-md font-bold text-gray-600 <%= full ? 'text-green-400' : 'text-red-500' %>">
+
+      <% if full %>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 inline">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
       <% else %>
-        <span class="text-gray-400">(none)</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 inline">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
       <% end %>
-    </div>
+
+      <%= "#{assignment_count} out of #{role_count} roles cast" %>
+    </span>
   </div>
-<% end %>
+
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-1 w-full mb-6">
+
+    <% show.production.roles.each do |role| %>
+
+      <%
+        has_assignment = false
+        assignments = show.show_person_role_assignments.where(role: role)
+        if assignments.any?
+          has_assignment = true
+        end
+      %>
+
+      <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-[#f9f9f7] "
+          data-drop-role-target="role"
+          data-role-id="<%= role.id %>"
+          data-action="drop->drop-role#assign dragover->drop-role#allowDrop">
+
+        <div class="font-semibold mb-2">
+          <%= role.name %>
+        </div>
+
+        <% if has_assignment %>
+          <% assignments.each do |assignment| %>
+
+            <div class="flex flex-col items-center p-3 border border-gray-200 min-w-24 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7] group relative">
+              <% if assignment.person.headshot.present? %>
+                <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.stage_name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
+              <% else %>
+                <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                  <%= assignment.person.initials %>
+                </div>
+              <% end %>
+
+              <span class="font-medium text-xs text-center"><%= assignment.person.stage_name.truncate(20, omission: '...') %></span>
+              <button type="button"
+                class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                data-action="click->drop-role#removeAssignment"
+                data-assignment-id="<%= assignment.id %>"
+                title="Remove assignment"
+              >
+                Remove
+              </button>
+            </div>
+
+          <% end %>
+        <% else %>
+          <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg transition-all bg-[#f9f9f7]">
+            <span class="font-medium text-xs text-center">Drag a cast member here to assign them this role</span>
+          </div>
+        <% end %>
+
+      </div>
+    <% end %>
+  </div>
+
+</div>

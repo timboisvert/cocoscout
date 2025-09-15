@@ -62,6 +62,7 @@ Rails.application.routes.draw do
 
     # Used for adding people and removing them from a cast
     post "/shows/:id/assign_person_to_role", to: "shows#assign_person_to_role"
+    post "/shows/:id/remove_person_from_role", to: "shows#remove_person_from_role"
   end
 
   # Junkers

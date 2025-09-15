@@ -1,6 +1,6 @@
 class ShowsController < ApplicationController
-  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role ]
-  before_action :set_production, except: %i[ assign_person_to_role ]
+  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
+  before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
 
   def index
     @shows = @production.shows.all
@@ -41,13 +41,32 @@ class ShowsController < ApplicationController
   end
 
   def assign_person_to_role
-  person = Person.find(params[:person_id])
-  role = Role.find(params[:role_id])
-  assignment = @show.show_person_role_assignments.find_or_initialize_by(person: person, role: role)
-  assignment.save!
-  cast_members_html = render_to_string(partial: "shows/cast_members_list", locals: { show: @show })
-  roles_html = render_to_string(partial: "shows/roles_list", locals: { show: @show })
-  render json: { cast_members_html: cast_members_html, roles_html: roles_html }
+    # Get the person and the role
+    person = Person.find(params[:person_id])
+    role = Role.find(params[:role_id])
+
+    # If this role already has someone in it for this show, remove the assignment
+    existing_assignments = @show.show_person_role_assignments.where(role: role)
+    existing_assignments.destroy_all if existing_assignments.any?
+
+    # Make the assignment
+    assignment = @show.show_person_role_assignments.find_or_initialize_by(person: person, role: role)
+    assignment.save!
+
+    # Generate the HTML to return
+    cast_members_html = render_to_string(partial: "shows/cast_members_list", locals: { show: @show })
+    roles_html = render_to_string(partial: "shows/roles_list", locals: { show: @show })
+    render json: { cast_members_html: cast_members_html, roles_html: roles_html }
+  end
+
+  def remove_person_from_role
+    assignment = @show.show_person_role_assignments.find(params[:assignment_id])
+    assignment.destroy! if assignment
+
+    # Generate the HTML to return
+    cast_members_html = render_to_string(partial: "shows/cast_members_list", locals: { show: @show })
+    roles_html = render_to_string(partial: "shows/roles_list", locals: { show: @show })
+    render json: { cast_members_html: cast_members_html, roles_html: roles_html }
   end
 
 

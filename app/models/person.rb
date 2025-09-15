@@ -3,9 +3,9 @@ class Person < ApplicationRecord
 
   has_and_belongs_to_many :casts
 
-  has_many :show_person_role_assigments, dependent: :destroy
-  has_many :shows, through: :show_person_role_assigments
-  has_many :roles, through: :show_person_role_assigments
+  has_many :show_person_role_assignments, dependent: :destroy
+  has_many :shows, through: :show_person_role_assignments
+  has_many :roles, through: :show_person_role_assignments
 
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
@@ -21,6 +21,10 @@ class Person < ApplicationRecord
   def initials
     return "" if stage_name.blank?
     stage_name.split.map { |word| word[0] }.join.upcase
+  end
+
+  def has_person_role_assignment_for_show?(show)
+    show_person_role_assignments.exists?(show: show)
   end
 
   private

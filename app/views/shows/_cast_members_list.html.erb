@@ -1,18 +1,33 @@
-<%# Only the cast members list for AJAX update %>
-<% show.production.casts.each do |cast| %>
-  <% cast.people.each do |person| %>
-    <div class="flex items-center gap-2 mb-2 p-2 bg-gray-50 rounded shadow cursor-move"
-         data-drag-cast-member-target="person"
-         data-person-id="<%= person.id %>"
-         draggable="true">
-      <% if person.headshot.attached? %>
-        <%= image_tag person.headshot.variant(:thumb), alt: person.stage_name, class: "w-8 h-8 rounded object-cover" %>
-      <% else %>
-        <div class="w-8 h-8 rounded bg-gray-300 flex items-center justify-center text-white font-bold">
-          <%= person.initials %>
+<div id="show-cast-members" data-controller="drag-cast-member">
+
+    <% show.production.casts.each do |cast| %>
+
+        <h1 class="font-bold text-lg mb-2"><%= cast.name %></h1>
+
+        <div class="grid grid-cols-3 lg:grid-cols-4 gap-1 w-full mb-6">
+
+        <% cast.people.each do |person| %>
+
+            <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
+
+            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7]  <%= 'text-gray-300' if has_show_person_role_assignment %>"
+                data-drag-cast-member-target="person"
+                data-person-id="<%= person.id %>"
+                draggable="true">
+
+                <% if person.headshot.present? %>
+                    <%= image_tag person.headshot.variant(:thumb), alt: person.stage_name, class: "w-12 h-12 rounded-lg object-cover mb-1 #{'opacity-40' if has_show_person_role_assignment}", draggable: false %>
+                <% else %>
+                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                        <%= person.initials %>
+                    </div>
+                <% end %>
+
+                <span class="font-medium text-xs text-center"><%= person.stage_name.truncate(20, omission: '...') %></span>
+            </div>
+        <% end %>
+
         </div>
-      <% end %>
-      <span><%= person.stage_name %></span>
-    </div>
-  <% end %>
-<% end %>
+
+    <% end %>
+</div>
