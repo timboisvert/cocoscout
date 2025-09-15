@@ -35,10 +35,11 @@ class AuditionRequestsController < ApplicationController
 
   def create
     @audition_request = AuditionRequest.new(audition_request_params)
+    @audition_request.call_to_audition = @call_to_audition
     @audition_request.status = :unreviewed
 
     if @audition_request.save
-      redirect_to @audition_request, notice: "Audition request was successfully created."
+      redirect_to production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Audition request was successfully created."
     else
       render :new, status: :unprocessable_entity
     end
@@ -46,7 +47,7 @@ class AuditionRequestsController < ApplicationController
 
   def update
     if @audition_request.update(audition_request_params)
-      redirect_to @audition_request, notice: "Audition request was successfully updated.", status: :see_other
+      redirect_to production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Audition request was successfully updated.", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
