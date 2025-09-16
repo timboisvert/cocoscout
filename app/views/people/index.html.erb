@@ -21,7 +21,7 @@
         <%= link_to "A→Z",
                 people_path(order: "alphabetical"),
                 data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@order.blank? || @order == "alphabetical") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+                class: "px-3 py-1 rounded-md border text-sm #{(@order == "alphabetical") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
         %>
         <%= link_to "Newest",
                 people_path(order: "newest"),
@@ -42,7 +42,7 @@
         %>
         <%= link_to "Everyone",
                 people_path(filter: "everyone"),
-                class: "px-3 py-1 rounded-md border text-sm #{@filter.blank? || @filter == 'everyone' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+                class: "px-3 py-1 rounded-md border text-sm #{@filter == 'everyone' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
         %>
       </div>
 

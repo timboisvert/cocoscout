@@ -18,6 +18,9 @@ class PeopleController < ApplicationController
       @people = @people.joins(:casts).distinct
     when "everyone"
       @people = @people.all
+    else
+      @filter = "everyone"
+      @people = @people.all
     end
 
     # Process the order
