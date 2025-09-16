@@ -52,6 +52,19 @@ class PeopleController < ApplicationController
     render partial: "shared/people_search_results", locals: { people: @people, result_partial: result_partial, result_locals: result_locals }
   end
 
+  def add_to_cast
+    @cast = Cast.find(params[:cast_id])
+    @person = Person.find(params[:person_id])
+    @cast.people << @person if !@cast.people.include?(@person)
+    render partial: "casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+  end
+
+  def remove_from_cast
+    @cast = Cast.find(params[:cast_id])
+    @person = Person.find(params[:person_id])
+    @cast.people.delete(@person) if @cast.people.include?(@person)
+    render partial: "casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+  end
 
 
   private

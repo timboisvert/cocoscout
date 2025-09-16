@@ -26,6 +26,11 @@ Rails.application.routes.draw do
       collection do
         get :search
       end
+      member do
+        # Used when adding a person to a cast from a person (or person-like) page
+        post :add_to_cast
+        post :remove_from_cast
+      end
     end
 
     resources :productions do
@@ -33,6 +38,7 @@ Rails.application.routes.draw do
 
       resources :casts do
         member do
+          # These two are only used when dragging and dropping on the cast members list
           post :add_person
           post :remove_person
         end
