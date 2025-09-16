@@ -71,5 +71,6 @@ Rails.application.routes.draw do
   end
 
   # Junkers
-  get "wp-includes/id3/licence.txt", to: proc { [ 200, {}, [ "" ] ] }
+  get "/wp-includes/*", to: proc { [ 200, {}, [ "" ] ] }
+  get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
 end
