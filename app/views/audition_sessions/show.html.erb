@@ -75,14 +75,19 @@
 
   <div class="flex justify-center">
       <% @audition_session.auditions.each do |audition| %>
-        <%= link_to production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg border border-gray-100 hover:border-gray-200 mr-1" do %>
-          <% if audition.person.headshot.present? %>
-            <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.stage_name, class: "w-16 h-16 rounded-lg object-cover" %>
-          <% else %>
-            <div class="w-16 h-16 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
-              <%= audition.person.initials %>
-            </div>
-          <% end %>
+        <%= link_to production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg mr-1" do %>
+          <div
+            data-controller="tooltip"
+            data-tooltip-text="<%= audition.person.stage_name.truncate(40, omission: "...") %>"
+          >
+            <% if audition.person.headshot.present? %>
+              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.stage_name, class: "w-16 h-16 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-16 h-16 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
+                <%= audition.person.initials %>
+              </div>
+            <% end %>
+          </div>
         <% end %>
       <% end %>
   </div>
