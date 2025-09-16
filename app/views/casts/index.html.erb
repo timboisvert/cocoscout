@@ -10,7 +10,7 @@
     ]
   } %>
 
-  <div id="casts" class="min-w-full divide-y divide-gray-200 space-y-5">
+  <div id="casts" class="min-w-full space-y-5">
     <% if @casts.any? %>
       <% @casts.each do |cast| %>
         <div class="grid grid-cols-1 gap-1">
@@ -34,7 +34,7 @@
               <%= render 'casts/cast_members_list', cast: cast %>
             </div>
 
-            <div class="mt-4">
+            <div id="cast-members-list-add-person-<%= cast.id %>" class="mt-4 hidden">
               <h1 class="font-bold text-lg mb-1">Add a person to this cast:</h1>
               <div class=""
                   data-controller="people-search"
@@ -43,7 +43,7 @@
               >
                 <div class="flex items-center gap-2">
                   <input type="text" class="w-full md:w-1/2 px-3 py-2 border rounded shadow-sm focus:outline-pink-500" placeholder="Search for people..." data-people-search-target="input" data-action="input->people-search#search">
-                  <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium" data-action="people-search#reset">Done</button>
+                  <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium cursor-pointer" data-action="people-search#reset">Done</button>
                 </div>
                 <div class="" data-people-search-target="results"></div>
               </div>
