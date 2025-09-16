@@ -12,38 +12,61 @@
     ]
   } %>
 
-  <div class="relative flex w-full flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
-    <div class="flex min-w-[240px] flex-col gap-1 p-1.5">
-      <% if @people.any? %>
-        <% @people.each do |person| %>
-          <%= link_to person_path(person) do %>
-            <div class="text-slate-800 flex w-full items-center rounded-lg p-3 transition-all hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-100">
-              <div class="mr-4 grid place-items-center">
-                <% if person.headshot.attached? %>
-                  <%= image_tag url_for(person.headshot.variant(:thumb)), class: "relative inline-block h-12 w-12 !rounded-lg object-cover object-center" %>
-                <% else %>
-                   <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+  <% if @people.any? %>
+
+    <div class="flex w-full space-x-2 mb-4">
+
+      <div class="flex flex-1 space-x-2">
+        <!-- Left: Sorting links -->
+        <%= link_to "A→Z",
+                people_path(order: "alphabetical"),
+                data: { turbo_prefetch: false },
+                class: "px-3 py-1 rounded-md border text-sm #{(@order.blank? || @order == "alphabetical") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+        %>
+        <%= link_to "Newest",
+                people_path(order: "newest"),
+                data: { turbo_prefetch: false },
+                class: "px-3 py-1 rounded-md border text-sm #{(@order == "newest") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+        %>
+        <%= link_to "Oldest",
+                people_path(order: "oldest"),
+                data: { turbo_prefetch: false },
+                class: "px-3 py-1 rounded-md border text-sm #{(@order == "oldest") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+        %>
+      </div>
+      <div class="flex space-x-2">
+        <!-- Right: Filter links -->
+        <%= link_to "Cast Members",
+                people_path(filter: "cast-members"),
+                class: "px-3 py-1 rounded-md border text-sm #{@filter == 'cast-members' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+        %>
+        <%= link_to "Everyone",
+                people_path(filter: "everyone"),
+                class: "px-3 py-1 rounded-md border text-sm #{@filter.blank? || @filter == 'everyone' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300'}"
+        %>
+      </div>
+
+    </div>
+
+    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1 w-full mt-4">
+      <% @people.each do |person| %>
+
+        <%= link_to person_path(person) do %>
+          <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
+            <% if person.headshot.present? %>
+                <%= image_tag person.headshot.variant(:thumb), alt: person.stage_name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
+            <% else %>
+                <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                     <%= person.initials %>
-                  </div>
-                <% end %>
-              </div>
-              <div>
-                <h6 class="font-medium text-xl">
-                  <%= truncate(person.stage_name, length: 50, omission: "...") %>
-                  <% if person.pronouns.present? %>
-                    <span class="text-slate-500 text-sm">(<%= person.pronouns %>)</span>
-                  <% end %>
-                </h6>
-                <p class="text-slate-500 text-sm">
-                  <%= person.email %>
-                </p>
-              </div>
-            </div>
-          <% end %>
+                </div>
+            <% end %>
+            <span class="font-medium text-sm text-center"><%= person.stage_name.truncate(20, omission: '...') %></span>
+          </div>
         <% end %>
-      <% else %>
-        <p class="text-center my-10">No people found.</p>
       <% end %>
     </div>
-  </div>
+  <% else %>
+    <div class="text-center my-10">No people found.</div>
+  <% end %>
+
 </div>

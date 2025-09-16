@@ -2,7 +2,36 @@ class PeopleController < ApplicationController
   before_action :set_person, only: %i[ show edit update destroy ]
 
   def index
+    # Store the order
+    @order = (params[:order] || session[:people_order] || "alphabetical")
+    session[:people_order] = @order
+
+    # Store the filter
+    @filter = (params[:filter] || session[:people_filter] || "everyone")
+    session[:people_filter] = @filter
+
+    # Process the filter
     @people = Person.all
+
+    case @filter
+    when "cast-members"
+      @people = @people.joins(:casts).distinct
+    when "everyone"
+      @people = @people.all
+    end
+
+    # Process the order
+    case @order
+    when "alphabetical"
+      @people = @people.order(:stage_name)
+    when "newest"
+      @people = @people.order(created_at: :desc)
+    when "oldest"
+      @people = @people.order(created_at: :asc)
+    else
+      @filter = "alphabetical"
+      @people = @people.order(:stage_name)
+    end
   end
 
   def show
