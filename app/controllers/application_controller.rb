@@ -30,9 +30,7 @@ class ApplicationController < ActionController::Base
   private
 
   def hide_sidebar
-    if controller_name == "sessions"
-      @hide_sidebar = true
-    elsif controller_name == "production_companies"
+    if %w[sessions passwords production_companies users].include?(controller_name)
       @hide_sidebar = true
     else
       @hide_sidebar = false

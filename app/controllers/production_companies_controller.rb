@@ -1,5 +1,5 @@
 class ProductionCompaniesController < ApplicationController
-  before_action :set_production_company, only: %i[ show edit update destroy ]
+  before_action :set_production_company, only: %i[ edit update destroy ]
 
   def new
     @production_company = ProductionCompany.new

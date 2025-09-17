@@ -15,6 +15,9 @@ Rails.application.routes.draw do
   get "/audition/:hex_code/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
   get "/audition/:hex_code/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
 
+  # Authentication
+  get "/signup", to: "users#signup", as: "signup"
+  post "/signup", to: "users#create", as: "create_user"
   resource :session
   resources :passwords, param: :token
 
@@ -76,6 +79,5 @@ Rails.application.routes.draw do
   end
 
   # Junkers
-  get "/wp-includes/*", to: proc { [ 200, {}, [ "" ] ] }
-  get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
+  get "*", to: proc { [ 200, {}, [ "" ] ] }
 end

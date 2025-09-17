@@ -6,10 +6,10 @@
     <h1 class="text-xl font-bold mb-4 text-center">Select a Production Company</h1>
     <% if @production_companies.any? %>
         <ul class="space-y-2">
-            <% @production_companies.each do |company| %>
+            <% @production_companies.each do |production_company| %>
                 <li class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <span><%= company.name %></span>
-                    <%= button_to "Select", set_current_production_companies_path(id: company.id), method: :post, class: "px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
+                    <span><%= production_company.name %></span>
+                    <%= button_to "Select", set_current_production_companies_path(id: production_company.id), method: :post, class: "px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                 </li>
             <% end %>
         </ul>
