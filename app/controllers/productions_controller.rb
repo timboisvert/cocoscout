@@ -3,7 +3,7 @@ class ProductionsController < ApplicationController
 
   # GET /productions
   def index
-    @productions = Production.all
+    @productions = Current.production_company.present? ? Current.production_company.productions : Production.none
   end
 
   # GET /productions/1
@@ -49,11 +49,14 @@ class ProductionsController < ApplicationController
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_production
-      @production = Production.find(params.expect(:id))
+      @production = Current.production_company.productions.find_by(id: params[:id])
+      unless @production
+        redirect_to productions_path, alert: "Not authorized or not found."
+      end
     end
 
     # Only allow a list of trusted parameters through.
     def production_params
-      params.expect(production: [ :name, :description, :production_company_id ])
+      params.require(:production).permit(:name, :description).merge(production_company_id: Current.production_company&.id)
     end
 end

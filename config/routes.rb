@@ -21,7 +21,12 @@ Rails.application.routes.draw do
   scope "/app" do
     get "/", to: "dashboard#index", as: "dashboard"
 
-    resources :production_companies
+    resources :production_companies do
+      collection do
+        get :select
+        post :set_current
+      end
+    end
     resources :people do
       collection do
         get :search

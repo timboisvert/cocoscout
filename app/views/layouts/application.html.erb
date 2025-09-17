@@ -22,13 +22,20 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="inter-regular text-slate-700 bg-white">
+  <body class="inter-regular text-slate-700 bg-[#f9f9f7]">
     <div class="flex min-h-screen">
-      <!-- Sidebar -->
 
-      <%= render "shared/sidebar" %>
+      <% if @hide_sidebar %>
 
-      <main class="flex-1 px-5 mt-5 ml-56">
+        <main class="flex-1 px-5 mt-5">
+
+      <% else %>
+
+        <%= render "shared/sidebar" %>
+        <main class="flex-1 px-5 mt-5 ml-56">
+
+      <% end %>
+
         <%= yield %>
       </main>
     </div>

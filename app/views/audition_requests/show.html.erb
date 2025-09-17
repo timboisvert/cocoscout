@@ -81,7 +81,7 @@
 
             # Set the background color based on status
             if @audition_request.status == status.to_s
-              classes += " bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 text-white"
+              classes += " bg-pink-500 hover:bg-pink-600 text-white"
             end
         %>
           <%= link_to status.capitalize, production_call_to_audition_audition_request_set_status_path(@production, @call_to_audition, @audition_request, status: status), class: classes, data: { turbo_method: :post } %>

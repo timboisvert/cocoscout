@@ -33,9 +33,10 @@
     <div class="px-4 py-6 border-t-4 border-pink-400 text-xs text-gray-500">
       <% if Current.user %>
         <div class="font-semibold text-gray-700 truncate"><%= Current.user.email_address %></div>
-        <% if @production %>
-          <div class="font-medium text-gray-700"><%= @production.name %></div>
-        <% end %>
+        <div class="font-medium text-gray-700 mt-2">
+          <%= link_to Current.production_company.name, select_production_companies_path, class: "text-pink-500 font-bold underline text-xs" %> &gt;
+        </div>
+
       <% else %>
         <div class="italic">Not signed in</div>
       <% end %>
