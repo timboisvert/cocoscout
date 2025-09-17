@@ -79,5 +79,7 @@ Rails.application.routes.draw do
   end
 
   # Junkers
-  get "*", to: proc { [ 200, {}, [ "" ] ] }
+  get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
+  get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
+  head "/old", to: proc { [ 200, {}, [ "" ] ] }
 end

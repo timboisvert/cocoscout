@@ -37,9 +37,11 @@ class ProductionsController < ApplicationController
   end
 
   def destroy
-    session[:current_production_id_for_company][Current.production_company.id] = nil
-    @production.destroy!
-    redirect_to productions_path, notice: "Production was successfully destroyed.", status: :see_other
+    if Current.production_company && Current.user
+      session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = nil
+      @production.destroy!
+      redirect_to productions_path, notice: "Production was successfully destroyed.", status: :see_other
+    end
   end
 
   private
@@ -53,9 +55,9 @@ class ProductionsController < ApplicationController
 
     def set_production_in_session
       # Set the current production in session for the current production company
-      if Current.production_company
+      if Current.production_company && Current.user
         session[:current_production_id_for_company] ||= {}
-        session[:current_production_id_for_company][Current.production_company.id] = @production.id
+        session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = @production.id
       end
     end
 

@@ -13,7 +13,8 @@ class ProductionCompaniesController < ApplicationController
     @production_company.users << Current.user
 
     if @production_company.save
-      session[:current_production_company_id] = @production_company.id
+      session[:current_production_company_id] ||= {}
+      session[:current_production_company_id]["#{Current.user&.id}"] = @production_company.id
       redirect_to dashboard_path, notice: "Production company was successfully created."
     else
       render :new, status: :unprocessable_entity
@@ -35,19 +36,18 @@ class ProductionCompaniesController < ApplicationController
 
   def select
     @production_companies = Current.user.production_companies
+    @production_company = ProductionCompany.new
   end
 
   def set_current
     production_company = Current.user.production_companies.find(params[:id])
 
-    # Compare the currently-set one and the one being set now, and reset the current production
-    # if they're switching production companies
-    if production_company.id != session[:current_production_company_id]
-      session[:current_production_id] = nil
-    end
-
     # Proceed with setting the new production company
-    session[:current_production_company_id] = production_company.id
+    user_id = Current.user&.id
+    if user_id
+      session[:current_production_company_id] ||= {}
+      session[:current_production_company_id]["#{user_id}"] = production_company.id
+    end
     redirect_to dashboard_path
   end
 

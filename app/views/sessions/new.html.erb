@@ -5,6 +5,12 @@
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
   <h1 class="text-xl font-bold mb-4 text-center">Sign In</h1>
 
+  <% if @error %>
+    <div class="text-pink-500">
+      Please enter a valid email address and password.
+    </div>
+  <% end %>
+
   <%= form_with url: session_url, class: "contents" do |form| %>
     <div class="my-5">
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address], class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-400 px-3 py-2 mt-2 w-full" %>
