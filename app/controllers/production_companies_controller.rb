@@ -1,13 +1,6 @@
 class ProductionCompaniesController < ApplicationController
   before_action :set_production_company, only: %i[ show edit update destroy ]
 
-  def index
-    @production_companies = ProductionCompany.all
-  end
-
-  def show
-  end
-
   def new
     @production_company = ProductionCompany.new
   end
@@ -17,9 +10,11 @@ class ProductionCompaniesController < ApplicationController
 
   def create
     @production_company = ProductionCompany.new(production_company_params)
+    @production_company.users << Current.user
 
     if @production_company.save
-      redirect_to @production_company, notice: "Production company was successfully created."
+      session[:current_production_company_id] = @production_company.id
+      redirect_to dashboard_path, notice: "Production company was successfully created."
     else
       render :new, status: :unprocessable_entity
     end
