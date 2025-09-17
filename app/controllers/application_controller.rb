@@ -3,7 +3,21 @@ class ApplicationController < ActionController::Base
 
   before_action :hide_sidebar
   before_action :set_current_production_company, if: -> { Current.user.present? }
+  before_action :set_current_production, if: -> { Current.user.present? }
   before_action :require_current_production_company, if: -> { Current.user.present? }
+
+  def set_current_production
+    if Current.production_company && session[:current_production_id_for_company].is_a?(Hash)
+      prod_id = session[:current_production_id_for_company][Current.production_company.id.to_s] || session[:current_production_id_for_company][Current.production_company.id]
+      if prod_id
+        Current.production = Current.production_company.productions.find_by(id: prod_id)
+      else
+        Current.production = nil
+      end
+    else
+      Current.production = nil
+    end
+  end
 
   def require_current_production_company
     return if controller_name == "home"

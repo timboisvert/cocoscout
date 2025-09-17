@@ -39,6 +39,14 @@ class ProductionCompaniesController < ApplicationController
 
   def set_current
     production_company = Current.user.production_companies.find(params[:id])
+
+    # Compare the currently-set one and the one being set now, and reset the current production
+    # if they're switching production companies
+    if production_company.id != session[:current_production_company_id]
+      session[:current_production_id] = nil
+    end
+
+    # Proceed with setting the new production company
     session[:current_production_company_id] = production_company.id
     redirect_to dashboard_path
   end

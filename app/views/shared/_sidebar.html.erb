@@ -7,14 +7,12 @@
     <% end %>
 
     <div>
-      <%= link_to "Productions", productions_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-
-      <% if @production.present? %>
-        <%= link_to @production.name, production_path(@production), class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-        <%= link_to "Shows", production_shows_path(@production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Casting", production_casts_path(@production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Roles", production_roles_path(@production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Auditions", production_auditions_path(@production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+      <% if Current.production.present? && !Current.production.new_record? %>
+        <%= link_to Current.production.name, production_path(Current.production), class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+        <%= link_to "Shows", production_shows_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+        <%= link_to "Casting", production_casts_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+        <%= link_to "Roles", production_roles_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+        <%= link_to "Auditions", production_auditions_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
       <% end %>
 
 
