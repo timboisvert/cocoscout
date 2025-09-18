@@ -1,4 +1,4 @@
-class TeamController < ApplicationController
+ class TeamController < ApplicationController
   def index
     @members = Current.production_company.users
     @invitation = Current.production_company.invitations.new
@@ -47,8 +47,33 @@ class TeamController < ApplicationController
     end
   end
 
+  def remove_member
+    user = Current.production_company.users.find_by(id: params[:id])
+    if user && user != Current.user
+      user_role = UserRole.find_by(user: user, production_company: Current.production_company)
+      if user_role
+        user_role.destroy
+        respond_to do |format|
+          format.json { render json: { success: true } }
+          format.html { redirect_to team_index_path, notice: "Team member removed." }
+        end
+      else
+        respond_to do |format|
+          format.json { render json: { success: false }, status: :unprocessable_entity }
+          format.html { redirect_to team_index_path, alert: "Could not remove team member." }
+        end
+      end
+    else
+      respond_to do |format|
+        format.json { render json: { success: false }, status: :unprocessable_entity }
+        format.html { redirect_to team_index_path, alert: "You cannot remove yourself or user not found." }
+      end
+    end
+  end
+
+
   private
   def invitation_params
     params.require(:invitation).permit(:email)
   end
-end
+ end

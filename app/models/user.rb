@@ -8,7 +8,11 @@ class User < ApplicationRecord
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false }
 
-  def role_for_company(company)
-    user_roles.find_by(production_company_id: company.id)&.role
+  def role
+    user_roles.find_by(production_company_id: Current.production_company.id)&.role
+  end
+
+  def admin?
+    role == "admin"
   end
 end

@@ -12,69 +12,98 @@
 
 <div class="flex flex-col md:flex-row gap-2 mt-4">
 
-    <div class="flex-1">
+    <div class="flex-1 space-y-2">
 
         <% @members.each do |member| %>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex" data-controller="team-remove" data-team-remove-target="row">
 
-            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex">
-                <div class="w-2/3" >
-                    <p class="font-bold text-lg"><%= member.email_address %></p>
-                    <p class="text-sm text-gray-500">Role</p>
+                <div class="<%= Current.user.admin? ? 'w-2/3' : 'w-full' %>">
+                    <div class="h-full flex flex-col justify-center">
+                        <div class="flex items-center">
+                            <p class="font-medium text-lg"><%= member.email_address %></p>
+                            <% if member == Current.user %>
+                                <span class="ml-2 text-sm text-gray-500">(Me)</span>
+                            <% end %>
+                        </div>
+                        <% if Current.user.admin? && member != Current.user %>
+                            <a
+                                href="#"
+                                class="text-xs text-pink-500 underline mt-1 w-fit hover:text-pink-600"
+                                data-team-remove-target="removeButton"
+                                data-action="team-remove#remove"
+                                data-url="<%= remove_member_team_index_path(id: member.id, format: :json) %>"
+                            >Remove</a>
+                        <% end %>
+                    </div>
                 </div>
-                <div class="w-1/3 flex items-center" data-controller="team-role">
-                    <span data-team-role-target="success" class="hidden mr-2 text-green-600">&#10003;</span>
-                    <select
-                        name="role"
-                        class="border rounded-lg px-2 py-1"
-                        data-team-role-target="select"
-                        data-user-id="<%= member.id %>"
-                        data-url="<%= update_role_team_index_path %>"
-                        data-action="change->team-role#change"
-                    >
-                        <option value="member" <%= 'selected' if member.role_for_company(Current.production_company) == 'member' %>>Member</option>
-                        <option value="admin" <%= 'selected' if member.role_for_company(Current.production_company) == 'admin' %>>Admin</option>
-                    </select>
-                </div>
+
+                <% if Current.user.admin? %>
+                    <% if member == Current.user %>
+                        <div class="w-1/3 flex items-center justify-end text-gray-500">
+                            <%= Current.user.role.capitalize %>
+                        </div>
+                    <% else %>
+                        <div class="w-1/3 flex items-center justify-end gap-2" data-controller="team-role">
+                            <span data-team-role-target="success" class="hidden mt-2 mr-2 text-pink-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                    <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <select
+                                name="role"
+                                class="block shadow-sm rounded-lg border px-3 py-2 mt-2 w-32 border-gray-400 focus:outline-pink-500"
+                                data-team-role-target="select"
+                                data-user-id="<%= member.id %>"
+                                data-url="<%= update_role_team_index_path %>"
+                                data-action="change->team-role#change"
+                            >
+                                <option value="member" <%= 'selected' if member.role == 'member' %>>Member</option>
+                                <option value="admin" <%= 'selected' if member.role == 'admin' %>>Admin</option>
+                            </select>
+                        </div>
+                    <% end %>
+                <% end %>
             </div>
-
-
         <% end %>
 
     </div>
 
-    <div class="flex-1 space-y-2">
+    <% if Current.user.admin? %>
+        <div class="flex-1 space-y-2">
 
-        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-            <h2 class="text-lg font-semibold mb-2">Invite a Team Member</h2>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                <h2 class="text-lg font-semibold mb-2">Invite a Team Member</h2>
 
-            <% if @invitation_error %>
-                <p class="text-sm text-pink-500 mb-2">Email address is required</p>
-            <% end %>
+                <% if @invitation_error %>
+                    <p class="text-sm text-pink-500 mb-2">Email address is required</p>
+                <% end %>
 
-            <%= form_with(model: @invitation, url: invite_team_index_path, method: :post) do |f| %>
-                <div class="flex gap-2 items-center">
-                    <%= f.email_field :email, placeholder: "Email address", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 focus:outline-pink-500 flex-1 w-full" %>
-                    <%= f.submit "Send Invite", class: "px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
-                </div>
-            <% end %>
-        </div>
-
-        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-            <h2 class="text-lg font-semibold mb-2">Pending Invitations</h2>
-
-            <% if @invitations.any? %>
-                <% @invitations.each do |invite| %>
-                    <div class="flex items-center mb-2">
-                        <span><%= invite.email %></span>
-                        <%= button_to "Revoke", revoke_invite_team_index_path(id: invite.id), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline ml-2 cursor-pointer" %>
+                <%= form_with(model: @invitation, url: invite_team_index_path, method: :post) do |f| %>
+                    <div class="flex gap-2 items-center">
+                        <%= f.email_field :email, placeholder: "Email address", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 focus:outline-pink-500 flex-1 w-full" %>
+                        <%= f.submit "Send Invite", class: "px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                     </div>
                 <% end %>
-            <% else %>
-                <p class="text-sm text-gray-500">You don't currently have any pending invitations.</p>
-            <% end %>
-        </div>
+            </div>
 
-    </div>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                <h2 class="text-lg font-semibold mb-2">Pending Invitations</h2>
+
+                <% if @invitations.any? %>
+                    <% @invitations.each do |invite| %>
+                        <div class="flex items-center mb-2">
+                            <span><%= invite.email %></span>
+                            |<%= invite.token %> |
+                            <%= button_to "Revoke", revoke_invite_team_index_path(id: invite.id), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline ml-2 cursor-pointer" %>
+                        </div>
+                    <% end %>
+                <% else %>
+                    <p class="text-sm text-gray-500">You don't currently have any pending invitations.</p>
+                <% end %>
+            </div>
+
+        </div>
+    <% end %>
 
   </div>
 

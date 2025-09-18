@@ -36,6 +36,7 @@
         post :invite
         patch :update_role
         delete :revoke_invite
+        delete :remove_member
       end
     end
 
