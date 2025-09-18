@@ -9,13 +9,26 @@
     <div>
       <% if Current.production.present? && !Current.production.new_record? %>
         <%= link_to Current.production.name, production_path(Current.production), class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-        <%= link_to "Shows", production_shows_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Casting", production_casts_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Roles", production_roles_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <%= link_to "Auditions", production_auditions_path(Current.production), class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+
+        <%
+        links = [
+          {"Shows" => production_shows_path(Current.production)},
+          {"Casting" => production_casts_path(Current.production)},
+          {"Roles" => production_roles_path(Current.production)},
+          {"Auditions" => production_auditions_path(Current.production)}
+        ]
+        %>
+
+        <% links.each do |item| %>
+          <%= link_to item.keys.first, item.values.first, class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+        <% end %>
+
       <% else %>
+
         <%= link_to "Productions", productions_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+
       <% end %>
+
       <%= link_to "People", people_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
     </div>
 
