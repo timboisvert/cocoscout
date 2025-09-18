@@ -1,0 +1,46 @@
+<div class="max-w-2xl mx-auto mt-10 p-6 bg-white rounded shadow">
+  <h1 class="text-2xl font-bold mb-6">Team Members</h1>
+
+  <h2 class="text-lg font-semibold mb-2">Current Members</h2>
+  <table class="w-full mb-6">
+    <thead>
+      <tr>
+        <th class="text-left">Email</th>
+        <th class="text-left">Role</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @members.each do |member| %>
+        <tr>
+          <td class="py-2"><%= member.email_address %></td>
+          <td>
+            <%= form_with url: update_role_team_index_path, method: :patch, local: true do |f| %>
+              <%= hidden_field_tag :id, member.id %>
+              <select name="role" class="border rounded px-2 py-1">
+                <option value="member" <%= 'selected' if member.role_for_company(@production_company) == 'member' %>>Member</option>
+                <option value="admin" <%= 'selected' if member.role_for_company(@production_company) == 'admin' %>>Admin</option>
+              </select>
+              <%= f.submit "Update", class: "ml-2 px-2 py-1 rounded bg-pink-500 text-white text-xs font-bold hover:bg-pink-600" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h2 class="text-lg font-semibold mb-2">Pending Invitations</h2>
+  <ul class="mb-6">
+    <% @invitations.each do |invite| %>
+      <li class="mb-1"><%= invite.email %> (pending)</li>
+    <% end %>
+  </ul>
+
+  <h2 class="text-lg font-semibold mb-2">Invite Someone</h2>
+  <%= form_with url: invite_team_index_path, method: :post, local: true do |f| %>
+    <div class="flex gap-2 items-center">
+      <%= f.email_field :email, placeholder: "Email address", class: "border rounded px-2 py-1" %>
+      <%= f.submit "Send Invite", class: "px-3 py-1 rounded bg-pink-500 text-white font-bold hover:bg-pink-600" %>
+    </div>
+  <% end %>
+</div>
