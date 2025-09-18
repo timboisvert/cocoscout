@@ -1,8 +1,8 @@
 class TeamController < ApplicationController
   def index
-    @production_company = Current.production_company
-    @members = @production_company.users
-    @invitations = @production_company.invitations.where(accepted_at: nil)
+    @members = Current.production_company.users
+    @invitation = Current.production_company.invitations.new
+    @invitations = Current.production_company.invitations.where(accepted_at: nil)
   end
 
   def invite
@@ -11,7 +11,11 @@ class TeamController < ApplicationController
     if @invitation.save
       redirect_to team_index_path, notice: "Invitation sent."
     else
-      redirect_to team_index_path, alert: @invitation.errors.full_messages.to_sentence
+      @members = Current.production_company.users
+      @invitation = Current.production_company.invitations.new
+      @invitations = Current.production_company.invitations.where(accepted_at: nil)
+      @invitation_error = true
+      render :index, status: :unprocessable_entity
     end
   end
 
@@ -21,9 +25,25 @@ class TeamController < ApplicationController
     user_role = UserRole.find_by(user: user, production_company: Current.production_company)
     if user_role && %w[admin member].include?(role)
       user_role.update(role: role)
-      redirect_to team_index_path, notice: "Role updated."
+      respond_to do |format|
+        format.json { render json: { success: true } }
+        format.html { redirect_to team_index_path, notice: "Role updated." }
+      end
     else
-      redirect_to team_index_path, alert: "Could not update role."
+      respond_to do |format|
+        format.json { render json: { success: false }, status: :unprocessable_entity }
+        format.html { redirect_to team_index_path, alert: "Could not update role." }
+      end
+    end
+  end
+
+  def revoke_invite
+    invitation = Current.production_company.invitations.find_by(id: params[:id], accepted_at: nil)
+    if invitation
+      invitation.destroy
+      redirect_to team_index_path, notice: "Invitation revoked."
+    else
+      redirect_to team_index_path, alert: "Invitation not found or already accepted."
     end
   end
 

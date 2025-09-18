@@ -35,10 +35,11 @@
       collection do
         post :invite
         patch :update_role
+        delete :revoke_invite
       end
     end
 
-    resources :invitations, only: [ :create ] do
+    resources :invitations do
       collection do
         get "accept/:token", to: "invitations#accept", as: :accept
         post "accept/:token", to: "invitations#do_accept", as: :do_accept

@@ -2,16 +2,6 @@ class InvitationsController < ApplicationController
   skip_before_action :require_current_production_company, only: [ :accept, :do_accept ]
   before_action :set_invitation, only: [ :accept, :do_accept ]
 
-  def create
-    @invitation = Invitation.new(invitation_params)
-    @invitation.production_company = Current.production_company
-    if @invitation.save
-      # TODO: send email with invite link
-      redirect_to @invitation.production_company, notice: "Invitation sent."
-    else
-      redirect_to @invitation.production_company, alert: @invitation.errors.full_messages.to_sentence
-    end
-  end
 
   def accept
     # Renders a form for the invitee to sign up or log in
