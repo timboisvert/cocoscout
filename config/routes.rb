@@ -1,4 +1,4 @@
-Rails.application.routes.draw do
+ Rails.application.routes.draw do
   root "home#index"
 
   # Utility
@@ -30,6 +30,21 @@ Rails.application.routes.draw do
         post :set_current
       end
     end
+
+    resources :team, only: [ :index ] do
+      collection do
+        post :invite
+        patch :update_role
+      end
+    end
+
+    resources :invitations, only: [ :create ] do
+      collection do
+        get "accept/:token", to: "invitations#accept", as: :accept
+        post "accept/:token", to: "invitations#do_accept", as: :do_accept
+      end
+    end
+
     resources :people do
       collection do
         get :search
@@ -43,7 +58,6 @@ Rails.application.routes.draw do
 
     resources :productions do
       resources :shows
-
       resources :casts do
         member do
           # These two are only used when dragging and dropping on the cast members list

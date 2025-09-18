@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -124,6 +124,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
     t.index ["person_id"], name: "index_casts_people_on_person_id"
   end
 
+  create_table "invitations", force: :cascade do |t|
+    t.integer "production_company_id", null: false
+    t.string "email", null: false
+    t.string "token", null: false
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_company_id"], name: "index_invitations_on_production_company_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
+  end
+
   create_table "notify_mes", force: :cascade do |t|
     t.string "email"
     t.datetime "created_at", null: false
@@ -143,13 +154,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-  end
-
-  create_table "production_companies_users", id: false, force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.integer "production_company_id", null: false
-    t.index ["production_company_id"], name: "index_production_companies_users_on_production_company_id"
-    t.index ["user_id"], name: "index_production_companies_users_on_user_id"
   end
 
   create_table "productions", force: :cascade do |t|
@@ -216,6 +220,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
+  create_table "user_roles", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "production_company_id", null: false
+    t.string "role", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_company_id"], name: "index_user_roles_on_production_company_id"
+    t.index ["user_id", "production_company_id"], name: "index_user_roles_on_user_id_and_production_company_id", unique: true
+    t.index ["user_id"], name: "index_user_roles_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
@@ -237,6 +252,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "casts", "productions"
+  add_foreign_key "invitations", "production_companies"
   add_foreign_key "productions", "production_companies"
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
@@ -245,4 +261,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_180000) do
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "productions"
+  add_foreign_key "user_roles", "production_companies"
+  add_foreign_key "user_roles", "users"
 end

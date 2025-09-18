@@ -10,9 +10,10 @@ class ProductionCompaniesController < ApplicationController
 
   def create
     @production_company = ProductionCompany.new(production_company_params)
-    @production_company.users << Current.user
 
     if @production_company.save
+      # Assign creator as admin
+      UserRole.create!(user: Current.user, production_company: @production_company, role: "admin")
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{Current.user&.id}"] = @production_company.id
       redirect_to dashboard_path, notice: "Production company was successfully created."
