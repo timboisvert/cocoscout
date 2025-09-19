@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# These environment variables are available:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_ROLES (if set)
+# KAMAL_DESTINATION (if set)
+# KAMAL_RUNTIME
+
+echo "$KAMAL_PERFORMER deployed $KAMAL_VERSION to $KAMAL_DESTINATION in $KAMAL_RUNTIME seconds"
+
+export HONEYBADGER_API_KEY=$(grep -m 1 '^HONEYBADGER_API_KEY=' .env | cut -d '=' -f2)
+
+curl https://api.honeybadger.io/v1/deploys -H "X-API-Key: $HONEYBADGER_API_KEY" -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"deploy\": {\"environment\": \"production\", \"local_username\": \"$KAMAL_PERFORMER\", \"revision\": \"$KAMAL_VERSION\"}}"
