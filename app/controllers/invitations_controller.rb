@@ -11,9 +11,10 @@ class InvitationsController < ApplicationController
 
   def do_accept
     # Try and find the user accepting the invitation
+    # Also get their person
     user = User.find_by(email_address: @invitation.email.downcase)
+    person = Person.find_by(email: @invitation.email.downcase)
 
-    # If the user exists, check their login
     if user
       if user.authenticate(params[:password])
         # User has entered the correct password
@@ -22,12 +23,21 @@ class InvitationsController < ApplicationController
         render :accept, status: :unprocessable_entity and return
       end
     else
-      user = User.new(email_address: @invitation.email.downcase, password: params[:password])
+      user = User.new(email_address: @invitation.email.downcase, password: params[:password], person: person)
       unless user.save
-        # The user couldn't be created, so show an error
         flash.now[:alert] = user.errors.full_messages.to_sentence
         render :accept, status: :unprocessable_entity and return
       end
+    end
+
+    # Now link the person and user if they aren't already linked. Create the
+    # person if it doesn't exist
+    if person
+      person.user = user
+      person.save!
+    else
+      person = Person.new(email: @invitation.email.downcase, stage_name: @invitation.email.split("@").first, user: user)
+      person.save!
     end
 
     # Set a role and the production company

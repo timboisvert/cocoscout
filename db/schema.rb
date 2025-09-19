@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_19_121000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -148,6 +148,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
     t.string "stage_name"
     t.string "pronouns"
     t.string "socials"
+    t.integer "user_id"
+    t.index ["user_id"], name: "index_people_on_user_id"
   end
 
   create_table "production_companies", force: :cascade do |t|
@@ -236,7 +238,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
     t.string "password_digest", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["person_id"], name: "index_users_on_person_id"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
@@ -253,6 +257,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "casts", "productions"
   add_foreign_key "invitations", "production_companies"
+  add_foreign_key "people", "users"
   add_foreign_key "productions", "production_companies"
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
@@ -263,4 +268,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_18_102000) do
   add_foreign_key "shows", "productions"
   add_foreign_key "user_roles", "production_companies"
   add_foreign_key "user_roles", "users"
+  add_foreign_key "users", "people"
 end

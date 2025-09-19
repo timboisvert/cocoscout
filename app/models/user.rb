@@ -1,4 +1,5 @@
 class User < ApplicationRecord
+  has_one :person, dependent: :nullify
   has_secure_password
   has_many :sessions, dependent: :destroy
 

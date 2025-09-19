@@ -15,8 +15,8 @@ class SessionsController < ApplicationController
     end
   end
 
-  def destroy
+  def signout
     terminate_session
-    redirect_to new_session_path
+    redirect_to dashboard_path
   end
 end

@@ -46,7 +46,7 @@
       <% if Current.user %>
         <div class="font-semibold text-gray-700 truncate">
           <%= Current.user.email_address %>
-          <span class="text-gray-500"><%= link_to "Log out", session_path, data: {turbo_method: :delete}, class: "text-pink-500 underline" %></span>
+          <span class="text-gray-500"><%= link_to "Sign out", signout_path, class: "text-pink-500 underline" %></span>
         </div>
         <div class="font-medium text-gray-700 mt-2">
           <%= link_to Current.production_company.name, select_production_companies_path, class: "text-pink-500 font-bold underline text-xs" %> &gt;

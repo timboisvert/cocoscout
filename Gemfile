@@ -30,5 +30,13 @@ group :development do
 end
 
 group :test do
-  gem "minitest-rails"
+  # gem "minitest-rails" # removed in favor of RSpec
+end
+
+group :development, :test do
+  gem "rspec-rails"
+  gem "capybara"
+  gem "factory_bot_rails"
+  gem "database_cleaner-active_record"
+  gem "selenium-webdriver"
 end

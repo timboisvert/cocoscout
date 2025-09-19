@@ -16,10 +16,12 @@
   get "/audition/:hex_code/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
 
   # Authentication
-  get "/signup", to: "users#signup", as: "signup"
-  post "/signup", to: "users#create", as: "create_user"
   resource :session
   resources :passwords, param: :token
+  get "/signup", to: "users#signup", as: "signup"
+  post "/signup", to: "users#create", as: "create_user"
+  get "/signin", to: redirect("session/new")
+  get "/signout", to: "sessions#signout", as: "signout"
 
   scope "/app" do
     get "/", to: "dashboard#index", as: "dashboard"
