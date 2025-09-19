@@ -54,10 +54,21 @@ class ProductionsController < ApplicationController
     end
 
     def set_production_in_session
-      # Set the current production in session for the current production company
       if Current.production_company && Current.user
+
+        # Make sure we have the sessions hash set for production IDs
         session[:current_production_id_for_company] ||= {}
+
+        # Store the current one
+        previous_production_id = session[:current_production_id_for_company]&.dig("#{Current.user&.id}_#{Current.production_company&.id}")
+
+        # Set the new one
         session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = @production.id
+
+        # If the production changed, redirect to the dashboard so the left nav resets
+        if previous_production_id != @production.id
+          redirect_to dashboard_path
+        end
       end
     end
 
