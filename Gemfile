@@ -17,7 +17,7 @@ gem "kamal", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
-gem "rollbar"
+gem "honeybadger"
 
 gem "dotenv-rails", groups: %i[ development test ]
 

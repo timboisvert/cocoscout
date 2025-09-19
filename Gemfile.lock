@@ -132,6 +132,9 @@ GEM
     ffi (1.17.2-x86_64-linux-musl)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    honeybadger (6.1.0)
+      logger
+      ostruct
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     image_processing (1.14.0)
@@ -281,7 +284,6 @@ GEM
     regexp_parser (2.11.2)
     reline (0.6.2)
       io-console (~> 0.5)
-    rollbar (3.6.2)
     rubocop (1.80.2)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -395,6 +397,7 @@ DEPENDENCIES
   debug
   dockerfile-rails (>= 1.7)
   dotenv-rails
+  honeybadger
   image_processing (~> 1.2)
   importmap-rails
   kamal
@@ -403,7 +406,6 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.2, >= 8.0.2.1)
-  rollbar
   rubocop-rails-omakase
   solid_cache
   sqlite3
