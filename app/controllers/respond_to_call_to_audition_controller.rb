@@ -1,11 +1,14 @@
 class RespondToCallToAuditionController < ApplicationController
-  allow_unauthenticated_access
+  allow_unauthenticated_access only: [ :entry ]
 
   before_action :get_call_to_audition_and_questions
   before_action :ensure_call_to_audition_is_open, only: [ :new, :create, :success ]
 
   # Use the public facing layout
   layout "public_facing"
+
+  def entry
+  end
 
   def new
     # First we'll check if they've already responded to this call to audition
@@ -16,13 +19,13 @@ class RespondToCallToAuditionController < ApplicationController
 
       if @person.nil?
         cookies.delete "#{@call_to_audition.hex_code}"
-        redirect_to respond_to_call_to_audition_path(hex_code: @call_to_audition.hex_code), status: :see_other
+        redirect_to respond_to_call_to_audition_form_path(hex_code: @call_to_audition.hex_code), status: :see_other
       else
         @audition_request = @call_to_audition.audition_requests.find_by(person: @person)
 
         if @audition_request.nil?
           cookies.delete "#{@call_to_audition.hex_code}"
-          redirect_to respond_to_call_to_audition_path(hex_code: @call_to_audition.hex_code), status: :see_other
+          redirect_to respond_to_call_to_audition_form_path(hex_code: @call_to_audition.hex_code), status: :see_other
         else
           @answers = {}
           @questions.each do |question|

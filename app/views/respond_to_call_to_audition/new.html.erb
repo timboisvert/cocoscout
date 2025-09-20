@@ -23,7 +23,7 @@
     </div>
   <% end %>
 
-  <%= form_with(model: @audition_request, url: handle_respond_to_call_to_audition_path(@call_to_audition.hex_code), method: :post, class: "contents", data: { turbo: false }) do |form| %>
+  <%= form_with(model: @audition_request, url: handle_respond_to_call_to_audition_form_path(@call_to_audition.hex_code), method: :post, class: "contents", data: { turbo: false }) do |form| %>
 
     <% if @audition_request.errors.any? %>
       <div id="error_explanation" class="bg-pink-50 text-pink-500 px-3 py-2 font-medium rounded-lg mt-3">
