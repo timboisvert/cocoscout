@@ -4,7 +4,12 @@ class Production < ApplicationRecord
     has_many :audition_sessions, dependent: :destroy
     has_many :casts, dependent: :destroy
     has_many :roles, dependent: :destroy
+    has_many :posters, dependent: :destroy
     belongs_to :production_company
+
+    has_one_attached :logo, dependent: :purge_later do |attachable|
+        attachable.variant :small, resize_to_limit: [ 300, 200 ], preprocessed: true
+    end
 
     def audition_requests(filter: "to_be_scheduled")
         ar = AuditionRequest.joins(:call_to_audition).where(call_to_auditions: { production_id: self.id })

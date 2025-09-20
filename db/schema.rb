@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_19_121000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_19_130000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -152,6 +152,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_19_121000) do
     t.index ["user_id"], name: "index_people_on_user_id"
   end
 
+  create_table "posters", force: :cascade do |t|
+    t.string "name"
+    t.integer "production_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_posters_on_production_id"
+  end
+
   create_table "production_companies", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -258,6 +266,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_19_121000) do
   add_foreign_key "casts", "productions"
   add_foreign_key "invitations", "production_companies"
   add_foreign_key "people", "users"
+  add_foreign_key "posters", "productions"
   add_foreign_key "productions", "production_companies"
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"

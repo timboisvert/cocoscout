@@ -61,6 +61,7 @@
     end
 
     resources :productions do
+      resources :posters, except: :index
       resources :shows
       resources :casts do
         member do

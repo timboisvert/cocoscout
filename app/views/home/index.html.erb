@@ -10,7 +10,7 @@
   </p>
   <%= form_with url: "/notify_me", method: :post, local: true do |form| %>
     <div class="flex">
-      <%= form.email_field :email, required: true, placeholder: "Your email address", class: "flex-1 px-3 py-2 border border-gray-300 rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500" %>
+      <%= form.email_field :email, required: true, placeholder: "Your email address", class: "flex-1 px-3 py-2 border border-gray-200 rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500" %>
       <%= form.submit "Notify Me", class: "bg-pink-500 text-white px-4 py-2 rounded-r hover:bg-pink-600 transition" %>
     </div>
   <% end %>
