@@ -2,15 +2,13 @@ class RespondToCallToAuditionController < ApplicationController
   allow_unauthenticated_access only: [ :entry ]
 
   before_action :get_call_to_audition_and_questions
-  before_action :ensure_call_to_audition_is_open, only: [ :new, :create, :success ]
-
-  # Use the public facing layout
-  layout "public_facing"
+  before_action :ensure_call_to_audition_is_open, only: [ :entry, :form, :submitform, :success ]
 
   def entry
+    @user = User.new
   end
 
-  def new
+  def form
     # First we'll check if they've already responded to this call to audition
     if cookies.signed["#{@call_to_audition.hex_code}"]
 
@@ -50,7 +48,7 @@ class RespondToCallToAuditionController < ApplicationController
     end
   end
 
-  def create
+  def submitform
     # Strong parameters for the person
     person_params = params.require(:audition_request).permit(person: [ :stage_name, :email, :pronouns, :socials, :resume, :headshot, :questions ])
 
@@ -135,7 +133,7 @@ class RespondToCallToAuditionController < ApplicationController
       cookies.signed["#{@call_to_audition.hex_code}"] = { value: @person.email, expires: 5.years.from_now }
       redirect_to respond_to_call_to_audition_success_path(hex_code: @call_to_audition.hex_code), status: :see_other
     else
-      render :new
+      render :form
     end
   end
 
