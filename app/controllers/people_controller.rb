@@ -48,13 +48,32 @@ class PeopleController < ApplicationController
   end
 
   def create
-    @person = Person.new(person_params)
-    @person.user_roles.build(role: "talent", production_company: Current.production_company)
-
-    if @person.save
-      redirect_to @person, notice: "Person was successfully created."
-    else
+    if Person.exists?(email: person_params[:email])
+      @person = Person.new(person_params)
+      @user_exists_error = true
       render :new, status: :unprocessable_entity
+    else
+      @person = Person.new(person_params)
+      if @person.save
+
+        # Make sure we have a user
+        user = User.find_or_create_by!(email_address: @person.email) do |user|
+          user.password = SecureRandom.hex(16)
+        end
+        @person.update!(user: user)
+
+        # Create a user role for this production company if it doesn't already exist
+        unless UserRole.exists?(user: user, production_company: Current.production_company)
+          UserRole.create!(user: user, production_company: Current.production_company, role: "talent")
+        end
+
+        # TODO: Send an email to the person letting them know they have been added and
+        # that they need to update their password
+
+        redirect_to @person, notice: "Person was successfully created."
+      else
+        render :new, status: :unprocessable_entity
+      end
     end
   end
 

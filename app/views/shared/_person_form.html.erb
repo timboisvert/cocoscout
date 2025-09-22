@@ -1,11 +1,25 @@
 <div>
+
+    <% if @cold_data_mode %>
+        <div class="mb-5">
+            <% if @user_exists_error %>
+                <%= person_form.label :email, "Email is already used by a different Person", class: "text-pink-600" %>
+            <% elsif @person.errors[:email].none? %>
+                <%= person_form.label :email, "Email" %>
+            <% else %>
+                <%= person_form.label :email, "Email is required", class: "text-pink-600"  %>
+            <% end %>
+            <%= person_form.email_field :email, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:email].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:email].any?}] %>
+        </div>
+    <% end %>
+
     <div class="mb-5">
         <% if @person.errors[:name].none? %>
             <%= person_form.label :name, "Name" %>
         <% else %>
             <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
         <% end %>
-        <span class="text-sm text-gray-500"> (Your stage name or performing name)</span>
+        <% unless @cold_data_mode %><span class="text-sm text-gray-500"> (Your stage name or performing name)</span><% end %>
      <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:name].any?}] %>
     </div>
 

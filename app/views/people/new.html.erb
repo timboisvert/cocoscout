@@ -8,16 +8,18 @@
     breadcrumbs: [
       ["Talent", people_path]
     ],
-    text: "Add a Talent",
+    text: "Create a Talent",
     links: []
   } %>
 
   <div class="w-full max-w-4xl" >
     <%= form_with(model: @person, class: "contents") do |person_form| %>
+
+      <% @cold_data_mode = true %>
       <%= render "shared/person_form", person_form: person_form %>
 
       <div class="w-full border-t border-gray-200 pt-5 my-5">
-        <%= person_form.submit "Add Talent", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>
+        <%= person_form.submit "Create Talent", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>
         <%= link_to "Back", 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
       </div>
 
