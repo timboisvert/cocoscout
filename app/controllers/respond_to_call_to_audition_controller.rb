@@ -1,9 +1,11 @@
 class RespondToCallToAuditionController < ApplicationController
-  allow_unauthenticated_access only: [ :entry, :handlesignup, :signin, :handlesignin ]
+  allow_unauthenticated_access
 
   skip_before_action :set_current_production_company
   skip_before_action :set_current_production
   skip_before_action :require_current_production_company
+
+  before_action :ensure_user_is_signed_in, only: [ :form, :submitform, :success ]
 
   before_action :get_call_to_audition_and_questions
   before_action :ensure_call_to_audition_is_open, only: [ :entry, :form, :submitform, :success ]
@@ -102,6 +104,12 @@ class RespondToCallToAuditionController < ApplicationController
   end
 
   def form
+    # If the user isn't signed in, redirect them to the entry
+    unless authenticated?
+      redirect_to respond_to_call_to_audition_path, status: :see_other
+      return
+    end
+
     # First we'll check if they've already responded to this call to audition
     if cookies.signed["#{@call_to_audition.hex_code}"]
 
@@ -257,6 +265,11 @@ class RespondToCallToAuditionController < ApplicationController
     end
   end
 
+  def ensure_user_is_signed_in
+    unless authenticated?
+      redirect_to respond_to_call_to_audition_path, status: :see_other
+    end
+  end
   private
 
   def user_params
