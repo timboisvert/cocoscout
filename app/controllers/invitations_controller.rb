@@ -59,7 +59,7 @@ class InvitationsController < ApplicationController
     end
 
     # And redirect
-    redirect_to dashboard_path, notice: "You have joined #{@invitation.production_company.name}."
+    redirect_to manage_path, notice: "You have joined #{@invitation.production_company.name}."
   end
 
   private

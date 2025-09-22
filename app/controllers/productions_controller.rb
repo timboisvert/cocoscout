@@ -65,9 +65,9 @@ class ProductionsController < ApplicationController
         # Set the new one
         session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = @production.id
 
-        # If the production changed, redirect to the dashboard so the left nav resets
+        # If the production changed, redirect to the manage home so the left nav resets
         if previous_production_id != @production.id
-          redirect_to dashboard_path
+          redirect_to manage_path
         end
       end
     end

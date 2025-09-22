@@ -32,7 +32,7 @@ class UsersController < ApplicationController
       # The user has been created, so log them in
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
-        redirect_to dashboard_path, notice: "User was successfully created."
+        redirect_to manage_path, notice: "User was successfully created."
       else
         render :signup, status: :unprocessable_entity
       end

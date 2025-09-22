@@ -12,7 +12,7 @@ export default class extends Controller {
         const roleId = event.currentTarget.dataset.roleId;
         const personId = event.dataTransfer.getData("text/plain");
         const showId = this.element.dataset.showId;
-        fetch(`/app/shows/${showId}/assign_person_to_role`, {
+        fetch(`/manage/shows/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -35,7 +35,7 @@ export default class extends Controller {
         event.preventDefault();
         const assignmentId = event.currentTarget.dataset.assignmentId;
         const showId = this.element.dataset.showId;
-        fetch(`/app/shows/${showId}/remove_person_from_role`, {
+        fetch(`/manage/shows/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

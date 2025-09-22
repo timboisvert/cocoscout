@@ -8,7 +8,7 @@ export default class extends Controller {
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const castId = this.castIdValue;
-        fetch(`/app/productions/${productionId}/casts/${castId}/add_person`, {
+        fetch(`/manage/productions/${productionId}/casts/${castId}/add_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -29,7 +29,7 @@ export default class extends Controller {
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const castId = this.castIdValue;
-        fetch(`/app/productions/${productionId}/casts/${castId}/remove_person`, {
+        fetch(`/manage/productions/${productionId}/casts/${castId}/remove_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

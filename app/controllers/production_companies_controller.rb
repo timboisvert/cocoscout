@@ -16,7 +16,7 @@ class ProductionCompaniesController < ApplicationController
       UserRole.create!(user: Current.user, production_company: @production_company, role: "admin")
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{Current.user&.id}"] = @production_company.id
-      redirect_to dashboard_path, notice: "Production company was successfully created."
+      redirect_to manage_path, notice: "Production company was successfully created."
     else
       render :new, status: :unprocessable_entity
     end
@@ -49,7 +49,7 @@ class ProductionCompaniesController < ApplicationController
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{user_id}"] = production_company.id
     end
-    redirect_to dashboard_path
+    redirect_to manage_path
   end
 
 

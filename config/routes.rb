@@ -27,8 +27,14 @@
   get "/audition/:hex_code/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
   get "/audition/:hex_code/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
 
+  # Talent-facing interface
   scope "/app" do
     get "/", to: "dashboard#index", as: "dashboard"
+  end
+
+  # Management interface
+  scope "/manage" do
+    get "/", to: "manage#index", as: "manage"
 
     resources :production_companies do
       collection do

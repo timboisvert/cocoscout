@@ -8,7 +8,7 @@ class SessionsController < ApplicationController
   def create
     if user = User.authenticate_by(params.permit(:email_address, :password))
       start_new_session_for user
-      redirect_to(session.delete(:return_to) || dashboard_path) and return
+      redirect_to(session.delete(:return_to) || manage_path) and return
     else
       @error = true
       render :new, status: :unprocessable_entity
@@ -17,6 +17,6 @@ class SessionsController < ApplicationController
 
   def signout
     terminate_session
-    redirect_to dashboard_path
+    redirect_to manage_path
   end
 end

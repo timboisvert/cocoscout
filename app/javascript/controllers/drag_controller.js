@@ -29,7 +29,7 @@ export default class extends Controller {
     if (droppedOnElement) {
       const droppedOnDropzoneId = droppedOnElement.dataset.id;
       // Send AJAX request to create audition and add to session
-      fetch("/app/auditions/add_to_session", {
+      fetch("/manage/auditions/add_to_session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -65,7 +65,7 @@ export default class extends Controller {
     event.stopPropagation();
     const auditionId = event.currentTarget.dataset.auditionId;
     const sessionId = event.currentTarget.dataset.sessionId;
-    fetch("/app/auditions/remove_from_session", {
+    fetch("/manage/auditions/remove_from_session", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
