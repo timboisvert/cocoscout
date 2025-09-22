@@ -9,7 +9,7 @@ class ApplicationController < ActionController::Base
   private
 
   def hide_sidebar
-    if %w[sessions passwords production_companies users invitations respond_to_call_to_audition].include?(controller_name)
+    if %w[sessions passwords production_companies users team_invitations respond_to_call_to_audition].include?(controller_name)
       @hide_sidebar = true
     else
       @hide_sidebar = false

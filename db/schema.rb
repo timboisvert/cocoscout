@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_22_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_22_130000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -124,17 +124,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_120000) do
     t.index ["person_id"], name: "index_casts_people_on_person_id"
   end
 
-  create_table "invitations", force: :cascade do |t|
-    t.integer "production_company_id", null: false
-    t.string "email", null: false
-    t.string "token", null: false
-    t.datetime "accepted_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["production_company_id"], name: "index_invitations_on_production_company_id"
-    t.index ["token"], name: "index_invitations_on_token", unique: true
-  end
-
   create_table "notify_mes", force: :cascade do |t|
     t.string "email"
     t.datetime "created_at", null: false
@@ -230,6 +219,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_120000) do
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
+  create_table "team_invitations", force: :cascade do |t|
+    t.integer "production_company_id", null: false
+    t.string "email", null: false
+    t.string "token", null: false
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_company_id"], name: "index_team_invitations_on_production_company_id"
+    t.index ["token"], name: "index_team_invitations_on_token", unique: true
+  end
+
   create_table "user_roles", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "production_company_id", null: false
@@ -264,7 +264,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_120000) do
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "casts", "productions"
-  add_foreign_key "invitations", "production_companies"
   add_foreign_key "people", "users"
   add_foreign_key "posters", "productions"
   add_foreign_key "productions", "production_companies"
@@ -275,6 +274,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_120000) do
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "productions"
+  add_foreign_key "team_invitations", "production_companies"
   add_foreign_key "user_roles", "production_companies"
   add_foreign_key "user_roles", "users"
   add_foreign_key "users", "people"

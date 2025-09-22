@@ -1,4 +1,4 @@
-class Invitation < ApplicationRecord
+class TeamInvitation < ApplicationRecord
   belongs_to :production_company
 
   validates :email, presence: true

@@ -52,10 +52,10 @@
       end
     end
 
-    resources :invitations do
+    resources :team_invitations do
       collection do
-        get "accept/:token", to: "invitations#accept", as: :accept
-        post "accept/:token", to: "invitations#do_accept", as: :do_accept
+        get "accept/:token", to: "team_invitations#accept", as: :accept
+        post "accept/:token", to: "team_invitations#do_accept", as: :do_accept
       end
     end
 

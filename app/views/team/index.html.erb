@@ -74,11 +74,11 @@
             <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
                 <h2 class="text-lg font-semibold mb-2">Invite a Team Member</h2>
 
-                <% if @invitation_error %>
+                <% if @team_invitation_error %>
                     <p class="text-sm text-pink-500 mb-2">Email address is required</p>
                 <% end %>
 
-                <%= form_with(model: @invitation, url: invite_team_index_path, method: :post) do |f| %>
+                <%= form_with(model: @team_invitation, url: invite_team_index_path, method: :post) do |f| %>
                     <div class="flex gap-2 items-center">
                         <%= f.email_field :email, placeholder: "Email address", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 focus:outline-pink-500 flex-1 w-full" %>
                         <%= f.submit "Send Invite", class: "px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
@@ -89,8 +89,8 @@
             <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
                 <h2 class="text-lg font-semibold mb-2">Pending Invitations</h2>
 
-                <% if @invitations.any? %>
-                    <% @invitations.each do |invite| %>
+                <% if @team_invitations.any? %>
+                    <% @team_invitations.each do |invite| %>
                         <div class="flex items-center mb-2">
                             <span><%= invite.email %></span>
                             |<%= invite.token %> |

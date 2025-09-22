@@ -1,21 +1,20 @@
  class TeamController < ApplicationController
   def index
     @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "admin", "member" ] }).distinct
-
-    @invitation = Current.production_company.invitations.new
-    @invitations = Current.production_company.invitations.where(accepted_at: nil)
+    @team_invitation = Current.production_company.team_invitations.new
+    @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
   end
 
   def invite
-    @invitation = Invitation.new(invitation_params)
-    @invitation.production_company = Current.production_company
-    if @invitation.save
+    @team_invitation = TeamInvitation.new(team_invitation_params)
+    @team_invitation.production_company = Current.production_company
+    if @team_invitation.save
       redirect_to team_index_path, notice: "Invitation sent."
     else
-      @members = Current.production_company.users
-      @invitation = Current.production_company.invitations.new
-      @invitations = Current.production_company.invitations.where(accepted_at: nil)
-      @invitation_error = true
+      @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "admin", "member" ] }).distinct
+      @team_invitation = Current.production_company.team_invitations.new
+      @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
+      @team_invitation_error = true
       render :index, status: :unprocessable_entity
     end
   end
@@ -39,9 +38,9 @@
   end
 
   def revoke_invite
-    invitation = Current.production_company.invitations.find_by(id: params[:id], accepted_at: nil)
-    if invitation
-      invitation.destroy
+    team_invitation = Current.production_company.team_invitations.find_by(id: params[:id], accepted_at: nil)
+    if team_invitation
+      team_invitation.destroy
       redirect_to team_index_path, notice: "Invitation revoked."
     else
       redirect_to team_index_path, alert: "Invitation not found or already accepted."
@@ -74,7 +73,7 @@
 
 
   private
-  def invitation_params
-    params.require(:invitation).permit(:email)
+  def team_invitation_params
+    params.require(:team_invitation).permit(:email)
   end
  end
