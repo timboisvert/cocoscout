@@ -65,3 +65,23 @@ puts "Old example.com people deleted."
   end
   puts "Audition request for Person #{i} created or found."
 end
+
+
+# Show each cast member's assigned dates
+# pc = ProductionCompany.find_or_create_by(name: 'CocoRunsEverything')
+# p = pc.productions.find_or_create_by(name: 'Comedy Pageant', production_company: pc)
+# main_cast = p.casts.find_by(name: 'Main Cast')
+# people = {}
+# main_cast.people.each do |cast_member|
+#   people["#{cast_member.name} - #{cast_member.email}"] = []
+#   cast_member.show_person_role_assignments.each do |assignment|
+#     people["#{cast_member.name} - #{cast_member.email}"] << assignment.show.date_and_time.strftime("%-m/%-d/%Y")
+#   end
+# end
+# people.each do |person, dates|
+#   puts "#{person}:"
+#   dates.each do |date|
+#     puts " - #{date}"
+#   end
+#   puts ""
+# end
