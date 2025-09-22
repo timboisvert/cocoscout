@@ -1,0 +1,118 @@
+<% content_for :title, "CocoScout - Apply for an Audition" %>
+
+<% content_for :head do %>
+  <meta name="description" content="Apply to audition for <%= @production.name %>">
+  <link rel="canonical" href="<%= respond_to_call_to_audition_url(@call_to_audition.hex_code) %>">
+<% end %>
+
+<div class="w-full max-w-4xl">
+  <h1 class="font-bold text-4xl"><%= @production.name %></h1>
+  <h2 class="font-bold text-2xl pt-5">Apply for an audition</h2>
+
+  <% if cookies.signed["#{@call_to_audition.hex_code}"].present? %>
+    <div class="p-3 bg-pink-50 border border-pink-100 text-md border-pink-400 rounded-lg mt-5">
+      <div class="text-xl font-bold">Welcome back!</div>
+      You've already submitted an application to audition for this production. If you would like to update your application,
+      please use the form below.
+    </div>
+  <% end %>
+
+  <% if @call_to_audition.header_text.present? %>
+    <div class="pt-5">
+      <%= @call_to_audition.header_text %>
+    </div>
+  <% end %>
+
+  <%= form_with(model: @audition_request, url: submit_respond_to_call_to_audition_form_path(@call_to_audition.hex_code), method: :post, class: "contents", data: { turbo: false }) do |form| %>
+
+    <% if @audition_request.errors.any? %>
+      <div id="error_explanation" class="bg-pink-50 text-pink-500 px-3 py-2 font-medium rounded-lg mt-3">
+        <h2><%= pluralize(@audition_request.errors.count, "error") %> prohibited this audition_request from being saved:</h2>
+
+        <ul class="list-disc ml-6">
+          <% @audition_request.errors.each do |error| %>
+            <li><%= error.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form.fields_for @person do |person_form| %>
+      <%= render "shared/person_form", person_form: person_form %>
+    <% end %>
+
+  <% if @questions.any? %>
+    <% @questions.each do |question| %>
+      <div class="my-5">
+        <label><%= question.text %></label>
+
+        <% if question.question_type == "text" %>
+
+          <%= text_area_tag "question[#{question.id}]", @answers["#{question.id}"], class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full" %>
+
+        <% elsif question.question_type == "yesno" %>
+
+          <div class="px-2 py-1">
+            <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers["#{question.id}"] == "yes" || @answers["#{question.id}"].blank?), class: "accent-pink-500 mr-1" %>
+            <%= label_tag "question[#{question.id}][yes]", "Yes" %>
+          </div>
+          <div class="px-2 py-1">
+            <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers["#{question.id}"] == "no"), class: "accent-pink-500 mr-1" %>
+            <%= label_tag "question[#{question.id}][no]", "No" %>
+          </div>
+
+        <% elsif question.question_type == "multiple-multiple" %>
+
+          <label class="text-sm text-gray-500">(Select all that apply)</label>
+
+          <% question.question_options.each do |option| %>
+
+            <div class="px-2 py-1">
+              <%= check_box_tag "question[#{question.id}][#{option.text}]", option.text, @answers["#{question.id}"]&.include?(option.text),class: "accent-pink-500 mr-1" %>
+              <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+            </div>
+          <% end %>
+
+        <% elsif question.question_type == "multiple-single" %>
+
+          <label class="text-sm text-gray-500">(Select one)</label>
+
+          <% question.question_options.each do |option| %>
+            <div class="px-2 py-1">
+              <%= radio_button_tag "question[#{question.id}]", option.text, @answers["#{question.id}"] == option.text, class: "accent-pink-500 mr-1" %>
+              <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+            </div>
+          <% end %>
+
+       <% end %>
+
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="inline pb-5">
+    <%
+      if @call_to_audition.id?
+        submit_text = "Update Application"
+      else
+        submit_text = "Submit Application"
+      end
+    %>
+    <%= form.submit submit_text, class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800inline-block font-medium cursor-pointer" %>
+  </div>
+
+  <% end %>
+
+  <div class="mt-8 pt-8 pb-8 flex justify-start border-t border-gray-200">
+    <span class="text-gray-600 text-sm">
+      Powered by
+      <a href="https://cocoscout.com" target="_blank" rel="noopener" class="underline text-pink-500 font-bold hover:text-pink-600">CocoScout</a>
+    </span>
+  </div>
+  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+    <a href="https://cocoscout.com" target="_blank" rel="noopener">
+      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+    </a>
+  </div>
+
+</div>

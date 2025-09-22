@@ -7,7 +7,7 @@ class UsersController < ApplicationController
 
   def create
     # Get the email and show an error if it already exists
-    normalized_email = user_params[:email].to_s.strip.downcase
+    normalized_email = user_params[:email_address].to_s.strip.downcase
     if User.exists?(email_address: normalized_email)
       @user = User.new(user_params)
       @user.errors.add(:email_address, "has already been taken")
@@ -44,9 +44,6 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    # Accept both :email and :email_address for flexibility
-    p = params.require(:user).permit(:email, :email_address, :password)
-    p[:email_address] = p.delete(:email) if p[:email]
-    p
+    params.require(:user).permit(:email_address, :password)
   end
 end

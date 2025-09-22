@@ -19,7 +19,9 @@
 
   # Respond to an audition request
   get "/audition/:hex_code", to: "respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
-  post "/audition/:hex_code/createuser", to: "respond_to_call_to_audition#createuser", as: "createuser_respond_to_call_to_audition"
+  post "/audition/:hex_code/handlesignup", to: "respond_to_call_to_audition#handlesignup", as: "handlesignup_respond_to_call_to_audition"
+  get "/audition/:hex_code/signin", to: "respond_to_call_to_audition#signin", as: "signin_respond_to_call_to_audition"
+  post "/audition/:hex_code/handlesignin", to: "respond_to_call_to_audition#handlesignin", as: "handlesignin_respond_to_call_to_audition"
   get "/audition/:hex_code/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
   post "/audition/:hex_code/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
   get "/audition/:hex_code/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
