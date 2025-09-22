@@ -1,0 +1,45 @@
+<div class="flex flex-col items-center mt-10">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+</div>
+
+<div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
+  <h1 class="text-xl font-bold mb-4 text-center">Join CocoScout</h1>
+
+    <div class="my-5">
+        <p><%= @call_to_audition.production.production_company.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
+        <p class="mt-4">
+            In order to sign up for a <b><%= @call_to_audition.production.name %></b> audition, you must sign in to your
+            CocoScout account, which will allow you to save and update your audition submission, as well as blah blah blah.
+        </p>
+    </div>
+
+    <% if @authentication_error %>
+        <div class="text-pink-500">
+            Sign in failed. Please enter the correct password.
+        </div>
+    <% end %>
+
+  <%= form_with url: handlesignin_respond_to_call_to_audition_path, class: "contents" do |form| %>
+    <div class="my-5">
+      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address], class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full" %>
+    </div>
+
+    <div class="my-5">
+      <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: "Enter your password", maxlength: 72, class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full" %>
+    </div>
+
+    <div class="col-span-6 sm:flex sm:items-center sm:gap-4">
+      <%= form.submit "Sign In", class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <%= link_to "Forgot your Password?", new_password_path, class: "text-pink-500 underline text-xs mt-4" %>
+      <%= link_to "Create an Account", respond_to_call_to_audition_path, class: "text-pink-500 underline text-xs mt-1" %>
+    </div>
+  <% end %>
+
+</div>
+
+<div class="flex flex-col items-center mt-5">
+    <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+</div>

@@ -1,10 +1,20 @@
 class RespondToCallToAuditionController < ApplicationController
   allow_unauthenticated_access only: [ :entry, :handlesignup, :signin, :handlesignin ]
 
+  skip_before_action :set_current_production_company
+  skip_before_action :set_current_production
+  skip_before_action :require_current_production_company
+
   before_action :get_call_to_audition_and_questions
   before_action :ensure_call_to_audition_is_open, only: [ :entry, :form, :submitform, :success ]
 
   def entry
+    # If the user is already signed in, redirect them to the form
+    if authenticated?
+      redirect_to respond_to_call_to_audition_form_path(hex_code: @call_to_audition.hex_code), status: :see_other
+      return
+    end
+
     @user = User.new
   end
 
@@ -60,7 +70,25 @@ class RespondToCallToAuditionController < ApplicationController
       render :signin, status: :unprocessable_entity and return
     end
 
+    # Try and authenticate the user.
     if user.authenticate(params[:password])
+
+      # Create the associated person if it doesn't exist
+      person = Person.find_by(email: user.email_address)
+      if person.nil?
+        person = Person.new(email: user.email_address, stage_name: user.email_address.split("@").first, user: user)
+        person.save!
+      else
+        # The person exists, so just make sure their user and person are tied to each other
+        person.user = user
+        person.save! if person.changed?
+      end
+
+      # Create a user role for this production company if it doesn't already exist
+      unless UserRole.exists?(user: user, production_company: @call_to_audition.production.production_company)
+        UserRole.create!(user: user, production_company: @call_to_audition.production.production_company, role: "talent")
+      end
+
       # Sign the user in
       start_new_session_for user
 
