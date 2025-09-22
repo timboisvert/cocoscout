@@ -1,6 +1,7 @@
  class TeamController < ApplicationController
   def index
-    @members = Current.production_company.users
+    @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "admin", "member" ] }).distinct
+
     @invitation = Current.production_company.invitations.new
     @invitations = Current.production_company.invitations.where(accepted_at: nil)
   end

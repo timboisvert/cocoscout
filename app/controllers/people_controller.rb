@@ -11,7 +11,7 @@ class PeopleController < ApplicationController
     session[:people_filter] = @filter
 
     # Process the filter
-    @people = Person.all
+    @people = Person.joins(user: :user_roles).where(user_roles: { role: "talent", production_company_id: Current.production_company.id }).distinct
 
     case @filter
     when "cast-members"
@@ -49,6 +49,7 @@ class PeopleController < ApplicationController
 
   def create
     @person = Person.new(person_params)
+    @person.user_roles.build(role: "talent", production_company: Current.production_company)
 
     if @person.save
       redirect_to @person, notice: "Person was successfully created."
