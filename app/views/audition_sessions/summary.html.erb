@@ -26,7 +26,7 @@
                 <b>Names:</b>
                 <% len = audition_session.auditions.length %>
                 <% audition_session.auditions.each_with_index do |audition, i| %>
-                  <%= audition.person.stage_name %><%= i == len - 1 ? "" : ", " %>
+                  <%= audition.person.name %><%= i == len - 1 ? "" : ", " %>
                 <% end %>
               </div>
 
@@ -59,7 +59,7 @@
               <b>Names:</b>
               <% len = unassigned_requests.length %>
               <% unassigned_requests.each_with_index do |request, i| %>
-                <%= request.person.stage_name %><%= i == len - 1 ? "" : ", " %>
+                <%= request.person.name %><%= i == len - 1 ? "" : ", " %>
               <% end %>
             </div>
 

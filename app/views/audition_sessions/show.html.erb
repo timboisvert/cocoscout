@@ -33,7 +33,7 @@
           ["Audition Sessions", production_audition_sessions_path(@production)],
           ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", production_audition_session_path(@production, @audition_session)]
         ],
-        text: "#{@person.stage_name}",
+        text: "#{@person.name}",
         links: [
           {
             text: "Manage Audition Sessions",
@@ -78,10 +78,10 @@
         <%= link_to production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg mr-1" do %>
           <div
             data-controller="tooltip"
-            data-tooltip-text="<%= audition.person.stage_name.truncate(40, omission: "...") %>"
+            data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"
           >
             <% if audition.person.headshot.present? %>
-              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.stage_name, class: "w-16 h-16 rounded-lg object-cover" %>
+              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-16 h-16 rounded-lg object-cover" %>
             <% else %>
               <div class="w-16 h-16 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
                 <%= audition.person.initials %>

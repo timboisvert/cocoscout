@@ -14,14 +14,14 @@ class Person < ApplicationRecord
   end
 
   # Validations
-  validates :stage_name, presence: true
+  validates :name, presence: true
   validates :email, presence: true
   validate :resume_content_type
   validate :headshot_content_type
 
   def initials
-    return "" if stage_name.blank?
-    stage_name.split.map { |word| word[0] }.join.upcase
+    return "" if name.blank?
+    name.split.map { |word| word[0] }.join.upcase
   end
 
   def has_person_role_assignment_for_show?(show)

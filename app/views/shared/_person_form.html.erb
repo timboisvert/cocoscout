@@ -1,11 +1,11 @@
 <div>
     <div class="mb-5">
-        <% if @person.errors[:stage_name].none? %>
-            <%= person_form.label :stage_name, "Stage Name" %>
+        <% if @person.errors[:name].none? %>
+            <%= person_form.label :name, "Name" %>
         <% else %>
-            <%= person_form.label :stage_name, "Stage Name is required", class: "text-pink-600"  %>
+            <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
         <% end %>
-     <%= person_form.text_field :stage_name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:stage_name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:stage_name].any?}] %>
+     <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:name].any?}] %>
     </div>
 
     <div class="my-5">

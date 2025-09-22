@@ -6,7 +6,7 @@
         <% if person.headshot.attached? %>
           <%= image_tag person.headshot.variant(:thumb), class: "w-16 h-16 rounded-full object-cover mb-2" %>
         <% end %>
-        <span class="font-semibold"><%= person.stage_name.presence || person.email %></span>
+        <span class="font-semibold"><%= person.name.presence || person.email %></span>
         <span class="text-xs text-gray-500"><%= person.email %></span>
       </div>
     <% end %>

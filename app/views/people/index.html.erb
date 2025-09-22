@@ -54,13 +54,13 @@
         <%= link_to person_path(person) do %>
           <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
             <% if person.headshot.present? %>
-                <%= image_tag person.headshot.variant(:thumb), alt: person.stage_name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
+                <%= image_tag person.headshot.variant(:thumb), alt: person.name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
             <% else %>
                 <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                     <%= person.initials %>
                 </div>
             <% end %>
-            <span class="font-medium text-sm text-center"><%= person.stage_name.truncate(20, omission: '...') %></span>
+            <span class="font-medium text-sm text-center"><%= person.name.truncate(20, omission: '...') %></span>
           </div>
         <% end %>
       <% end %>

@@ -29,9 +29,9 @@
                 <%= link_to assignment.person do %>
                 <div class="flex flex-col mr-1 items-center transition-all relative"
                   data-controller="tooltip"
-                  data-tooltip-text="<%= assignment.person.stage_name.truncate(40, omission: "...") %> - <%= assignment.role.name %>">
+                  data-tooltip-text="<%= assignment.person.name.truncate(40, omission: "...") %> - <%= assignment.role.name %>">
                   <% if assignment.person.headshot.present? %>
-                  <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.stage_name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
+                  <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
                   <% else %>
                   <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
                     <%= assignment.person.initials %>

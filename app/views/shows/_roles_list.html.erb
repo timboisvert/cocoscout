@@ -50,14 +50,14 @@
 
             <div class="flex flex-col items-center p-3 border border-gray-200 min-w-24 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7] group relative">
               <% if assignment.person.headshot.present? %>
-                <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.stage_name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
+                <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
               <% else %>
                 <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                   <%= assignment.person.initials %>
                 </div>
               <% end %>
 
-              <span class="font-medium text-xs text-center"><%= assignment.person.stage_name.truncate(20, omission: '...') %></span>
+              <span class="font-medium text-xs text-center"><%= assignment.person.name.truncate(20, omission: '...') %></span>
               <button type="button"
                 class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                 data-action="click->drop-role#removeAssignment"

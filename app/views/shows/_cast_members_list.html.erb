@@ -16,14 +16,14 @@
                 draggable="true">
 
                 <% if person.headshot.present? %>
-                    <%= image_tag person.headshot.variant(:thumb), alt: person.stage_name, class: "w-12 h-12 rounded-lg object-cover mb-1 #{'opacity-40' if has_show_person_role_assignment}", draggable: false %>
+                    <%= image_tag person.headshot.variant(:thumb), alt: person.name, class: "w-12 h-12 rounded-lg object-cover mb-1 #{'opacity-40' if has_show_person_role_assignment}", draggable: false %>
                 <% else %>
                     <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                         <%= person.initials %>
                     </div>
                 <% end %>
 
-                <span class="font-medium text-xs text-center"><%= person.stage_name.truncate(20, omission: '...') %></span>
+                <span class="font-medium text-xs text-center"><%= person.name.truncate(20, omission: '...') %></span>
             </div>
         <% end %>
 

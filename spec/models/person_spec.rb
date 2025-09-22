@@ -10,8 +10,8 @@ describe Person, type: :model do
     expect(person).not_to be_valid
   end
 
-  it "is invalid without a stage_name" do
-    person = build(:person, stage_name: nil)
+  it "is invalid without a name" do
+    person = build(:person, name: nil)
     expect(person).not_to be_valid
   end
 end

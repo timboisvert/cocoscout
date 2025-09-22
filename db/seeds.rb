@@ -7,7 +7,7 @@ puts "Tim User created or found."
 
 # Create a Person for Tim Boisvert
 tim = Person.find_or_create_by(email: 'boisvert@gmail.com') do |person|
-  person.stage_name = 'Tim Boisvert'
+  person.name = 'Tim Boisvert'
   person.pronouns = 'he/him'
   person.socials = 'Instagram: @timboisvert'
 end
@@ -35,7 +35,7 @@ puts "Old example.com people deleted."
 # Make 50 people and have them apply to the call to audition
 50.times do |i|
   person = Person.find_or_create_by(email: "person#{i}@example.com") do |p|
-    p.stage_name = "Person #{i}"
+    p.name = "Person #{i}"
     p.pronouns = [ 'he/him', 'she/her', 'they/them' ].sample
     p.socials = "Instagram: @person#{i}"
     p.resume.attach(io: StringIO.new(tim.resume.download),
@@ -45,7 +45,7 @@ puts "Old example.com people deleted."
                      filename: tim.headshot.filename,
                      content_type: tim.headshot.content_type)
   end
-  puts "#{person.stage_name} created or found."
+  puts "#{person.name} created or found."
 
   # Have the person apply to the call to audition
   cta.audition_requests.find_or_create_by(person: person) do |request|

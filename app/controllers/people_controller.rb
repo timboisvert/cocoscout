@@ -26,14 +26,14 @@ class PeopleController < ApplicationController
     # Process the order
     case @order
     when "alphabetical"
-      @people = @people.order(:stage_name)
+      @people = @people.order(:name)
     when "newest"
       @people = @people.order(created_at: :desc)
     when "oldest"
       @people = @people.order(created_at: :asc)
     else
       @filter = "alphabetical"
-      @people = @people.order(:stage_name)
+      @people = @people.order(:name)
     end
   end
 
@@ -74,7 +74,7 @@ class PeopleController < ApplicationController
   def search
     q = params[:q].to_s.strip
     @people = if q.present?
-      Person.where("stage_name LIKE :q OR email LIKE :q", q: "%#{q}%")
+      Person.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
     else
       Person.none
     end
@@ -107,6 +107,6 @@ class PeopleController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def person_params
-      params.expect(person: [ :stage_name, :email, :pronouns, :socials, :resume, :headshot ])
+      params.expect(person: [ :name, :email, :pronouns, :socials, :resume, :headshot ])
     end
 end

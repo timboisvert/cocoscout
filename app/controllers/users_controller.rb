@@ -22,7 +22,7 @@ class UsersController < ApplicationController
       # Create the associated person if it doesn't exist
       person = Person.find_by(email: @user.email_address)
       if person.nil?
-        person = Person.new(email: @user.email_address, stage_name: @user.email_address.split("@").first, user: @user)
+        person = Person.new(email: @user.email_address, name: @user.email_address.split("@").first, user: @user)
       else
         # The person exists, so just make sure their user and person are tied to each other
         person.user = @user

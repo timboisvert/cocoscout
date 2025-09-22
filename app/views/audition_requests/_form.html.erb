@@ -13,7 +13,7 @@
 
   <div class="my-5">
     <%= form.label :person_id %>
-    <%= form.collection_select :person_id, Person.all, :id, :stage_name, prompt: "Select a Person" %>
+  <%= form.collection_select :person_id, Person.all, :id, :name, prompt: "Select a Person" %>
   </div>
 
   <div class="inline">

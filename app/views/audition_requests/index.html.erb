@@ -43,7 +43,7 @@
               </div>
               <div>
                 <h6 class="font-medium text-xl">
-                  <%= truncate(audition_request.person.stage_name, length: 50, omission: "...") %>
+                  <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
                   <% if audition_request.person.pronouns.present? %>
                     <span class="text-sm font-normal text-gray-500">
                       (<%= audition_request.person.pronouns %>)

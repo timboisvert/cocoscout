@@ -1,4 +1,4 @@
-<% content_for :title, @person.stage_name %>
+<% content_for :title, @person.name %>
 
 <div class="w-full">
 
@@ -8,7 +8,7 @@
     breadcrumbs: [
       ["Talent", people_path]
     ],
-    text: @person.stage_name,
+    text: @person.name,
     links: []
   } %>
 

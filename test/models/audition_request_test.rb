@@ -11,7 +11,7 @@ class AuditionRequestTest < ActiveSupport::TestCase
     assert_includes audition_request.errors[:person], "must exist"
     assert_includes audition_request.errors[:call_to_audition], "must exist"
 
-    person = Person.create!(stage_name: "Test Person", email: "test@example.com")
+    person = Person.create!(name: "Test Person", email: "test@example.com")
     call_to_audition = CallToAudition.create!(production: production, opens_at: 1.week.ago, closes_at: 1.week.from_now)
     audition_request.person = person
     audition_request.call_to_audition = call_to_audition

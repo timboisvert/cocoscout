@@ -7,7 +7,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Talent", people_path],
-      [@person.stage_name, person_path(@person)]
+      [@person.name, person_path(@person)]
     ],
     text: "Edit Talent",
     links: []

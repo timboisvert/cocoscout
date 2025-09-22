@@ -12,7 +12,7 @@ class AuditionRequest < ApplicationRecord
   }
 
   def display_name
-    person.stage_name
+    person.name
   end
 
   def next

@@ -36,7 +36,7 @@ class InvitationsController < ApplicationController
       person.user = user
       person.save!
     else
-      person = Person.new(email: @invitation.email.downcase, stage_name: @invitation.email.split("@").first, user: user)
+      person = Person.new(email: @invitation.email.downcase, name: @invitation.email.split("@").first, user: user)
       person.save!
     end
 

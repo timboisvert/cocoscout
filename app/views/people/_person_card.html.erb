@@ -8,7 +8,7 @@
         <%= image_tag url_for(person.headshot), class: "relative inline-block max-w-64 rounded-lg" %>
     <% end %>
 
-    <div class="text-4xl font-bold mt-3"><%= person.stage_name.truncate(40, omission: "...")     %></div>
+    <div class="text-4xl font-bold mt-3"><%= person.name.truncate(40, omission: "...")     %></div>
 
     <% if person.pronouns.present? %>
     <div>

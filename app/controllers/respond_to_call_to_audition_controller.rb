@@ -37,7 +37,7 @@ class RespondToCallToAuditionController < ApplicationController
       # Create the associated person if it doesn't exist
       person = Person.find_by(email: @user.email_address)
       if person.nil?
-        person = Person.new(email: @user.email_address, stage_name: @user.email_address.split("@").first, user: @user)
+        person = Person.new(email: @user.email_address, name: @user.email_address.split("@").first, user: @user)
       else
         # The person exists, so just make sure their user and person are tied to each other
         person.user = @user
@@ -78,7 +78,7 @@ class RespondToCallToAuditionController < ApplicationController
       # Create the associated person if it doesn't exist
       person = Person.find_by(email: user.email_address)
       if person.nil?
-        person = Person.new(email: user.email_address, stage_name: user.email_address.split("@").first, user: user)
+        person = Person.new(email: user.email_address, name: user.email_address.split("@").first, user: user)
         person.save!
       else
         # The person exists, so just make sure their user and person are tied to each other
@@ -172,8 +172,8 @@ class RespondToCallToAuditionController < ApplicationController
 
     if @audition_request.valid?
 
-      # Update the person with any updated details
-      person_params = params.require(:audition_request).permit(person: [ :stage_name, :pronouns, :socials, :resume, :headshot ])
+  # Update the person with any updated details
+  person_params = params.require(:audition_request).permit(person: [ :name, :pronouns, :socials, :resume, :headshot ])
       @person.assign_attributes(person_params[:person])
 
       if @person.valid?
