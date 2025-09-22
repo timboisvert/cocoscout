@@ -1,4 +1,4 @@
-<div class="w-full max-w-4xl">
+<div class="w-full max-w-4xl mx-auto mt-10">
   <h1 class="font-bold text-4xl"><%= @production.name %></h1>
   <h2 class="font-bold text-2xl pt-5">Apply for an audition</h2>
 
@@ -10,16 +10,8 @@
     <% end %>
   </div>
 
-
-
-  <div class="mt-8 pt-8 pb-8 flex justify-start border-t border-gray-200">
-    <span class="text-gray-600 text-sm">
-      Powered by
-      <a href="https://cocoscout.com" target="_blank" rel="noopener" class="underline text-pink-500 font-bold hover:text-pink-600">CocoScout</a>
-    </span>
-  </div>
   <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
-    <a href="https://cocoscout.com" target="_blank" rel="noopener">
+    <a href="https://cocoscout.com/app" target="_blank" rel="noopener">
       <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
     </a>
   </div>

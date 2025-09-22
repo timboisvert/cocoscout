@@ -1,16 +1,5 @@
 <div>
-    <div class="my-5">
-
-        <% if @person.errors[:email].none? %>
-            <%= person_form.label :email %>
-        <% else %>
-            <%= person_form.label :email, "Email is required", class: "text-pink-600" %>
-        <% end %>
-
-        <%= person_form.text_field :email, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:email].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:email].any?}] %>
-    </div>
-
-    <div class="my-5">
+    <div class="mb-5">
         <% if @person.errors[:stage_name].none? %>
             <%= person_form.label :stage_name, "Stage Name" %>
         <% else %>
@@ -36,7 +25,7 @@
 
             <%
             if @person.resume.attached?
-                label_text = "Replace Resume/CV"
+                label_text = "Change your Resume/CV"
             else
                 label_text = "Resume/CV"
             end
@@ -60,7 +49,7 @@
 
             <%
             if @person.headshot.attached?
-                label_text = "Replace Headshot"
+                label_text = "Change your Headshot"
             else
                 label_text = "Headshot"
             end
