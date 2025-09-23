@@ -85,3 +85,23 @@ end
 #   end
 #   puts ""
 # end
+
+# emails = []
+# [ "Brody",
+#  "Allison",
+#  "Em",
+#  "Matt Neff",
+#  "Nowotny",
+#  "Asher",
+#  "Rian Sondag",
+#  "Tim P",
+#  "Conor",
+#  "Mancini",
+#  "Parra",
+#  "Crone",
+# "Arias" ].each do |name|
+#   person = Person.where("name LIKE ?", "%#{name}%").first
+#   emails << person.email
+# end
+
+# puts emails.sort.join(", ")
