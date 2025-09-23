@@ -11,7 +11,7 @@ class PeopleController < ApplicationController
     session[:people_filter] = @filter
 
     # Process the filter
-    @people = Person.joins(user: :user_roles).where(user_roles: { role: "talent", production_company_id: Current.production_company.id }).distinct
+    @people = Person.all
 
     case @filter
     when "cast-members"
@@ -61,11 +61,6 @@ class PeopleController < ApplicationController
           user.password = SecureRandom.hex(16)
         end
         @person.update!(user: user)
-
-        # Create a user role for this production company if it doesn't already exist
-        unless UserRole.exists?(user: user, production_company: Current.production_company)
-          UserRole.create!(user: user, production_company: Current.production_company, role: "talent")
-        end
 
         # TODO: Send an email to the person letting them know they have been added and
         # that they need to update their password

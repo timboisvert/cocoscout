@@ -44,11 +44,6 @@ class RespondToCallToAuditionController < ApplicationController
       end
       person.save!
 
-      # Create a user role for this production company if it doesn't already exist
-      unless UserRole.exists?(user: @user, production_company: @call_to_audition.production.production_company)
-        UserRole.create!(user: @user, production_company: @call_to_audition.production.production_company, role: "talent")
-      end
-
       # The user has been created, so log them in
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
@@ -84,11 +79,6 @@ class RespondToCallToAuditionController < ApplicationController
         # The person exists, so just make sure their user and person are tied to each other
         person.user = user
         person.save! if person.changed?
-      end
-
-      # Create a user role for this production company if it doesn't already exist
-      unless UserRole.exists?(user: user, production_company: @call_to_audition.production.production_company)
-        UserRole.create!(user: user, production_company: @call_to_audition.production.production_company, role: "talent")
       end
 
       # Sign the user in
