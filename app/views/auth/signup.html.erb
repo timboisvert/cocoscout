@@ -5,7 +5,13 @@
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
   <h1 class="text-xl font-bold mb-4 text-center">Create CocoScout Account</h1>
 
-  <%= form_with(model: @user, url: create_user_path, class: "contents") do |form| %>
+  <% if @user_exists_error %>
+    <div class="text-pink-500">
+      You already have a CocoScout account. Please <%= link_to "sign in", signin_path, class: "underline text-pink-500" %> to continue.
+    </div>
+  <% end %>
+
+  <%= form_with(model: @user, url: handle_signup_path, class: "contents") do |form| %>
     <div class="my-5">
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address], class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full" %>
     </div>
@@ -19,7 +25,7 @@
     </div>
 
     <div class="flex flex-col gap-1">
-      <%= link_to "Sign In", new_session_path, class: "text-pink-500 underline text-xs mt-4" %>
+      <%= link_to "Sign In", signin_path, class: "text-pink-500 underline text-xs mt-4" %>
     </div>
   <% end %>
 

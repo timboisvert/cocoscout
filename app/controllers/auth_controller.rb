@@ -1,5 +1,6 @@
-class UsersController < ApplicationController
-  allow_unauthenticated_access only: %i[signup create]
+class AuthController < ApplicationController
+  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin ]
+  rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later." }
 
   skip_before_action :show_app_sidebar
 
@@ -7,12 +8,12 @@ class UsersController < ApplicationController
     @user = User.new
   end
 
-  def create
+  def handle_signup
     # Get the email and show an error if it already exists
     normalized_email = user_params[:email_address].to_s.strip.downcase
     if User.exists?(email_address: normalized_email)
       @user = User.new(user_params)
-      @user.errors.add(:email_address, "has already been taken")
+      @user_exists_error = true
       render :signup, status: :unprocessable_entity
       return
     end
@@ -41,6 +42,24 @@ class UsersController < ApplicationController
     else
       render :signup, status: :unprocessable_entity
     end
+  end
+
+  def signin
+  end
+
+  def handle_signin
+    if user = User.authenticate_by(params.permit(:email_address, :password))
+      start_new_session_for user
+      redirect_to(session.delete(:return_to) || my_dashboard_path) and return
+    else
+      @error = true
+      render :signin, status: :unprocessable_entity
+    end
+  end
+
+  def signout
+    terminate_session
+    redirect_to my_dashboard_path
   end
 
   private

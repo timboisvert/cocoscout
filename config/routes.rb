@@ -10,12 +10,12 @@
   get "/notify_me/success", to: "home#notify_me_success", as: "notify_me_success"
 
   # Authentication
-  resource :session
   resources :passwords, param: :token
-  get "/signup", to: "users#signup", as: "signup"
-  post "/signup", to: "users#create", as: "create_user"
-  get "/signin", to: redirect("session/new")
-  get "/signout", to: "sessions#signout", as: "signout"
+  get   "/signup", to: "auth#signup", as: "signup"
+  post  "/signup", to: "auth#handle_signup", as: "handle_signup"
+  get   "/signin", to: "auth#signin", as: "signin"
+  post  "/signin", to: "auth#handle_signin", as: "handle_signin"
+  get   "/signout", to: "auth#signout", as: "signout"
 
   # Respond to an audition request
   get "/audition/:hex_code", to: "respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
@@ -30,9 +30,9 @@
   # Talent-facing interface
 
   namespace :my do
-    get "/", to: "my/dashboard#index", as: "dashboard"
-    get "/auditions", to: "my/auditions#index", as: "my_auditions"
-    get "/shows", to: "my/shows#index", as: "my_shows"
+    get "/", to: "dashboard#index", as: "dashboard"
+    get "/auditions", to: "auditions#index"
+    get "/shows", to: "shows#index"
   end
 
   # Management interface
