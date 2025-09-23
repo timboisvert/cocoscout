@@ -1,0 +1,96 @@
+<% content_for :title, "Schedule an Audition Session" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+
+  <% if @audition.nil? %>
+
+    <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [
+          ["Auditions", manage_production_auditions_path(@production)],
+          ["Audition Sessions", manage_production_audition_sessions_path(@production)]
+        ],
+        text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
+        links: [
+          {
+            text: "Manage Audition Sessions",
+            path: manage_production_audition_sessions_path(@production)
+          }
+        ]
+      }
+    %>
+
+    <div class="w-full h-full flex items-center justify-center text-center text-sm text-gray-500" style="min-height: 60vh;">
+      Select an auditionee below to view their Audition Request
+    </div>
+
+  <% else %>
+
+    <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [
+          ["Auditions", manage_production_auditions_path(@production)],
+          ["Audition Sessions", manage_production_audition_sessions_path(@production)],
+          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_session_path(@production, @audition_session)]
+        ],
+        text: "#{@person.name}",
+        links: [
+          {
+            text: "Manage Audition Sessions",
+            path: manage_production_audition_sessions_path(@production)
+          }
+        ]
+      }
+    %>
+
+    <div id="<%= dom_id @audition_session %>" class="w-full sm:w-auto my-5 space-y-5 mb-30">
+      <div class="flex flex-col sm:flex-row w-full gap-6">
+        <div class="w-full sm:w-[60%] h-screen bg-gray-100">
+          <% if @person.resume.attached? %>
+            <embed src="<%= url_for(@person.resume) %>" type="application/pdf" width="100%" height="100%" />
+          <% end %>
+        </div>
+        <div class="w-full sm:w-[40%] flex flex-col">
+
+          <%= render "manage/people/person_card", person: @person %>
+
+          <% if @answers.any? %>
+            <div class="mt-2">
+              <%= render "audition_requests/answers", answers: @answers %>
+            </div>
+          <% end %>
+
+          <div class="mt-2">
+            <%= render "casts/cast_membership_card", production: @production, person: @person %>
+          </div>
+
+      </div>
+    </div>
+
+  <% end %>
+
+</div>
+
+<div class="fixed bottom-0 left-0 h-21 w-full bg-white text-pink-500 p-2 border-t-4 border-pink-400 pl-56">
+
+  <div class="flex justify-center">
+      <% @audition_session.auditions.each do |audition| %>
+        <%= link_to manage_production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg mr-1" do %>
+          <div
+            data-controller="tooltip"
+            data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"
+          >
+            <% if audition.person.headshot.present? %>
+              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-16 h-16 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-16 h-16 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
+                <%= audition.person.initials %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+  </div>
+
+
+</div>

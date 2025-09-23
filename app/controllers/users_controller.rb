@@ -1,6 +1,8 @@
 class UsersController < ApplicationController
   allow_unauthenticated_access only: %i[signup create]
 
+  skip_before_action :show_app_sidebar
+
   def signup
     @user = User.new
   end

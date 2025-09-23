@@ -1,0 +1,25 @@
+<% content_for :title, "Show: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+       ["Shows", manage_production_shows_path(@production)]
+    ],
+    text: @show.date_and_time.strftime("%A, %B %-d, %Y"),
+    links: []
+  } %>
+
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+
+    <div>
+      <h2 class="font-bold text-lg mb-3">Cast Members</h2>
+      <%= render partial: "manage/shows/cast_members_list", locals: { show: @show } %>
+    </div>
+
+    <%= render partial: "manage/shows/roles_list", locals: { show: @show } %>
+
+  </div>
+
+</div>

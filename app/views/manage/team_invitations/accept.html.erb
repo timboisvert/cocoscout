@@ -1,0 +1,49 @@
+<div class="flex flex-col items-center mt-10">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+</div>
+
+<div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
+  <h1 class="text-xl font-bold mb-4 text-center">Join <%= @team_invitation.production_company.name %></h1>
+
+    <div class="my-5">
+      <p><%= @team_invitation.production_company.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
+      <p class="mt-4">
+          You've been invited to join the team using email <strong><%= @team_invitation.email %></strong>.
+
+          <% if @authentication_error %>
+
+          <% elsif User.exists?(email_address: @team_invitation.email.downcase) %>
+              Please enter your password to continue.
+          <% else %>
+              Please set a password to continue.
+          <% end %>
+      </p>
+    </div>
+
+  <% if @authentication_error %>
+    <div class="text-pink-500">
+      Sign in failed. Please enter the correct password.
+    </div>
+  <% end %>
+
+  <%= form_with url: do_accept_manage_team_invitations_path(token: @team_invitation.token), method: :post, local: true do |form| %>
+    <div class="my-5">
+      <%= form.password_field :password,
+            required: true,
+            autocomplete: "current-password",
+            placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password",
+            maxlength: 72,
+            class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full"
+      %>
+    </div>
+
+    <div class="col-span-6 sm:flex sm:items-center sm:gap-4">
+  <%= form.submit "Join #{ @team_invitation.production_company.name }", class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+    </div>
+  <% end %>
+
+</div>
+
+<div class="flex flex-col items-center mt-5">
+    <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+</div>

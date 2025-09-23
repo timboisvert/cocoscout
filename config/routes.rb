@@ -28,13 +28,16 @@
   get "/audition/:hex_code/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
 
   # Talent-facing interface
-  scope "/app" do
-    get "/", to: "dashboard#index", as: "dashboard"
+
+  namespace :my do
+    get "/", to: "my/dashboard#index", as: "dashboard"
+    get "/auditions", to: "my/auditions#index", as: "my_auditions"
+    get "/shows", to: "my/shows#index", as: "my_shows"
   end
 
   # Management interface
-  scope "/manage" do
-    get "/", to: "manage#index", as: "manage"
+  namespace :manage do
+    get "/", to: "manage#index"
 
     resources :production_companies do
       collection do

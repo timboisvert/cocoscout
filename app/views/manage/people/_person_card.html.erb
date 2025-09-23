@@ -1,0 +1,36 @@
+<%
+    show_delete = false if local_assigns[:show_delete].nil?
+%>
+
+<div class="p-5 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+
+    <% if person.headshot.attached? %>
+        <%= image_tag url_for(person.headshot), class: "relative inline-block max-w-64 rounded-lg" %>
+    <% end %>
+
+    <div class="text-4xl font-bold mt-3"><%= person.name.truncate(40, omission: "...")     %></div>
+
+    <% if person.pronouns.present? %>
+    <div>
+        Pronouns: <%= person.pronouns %>
+    </div>
+    <% end %>
+
+    <div>
+    Email: <%= mail_to person.email %>
+    </div>
+
+    <% if person.socials.present? %>
+    <div>
+        Socials: <%= person.socials %>
+    </div>
+    <% end %>
+
+    <div class="flex flex-col space-y-1 mt-1">
+        <%= link_to "Edit Person", edit_manage_person_path(person), class: "text-xs text-pink-500 underline" %>
+        <% if show_delete %>
+            <%= link_to "Delete Person", manage_person_path(person), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this person?" }, class: "text-xs text-pink-500 underline" %>
+        <% end %>
+    </div>
+
+</div>

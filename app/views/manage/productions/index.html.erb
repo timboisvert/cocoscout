@@ -1,0 +1,38 @@
+<% content_for :title, "Productions" %>
+
+<div class="w-full">
+  <% if notice.present? %>
+    <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-lg inline-block" id="notice"><%= notice %></p>
+  <% end %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Productions",
+    links: [
+      { text: "+ Add a Production", path: new_manage_production_path }
+    ]
+  } %>
+
+  <div class="relative flex w-full flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="flex min-w-[240px] flex-col gap-1 p-1.5">
+      <% if @productions.any? %>
+        <% @productions.each do |production| %>
+          <%= link_to manage_production_path(production) do %>
+            <div class="text-slate-800 flex w-full items-center rounded-lg p-3 transition-all hover:bg-slate-100 focus:bg-slate-100 active:bg-slate-100">
+              <div>
+                <h6 class="font-medium text-xl">
+                  <%= production.name %>
+                </h6>
+                <p class="text-slate-500 text-sm">
+                  <%= production.description %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      <% else %>
+        <p class="text-center my-10">No productions found.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
