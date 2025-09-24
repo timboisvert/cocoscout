@@ -61,7 +61,16 @@
             <% end %>
         </div>
     <% else %>
-        <p>You have not submitted any audition requests yet.</p>
+        <p class="text-gray-500 text-sm pt-2">
+
+            <% if @auditions_filter == "all" %>
+                You don't have any auditions
+            <% elsif @auditions_filter == "upcoming" %>
+                You don't have any upcoming auditions.
+            <% elsif @auditions_filter == "past" %>
+                You haven't had any auditions.
+            <% end %>
+        </p>
     <% end %>
 
 
@@ -137,7 +146,14 @@
             <% end %>
         </div>
     <% else %>
-        <p>You have not submitted any audition requests yet.</p>
+         <p class="text-gray-500 text-sm pt-2">
+
+            <% if @requests_filter == "all" %>
+                You haven't submitted any audition requests.
+            <% elsif @requests_filter == "open" %>
+                You don't have any open calls to audition.
+            <% end %>
+        </p>
     <% end %>
 
 </div>
