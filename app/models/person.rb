@@ -1,6 +1,7 @@
 class Person < ApplicationRecord
   belongs_to :user, optional: true
   has_many :audition_requests, dependent: :destroy
+  has_many :auditions
 
   has_and_belongs_to_many :casts
 

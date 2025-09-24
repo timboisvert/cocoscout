@@ -24,9 +24,24 @@
         %>
     </div>
 
-    <% if production.audition_requests(filter: filter || "to_be_scheduled").any? %>
+    <% if production.audition_requests.any? %>
+
+    <%
+        ar = AuditionRequest.joins(:call_to_audition).where(call_to_auditions: { production_id: production.id })
+
+        if filter == "all"
+            ar = ar.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
+        elsif filter == "to_be_scheduled"
+            ar = ar.where(status: :accepted).where.not(person_id: production.audition_sessions.joins(:auditions).select("auditions.person_id"))
+        elsif filter == "accepted"
+            ar = ar.where(status: :accepted)
+        end
+
+        ar = ar.order(created_at: :asc)
+
+    %>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            <% production.audition_requests(filter: filter || "to_be_scheduled").each do |audition_request| %>
+            <% ar.each do |audition_request| %>
 
                 <% scheduled = audition_request.scheduled_in_any?(production.audition_sessions) %>
 

@@ -67,6 +67,7 @@ class Manage::AuditionsController < Manage::ManageController
     audition = Audition.find(params[:audition_id])
     audition_session = AuditionSession.find(params[:audition_session_id])
     audition_session.auditions.delete(audition)
+    audition.destroy!
 
     left_list_html = render_to_string(partial: "manage/audition_sessions/left_list", locals: { production: audition_session.production, filter: cookies[:audition_request_filter] })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
