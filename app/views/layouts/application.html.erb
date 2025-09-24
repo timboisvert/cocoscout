@@ -23,6 +23,17 @@
   </head>
 
   <body class="inter-regular text-slate-700 bg-[#f9f9f7]">
+
+    <% if session[:impersonate_user_id] %>
+      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
+      <% if impersonated %>
+        <div class="w-full bg-red-600 text-white py-2 px-4 text-center font-bold flex items-center justify-center z-50 fixed top-0 left-0" style="min-height: 40px;">
+          <span class="mr-2">Impersonating: <%= impersonated.email_address %></span>
+          <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "ml-4 px-3 py-1 rounded bg-white text-red-600 font-semibold hover:bg-gray-100 cursor-pointer" %>
+        </div>
+      <% end %>
+    <% end %>
+
     <div class="flex min-h-screen">
 
       <% if @show_manage_sidebar %>

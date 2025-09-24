@@ -18,6 +18,13 @@
   get   "/password",  to: "auth#password",        as: "password"
   post  "/password",  to: "auth#handle_password", as: "handle_password"
 
+  # God mode
+  scope "/god_mode" do
+    get  "/",                   to: "god_mode#index",               as: "god_mode"
+    post "/impersonate",        to: "god_mode#impersonate",         as: "impersonate_user"
+    post "/stop_impersonating", to: "god_mode#stop_impersonating",  as: "stop_impersonating_user"
+  end
+
   # Respond to an audition request
   get "/a/:token", to: "my/respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
 

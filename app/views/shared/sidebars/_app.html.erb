@@ -11,12 +11,17 @@
       <%= link_to "My Shows", my_shows_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
     </div>
 
-    <div class="mt-20">
-
-      <% if Current.user.can_manage? %>
+    <% if Current.user.can_manage? %>
+      <div class="mt-20">
         <%= link_to "Manage", manage_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
+
+    <% if Current.user.god? %>
+      <div class="mt-20">
+        <%= link_to "God Mode", god_mode_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      </div>
+    <% end %>
 
   </div>
 

@@ -11,7 +11,7 @@ describe "User authentication", type: :system do
     expect(page).to have_content("Add your Production Company")
   end
 
-  it "allows a user to log out" do
+  it "allows a user to sign out" do
     visit "/signin"
     fill_in "email_address", with: user.email_address
     fill_in "password", with: "password123"

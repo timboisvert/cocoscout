@@ -1,0 +1,24 @@
+<% content_for :title, "God Mode" %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "God Mode",
+    links: []
+  } %>
+
+  <h2 class="mt-6 mb-2 text-lg font-semibold">Impersonate a User</h2>
+  <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2 mt-2" do |f| %>
+    <%= f.label :email, "User Email", class: "mr-2" %>
+    <%= f.email_field :email, required: true, class: "border rounded px-2 py-1" %>
+    <%= f.submit "Impersonate", class: "px-3 py-1 rounded bg-pink-500 text-white" %>
+  <% end %>
+    <% if session[:impersonate_user_id] %>
+      <div class="my-4">
+        <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>
+      </div>
+    <% end %>
+</div>
