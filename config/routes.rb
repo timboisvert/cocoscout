@@ -29,6 +29,7 @@
     get "/shows", to: "shows#index"
 
     scope "/auditions/:token" do
+      get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
       get "/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
       post "/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
       get "/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"

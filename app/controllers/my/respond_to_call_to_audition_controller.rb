@@ -10,14 +10,14 @@ class My::RespondToCallToAuditionController < ApplicationController
   def entry
     # If the user is already signed in, redirect them to the form
     if authenticated?
-      redirect_to my_respond_to_call_to_audition_form_path(hex_code: @call_to_audition.hex_code), status: :see_other
+      redirect_to my_respond_to_call_to_audition_form_path(token: @call_to_audition.token), status: :see_other
       return
     end
 
     @user = User.new
 
     # Set the return_to path in case we sign up or sign in
-    session[:return_to] = my_respond_to_call_to_audition_form_path(hex_code: @call_to_audition.hex_code)
+    session[:return_to] = my_respond_to_call_to_audition_form_path(token: @call_to_audition.token)
   end
 
   def form
@@ -103,7 +103,7 @@ class My::RespondToCallToAuditionController < ApplicationController
 
       # Save the audition request and redirect to the success page
       @audition_request.save!
-      redirect_to my_respond_to_call_to_audition_success_path(hex_code: @call_to_audition.hex_code), status: :see_other
+      redirect_to my_respond_to_call_to_audition_success_path(token: @call_to_audition.token), status: :see_other
     else
       render :form
     end
@@ -114,12 +114,12 @@ class My::RespondToCallToAuditionController < ApplicationController
 
   def inactive
     if @call_to_audition.timeline_status == :open && params[:force].blank?
-      redirect_to respond_to_call_to_audition_path(hex_code: @call_to_audition.hex_code), status: :see_other
+      redirect_to respond_to_call_to_audition_path(token: @call_to_audition.token), status: :see_other
     end
   end
 
   def get_call_to_audition_and_questions
-    @call_to_audition = CallToAudition.find_by(hex_code: params[:hex_code].upcase)
+    @call_to_audition = CallToAudition.find_by(token: params[:token].upcase)
     @questions = @call_to_audition.questions.order(:created_at) if @call_to_audition.present? # TODO Change this to be re-arrangeable
 
     if @call_to_audition.nil?
@@ -132,7 +132,7 @@ class My::RespondToCallToAuditionController < ApplicationController
 
   def ensure_call_to_audition_is_open
     unless @call_to_audition.timeline_status == :open
-      redirect_to respond_to_call_to_audition_inactive_path(hex_code: @call_to_audition.hex_code), status: :see_other
+      redirect_to respond_to_call_to_audition_inactive_path(token: @call_to_audition.token), status: :see_other
     end
   end
 
