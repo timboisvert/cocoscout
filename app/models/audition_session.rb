@@ -3,7 +3,7 @@ class AuditionSession < ApplicationRecord
   has_and_belongs_to_many :auditions
 
   def display_name
-    "#{production.name} - #{date_and_time.strftime("%-m/%-d/%Y %l:%M %p")}"
+    "#{production.name} - #{start_at.strftime("%-m/%-d/%Y %l:%M %p")}"
   end
 
   def is_full?

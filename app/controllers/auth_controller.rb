@@ -53,6 +53,19 @@ class AuthController < ApplicationController
 
   def handle_signin
     if user = User.authenticate_by(params.permit(:email_address, :password))
+
+      # Make sure we have a person for this user
+      if user.person.nil?
+        person = Person.find_by(email: user.email_address)
+        if person
+          person.user = user
+          person.save!
+        else
+          user.create_person(email: user.email_address, name: user.email_address.split("@").first)
+        end
+      end
+
+      # Continue signing them in.
       start_new_session_for user
       redirect_to(session.delete(:return_to) || my_dashboard_path) and return
     else

@@ -5,9 +5,9 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   def index
     if params[:status].present?
-      @audition_requests = AuditionRequest.where(status: params[:status]).order(:created_at)
+      @audition_requests = @production.audition_requests.where(status: params[:status]).order(:created_at)
     else
-      @audition_requests = AuditionRequest.order(:created_at)
+      @audition_requests = @production.audition_requests.order(:created_at)
     end
   end
 
@@ -26,7 +26,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def new
-    @audition_request = AuditionRequest.new
+    @audition_request = @production.audition_requests.new
     @audition_request.status = :unreviewed
   end
 
@@ -34,7 +34,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def create
-    @audition_request = AuditionRequest.new(audition_request_params)
+    @audition_request = @production.audition_requests.new(audition_request_params)
     @audition_request.call_to_audition = @call_to_audition
     @audition_request.status = :unreviewed
 
@@ -70,15 +70,15 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   private
     def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_audition_request
-      @audition_request = @production.audition_requests(filter: "all").find(params.expect(:id))
+      @audition_request = @production.audition_requests.find(params.expect(:id))
     end
 
     def set_call_to_audition
-      @call_to_audition = CallToAudition.find(params.expect(:call_to_audition_id))
+      @call_to_audition = @production.call_to_auditions.find(params.expect(:call_to_audition_id))
     end
 
     def audition_request_params

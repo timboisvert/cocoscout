@@ -22,7 +22,6 @@
   get "/a/:token", to: "my/respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
 
   # Talent-facing interface
-
   namespace :my do
     get "/", to: "dashboard#index", as: "dashboard"
     get "/auditions", to: "auditions#index"
@@ -36,7 +35,6 @@
       get "/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
     end
   end
-
 
   # Management interface
   namespace :manage do
