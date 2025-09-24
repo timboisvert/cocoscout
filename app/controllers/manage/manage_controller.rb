@@ -52,9 +52,8 @@ class Manage::ManageController < ActionController::Base
   end
 
   def require_current_production_company
-    return if controller_name == "home"
+    return if controller_name == "locations"
     return if controller_name == "production_companies" && %w[new create select set_current].include?(action_name)
-    return if controller_name == "sessions"
     unless Current.production_company
       redirect_to select_manage_production_companies_path
     end

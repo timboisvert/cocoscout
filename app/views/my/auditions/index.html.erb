@@ -10,28 +10,28 @@
     links: []
   } %>
 
-    <% if @auditions.any? %>
-
-        <div class="flex w-full space-x-2">
-            <div class="flex flex-1 space-x-2 mb-2">
-                <!-- Left: Sorting links -->
-                <%= link_to "All",
-                        my_auditions_path(auditions_filter: "all"),
-                        data: { turbo_prefetch: false },
-                        class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-                %>
-                <%= link_to "Upcoming",
-                        my_auditions_path(auditions_filter: "upcoming"),
-                        data: { turbo_prefetch: false },
-                        class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "upcoming") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-                %>
-                <%= link_to "Past",
-                        my_auditions_path(auditions_filter: "past"),
-                        data: { turbo_prefetch: false },
-                        class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "past") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-                %>
-            </div>
+   <div class="flex w-full space-x-2">
+        <div class="flex flex-1 space-x-2 mb-2">
+            <!-- Left: Sorting links -->
+            <%= link_to "All",
+                    my_auditions_path(auditions_filter: "all"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+            <%= link_to "Upcoming",
+                    my_auditions_path(auditions_filter: "upcoming"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "upcoming") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+            <%= link_to "Past",
+                    my_auditions_path(auditions_filter: "past"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "past") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
         </div>
+    </div>
+
+    <% if @auditions.any? %>
 
         <div class="grid grid-cols-1 gap-2 mt-2">
             <% @auditions.each do |audition| %>

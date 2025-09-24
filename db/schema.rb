@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_24_150216) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_24_202919) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -122,6 +122,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_24_150216) do
     t.integer "person_id"
     t.index ["cast_id"], name: "index_casts_people_on_cast_id"
     t.index ["person_id"], name: "index_casts_people_on_person_id"
+  end
+
+  create_table "locations", force: :cascade do |t|
+    t.string "address1"
+    t.string "address2"
+    t.string "city"
+    t.string "state"
+    t.string "postal_code"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "notify_mes", force: :cascade do |t|

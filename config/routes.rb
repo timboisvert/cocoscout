@@ -81,6 +81,8 @@
       end
     end
 
+    resources :locations
+
     resources :productions do
       resources :posters, except: :index
       resources :shows

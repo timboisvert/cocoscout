@@ -6,19 +6,39 @@ class GodModeController < ApplicationController
   end
 
   def impersonate
+    # Store the current user
+    session[:user_doing_the_impersonating] = Current.user.id
+
+    # Get the user being impersonated
     user = User.find_by(email_address: params[:email].to_s.strip.downcase)
     if user
+
       # End any current session and impersonation
       terminate_session
+
+      # Set the impersonating id and start a new session
       session[:impersonate_user_id] = user.id
       start_new_session_for user
     end
-    redirect_to my_dashboard_path
+
+    # Redirect
+    redirect_to my_dashboard_path and return
   end
 
   def stop_impersonating
-    session.delete(:impersonate_user_id)
+    # Kill the impersonation session
     terminate_session
+    session.delete(:impersonate_user_id)
+
+    # Restore the original user
+    if session[:user_doing_the_impersonating]
+      original_user = User.find_by(id: session[:user_doing_the_impersonating])
+      if original_user
+        start_new_session_for original_user
+      end
+    end
+
+    session.delete(:user_doing_the_impersonating)
     redirect_to my_dashboard_path
   end
 
