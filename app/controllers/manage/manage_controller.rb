@@ -56,7 +56,7 @@ class Manage::ManageController < ActionController::Base
     return if controller_name == "production_companies" && %w[new create select set_current].include?(action_name)
     return if controller_name == "sessions"
     unless Current.production_company
-      redirect_to select_production_companies_path
+      redirect_to select_manage_production_companies_path
     end
   end
 end
