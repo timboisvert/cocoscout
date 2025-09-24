@@ -10,12 +10,13 @@
   get "/notify_me/success", to: "home#notify_me_success", as: "notify_me_success"
 
   # Authentication
-  resources :passwords, param: :token
-  get   "/signup", to: "auth#signup", as: "signup"
-  post  "/signup", to: "auth#handle_signup", as: "handle_signup"
-  get   "/signin", to: "auth#signin", as: "signin"
-  post  "/signin", to: "auth#handle_signin", as: "handle_signin"
-  get   "/signout", to: "auth#signout", as: "signout"
+  get   "/signup",    to: "auth#signup",          as: "signup"
+  post  "/signup",    to: "auth#handle_signup",   as: "handle_signup"
+  get   "/signin",    to: "auth#signin",          as: "signin"
+  post  "/signin",    to: "auth#handle_signin",   as: "handle_signin"
+  get   "/signout",   to: "auth#signout",         as: "signout"
+  get   "/password",  to: "auth#password",        as: "password"
+  post  "/password",  to: "auth#handle_password", as: "handle_password"
 
   # Respond to an audition request
   get "/audition/:hex_code", to: "respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
