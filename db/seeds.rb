@@ -22,7 +22,7 @@ puts "Comedy Pageant created or found."
 cta = p.call_to_auditions.find_or_create_by(production: p) do |call|
   call.open_at = 1.week.ago
   call.close_at = 2.weeks.from_now
-  call.hex_code = SecureRandom.alphanumeric(5).upcase
+  call.token = SecureRandom.alphanumeric(8).upcase
   call.header_text = "Header text goes here"
   call.success_text = "Success text goes here"
 end

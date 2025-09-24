@@ -20,11 +20,11 @@ class Manage::CallToAuditionsController < Manage::ManageController
     @call_to_audition.production = @production
 
     # Create a random hex code for the audition link
-    @call_to_audition.hex_code = SecureRandom.alphanumeric(5).upcase
+    @call_to_audition.token = SecureRandom.alphanumeric(5).upcase
 
     # Make sure it's unique and regenerate if not
-    while CallToAudition.exists?(hex_code: @call_to_audition.hex_code)
-      @call_to_audition.hex_code = SecureRandom.alphanumeric(5).upcase
+    while CallToAudition.exists?(token: @call_to_audition.token)
+      @call_to_audition.token = SecureRandom.alphanumeric(5).upcase
     end
 
     if @call_to_audition.save
@@ -66,6 +66,6 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     def call_to_audition_params
-      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :header_text, :success_text, :hex_code ])
+      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :header_text, :success_text, :token ])
     end
 end

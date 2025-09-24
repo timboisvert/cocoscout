@@ -1,9 +1,9 @@
 class ApplicationController < ActionController::Base
   include Authentication
 
-  before_action :show_app_sidebar
+  before_action :show_my_sidebar
 
-  def show_app_sidebar
-    @show_app_sidebar = true
+  def show_my_sidebar
+    @show_my_sidebar = true
   end
 end

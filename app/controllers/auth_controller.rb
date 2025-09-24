@@ -4,7 +4,7 @@ class AuthController < ApplicationController
 
   # before_action :set_user_by_token, only: %i[ edit_password handle_edit_password ]
 
-  skip_before_action :show_app_sidebar
+  skip_before_action :show_my_sidebar
 
   def signup
     @user = User.new
@@ -16,7 +16,8 @@ class AuthController < ApplicationController
     if User.exists?(email_address: normalized_email)
       @user = User.new(user_params)
       @user_exists_error = true
-      render :signup, status: :unprocessable_entity
+      @email_address = normalized_email
+      render :signin, status: :unprocessable_entity
       return
     end
 
@@ -37,7 +38,7 @@ class AuthController < ApplicationController
       # The user has been created, so log them in
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
-        redirect_to manage_path, notice: "User was successfully created."
+        redirect_to(session.delete(:return_to) || my_dashboard_path) and return
       else
         render :signup, status: :unprocessable_entity
       end
@@ -47,6 +48,7 @@ class AuthController < ApplicationController
   end
 
   def signin
+    @user = User.new
   end
 
   def handle_signin

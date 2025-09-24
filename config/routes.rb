@@ -19,14 +19,7 @@
   post  "/password",  to: "auth#handle_password", as: "handle_password"
 
   # Respond to an audition request
-  get "/audition/:hex_code", to: "respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
-  post "/audition/:hex_code/handlesignup", to: "respond_to_call_to_audition#handlesignup", as: "handlesignup_respond_to_call_to_audition"
-  get "/audition/:hex_code/signin", to: "respond_to_call_to_audition#signin", as: "signin_respond_to_call_to_audition"
-  post "/audition/:hex_code/handlesignin", to: "respond_to_call_to_audition#handlesignin", as: "handlesignin_respond_to_call_to_audition"
-  get "/audition/:hex_code/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
-  post "/audition/:hex_code/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
-  get "/audition/:hex_code/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
-  get "/audition/:hex_code/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
+  get "/a/:token", to: "my/respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
 
   # Talent-facing interface
 
@@ -34,7 +27,15 @@
     get "/", to: "dashboard#index", as: "dashboard"
     get "/auditions", to: "auditions#index"
     get "/shows", to: "shows#index"
+
+    scope "/auditions/:token" do
+      get "/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
+      post "/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
+      get "/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
+      get "/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
+    end
   end
+
 
   # Management interface
   namespace :manage do
