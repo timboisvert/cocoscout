@@ -35,6 +35,13 @@
       <%= form.number_field :maximum_auditionees, min: 1, class: ["block w-24 shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400 focus:outline-blue-600": @audition_session.errors[:maximum_auditionees].none?, "border-red-400 focus:outline-red-600": @audition_session.errors[:maximum_auditionees].any?}] %>
     </div>
 
+    <div class="my-5">
+      <%= form.label :location_id, "Location" %>
+      <%= form.collection_select :location_id, Current.production_company.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64", ("border-red-400 focus:outline-red-600" if @audition_session.errors[:location_id].any?)] } %>
+      <div class="mt-2">
+        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
+      </div>
+    </div>
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Reschedule Session", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800inline-block font-medium cursor-pointer inline-block" %>
       <%= link_to "Back", 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>

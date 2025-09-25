@@ -78,6 +78,6 @@ class Manage::AuditionSessionsController < Manage::ManageController
     end
 
     def audition_session_params
-      params.expect(audition_session: [ :production_id, :start_at, :end_at, :maximum_auditionees ])
+      params.expect(audition_session: [ :production_id, :start_at, :end_at, :maximum_auditionees, :location_id ])
     end
 end

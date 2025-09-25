@@ -9,14 +9,14 @@ class Manage::LocationsController < Manage::ManageController
   end
 
   def new
-    @location = Location.new
+    @location = Current.production_company.locations.new
   end
 
   def edit
   end
 
   def create
-    @location = Location.new(location_params)
+    @location = Current.production_company.locations.new(location_params)
 
     if @location.save
       redirect_to [ :manage, :locations ], notice: "Location was successfully created."
