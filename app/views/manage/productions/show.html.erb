@@ -40,6 +40,21 @@
   </div>
 
   <div class="w-full">
+    <div class="space-y-2">
+      <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200">
+        <h1 class="mb-2 font-bold text-lg coustard-regular">Contact Email</h1>
+      </div>
+      <div class="mb-5">
+        <% if @production.contact_email.present? %>
+          <%= mail_to @production.contact_email, @production.contact_email, class: "text-pink-500 underline" %>
+        <% else %>
+          <span class="text-sm text-gray-500">No contact email provided. <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="w-full">
 
     <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200 mt-10">
       <h1 class="font-bold text-lg coustard-regular">Posters</h1>

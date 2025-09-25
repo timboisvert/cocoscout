@@ -74,6 +74,6 @@ class Manage::ProductionsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def production_params
-      params.require(:production).permit(:name, :logo, :description).merge(production_company_id: Current.production_company&.id)
+      params.require(:production).permit(:name, :logo, :description, :contact_email).merge(production_company_id: Current.production_company&.id)
     end
 end

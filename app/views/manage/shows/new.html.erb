@@ -27,12 +27,12 @@
 
   <div class="my-5">
     <%= form.label :date_and_time %>
-    <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-blue-600": @show.errors[:date_and_time].none?, "border-red-400 focus:outline-red-600": @show.errors[:date_and_time].any?}] %>
+    <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @show.errors[:date_and_time].none?, "border-red-400 focus:outline-pink-500": @show.errors[:date_and_time].any?}] %>
   </div>
 
   <div class="my-5">
     <%= form.label :secondary_name %>
-    <%= form.text_field :secondary_name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-blue-600": @show.errors[:secondary_name].none?, "border-red-400 focus:outline-red-600": @show.errors[:secondary_name].any?}] %>
+    <%= form.text_field :secondary_name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @show.errors[:secondary_name].none?, "border-red-400 focus:outline-pink-500": @show.errors[:secondary_name].any?}] %>
   </div>
 
   <div class="w-full border-t border-gray-200 pt-5 my-5">

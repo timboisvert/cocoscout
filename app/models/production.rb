@@ -11,4 +11,8 @@ class Production < ApplicationRecord
     has_one_attached :logo, dependent: :purge_later do |attachable|
         attachable.variant :small, resize_to_limit: [ 300, 200 ], preprocessed: true
     end
+
+    normalizes :contact_email, with: ->(e) { e.strip.downcase }
+
+    validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
 end
