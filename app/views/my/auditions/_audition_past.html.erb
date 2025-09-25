@@ -1,0 +1,52 @@
+<div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+
+    <% production = audition.audition_request.call_to_audition.production %>
+
+    <div class="grid grid-cols-5 gap-2 w-full">
+        <div class="col-span-3 items-center">
+            <div class="flex items-center">
+                <% if production.logo.attached? %>
+                    <div class="mr-4">
+                        <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-[100px] object-contain rounded" %>
+                    </div>
+                <% end %>
+                <div>
+                    <div class="font-bold text-xl"><%= production.name %></div>
+                    <div class="text-sm text-gray-500 mt-1">
+                        <%= audition.audition_session.start_at.strftime('%b %d, %Y') %> at <%= audition.audition_session.start_at.strftime('%I:%M %p') %>
+                    </div>
+                    <% if audition.audition_session.start_at > Time.current %>
+                        <% time_diff = audition.audition_session.start_at - Time.current %>
+                        <% if time_diff < 24.hours %>
+                            <div class="text-xs text-red-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition.audition_session.start_at.utc.iso8601 %>">
+                                Starts in <span data-countdown-target="clock"></span>
+                            </div>
+                        <% else %>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <%= distance_of_time_in_words(Time.current, audition.audition_session.start_at, include_seconds: false) %> from today
+                            </div>
+                        <% end %>
+                    <% end %>
+                </div>
+            </div>
+        </div>
+        <div class="col-span-2 flex flex-col justify-center items-start">
+
+            <% if audition.audition_session.location.present? %>
+
+                <% location = audition.audition_session.location %>
+
+                <p class="font-bold">Location:</p>
+                <div class="text-sm text-gray-500">
+                    <%= location.name %><br>
+                    <%= location.address1 %><br>
+                    <% if location.address2.present? %>
+                        <%= location.address2 %><br>
+                    <% end %>
+                    <%= "#{location.city}, #{location.state} #{location.postal_code}" %>
+                </div>
+            <% end %>
+
+        </div>
+    </div>
+</div>

@@ -3,7 +3,7 @@
 class AuditionSession < ApplicationRecord
   belongs_to :production
   has_many :auditions, dependent: :destroy
-  has_one :location, dependent: :destroy
+  belongs_to :location, dependent: :destroy
 
   def display_name
     "#{production.name} - #{start_at.strftime("%-m/%-d/%Y %l:%M %p")}"

@@ -13,11 +13,6 @@
    <div class="flex w-full space-x-2">
         <div class="flex flex-1 space-x-2 mb-2">
             <!-- Left: Sorting links -->
-            <%= link_to "All",
-                    my_auditions_path(auditions_filter: "all"),
-                    data: { turbo_prefetch: false },
-                    class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-            %>
             <%= link_to "Upcoming",
                     my_auditions_path(auditions_filter: "upcoming"),
                     data: { turbo_prefetch: false },
@@ -35,44 +30,11 @@
 
         <div class="grid grid-cols-1 gap-2 mt-2">
             <% @auditions.each do |audition| %>
-                <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-
-                    <% production = audition.audition_request.call_to_audition.production %>
-
-                    <div class="grid grid-cols-5 gap-2 w-full">
-                        <div class="col-span-3 items-center">
-                            <div class="flex items-center">
-                                <% if production.logo.attached? %>
-                                    <div class="mr-4">
-                                        <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-[100px] object-contain rounded" %>
-                                    </div>
-                                <% end %>
-                                <div>
-                                    <div class="font-bold text-xl"><%= production.name %></div>
-                                    <%= audition.audition_request.person.name %>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-span-2 flex flex-col justify-center items-start">
-
-                            <% if audition.audition_sessions.first.location.present? %>
-
-                                <% location = audition.audition_sessions.first.location %>
-
-                                <p>Location:</p>
-                                <div>
-                                    <%= location.name %><br>
-                                    <%= location.address1 %><br>
-                                    <% if location.address2.present? %>
-                                        <%= location.address2 %><br>
-                                    <% end %>
-                                    <%= "#{location.city}, #{location.state} #{location.postal_code}" %>
-                                </div>
-                            <% end %>
-
-                        </div>
-                    </div>
-                </div>
+                <% if audition.audition_session.start_at < Time.current %>
+                    <%= render partial: "audition_past", locals: { audition: audition } %>
+                <% else %>
+                    <%= render partial: "audition_upcoming", locals: { audition: audition } %>
+                <% end %>
             <% end %>
         </div>
     <% else %>

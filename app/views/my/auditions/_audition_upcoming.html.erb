@@ -1,0 +1,67 @@
+<div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+
+    <% production = audition.audition_request.call_to_audition.production %>
+
+    <div class="grid grid-cols-2 gap-2 w-full">
+        <div class="col-span-1 items-center">
+            <div class="flex items-center">
+                <div>
+                    <div class="font-bold text-2xl"><%= audition.audition_session.start_at.strftime('%b %d, %Y') %> <span class="font-medium">at</span> <%= audition.audition_session.start_at.strftime('%l:%M %p') %></div>
+
+                    <% if audition.audition_session.start_at > Time.current %>
+                        <% time_diff = audition.audition_session.start_at - Time.current %>
+                        <% if time_diff < 24.hours %>
+                            <div class="text-xs text-red-500" data-controller="countdown" data-countdown-until-value="<%= audition.audition_session.start_at.utc.iso8601 %>">
+                                Starts in <span data-countdown-target="clock"></span>
+                            </div>
+                        <% else %>
+                            <div class="text-xs text-gray-500">
+                                <%= distance_of_time_in_words(Time.current, audition.audition_session.start_at, include_seconds: false) %> from today
+                            </div>
+                        <% end %>
+                    <% end %>
+
+                    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mt-3">
+                        <% if production.logo.attached? %>
+                            <div class="mr-4">
+                                <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-[100px] object-contain rounded" %>
+                            </div>
+                        <% end %>
+                        <div>
+                            <div class="font-bold text-xl"><%= production.name %></div>
+
+                        </div>
+                    </div>
+
+                    <div>
+                        <% if audition.audition_session.location.present? %>
+                            <p class="font-bold mt-5">Location:</p>
+                            <div class="text-sm text-gray-500">
+                                <%= audition.audition_session.location.name %><br>
+                                <%= audition.audition_session.location.address1 %><br>
+                                <% if audition.audition_session.location.address2.present? %>
+                                    <%= audition.audition_session.location.address2 %><br>
+                                <% end %>
+                                <%= "#{audition.audition_session.location.city}, #{audition.audition_session.location.state} #{audition.audition_session.location.postal_code}" %>
+                            </div>
+
+                            <% if audition.audition_session.location.notes.present? %>
+                                <p class="font-bold mt-5">Notes/Instructions:</p>
+                                <div class="text-sm text-gray-500">
+                                    <%= audition.audition_session.location.notes %>
+                                </div>
+                            <% end %>
+
+                        <% end %>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-span-1 items-center">
+            sdsd
+        </div>
+    </div>
+</div>
