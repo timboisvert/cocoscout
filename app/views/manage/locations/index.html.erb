@@ -7,24 +7,45 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "Locations",
-    links: []
+    links: [
+       { text: "+ Add a Location", path: new_manage_location_path }
+    ]
   } %>
 
+   <% if @locations.any? %>
 
-  <div id="locations" class="min-w-full divide-y divide-gray-200 space-y-5">
-    <% if @locations.any? %>
-      <% @locations.each do |location| %>
-        <div class="flex flex-col sm:flex-row justify-between items-center pb-5 sm:pb-0">
-          <%= render location %>
-          <div class="w-full sm:w-auto flex flex-col sm:flex-row space-x-2 space-y-2">
-            <%= link_to "Show", manage_location_path(location), class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
-            <%= link_to "Edit", edit_manage_location_path(location), class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
-            <%= button_to "Destroy", [:manage, location], method: :delete, class: "w-full sm:w-auto rounded-md px-3.5 py-2.5 text-white bg-red-600 hover:bg-red-500 font-medium cursor-pointer", data: { turbo_confirm: "Are you sure?" } %>
-          </div>
+        <div class="grid grid-cols-1 gap-2 mt-2">
+            <% @locations.each do |location| %>
+                <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+
+                    <div class="flex-1">
+                      <div class="font-bold text-xl"><%= location.name %></div>
+                      <div><%= location.address1 %></div>
+                      <% if location.address2.present? %>
+                        <div><%= location.address2 %></div>
+                      <% end %>
+                      <div>
+                        <%= location.city %>, <%= location.state %> <%= location.postal_code %>
+                      </div>
+                      <div>
+                        <%= link_to "Edit Location", edit_manage_location_path(location), class: "text-pink-500 text-sm underline" %>
+                      </div>
+                      <div>
+                        <%= link_to "Delete Location", manage_location_path(location), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this location?" }, class: "text-pink-500 text-sm underline" %>
+                      </div>
+                    </div>
+
+                </div>
+            <% end %>
         </div>
-      <% end %>
     <% else %>
-      <p class="text-center my-10">No locations found.</p>
+        <p class="text-gray-500 text-sm pt-2">
+          You haven't added any locations. <%= link_to "Add a Location", new_manage_location_path, class: "text-pink-500 hover:underline" %>
+        </p>
     <% end %>
-  </div>
+
+
+
+
+
 </div>
