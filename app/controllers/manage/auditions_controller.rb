@@ -53,8 +53,7 @@ class Manage::AuditionsController < Manage::ManageController
     audition_request = AuditionRequest.find(params[:audition_request_id])
     audition_session = AuditionSession.find(params[:audition_session_id])
 
-    audition = Audition.create!(audition_request: audition_request, person: audition_request.person)
-    audition_session.auditions << audition unless audition_session.auditions.include?(audition)
+    Audition.create!(audition_request: audition_request, audition_session: audition_session, person: audition_request.person)
 
     # Re-render the left list and the dropzone partials
     left_list_html = render_to_string(partial: "manage/audition_sessions/left_list", locals: { production: audition_session.production, filter: cookies[:audition_request_filter] })

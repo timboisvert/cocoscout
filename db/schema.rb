@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_131500) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_25_133000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -81,21 +81,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_131500) do
     t.index ["production_id"], name: "index_audition_sessions_on_production_id"
   end
 
-  create_table "audition_sessions_auditions", id: false, force: :cascade do |t|
-    t.integer "audition_session_id", null: false
-    t.integer "audition_id", null: false
-    t.index ["audition_id", "audition_session_id"], name: "idx_on_audition_id_audition_session_id_8976785be4"
-    t.index ["audition_id"], name: "index_audition_sessions_auditions_on_audition_id"
-    t.index ["audition_session_id", "audition_id"], name: "idx_on_audition_session_id_audition_id_25fccc3f8f"
-    t.index ["audition_session_id"], name: "index_audition_sessions_auditions_on_audition_session_id"
-  end
-
   create_table "auditions", force: :cascade do |t|
     t.integer "person_id", null: false
     t.integer "audition_request_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "audition_session_id"
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
+    t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
     t.index ["person_id"], name: "index_auditions_on_person_id"
   end
 
@@ -275,9 +268,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_131500) do
   add_foreign_key "audition_requests", "people"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "audition_sessions", "productions"
-  add_foreign_key "audition_sessions_auditions", "audition_sessions"
-  add_foreign_key "audition_sessions_auditions", "auditions"
   add_foreign_key "auditions", "audition_requests"
+  add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "casts", "productions"

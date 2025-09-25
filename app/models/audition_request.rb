@@ -24,7 +24,7 @@ class AuditionRequest < ApplicationRecord
   end
 
   def scheduled_in_any?(audition_sessions)
-    Audition.joins(:audition_sessions)
+    Audition.joins(:audition_session)
       .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
       .exists?
   end

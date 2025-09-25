@@ -54,7 +54,22 @@
                             </div>
                         </div>
                         <div class="col-span-2 flex flex-col justify-center items-start">
-                            Here
+
+                            <% if audition.audition_sessions.first.location.present? %>
+
+                                <% location = audition.audition_sessions.first.location %>
+
+                                <p>Location:</p>
+                                <div>
+                                    <%= location.name %><br>
+                                    <%= location.address1 %><br>
+                                    <% if location.address2.present? %>
+                                        <%= location.address2 %><br>
+                                    <% end %>
+                                    <%= "#{location.city}, #{location.state} #{location.postal_code}" %>
+                                </div>
+                            <% end %>
+
                         </div>
                     </div>
                 </div>

@@ -9,7 +9,7 @@ class My::AuditionsController < ApplicationController
     session[:requests_filter] = @requests_filter
 
     # Get the auditions using the auditions filter
-    @auditions = Current.user.person.auditions.includes(:audition_sessions, :audition_request)
+    @auditions = Current.user.person.auditions.includes(:audition_session, :audition_request)
 
     case @auditions_filter
     when "upcoming"
