@@ -21,15 +21,21 @@
                         <% end %>
                     <% end %>
 
-                    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mt-3">
+                    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mt-3 items-center">
                         <% if production.logo.attached? %>
-                            <div class="mr-4">
+                            <div class="mr-4 items-center">
                                 <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-[100px] object-contain rounded" %>
                             </div>
                         <% end %>
-                        <div>
+                        <div class="items-center">
                             <div class="font-bold text-xl"><%= production.name %></div>
-
+                            <% if production.contact_email.present? %>
+                                <div class="text-sm">
+                                    Contact: <a href="mailto:<%= production.contact_email %>" class="text-pink-500 underline">
+                                        <%= production.contact_email %>
+                                    </a>
+                                </div>
+                            <% end %>
                         </div>
                     </div>
 
@@ -61,7 +67,24 @@
         </div>
 
         <div class="col-span-1 items-center">
-            sdsd
+
+                <div>
+                    <% loc = audition.audition_session.location %>
+                    <% if loc.present? %>
+                        <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+                        <div class="w-full">
+                            <iframe
+                                width="100%"
+                                height="400"
+                                style="border:0"
+                                loading="lazy"
+                                allowfullscreen
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                            </iframe>
+                        </div>
+                    <% end %>
+                </div>
         </div>
     </div>
 </div>

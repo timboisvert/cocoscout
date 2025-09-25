@@ -2,8 +2,8 @@
 
     <% production = audition.audition_request.call_to_audition.production %>
 
-    <div class="grid grid-cols-5 gap-2 w-full">
-        <div class="col-span-3 items-center">
+    <div class="grid grid-cols-1 gap-2 w-full">
+        <div class="col-span-1 items-center">
             <div class="flex items-center">
                 <% if production.logo.attached? %>
                     <div class="mr-4">
@@ -29,24 +29,6 @@
                     <% end %>
                 </div>
             </div>
-        </div>
-        <div class="col-span-2 flex flex-col justify-center items-start">
-
-            <% if audition.audition_session.location.present? %>
-
-                <% location = audition.audition_session.location %>
-
-                <p class="font-bold">Location:</p>
-                <div class="text-sm text-gray-500">
-                    <%= location.name %><br>
-                    <%= location.address1 %><br>
-                    <% if location.address2.present? %>
-                        <%= location.address2 %><br>
-                    <% end %>
-                    <%= "#{location.city}, #{location.state} #{location.postal_code}" %>
-                </div>
-            <% end %>
-
         </div>
     </div>
 </div>
