@@ -34,17 +34,17 @@
       <% end %>
     <% end %>
 
-  <div class="flex min-h-screen <%= 'mt-[40px]' if session[:impersonate_user_id] %>">
+  <div class="flex min-h-screen">
 
       <% if @show_manage_sidebar %>
 
         <%= render "shared/sidebars/manage" %>
-        <main class="flex-1 px-5 mt-5 ml-56">
+        <main class="flex-1 px-5 mt-5 ml-56 <%= 'pt-[40px]' if session[:impersonate_user_id] %>">
 
       <% elsif @show_my_sidebar %>
 
         <%= render "shared/sidebars/app" %>
-        <main class="flex-1 px-5 mt-5 ml-56">
+        <main class="flex-1 px-5 mt-5 ml-56 <%= 'pt-[40px]' if session[:impersonate_user_id] %>">
 
       <% else %>
 

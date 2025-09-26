@@ -1,12 +1,12 @@
 
-<nav class="w-56 bg-white border-r border-r-2 border-gray-200 flex flex-col transition-all duration-200 ease-in-out z-20 justify-between fixed left-0 top-0 h-screen <%= 'mt-[40px]' if session[:impersonate_user_id] %>">
+<nav class="w-56 bg-white border-r border-r-2 border-gray-200 flex flex-col transition-all duration-200 ease-in-out z-20 justify-between fixed left-0 top-0 h-screen">
   <div>
 
     <%= link_to manage_path, class: "mb-2" do %>
       <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
     <% end %>
 
-    <div>
+    <div class="<%= 'pt-[40px]' if session[:impersonate_user_id] %>">
       <% if Current.production.present? && !Current.production.new_record? %>
         <%= link_to Current.production.name, manage_production_path(Current.production), class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
 
