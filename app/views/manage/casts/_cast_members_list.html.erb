@@ -1,27 +1,28 @@
 <%# Renders the list of people in a cast, for AJAX refresh %>
-<% if cast.people.any? %>
   <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full">
-    <% cast.people.each do |cast_member| %>
+    <% if cast.people.any? %>
+      <% cast.people.each do |cast_member| %>
 
 
-      <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group">
-        <% if cast_member.headshot.attached? %>
-            <%= image_tag cast_member.headshot.variant(:thumb), alt: cast_member.name, class: "w-12 h-12 rounded-lg object-cover mb-1" if cast_member.headshot.present? %>
-        <% else %>
-            <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
-            <%= cast_member.initials %>
-            </div>
-        <% end %>
-        <span class="font-medium text-xs text-center"><%= cast_member.name.truncate(20, omission: '...') %></span>
-        <button type="button"
-            class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
-            data-action="cast-person#remove"
-            data-person-id="<%= cast_member.id %>"
-        >
-            Remove
-        </button>
-      </div>
+        <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group">
+          <% if cast_member.headshot.attached? %>
+              <%= image_tag cast_member.headshot.variant(:thumb), alt: cast_member.name, class: "w-12 h-12 rounded-lg object-cover mb-1" if cast_member.headshot.present? %>
+          <% else %>
+              <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
+              <%= cast_member.initials %>
+              </div>
+          <% end %>
+          <span class="font-medium text-xs text-center"><%= cast_member.name.truncate(20, omission: '...') %></span>
+          <button type="button"
+              class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+              data-action="cast-person#remove"
+              data-person-id="<%= cast_member.id %>"
+          >
+              Remove
+          </button>
+        </div>
 
+      <% end %>
     <% end %>
 
     <div class="flex flex-col items-center p-3 bg-gray-50 border border-dashed border-gray-200 rounded-lg justify-center cursor-pointer hover:border-pink-400 transition-all relative group"
@@ -34,4 +35,3 @@
     </div>
 
   </div>
-<% end %>
