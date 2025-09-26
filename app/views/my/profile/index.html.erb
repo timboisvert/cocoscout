@@ -15,17 +15,17 @@
       ]
   } %>
 
-    <div class="flex flex-wrap border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
-        <div class="w-full md:w-1/2 flex p-4">
+    <div class="flex flex-wrap border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-start">
+        <div class="max-w-md flex p-4">
             <% if Current.user.person.headshot.attached? %>
-                <%= image_tag url_for(Current.user.person.headshot), class: "relative inline-block w-full rounded-lg" %>
+                <%= image_tag url_for(Current.user.person.headshot), class: "rounded-lg h-auto max-h-64 object-contain" %>
             <% else %>
                 <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                     <%= Current.user.person.initials %>
                 </div>
             <% end %>
         </div>
-        <div class="w-full md:w-1/2 flex flex-col p-4">
+        <div class="md:flex-1 flex flex-col p-4">
             <h2 class="text-3xl font-bold"><%= Current.user.person.name %></h2>
             <p class="text-gray-500 mb-4 text-sm"><%= Current.user.person.pronouns %></p>
 
