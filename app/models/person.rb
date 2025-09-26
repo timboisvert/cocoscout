@@ -1,5 +1,7 @@
 class Person < ApplicationRecord
-  belongs_to :user, optional: true
+  has_many :socials, dependent: :destroy
+  accepts_nested_attributes_for :socials, allow_destroy: true
+
   has_many :audition_requests, dependent: :destroy
   has_many :auditions
 
@@ -13,6 +15,8 @@ class Person < ApplicationRecord
   has_one_attached :headshot, dependent: :purge_later do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
   end
+
+  belongs_to :user, optional: true
 
   # Validations
   validates :name, presence: true

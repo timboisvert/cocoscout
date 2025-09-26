@@ -13,11 +13,11 @@
   } %>
 
   <div class="w-full max-w-4xl" >
-    <%= form_with(model: @person, url: my_edit_profile_path, class: "contents") do |person_form| %>
+  <%= form_with(model: @person, url: my_update_profile_path, method: :patch, class: "contents") do |person_form| %>
       <%= render "shared/person_form", person_form: person_form %>
 
       <div class="w-full border-t border-gray-200 pt-5 my-5">
-        <%= person_form.submit "Update Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+        <%= person_form.submit "Update My Profile", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
         <%= link_to "Back", 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
       </div>
 

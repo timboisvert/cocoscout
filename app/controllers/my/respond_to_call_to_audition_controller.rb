@@ -63,11 +63,13 @@ class My::RespondToCallToAuditionController < ApplicationController
 
       # Update the answers
       @answers = {}
-      params[:question].each do |id, keyValue|
-        answer = @audition_request.answers.find_or_initialize_by(question: Question.find(id))
-        answer.value = keyValue
-        answer.save!
-        @answers["#{id}"] = answer.value
+      if params[:question]
+        params[:question].each do |id, keyValue|
+          answer = @audition_request.answers.find_or_initialize_by(question: Question.find(id))
+          answer.value = keyValue
+          answer.save!
+          @answers["#{id}"] = answer.value
+        end
       end
 
     else
@@ -78,19 +80,20 @@ class My::RespondToCallToAuditionController < ApplicationController
 
       # Loop through the questions and store the answers
       @answers = {}
-      params[:question].each do |question|
-        answer = @audition_request.answers.build
-        answer.question = Question.find question.first
-        answer.value = question.last
-        @answers["#{answer.question.id}"] = answer.value
+      if params[:question]
+        params[:question].each do |question|
+          answer = @audition_request.answers.build
+          answer.question = Question.find question.first
+          answer.value = question.last
+          @answers["#{answer.question.id}"] = answer.value
+        end
       end
 
     end
 
     if @audition_request.valid?
 
-  # Update the person with any updated details
-  person_params = params.require(:audition_request).permit(person: [ :name, :pronouns, :socials, :resume, :headshot ])
+      # Update the person with any updated details
       @person.assign_attributes(person_params[:person])
 
       if @person.valid?
@@ -141,9 +144,10 @@ class My::RespondToCallToAuditionController < ApplicationController
       redirect_to respond_to_call_to_audition_path, status: :see_other
     end
   end
+
   private
 
-  def user_params
-    params.require(:user).permit(:email_address, :password)
+  def person_params
+    params.require(:audition_request).permit(person: [ :name, :pronouns, :resume, :headshot, socials_attributes: [ :id, :platform, :handle, :_destroy ] ])
   end
 end

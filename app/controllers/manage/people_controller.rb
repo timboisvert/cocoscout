@@ -122,6 +122,9 @@ class Manage::PeopleController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def person_params
-      params.expect(person: [ :name, :email, :pronouns, :socials, :resume, :headshot ])
+      params.require(:person).permit(
+        :name, :pronouns, :resume, :headshot,
+        socials_attributes: [ :id, :platform, :handle, :_destroy ]
+      )
     end
 end

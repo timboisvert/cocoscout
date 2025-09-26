@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_134000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -145,7 +145,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_134000) do
     t.datetime "updated_at", null: false
     t.string "name"
     t.string "pronouns"
-    t.string "socials"
     t.integer "user_id"
     t.index ["user_id"], name: "index_people_on_user_id"
   end
@@ -229,6 +228,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_134000) do
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
+  create_table "socials", force: :cascade do |t|
+    t.integer "person_id", null: false
+    t.string "platform", null: false
+    t.string "handle", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_socials_on_person_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.integer "production_company_id", null: false
     t.string "email", null: false
@@ -285,6 +293,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_134000) do
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "productions"
+  add_foreign_key "socials", "people"
   add_foreign_key "team_invitations", "production_companies"
   add_foreign_key "user_roles", "production_companies"
   add_foreign_key "user_roles", "users"
