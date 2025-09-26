@@ -19,7 +19,7 @@
       </div>
       <div class="w-full sm:w-[40%] flex flex-col">
 
-        <%= render "manage/people/person_card", person: @person %>
+        <%= render "shared/person_card", person: @person %>
 
         <% if @answers.any? %>
           <% @answers.each do |answer| %>

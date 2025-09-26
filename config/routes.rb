@@ -31,8 +31,12 @@
   # Talent-facing interface
   namespace :my do
     get "/", to: "dashboard#index", as: "dashboard"
-    get "/auditions", to: "auditions#index"
     get "/shows", to: "shows#index"
+    get "/auditions", to: "auditions#index"
+    get "/audition_requests", to: "audition_requests#index"
+    get "/profile", to: "profile#index", as: "profile"
+    get "/profile/edit", to: "profile#edit", as: "edit_profile"
+    patch "/profile/edit", to: "profile#update", as: "update_profile"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
