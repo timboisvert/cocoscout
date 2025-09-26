@@ -10,24 +10,24 @@
     links: []
   } %>
 
+    <div class="flex w-full space-x-2">
+        <div class="flex flex-1 space-x-2 mb-2">
+            <!-- Left: Sorting links -->
+            <%= link_to "All",
+                    my_audition_requests_path(requests_filter: "all"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-sm #{(@requests_filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+            <%= link_to "Open",
+                    my_audition_requests_path(requests_filter: "open"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-sm #{(@requests_filter == "open") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+        </div>
+    </div>
+
 
     <% if @audition_requests.any? %>
-
-        <div class="flex w-full space-x-2">
-            <div class="flex flex-1 space-x-2 mb-2">
-                <!-- Left: Sorting links -->
-                <%= link_to "All",
-                        my_audition_requests_path(requests_filter: "all"),
-                        data: { turbo_prefetch: false },
-                        class: "px-3 py-1 rounded-md border text-sm #{(@requests_filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-                %>
-                <%= link_to "Open",
-                        my_audition_requests_path(requests_filter: "open"),
-                        data: { turbo_prefetch: false },
-                        class: "px-3 py-1 rounded-md border text-sm #{(@requests_filter == "open") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-                %>
-            </div>
-        </div>
 
         <div class="grid grid-cols-1 gap-2 mt-2">
             <% @audition_requests.each do |audition_request| %>
@@ -61,7 +61,7 @@
                                         <%= link_to "Edit my Audition Request", my_respond_to_call_to_audition_form_path(audition_request.call_to_audition.token), class: "text-xs text-pink-500 underline", target: "_blank" %>
 
                                     <% elsif audition_request.call_to_audition.timeline_status == :closed %>
-                                        <div class="text-xs text-gray-500 mt-1">Call to Audition closed on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %></div>
+                                        <div class="text-sm text-gray-500 mt-1">Call to Audition closed on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %></div>
                                     <% end %>
                                 </div>
                             </div>
