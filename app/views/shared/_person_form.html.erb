@@ -1,19 +1,23 @@
 <div>
 
-    <div class="mb-5">
-        <% if @person.errors[:name].none? %>
-            <%= person_form.label :name, "Name" %>
-        <% else %>
-            <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
-        <% end %>
-        <% unless @cold_data_mode %><span class="text-sm text-gray-500"> (Your stage name or performing name)</span><% end %>
-     <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:name].any?}] %>
-    </div>
+    <div class="mb-5 md:flex md:space-x-5">
+        <div class="md:w-2/3">
+            <% if @person.errors[:name].none? %>
+                <%= person_form.label :name, "Name" %>
+            <% else %>
+                <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
+            <% end %>
+            <% unless @cold_data_mode %>
+                <span class="text-sm text-gray-500"> (Your stage name or performing name)</span>
+            <% end %>
+            <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:name].any?}] %>
+        </div>
 
-    <div class="my-5">
-        <%= person_form.label :pronouns %>
-        <span class="text-sm text-gray-500"> (optional)</span>
-        <%= person_form.text_field :pronouns, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:pronouns].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:pronouns].any?}] %>
+        <div class="md:w-1/3 mt-5 md:mt-0">
+            <%= person_form.label :pronouns %>
+            <span class="text-sm text-gray-500"> (optional)</span>
+            <%= person_form.text_field :pronouns, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:pronouns].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:pronouns].any?}] %>
+        </div>
     </div>
 
     <div class="my-5" data-controller="socials">
@@ -48,7 +52,7 @@
 
             <%
             if @person.resume.attached?
-                label_text = "Change your Resume/CV"
+                label_text = "Update your Resume/CV"
             else
                 label_text = "Resume/CV"
             end
@@ -72,7 +76,7 @@
 
             <%
             if @person.headshot.attached?
-                label_text = "Change your Headshot"
+                label_text = "Update your Headshot"
             else
                 label_text = "Headshot"
             end
