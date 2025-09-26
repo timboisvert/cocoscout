@@ -33,6 +33,16 @@ class Person < ApplicationRecord
     show_person_role_assignments.exists?(show: show)
   end
 
+  # Returns the next show for a given production that this person has a role assignment in
+  def next_show_for_production(production)
+    shows
+      .joins(:show_person_role_assignments)
+      .where(production: production, show_person_role_assignments: { person_id: id })
+      .where("date_and_time >= ?", Time.current)
+      .order(:date_and_time)
+      .first
+  end
+
   private
 
   def resume_content_type

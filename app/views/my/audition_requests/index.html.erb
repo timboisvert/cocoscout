@@ -50,7 +50,7 @@
 
                                         <% if audition_request.call_to_audition.closes_at > 1.day.from_now %>
                                             <div class="text-xs text-gray-500 mt-1">
-                                                Closes on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %> at <%= audition_request.call_to_audition.closes_at.strftime('%I:%M %p') %>
+                                                Closes on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %> at <%= audition_request.call_to_audition.closes_at.strftime('%l:%M %p') %>
                                             </div>
                                         <% else %>
                                             <div class="text-xs <%= audition_request.call_to_audition.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_request.call_to_audition.closes_at.utc.iso8601 %>">

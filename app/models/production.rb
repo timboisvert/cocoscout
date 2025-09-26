@@ -15,4 +15,8 @@ class Production < ApplicationRecord
     normalizes :contact_email, with: ->(e) { e.strip.downcase }
 
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
+
+    def next_show
+        shows.where("date_and_time > ?", Time.current).order(:date_and_time).first
+    end
 end
