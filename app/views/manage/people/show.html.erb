@@ -14,9 +14,11 @@
 
   <div id="<%= dom_id @person %>" class="w-full sm:w-auto my-5 space-y-5 mb-30">
     <div class="flex flex-col sm:flex-row w-full gap-6">
-      <div class="w-full sm:w-[60%] h-screen bg-gray-100">
-        <% if @person.resume.attached? %>
-          <embed src="<%= url_for(@person.resume) %>" type="application/pdf" width="100%" height="100%" />
+      <div class="w-full sm:w-[60%] h-screen bg-gray-100 flex flex-col">
+        <% if @person.resume.attached? && @person.resume.previewable? %>
+          <div class="w-full">
+        <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
+          </div>
         <% else %>
           <p class="text-center mt-10">No resume found</p>
         <% end %>

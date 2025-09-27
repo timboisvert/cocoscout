@@ -12,7 +12,7 @@
             <% casts.each do |cast| %>
                 <div class="p-2 mt-1 rounded-lg bg-pink-500 text-white text-xs flex items-center justify-between">
                     <strong><%= cast.name %></strong>
-                    <a href="<%= remove_from_cast_person_path(person, cast_id: cast.id) %>"
+                    <a href="<%= remove_from_cast_manage_person_path(person, cast_id: cast.id) %>"
                        data-action="cast-membership-card#remove"
                        data-person-id="<%= person.id %>"
                        data-cast-id="<%= cast.id %>"
@@ -43,7 +43,7 @@
 
         <div id="add-to-cast-form" class="hidden w-full mt-2">
             <% if available_casts.any? %>
-                <%= form_with url: add_to_cast_person_path(production, person), method: :post, html: { class: "flex gap-2 items-center", data: { action: "cast-membership-card#add", cast_membership_card_target: "form" } } do |f| %>
+                <%= form_with url: add_to_cast_manage_person_path(production, person), method: :post, html: { class: "flex gap-2 items-center", data: { action: "cast-membership-card#add", cast_membership_card_target: "form" } } do |f| %>
                     <%= select_tag :cast_id, options_from_collection_for_select(available_casts, :id, :name), class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400 focus:outline-pink-500" %>
                     <%= hidden_field_tag :person_id, person.id %>
                     <%= submit_tag "Add", class: "px-3 py-1 rounded bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
