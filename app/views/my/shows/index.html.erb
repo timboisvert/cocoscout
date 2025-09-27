@@ -10,40 +10,33 @@
     links: []
   } %>
 
-
     <% if @productions.any? %>
 
-        <div class="grid grid-cols-4 gap-2 mt-2">
+        <div class="grid grid-cols-3 gap-2 mt-2">
             <% @productions.each do |production| %>
                 <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
                     <div class="flex flex-col w-full">
                         <% if production.logo.attached? %>
-                            <div class="w-full mb-2 min-h-[112px]">
-                                <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-full object-contain rounded" %>
+                            <div class="w-full mb-2">
+                                <%= image_tag production.logo.variant(resize_to_fill: [300, 150]), alt: "#{production.name} logo", class: "w-full object-contain rounded-lg" %>
                             </div>
                         <% end %>
-                        <div class="font-bold text-xl"><%= production.name %></div>
-                        <div class="mt-2 w-full text-sm">
-                            <p class="text-gray-500">Next Show:</p>
 
-                            <% if production.next_show.present? %>
-                                <p class="mt-1"><%= production.next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %> </p>
-                            <% else %>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    No shows scheduled
-                                </p>
-                            <% end %>
-                        </div>
+                        <div class="mt-2 font-bold text-2xl"><%= production.name %></div>
+
                         <div class="mt-2 w-full text-sm">
-                            <p class="text-gray-500">Next Show I have a role in:</p>
                             <% next_show = Current.user.person.next_show_for_production(production)%>
                             <% if next_show %>
-                                <p class="mt-1"><%= next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
+                                <p class="text-gray-500">My next scheduled show:</p>
+                                <p class=""><%= next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
                             <% else %>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    No roles assigned
+                                <p class="text-sm text-gray-500">
+                                    You aren't cast in any upcoming shows
                                 </p>
                             <% end %>
+                            <p class="mt-2">
+                                <%= link_to "View full production schedule", my_show_path(production), class: "text-pink-500 hover:underline" %>
+                            </p>
                         </div>
                     </div>
 
