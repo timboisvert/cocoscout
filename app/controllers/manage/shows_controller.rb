@@ -11,6 +11,14 @@ class Manage::ShowsController < Manage::ManageController
 
   def new
     @show = @production.shows.new
+
+    if params[:duplicate].present?
+      original = @production.shows.find_by(id: params[:duplicate])
+      if original.present?
+        @show.date_and_time = original.date_and_time
+        @show.secondary_name = original.secondary_name
+      end
+    end
   end
 
   def edit

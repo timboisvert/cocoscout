@@ -22,6 +22,7 @@ gem "honeybadger"
 gem "dotenv-rails", groups: %i[ development test ]
 
 group :development do
+  gem "byebug", platforms: %i[ mri mingw x64_mingw ]
   gem "web-console"
   gem "dockerfile-rails", ">= 1.7"
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
