@@ -90,7 +90,7 @@ builder:
 
 # Use a different ssh user than root
 ssh:
-  user: Tim
+  user: ec2-user
   keys: [ "~/.ssh/Tim.pem" ]
 
 # Use accessory services (secrets come from .kamal/secrets).
