@@ -30,14 +30,15 @@
 
   # Talent-facing interface
   namespace :my do
-    get   "/",                  to: "dashboard#index",          as: "dashboard"
-    get   "/shows",             to: "shows#index",              as: "shows"
-    get   "/shows/:id",         to: "shows#show",               as: "show"
-    get   "/auditions",         to: "auditions#index",          as: "auditions"
-    get   "/audition_requests", to: "audition_requests#index",  as: "audition_requests"
-    get   "/profile",           to: "profile#index",            as: "profile"
-    get   "/profile/edit",      to: "profile#edit",             as: "edit_profile"
-    patch "/profile/edit",      to: "profile#update",           as: "update_profile"
+    get   "/",                              to: "dashboard#index",          as: "dashboard"
+    get   "/shows",                         to: "shows#index",              as: "shows"
+    get   "/shows/:production_id",          to: "shows#production",         as: "production"
+    get   "/shows/:production_id/:show_id", to: "shows#show",               as: "show"
+    get   "/auditions",                     to: "auditions#index",          as: "auditions"
+    get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
+    get   "/profile",                       to: "profile#index",            as: "profile"
+    get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
+    patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
