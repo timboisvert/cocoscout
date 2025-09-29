@@ -18,6 +18,7 @@ gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
 gem "honeybadger"
+gem "rails_semantic_logger"
 
 gem "dotenv-rails", groups: %i[ development test ]
 
