@@ -15,7 +15,13 @@ class Production < ApplicationRecord
 
     normalizes :contact_email, with: ->(e) { e.strip.downcase }
 
+    validates :name, presence: true
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
+
+    def initials
+      return "" if name.blank?
+      name.split.map { |word| word[0] }.join.upcase
+    end
 
     def next_show
         shows.where("date_and_time > ?", Time.current).order(:date_and_time).first

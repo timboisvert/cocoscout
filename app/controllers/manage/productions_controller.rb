@@ -1,5 +1,6 @@
 class Manage::ProductionsController < Manage::ManageController
   before_action :set_production, only: %i[ show edit update destroy ]
+  skip_before_action :show_manage_sidebar, only: %i[ index new create]
 
   def index
     @productions = Current.production_company.present? ? Current.production_company.productions : Production.none
@@ -21,7 +22,6 @@ class Manage::ProductionsController < Manage::ManageController
 
     if @production.save
       set_production_in_session
-      redirect_to [ :manage, @production ], notice: "Production was successfully created."
     else
       render :new, status: :unprocessable_entity
     end
@@ -30,7 +30,7 @@ class Manage::ProductionsController < Manage::ManageController
   def update
     if @production.update(production_params)
       set_production_in_session
-      redirect_to [ :manage, @production ], notice: "Production was successfully updated.", status: :see_other
+      redirect_to [ :manage, @production ], notice: "Production was successfully updated.", status: :see_other and return
     else
       render :edit, status: :unprocessable_entity
     end
