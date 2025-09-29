@@ -13,7 +13,7 @@
       <% if Current.production.present? && !Current.production.new_record? %>
 
         <div class="flex h-14">
-          <%= link_to manage_production_path(Current.production), class: "flex-1 flex items-center justify-left bg-pink-50 hover:bg-pink-100 font-bold text-md px-4 h-full" do %>
+          <%= link_to manage_production_path(Current.production), class: "flex-1 flex items-center justify-left bg-pink-50 hover:bg-pink-100 font-medium text-md px-4 h-full" do %>
             <%= Current.production.name %>
           <% end %>
           <%= link_to manage_productions_path, class: "flex items-center justify-center px-2 h-full bg-pink-50 hover:bg-pink-100" do %>
