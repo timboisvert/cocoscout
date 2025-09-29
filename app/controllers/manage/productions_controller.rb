@@ -3,7 +3,8 @@ class Manage::ProductionsController < Manage::ManageController
   skip_before_action :show_manage_sidebar, only: %i[ index new create]
 
   def index
-    @productions = Current.production_company.present? ? Current.production_company.productions : Production.none
+    @productions = Current.production_company.productions
+    @production = Production.new
   end
 
   def show

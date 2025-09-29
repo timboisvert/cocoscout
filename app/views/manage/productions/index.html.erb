@@ -6,9 +6,9 @@
 
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
 
-  <h1 class="text-xl font-bold mb-4 text-center">Select a Production</h1>
-
   <% if @productions.any? %>
+    <h1 class="text-xl font-bold mb-4 text-center">Select a Production</h1>
+
     <div class="grid grid-cols-1 gap-2 mt-2">
       <% @productions.each do |production| %>
         <%= link_to manage_production_path(production) do %>
@@ -32,10 +32,31 @@
         <% end %>
       <% end %>
     </div>
+  <% else %>
+      <h1 class="text-xl font-bold mb-4 text-center">Add a Production</h1>
+
+        <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
+
+            <div class="mb-5">
+                <% if @production.errors[:name].none? %>
+                    <%= form.label :name, "Name:" %>
+                <% else %>
+                    <%= form.label :name, "Name is required", class: "text-pink-600"  %>
+                <% end %>
+                <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @production.errors[:name].none?, "border-pink-400 focus:outline-pink-500": @production.errors[:name].any?}] %>
+            </div>
+
+            <div class="inline">
+                <%= form.submit "Add Production", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+                <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+            </div>
+        <% end %>
   <% end %>
 
 </div>
 
-<div class="flex flex-col items-center mt-10">
-  <%= link_to "Add a Production", new_manage_production_path, class: "text-pink-500 underline text-sm" %>
-</div>
+<% if @productions.any? %>
+  <div class="flex flex-col items-center mt-10">
+    <%= link_to "Add a Production", new_manage_production_path, class: "text-pink-500 underline text-sm" %>
+  </div>
+<% end %>
