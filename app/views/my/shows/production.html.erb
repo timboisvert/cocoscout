@@ -23,15 +23,13 @@
                 <% end %>
 
                 <div class="mt-2 font-bold text-2xl"><%= @production.name %></div>
-
             </div>
-
         </div>
 
         <div class="col-span-2">
             <% @shows.each do |show| %>
                 <% assignment = @assignments_by_show[show] %>
-                <div class="mb-4 border p-4 rounded-lg <%= assignment ? 'border-2 border-pink-400' : 'border-gray-200 hover:border-gray-400' %>">
+                <div class="mb-2 border p-4 rounded-lg <%= assignment ? 'border-2 border-pink-400' : 'border-gray-200 hover:border-gray-400' %>">
                     <div class="font-bold text-lg">
                         <%= show.date_and_time.strftime("%B %d, %Y at %l:%M %p") %>
                     </div>

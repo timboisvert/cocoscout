@@ -35,7 +35,7 @@
 
         <div class="col-span-2">
             <% @show_person_role_assignments.each do |assignment| %>
-                <div class="mb-4 border p-4 rounded-lg border-gray-200 hover:border-gray-400">
+                <div class="mb-2 border p-4 rounded-lg border-gray-200 hover:border-gray-400">
                   <%= assignment.role.name %>: <%= assignment.person.name %>
                 </div>
             <% end %>
