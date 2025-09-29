@@ -22,8 +22,9 @@
             <% end %>
 
             <div class="flex flex-col space-y-1">
-              <%= link_to "Edit/Reschedule", edit_manage_production_show_path(@production, show), class: "block text-xs text-pink-500 underline" %>
-              <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "block text-xs text-pink-500 underline" %>
+              <%= link_to "Edit/Reschedule", edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+              <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
+              <%= link_to "Cancel Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel this show?"}, class: "text-xs text-pink-500 underline" %>
             </div>
           </div>
 
