@@ -40,11 +40,16 @@
   <div class="w-full">
     <div class="space-y-2">
       <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200">
-        <h1 class="mb-2 font-bold text-lg coustard-regular">Contact Email</h1>
+        <h1 class="mt-4 mb-2 font-bold text-lg coustard-regular">Contact Email</h1>
       </div>
       <div class="mb-5">
         <% if @production.contact_email.present? %>
-          <%= mail_to @production.contact_email, @production.contact_email, class: "text-pink-500 underline" %>
+          <%= mail_to @production.contact_email, class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 flex items-center gap-2" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            <span><%= @production.contact_email %></span>
+          <% end %>
         <% else %>
           <span class="text-sm text-gray-500">No contact email provided. <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
         <% end %>
