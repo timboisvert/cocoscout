@@ -90,6 +90,7 @@ class Manage::ShowsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def show_params
-      params.require(:show).permit(:secondary_name, :date_and_time, :poster, :production_id, :location_id)
+      params.require(:show).permit(:secondary_name, :date_and_time, :poster, :production_id, :location_id,
+        show_links_attributes: [ :id, :url, :_destroy ])
     end
 end

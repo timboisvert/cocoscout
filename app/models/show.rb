@@ -6,6 +6,9 @@ class Show < ApplicationRecord
   has_many :people, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
+  has_many :show_links, dependent: :destroy
+  accepts_nested_attributes_for :show_links, allow_destroy: true
+
   has_one_attached :poster, dependent: :purge_later do |attachable|
       attachable.variant :small, resize_to_limit: [ 200, 300 ], preprocessed: true
   end

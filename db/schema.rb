@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_02_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_02_120001) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -208,6 +208,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_120000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "show_links", force: :cascade do |t|
+    t.integer "show_id", null: false
+    t.string "url", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id"], name: "index_show_links_on_show_id"
+  end
+
   create_table "show_person_role_assignments", force: :cascade do |t|
     t.integer "show_id", null: false
     t.integer "person_id", null: false
@@ -291,6 +299,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_120000) do
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
+  add_foreign_key "show_links", "shows"
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
