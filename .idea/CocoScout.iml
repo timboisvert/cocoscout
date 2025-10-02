@@ -59,6 +59,7 @@
     <orderEntry type="library" scope="PROVIDED" name="bundler (v2.5.9, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="byebug (v12.0.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="capybara (v3.40.0, RVM: ruby-3.3.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="childprocess (v5.1.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="concurrent-ruby (v1.3.5, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="connection_pool (v2.5.4, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="crass (v1.0.6, RVM: ruby-3.3.1) [gem]" level="application" />
@@ -88,6 +89,8 @@
     <orderEntry type="library" scope="PROVIDED" name="json (v2.13.2, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="kamal (v2.7.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="language_server-protocol (v3.17.0.5, RVM: ruby-3.3.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="launchy (v3.1.1, RVM: ruby-3.3.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="letter_opener (v1.10.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="lint_roller (v1.1.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="logger (v1.7.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="loofah (v2.24.1, RVM: ruby-3.3.1) [gem]" level="application" />
@@ -124,6 +127,7 @@
     <orderEntry type="library" scope="PROVIDED" name="rails (v8.0.2.1, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rails-dom-testing (v2.3.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rails-html-sanitizer (v1.6.2, RVM: ruby-3.3.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="rails_semantic_logger (v4.18.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="railties (v8.0.2.1, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rainbow (v3.1.1, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rake (v13.3.0, RVM: ruby-3.3.1) [gem]" level="application" />
@@ -146,6 +150,7 @@
     <orderEntry type="library" scope="PROVIDED" name="rubyzip (v3.1.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="securerandom (v0.4.1, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="selenium-webdriver (v4.35.0, RVM: ruby-3.3.1) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="semantic_logger (v4.17.0, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="solid_cache (v1.0.7, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="sqlite3 (v2.7.3, RVM: ruby-3.3.1) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="sshkit (v1.24.0, RVM: ruby-3.3.1) [gem]" level="application" />

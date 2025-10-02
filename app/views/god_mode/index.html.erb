@@ -16,6 +16,31 @@
     <%= f.email_field :email, required: true, class: "border rounded px-2 py-1" %>
     <%= f.submit "Impersonate", class: "px-3 py-1 rounded bg-pink-500 text-white" %>
   <% end %>
+
+  <% if cookies.encrypted[:recent_impersonations].present? %>
+    <% begin %>
+      <% recent = JSON.parse(cookies.encrypted[:recent_impersonations]) %>
+      <% if recent.any? %>
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-md font-semibold">Recent</h3>
+            <%= button_to "Clear", url_for(action: :clear_recent_impersonations), method: :post, class: "text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200" %>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <% recent.each do |entry| %>
+              <%= button_to impersonate_user_path, method: :post, params: { email: entry["email"] }, class: "px-3 py-1 rounded border text-sm bg-white hover:bg-pink-50 border-pink-300 text-pink-600" do %>
+                <span class="font-semibold"><%= entry["name"] %></span>
+                <span class="ml-2 text-xs text-gray-500"><%= entry["email"] %></span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% rescue JSON::ParserError %>
+      <!-- ignore bad cookie -->
+    <% end %>
+  <% end %>
+
     <% if session[:impersonate_user_id] %>
       <div class="my-4">
         <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>

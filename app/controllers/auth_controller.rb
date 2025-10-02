@@ -38,6 +38,7 @@ class AuthController < ApplicationController
       # The user has been created, so log them in
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
+        UserMailer.welcome_email(@user).deliver_later
         redirect_to(session.delete(:return_to) || my_dashboard_path) and return
       else
         render :signup, status: :unprocessable_entity
