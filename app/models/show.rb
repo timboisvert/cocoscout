@@ -16,10 +16,6 @@ class Show < ApplicationRecord
   validates :location, presence: true
   validate :poster_content_type
 
-  def display_name
-    "#{production.name} - #{secondary_name} - #{date_and_time.strftime("%-m/%-d/%Y")}"
-  end
-
   private
 
   def poster_content_type
