@@ -3,6 +3,16 @@ class GodModeController < ApplicationController
 
   def index
     @users = User.order(:email_address)
+
+    if cookies.encrypted[:recent_impersonations].present?
+      begin
+        @recent_impersonations = JSON.parse(cookies.encrypted[:recent_impersonations])
+      rescue JSON::ParserError
+        @recent_impersonations = []
+      end
+    else
+      @recent_impersonations = []
+    end
   end
 
   def impersonate
@@ -59,11 +69,6 @@ class GodModeController < ApplicationController
 
     session.delete(:user_doing_the_impersonating)
     redirect_to my_dashboard_path
-  end
-
-  def clear_recent_impersonations
-    cookies.delete(:recent_impersonations)
-    redirect_to god_mode_path, notice: "Recent impersonations cleared."
   end
 
   private
