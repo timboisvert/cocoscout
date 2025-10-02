@@ -15,8 +15,8 @@
 
     <div class="grid grid-cols-3 gap-2 mt-2">
 
-        <div class="col-span-1 p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-          <div class="flex flex-col w-full">
+        <div class="col-span-1 space-y-2">
+          <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
 
             <% if @production.logo.attached? %>
               <div class="w-full mb-2">
@@ -33,12 +33,78 @@
           </div>
         </div>
 
-        <div class="col-span-2">
-            <% @show_person_role_assignments.each do |assignment| %>
-                <div class="mb-2 border p-4 rounded-lg border-gray-200 hover:border-gray-400">
-                  <%= assignment.role.name %>: <%= assignment.person.name %>
+        <div class="col-span-2 space-y-2">
+
+          <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+            <%= render partial: "shared/top_menu", locals: {
+              breadcrumbs: [],
+              text: "Cast",
+              links: []
+            } %>
+
+            <div class="text-md">
+              <table>
+                <% @show_person_role_assignments.each do |assignment| %>
+                  <tr class="">
+                    <td><%= assignment.role.name %></td>
+                    <td class="pl-2 font-bold"><%= assignment.person.name %></td>
+                  </tr>
+                <% end %>
+              </table>
+            </div>
+
+          </div>
+
+          <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+            <%= render partial: "shared/top_menu", locals: {
+              breadcrumbs: [],
+              text: "Location",
+              links: []
+            } %>
+
+            <% if @show.location.present? %>
+              <div class="text-md">
+                <div class="font-bold"><%= @show.location.name %></div>
+                <div class="text-sm text-gray-500">
+                  <%= @show.location.address1 %><br>
+                  <% if @show.location.address2.present? %>
+                    <%= @show.location.address2 %><br>
+                  <% end %>
+                  <%= "#{@show.location.city}, #{@show.location.state} #{@show.location.postal_code}" %>
                 </div>
+
+                <% if @show.location.notes.present? %>
+                  <div class="mt-2">
+                    <div class="font-bold">Notes/Instructions:</div>
+                    <div class="text-sm text-gray-500">
+                      <%= @show.location.notes %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="mt-4">
+                  <% loc = @show.location %>
+                  <% if loc.present? %>
+                      <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+                      <div class="w-full">
+                          <iframe
+                              width="100%"
+                              height="400"
+                              style="border:0"
+                              loading="lazy"
+                              allowfullscreen
+                              referrerpolicy="no-referrer-when-downgrade"
+                              src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                          </iframe>
+                      </div>
+                  <% end %>
+              </div>
+
             <% end %>
+
+          </div>
+
         </div>
 
     </div>

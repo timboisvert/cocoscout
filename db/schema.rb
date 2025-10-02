@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_02_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -225,6 +225,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "production_id", null: false
+    t.integer "location_id"
+    t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
@@ -292,6 +294,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "socials", "people"
   add_foreign_key "team_invitations", "production_companies"

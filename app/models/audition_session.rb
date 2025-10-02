@@ -1,9 +1,11 @@
-
-
 class AuditionSession < ApplicationRecord
   belongs_to :production
   has_many :auditions, dependent: :destroy
   belongs_to :location, dependent: :destroy
+
+  validates :start_at, presence: true
+  validates :production, presence: true
+  validates :location, presence: true
 
   def display_name
     "#{production.name} - #{start_at.strftime("%-m/%-d/%Y %l:%M %p")}"
