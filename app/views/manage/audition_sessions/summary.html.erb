@@ -48,7 +48,7 @@
         <% end %>
 
         <% auditioned_person_ids = @audition_sessions.flat_map { |s| s.auditions.map(&:person_id) }.uniq %>
-        <% unassigned_requests = @production.audition_requests(filter: "all").reject { |req| auditioned_person_ids.include?(req.person_id) } %>
+        <% unassigned_requests = @production.audition_requests.reject { |req| auditioned_person_ids.include?(req.person_id) } %>
         <% if unassigned_requests.any? %>
           <div class="pb-4 mb-4">
             <div class="text-lg font-bold col-span-4 pr-10 w-full">
