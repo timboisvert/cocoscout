@@ -52,8 +52,8 @@ class Person < ApplicationRecord
   end
 
   def headshot_content_type
-    if headshot.attached? && !headshot.content_type.in?(%w[image/jpeg image/png])
-      errors.add(:headshot, "Headshot must be a JPEG or PNG file")
+    if headshot.attached? && !headshot.content_type.in?(%w[image/jpeg image/jpgimage/png])
+      errors.add(:headshot, "Headshot must be a JPEG, JPG, or PNG file")
     end
   end
 end

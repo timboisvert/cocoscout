@@ -41,30 +41,45 @@
   <div class="my-5">
     <%= form.label :secondary_name %>
     <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-    <%= form.text_field :secondary_name, class: ["w-128 shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400 focus:outline-pink-500": @show.errors[:secondary_name].none?, "border-red-400 focus:outline-pink-500": @show.errors[:secondary_name].any?}] %>
+    <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400 focus:outline-pink-500": @show.errors[:secondary_name].none?, "border-red-400 focus:outline-pink-500": @show.errors[:secondary_name].any?}] %>
   </div>
 
-  <div class="text-md pt-5">Show Poster</div>
-  <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
-      <div class="md:mr-5 w-full">
+  <% if @show.poster.attached? %>
+    <div class="text-md pt-5">Show Poster</div>
+    <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
+        <div class="w-full">
 
-          <% if @show.poster.attached? %>
-              <div class="mb-4">
-                  <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
-              </div>
-          <% end %>
+            <% if @show.poster.attached? %>
+                <div class="mb-4">
+                    <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
+                </div>
+            <% end %>
 
-          <div class="flex items-center justify-between">
-            <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
-            <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-          </div>
+            <div class="flex items-center justify-between">
+              <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
+              <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+            </div>
 
-          <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-              <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-          </div>
+            <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+            </div>
 
-      </div>
-  </div>
+        </div>
+    </div>
+  <% else %>
+    <div class="text-md pt-5">Show Poster</div>
+    <div class="mr-5 inline-block">
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+        </div>
+
+        <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+            <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+        </div>
+
+    </div>
+  <% end %>
 
   <div class="mt-10" data-controller="show-links">
     <label>Show Links</label>

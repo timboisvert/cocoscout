@@ -49,52 +49,82 @@
 
     <div class="my-5 md:flex md:w-full">
         <div class="md:mr-5 md:w-half">
+            <% if @person.headshot.attached? %>
+                <div class="text-md">Headshot</div>
+                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
+                    <div class="w-full">
 
-            <%
-            if @person.headshot.attached?
-                label_text = "Update your Headshot"
-            else
-                label_text = "Headshot"
-            end
-            %>
+                        <% if @person.headshot.attached? %>
+                            <div class="mb-4">
+                                <%= image_tag url_for(@person.headshot), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
+                            </div>
+                        <% end %>
 
-            <%= person_form.label :headshot, label_text %>
+                        <div class="flex items-center justify-between">
+                            <%= person_form.label :image, "Update Headshot:", class: "text-sm" %>
+                            <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                        </div>
 
-            <% if @person.errors[:headshot].any? %>
-                <div class="text-sm text-pink-600">
-                    <%= @person.errors[:headshot].join(", ") %>
+                        <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                            <%= person_form.file_field :headshot, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        </div>
+
+                    </div>
                 </div>
             <% else %>
-                <span class="text-sm text-gray-500"> (JPG or PNG)</span>
-            <% end %>
+                <div class="text-md pt-5">Show Poster</div>
+                <div class="mr-5 inline-block">
 
-            <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 w-half border-gray-400">
-                <%= person_form.file_field :headshot, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-            </div>
+                    <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                    </div>
+
+                    <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                        <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                    </div>
+
+                </div>
+            <% end %>
         </div>
-        <div class="my-5 md:my-0 md:ml-5 md:w-half">
 
-            <%
-            if @person.resume.attached?
-                label_text = "Update your Resume/CV"
-            else
-                label_text = "Resume/CV"
-            end
-            %>
+        <div class="md:my-0 md:ml-5 md:w-half">
+            <% if @person.resume.attached? %>
+                <div class="text-md">Resume</div>
+                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
+                    <div class="w-full">
 
-            <%= person_form.label :resume, label_text %>
+                        <% if @person.resume.attached? && @person.resume.previewable? %>
+                            <div class="mb-4">
+                                <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
+                            </div>
+                        <% end %>
 
-            <% if @person.errors[:resume].any? %>
-                <div class="text-sm text-pink-600">
-                    <%= @person.errors[:resume].join(", ") %>
+                        <div class="flex items-center justify-between">
+                            <%= person_form.label :image, "Update Resume:", class: "text-sm" %>
+                            <span class="text-sm text-gray-500">(PDF, JPG, or PNG)</span>
+                        </div>
+
+                        <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                            <%= person_form.file_field :headshot, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        </div>
+
+                    </div>
                 </div>
             <% else %>
-                <span class="text-sm text-gray-500"> (PDF, JPG, or PNG)</span>
-            <% end %>
+                <div class="text-md pt-5">Show Poster</div>
+                <div class="mr-5 inline-block">
 
-            <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 w-half border-gray-400">
-                <%= person_form.file_field :resume, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-            </div>
+                    <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                    </div>
+
+                    <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                        <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                    </div>
+
+                </div>
+            <% end %>
         </div>
     </div>
+
 </div>

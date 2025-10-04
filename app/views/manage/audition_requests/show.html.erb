@@ -15,7 +15,7 @@
       <div class="w-full sm:w-[60%] h-screen bg-gray-100 flex flex-col">
         <% if @person.resume.attached? && @person.resume.previewable? %>
           <div class="w-full">
-        <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
+            <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
           </div>
         <% else %>
           <p class="text-center mt-10">No resume found</p>
