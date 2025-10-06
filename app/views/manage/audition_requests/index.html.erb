@@ -77,7 +77,7 @@
                   classes += " bg-pink-500 hover:bg-pink-600 text-white"
                 end
             %>
-            <%= link_to status.capitalize, manage_production_call_to_audition_audition_request_set_status_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+            <%= link_to status.capitalize, audition_request_set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
           <% end %>
         </div>
       </div>

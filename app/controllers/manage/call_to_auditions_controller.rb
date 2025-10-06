@@ -1,6 +1,6 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
-  before_action :set_call_to_audition, only: %i[ edit update destroy preview ]
+  before_action :set_call_to_audition, only: %i[ edit form update destroy preview ]
 
   # Skip the sidebar on the preview
   skip_before_action :show_manage_sidebar, only: %i[ preview ]
@@ -8,16 +8,10 @@ class Manage::CallToAuditionsController < Manage::ManageController
   # Use the public facing layout on the preview
   layout "application"
 
-  # GET /call_to_auditions/new
   def new
     @call_to_audition = CallToAudition.new
   end
 
-  # GET /call_to_auditions/1/edit
-  def edit
-  end
-
-  # POST /call_to_auditions
   def create
     @call_to_audition = CallToAudition.new(call_to_audition_params)
     @call_to_audition.production = @production
@@ -37,7 +31,12 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
   end
 
-  # PATCH/PUT /call_to_auditions/1
+  def edit
+  end
+
+  def form
+  end
+
   def update
     if @call_to_audition.update(call_to_audition_params)
       redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully updated.", status: :see_other

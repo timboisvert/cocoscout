@@ -104,10 +104,16 @@ Rails.application.routes.draw do
 
       resources :call_to_auditions do
         resources :questions
-        resources :audition_requests
-        post "audition_requests/:id/set_status/:status", to: "audition_requests#set_status", as: "audition_request_set_status"
+        resources :audition_requests do
+          member do
+            post "set_status/:status",  to: "audition_requests#set_status", as: "audition_request_set_status"
+          end
+        end
+        member do
+          get  "form",      to: "call_to_auditions#form",     as: "form"
+          get  "preview",   to: "call_to_auditions#preview",  as: "preview"
+        end
       end
-      get "call_to_auditions/:id/preview", to: "call_to_auditions#preview", as: "call_to_audition_preview"
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
       resources :audition_sessions do
