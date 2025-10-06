@@ -18,19 +18,51 @@
     <% end %>
 
     <% @production.call_to_auditions.order(:opens_at).each do |call_to_audition| %>
-      <div class="w-full mt-5">
-
-      <div class="flex flex-row justify-between items-center">
+      <div class="w-full mt-5 flex flex-row justify-between items-top">
         <div class="w-1/2">
 
-          <div class="text-lg font-bold">
+          <div class="text-xs">
             <% if call_to_audition.timeline_status == :upcoming %>
-              Your audition sign-up window will open soon
+
+              <p>Your sign-up window for</p>
+
+              <% if call_to_audition.audition_type == "in_person" %>
+                <p>In-person Auditions</p>
+              <% elsif call_to_audition.audition_type == "video_upload" %>
+                <p>Video Upload Auditions</p>
+              <% end %>
+              <p>will open soon</p>
+
             <% elsif call_to_audition.timeline_status == :open %>
-              You are currently accepting audition sign-ups
+
+              <p>You are currently accepting sign-ups for</p>
+
+              <% if call_to_audition.audition_type == "in_person" %>
+                <p class="text-lg font-bold">In-person Auditions</p>
+              <% elsif call_to_audition.audition_type == "video_upload" %>
+                <p class="text-lg font-bold">Video Upload Auditions</p>
+              <% end %>
+
+              <p>via the Sign-up form</p>
+
             <% else %>
-              Your audition sign-up window is currently closed
+
+              <p>Your sign-up window for</p>
+
+              <% if call_to_audition.audition_type == "in_person" %>
+                <p>In-person Auditions</p>
+              <% elsif call_to_audition.audition_type == "video_upload" %>
+                <p>Video Upload Auditions</p>
+              <% end %>
+
+              <p>is currently closed</p>
+
             <% end %>
+
+            <div class="mt-5">
+              <%= render partial: "shared/link_button", locals: {text: "Manage Audition Settings", path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+            </div>
+
           </div>
 
         </div>
@@ -90,7 +122,7 @@
 
           <%= render partial: "shared/top_menu", locals: {
             breadcrumbs: [],
-            text: "Audition Sign-ups",
+            text: "Sign-ups",
             links: []
           } %>
 
@@ -120,76 +152,80 @@
               </div>
             <% end %>
           </div>
-          <%= render partial: "shared/link_button", locals: {text: "View all Audition Sign-ups", path: manage_production_call_to_audition_audition_requests_path(@production, call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "View all Sign-ups", path: manage_production_call_to_audition_audition_requests_path(@production, call_to_audition)} %>
 
       </div>
-    </div>
 
-    <div class="w-full mt-10">
-      <%= render partial: "shared/top_menu", locals: {
-        breadcrumbs: [],
-        text: "Audition Sessions",
-        links: []
-      } %>
+      <% if call_to_audition.audition_type == "in_person" %>
+        <div class="w-full mt-10">
+          <%= render partial: "shared/top_menu", locals: {
+            breadcrumbs: [],
+            text: "In-Person Sessions",
+            links: []
+          } %>
 
-      <div class="grid grid-cols-1">
-        <% if @production.audition_sessions.any? %>
-          <div class="grid grid-cols-1 gap-1 mb-2">
-            <% @production.audition_sessions.each do |session| %>
-              <%= link_to manage_production_audition_session_path(@production, session) do %>
-                <div class="p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-                  <div class="flex flex-row items-center justify-between mb-2">
-                    <p class="text-md font-semibold"><%= session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p") %></p>
-                  </div>
-                  <% if session.auditions.any? %>
-                    <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full">
-                      <% session.auditions.each do |audition| %>
-                        <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+          <div class="grid grid-cols-1">
+            <% if @production.audition_sessions.any? %>
+              <div class="grid grid-cols-1 gap-1 mb-2">
+                <% @production.audition_sessions.each do |session| %>
+                  <%= link_to manage_production_audition_session_path(@production, session) do %>
+                    <div class="p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                      <div class="flex flex-row items-center justify-between mb-2">
+                        <p class="text-md font-semibold"><%= session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p") %></p>
+                      </div>
+                      <% if session.auditions.any? %>
+                        <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full">
+                          <% session.auditions.each do |audition| %>
+                            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
 
-                          <% if audition.person.headshot.present? %>
-                              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
-                          <% else %>
-                              <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
-                                  <%= audition.person.initials %>
-                              </div>
+                              <% if audition.person.headshot.present? %>
+                                  <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
+                              <% else %>
+                                  <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                                      <%= audition.person.initials %>
+                                  </div>
+                              <% end %>
+
+                              <span class="font-medium text-xs text-center"><%= audition.person.name.truncate(20, omission: '...') %></span>
+                            </div>
                           <% end %>
 
-                          <span class="font-medium text-xs text-center"><%= audition.person.name.truncate(20, omission: '...') %></span>
+                          <% if (!session.is_full? && !session.is_overbooked?) %>
+                            <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
+                                <div class="flex flex-col items-center justify-center">
+                                    Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
+                                </div>
+                            </span>
+                          <% end %>
+
                         </div>
+                      <% else %>
+                        <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
                       <% end %>
-
-                      <% if (!session.is_full? && !session.is_overbooked?) %>
-                        <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
-                            <div class="flex flex-col items-center justify-center">
-                                Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
-                            </div>
-                        </span>
-                      <% end %>
-
                     </div>
-                  <% else %>
-                    <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
                   <% end %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-        <% end %>
-
-        <div class="flex justify-between space-x-2">
-          <div>
-            <% if @production.audition_sessions.any? %>
-              <%= render partial: "shared/link_button", locals: {text: "Manage Audition Sessions", path: manage_production_audition_sessions_path(@production)} %>
+                <% end %>
+              </div>
             <% end %>
 
-            <%= render partial: "shared/link_button", locals: {text: "+ Schedule an Audition Session", path: new_manage_production_audition_session_path(@production)} %>
+            <div class="flex justify-between space-x-2">
+              <div>
+                <% if @production.audition_sessions.any? %>
+                  <%= render partial: "shared/link_button", locals: {text: "Manage Audition Sessions", path: manage_production_audition_sessions_path(@production)} %>
+                <% end %>
+
+                <%= render partial: "shared/link_button", locals: {text: "+ Schedule an Audition Session", path: new_manage_production_audition_session_path(@production)} %>
+              </div>
+              <div>
+                <%= render partial: "shared/link_button", locals: {text: "Audition Session Summary", path: manage_production_audition_session_summary_path(@production)} %>
+              </div>
+            </div>
+
           </div>
-          <div>
-            <%= render partial: "shared/link_button", locals: {text: "Audition Session Summary", path: manage_production_audition_session_summary_path(@production)} %>
-          </div>
+
         </div>
+      <% end %>
 
-      </div>
     <% end %>
   </div>
 </div>

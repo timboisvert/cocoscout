@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_02_120001) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_06_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -101,6 +101,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_02_120001) do
     t.string "token"
     t.text "header_text"
     t.text "success_text"
+    t.string "audition_type", default: "in_person", null: false
     t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
   end
 

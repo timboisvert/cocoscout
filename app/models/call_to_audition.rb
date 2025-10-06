@@ -1,5 +1,4 @@
 class CallToAudition < ApplicationRecord
-  belongs_to :production
   has_many :audition_requests, dependent: :destroy
   has_many :audition_sessions, dependent: :destroy
   has_many :questions, as: :questionable, dependent: :destroy
@@ -7,8 +6,15 @@ class CallToAudition < ApplicationRecord
   has_rich_text :header_text
   has_rich_text :success_text
 
+  belongs_to :production
+
   validates :opens_at, presence: true
   validates :closes_at, presence: true
+
+  enum :audition_type, {
+    in_person: "in_person",
+    video_upload: "video_upload"
+  }
 
   def production_name
     self.production.name
