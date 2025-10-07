@@ -22,8 +22,9 @@
       </div>
     <% end %>
 
-    <div class="my-10">
+    <div class="mt-5 mb-7">
       <%= form.label :audition_type, "Audition Type:" %>
+      <p class="text-sm text-gray-500">Choosing "In-Person" auditions will enable people to sign up for an audition, while "Video Upload" auditions will allow them to submit a video during the sign-up process.</p>
       <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400 focus:outline-pink-500" %>
     </div>
 
@@ -33,7 +34,7 @@
       links: []
     } %>
 
-    <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions.</p>
+    <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions above.</p>
 
     <div class="flex my-5">
       <div class="w-1/2 mr-5">

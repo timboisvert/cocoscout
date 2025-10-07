@@ -11,16 +11,6 @@
   } %>
 
   <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
-    <% if @call_to_audition.errors.any? %>
-      <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(@call_to_audition.errors.count, "error") %> prohibited this call_to_audition from being saved:</h2>
-        <ul class="list-disc ml-6">
-          <% call_to_audition.errors.each do |error| %>
-            <li><%= error.full_message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
 
     <div class="w-full" data-controller="tabs">
       <nav class="flex space-x-2 border-b border-gray-200 mb-4">

@@ -2,35 +2,58 @@
     show_delete = false if local_assigns[:show_delete].nil?
 %>
 
-<div class="p-5 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+<div class="">
+    <div class="flex flex-row items-start space-x-6">
+        <div class="flex-1">
+            <div class="text-4xl font-bold mt-3"><%= person.name.truncate(40, omission: "...") %></div>
 
-    <% if person.headshot.attached? %>
-        <%= image_tag url_for(person.headshot), class: "relative inline-block max-w-64 rounded-lg" %>
-    <% end %>
 
-    <div class="text-4xl font-bold mt-3"><%= person.name.truncate(40, omission: "...") %></div>
-    <% if person.pronouns.present? %>
-       <div class="text-sm text-gray-500">(<%= person.pronouns %>)</div>
-    <% end %>
+            <% if person.pronouns.present? %>
+                <div class="mt-5">
+                    <%= render partial: "shared/top_menu", locals: {
+                        breadcrumbs: [],
+                        text: "Pronouns",
+                        links: []
+                    } %>
+                </div>
+                <%= person.pronouns %>
+            <% end %>
 
-    <div class="flex items-center space-x-2 border-gray-200 mt-2">
-        <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/></svg>
-        <%= mail_to person.email, person.email, class: "text-pink-500 text-sm hover:underline" %>
-    </div>
-
-    <div class="space-y-1">
-        <% person.socials.each do |social| %>
-            <div class="flex items-center space-x-2">
-                <%= social.icon(20) %>
-                <%= link_to social.handle, social.url, class: "text-pink-500 text-sm hover:underline", target: "_blank", rel: "noopener" %>
+            <div class="mt-5">
+                <%= render partial: "shared/top_menu", locals: {
+                    breadcrumbs: [],
+                    text: "Email & Socials",
+                    links: []
+                } %>
             </div>
-        <% end %>
-    </div>
 
-    <div class="flex flex-col space-y-1 mt-2 ">
-        <%= link_to "Edit Person", edit_manage_person_path(person), class: "text-xs text-pink-500 underline" %>
-        <% if show_delete %>
-            <%= link_to "Delete Person", manage_person_path(person), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this person?" }, class: "text-xs text-pink-500 underline" %>
+            <div class="flex items-center space-x-2 border-gray-200 mt-4">
+                <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/></svg>
+                <%= mail_to person.email, person.email, class: "text-pink-500 text-sm hover:underline" %>
+            </div>
+
+            <div class="space-y-1 mt-1">
+                <% person.socials.each do |social| %>
+                    <div class="flex items-center space-x-2">
+                        <%= social.icon(20) %>
+                        <%= link_to social.handle, social.url, class: "text-pink-500 text-sm hover:underline", target: "_blank", rel: "noopener" %>
+                    </div>
+                <% end %>
+            </div>
+
+            <div class="flex flex-col space-y-1 mt-2 ">
+                <%= link_to "Edit Person", edit_manage_person_path(person), class: "text-xs text-pink-500 underline" %>
+                <% if show_delete %>
+                    <%= link_to "Delete Person", manage_person_path(person), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this person?" }, class: "text-xs text-pink-500 underline" %>
+                <% end %>
+            </div>
+
+        </div>
+
+        <% if person.headshot.attached? %>
+            <div class="flex-shrink-0 max-w-1/3 w-full">
+                <%= image_tag url_for(person.headshot), class: "relative inline-block rounded-lg w-full" %>
+            </div>
         <% end %>
     </div>
 
