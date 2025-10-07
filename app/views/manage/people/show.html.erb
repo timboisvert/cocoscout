@@ -12,48 +12,47 @@
     links: []
   } %>
 
-  <div id="<%= dom_id @person %>" class="w-full sm:w-auto my-5 space-y-5 mb-30">
-    <div class="flex flex-col sm:flex-row w-full gap-6">
-      <div class="w-full sm:w-[60%] h-screen bg-gray-100 flex flex-col">
-        <% if @person.resume.attached? && @person.resume.previewable? %>
-          <div class="w-full">
-        <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
-          </div>
-        <% else %>
-          <p class="text-center mt-10">No resume found</p>
-        <% end %>
-      </div>
-      <div class="w-full sm:w-[40%] flex flex-col">
+  <div class="w-full" data-controller="tabs">
+    <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Sign-ups</button>
+    </nav>
 
-        <%= render "shared/person_card", person: @person, show_delete: true %>
-
-        <div class="mt-2 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-
-          <div class="text-xl font-bold text-gray-900">Audition Requests</div>
-
-          <% if @person.audition_requests.any? %>
-            <% @person.audition_requests.each do |audition_request| %>
-              <div class="my-2">
-                <% if audition_request.call_to_audition %>
-                  <% if audition_request.call_to_audition.production %>
-                    <%= link_to audition_request.call_to_audition.production.name,
-                          manage_production_call_to_audition_audition_request_path(
-                            audition_request.call_to_audition.production, audition_request.call_to_audition, audition_request),
-                          class: "text-pink-500 hover:underline" %>
-                  <% end %>
-                <% end %>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="mt-2">No audition requests found.</p>
-          <% end %>
-
-        </div>
-
-
-      </div>
-
+    <div data-tabs-target="panel">
+      <%= render "shared/person_card", person: @person, show_delete_person: true %>
     </div>
+
+    <div data-tabs-target="panel" class="hidden">
+      <% if @person.resume.attached? && @person.resume.previewable? %>
+        <div class="w-full">
+          <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+        </div>
+      <% else %>
+        <p class="text-center mt-10">No resume found</p>
+      <% end %>
+    </div>
+
+    <div data-tabs-target="panel" class="hidden">
+      <% if @person.audition_requests.any? %>
+        <% @person.audition_requests.each do |audition_request| %>
+          <div class="my-2">
+            <% if audition_request.call_to_audition %>
+              <% if audition_request.call_to_audition.production %>
+                <%= link_to audition_request.call_to_audition.production.name,
+                      manage_production_call_to_audition_audition_request_path(
+                        audition_request.call_to_audition.production, audition_request.call_to_audition, audition_request),
+                      class: "text-pink-500 hover:underline" %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="mt-2">No audition requests found.</p>
+      <% end %>
+    </div>
+
+  </div>
 
 
 </div>
