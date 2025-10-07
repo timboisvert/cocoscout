@@ -22,9 +22,18 @@
       </div>
     <% end %>
 
-    <div class="w-full">
-      <p class="text-sm text-gray-500">When should this Call to Audition open and close? While it&apos;s open, members of the public will be able to request an audition.</p>
+    <div class="my-10">
+      <%= form.label :audition_type, "Audition Type:" %>
+      <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400 focus:outline-pink-500" %>
     </div>
+
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Sign-up Window",
+      links: []
+    } %>
+
+    <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions.</p>
 
     <div class="flex my-5">
       <div class="w-1/2 mr-5">
@@ -36,12 +45,6 @@
         <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @call_to_audition.errors[:closes_at].none?, "border-red-400 focus:outline-pink-500": @call_to_audition.errors[:closes_at].any?}] %>
       </div>
     </div>
-
-    <div class="my-5">
-      <%= form.label :audition_type, "Audition Type" %>
-      <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400 focus:outline-pink-500" %>
-    </div>
-
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>

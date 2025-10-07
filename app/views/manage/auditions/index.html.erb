@@ -167,43 +167,44 @@
           <div class="grid grid-cols-1">
             <% if @production.audition_sessions.any? %>
               <div class="grid grid-cols-1 gap-1 mb-2">
-                <% @production.audition_sessions.each do |session| %>
-                  <%= link_to manage_production_audition_session_path(@production, session) do %>
-                    <div class="p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-                      <div class="flex flex-row items-center justify-between mb-2">
-                        <p class="text-md font-semibold"><%= session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p") %></p>
-                      </div>
-                      <% if session.auditions.any? %>
-                        <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full">
-                          <% session.auditions.each do |audition| %>
-                            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-
-                              <% if audition.person.headshot.present? %>
-                                  <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
-                              <% else %>
-                                  <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                <% @production.audition_sessions.each_with_index do |session, idx| %>
+                  <div class="border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 %>>
+                    <div class="flex items-center cursor-pointer select-none p-4" data-action="click->show-toggle#toggle">
+                      <span data-show-toggle-target="icon" class="mr-2"></span>
+                      <p class="font-bold text-lg"><%= session.start_at.strftime("%A, %B %-d, %Y") %> &bull; <%= session.start_at.strftime("%l:%M %p") %></p>
+                    </div>
+                    <div data-show-toggle-target="content" class="hidden p-4 <%= 'hidden' unless idx == 0 %>">
+                      <%= link_to manage_production_audition_session_path(@production, session) do %>
+                        <div>
+                          <% if session.auditions.any? %>
+                            <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full">
+                              <% session.auditions.each do |audition| %>
+                                <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                                  <% if audition.person.headshot.present? %>
+                                    <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
+                                  <% else %>
+                                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                                       <%= audition.person.initials %>
-                                  </div>
-                              <% end %>
-
-                              <span class="font-medium text-xs text-center"><%= audition.person.name.truncate(20, omission: '...') %></span>
-                            </div>
-                          <% end %>
-
-                          <% if (!session.is_full? && !session.is_overbooked?) %>
-                            <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
-                                <div class="flex flex-col items-center justify-center">
-                                    Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
+                                    </div>
+                                  <% end %>
+                                  <span class="font-medium text-xs text-center"><%= audition.person.name.truncate(20, omission: '...') %></span>
                                 </div>
-                            </span>
+                              <% end %>
+                              <% if (!session.is_full? && !session.is_overbooked?) %>
+                                <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
+                                  <div class="flex flex-col items-center justify-center">
+                                    Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
+                                  </div>
+                                </span>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
                           <% end %>
-
                         </div>
-                      <% else %>
-                        <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
                       <% end %>
                     </div>
-                  <% end %>
+                  </div>
                 <% end %>
               </div>
             <% end %>
