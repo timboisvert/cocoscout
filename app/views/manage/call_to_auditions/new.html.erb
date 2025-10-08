@@ -12,33 +12,35 @@
   } %>
 
   <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
-    <% if @call_to_audition.errors.any? %>
-      <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(@call_to_audition.errors.count, "error") %> prohibited this call_to_audition from being saved:</h2>
-        <ul class="list-disc ml-6">
-          <% @call_to_audition.errors.each do |error| %>
-            <li><%= error.full_message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
-    <div class="w-full">
-      <h1 class="font-bold text-2xl">Dates</h1>
-      <p class="text-sm text-gray-500">When should this Call to Audition open and close? While it&apos;s open, members of the public will be able to request an audition.</p>
+    <div class="mt-5 mb-7">
+      <%= form.label :audition_type, "Audition Type:" %>
+      <p class="text-sm text-gray-500">Choosing "In-Person" auditions will enable people to sign up for an audition, while "Video Upload" auditions will allow them to submit a video during the sign-up process.</p>
+      <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400 focus:outline-pink-500" %>
     </div>
-    <div class="flex border-b-1 border-gray-200 mb-5">
-      <div class="my-5 w-1/2 mr-5">
+
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Sign-up Window",
+      links: []
+    } %>
+
+    <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions above.</p>
+
+    <div class="flex">
+      <div class="w-1/2 mr-5">
         <%= form.label :opens_at, "Open At:" %>
         <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @call_to_audition.errors[:opens_at].none?, "border-red-400 focus:outline-pink-500": @call_to_audition.errors[:opens_at].any?}] %>
       </div>
-      <div class="my-5 w-1/2 ml-5">
+      <div class="w-1/2 ml-5">
         <%= form.label :closes_at, "Close At:" %>
         <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @call_to_audition.errors[:closes_at].none?, "border-red-400 focus:outline-pink-500": @call_to_audition.errors[:closes_at].any?}] %>
       </div>
     </div>
-    <div class="inline">
-      <%= form.submit "Open", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white inline-block font-medium cursor-pointer" %>
+
+    <div class="w-full border-t border-gray-200 pt-5 my-5">
+      <%= form.submit "Open", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
     </div>
   <% end %>
-  <%= link_to "Back", manage_production_path(@production), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+
 </div>

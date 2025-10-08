@@ -7,9 +7,7 @@
             <% else %>
                 <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
             <% end %>
-            <% unless @cold_data_mode %>
-                <span class="text-sm text-gray-500"> (Your stage name or performing name)</span>
-            <% end %>
+            <span class="text-sm text-gray-500"> (Your stage name or performing name)</span>
             <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @person.errors[:name].any?}] %>
         </div>
 
@@ -72,7 +70,7 @@
                     </div>
                 </div>
             <% else %>
-                <div class="text-md pt-5">Show Poster</div>
+                <div class="text-md pt-2">Headshot</div>
                 <div class="mr-5 inline-block">
 
                     <div class="flex items-center justify-between">
@@ -80,7 +78,7 @@
                     </div>
 
                     <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                        <%= person_form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        <%= person_form.file_field :headshot, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                     </div>
 
                 </div>
@@ -111,15 +109,15 @@
                     </div>
                 </div>
             <% else %>
-                <div class="text-md pt-5">Show Poster</div>
+                <div class="text-md pt-2">Resume</div>
                 <div class="mr-5 inline-block">
 
                     <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                        <span class="text-sm text-gray-500">(PDF, JPG, or PNG)</span>
                     </div>
 
                     <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                        <%= person_form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        <%= person_form.file_field :resume, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                     </div>
 
                 </div>

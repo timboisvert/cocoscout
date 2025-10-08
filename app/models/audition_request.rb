@@ -11,6 +11,8 @@ class AuditionRequest < ApplicationRecord
     accepted: 3
   }
 
+  validates :video_url, presence: true, if: -> { call_to_audition&.audition_type == "video_upload" }
+
   def display_name
     person.name
   end

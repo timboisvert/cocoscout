@@ -25,7 +25,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     if @call_to_audition.save
-      redirect_to edit_manage_production_call_to_audition_path(@production, @call_to_audition), notice: "Call to Audition was successfully created."
+      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully scheduled."
     else
       render :new, status: :unprocessable_entity
     end
@@ -39,7 +39,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
 
   def update
     if @call_to_audition.update(call_to_audition_params)
-      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully updated.", status: :see_other
+      redirect_to manage_production_auditions_path(@production), notice: "Audition Settings successfully updated.", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end

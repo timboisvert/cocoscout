@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_06_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_08_140200) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -65,6 +65,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_06_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "status", default: 0
+    t.string "video_url"
     t.index ["call_to_audition_id"], name: "index_audition_requests_on_call_to_audition_id"
     t.index ["person_id"], name: "index_audition_requests_on_person_id"
   end

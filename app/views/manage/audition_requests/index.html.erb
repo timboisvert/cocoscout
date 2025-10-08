@@ -42,23 +42,13 @@
                   </div>
                 <% end %>
               </div>
-              <div>
-                <h6 class="font-medium text-xl">
-                  <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
-                  <% if audition_request.person.pronouns.present? %>
-                    <span class="text-sm font-normal text-gray-500">
-                      (<%= audition_request.person.pronouns %>)
-                    </span>
-                  <% end %>
-                </h6>
-                <p class="text-slate-500 text-sm">
-                  <%= audition_request.person.email %>
-                </p>
+              <div class="font-medium text-xl flex items-center h-12">
+                <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
               </div>
             </div>
           <% end %>
 
-          <div class="grid grid-cols-4 gap-0 items-start ml-auto">
+          <div class="grid grid-cols-4 gap-0 items-center ml-auto">
             <%
               [:unreviewed, :undecided, :accepted, :passed].each do |status|
               classes = "text-sm px-3 py-2 text-center border border-gray-200 text-nowrap"

@@ -13,10 +13,10 @@
       <% if Current.production.present? && !Current.production.new_record? %>
 
         <div class="flex h-14">
-          <%= link_to manage_production_path(Current.production), class: "flex-1 flex items-center justify-left bg-pink-50 hover:bg-pink-100 font-medium text-md px-4 h-full" do %>
-            <%= Current.production.name %>
+          <%= link_to manage_production_path(Current.production), class: "flex-1 flex items-center justify-left bg-pink-50 hover:bg-pink-100 font-medium text-md pl-4 h-full overflow-hidden whitespace-nowrap text-ellipsis" do %>
+            <span class="overflow-hidden whitespace-nowrap text-ellipsis block w-full"><%= Current.production.name %></span>
           <% end %>
-          <%= link_to manage_productions_path, class: "flex items-center justify-center px-2 h-full bg-pink-50 hover:bg-pink-100" do %>
+          <%= link_to manage_productions_path, class: "flex items-center justify-center px-2 h-full bg-pink-50 hover:bg-pink-100 flex-shrink-0" do %>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>

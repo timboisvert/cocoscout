@@ -21,7 +21,12 @@
 
   <div class="w-full max-w-4xl mx-auto mt-15 mb-20">
     <h1 class="font-bold text-4xl pt-4"><%= @production.name %></h1>
-    <h2 class="font-bold text-2xl pt-5">Apply for an audition</h2>
+
+    <% if @call_to_audition.audition_type == "in_person" %>
+      <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
+    <% elsif @call_to_audition.audition_type == "video_upload" %>
+      <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
+    <% end %>
 
     <% if @call_to_audition.header_text.present? %>
       <div class="pt-5">
@@ -30,18 +35,6 @@
     <% end %>
 
     <%= form_with(model: @audition_request, url: "", method: :get, class: "contents", data: { turbo: false }) do |form| %>
-
-      <% if @audition_request.errors.any? %>
-        <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-          <h2><%= pluralize(@audition_request.errors.count, "error") %> prohibited this audition_request from being saved:</h2>
-
-          <ul class="list-disc ml-6">
-            <% @audition_request.errors.each do |error| %>
-              <li><%= error.full_message %></li>
-            <% end %>
-          </ul>
-        </div>
-      <% end %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
 
@@ -83,6 +76,23 @@
         </div>
 
       </div>
+
+      <% if @call_to_audition.audition_type == "video_upload" %>
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
+          <div class="p-5 flex items-top gap-4">
+            <div class="w-full">
+
+                <% if @audition_request.errors[:video_url].none? %>
+                    <%= form.label :video_url, "Video URL" %>
+                    <span class="text-sm text-gray-500"> (eg. YouTube, Google Drive, etc.)</span>
+                <% else %>
+                    <%= form.label :video_url, "Video URL is required", class: "text-pink-600"  %>
+                <% end %>
+                <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @audition_request.errors[:video_url].none?, "border-pink-500 focus:outline-pink-500": @audition_request.errors[:video_url].any?}] %>
+            </div>
+          </div>
+        </div>
+      <% end %>
 
       <% if @questions.any? %>
         <% @questions.each do |question| %>
@@ -132,8 +142,16 @@
         <% end %>
       <% end %>
 
-      <div class="inline pb-5">
-        <%= form.submit "Submit", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      <div class="pb-5">
+
+        <%
+          if @call_to_audition.audition_type == "in_person"
+            submit_text = "Sign up"
+          elsif @call_to_audition.audition_type == "video_upload"
+            submit_text = "Submit video audition"
+          end
+        %>
+        <%= form.submit submit_text, class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
       </div>
 
     <% end %>

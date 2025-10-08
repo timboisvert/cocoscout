@@ -11,8 +11,8 @@
   <div class="w-full">
 
     <% if !@production.call_to_auditions.any? %>
-      <div class="mb-5">
-        You don&apos;t currently have any open Calls to Audition for this production.
+      <div class="mb-5 text-gray-500 text-sm">
+        You aren't currently offering auditions for <%= @production.name %>
       </div>
       <%= render partial: "shared/link_button", locals: {text: "Open a Call to Audition", path: new_manage_production_call_to_audition_path(@production)} %>
     <% end %>
@@ -27,10 +27,11 @@
               <p>Your sign-up window for</p>
 
               <% if call_to_audition.audition_type == "in_person" %>
-                <p>In-person Auditions</p>
+                <p class="text-lg font-bold">In-person Auditions</p>
               <% elsif call_to_audition.audition_type == "video_upload" %>
-                <p>Video Upload Auditions</p>
+                <p class="text-lg font-bold">Video Upload Auditions</p>
               <% end %>
+
               <p>will open soon</p>
 
             <% elsif call_to_audition.timeline_status == :open %>
@@ -49,10 +50,10 @@
 
               <p>Your sign-up window for</p>
 
-              <% if call_to_audition.audition_type == "in_person" %>
-                <p>In-person Auditions</p>
+               <% if call_to_audition.audition_type == "in_person" %>
+                <p class="text-lg font-bold">In-person Auditions</p>
               <% elsif call_to_audition.audition_type == "video_upload" %>
-                <p>Video Upload Auditions</p>
+                <p class="text-lg font-bold">Video Upload Auditions</p>
               <% end %>
 
               <p>is currently closed</p>
@@ -68,7 +69,26 @@
         </div>
         <div class="w-1/2 flex flex-col">
 
-          <% if call_to_audition.timeline_status == :open %>
+          <% if call_to_audition.timeline_status == :upcoming %>
+
+            <% if call_to_audition.opens_at < 2.days.from_now %>
+              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
+                <div>Sign-up window opens in</div>
+                <div data-countdown-target="clock" class="text-xl text-pink-500 font-bold"></div>
+                <div>
+                  <%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %>
+                  <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                </div>
+              </div>
+            <% else %>
+              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
+                <div>Sign-up window opens on</div>
+                <div class="text-xl font-bold"><%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %></div>
+                <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+              </div>
+            <% end %>
+
+           <% elsif call_to_audition.timeline_status == :open %>
 
             <% if call_to_audition.closes_at < 2.days.from_now %>
               <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
