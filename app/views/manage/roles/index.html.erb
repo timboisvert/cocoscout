@@ -32,22 +32,25 @@
     <% end %>
   </div>
 
-  <div class="w-full border-t border-gray-200 pt-4 mt-5">
-    <h1 class="font-bold text-2xl">Add a Role</h1>
+  <div class="w-full my-5"></div>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Add a Role",
+      links: []
+    } %>
+
+    <%= form_with(model: [:manage, @production, @role], class: "contents") do |form| %>
+      <div class="">
+        <% if @role.errors[:name].none? %>
+            <%= form.label :name, "Role Name:" %>
+        <% else %>
+            <%= form.label :name, "Role Name is required:", class: "text-pink-600"  %>
+        <% end %>
+        <%= form.text_field :name, class: ["inline-block shadow-sm rounded-lg border px-3 py-2 mt-2 w-96 ml-2", {"border-gray-400 focus:outline-pink-500": @role.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @role.errors[:name].any?}] %>
+        <%= form.submit "Create Role", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      </div>
+    <% end %>
+
   </div>
-
-  <%= form_with(model: [:manage, @production, @role], class: "contents") do |form| %>
-    <div class="mb-5">
-      <% if @role.errors[:name].none? %>
-          <%= form.label :name, "Role Name:" %>
-      <% else %>
-          <%= form.label :name, "Role Name is required:", class: "text-pink-600"  %>
-      <% end %>
-      <%= form.text_field :name, class: ["inline-block shadow-sm rounded-lg border px-3 py-2 mt-2 w-96 ml-2", {"border-gray-400 focus:outline-pink-500": @role.errors[:name].none?, "border-pink-500 focus:outline-pink-500": @role.errors[:name].any?}] %>
-      <%= form.submit "Create Role", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
-
-    </div>
-
-  <% end %>
 
 </div>

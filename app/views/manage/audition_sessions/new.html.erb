@@ -1,13 +1,13 @@
-<% content_for :title, "Schedule an Audition Session" %>
+<% content_for :title, "Schedule an In-person Session" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Audition Sessions", manage_production_audition_sessions_path(@production)]
+      ["In-person Sessions", manage_production_audition_sessions_path(@production)]
     ],
-    text: "Schedule an Audition Session",
+    text: "Schedule an In-person Session",
     links: []
   } %>
 

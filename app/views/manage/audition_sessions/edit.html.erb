@@ -5,9 +5,9 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Audition Sessions", manage_production_audition_sessions_path(@production)]
+      ["In-person Sessions", manage_production_audition_sessions_path(@production)]
     ],
-    text: "Reschedule Session scheduled for #{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
+    text: @audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p"),
     links: []
   } %>
 
