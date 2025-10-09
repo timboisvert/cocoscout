@@ -16,7 +16,11 @@
       <h1 class="mb-2 font-bold text-lg coustard-regular">Description</h1>
     </div>
     <div class="mb-5">
-      <%= @production.description %>
+      <% if @production.description.present? %>
+        <%= @production.description %>
+      <% else %>
+        <span class="text-sm text-gray-500">You haven't added a description. <%= link_to "Add a description", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+      <% end %>
     </div>
   </div>
 
@@ -79,7 +83,7 @@
         <% end %>
       </div>
     <% else %>
-      <div class="text-gray-500 text-sm mt-2">No posters added. <%= link_to "Add a Poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %></div>
+      <div class="text-gray-500 text-sm mt-2">No posters added. <%= link_to "Add a poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %></div>
     <% end %>
 
   </div>

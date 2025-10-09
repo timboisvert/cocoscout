@@ -1,4 +1,4 @@
-<% content_for :title, "Audition Requests" %>
+<% content_for :title, "Sign-ups" %>
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -35,7 +35,7 @@
     </nav>
 
     <div data-tabs-target="panel">
-      <%= render "shared/person_card", person: @person, show_delete_person: true, show_edit_signup: true, show_delete_signup: true %>
+      <%= render "shared/person_card", person: @person, show_delete_person: true, show_delete_signup: true %>
     </div>
 
     <div data-tabs-target="panel" class="hidden">
@@ -54,6 +54,12 @@
           <div class="mt-2">
             <%= render "manage/audition_requests/video", audition_request: @audition_request %>
           </div>
+          <div class="mt-2">
+            <%= link_to "Edit Video",
+                edit_video_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request),
+                class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
+            %>
+          </div>
         <% else %>
           <p class="text-center mt-10">No video uploaded</p>
         <% end %>
@@ -64,6 +70,12 @@
       <% if @answers.any? %>
         <div class="mt-2">
           <%= render "manage/audition_requests/answers", answers: @answers %>
+        </div>
+        <div class="mt-2">
+          <%= link_to "Edit Answers",
+              edit_answers_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request),
+              class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
+          %>
         </div>
       <% else %>
         <p class="text-center mt-10">No sign-up questions answered</p>
@@ -113,7 +125,7 @@
                 classes += " bg-white text-pink-500 hover:bg-pink-600 hover:text-white"
               end
           %>
-            <%= link_to manage_signup_status_name(status), audition_request_set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+            <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request, status: status), class: classes, data: { turbo_method: :post } %>
           <% end %>
         </div>
 

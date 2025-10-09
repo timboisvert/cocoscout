@@ -106,7 +106,9 @@ Rails.application.routes.draw do
         resources :questions
         resources :audition_requests do
           member do
-            post "set_status/:status",  to: "audition_requests#set_status", as: "audition_request_set_status"
+            get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
+            get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
+            post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
           end
         end
         member do

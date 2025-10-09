@@ -17,6 +17,7 @@ class Manage::ShowsController < Manage::ManageController
       if original.present?
         @show.date_and_time = original.date_and_time
         @show.secondary_name = original.secondary_name
+        @show.location = original.location
       end
     end
   end
