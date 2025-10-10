@@ -93,56 +93,54 @@
   </div>
 </div>
 
-<% if @call_to_audition.audition_type == "video_upload" %>
+<div class="fixed bottom-0 left-0 h-21 w-full bg-white text-pink-500 p-2 border-t-4 border-pink-500 pl-56">
+  <div class="grid grid-cols-4 gap-0">
 
-<% elsif @call_to_audition.audition_type == "in_person" %>
-  <div class="fixed bottom-0 left-0 h-21 w-full bg-white text-pink-500 p-2 border-t-4 border-pink-500 pl-56">
+    <div class="ml-auto align-right pr-5 pt-1">
+      <% if @audition_request.previous %>
+        <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request.previous) do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-10 w-10">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+          <p class="text-left text-xs">
+            Previous
+          </p>
+        <% end %>
+      <% end %>
+    </div>
 
-      <div class="grid grid-cols-4 gap-0">
-
-        <div class="ml-auto align-right pr-5 pt-1">
-          <% if @audition_request.previous %>
-            <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request.previous) do %>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-10 w-10">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-              </svg>
-              <p class="text-left text-xs">
-                Previous
-              </p>
-            <% end %>
+    <div class="grid grid-cols-3 gap-2 col-span-2 items-center content-center">
+        <% [:undecided, :accepted, :passed].each do |status| %>
+          <% classes = "text-md font-bold px-3 py-2 text-center border rounded-lg border-gray-200 " %>
+          <% if @audition_request.status == status.to_s %>
+            <% classes += " bg-pink-500 text-white hover:bg-pink-600 hover:text-white" %>
+          <% else %>
+            <% classes += " bg-white text-pink-500 hover:bg-pink-600 hover:text-white" %>
           <% end %>
-        </div>
-
-        <div class="grid grid-cols-3 gap-2 col-span-2 items-center content-center">
-          <%
-            [:undecided, :accepted, :passed].each do |status|
-              classes = "text-md font-bold px-3 py-2 text-center border rounded-lg border-gray-200 "
-
-              # Set the background color based on status
-              if @audition_request.status == status.to_s
-                classes += " bg-pink-500 text-white hover:bg-pink-600 hover:text-white"
-              else
-                classes += " bg-white text-pink-500 hover:bg-pink-600 hover:text-white"
-              end
-          %>
-            <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+          <% count = @status_counts[status.to_s] || 0 %>
+          <%= link_to set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request, status: status), class: classes, data: { turbo_method: :post } do %>
+            <span class="w-full flex justify-center items-center">
+              <span class="flex w-full justify-center items-center relative">
+                <span class="mx-auto"><%= manage_signup_status_name(status) %></span>
+                <span class="absolute right-0 top-1/2 -translate-y-1/2 text-sm font-normal p-2"><%= count %></span>
+              </span>
+            </span>
           <% end %>
-        </div>
+        <% end %>
+    </div>
 
-        <div class="pl-5 pt-1 mr-auto align-left">
-          <% if @audition_request.next %>
-            <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request.next) do %>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-10 w-10">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-              </svg>
-              <p class="text-center text-xs">
-                Next
-              </p>
-            <% end %>
-          <% end %>
-        </div>
-
-      </div>
+    <div class="pl-5 pt-1 mr-auto align-left">
+      <% if @audition_request.next %>
+        <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request.next) do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-10 w-10">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
+          <p class="text-center text-xs">
+            Next
+          </p>
+        <% end %>
+      <% end %>
+    </div>
 
   </div>
-<% end %>
+</div>

@@ -34,6 +34,9 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
     # Get the answers
     @answers = @audition_request.answers.includes(:question)
+
+    # Get status counts for buttons
+    @status_counts = @call_to_audition.audition_requests.group(:status).count
   end
 
   def new
