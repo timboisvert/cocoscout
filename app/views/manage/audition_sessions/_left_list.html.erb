@@ -1,6 +1,6 @@
 <div class="p-4 rounded-lg border border-gray-200" id="left_panel">
 
-    <h2 class="font-semibold text-lg mb-1">Audition Requests</h2>
+    <h2 class="font-semibold text-lg mb-1">Sign-ups</h2>
 
     <span class="text-sm text-gray-500 mb-3 block">
         Drag each person from the list on the left to an audition slot on the right to schedule them.
@@ -12,7 +12,7 @@
                 data: { turbo_prefetch: false },
                 class: "px-3 py-1 rounded-md border text-sm #{(filter.blank? || filter == "to_be_scheduled") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
-        <%= link_to "All Offered an Audition",
+        <%= link_to "All Yes",
                 manage_production_audition_sessions_path(production, filter: "accepted"),
                 data: { turbo_prefetch: false },
                 class: "px-3 py-1 rounded-md border text-sm #{(filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"

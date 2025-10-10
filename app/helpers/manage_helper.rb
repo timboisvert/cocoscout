@@ -8,9 +8,9 @@ module ManageHelper
     when :undecided, "undecided"
       "Revisit"
     when :passed, "passed"
-      "Don't Offer"
+      "No"
     when :accepted, "accepted"
-      "Offer Audition"
+      "Yes"
     end
   end
 end
