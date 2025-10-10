@@ -1,8 +1,6 @@
 class AuthController < ApplicationController
-  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password ]
+  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset]
   rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later." }
-
-  # before_action :set_user_by_token, only: %i[ edit_password handle_edit_password ]
 
   skip_before_action :show_my_sidebar
 
@@ -38,7 +36,7 @@ class AuthController < ApplicationController
       # The user has been created, so log them in
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
-        UserMailer.welcome_email(@user).deliver_later
+        AuthMailer.signup(@user).deliver_later
         redirect_to(session.delete(:return_to) || my_dashboard_path) and return
       else
         render :signup, status: :unprocessable_entity
@@ -50,6 +48,16 @@ class AuthController < ApplicationController
 
   def signin
     @user = User.new
+
+    if session[:password_reset_instructions_sent] == true
+      session.delete(:password_reset_instructions_sent)
+      @password_reset_instructions_sent = true
+    end
+
+    if session[:password_successfully_reset] == true
+      session.delete(:password_successfully_reset)
+      @password_successfully_reset = true
+    end
   end
 
   def handle_signin
@@ -81,37 +89,48 @@ class AuthController < ApplicationController
   end
 
   def password
+    if session[:reset_link_expired_or_invalid] == true
+      session.delete(:reset_link_expired_or_invalid)
+      @reset_link_expired_or_invalid = true
+    end
   end
 
   def handle_password
     if user = User.find_by(email_address: params[:email_address])
-      # PasswordsMailer.reset(user).deliver_later
+      token = SecureRandom.urlsafe_base64(32)
+      user.update(password_reset_token: token, password_reset_sent_at: Time.current)
+      AuthMailer.password(user, token).deliver_later
     end
-
-    redirect_to signin_path, notice: "Password reset instructions sent (if user with that email address exists)."
+    session[:password_reset_instructions_sent] = true
+    redirect_to signin_path and return
   end
 
-  # def edit_password
-  # end
+  def reset
+    @user = User.find_by(password_reset_token: params[:token])
+    if @user.nil? || @user.password_reset_sent_at < 2.hours.ago
+      session[:reset_link_expired_or_invalid] = true
+      redirect_to password_path and return
+    end
+  end
 
-  # def handle_edit_password
-  #   if @user.update(params.permit(:password))
-  #     redirect_to new_session_path, notice: "Password has been reset."
-  #   else
-  #     redirect_to edit_password_path(params[:token]), alert: "Passwords did not match."
-  #   end
-  # end
-
+  def handle_reset
+    @user = User.find_by(password_reset_token: params[:token])
+    if @user.nil? || @user.password_reset_sent_at < 2.hours.ago
+      session[:reset_link_expired_or_invalid] = true
+      redirect_to password_path and return
+    end
+    if @user.update(password: params[:password], password_reset_token: nil, password_reset_sent_at: nil)
+      session[:password_successfully_reset] = true
+      redirect_to signin_path and return
+    else
+      @password_unsuccessfully_reset = true
+      render :reset
+    end
+  end
 
   private
 
   def user_params
     params.require(:user).permit(:email_address, :password)
   end
-
-  # def set_user_by_token
-  #   @user = User.find_by_password_reset_token!(params[:token])
-  # rescue ActiveSupport::MessageVerifier::InvalidSignature
-  #   redirect_to new_password_path, alert: "Password reset link is invalid or has expired."
-  # end
 end

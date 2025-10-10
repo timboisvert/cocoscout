@@ -10,13 +10,15 @@ Rails.application.routes.draw do
   get "/notify_me/success", to: "home#notify_me_success", as: "notify_me_success"
 
   # Authentication
-  get   "/signup",    to: "auth#signup",          as: "signup"
-  post  "/signup",    to: "auth#handle_signup",   as: "handle_signup"
-  get   "/signin",    to: "auth#signin",          as: "signin"
-  post  "/signin",    to: "auth#handle_signin",   as: "handle_signin"
-  get   "/signout",   to: "auth#signout",         as: "signout"
-  get   "/password",  to: "auth#password",        as: "password"
-  post  "/password",  to: "auth#handle_password", as: "handle_password"
+  get   "/signup",        to: "auth#signup",          as: "signup"
+  post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
+  get   "/signin",        to: "auth#signin",          as: "signin"
+  post  "/signin",        to: "auth#handle_signin",   as: "handle_signin"
+  get   "/signout",       to: "auth#signout",         as: "signout"
+  get   "/password",      to: "auth#password",        as: "password"
+  post  "/password",      to: "auth#handle_password", as: "handle_password"
+  get   "/reset/:token",  to: "auth#reset",           as: "reset"
+  post  "/reset/:token",  to: "auth#handle_reset",    as: "handle_reset"
 
   # God mode
   scope "/god_mode" do

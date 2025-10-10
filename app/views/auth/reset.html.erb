@@ -1,0 +1,31 @@
+<div class="flex flex-col items-center mt-10">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+</div>
+
+<div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
+  <h1 class="text-xl font-bold mb-4 text-center">Set Password</h1>
+
+  <% if @reset_link_expired_or_invalid %>
+    <div class="text-pink-500">
+      Reset link expired or invalid. Please try again.
+    </div>
+  <% end %>
+
+  <% if @password_unsuccessfully_reset %>
+    <div class="text-pink-500">
+      Password couldn't be reset. Please try again.
+    </div>
+  <% end %>
+
+  <%= form_with url: reset_path(token: params[:token]), method: :post, local: true do |form| %>
+
+    <div class="mb-4">
+      <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: "Enter new password", maxlength: 72, class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full" %>
+    </div>
+
+    <div class="col-span-6 sm:flex sm:items-center sm:gap-4">
+      <%= form.submit "Set Password", class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+    </div>
+
+  <% end %>
+</div>

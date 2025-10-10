@@ -277,7 +277,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_08_140200) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "person_id"
+    t.string "password_reset_token"
+    t.datetime "password_reset_sent_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
     t.index ["person_id"], name: "index_users_on_person_id"
   end
 

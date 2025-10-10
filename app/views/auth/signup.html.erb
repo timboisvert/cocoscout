@@ -24,11 +24,12 @@
       <%= form.submit "Create Account", class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
     </div>
 
-    <div class="flex flex-col gap-1">
-      <%= link_to "Sign In", signin_path, class: "text-pink-500 underline text-xs mt-4" %>
-    </div>
   <% end %>
 
+</div>
+
+<div class="w-full text-center mx-auto p-6">
+    Already have a CocoScout account? <%= link_to "Sign In", signin_path, class: "text-pink-500 underline" %>
 </div>
 
 <div class="flex flex-col items-center mt-5">
