@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_10_150000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -65,6 +65,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "status", default: 0
+    t.string "video_url"
     t.index ["call_to_audition_id"], name: "index_audition_requests_on_call_to_audition_id"
     t.index ["person_id"], name: "index_audition_requests_on_person_id"
   end
@@ -101,6 +102,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.string "token"
     t.text "header_text"
     t.text "success_text"
+    t.string "audition_type", default: "in_person", null: false
     t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
   end
 
@@ -188,6 +190,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.integer "questionable_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "position"
+    t.index ["questionable_type", "questionable_id", "position"], name: "idx_qstnbl_type_id_pos"
     t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
   end
 
@@ -208,6 +212,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "show_links", force: :cascade do |t|
+    t.integer "show_id", null: false
+    t.string "url", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id"], name: "index_show_links_on_show_id"
+  end
+
   create_table "show_person_role_assignments", force: :cascade do |t|
     t.integer "show_id", null: false
     t.integer "person_id", null: false
@@ -225,6 +237,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "production_id", null: false
+    t.integer "location_id"
+    t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
@@ -265,7 +279,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "person_id"
+    t.string "password_reset_token"
+    t.datetime "password_reset_sent_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
     t.index ["person_id"], name: "index_users_on_person_id"
   end
 
@@ -289,9 +306,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_26_120000) do
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
+  add_foreign_key "show_links", "shows"
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "socials", "people"
   add_foreign_key "team_invitations", "production_companies"

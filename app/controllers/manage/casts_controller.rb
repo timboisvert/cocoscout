@@ -57,7 +57,7 @@ class Manage::CastsController < Manage::ManageController
 
   private
     def set_production
-      @production = Production.find(params.require(:production_id))
+      @production = Current.production_company.productions.find(params.require(:production_id))
     end
 
     def set_cast

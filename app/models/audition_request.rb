@@ -1,4 +1,3 @@
-
 class AuditionRequest < ApplicationRecord
   belongs_to :call_to_audition
   belongs_to :person
@@ -10,6 +9,8 @@ class AuditionRequest < ApplicationRecord
     passed: 2,
     accepted: 3
   }
+
+  validates :video_url, presence: true, if: -> { call_to_audition&.audition_type == "video_upload" }
 
   def display_name
     person.name

@@ -1,20 +1,17 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
-  before_action :set_call_to_audition, only: %i[ edit update destroy preview ]
+  before_action :set_call_to_audition, only: %i[ edit form update destroy preview ]
+
+  # Skip the sidebar on the preview
+  skip_before_action :show_manage_sidebar, only: %i[ preview ]
 
   # Use the public facing layout on the preview
   layout "application"
 
-  # GET /call_to_auditions/new
   def new
     @call_to_audition = CallToAudition.new
   end
 
-  # GET /call_to_auditions/1/edit
-  def edit
-  end
-
-  # POST /call_to_auditions
   def create
     @call_to_audition = CallToAudition.new(call_to_audition_params)
     @call_to_audition.production = @production
@@ -28,16 +25,21 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     if @call_to_audition.save
-      redirect_to edit_manage_production_call_to_audition_path(@production, @call_to_audition), notice: "Call to Audition was successfully created."
+      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully scheduled."
     else
       render :new, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /call_to_auditions/1
+  def edit
+  end
+
+  def form
+  end
+
   def update
     if @call_to_audition.update(call_to_audition_params)
-      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully updated.", status: :see_other
+      redirect_to manage_production_auditions_path(@production), notice: "Audition Settings successfully updated.", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -52,13 +54,13 @@ class Manage::CallToAuditionsController < Manage::ManageController
   def preview
     @audition_request = AuditionRequest.new
     @person = @audition_request.build_person
-    @questions = @call_to_audition.questions.order(:created_at) # TODO Change this to be re-arrangeable
+    @questions = @call_to_audition.questions.order(:position)
     @answers = {}
   end
 
   private
    def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_call_to_audition
@@ -66,6 +68,6 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     def call_to_audition_params
-      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :header_text, :success_text, :token ])
+      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :success_text, :token ])
     end
 end

@@ -91,6 +91,10 @@ class My::RespondToCallToAuditionController < ApplicationController
 
     end
 
+    # Assign the submitted attributes to the audition request
+    @audition_request.assign_attributes(person_params.except(:person))
+
+    # Validate and save
     if @audition_request.valid?
 
       # Update the person with any updated details
@@ -123,7 +127,7 @@ class My::RespondToCallToAuditionController < ApplicationController
 
   def get_call_to_audition_and_questions
     @call_to_audition = CallToAudition.find_by(token: params[:token].upcase)
-    @questions = @call_to_audition.questions.order(:created_at) if @call_to_audition.present? # TODO Change this to be re-arrangeable
+    @questions = @call_to_audition.questions.order(:position) if @call_to_audition.present?
 
     if @call_to_audition.nil?
       redirect_to root_path, alert: "Invalid call to audition"
@@ -135,7 +139,7 @@ class My::RespondToCallToAuditionController < ApplicationController
 
   def ensure_call_to_audition_is_open
     unless @call_to_audition.timeline_status == :open
-      redirect_to respond_to_call_to_audition_inactive_path(token: @call_to_audition.token), status: :see_other
+      redirect_to my_respond_to_call_to_audition_inactive_path(token: @call_to_audition.token), status: :see_other
     end
   end
 
@@ -148,6 +152,6 @@ class My::RespondToCallToAuditionController < ApplicationController
   private
 
   def person_params
-    params.require(:audition_request).permit(person: [ :name, :pronouns, :resume, :headshot, socials_attributes: [ :id, :platform, :handle, :_destroy ] ])
+    params.require(:audition_request).permit(:video_url, person: [ :name, :pronouns, :resume, :headshot, socials_attributes: [ :id, :platform, :handle, :_destroy ] ])
   end
 end

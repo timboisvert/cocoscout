@@ -1,36 +1,55 @@
-<% content_for :title, "Audition Requests" %>
+<% content_for :title, "Sign-ups" %>
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)]
     ],
-    text: "Audition Requests",
+    text: "Sign-ups",
     links: [
       {
-        text: "+ Manually Request an Audition",
+        text: "+ Manually Create a Sign-up",
         path: new_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition)
       }
     ]
   } %>
 
-  <div class="flex mb-4 items-center">
-    <p>
-      Filter:
-    </p>
-    <div class="flex gap-1 ml-2">
-      <% ["All", "Unreviewed", "Undecided", "Accepted", "Passed"].each do |status| %>
-        <% status_param = status.downcase == "all" ? nil : status.downcase %>
-        <%= link_to status, manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, status: status_param), class: "px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 #{'bg-pink-500 text-white hover:text-black' if params[:status] == status_param || (params[:status].blank? && status_param.nil?)}" %>
-      <% end %>
+  <div class="flex w-full space-x-2 mb-4">
+    <div class="flex flex-1 space-x-1">
+      <%= link_to "All",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "all"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Unreviewed",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "unreviewed"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "unreviewed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Revisit",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "undecided"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "undecided") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Yes",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "accepted"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "No",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "passed"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "passed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
     </div>
   </div>
 
   <div class="grid grid-cols-1 gap-2 mb-4">
     <% if @audition_requests.any? %>
       <% @audition_requests.each do |audition_request| %>
-        <div class="flex w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-          <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request), class: "flex items-center gap-4 mr-auto", data: { turbo_prefetch: false } do %>
+        <div class="flex w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-center">
+
+          <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request), class: "flex items-center gap-4 w-1/2", data: { turbo_prefetch: false } do %>
             <div class="grid place-items-left grid-cols-[auto_1fr] gap-4 mr-auto">
               <div class="grid place-items-center">
                 <% if audition_request.person.headshot.attached? %>
@@ -41,60 +60,51 @@
                   </div>
                 <% end %>
               </div>
-              <div>
-                <h6 class="font-medium text-xl">
-                  <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
-                  <% if audition_request.person.pronouns.present? %>
-                    <span class="text-sm font-normal text-gray-500">
-                      (<%= audition_request.person.pronouns %>)
-                    </span>
-                  <% end %>
-                </h6>
-                <p class="text-slate-500 text-sm">
-                  <%= audition_request.person.email %>
-                </p>
+              <div class="font-medium text-xl flex items-center h-12">
+                <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
               </div>
             </div>
           <% end %>
-          <div class="grid grid-cols-4 gap-0 ml-auto">
+
+          <div class="grid grid-cols-4 gap-0 items-center ml-auto">
             <%
               [:unreviewed, :undecided, :accepted, :passed].each do |status|
-                classes = "text-md px-5 py-2.5 text-center border border-gray-200"
+              classes = "text-sm px-3 py-2 text-center border border-gray-200 text-nowrap"
 
-                # Set the borders based on position in the list of statuses
-                if status == :unreviewed
-                  classes += " rounded-l-lg"
-                elsif status == :undecided
-                  classes += " border-l-0"
-                elsif status == :accepted
-                  classes += " border-l-0"
-                elsif status == :passed
-                  classes += " rounded-r-lg"
-                end
+              # Set the borders based on position in the list of statuses
+              if status == :unreviewed
+                classes += " rounded-l-lg"
+              elsif status == :undecided
+                classes += " border-l-0"
+              elsif status == :accepted
+                classes += " border-l-0"
+              elsif status == :passed
+                classes += " rounded-r-lg"
+              end
 
-                # Set the background color based on status
-                if audition_request.status == status.to_s
-                  classes += " bg-pink-500 hover:bg-pink-600 text-white"
-                end
+              # Set the background color based on status
+              if audition_request.status == status.to_s
+                classes += " bg-pink-500 hover:bg-pink-600 text-white"
+              end
             %>
-            <%= link_to status.capitalize, manage_production_call_to_audition_audition_request_set_status_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+            <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
           <% end %>
         </div>
       </div>
     <% end %>
   <% else %>
 
-    <p class="my-5">
-      <% if params[:status].blank? %>
-        No one has applied for an audition yet.
-      <% elsif params[:status] == "unreviewed" %>
-        You have no unreviewed audition requests.
-      <% elsif params[:status] == "undecided" %>
-        You have no undecided audition requests.
-      <% elsif params[:status] == "accepted" %>
-        You haven't accepted any audition requests.
-      <% elsif params[:status] == "passed" %>
-        You haven't passed on any audition requests.
+    <p class="text-gray-500 text-sm pt-2">
+      <% if @filter.blank? %>
+        No one has signed up for an audition yet.
+      <% elsif @filter == "unreviewed" %>
+        You have no unreviewed sign-ups
+      <% elsif @filter == "undecided" %>
+        You have no undecided sign-ups
+      <% elsif @filter == "accepted" %>
+        You haven't marked any sign-ups as a "yes"
+      <% elsif @filter == "passed" %>
+        You haven't marked any sign-ups as a "no"
       <% end %>
     </p>
   <% end %>

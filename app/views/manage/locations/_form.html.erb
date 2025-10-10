@@ -14,7 +14,7 @@
   <div class="my-5">
     <%= form.label :name %>
     <div class="text-gray-500 text-sm mb-1">The name of the location that will be displayed to users.</div>
-    <%= form.text_field :name, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:name].none?, "border-red-400 focus:outline-pink-500": location.errors[:name].any?}] %>
+    <%= form.text_field :name, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:name].none?, "border-pink-500": location.errors[:name].any?}] %>
   </div>
 
 
@@ -27,19 +27,19 @@
 
     <div class="my-5">
       <%= form.label :address1, "Street Address Line 1" %>
-      <%= form.text_field :address1, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:address1].none?, "border-red-400 focus:outline-pink-500": location.errors[:address1].any?}] %>
+      <%= form.text_field :address1, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:address1].none?, "border-pink-500": location.errors[:address1].any?}] %>
     </div>
 
     <div class="my-5">
       <%= form.label :address2, "Street Address Line 2" %>
       <span class="text-sm text-gray-500"> (optional)</span>
-      <%= form.text_field :address2, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:address2].none?, "border-red-400 focus:outline-pink-500": location.errors[:address2].any?}] %>
+      <%= form.text_field :address2, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:address2].none?, "border-pink-500": location.errors[:address2].any?}] %>
     </div>
 
     <div class="my-5 flex flex-wrap gap-4">
       <div class="w-full md:w-[40%]">
         <%= form.label :city %>
-        <%= form.text_field :city, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:city].none?, "border-red-400 focus:outline-pink-500": location.errors[:city].any?}] %>
+        <%= form.text_field :city, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:city].none?, "border-pink-500": location.errors[:city].any?}] %>
       </div>
 
       <div class="w-full md:w-[25%]">
@@ -51,13 +51,13 @@
             ["Alberta", "AB"], ["British Columbia", "BC"], ["Manitoba", "MB"], ["New Brunswick", "NB"], ["Newfoundland and Labrador", "NL"], ["Northwest Territories", "NT"], ["Nova Scotia", "NS"], ["Nunavut", "NU"], ["Ontario", "ON"], ["Prince Edward Island", "PE"], ["Quebec", "QC"], ["Saskatchewan", "SK"], ["Yukon", "YT"]
           ], location.state),
           { include_blank: "Select State/Province" },
-          class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:state].none?, "border-red-400 focus:outline-pink-500": location.errors[:state].any?}]
+          class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:state].none?, "border-pink-500": location.errors[:state].any?}]
         %>
       </div>
 
       <div class="w-full md:w-[25%]">
         <%= form.label :postal_code, "Zip/Postal Code" %>
-        <%= form.text_field :postal_code, maxlength: 10, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:postal_code].none?, "border-red-400 focus:outline-pink-500": location.errors[:postal_code].any?}] %>
+        <%= form.text_field :postal_code, maxlength: 10, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:postal_code].none?, "border-pink-500": location.errors[:postal_code].any?}] %>
       </div>
     </div>
 
@@ -72,7 +72,7 @@
 
     <div class="my-5">
       <div class="text-gray-500 text-sm mb-1">Any additional information about this location, such as parking instructions, entry details, etc.</div>
-      <%= form.text_area :notes, rows: 4, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": location.errors[:notes].none?, "border-red-400 focus:outline-pink-500": location.errors[:notes].any?}] %>
+      <%= form.text_area :notes, rows: 4, class: ["block shadow-sm rounded-md border px-3 py-2 mt-2 w-full", {"border-gray-400": location.errors[:notes].none?, "border-pink-500": location.errors[:notes].any?}] %>
     </div>
 
   </div>

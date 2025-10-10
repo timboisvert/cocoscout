@@ -3,22 +3,35 @@
   <div>
 
     <%= link_to manage_path, class: "mb-2" do %>
-      <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500 <%= 'pt-[60px]' if session[:impersonate_user_id] %>">CocoScout</h1>
+      <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+    <% end %>
+
+    <% if session[:impersonate_user_id] %>
+      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
+      <% if impersonated %>
+        <div class="w-full bg-pink-200 p-4 text-left text-sm">
+          <div>Impersonating:</div>
+          <div class="font-bold"><%= impersonated.email_address %></div>
+          <div>
+            <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer text-left" %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
 
     <div class="">
-      <%= link_to "My Shows", my_shows_path, class: "flex items-center gap-3 px-5 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_shows_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "My Auditions", my_auditions_path, class: "flex items-center gap-3 px-5 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_auditions_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "My Audition Requests", my_audition_requests_path, class: "flex items-center gap-3 px-5 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_audition_requests_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "My Profile", my_profile_path, class: "flex items-center gap-3 px-5 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_profile_path)} hover:bg-pink-500 hover:text-white" %>    </div>
+      <%= link_to "My Shows", my_shows_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_shows_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "My Auditions", my_auditions_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_auditions_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "My Sign-ups", my_audition_requests_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_audition_requests_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "My Profile", my_profile_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_profile_path)} hover:bg-pink-500 hover:text-white" %>    </div>
 
     <% if Current.user.can_manage? %>
-      <div class="mt-20">
-        <%= link_to "Manage", manage_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <div class="border-t-2 border-pink-500">
+        <%= link_to "Manage", manage_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
         <% if Current.user.god? %>
-          <%= link_to "God Mode", god_mode_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+          <%= link_to "God Mode", god_mode_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
         <% end %>
-      </div>
+    </div>
     <% end %>
 
 
@@ -32,7 +45,7 @@
       <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
     </div>
 
-    <div class="px-4 py-6 border-t-4 border-pink-400 text-xs text-gray-500">
+    <div class="px-4 py-6 border-t-4 border-pink-500 text-xs text-gray-500">
       <% if Current.user %>
         <div class="font-semibold text-gray-700 truncate">
           <%= Current.user.email_address %>

@@ -1,9 +1,22 @@
 class Manage::ShowsController < Manage::ManageController
-  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
+  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
 
   def index
-    @shows = @production.shows.all
+    # Store the shows filter
+    @filter = (params[:filter] || session[:shows_filter] || "upcoming")
+    session[:shows_filter] = @filter
+
+    # Get the shows using the shows filter
+    @shows = @production.shows
+
+    case @filter
+    when "past"
+      @shows = @shows.where("shows.date_and_time <= ?", Time.current).order("shows.date_and_time DESC")
+    else
+      @filter = "upcoming"
+      @shows = @shows.where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC")
+    end
   end
 
   def show
@@ -11,6 +24,15 @@ class Manage::ShowsController < Manage::ManageController
 
   def new
     @show = @production.shows.new
+
+    if params[:duplicate].present?
+      original = @production.shows.find_by(id: params[:duplicate])
+      if original.present?
+        @show.date_and_time = original.date_and_time
+        @show.secondary_name = original.secondary_name
+        @show.location = original.location
+      end
+    end
   end
 
   def edit
@@ -72,16 +94,17 @@ class Manage::ShowsController < Manage::ManageController
 
 
   private
-    def set_show
-      @show = Show.find(params.expect(:id))
+    def set_production
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
-    def set_production
-      @production = Production.find(params.expect(:production_id))
+    def set_show
+      @show = @production.shows.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.
     def show_params
-      params.expect(show: [ :secondary_name, :date_and_time, :production_id ])
+      params.require(:show).permit(:secondary_name, :date_and_time, :poster, :production_id, :location_id,
+        show_links_attributes: [ :id, :url, :_destroy ])
     end
 end

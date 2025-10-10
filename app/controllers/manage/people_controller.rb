@@ -103,14 +103,14 @@ class Manage::PeopleController < Manage::ManageController
     @cast = Cast.find(params[:cast_id])
     @person = Person.find(params[:person_id])
     @cast.people << @person if !@cast.people.include?(@person)
-    render partial: "casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+    render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
   end
 
   def remove_from_cast
     @cast = Cast.find(params[:cast_id])
     @person = Person.find(params[:person_id])
     @cast.people.delete(@person) if @cast.people.include?(@person)
-    render partial: "casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+    render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
   end
 
 

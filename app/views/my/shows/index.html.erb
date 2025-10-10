@@ -14,33 +14,34 @@
 
         <div class="grid grid-cols-3 gap-2 mt-2">
             <% @productions.each do |production| %>
-                <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-                    <div class="flex flex-col w-full">
-                        <% if production.logo.attached? %>
-                            <div class="w-full mb-2">
-                                <%= image_tag production.logo.variant(resize_to_fill: [300, 150]), alt: "#{production.name} logo", class: "w-full object-contain rounded-lg" %>
-                            </div>
-                        <% end %>
 
-                        <div class="mt-2 font-bold text-2xl"><%= production.name %></div>
-
-                        <div class="mt-2 w-full text-sm">
-                            <% next_show = Current.user.person.next_show_for_production(production)%>
-                            <% if next_show %>
-                                <p class="text-gray-500">My next scheduled show:</p>
-                                <p class=""><%= next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
-                            <% else %>
-                                <p class="text-sm text-gray-500">
-                                    You aren't cast in any upcoming shows
-                                </p>
+                <%= link_to my_production_path(production) do %>
+                    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+                        <div class="flex flex-col w-full">
+                            <% if production.logo.attached? %>
+                                <div class="w-full mb-2">
+                                    <%= image_tag production.logo.variant(resize_to_fill: [300, 150]), alt: "#{production.name} logo", class: "w-full object-contain rounded-lg" %>
+                                </div>
                             <% end %>
-                            <p class="mt-2">
-                                <%= link_to "View full production schedule", my_show_path(production), class: "text-pink-500 hover:underline" %>
-                            </p>
-                        </div>
-                    </div>
 
-                </div>
+                            <div class="mt-2 font-bold text-2xl"><%= production.name %></div>
+
+                            <div class="mt-2 text-sm">
+                                <% next_show = Current.user.person.next_show_for_production(production) %>
+                                <% if next_show %>
+                                    <p class="text-gray-500">My next scheduled show:</p>
+                                    <p class="inline-block bg-pink-500 text-white px-2 py-1 rounded-lg"><%= next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
+                                <% else %>
+                                    <p class="text-sm text-gray-500">
+                                        You aren't cast in any upcoming shows
+                                    </p>
+                                <% end %>
+                            </div>
+                        </div>
+
+                    </div>
+                <% end %>
+
             <% end %>
         </div>
     <% else %>

@@ -15,9 +15,24 @@ class Production < ApplicationRecord
 
     normalizes :contact_email, with: ->(e) { e.strip.downcase }
 
+    validates :name, presence: true
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
+    validate :logo_content_type
+
+    def initials
+      return "" if name.blank?
+      name.split.map { |word| word[0] }.join.upcase
+    end
 
     def next_show
         shows.where("date_and_time > ?", Time.current).order(:date_and_time).first
+    end
+
+    private
+
+    def logo_content_type
+        if logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png])
+            errors.add(:logo, "Logo must be a JPEG, JPG, or PNG file")
+        end
     end
 end

@@ -1,5 +1,5 @@
 
-  <div class="fixed top-0 left-56 h-16 w-full bg-pink-500 text-pink-500 p-3 pr-58">
+  <div class="fixed top-0 left-0 h-16 w-full bg-pink-500 text-pink-500 p-3 z-10">
     <div class="flex justify-between items-center h-full mx-auto content-center">
       <%= render partial: "shared/link_button", locals: {text: "Close Preview", color: "white", path: manage_production_auditions_path(@production)} %>
       <p class="text-white text-2xl font-medium">Preview</p>
@@ -7,7 +7,7 @@
     </div>
   </div>
 
-  <div class="fixed bottom-0 left-56 h-16 w-full bg-pink-500 text-pink-500 p-3 pr-58">
+  <div class="fixed bottom-0 left-0 h-16 w-full bg-pink-500 text-pink-500 p-3 z-10">
     <div class="w-full md:w-1/2 flex items-center mx-auto" data-controller="clipboard">
       <p class="text-nowrap text-white text-sm mr-2">Shareable Link:</p>
       <%= text_field_tag "", @call_to_audition.respond_url, class: "block w-64 text-sm text-black bg-white shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400", disabled: true, data: { clipboard_target: "textField" }  %>
@@ -19,9 +19,14 @@
     </div>
   </div>
 
-  <div class="w-full max-w-4xl mt-12 mb-18">
+  <div class="w-full max-w-4xl mx-auto mt-15 mb-20">
     <h1 class="font-bold text-4xl pt-4"><%= @production.name %></h1>
-    <h2 class="font-bold text-2xl pt-5">Apply for an audition</h2>
+
+    <% if @call_to_audition.audition_type == "in_person" %>
+      <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
+    <% elsif @call_to_audition.audition_type == "video_upload" %>
+      <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
+    <% end %>
 
     <% if @call_to_audition.header_text.present? %>
       <div class="pt-5">
@@ -30,18 +35,6 @@
     <% end %>
 
     <%= form_with(model: @audition_request, url: "", method: :get, class: "contents", data: { turbo: false }) do |form| %>
-
-      <% if @audition_request.errors.any? %>
-        <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-          <h2><%= pluralize(@audition_request.errors.count, "error") %> prohibited this audition_request from being saved:</h2>
-
-          <ul class="list-disc ml-6">
-            <% @audition_request.errors.each do |error| %>
-              <li><%= error.full_message %></li>
-            <% end %>
-          </ul>
-        </div>
-      <% end %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
 
@@ -84,6 +77,23 @@
 
       </div>
 
+      <% if @call_to_audition.audition_type == "video_upload" %>
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
+          <div class="p-5 flex items-top gap-4">
+            <div class="w-full">
+
+                <% if @audition_request.errors[:video_url].none? %>
+                    <%= form.label :video_url, "Video URL" %>
+                    <span class="text-sm text-gray-500"> (eg. YouTube, Google Drive, etc.)</span>
+                <% else %>
+                    <%= form.label :video_url, "Video URL is required", class: "text-pink-600"  %>
+                <% end %>
+                <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_request.errors[:video_url].none?, "border-pink-500": @audition_request.errors[:video_url].any?}] %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <% if @questions.any? %>
         <% @questions.each do |question| %>
           <div class="my-5">
@@ -91,7 +101,7 @@
 
             <% if question.question_type == "text" %>
 
-              <%= text_area_tag "question[#{question.id}]", @answers[question.id], class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @person.errors[:socials].none?, "border-red-400 focus:outline-pink-500": @person.errors[:socials].any?}] %>
+              <%= text_area_tag "question[#{question.id}]", @answers[question.id], class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:socials].none?, "border-pink-500": @person.errors[:socials].any?}] %>
 
             <% elsif question.question_type == "yesno" %>
 
@@ -132,8 +142,16 @@
         <% end %>
       <% end %>
 
-      <div class="inline pb-5">
-        <%= form.submit "Submit", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      <div class="pb-5">
+
+        <%
+          if @call_to_audition.audition_type == "in_person"
+            submit_text = "Sign up"
+          elsif @call_to_audition.audition_type == "video_upload"
+            submit_text = "Submit video audition"
+          end
+        %>
+        <%= form.submit submit_text, class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
       </div>
 
     <% end %>

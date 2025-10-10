@@ -1,17 +1,23 @@
-<% content_for :title, "Audition Request" %>
+<% content_for :title, "Sign-up" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Audition Requests", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition)]
+      ["Sign-ups", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition)],
+      [@audition_request.person.name, manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request)]
     ],
-    text: "Edit Audition Request",
+    text: "Edit Answers",
     links: []
   } %>
 
-  <%= render "form", audition_request: @audition_request %>
+  <%= form_with(model: [:manage, @production, @call_to_audition, @audition_request], class: "contents") do |form| %>
 
-  <%= link_to "Back", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+    <div class="inline">
+      <%= form.submit 'Update Sign-up', class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to 'Back', 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+    </div>
+  <% end %>
+
 </div>

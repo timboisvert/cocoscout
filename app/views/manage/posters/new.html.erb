@@ -4,7 +4,6 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Productions", manage_productions_path],
       [@production.name, manage_production_path(@production)]
     ],
     text: "Add a Poster",
@@ -39,9 +38,8 @@
     <div class="mb-4 w-1/2">
         <%= form.label :name, "Poster Name/Description" %>
         <span class="text-sm text-gray-500"> (optional)</span>
-        <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @poster.errors[:name].none?, "border-red-400 focus:outline-pink-500": @poster.errors[:name].any?}] %>
+        <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @poster.errors[:name].none?, "border-pink-500": @poster.errors[:name].any?}] %>
     </div>
-
 
     <div class="inline">
         <%= form.submit "Add Poster", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>

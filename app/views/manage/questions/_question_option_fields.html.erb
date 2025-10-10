@@ -1,7 +1,7 @@
 <div class="nested-fields" data-nested-form-target="target">
     <div class="w-full lg:w-1/2 mt-2">
         <div class="flex items-center">
-            <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 w-full", {"border-gray-400 focus:outline-pink-500": @question.errors[:text].none?, "border-red-400 focus:outline-pink-500": @question.errors[:text].any?}] %>
+            <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
             <%= form.hidden_field :_destroy %>
             <button type="button" data-action="nested-form#remove" class="
                 text-white

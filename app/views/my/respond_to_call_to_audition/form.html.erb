@@ -7,7 +7,12 @@
 
 <div class="w-full max-w-4xl mx-auto mt-10">
   <h1 class="font-bold text-4xl"><%= @production.name %></h1>
-  <h2 class="font-bold text-2xl pt-5">Apply for an audition</h2>
+
+  <% if @call_to_audition.audition_type == "in_person" %>
+    <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
+  <% elsif @call_to_audition.audition_type == "video_upload" %>
+    <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
+  <% end %>
 
   <% if @call_to_audition.header_text.present? %>
     <div class="pt-5">
@@ -16,18 +21,6 @@
   <% end %>
 
   <%= form_with(model: @audition_request, url: my_submit_respond_to_call_to_audition_form_path(@call_to_audition.token), method: :post, class: "contents", data: { turbo: false }) do |form| %>
-
-    <% if @audition_request.errors.any? %>
-      <div id="error_explanation" class="bg-pink-50 text-pink-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(@audition_request.errors.count, "error") %> prohibited this audition_request from being saved:</h2>
-
-        <ul class="list-disc ml-6">
-          <% @audition_request.errors.each do |error| %>
-            <li><%= error.full_message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
 
@@ -71,69 +64,92 @@
 
     </div>
 
+    <% if @call_to_audition.audition_type == "video_upload" %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
+        <div class="p-5 flex items-top gap-4">
+          <div class="w-full">
 
-  <% if @questions.any? %>
-    <% @questions.each do |question| %>
-      <div class="my-5">
-        <label><%= question.text %></label>
-
-        <% if question.question_type == "text" %>
-
-          <%= text_area_tag "question[#{question.id}]", @answers["#{question.id}"], class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full" %>
-
-        <% elsif question.question_type == "yesno" %>
-
-          <div class="px-2 py-1">
-            <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers["#{question.id}"] == "yes" || @answers["#{question.id}"].blank?), class: "accent-pink-500 mr-1" %>
-            <%= label_tag "question[#{question.id}][yes]", "Yes" %>
+              <% if @audition_request.errors[:video_url].none? %>
+                  <%= form.label :video_url, "Video URL" %>
+                  <span class="text-sm text-gray-500"> (eg. YouTube, Google Drive, etc.)</span>
+              <% else %>
+                  <%= form.label :video_url, "Video URL is required", class: "text-pink-600"  %>
+              <% end %>
+              <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_request.errors[:video_url].none?, "border-pink-500": @audition_request.errors[:video_url].any?}] %>
           </div>
-          <div class="px-2 py-1">
-            <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers["#{question.id}"] == "no"), class: "accent-pink-500 mr-1" %>
-            <%= label_tag "question[#{question.id}][no]", "No" %>
-          </div>
-
-        <% elsif question.question_type == "multiple-multiple" %>
-
-          <label class="text-sm text-gray-500">(Select all that apply)</label>
-
-          <% question.question_options.each do |option| %>
-
-            <div class="px-2 py-1">
-              <%= check_box_tag "question[#{question.id}][#{option.text}]", option.text, @answers["#{question.id}"]&.include?(option.text),class: "accent-pink-500 mr-1" %>
-              <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
-            </div>
-          <% end %>
-
-        <% elsif question.question_type == "multiple-single" %>
-
-          <label class="text-sm text-gray-500">(Select one)</label>
-
-          <% question.question_options.each do |option| %>
-            <div class="px-2 py-1">
-              <%= radio_button_tag "question[#{question.id}]", option.text, @answers["#{question.id}"] == option.text, class: "accent-pink-500 mr-1" %>
-              <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
-            </div>
-          <% end %>
-
-       <% end %>
-
+        </div>
       </div>
     <% end %>
+
+    <% if @questions.any? %>
+      <% @questions.each do |question| %>
+        <div class="my-5">
+          <label><%= question.text %></label>
+
+          <% if question.question_type == "text" %>
+
+            <%= text_area_tag "question[#{question.id}]", @answers["#{question.id}"], class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full" %>
+
+          <% elsif question.question_type == "yesno" %>
+
+            <div class="px-2 py-1">
+              <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers["#{question.id}"] == "yes" || @answers["#{question.id}"].blank?), class: "accent-pink-500 mr-1" %>
+              <%= label_tag "question[#{question.id}][yes]", "Yes" %>
+            </div>
+            <div class="px-2 py-1">
+              <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers["#{question.id}"] == "no"), class: "accent-pink-500 mr-1" %>
+              <%= label_tag "question[#{question.id}][no]", "No" %>
+            </div>
+
+          <% elsif question.question_type == "multiple-multiple" %>
+
+            <label class="text-sm text-gray-500">(Select all that apply)</label>
+
+            <% question.question_options.each do |option| %>
+
+              <div class="px-2 py-1">
+                <%= check_box_tag "question[#{question.id}][#{option.text}]", option.text, @answers["#{question.id}"]&.include?(option.text),class: "accent-pink-500 mr-1" %>
+                <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+              </div>
+            <% end %>
+
+          <% elsif question.question_type == "multiple-single" %>
+
+            <label class="text-sm text-gray-500">(Select one)</label>
+
+            <% question.question_options.each do |option| %>
+              <div class="px-2 py-1">
+                <%= radio_button_tag "question[#{question.id}]", option.text, @answers["#{question.id}"] == option.text, class: "accent-pink-500 mr-1" %>
+                <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+              </div>
+            <% end %>
+
+        <% end %>
+
+        </div>
+      <% end %>
+    <% end %>
+
+    <div class="pb-5">
+
+      <%
+        if @call_to_audition.audition_type == "in_person"
+          if @call_to_audition.audition_requests.exists?(person: Current.user.person)
+            submit_text = "Update Sign-up"
+          else
+            submit_text = "Sign up"
+          end
+        elsif @call_to_audition.audition_type == "video_upload"
+          if @call_to_audition.audition_requests.exists?(person: Current.user.person)
+            submit_text = "Update video audition"
+          else
+            submit_text = "Submit video audition"
+          end
+        end
+      %>
+      <%= form.submit submit_text, class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800inline-block font-medium cursor-pointer" %>
+    </div>
   <% end %>
-
-  <div class="pb-5">
-    <%
-      if @call_to_audition.audition_requests.exists?(person: Current.user.person)
-        submit_text = "Update Application"
-      else
-        submit_text = "Submit Application"
-      end
-    %>
-    <%= form.submit submit_text, class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800inline-block font-medium cursor-pointer" %>
-  </div>
-
-  <% end %>
-
 
   <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
     <%= link_to my_dashboard_path do %>

@@ -1,4 +1,4 @@
- Rails.application.routes.draw do
+Rails.application.routes.draw do
   root "home#index"
 
   # Utility
@@ -10,13 +10,15 @@
   get "/notify_me/success", to: "home#notify_me_success", as: "notify_me_success"
 
   # Authentication
-  get   "/signup",    to: "auth#signup",          as: "signup"
-  post  "/signup",    to: "auth#handle_signup",   as: "handle_signup"
-  get   "/signin",    to: "auth#signin",          as: "signin"
-  post  "/signin",    to: "auth#handle_signin",   as: "handle_signin"
-  get   "/signout",   to: "auth#signout",         as: "signout"
-  get   "/password",  to: "auth#password",        as: "password"
-  post  "/password",  to: "auth#handle_password", as: "handle_password"
+  get   "/signup",        to: "auth#signup",          as: "signup"
+  post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
+  get   "/signin",        to: "auth#signin",          as: "signin"
+  post  "/signin",        to: "auth#handle_signin",   as: "handle_signin"
+  get   "/signout",       to: "auth#signout",         as: "signout"
+  get   "/password",      to: "auth#password",        as: "password"
+  post  "/password",      to: "auth#handle_password", as: "handle_password"
+  get   "/reset/:token",  to: "auth#reset",           as: "reset"
+  post  "/reset/:token",  to: "auth#handle_reset",    as: "handle_reset"
 
   # God mode
   scope "/god_mode" do
@@ -30,14 +32,15 @@
 
   # Talent-facing interface
   namespace :my do
-    get   "/",                  to: "dashboard#index",          as: "dashboard"
-    get   "/shows",             to: "shows#index",              as: "shows"
-    get   "/shows/:id",         to: "shows#show",               as: "show"
-    get   "/auditions",         to: "auditions#index",          as: "auditions"
-    get   "/audition_requests", to: "audition_requests#index",  as: "audition_requests"
-    get   "/profile",           to: "profile#index",            as: "profile"
-    get   "/profile/edit",      to: "profile#edit",             as: "edit_profile"
-    patch "/profile/edit",      to: "profile#update",           as: "update_profile"
+    get   "/",                              to: "dashboard#index",          as: "dashboard"
+    get   "/shows",                         to: "shows#index",              as: "shows"
+    get   "/shows/:production_id",          to: "shows#production",         as: "production"
+    get   "/shows/:production_id/:show_id", to: "shows#show",               as: "show"
+    get   "/auditions",                     to: "auditions#index",          as: "auditions"
+    get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
+    get   "/profile",                       to: "profile#index",            as: "profile"
+    get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
+    patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -102,11 +105,23 @@
       resources :roles
 
       resources :call_to_auditions do
-        resources :questions
-        resources :audition_requests
-        post "audition_requests/:id/set_status/:status", to: "audition_requests#set_status", as: "audition_request_set_status"
+        resources :questions do
+          collection do
+            post :reorder
+          end
+        end
+        resources :audition_requests do
+          member do
+            get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
+            get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
+            post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
+          end
+        end
+        member do
+          get  "form",      to: "call_to_auditions#form",     as: "form"
+          get  "preview",   to: "call_to_auditions#preview",  as: "preview"
+        end
       end
-      get "call_to_auditions/:id/preview", to: "call_to_auditions#preview", as: "call_to_audition_preview"
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
       resources :audition_sessions do

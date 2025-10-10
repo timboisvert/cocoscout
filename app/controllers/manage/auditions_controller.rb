@@ -77,7 +77,7 @@ class Manage::AuditionsController < Manage::ManageController
 
   private
    def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_audition

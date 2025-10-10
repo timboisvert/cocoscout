@@ -1,46 +1,30 @@
 <% content_for :title, "Add a Production" %>
 
-<div class="w-full">
+<div class="flex flex-col items-center mt-10">
+  <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+</div>
 
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
+<div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Productions", manage_productions_path(@production)]
-    ],
-    text: "Add a Production",
-    links: []
-  } %>
+  <h1 class="text-xl font-bold mb-4 text-center">Add a Production</h1>
 
   <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
-    <div class="my-5">
-      <%= form.label :name %>
-      <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @production.errors[:name].none?, "border-red-400 focus:outline-pink-500": @production.errors[:name].any?}] %>
+
+    <div class="mb-5">
+      <% if @production.errors[:name].none? %>
+        <%= form.label :name, "Production name:" %>
+      <% else %>
+        <%= form.label :name, "Production name is required", class: "text-pink-600"  %>
+      <% end %>
+      <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}] %>
     </div>
 
-    <div class="my-5 ">
-      <%= form.label :logo %>
-      <span class="text-sm text-gray-500"> (PDF, JPG, or PNG)</span>
-
-      <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 w-half border-gray-400">
-        <%= form.file_field :logo, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-      </div>
-    </div>
-
-    <div class="my-5">
-      <%= form.label :contact_email %>
-      <%= form.email_field :contact_email, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @production.errors[:contact_email].none?, "border-red-400 focus:outline-pink-500": @production.errors[:contact_email].any?}] %>
-    </div>
-
-    <div class="my-5">
-      <%= form.label :description %>
-      <%= form.textarea :description, rows: 4, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @production.errors[:description].none?, "border-red-400 focus:outline-pink-500": @production.errors[:description].any?}] %>
-    </div>
 
     <div class="inline">
-      <%= form.submit "Add Production", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>
-      <%= link_to "Back", 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <%= form.submit "Add Production", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
     </div>
 
   <% end %>
+
 </div>

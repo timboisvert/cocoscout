@@ -7,34 +7,44 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Call to Audition", edit_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Sign-up Form", form_manage_production_call_to_audition_path(@production, @call_to_audition)]
     ],
     text: "Custom Questions",
     links: []
   } %>
 
   <% if @questions.any? %>
-    <div class="w-full mb-4 grid grid-cols-1 gap-2 border-b border-gray-200 pb-4">
+    <div class="w-full mb-4 grid grid-cols-1 gap-2 pb-4" data-controller="question-order" data-question-order-url="<%= reorder_manage_production_call_to_audition_questions_path(@production, @call_to_audition) %>">
       <% @questions.each do |question| %>
-        <div class="flex w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all ">
-          <div class="grid grid-cols-1 mr-auto">
-            <p class="text-md mb-1"><%= question.text %></p>
-            <p class="text-sm font-normal text-gray-500">
-              Type:
-              <% if question.question_type == "text" %>
+        <div class="flex w-full p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop">
+          <div class="flex flex-row items-center mr-auto gap-4">
+            <p class="text-md flex items-center mb-0">
+              <span class="mr-2 text-gray-400 cursor-move" title="Drag to reorder">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+                </svg>
+              </span>
+            </p>
+            <div>
+              <p class="mb-0">
+                <%= question.text %>
+              </p>
+              <p class="text-sm font-normal text-gray-500 mb-0">
+                Type:
+                <% if question.question_type == "text" %>
                 Text
-              <% elsif question.question_type == "yesno" %>
+                <% elsif question.question_type == "yesno" %>
                 Yes/No
-              <% elsif question.question_type == "multiple-multiple" %>
+                <% elsif question.question_type == "multiple-multiple" %>
                 Select Multiple Options
                 <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
-              <% elsif question.question_type == "multiple-single" %>
+                <% elsif question.question_type == "multiple-single" %>
                 Select Single Option
                 <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
-              <% end %>
-            </p>
+                <% end %>
+              </p>
+            </div>
           </div>
-
           <div class="grid grid-cols-2 gap-0 ml-10 min-w-39 inline-block ">
             <%= render partial: "shared/link_button", locals: {text: "Edit", path: edit_manage_production_call_to_audition_question_path(@production, @call_to_audition, question)} %>
             <div class="inline-block">
@@ -47,26 +57,25 @@
   <% end %>
 
   <div class="w-full">
-    <h1 class="font-bold text-2xl">Add a Custom Question</h1>
+
+     <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Add a Custom Question",
+      links: []
+    } %>
+
     <p class="text-sm text-gray-500">Custom Questions are shown at the bottom of the Audition sign-up form.</p>
   </div>
 
   <%= form_with(model: [:manage, @production, @call_to_audition, @question], class: "contents") do |form| %>
-    <% if @question.errors.any? %>
-      <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(@question.errors.count, "error") %> prohibited this question from being saved:</h2>
-
-        <ul class="list-disc ml-6">
-          <% @question.errors.each do |error| %>
-            <li><%= error.full_message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
 
     <div class="my-2 sm:my-5">
-      <%= form.label :text, "Question Text" %>
-      <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @question.errors[:text].none?, "border-red-400 focus:outline-pink-500": @question.errors[:text].any?}] %>
+      <% if @question_error %>
+        <%= form.label :text, "Question Text is required", class: "text-pink-500" %>
+      <% else %>
+        <%= form.label :text, "Question Text" %>
+      <% end %>
+      <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
     </div>
 
     <div data-controller="form-toggle">
@@ -75,7 +84,7 @@
         <%= form.select :question_type,
           [["Text", "text"], ["Yes/No", "yesno"], ["Select Multiple Options", "multiple-multiple"], ["Select Single Option", "multiple-single"]],
           {},
-          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @question.errors[:question_type].none?, "border-red-400 focus:outline-pink-500": @question.errors[:question_type].any?}],
+          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:question_type].none?, "border-pink-500": @question.errors[:question_type].any?}],
             data: { "form-toggle-target": "select", action: "change->form-toggle#toggle"}
           } %>
       </div>
@@ -88,7 +97,7 @@
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Add Question", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", edit_manage_production_call_to_audition_path(@production, @call_to_audition), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
      </div>
   <% end %>
 

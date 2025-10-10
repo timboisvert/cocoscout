@@ -27,6 +27,11 @@ module Cocoscout
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
+    config.log_level = ENV["LOG_LEVEL"] || :info
+    config.semantic_logger.application = "cocoscout"
+    config.semantic_logger.environment = ENV["STACK_NAME"] || Rails.env
+    config.semantic_logger.add_appender(appender: :honeybadger_insights)
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files
@@ -37,5 +42,7 @@ module Cocoscout
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    config.active_record.timestamped_migrations = true
   end
 end

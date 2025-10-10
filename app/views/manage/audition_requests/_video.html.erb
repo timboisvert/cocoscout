@@ -1,0 +1,18 @@
+<div class="">
+    <% if audition_request.video_url =~ /youtube\.com|youtu\.be/ %>
+        <% youtube_id = audition_request.video_url[/(?:v=|\/)([0-9A-Za-z_-]{11})/, 1] %>
+        <% if youtube_id %>
+            <div class="w-full aspect-w-16 aspect-h-9">
+                <iframe class="w-full h-full"
+                    style="aspect-ratio: 16/9;"
+                    src="https://www.youtube.com/embed/<%= youtube_id %>"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+            </div>
+        <% end %>
+    <% else %>
+        <%= link_to audition_request.video_url, audition_request.video_url, target: "_blank", rel: "noopener noreferrer" %>
+    <% end %>
+</div>

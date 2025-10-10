@@ -66,7 +66,6 @@ puts "Old example.com people deleted."
   puts "Audition request for Person #{i} created or found."
 end
 
-
 # Show each cast member's assigned dates
 # pc = ProductionCompany.find_or_create_by(name: 'CocoRunsEverything')
 # p = pc.productions.find_or_create_by(name: 'Comedy Pageant', production_company: pc)

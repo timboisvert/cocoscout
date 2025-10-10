@@ -3,9 +3,7 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Productions", manage_productions_path]
-    ],
+    breadcrumbs: [],
     text: @production.name,
     links: [
       { text: "Edit", path: edit_manage_production_path(@production) }
@@ -13,52 +11,57 @@
   } %>
 
 
-  <div class="flex flex-col md:flex-row gap-8">
-    <div class="flex-1 space-y-2">
-      <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200">
-        <h1 class="mb-2 font-bold text-lg coustard-regular">Logo</h1>
-      </div>
-
-      <% if @production.logo.attached? %>
-        <%= image_tag @production.logo.variant(:small), class: "h-auto" %>
-        <div>
-          <%= link_to "Replace logo", edit_manage_production_path(@production), class: "text-pink-500 underline text-sm" %>
-        </div>
+  <div class="w-full">
+    <div class="flex items-center justify-between pb-0 mb-2 border-b border-gray-200">
+      <h1 class="mb-2 font-bold text-lg coustard-regular">Description</h1>
+    </div>
+    <div class="mb-5">
+      <% if @production.description.present? %>
+        <%= @production.description %>
       <% else %>
-        <span class="text-sm text-gray-500">No logo added. <%= link_to "Upload a logo", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+        <span class="text-sm text-gray-500">You haven't added a description. <%= link_to "Add a description", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
       <% end %>
     </div>
-
-    <div class="flex-1 space-y-2">
-      <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200">
-        <h1 class="mb-2 font-bold text-lg coustard-regular">Description</h1>
-      </div>
-      <div class="mb-5">
-        <%= @production.description %>
-      </div>
-    </div>
   </div>
 
-  <div class="w-full">
-    <div class="space-y-2">
-      <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200">
-        <h1 class="mb-2 font-bold text-lg coustard-regular">Contact Email</h1>
-      </div>
-      <div class="mb-5">
-        <% if @production.contact_email.present? %>
-          <%= mail_to @production.contact_email, @production.contact_email, class: "text-pink-500 underline" %>
-        <% else %>
-          <span class="text-sm text-gray-500">No contact email provided. <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+  <div class="w-full pt-4">
+    <div class="flex items-center justify-between pb-0 mb-2 border-b border-gray-200">
+      <h1 class="mb-2 font-bold text-lg coustard-regular">Contact Email</h1>
+    </div>
+    <div class="mb-5">
+      <% if @production.contact_email.present? %>
+        <%= mail_to @production.contact_email, class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 flex items-center gap-2" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+          <span><%= @production.contact_email %></span>
         <% end %>
-      </div>
+      <% else %>
+        <span class="text-sm text-gray-500">No contact email provided. <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+      <% end %>
     </div>
+  </div>
+
+  <div class="w-full pt-4">
+    <div class="flex items-center justify-between pb-0 mb-2 border-b border-gray-200">
+      <h1 class="mb-2 font-bold text-lg coustard-regular">Logo</h1>
+    </div>
+
+    <% if @production.logo.attached? %>
+      <%= image_tag @production.logo.variant(:small), class: "h-auto" %>
+      <div>
+        <%= link_to "Replace logo", edit_manage_production_path(@production), class: "text-pink-500 underline text-sm" %>
+      </div>
+    <% else %>
+      <span class="text-sm text-gray-500">No logo added. <%= link_to "Upload a logo", edit_manage_production_path(@production), class: "text-pink-500 underline" %></span>
+    <% end %>
   </div>
 
   <div class="w-full">
 
-    <div class="flex items-center justify-between pb-2 mb-4 border-b border-gray-200 mt-10">
-      <h1 class="font-bold text-lg coustard-regular">Posters</h1>
-      <%= link_to "+ Add a Poster", new_manage_production_poster_path(@production), class: "inline-block px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition" %>
+    <div class="flex items-center justify-between pb-0 mb-2 border-b border-gray-200 mt-10">
+      <h1 class="font-bold text-lg coustard-regular">Production / Season Posters</h1>
+      <%= link_to "+ Add a Poster", new_manage_production_poster_path(@production), class: "mb-2 inline-block px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition" %>
     </div>
 
     <% if @production.posters.any? %>
@@ -80,7 +83,7 @@
         <% end %>
       </div>
     <% else %>
-      <div class="text-gray-500 text-sm mt-2">No posters added. <%= link_to "Add a Poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %></div>
+      <div class="text-gray-500 text-sm mt-2">No posters added. <%= link_to "Add a poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %></div>
     <% end %>
 
   </div>

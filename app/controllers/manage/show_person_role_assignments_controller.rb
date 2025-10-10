@@ -42,11 +42,11 @@ class Manage::ShowPersonRoleAssignmentsController < Manage::ManageController
 
   private
     def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_show
-      @show = Show.find(params.expect(:show_id))
+      @show = @production.shows.find(params.expect(:show_id))
     end
 
     def set_show_person_role_assignment

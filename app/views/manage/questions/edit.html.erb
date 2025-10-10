@@ -29,7 +29,7 @@
 
     <div class="mb-2">
       <%= form.label :text, "Question Text" %>
-      <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @question.errors[:text].none?, "border-red-400 focus:outline-pink-500": @question.errors[:text].any?}] %>
+      <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
     </div>
 
     <div data-controller="form-toggle">
@@ -39,7 +39,7 @@
         <%= form.select :question_type,
           [["Text", "text"], ["Yes/No", "yesno"], ["Select Multiple Options", "multiple-multiple"], ["Select Single Option", "multiple-single"]],
           {},
-          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @question.errors[:question_type].none?, "border-red-400 focus:outline-pink-500": @question.errors[:question_type].any?}],
+          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:question_type].none?, "border-pink-500": @question.errors[:question_type].any?}],
             data: { "form-toggle-target": "select", action: "change->form-toggle#toggle"}
           } %>
       </div>

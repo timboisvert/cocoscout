@@ -1,6 +1,6 @@
 <div class="p-4 rounded-lg border border-gray-200" id="left_panel">
 
-    <h2 class="font-semibold text-lg mb-1">Audition Requests</h2>
+    <h2 class="font-semibold text-lg mb-1">Sign-ups</h2>
 
     <span class="text-sm text-gray-500 mb-3 block">
         Drag each person from the list on the left to an audition slot on the right to schedule them.
@@ -12,19 +12,17 @@
                 data: { turbo_prefetch: false },
                 class: "px-3 py-1 rounded-md border text-sm #{(filter.blank? || filter == "to_be_scheduled") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
-        <%= link_to "All Accepted",
+        <%= link_to "All Yes",
                 manage_production_audition_sessions_path(production, filter: "accepted"),
                 data: { turbo_prefetch: false },
                 class: "px-3 py-1 rounded-md border text-sm #{(filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
-        <%= link_to "All Requests",
+        <%= link_to "All Sign-ups",
                 manage_production_audition_sessions_path(production, filter: "all"),
                 data: { turbo_prefetch: false },
                 class: "px-3 py-1 rounded-md border text-sm #{(filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
     </div>
-
-    <% if production.audition_requests.any? %>
 
     <%
         ar = AuditionRequest.joins(:call_to_audition).where(call_to_auditions: { production_id: production.id })
@@ -40,6 +38,9 @@
         ar = ar.order(created_at: :asc)
 
     %>
+
+    <% if ar.any? %>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             <% ar.each do |audition_request| %>
 
@@ -62,9 +63,9 @@
         </div>
     <% else %>
         <% if filter == "to_be_scheduled" %>
-            <p class="text-gray-500 text-sm">All Accepted audition requests have been scheduled.</p>
+            <p class="text-gray-500 text-sm">All accepted sign-ups have been scheduled</p>
         <% else %>
-            <p class="text-gray-500 text-sm">No audition requests.</p>
+            <p class="text-gray-500 text-sm">No sign-ups</p>
         <% end %>
     <% end %>
 </div>

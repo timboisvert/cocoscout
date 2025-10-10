@@ -1,4 +1,4 @@
-<% content_for :title, "Schedule an Audition Session" %>
+<% content_for :title, "Schedule an In-person Session" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -9,12 +9,12 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Audition Sessions", manage_production_audition_sessions_path(@production)]
+          ["In-person Sessions", manage_production_audition_sessions_path(@production)]
         ],
         text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
         links: [
           {
-            text: "Manage Audition Sessions",
+            text: "Manage In-person Sessions",
             path: manage_production_audition_sessions_path(@production)
           }
         ]
@@ -22,7 +22,7 @@
     %>
 
     <div class="w-full h-full flex items-center justify-center text-center text-sm text-gray-500" style="min-height: 60vh;">
-      Select an auditionee below to view their Audition Request
+      Select an auditionee below to view their Sign-up
     </div>
 
   <% else %>
@@ -30,48 +30,65 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Audition Sessions", manage_production_audition_sessions_path(@production)],
+          ["In-person Sessions", manage_production_audition_sessions_path(@production)],
           ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_session_path(@production, @audition_session)]
         ],
         text: "#{@person.name}",
         links: [
           {
-            text: "Manage Audition Sessions",
+            text: "Manage In-person Sessions",
             path: manage_production_audition_sessions_path(@production)
           }
         ]
       }
     %>
 
-    <div id="<%= dom_id @audition_session %>" class="w-full sm:w-auto my-5 space-y-5 mb-30">
-      <div class="flex flex-col sm:flex-row w-full gap-6">
-        <div class="w-full sm:w-[60%] h-screen bg-gray-100">
-          <% if @person.resume.attached? %>
-            <embed src="<%= url_for(@person.resume) %>" type="application/pdf" width="100%" height="100%" />
-          <% end %>
-        </div>
-        <div class="w-full sm:w-[40%] flex flex-col">
+    <div class="w-full" data-controller="tabs">
+      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
+        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
+        <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Sign-up Questions</button>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Casting</button>
+      </nav>
 
-          <%= render "shared/person_card", person: @person %>
-
-          <% if @answers.any? %>
-            <div class="mt-2">
-              <%= render "audition_requests/answers", answers: @answers %>
-            </div>
-          <% end %>
-
-          <div class="mt-2">
-            <%= render "casts/cast_membership_card", production: @production, person: @person %>
-          </div>
-
+      <div data-tabs-target="panel">
+        <%= render "shared/person_card", person: @person %>
       </div>
+
+      <div data-tabs-target="panel" class="hidden">
+        <% if @person.resume.attached? && @person.resume.previewable? %>
+          <div class="w-full">
+            <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+          </div>
+        <% else %>
+          <p class="text-center mt-10">No resume found</p>
+        <% end %>
+      </div>
+
+      <div data-tabs-target="panel" class="hidden">
+        <% if @answers.any? %>
+          <div class="mt-2">
+            <%= render "manage/audition_requests/answers", answers: @answers %>
+          </div>
+        <% else %>
+          <p class="text-center mt-10">No sign-up questions answered</p>
+        <% end %>
+      </div>
+
+      <div data-tabs-target="panel" class="hidden">
+        <div class="mt-2">
+          <%= render "manage/casts/cast_membership_card", production: @production, person: @person %>
+        </div>
+      </div>
+
     </div>
 
   <% end %>
 
 </div>
 
-<div class="fixed bottom-0 left-0 h-21 w-full bg-white text-pink-500 p-2 border-t-4 border-pink-400 pl-56">
+<%# Bottom Navigation Bar %>
+<div class="fixed bottom-0 left-0 h-[84px] w-full bg-white text-pink-500 p-2 pb-1 border-t-4 border-pink-500 pl-56">
 
   <div class="flex justify-center">
       <% @audition_session.auditions.each do |audition| %>
@@ -90,6 +107,7 @@
           </div>
         <% end %>
       <% end %>
+
   </div>
 
 

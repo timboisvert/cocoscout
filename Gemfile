@@ -18,15 +18,18 @@ gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
 gem "honeybadger"
+gem "rails_semantic_logger"
 
 gem "dotenv-rails", groups: %i[ development test ]
 
 group :development do
+  gem "byebug", platforms: %i[ mri mingw x64_mingw ]
   gem "web-console"
   gem "dockerfile-rails", ">= 1.7"
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false
+  gem "letter_opener"
 end
 
 group :test do

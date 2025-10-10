@@ -25,7 +25,7 @@ class Manage::ProductionCompaniesController < Manage::ManageController
 
   def update
     if @production_company.update(production_company_params)
-      redirect_to @production_company, notice: "Production company was successfully updated.", status: :see_other
+      redirect_to manage_path, notice: "Production company was successfully updated.", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end

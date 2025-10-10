@@ -10,12 +10,35 @@
     links: []
   } %>
 
-  <h2 class="mt-6 mb-2 text-lg font-semibold">Impersonate a User</h2>
-  <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2 mt-2" do |f| %>
-    <%= f.label :email, "User Email", class: "mr-2" %>
-    <%= f.email_field :email, required: true, class: "border rounded px-2 py-1" %>
-    <%= f.submit "Impersonate", class: "px-3 py-1 rounded bg-pink-500 text-white" %>
-  <% end %>
+  <div class="grid grid-cols-3 gap-2 mt-2">
+    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
+      <h2 class="text-lg font-semibold mb-2">Impersonate a User</h2>
+      <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2" do |f| %>
+        <%= f.email_field :email, required: true, class: "inline-block shadow-sm rounded-lg border px-3 py-2 w-96 border-gray-400" %>
+        <%= f.submit "Impersonate", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      <% end %>
+
+      <% if @recent_impersonations.any? %>
+
+        <h1 class="text-sm font-medium mt-4 mb-1">Recent Impersonations:</h1>
+        <div class="grid grid-cols-1 gap-2">
+          <% @recent_impersonations.each do |recent| %>
+            <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
+              <%= button_to impersonate_user_path, method: :post, params: { email: recent["email"] }, class: "w-full text-left cursor-pointer" do %>
+                <div class="font-bold text-pink-500"><%= recent["name"] %></div>
+                <div class="text-sm text-gray-500"><%= recent["email"] %></div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+
+
+
+
     <% if session[:impersonate_user_id] %>
       <div class="my-4">
         <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>

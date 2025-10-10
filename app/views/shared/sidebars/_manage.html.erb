@@ -3,41 +3,54 @@
   <div>
 
     <%= link_to manage_path, class: "mb-2" do %>
-      <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+      <div class="p-5 pb-3 text-3xl coustard-regular bg-pink-500">
+        <h1 class="text-white">CocoScout</h1>
+      </div>
     <% end %>
 
     <div class="<%= 'pt-[40px]' if session[:impersonate_user_id] %>">
+
       <% if Current.production.present? && !Current.production.new_record? %>
-        <%= link_to Current.production.name, manage_production_path(Current.production), class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
 
-        <%
-        links = [
-          {"Shows" => manage_production_shows_path(Current.production)},
-          {"Casting" => manage_production_casts_path(Current.production)},
-          {"Roles" => manage_production_roles_path(Current.production)},
-          {"Auditions" => manage_production_auditions_path(Current.production)}
-        ]
-        %>
+        <div class="flex h-14">
+          <%= link_to manage_production_path(Current.production), class: "flex-1 flex items-center justify-left bg-pink-50 hover:bg-pink-100 font-medium text-md pl-4 h-full overflow-hidden whitespace-nowrap text-ellipsis" do %>
+            <span class="overflow-hidden whitespace-nowrap text-ellipsis block w-full"><%= Current.production.name %></span>
+          <% end %>
+          <%= link_to manage_productions_path, class: "flex items-center justify-center px-2 h-full bg-pink-50 hover:bg-pink-100 flex-shrink-0" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          <% end %>
+        </div>
 
-        <% links.each do |item| %>
-          <%= link_to item.keys.first, item.values.first, class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
-        <% end %>
+        <div class="border-b-2 border-pink-500">
+            <%
+            links = [
+              {"Shows" => manage_production_shows_path(Current.production)},
+              {"Casting" => manage_production_casts_path(Current.production)},
+              {"Roles" => manage_production_roles_path(Current.production)},
+              {"Auditions" => manage_production_auditions_path(Current.production)}
+            ]
+            %>
+
+            <% links.each do |item| %>
+              <%= link_to item.keys.first, item.values.first, class: "block px-4 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+            <% end %>
+        </div>
 
       <% else %>
-        <%= link_to "Productions", manage_productions_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+        <%= link_to "Productions", manage_productions_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
       <% end %>
 
-      <%= link_to "People", manage_people_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <%= link_to "Team", manage_team_index_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <%= link_to "Locations", manage_locations_path, class: "flex items-center gap-3 px-5 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "People", manage_people_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "Team", manage_team_index_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "Locations", manage_locations_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
     </div>
 
-    <div class="mt-20">
 
       <% if Current.user.can_manage? %>
-        <%= link_to "My", my_dashboard_path, class: "block px-8 py-2 hover:bg-pink-100 hover:text-pink-700 transition-all text-sm" %>
+        <%= link_to "Exit Dashboard", my_dashboard_path, class: "block px-4 py-2 text-pink-400 text-xs underline" %>
       <% end %>
-    </div>
 
 
   </div>
@@ -49,19 +62,14 @@
       <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
     </div>
 
-    <div class="px-4 py-6 border-t-4 border-pink-400 text-xs text-gray-500">
-      <% if Current.user %>
-        <div class="font-semibold text-gray-700 truncate">
-          <%= Current.user.email_address %>
-          <span class="text-gray-500"><%= link_to "Sign out", signout_path, class: "text-pink-500 underline", data: { turbo_prefetch: false } %></span>
+    <div class="p-5 pb-4 border-t-4 border-pink-500 transition-all flex flex-col bg-pink-50">
+      <% if Current.production_company.present? %>
+        <div class="font-bold text-sm"><%= Current.production_company.name %></div>
+        <div>
+          <%= link_to "Switch", select_manage_production_companies_path, class: "text-pink-500 font-bold underline text-xs inline-block" %>
+          <%= link_to "Edit", edit_manage_production_company_path(Current.production_company), class: "text-pink-500 font-bold underline text-xs inline-block" %>
         </div>
-        <div class="font-medium text-gray-700 mt-2">
-          <%= link_to Current.production_company.name, select_manage_production_companies_path, class: "text-pink-500 font-bold underline text-xs" %> &gt;
-        </div>
-
-      <% else %>
-        <div class="italic">Not signed in</div>
-      <% end %>
+      <% end  %>
     </div>
 
   </div>

@@ -1,4 +1,4 @@
-<% content_for :title, "Schedule an Audition Session" %>
+<% content_for :title, "Schedule an In-person Session" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -6,9 +6,9 @@
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)]
     ],
-    text: "Audition Sessions",
+    text: "In-person Sessions",
     links: [
-      { text: "+ Schedule an Audition Session", path: new_manage_production_audition_session_path(@production) }
+      { text: "+ Schedule an In-person Session", path: new_manage_production_audition_session_path(@production) }
     ]
   } %>
 
@@ -27,8 +27,8 @@
                 <p class="text-lg font-bold"><%= audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p") %></p>
                 <div class="">
                   <div class="flex flex-col space-y-1">
-                    <%= link_to "Reschedule", edit_manage_production_audition_session_path(@production, audition_session), class: "text-xs text-pink-500 underline" %>
-                    <%= link_to "Unschedule/Cancel", manage_production_audition_session_path(@production, audition_session), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel this audition session?" }, class: "text-xs text-pink-500 underline" %>
+                    <%= link_to "Edit/Reschedule", edit_manage_production_audition_session_path(@production, audition_session), class: "text-xs text-pink-500 underline" %>
+                    <%= link_to "Cancel Session", manage_production_audition_session_path(@production, audition_session), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel this audition session?" }, class: "text-xs text-pink-500 underline" %>
                     <%= link_to "Duplicate", new_manage_production_audition_session_path(@production, duplicate: audition_session), class: "text-xs text-pink-500 underline" %>
                     <%= link_to "View", manage_production_audition_session_path(@production, audition_session), class: "text-xs text-pink-500 underline" %>
                   </div>
@@ -44,7 +44,7 @@
             <%= render partial: "shared/link_button", locals: {text: "View Summary", path: manage_production_audition_session_summary_path(@production)} %>
           </div>
         <% else %>
-          <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "+ Schedule an Audition Session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
+          <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "+ Schedule an In-person Session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
         <% end %>
 
       </div>
