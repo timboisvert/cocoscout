@@ -3,7 +3,20 @@ class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
 
   def index
-    @shows = @production.shows.all
+    # Store the shows filter
+    @filter = (params[:filter] || session[:shows_filter] || "upcoming")
+    session[:shows_filter] = @filter
+
+    # Get the shows using the shows filter
+    @shows = @production.shows
+
+    case @filter
+    when "past"
+      @shows = @shows.where("shows.date_and_time <= ?", Time.current).order("shows.date_and_time DESC")
+    else
+      @filter = "upcoming"
+      @shows = @shows.where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC")
+    end
   end
 
   def show

@@ -8,15 +8,31 @@
     links: []
   } %>
 
+   <div class="flex w-full space-x-2 mb-4">
+    <div class="flex flex-1 space-x-1">
+      <%= link_to "Upcoming",
+              manage_production_shows_path(@production, filter: "upcoming"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "upcoming") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Past",
+              manage_production_shows_path(@production, filter: "past"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "past") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+    </div>
+  </div>
+
   <div class="grid grid-cols-1 gap-2">
-    <% @production.shows.order(:date_and_time).each_with_index do |show, idx| %>
-      <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 %>>
+    <% @shows.each_with_index do |show, idx| %>
+      <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
         <div class="flex items-center cursor-pointer select-none" data-action="click->show-toggle#toggle">
           <span data-show-toggle-target="icon" class="mr-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </span>
           <p class="font-bold text-lg"><%= show.date_and_time.strftime("%A, %B %-d, %Y") %> &bull; <%= show.date_and_time.strftime("%l:%M %p") %></p>
         </div>
+
         <div data-show-toggle-target="content" class="mt-4 <%= 'hidden' unless idx == 0 %>">
 
           <div class="flex items-start gap-6">
