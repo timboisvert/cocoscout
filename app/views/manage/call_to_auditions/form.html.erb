@@ -21,13 +21,13 @@
       <div data-tabs-target="panel">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">At the top of the Sign-up form you can add text to describe the production, the audition process, cast expectations, etc.</p>
-          <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full h-96", {"border-gray-400": @call_to_audition.errors[:header_text].none?, "border-red-400": @call_to_audition.errors[:header_text].any?}] %>
+          <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full h-96", {"border-gray-400": @call_to_audition.errors[:header_text].none?, "border-pink-500": @call_to_audition.errors[:header_text].any?}] %>
         </div>
       </div>
       <div data-tabs-target="panel" class="hidden">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">After an auditionee submits the Sign-up form, they're shown text that you can customize here.</p>
-          <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full h-96", {"border-gray-400": @call_to_audition.errors[:success_text].none?, "border-red-400": @call_to_audition.errors[:success_text].any?}] %>
+          <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full h-96", {"border-gray-400": @call_to_audition.errors[:success_text].none?, "border-pink-500": @call_to_audition.errors[:success_text].any?}] %>
         </div>
       </div>
       <div data-tabs-target="panel" class="hidden">

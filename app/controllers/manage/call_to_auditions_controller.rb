@@ -54,13 +54,13 @@ class Manage::CallToAuditionsController < Manage::ManageController
   def preview
     @audition_request = AuditionRequest.new
     @person = @audition_request.build_person
-    @questions = @call_to_audition.questions.order(:created_at) # TODO Change this to be re-arrangeable
+    @questions = @call_to_audition.questions.order(:position)
     @answers = {}
   end
 
   private
    def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_call_to_audition

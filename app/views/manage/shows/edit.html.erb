@@ -26,12 +26,12 @@
   <div class="flex gap-4 w-full">
     <div class="w-full md:w-1/2">
       <%= form.label :date_and_time %>
-      <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:date_and_time].none?, "border-red-400": @show.errors[:date_and_time].any?}] %>
+      <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
     </div>
 
     <div class="w-full md:w-1/2">
       <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Location.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-red-400" : "border-gray-400" )], required: true } %>
+      <%= form.collection_select :location_id, Location.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
       <div class="mt-1 ml-1">
         <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
       </div>
@@ -41,7 +41,7 @@
   <div class="my-5">
     <%= form.label :secondary_name %>
     <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-    <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-red-400": @show.errors[:secondary_name].any?}] %>
+    <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
   </div>
 
   <% if @show.poster.attached? %>

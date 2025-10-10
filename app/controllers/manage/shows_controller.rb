@@ -1,6 +1,6 @@
 class Manage::ShowsController < Manage::ManageController
-  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
+  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
 
   def index
     # Store the shows filter
@@ -94,12 +94,12 @@ class Manage::ShowsController < Manage::ManageController
 
 
   private
-    def set_show
-      @show = Show.find(params.expect(:id))
+    def set_production
+      @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
-    def set_production
-      @production = Production.find(params.expect(:production_id))
+    def set_show
+      @show = @production.shows.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.

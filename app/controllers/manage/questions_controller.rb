@@ -7,6 +7,7 @@ class Manage::QuestionsController < Manage::ManageController
   def index
     @question = @call_to_audition.questions.new
     @question.question_options.build if [ "multiple-multiple", "multiple-single" ].include?(@question.question_type)
+    @questions = @call_to_audition.questions.order(:position)
   end
 
   # GET /questions/1/edit
@@ -17,10 +18,12 @@ class Manage::QuestionsController < Manage::ManageController
   def create
     @question = Question.new(question_params)
     @question.questionable = @call_to_audition
+    @questions = @call_to_audition.questions.order(:position)
 
     if @question.save
       redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully created."
     else
+      @question_error = true
       render :index, status: :unprocessable_entity
     end
   end
@@ -40,18 +43,29 @@ class Manage::QuestionsController < Manage::ManageController
     redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully deleted.", status: :see_other
   end
 
+  # POST /questions/reorder
+  def reorder
+    ids = params[:ids]
+    questions = @call_to_audition.questions.where(id: ids)
+    ActiveRecord::Base.transaction do
+      ids.each_with_index do |id, idx|
+        questions.find { |q| q.id == id.to_i }&.update(position: idx + 1)
+      end
+    end
+    head :ok
+  end
+
   private
     def set_question
-      @question = Question.find(params.expect(:id))
+      @question = Question.find(params[:id]) if params[:id]
     end
 
     def set_production
-      @production = Production.find(params.expect(:production_id))
+      @production = Current.production_company.productions.find(params[:production_id])
     end
 
     def set_call_to_audition
-      @call_to_audition = CallToAudition.find(params.expect(:call_to_audition_id))
-      @questions = @call_to_audition.questions.order(:created_at) # TODO Change this to be re-arrangeable
+      @call_to_audition = CallToAudition.find(params[:call_to_audition_id])
     end
 
     def question_params

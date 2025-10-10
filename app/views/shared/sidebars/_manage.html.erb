@@ -23,7 +23,7 @@
           <% end %>
         </div>
 
-        <div class="border-b-2 border-pink-400">
+        <div class="border-b-2 border-pink-500">
             <%
             links = [
               {"Shows" => manage_production_shows_path(Current.production)},
@@ -62,7 +62,7 @@
       <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
     </div>
 
-    <div class="p-5 pb-4 border-t-4 border-pink-400 transition-all flex flex-col bg-pink-50">
+    <div class="p-5 pb-4 border-t-4 border-pink-500 transition-all flex flex-col bg-pink-50">
       <% if Current.production_company.present? %>
         <div class="font-bold text-sm"><%= Current.production_company.name %></div>
         <div>

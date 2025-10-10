@@ -54,7 +54,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def edit_answers
-    @questions = @audition_request.call_to_audition.questions.order(:created_at) if @call_to_audition.present? # TODO Change this to be re-arrangeable
+    @questions = @audition_request.call_to_audition.questions.order(:position) if @call_to_audition.present?
 
     @answers = {}
     @questions.each do |question|

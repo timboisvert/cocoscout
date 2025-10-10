@@ -105,7 +105,11 @@ Rails.application.routes.draw do
       resources :roles
 
       resources :call_to_auditions do
-        resources :questions
+        resources :questions do
+          collection do
+            post :reorder
+          end
+        end
         resources :audition_requests do
           member do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"

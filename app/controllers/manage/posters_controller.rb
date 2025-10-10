@@ -33,7 +33,7 @@ class Manage::PostersController < Manage::ManageController
 
   private
     def set_production
-      @production = Production.find(params[:production_id])
+      @production = Current.production_company.productions.find(params[:production_id])
     end
 
     def set_poster
