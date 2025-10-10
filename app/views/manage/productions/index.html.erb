@@ -43,7 +43,7 @@
                 <% else %>
                     <%= form.label :name, "Name is required", class: "text-pink-600"  %>
                 <% end %>
-                <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400 focus:outline-pink-500": @production.errors[:name].none?, "border-pink-400 focus:outline-pink-500": @production.errors[:name].any?}] %>
+                <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:name].none?, "border-pink-400": @production.errors[:name].any?}] %>
             </div>
 
             <div class="inline">

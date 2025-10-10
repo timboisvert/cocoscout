@@ -33,7 +33,7 @@
             autocomplete: "current-password",
             placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password",
             maxlength: 72,
-            class: "block shadow-sm rounded-md border border-gray-400 focus:outline-pink-500 px-3 py-2 mt-2 w-full"
+            class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full"
       %>
     </div>
 
