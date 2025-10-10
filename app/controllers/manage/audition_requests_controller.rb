@@ -4,10 +4,21 @@ class Manage::AuditionRequestsController < Manage::ManageController
   before_action :set_call_to_audition
 
   def index
-    if params[:status].present?
-      @audition_requests = @production.audition_requests.where(status: params[:status]).order(:created_at)
+    # Store the status filter
+    @filter = (params[:filter] || session[:audition_requests_filter] || "all")
+    session[:audition_requests_filter] = @filter
+
+    # Process the filter
+    @audition_requests = @production.audition_requests
+
+    case @filter
+    when "unreviewed", "undecided", "accepted", "passed"
+      @audition_requests = @audition_requests.where(status: @filter).order(:created_at)
+    when "all"
+      @audition_requests = @audition_requests.order(:created_at)
     else
-      @audition_requests = @production.audition_requests.order(:created_at)
+      @filter = "all"
+      @audition_requests = @audition_requests.order(:created_at)
     end
   end
 

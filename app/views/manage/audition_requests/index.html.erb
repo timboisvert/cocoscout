@@ -14,15 +14,33 @@
     ]
   } %>
 
-  <div class="flex mb-4 items-center">
-    <p>
-      Filter:
-    </p>
-    <div class="flex gap-1 ml-2">
-      <% ["all", "unreviewed", "undecided", "accepted", "passed"].each do |status| %>
-        <% status_param = status == "all" ? nil : status %>
-        <%= link_to manage_signup_status_name(status), manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, status: status_param), class: "px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 #{'bg-pink-500 text-white hover:text-black' if params[:status] == status_param || (params[:status].blank? && status_param.nil?)}" %>
-      <% end %>
+  <div class="flex w-full space-x-2 mb-4">
+    <div class="flex flex-1 space-x-1">
+      <%= link_to "All",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "all"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Unreviewed",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "unreviewed"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "unreviewed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Revisit",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "undecided"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "undecided") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Yes",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "accepted"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "No",
+              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "passed"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "passed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
     </div>
   </div>
 
@@ -76,17 +94,17 @@
     <% end %>
   <% else %>
 
-    <p class="my-5">
-      <% if params[:status].blank? %>
+    <p class="text-gray-500 text-sm pt-2">
+      <% if @filter.blank? %>
         No one has signed up for an audition yet.
-      <% elsif params[:status] == "unreviewed" %>
-        You have no unreviewed sign-ups.
-      <% elsif params[:status] == "undecided" %>
-        You have no undecided sign-ups.
-      <% elsif params[:status] == "accepted" %>
-        You haven't accepted any sign-ups.
-      <% elsif params[:status] == "passed" %>
-        You haven't passed on any sign-ups.
+      <% elsif @filter == "unreviewed" %>
+        You have no unreviewed sign-ups
+      <% elsif @filter == "undecided" %>
+        You have no undecided sign-ups
+      <% elsif @filter == "accepted" %>
+        You haven't marked any sign-ups as a "yes"
+      <% elsif @filter == "passed" %>
+        You haven't marked any sign-ups as a "no"
       <% end %>
     </p>
   <% end %>
