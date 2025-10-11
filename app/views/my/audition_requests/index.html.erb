@@ -50,25 +50,49 @@
 
                                         <% if audition_request.call_to_audition.closes_at > 1.day.from_now %>
                                             <div class="text-xs text-gray-500 mt-1">
-                                                Closes on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %> at <%= audition_request.call_to_audition.closes_at.strftime('%l:%M %p') %>
+
+                                                <% if audition_request.call_to_audition.audition_type == "in_person" %>
+                                                    Sign-ups
+                                                <% elsif audition_request.call_to_audition.audition_type == "video_upload" %>
+                                                    Video auditions
+                                                <% end %>
+                                                close on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %> at <%= audition_request.call_to_audition.closes_at.strftime('%l:%M %p') %>
                                             </div>
                                         <% else %>
                                             <div class="text-xs <%= audition_request.call_to_audition.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_request.call_to_audition.closes_at.utc.iso8601 %>">
-                                                Closes in <span data-countdown-target="clock"></span>
+                                                <% if audition_request.call_to_audition.audition_type == "in_person" %>
+                                                    Sign-ups
+                                                <% elsif audition_request.call_to_audition.audition_type == "video_upload" %>
+                                                    Video auditions
+                                                <% end %>
+                                                close in <span data-countdown-target="clock" class="text-pink-500"></span>
                                             </div>
                                         <% end %>
 
                                         <%= link_to "Edit my Sign-up", my_respond_to_call_to_audition_form_path(audition_request.call_to_audition.token), class: "text-xs text-pink-500 underline", target: "_blank" %>
 
                                     <% elsif audition_request.call_to_audition.timeline_status == :closed %>
-                                        <div class="text-sm text-gray-500 mt-1">Call to Audition closed on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %></div>
+                                        <div class="text-xs text-gray-500 mt-1">Sign-up window closed on <%= audition_request.call_to_audition.closes_at.strftime('%b %d, %Y') %></div>
                                     <% end %>
                                 </div>
                             </div>
                         </div>
                         <div class="col-span-2 flex flex-col justify-center items-start">
-                            <div class="text-lg"><%= friendly_request_status_name(audition_request)%></div>
-                            <div class="text-sm text-gray-500 mt-1"><%= friendly_request_status_text(audition_request) %></div>
+                            <div class="text-lg">
+                                <% if audition_request.call_to_audition.audition_type == "in_person" %>
+                                    <%= in_person_signup_status_name(audition_request) %>
+                                 <% elsif audition_request.call_to_audition.audition_type == "video_upload" %>
+                                    <%= video_audition_status_name(audition_request) %>
+                                <% end %>
+                            </div>
+                            <div class="text-sm text-gray-500 mt-1">
+                                <% if audition_request.call_to_audition.audition_type == "in_person" %>
+                                    <%= in_person_signup_status_text(audition_request) %>
+                                 <% elsif audition_request.call_to_audition.audition_type == "video_upload" %>
+                                    <%= video_audition_status_text(audition_request) %>
+                                <% end %>
+
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -76,11 +100,10 @@
         </div>
     <% else %>
          <p class="text-gray-500 text-sm pt-2">
-
             <% if @requests_filter == "all" %>
-                You haven't submitted any audition requests.
+                You haven't signed up for any auditions.
             <% elsif @requests_filter == "open" %>
-                You don't have any open calls to audition.
+                None of the shows you've applied for are currently auditioning.
             <% end %>
         </p>
     <% end %>
