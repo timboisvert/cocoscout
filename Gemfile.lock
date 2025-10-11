@@ -420,6 +420,7 @@ GEM
     thruster (0.1.15-x86_64-darwin)
     thruster (0.1.15-x86_64-linux)
     timeout (0.4.3)
+    tsort (0.2.0)
     turbo-rails (2.0.17)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
@@ -476,7 +477,7 @@ DEPENDENCIES
   pg
   propshaft
   puma (>= 5.0)
-  rails (~> 8.0.3)
+  rails
   rails_semantic_logger
   rspec-rails
   rubocop-rails-omakase
