@@ -1,35 +1,95 @@
-<div class="w-full md:w-[50%] md:min-h-screen pt-10 mr-auto">
-  <h1 class="text-4xl pt-2 font-bold mb-10 md:text-3xl md:pt-0 md:mb-20 coustard-regular">CocoScout</h1>
-  <p class="mb-6 text-5xl coustard-regular">Coming Soon!</p>
-  <p class="mb-6 text-lg">
-    We are in the midst of developing the world's premier tool for entertainment production management.
-    CocoScout empowers show creators to organize the chaos of auditions, casting, talent scheduling,
-    and more. From casting call to final curtain, CocoScout takes care of the logistics, so you can
-    focus on creating unforgettable entertainment. Enter your email below to be notified when
-    CocoScout launches!
-  </p>
-  <%= form_with url: "/notify_me", method: :post, local: true do |form| %>
-    <div class="flex">
-      <%= form.email_field :email, required: true, placeholder: "Your email address", class: "flex-1 px-3 py-2 border border-gray-200 rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500" %>
-      <%= form.submit "Notify Me", class: "bg-pink-500 text-white px-4 py-2 rounded-r hover:bg-pink-600 transition" %>
+<div class="min-h-screen bg-white text-slate-900">
+  <header class="w-full border-b border-pink-200 bg-white/95 px-6 py-6">
+    <div class="mx-auto flex w-full max-w-6xl items-center justify-between">
+      <div class="flex items-center gap-4">
+        <%= image_tag "/icon.png", alt: "CocoScout logomark", class: "h-12 w-12" %>
+        <span class="text-2xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+      </div>
+        <%= link_to "Sign In", my_dashboard_path, class: "inline-flex items-center justify-center rounded-md bg-pink-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-400" %>
     </div>
-  <% end %>
+  </header>
 
-  <div class="mt-8">
-    <a href="https://instagram.com/cocoscout" target="_blank" rel="noopener" aria-label="Instagram">
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" class="inline-block text-pink-500" style="color: #ec4899;">
-        <rect width="20" height="20" x="2" y="2" rx="5" stroke="currentColor" stroke-width="2" fill="none"/>
-        <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/>
-        <circle cx="17" cy="7" r="1.5" fill="currentColor"/>
-      </svg>
-    </a>
-  </div>
+  <main class="flex flex-col gap-16 pb-16">
+    <section class="w-full bg-slate-900 text-white">
+      <div class="flex w-full flex-col gap-8 px-6 py-16 lg:flex-row lg:items-center lg:px-12 xl:px-20">
+  <div class="space-y-4 max-w-3xl">
+          <p class="text-sm uppercase tracking-wider text-pink-300">Production management tools for real producers</p>
+          <h1 class="text-4xl font-semibold leading-tight coustard-regular sm:text-5xl">Keep auditions, casting, and communications in one place.</h1>
+          <p class="text-base text-slate-200 sm:text-lg">Open a call to auditions, create a sign-up form, gather availability for auditions and shows, schedule auditions, select and onboard cast members, manage roles and cast assignments, and centralize production-related cast communications, all in one centralized hub.</p>
+        </div>
 
-  <div class="w-full pt-5 md:pt-0 md:fixed md:bottom-0 md:right-0 md:w-[50%] md:h-full md:flex md:items-end md:justify-end pointer-events-none">
-    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="max-h-[70%] object-contain select-none pointer-events-none mr-5" />
-  </div>
-  <div class="text-center py-4 md:py-0 md:text-left md:fixed md:bottom-4 md:left-4 text-sm">
-    <p>A <a href="https://cocorunseverything.com" target="_blank" rel="noopener" class="underline caprasimo-regular">Coco Runs Everything</a> Production</p>
-  </div>
+        <div class="rounded-lg bg-white/10 p-6 backdrop-blur">
+          <h2 class="text-lg font-semibold text-white">Stay in the loop</h2>
+          <p class="mt-2 text-sm text-slate-200">We're launching soon! Add your email and we'll let you know when CocoScout opens up wider.</p>
+          <div class="mt-4">
+            <%= form_with url: "/notify_me", method: :post, local: true do |form| %>
+              <div class="flex flex-col gap-3 sm:flex-row">
+                <%= form.email_field :email, required: true, placeholder: "name@email.com", class: "flex-1 rounded-md border border-slate-600 bg-white px-4 py-3 text-slate-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/60" %>
+                <%= form.submit "Notify me", class: "inline-flex items-center justify-center rounded-md bg-pink-500 px-6 py-3 text-base font-semibold text-white transition hover:bg-pink-400" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <section class="w-full bg-slate-100">
+      <div class="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-14">
+        <h2 class="text-2xl font-semibold text-slate-900">What CocoScout helps with</h2>
+        <div class="grid gap-6 md:grid-cols-3">
+          <div class="space-y-2 border border-pink-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-pink-500">Audition flow</h3>
+            <p class="text-sm text-slate-600">Track who’s coming in, what they’re reading, and what happens next without leaving the room.</p>
+          </div>
+          <div class="space-y-2 border border-pink-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-pink-500">Clear schedules</h3>
+            <p class="text-sm text-slate-600">Share rehearsal plans and hold times with casts and crew in seconds.</p>
+          </div>
+          <div class="space-y-2 border border-pink-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-pink-500">Talent history</h3>
+            <p class="text-sm text-slate-600">Keep notes on performers, callbacks, and offers so you remember who fit each role.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="w-full bg-white">
+      <div class="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6">
+        <h2 class="text-2xl font-semibold text-slate-900">Who CocoScout helps</h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="rounded-lg border border-pink-200 bg-pink-50/60 p-5">
+            <p class="text-sm font-semibold text-pink-500">Casting directors</p>
+            <p class="mt-2 text-sm text-slate-600">Keep auditions lined up, mark favorites fast, and hand off clean notes to producers.</p>
+          </div>
+          <div class="rounded-lg border border-pink-200 bg-pink-50/60 p-5">
+            <p class="text-sm font-semibold text-pink-500">Producers & coordinators</p>
+            <p class="mt-2 text-sm text-slate-600">See where auditions stand, who's confirmed, and what still needs attention.</p>
+          </div>
+          <div class="rounded-lg border border-pink-200 bg-pink-50/60 p-5">
+            <p class="text-sm font-semibold text-pink-500">Talent teams</p>
+            <p class="mt-2 text-sm text-slate-600">Share materials with performers and keep everyone looped in on next steps.</p>
+          </div>
+          <div class="rounded-lg border border-pink-200 bg-pink-50/60 p-5">
+            <p class="text-sm font-semibold text-pink-500">Creative partners</p>
+            <p class="mt-2 text-sm text-slate-600">Review options, give quick feedback, and move into rehearsals without losing context.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-16 border-t border-slate-200 px-6 py-8 text-sm text-slate-500">
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        A <a href="https://cocorunseverything.com" target="_blank" rel="noopener" class="underline caprasimo-regular">Coco Runs Everything</a> Production
+      </p>
+      <a href="https://instagram.com/cocoscout" target="_blank" rel="noopener" aria-label="CocoScout on Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-slate-900 hover:text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="5" ry="5" />
+          <path d="M16.5 7.5h.01" />
+          <path d="M7 12a5 5 0 1 0 10 0a5 5 0 0 0-10 0" />
+        </svg>
+      </a>
+    </div>
+  </footer>
 </div>
