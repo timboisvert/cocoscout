@@ -19,8 +19,8 @@
       user_roles.find_by(production_company_id: Current.production_company.id)&.role
     end
 
-    def admin?
-      role == "admin"
+    def manager?
+      role == "manager"
     end
 
     def god?

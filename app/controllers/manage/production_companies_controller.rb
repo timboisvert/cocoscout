@@ -13,8 +13,8 @@ class Manage::ProductionCompaniesController < Manage::ManageController
     @production_company = ProductionCompany.new(production_company_params)
 
     if @production_company.save
-      # Assign creator as admin
-      UserRole.create!(user: Current.user, production_company: @production_company, role: "admin")
+      # Assign creator as manager
+      UserRole.create!(user: Current.user, production_company: @production_company, role: "manager")
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{Current.user&.id}"] = @production_company.id
       redirect_to manage_path, notice: "Production company was successfully created."

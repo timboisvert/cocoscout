@@ -43,7 +43,7 @@ class Manage::TeamInvitationsController < Manage::ManageController
 
     # Set a role and the production company
     unless UserRole.exists?(user: user, production_company: @team_invitation.production_company)
-      UserRole.create!(user: user, production_company: @team_invitation.production_company, role: "member")
+      UserRole.create!(user: user, production_company: @team_invitation.production_company, role: "viewer")
     end
 
     # Mark the invitation as accepted

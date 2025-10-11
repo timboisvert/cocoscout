@@ -13,6 +13,8 @@ class Manage::ManageController < ActionController::Base
   def index
     if (production = Current.production)
       redirect_to manage_production_path(production)
+    else
+      redirect_to manage_productions_path
     end
   end
 

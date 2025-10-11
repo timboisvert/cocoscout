@@ -45,15 +45,13 @@
       <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
     </div>
 
-    <div class="px-4 py-6 border-t-4 border-pink-500 text-xs text-gray-500">
+    <div class="p-5 pb-4 border-t-4 border-pink-500 transition-all flex flex-col">
       <% if Current.user %>
-        <div class="font-semibold text-gray-700 truncate">
-          <%= Current.user.email_address %>
-          <span class="text-gray-500"><%= link_to "Sign out", signout_path, class: "text-pink-500 underline", data: { turbo_prefetch: false } %></span>
+        <div class="font-bold text-sm"><%= Current.user.email_address %></div>
+        <div>
+          <%= link_to "Sign out", signout_path, class: "text-pink-500 font-bold underline text-xs inline-block", data: { turbo_prefetch: false } %>
         </div>
-      <% else %>
-        <div class="italic">Not signed in</div>
-      <% end %>
+      <% end  %>
     </div>
 
   </div>

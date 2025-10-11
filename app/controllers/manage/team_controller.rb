@@ -1,6 +1,6 @@
  class Manage::TeamController < Manage::ManageController
   def index
-    @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "admin", "member" ] }).distinct
+    @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
     @team_invitation = Current.production_company.team_invitations.new
     @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
   end
@@ -9,9 +9,10 @@
     @team_invitation = TeamInvitation.new(team_invitation_params)
     @team_invitation.production_company = Current.production_company
     if @team_invitation.save
+      Manage::TeamMailer.invite(@team_invitation).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent."
     else
-      @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "admin", "member" ] }).distinct
+      @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
       @team_invitation = Current.production_company.team_invitations.new
       @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
       @team_invitation_error = true
@@ -23,7 +24,7 @@
     user = Current.production_company.users.find(params[:id])
     role = params[:role]
     user_role = UserRole.find_by(user: user, production_company: Current.production_company)
-    if user_role && %w[admin member].include?(role)
+    if user_role && %w[manager viewer].include?(role)
       user_role.update(role: role)
       respond_to do |format|
         format.json { render json: { success: true } }
@@ -55,18 +56,18 @@
         user_role.destroy
         respond_to do |format|
           format.json { render json: { success: true } }
-          format.html { redirect_to manage_team_index_path, notice: "Team member removed." }
+          format.html { redirect_to manage_team_index_path, notice: "Production team member removed" }
         end
       else
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
-          format.html { redirect_to manage_team_index_path, alert: "Could not remove team member." }
+          format.html { redirect_to manage_team_index_path, alert: "Could not remove Production team member" }
         end
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to manage_team_index_path, alert: "You cannot remove yourself or user not found." }
+        format.html { redirect_to manage_team_index_path, alert: "Unable to remove production team member" }
       end
     end
   end
