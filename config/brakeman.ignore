@@ -3,6 +3,40 @@
     {
       "warning_type": "Dynamic Render Path",
       "warning_code": 15,
+      "fingerprint": "44c165cd0a3cf19fbf585b55bcd0a460ebc0ddeec23dd8d3261020f6cd778355",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/auditions/show.html.erb",
+      "line": 10,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => Current.production_company.productions.find(params.expect(:production_id)).auditions.find(params.expect(:id)), { :locals => ({ :current => Current.production_company.productions.find(params.expect(:production_id)).auditions.find(params.expect(:id)) }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::AuditionsController",
+          "method": "show",
+          "line": 12,
+          "file": "app/controllers/manage/auditions_controller.rb",
+          "rendered": {
+            "name": "manage/auditions/show",
+            "file": "app/views/manage/auditions/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/auditions/show"
+      },
+      "user_input": "params.expect(:id)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
       "fingerprint": "4c76a94f0b149c37071ec735f2022bae596afd47fdd6020280b78e0be419b5e3",
       "check_name": "Render",
       "message": "Render path contains parameter value",
@@ -29,40 +63,6 @@
       },
       "user_input": "params[:result_partial]",
       "confidence": "High",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "905f24cbfe0354f8a1666272ae453f53aa5e28acf4ba724f31c7a1e818d41a61",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/manage/auditions/show.html.erb",
-      "line": 10,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => Production.find(params.expect(:production_id)).auditions.find(params.expect(:id)), { :locals => ({ :production => Production.find(params.expect(:production_id)).auditions.find(params.expect(:id)) }) })",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::AuditionsController",
-          "method": "show",
-          "line": 12,
-          "file": "app/controllers/manage/auditions_controller.rb",
-          "rendered": {
-            "name": "manage/auditions/show",
-            "file": "app/views/manage/auditions/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/auditions/show"
-      },
-      "user_input": "params.expect(:id)",
-      "confidence": "Weak",
       "cwe_id": [
         22
       ],
