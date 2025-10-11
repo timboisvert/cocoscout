@@ -25,7 +25,7 @@
             <%= mail_to Current.user.person.email, Current.user.person.email, class: "text-pink-500 text-sm hover:underline" %>
         </div>
 
-        <div class="space-y-1">
+        <div class="space-y-1 mt-1">
             <% Current.user.person.socials.each do |social| %>
                 <div class="flex items-center space-x-2">
                     <%= social.icon(20) %>
