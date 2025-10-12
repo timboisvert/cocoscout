@@ -20,7 +20,6 @@ gem "aws-sdk-s3", require: false
 gem "honeybadger"
 gem "rails_semantic_logger"
 gem "pagy"
-gem "poppler"
 
 gem "dotenv-rails", groups: %i[ development test ]
 
