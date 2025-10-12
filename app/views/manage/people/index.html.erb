@@ -18,6 +18,7 @@
 
       <div class="flex flex-1 space-x-1">
         <!-- Left: Sorting links -->
+        <div class="flex items-center text-sm text-gray-500">Sort:</div>
         <%= link_to "A→Z",
                 manage_people_path(order: "alphabetical"),
                 data: { turbo_prefetch: false },
@@ -34,8 +35,27 @@
                 class: "px-3 py-1 rounded-md border text-sm #{(@order == "oldest") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
       </div>
-      <div class="flex space-x-1">
-        <!-- Right: Filter links -->
+
+      <div class="flex flex-1 space-x-1 justify-center">
+        <!-- Center: Show links -->
+        <div class="flex items-center text-sm text-gray-500">Show:</div>
+
+        <%= link_to manage_people_path(show: "tiles"), class: "px-2 py-1 rounded-md border #{@show == 'tiles' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          </svg>
+        <% end %>
+
+        <%= link_to manage_people_path(show: "list"), class: "px-2 py-1 rounded-md border #{@show == 'list' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        <% end %>
+      </div>
+
+      <div class="flex flex-1 space-x-1 justify-end">
+        <!-- Right: Include links -->
+        <div class="flex items-center text-sm text-gray-500">Include:</div>
         <%= link_to "Cast Members",
                 manage_people_path(filter: "cast-members"),
                 class: "px-3 py-1 rounded-md border text-sm #{@filter == 'cast-members' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
@@ -48,23 +68,47 @@
 
     </div>
 
-    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1 w-full mt-4">
-      <% @people.each do |person| %>
+    <% if @show == "tiles" %>
+      <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1 w-full mt-4">
+        <% @people.each do |person| %>
 
-        <%= link_to manage_person_path(person) do %>
-          <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
-            <% if person.headshot.present? %>
-                <%= image_tag person.headshot.variant(:thumb), alt: person.name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
-            <% else %>
-                <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
-                    <%= person.initials %>
-                </div>
-            <% end %>
-            <span class="font-medium text-sm text-center"><%= person.name.truncate(20, omission: '...') %></span>
-          </div>
+          <%= link_to manage_person_path(person) do %>
+            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
+              <% if person.headshot.present? %>
+                  <%= image_tag person.headshot.variant(:thumb), alt: person.name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
+              <% else %>
+                  <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                      <%= person.initials %>
+                  </div>
+              <% end %>
+              <span class="font-medium text-sm text-center"><%= person.name.truncate(20, omission: '...') %></span>
+            </div>
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
+      </div>
+    <% elsif @show == "list" %>
+      <div class="flex flex-col w-full mt-4 space-y-2">
+        <% @people.each do |person| %>
+          <%= link_to manage_person_path(person), class: "flex items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group cursor-pointer" do %>
+            <% if person.headshot.present? %>
+              <%= image_tag person.headshot.variant(:thumb), alt: person.name, class: "w-8 h-8 rounded-lg object-cover mr-3" %>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mr-3 text-black font-bold">
+                <%= person.initials %>
+              </div>
+            <% end %>
+            <span class="font-medium text-base"><%= person.name %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex justify-left">
+        <%= pagy_nav_tailwind(@pagy) %>
+      </div>
+    <% end %>
+
   <% else %>
     <div class="text-center my-10">No people found.</div>
   <% end %>

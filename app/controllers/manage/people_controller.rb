@@ -6,6 +6,11 @@ class Manage::PeopleController < Manage::ManageController
     @order = (params[:order] || session[:people_order] || "alphabetical")
     session[:people_order] = @order
 
+    # Store the show
+    @show = (params[:show] || session[:people_show] || "tiles")
+    @show = "tiles" unless %w[tiles list].include?(@show)
+    session[:people_show] = @show
+
     # Store the filter
     @filter = (params[:filter] || session[:people_filter] || "everyone")
     session[:people_filter] = @filter
@@ -35,6 +40,9 @@ class Manage::PeopleController < Manage::ManageController
       @filter = "alphabetical"
       @people = @people.order(:name)
     end
+
+    limit_per_page = @show == "list" ? 12 : 24
+    @pagy, @people = pagy(@people, limit: limit_per_page, params: { order: @order, show: @show, filter: @filter })
   end
 
   def show

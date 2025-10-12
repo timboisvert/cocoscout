@@ -22,6 +22,9 @@ module Cocoscout
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.0
 
+    # This is a temporary hack that will be revisited at some point
+    config.time_zone = "Central Time (US & Canada)"
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
