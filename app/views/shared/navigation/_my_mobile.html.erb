@@ -1,0 +1,46 @@
+<div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
+  <div class="flex items-center justify-between px-4 py-3">
+    <button type="button" data-action="mobile-nav#toggle" class="flex items-center gap-3">
+      <%= image_tag "/icon.png", alt: "CocoScout", class: "h-10 w-10" %>
+      <span class="text-xl text-pink-500 coustard-regular">CocoScout</span>
+    </button>
+  </div>
+  <div data-mobile-nav-target="panel" class="hidden border-t border-pink-100 bg-white px-4 pb-4">
+    <% if session[:impersonate_user_id] %>
+      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
+      <% if impersonated %>
+        <div class="mt-4 rounded-md border border-pink-200 bg-pink-50 px-4 py-3 text-sm">
+          <div class="font-medium text-pink-500">Impersonating</div>
+          <div class="truncate text-slate-700"><%= impersonated.email_address %></div>
+          <%= button_to "Stop impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 w-full rounded-md bg-pink-500 px-3 py-2 text-sm font-semibold text-white" %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <div class="mt-6 grid gap-2">
+      <%= link_to "My Shows", my_shows_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+      <%= link_to "My Auditions", my_auditions_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+      <%= link_to "My Sign-ups", my_audition_requests_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+      <%= link_to "My Profile", my_profile_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+    </div>
+
+    <% if Current.user&.can_manage? %>
+      <div class="mt-6 border-t border-pink-100 pt-4">
+        <div class="text-xs uppercase tracking-wide text-slate-400">Administration</div>
+        <div class="mt-3 grid gap-2">
+          <%= link_to "Manage Dashboard", manage_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+          <% if Current.user.god? %>
+            <%= link_to "God Mode", god_mode_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if Current.user %>
+      <div class="mt-6 rounded-md bg-pink-500 px-4 py-3 text-white">
+        <div class="text-sm font-semibold"><%= Current.user.email_address %></div>
+        <%= link_to "Sign out", signout_path, class: "mt-2 inline-block text-sm font-medium underline", data: { turbo_prefetch: false } %>
+      </div>
+    <% end %>
+  </div>
+</div>
