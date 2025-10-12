@@ -21,7 +21,7 @@ class Manage::CastsController < Manage::ManageController
     @cast.production = @production
 
     if @cast.save
-      redirect_to manage_production_casts_path(@production), notice: "Cast was successfully created."
+      redirect_to manage_production_casts_path(@production), notice: "Cast was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -29,7 +29,7 @@ class Manage::CastsController < Manage::ManageController
 
   def update
     if @cast.update(cast_params)
-      redirect_to manage_production_casts_path(@production), notice: "Cast was successfully updated.", status: :see_other
+      redirect_to manage_production_casts_path(@production), notice: "Cast was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -37,7 +37,7 @@ class Manage::CastsController < Manage::ManageController
 
   def destroy
     @cast.destroy!
-    redirect_to manage_production_casts_path(@production), notice: "Cast was successfully deleted.", status: :see_other
+    redirect_to manage_production_casts_path(@production), notice: "Cast was successfully deleted", status: :see_other
   end
 
    def add_person

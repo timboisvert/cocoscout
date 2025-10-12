@@ -70,10 +70,10 @@ class Manage::PeopleController < Manage::ManageController
         end
         @person.update!(user: user)
 
-        # TODO: Send an email to the person letting them know they have been added and
-        # that they need to update their password
+        # Email the user
+        AuthMailer.password_change_required(user).deliver_later
 
-        redirect_to [ :manage, @person ], notice: "Person was successfully created."
+        redirect_to [ :manage, @person ], notice: "Person was successfully created"
       else
         render :new, status: :unprocessable_entity
       end
@@ -82,7 +82,7 @@ class Manage::PeopleController < Manage::ManageController
 
   def update
     if @person.update(person_params)
-      redirect_to [ :manage, @person ], notice: "Person was successfully updated.", status: :see_other
+      redirect_to [ :manage, @person ], notice: "Person was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -90,7 +90,7 @@ class Manage::PeopleController < Manage::ManageController
 
   def destroy
     @person.destroy!
-    redirect_to manage_people_path, notice: "Person was successfully destroyed.", status: :see_other
+    redirect_to manage_people_path, notice: "Person was successfully deleted", status: :see_other
   end
 
   # GET /people?q=searchterm
@@ -131,7 +131,7 @@ class Manage::PeopleController < Manage::ManageController
     # Only allow a list of trusted parameters through.
     def person_params
       params.require(:person).permit(
-        :name, :pronouns, :resume, :headshot,
+        :name, :email, :pronouns, :resume, :headshot,
         socials_attributes: [ :id, :platform, :handle, :_destroy ]
       )
     end

@@ -58,7 +58,7 @@
         <div class="flex items-center text-sm text-gray-500">Include:</div>
         <%= link_to "Cast Members",
                 manage_people_path(filter: "cast-members"),
-                class: "px-3 py-1 rounded-md border text-sm #{@filter == 'cast-members' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+                class: "px-3 py-1 rounded-md border text-sm text-nowrap #{@filter == 'cast-members' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
         %>
         <%= link_to "Everyone",
                 manage_people_path(filter: "everyone"),

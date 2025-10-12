@@ -15,13 +15,13 @@ module MyHelper
   def in_person_signup_status_text(audition_request)
     case audition_request.status
     when "unreviewed"
-      "Your sign-up is awaiting review."
+      "Your sign-up is awaiting review"
     when "undecided"
-      "Your sign-up has been reviewed, but no decision has been made yet."
+      "Your sign-up has been reviewed, but no decision has been made yet"
     when "passed"
-      "Unfortunately, you have not been offered an audition for this production."
+      "Unfortunately, you have not been offered an audition for this production"
     when "accepted"
-      "Congratulations! You have been offered an audition for this production."
+      "Congratulations! You have been offered an audition for this production"
     end
   end
 
@@ -41,13 +41,13 @@ module MyHelper
   def video_audition_status_text(audition_request)
     case audition_request.status
     when "unreviewed"
-      "Your video audition is awaiting review."
+      "Your video audition is awaiting review"
     when "undecided"
-      "Your video audition has been reviewed, but no decision has been made yet."
+      "Your video audition has been reviewed, but no decision has been made yet"
     when "passed"
-      "Unfortunately, you have not been offered a cast spot for this production."
+      "Unfortunately, you have not been offered a cast spot for this production"
     when "accepted"
-      "Congratulations! You have been offered a cast spot for this production."
+      "Congratulations! You have been offered a cast spot for this production"
     end
   end
 end

@@ -50,7 +50,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
     @audition_request.status = :unreviewed
 
     if @audition_request.save
-      redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Audition request was successfully created."
+      redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Sign-up was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -86,7 +86,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
     if @audition_request.valid?
       @audition_request.save!
-      redirect_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request), notice: "Sign-up successfully updated.", status: :see_other
+      redirect_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request), notice: "Sign-up successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -94,7 +94,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   def destroy
     @audition_request.destroy!
-    redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Sign-up successfully deleted.", status: :see_other
+    redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Sign-up successfully deleted", status: :see_other
   end
 
   def set_status

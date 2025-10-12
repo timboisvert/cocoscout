@@ -43,7 +43,7 @@ class Manage::ShowsController < Manage::ManageController
     @show.production = @production
 
     if @show.save
-      redirect_to manage_production_shows_path(@production), notice: "Show was successfully created."
+      redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -51,7 +51,7 @@ class Manage::ShowsController < Manage::ManageController
 
   def update
     if @show.update(show_params)
-      redirect_to manage_production_shows_path(@production), notice: "Show was successfully updated.", status: :see_other
+      redirect_to manage_production_shows_path(@production), notice: "Show was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -59,7 +59,7 @@ class Manage::ShowsController < Manage::ManageController
 
   def destroy
     @show.destroy!
-    redirect_to manage_production_shows_path(@production), notice: "Show was successfully deleted.", status: :see_other
+    redirect_to manage_production_shows_path(@production), notice: "Show was successfully deleted", status: :see_other
   end
 
   def assign_person_to_role

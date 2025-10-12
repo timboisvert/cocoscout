@@ -17,7 +17,7 @@ class Manage::ProductionCompaniesController < Manage::ManageController
       UserRole.create!(user: Current.user, production_company: @production_company, role: "manager")
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{Current.user&.id}"] = @production_company.id
-      redirect_to manage_path, notice: "Production company was successfully created."
+      redirect_to manage_path, notice: "Production company was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -25,7 +25,7 @@ class Manage::ProductionCompaniesController < Manage::ManageController
 
   def update
     if @production_company.update(production_company_params)
-      redirect_to manage_path, notice: "Production company was successfully updated.", status: :see_other
+      redirect_to manage_path, notice: "Production company was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -33,7 +33,7 @@ class Manage::ProductionCompaniesController < Manage::ManageController
 
   def destroy
     @production_company.destroy!
-    redirect_to production_companies_path, notice: "Production company was successfully destroyed.", status: :see_other
+    redirect_to production_companies_path, notice: "Production company was successfully deleted", status: :see_other
   end
 
   def select

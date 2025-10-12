@@ -10,7 +10,7 @@
     @team_invitation.production_company = Current.production_company
     if @team_invitation.save
       Manage::TeamMailer.invite(@team_invitation).deliver_later
-      redirect_to manage_team_index_path, notice: "Invitation sent."
+      redirect_to manage_team_index_path, notice: "Invitation sent"
     else
       @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
       @team_invitation = Current.production_company.team_invitations.new
@@ -28,12 +28,12 @@
       user_role.update(role: role)
       respond_to do |format|
         format.json { render json: { success: true } }
-        format.html { redirect_to manage_team_index_path, notice: "Role updated." }
+        format.html { redirect_to manage_team_index_path, notice: "Role updated" }
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to manage_team_index_path, alert: "Could not update role." }
+        format.html { redirect_to manage_team_index_path, alert: "Could not update role" }
       end
     end
   end
@@ -42,9 +42,9 @@
     team_invitation = Current.production_company.team_invitations.find_by(id: params[:id], accepted_at: nil)
     if team_invitation
       team_invitation.destroy
-      redirect_to manage_team_index_path, notice: "Invitation revoked."
+      redirect_to manage_team_index_path, notice: "Invitation revoked"
     else
-      redirect_to manage_team_index_path, alert: "Invitation not found or already accepted."
+      redirect_to manage_team_index_path, alert: "Invitation not found or already accepted"
     end
   end
 

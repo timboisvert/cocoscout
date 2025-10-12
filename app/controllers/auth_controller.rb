@@ -1,6 +1,6 @@
 class AuthController < ApplicationController
   allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset]
-  rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later." }
+  rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later" }
 
   skip_before_action :show_my_sidebar
 
@@ -31,6 +31,8 @@ class AuthController < ApplicationController
         # The person exists, so just make sure their user and person are tied to each other
         person.user = @user
       end
+
+      # Save the person
       person.save!
 
       # The user has been created, so log them in

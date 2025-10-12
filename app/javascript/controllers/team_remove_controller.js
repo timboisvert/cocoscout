@@ -28,7 +28,7 @@ export default class extends Controller {
             })
             .catch(() => {
                 // Optionally show error
-                alert("Failed to remove team member.")
+                alert("Failed to remove team member")
             })
     }
 }

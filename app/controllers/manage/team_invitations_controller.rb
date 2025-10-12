@@ -39,6 +39,7 @@ class Manage::TeamInvitationsController < Manage::ManageController
     else
       person = Person.new(email: @team_invitation.email.downcase, name: @team_invitation.email.split("@").first, user: user)
       person.save!
+      AuthMailer.signup(person.user).deliver_later
     end
 
     # Set a role and the production company
@@ -60,14 +61,14 @@ class Manage::TeamInvitationsController < Manage::ManageController
     end
 
     # And redirect
-    redirect_to manage_path, notice: "You have joined #{@team_invitation.production_company.name}.", status: :see_other
+    redirect_to manage_path, notice: "You have joined #{@team_invitation.production_company.name}", status: :see_other
   end
 
   private
   def set_team_invitation
     @team_invitation = TeamInvitation.find_by(token: params[:token])
     unless @team_invitation
-      redirect_to root_path, alert: "Invalid or expired invitation."
+      redirect_to root_path, alert: "Invalid or expired invitation"
     end
   end
 

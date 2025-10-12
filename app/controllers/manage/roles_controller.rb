@@ -22,7 +22,7 @@ class Manage::RolesController < Manage::ManageController
     @role = @production.roles.new(role_params)
 
     if @role.save
-      redirect_to manage_production_roles_path(@production), notice: "Role was successfully created."
+      redirect_to manage_production_roles_path(@production), notice: "Role was successfully created"
     else
       render :index, status: :unprocessable_entity
     end
@@ -31,7 +31,7 @@ class Manage::RolesController < Manage::ManageController
   def update
     @roles = @production.roles.all
     if @role.update(role_params)
-      redirect_to manage_production_roles_path(@production), notice: "Role was successfully updated.", status: :see_other
+      redirect_to manage_production_roles_path(@production), notice: "Role was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -39,7 +39,7 @@ class Manage::RolesController < Manage::ManageController
 
   def destroy
     @role.destroy!
-    redirect_to manage_production_roles_path(@production), notice: "Role was successfully deleted.", status: :see_other
+    redirect_to manage_production_roles_path(@production), notice: "Role was successfully deleted", status: :see_other
   end
 
   private

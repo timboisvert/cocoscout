@@ -41,10 +41,7 @@
           <% end %>
           <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:name].none?, "border-pink-500": @person.errors[:name].any?}] %>
         </div>
-    </div>
-
-</div>
-
+      </div>
 
       <div class="w-full border-t border-gray-200 pt-5 my-5">
         <%= person_form.submit "Invite Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>
@@ -52,6 +49,7 @@
       </div>
 
     <% end %>
+
   </div>
 
 </div>

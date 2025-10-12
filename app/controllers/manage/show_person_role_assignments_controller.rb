@@ -21,7 +21,7 @@ class Manage::ShowPersonRoleAssignmentsController < Manage::ManageController
     @show_person_role_assignment = @show.show_person_role_assignments.new(show_person_role_assignment_params)
 
     if @show_person_role_assignment.save
-      redirect_to @show_person_role_assignment, notice: "Show person role assignment was successfully created."
+      redirect_to @show_person_role_assignment, notice: "Show person role assignment was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -29,7 +29,7 @@ class Manage::ShowPersonRoleAssignmentsController < Manage::ManageController
 
   def update
     if @show_person_role_assignment.update(show_person_role_assignment_params)
-      redirect_to @show_person_role_assignment, notice: "Show person role assignment was successfully updated.", status: :see_other
+      redirect_to @show_person_role_assignment, notice: "Show person role assignment was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -37,7 +37,7 @@ class Manage::ShowPersonRoleAssignmentsController < Manage::ManageController
 
   def destroy
     @show_person_role_assignment.destroy!
-    redirect_to show_person_role_assignments_path, notice: "Show person role assignment was successfully destroyed.", status: :see_other
+    redirect_to show_person_role_assignments_path, notice: "Show person role assignment was successfully deleted", status: :see_other
   end
 
   private

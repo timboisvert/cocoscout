@@ -30,7 +30,7 @@ puts "Call to Audition created or found."
 
 # Delete the old 50 users
 Person.where("email LIKE ?", "%example.com").destroy_all
-puts "Old example.com people deleted."
+puts "Old example.com people deleted"
 
 # Make 50 people and have them apply to the call to audition
 50.times do |i|

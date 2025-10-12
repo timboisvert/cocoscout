@@ -21,7 +21,7 @@ class Manage::QuestionsController < Manage::ManageController
     @questions = @call_to_audition.questions.order(:position)
 
     if @question.save
-      redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully created."
+      redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully created"
     else
       @question_error = true
       render :index, status: :unprocessable_entity
@@ -31,7 +31,7 @@ class Manage::QuestionsController < Manage::ManageController
   # PATCH/PUT /questions/1
   def update
     if @question.update(question_params)
-      redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully updated.", status: :see_other
+      redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -40,7 +40,7 @@ class Manage::QuestionsController < Manage::ManageController
   # DELETE /questions/1
   def destroy
     @question.destroy!
-    redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully deleted.", status: :see_other
+    redirect_to manage_production_call_to_audition_questions_path(@production, @call_to_audition), notice: "Question was successfully deleted", status: :see_other
   end
 
   # POST /questions/reorder

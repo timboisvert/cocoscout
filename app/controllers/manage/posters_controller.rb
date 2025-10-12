@@ -9,7 +9,7 @@ class Manage::PostersController < Manage::ManageController
   def create
     @poster = @production.posters.new(poster_params)
     if @poster.save
-      redirect_to [ :manage, @production ], notice: "Poster was successfully created."
+      redirect_to [ :manage, @production ], notice: "Poster was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -20,7 +20,7 @@ class Manage::PostersController < Manage::ManageController
 
   def update
     if @poster.update(poster_params)
-      redirect_to [ :manage, @production ], notice: "Poster was successfully updated."
+      redirect_to [ :manage, @production ], notice: "Poster was successfully updated"
     else
       render :edit, status: :unprocessable_entity
     end
@@ -28,7 +28,7 @@ class Manage::PostersController < Manage::ManageController
 
   def destroy
     @poster.destroy
-    redirect_to [ :manage, @production ], notice: "Poster was successfully deleted."
+    redirect_to [ :manage, @production ], notice: "Poster was successfully deleted"
   end
 
   private

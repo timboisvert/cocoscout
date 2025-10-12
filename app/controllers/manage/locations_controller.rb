@@ -19,7 +19,7 @@ class Manage::LocationsController < Manage::ManageController
     @location = Current.production_company.locations.new(location_params)
 
     if @location.save
-      redirect_to [ :manage, :locations ], notice: "Location was successfully created."
+      redirect_to [ :manage, :locations ], notice: "Location was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -27,7 +27,7 @@ class Manage::LocationsController < Manage::ManageController
 
   def update
     if @location.update(location_params)
-      redirect_to [ :manage, :locations ], notice: "Location was successfully updated.", status: :see_other
+      redirect_to [ :manage, :locations ], notice: "Location was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -35,7 +35,7 @@ class Manage::LocationsController < Manage::ManageController
 
   def destroy
     @location.destroy!
-    redirect_to manage_locations_path, notice: "Location was successfully destroyed.", status: :see_other
+    redirect_to manage_locations_path, notice: "Location was successfully deleted", status: :see_other
   end
 
   private

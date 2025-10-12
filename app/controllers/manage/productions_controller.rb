@@ -31,7 +31,7 @@ class Manage::ProductionsController < Manage::ManageController
   def update
     if @production.update(production_params)
       set_production_in_session
-      redirect_to [ :manage, @production ], notice: "Production was successfully updated.", status: :see_other and return
+      redirect_to [ :manage, @production ], notice: "Production was successfully updated", status: :see_other and return
     else
       render :edit, status: :unprocessable_entity
     end
@@ -41,7 +41,7 @@ class Manage::ProductionsController < Manage::ManageController
     if Current.production_company && Current.user
       session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = nil
       @production.destroy!
-      redirect_to manage_productions_path, notice: "Production was successfully destroyed.", status: :see_other and return
+      redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
     end
   end
 
@@ -50,7 +50,7 @@ class Manage::ProductionsController < Manage::ManageController
     def set_production
       @production = Current.production_company.productions.find_by(id: params[:id])
       unless @production
-        redirect_to manage_productions_path, alert: "Not authorized or not found." and return
+        redirect_to manage_productions_path, alert: "Not authorized or not found" and return
       end
     end
 

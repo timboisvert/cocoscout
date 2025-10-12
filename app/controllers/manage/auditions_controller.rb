@@ -25,7 +25,7 @@ class Manage::AuditionsController < Manage::ManageController
     @audition = Audition.new(audition_params)
 
     if @audition.save
-      redirect_to @audition, notice: "Audition was successfully created."
+      redirect_to @audition, notice: "Audition was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -34,7 +34,7 @@ class Manage::AuditionsController < Manage::ManageController
   # PATCH/PUT /auditions/1
   def update
     if @audition.update(audition_params)
-      redirect_to @audition, notice: "Audition was successfully updated.", status: :see_other
+      redirect_to @audition, notice: "Audition was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -43,7 +43,7 @@ class Manage::AuditionsController < Manage::ManageController
   # DELETE /auditions/1
   def destroy
     @audition.destroy!
-    redirect_to auditions_path, notice: "Audition was successfully destroyed.", status: :see_other
+    redirect_to auditions_path, notice: "Audition was successfully deleted", status: :see_other
   end
 
 
