@@ -52,9 +52,18 @@
                 <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
                     <div class="w-full">
 
-                        <% if @person.headshot.attached? %>
+                        <% if displayable_attachment?(@person.headshot) %>
                             <div class="mb-4">
                                 <%= image_tag url_for(@person.headshot), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
+                            </div>
+                        <% elsif pending_attachment?(@person.headshot) %>
+                            <div class="mb-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                Headshot will be uploaded after saving.
+                                <% if @person.headshot.filename.present? %>
+                                    <div class="mt-1 text-xs text-slate-400">
+                                        <%= @person.headshot.filename.to_s %>
+                                    </div>
+                                <% end %>
                             </div>
                         <% end %>
 
@@ -91,9 +100,18 @@
                 <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
                     <div class="w-full">
 
-                        <% if @person.resume.attached? && @person.resume.previewable? %>
+                        <% if displayable_attachment?(@person.resume) && @person.resume.previewable? %>
                             <div class="mb-4">
                                 <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
+                            </div>
+                        <% elsif pending_attachment?(@person.resume) %>
+                            <div class="mb-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                Resume will be uploaded after saving.
+                                <% if @person.resume.filename.present? %>
+                                    <div class="mt-1 text-xs text-slate-400">
+                                        <%= @person.resume.filename.to_s %>
+                                    </div>
+                                <% end %>
                             </div>
                         <% end %>
 
@@ -103,7 +121,7 @@
                         </div>
 
                         <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                            <%= person_form.file_field :headshot, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                            <%= person_form.file_field :resume, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                         </div>
 
                     </div>

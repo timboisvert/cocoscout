@@ -1,6 +1,20 @@
 module ApplicationHelper
   include Pagy::Frontend
 
+  def displayable_attachment?(attachment)
+    attachment.respond_to?(:attached?) &&
+      attachment.attached? &&
+      attachment.respond_to?(:blob) &&
+      attachment.blob.present? &&
+      attachment.blob.persisted?
+  end
+
+  def pending_attachment?(attachment)
+    attachment.respond_to?(:attached?) &&
+      attachment.attached? &&
+      (!attachment.respond_to?(:blob) || attachment.blob.blank? || !attachment.blob.persisted?)
+  end
+
   def pagy_nav_tailwind(pagy, id: nil, aria_label: nil)
     id               = %( id="#{id}") if id
     link_classes     = "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600"
