@@ -30,7 +30,7 @@ FROM base AS build
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git pkg-config libvips poppler-utils glib2-devel gobject-introspection&& \
+    apt-get install --no-install-recommends -y build-essential git pkg-config libvips poppler-utils libglib2.0-dev gobject-introspection&& \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install application gems
