@@ -5,7 +5,7 @@
       <span class="text-xl text-pink-500 coustard-regular">CocoScout</span>
     </button>
   </div>
-  <div data-mobile-nav-target="panel" class="hidden border-t border-pink-100 bg-white px-4 pb-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[65px] bg-white overflow-y-auto px-4 pb-4">
     <% if Current.production.present? && !Current.production.new_record? %>
       <div class="py-4">
         <div class="text-xs uppercase tracking-wide text-slate-400">Current production</div>
