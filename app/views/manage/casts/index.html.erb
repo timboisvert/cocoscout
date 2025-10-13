@@ -21,7 +21,6 @@
             links: []
           } %>
 
-
           <div class="" data-controller="cast-person" data-cast-person-production-id-value="<%= @production.id %>" data-cast-person-cast-id-value="<%= cast.id %>">
 
             <div id="cast-members-list-<%= cast.id %>">
@@ -60,7 +59,12 @@
         </div>
       <% end %>
     <% else %>
-      <p class="text-center my-10">No casts found. <%= link_to "+ Add a Cast", new_manage_production_cast_path(@production), class: "text-pink-500 underline" %></p>
+      <p class="text-gray-500 text-sm">
+        No casts have been created.
+        <% if Current.user.manager? %>
+          <%= link_to "Add a Cast", new_manage_production_cast_path(@production), class: "text-pink-500 underline" %>
+        <% end %>
+      </p>
     <% end %>
   </div>
 </div>
