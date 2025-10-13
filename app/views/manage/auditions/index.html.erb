@@ -187,7 +187,7 @@
           <div class="grid grid-cols-1">
             <% if @production.audition_sessions.any? %>
               <div class="grid grid-cols-1 gap-1 mb-2">
-                <% @production.audition_sessions.each_with_index do |session, idx| %>
+                <% @production.audition_sessions.order(:start_at).each_with_index do |session, idx| %>
                   <div class="border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 %>>
                     <div class="flex items-center cursor-pointer select-none p-4" data-action="click->show-toggle#toggle">
                       <span data-show-toggle-target="icon" class="mr-2"></span>
