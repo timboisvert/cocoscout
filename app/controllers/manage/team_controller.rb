@@ -56,18 +56,18 @@
         user_role.destroy
         respond_to do |format|
           format.json { render json: { success: true } }
-          format.html { redirect_to manage_team_index_path, notice: "Production team member removed" }
+          format.html { redirect_to manage_team_index_path, notice: "Team member removed" }
         end
       else
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
-          format.html { redirect_to manage_team_index_path, alert: "Could not remove Production team member" }
+          format.html { redirect_to manage_team_index_path, alert: "Could not remove Team member" }
         end
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to manage_team_index_path, alert: "Unable to remove production team member" }
+        format.html { redirect_to manage_team_index_path, alert: "Unable to remove team member" }
       end
     end
   end

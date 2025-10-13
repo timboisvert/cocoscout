@@ -1,7 +1,7 @@
 <h1>Welcome to CocoScout</h1>
 <p>
     <%= @team_invitation.production_company.name%> is using CocoScout to manage its productions.
-    You've been invited to join the production team.
+    You've been invited to join the team.
     <%= link_to "Click here", accept_manage_team_invitations_url(@team_invitation.token), target: "_blank", class: "text-pink-500" %>
     to accept the audition and sign in or create an account.
 </p>
