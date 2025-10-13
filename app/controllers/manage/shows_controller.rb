@@ -91,15 +91,13 @@ class Manage::ShowsController < Manage::ManageController
     render json: { cast_members_html: cast_members_html, roles_html: roles_html }
   end
 
-
-
   private
     def set_production
       @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_show
-      @show = @production.shows.find(params.expect(:id))
+      @show = Show.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.

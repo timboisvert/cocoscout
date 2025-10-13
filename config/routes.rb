@@ -132,12 +132,12 @@ Rails.application.routes.draw do
     end
 
     # Used for adding people and removing them from an audition session
-    post "/auditions/add_to_session", to: "auditions#add_to_session"
-    post "/auditions/remove_from_session", to: "auditions#remove_from_session"
+    post "/auditions/add_to_session",       to: "auditions#add_to_session"
+    post "/auditions/remove_from_session",  to: "auditions#remove_from_session"
 
     # Used for adding people and removing them from a cast
-    post "/shows/:id/assign_person_to_role", to: "shows#assign_person_to_role"
-    post "/shows/:id/remove_person_from_role", to: "shows#remove_person_from_role"
+    post "/shows/:id/assign_person_to_role",    to: "shows#assign_person_to_role"
+    post "/shows/:id/remove_person_from_role",  to: "shows#remove_person_from_role"
   end
 
   # Junkers
