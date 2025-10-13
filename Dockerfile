@@ -16,7 +16,7 @@ WORKDIR /rails
 
 # Install base packages
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 libglib2.0-0 libcairo2 libpoppler-glib8 poppler-utils && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 libglib2.0-0 libcairo2 libpoppler-glib8 poppler-utils libgirepository-1.0-1 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment
