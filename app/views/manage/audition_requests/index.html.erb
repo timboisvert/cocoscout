@@ -66,33 +66,35 @@
             </div>
           <% end %>
 
-          <div class="grid grid-cols-4 gap-0 items-center ml-auto">
-            <%
-              [:unreviewed, :undecided, :accepted, :passed].each do |status|
-              classes = "text-sm px-3 py-2 text-center border border-gray-200 text-nowrap"
+          <% if Current.user.manager? %>
+            <div class="grid grid-cols-4 gap-0 items-center ml-auto">
+              <%
+                [:unreviewed, :undecided, :accepted, :passed].each do |status|
+                  classes = "text-sm px-3 py-2 text-center border border-gray-200 text-nowrap"
 
-              # Set the borders based on position in the list of statuses
-              if status == :unreviewed
-                classes += " rounded-l-lg"
-              elsif status == :undecided
-                classes += " border-l-0"
-              elsif status == :accepted
-                classes += " border-l-0"
-              elsif status == :passed
-                classes += " rounded-r-lg"
-              end
+                  # Set the borders based on position in the list of statuses
+                  if status == :unreviewed
+                    classes += " rounded-l-lg"
+                  elsif status == :undecided
+                    classes += " border-l-0"
+                  elsif status == :accepted
+                    classes += " border-l-0"
+                  elsif status == :passed
+                    classes += " rounded-r-lg"
+                  end
 
-              # Set the background color based on status
-              if audition_request.status == status.to_s
-                classes += " bg-pink-500 hover:bg-pink-600 text-white"
-              end
-            %>
-            <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+                  # Set the background color based on status
+                  if audition_request.status == status.to_s
+                    classes += " bg-pink-500 hover:bg-pink-600 text-white"
+                  end
+              %>
+                <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+              <% end %>
+            </div>
           <% end %>
         </div>
-      </div>
-    <% end %>
-  <% else %>
+      <% end %>
+    <% else %>
 
     <p class="text-gray-500 text-sm pt-2">
       <% if @filter.blank? %>

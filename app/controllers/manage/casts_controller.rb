@@ -1,12 +1,10 @@
 class Manage::CastsController < Manage::ManageController
   before_action :set_production
-  before_action :set_cast, only: %i[ show edit update destroy ]
+  before_action :set_cast, only: %i[ edit update destroy ]
+  before_action :ensure_user_is_manager, except: %i[index]
 
   def index
     @casts = @production.casts.all
-  end
-
-  def show
   end
 
   def new

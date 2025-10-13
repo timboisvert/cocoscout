@@ -12,11 +12,17 @@
     <% end %>
     <span class="text-xl mb-1 mr-2"><%= text %></span>
   </div>
-  <% if links.count > 0 %>
-    <div>
-      <% links.each do |link| %>
-        <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path]} %>
-      <% end %>
-    </div>
+
+  <% if !Current.production_company.nil? && Current.user.manager? %>
+
+    <% if links.count > 0 %>
+      <div>
+        <% links.each do |link| %>
+          <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path]} %>
+        <% end %>
+      </div>
+    <% end %>
+
   <% end %>
+
 </div>

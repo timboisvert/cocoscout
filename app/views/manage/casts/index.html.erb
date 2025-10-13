@@ -13,19 +13,14 @@
   <div id="casts" class="min-w-full space-y-5">
     <% if @casts.any? %>
       <% @casts.each do |cast| %>
-        <div class="grid grid-cols-1 gap-1 p-4 pb-6 border border-gray-200 rounded-lg hover:border-gray-400 transition-all"">
+        <div class="grid grid-cols-1 gap-1 p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
 
-          <div class="flex items-center justify-between">
-            <h1 class="font-bold text-2xl"><%= cast.name %></h1>
-              <div class="flex gap-2">
-                <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "inline-block px-3 py-1 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition cursor-pointer" %>
-                <%= link_to "Delete Cast",
-                      manage_production_cast_path(@production, cast),
-                      data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this cast?" },
-                      class: "inline-block px-3 py-1 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition cursor-pointer" %>
+          <%= render partial: "shared/top_menu", locals: {
+            breadcrumbs: [],
+            text: cast.name,
+            links: []
+          } %>
 
-              </div>
-          </div>
 
           <div class="" data-controller="cast-person" data-cast-person-production-id-value="<%= @production.id %>" data-cast-person-cast-id-value="<%= cast.id %>">
 
@@ -33,23 +28,34 @@
               <%= render 'manage/casts/cast_members_list', cast: cast %>
             </div>
 
-            <div id="cast-members-list-add-person-<%= cast.id %>" class="mt-4 hidden">
-              <h1 class="font-bold text-lg mb-1">Add a person to this cast:</h1>
-              <div class=""
-                  data-controller="people-search"
-                  data-people-search-url-value="<%= search_manage_people_path(format: :html) %>"
-                  data-people-search-result-partial-value="manage/casts/cast_person_grid_item"
-              >
-                <div class="flex items-center gap-2">
-                  <input type="text" class="w-full md:w-1/2 px-3 py-2 border rounded shadow-sm" placeholder="Search for people..." data-people-search-target="input" data-action="input->people-search#search">
-                  <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium cursor-pointer" data-action="people-search#reset">Done</button>
+            <% if Current.user.manager? %>
+              <div id="cast-members-list-add-person-<%= cast.id %>" class="mt-4 hidden">
+                <h1 class="font-bold text-lg mb-1">Add a person to this cast:</h1>
+                <div class=""
+                    data-controller="people-search"
+                    data-people-search-url-value="<%= search_manage_people_path(format: :html) %>"
+                    data-people-search-result-partial-value="manage/casts/cast_person_grid_item"
+                >
+                  <div class="flex items-center gap-2">
+                    <input type="text" class="w-full md:w-1/2 px-3 py-2 border rounded shadow-sm" placeholder="Search for people..." data-people-search-target="input" data-action="input->people-search#search">
+                    <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium cursor-pointer" data-action="people-search#reset">Done</button>
+                  </div>
+                  <div class="" data-people-search-target="results"></div>
                 </div>
-                <div class="" data-people-search-target="results"></div>
               </div>
-
-            </div>
+            <% end %>
 
           </div>
+
+          <% if Current.user.manager? %>
+            <div class="flex gap-1 mt-4">
+              <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "inline-block px-3 py-1 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition cursor-pointer" %>
+              <%= link_to "Delete Cast",
+                    manage_production_cast_path(@production, cast),
+                    data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this cast?" },
+                    class: "inline-block px-3 py-1 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition cursor-pointer" %>
+            </div>
+          <% end %>
 
         </div>
       <% end %>

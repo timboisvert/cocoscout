@@ -1,6 +1,7 @@
 class Manage::AuditionsController < Manage::ManageController
   before_action :set_production, except: %i[ add_to_session remove_from_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
+  before_action :ensure_user_is_manager, except: %i[index show]
 
   # GET /auditions
   def index

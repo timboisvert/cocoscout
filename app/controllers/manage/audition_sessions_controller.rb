@@ -1,6 +1,7 @@
 class Manage::AuditionSessionsController < Manage::ManageController
   before_action :set_production
   before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
+  before_action :ensure_user_is_manager, except: %i[show summary]
 
    def index
     @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)

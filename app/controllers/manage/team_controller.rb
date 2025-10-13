@@ -1,4 +1,6 @@
  class Manage::TeamController < Manage::ManageController
+  before_action :ensure_user_is_manager, except: %i[index]
+
   def index
     @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
     @team_invitation = Current.production_company.team_invitations.new

@@ -1,6 +1,7 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
   before_action :set_call_to_audition, only: %i[ edit form update destroy preview ]
+  before_action :ensure_user_is_manager, except: %i[ preview ]
 
   # Skip the sidebar on the preview
   skip_before_action :show_manage_sidebar, only: %i[ preview ]

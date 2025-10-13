@@ -67,7 +67,10 @@
         <div class="font-bold text-sm"><%= Current.production_company.name %></div>
         <div>
           <%= link_to "Switch", select_manage_production_companies_path, class: "text-pink-500 font-bold underline text-xs inline-block" %>
-          <%= link_to "Edit", edit_manage_production_company_path(Current.production_company), class: "text-pink-500 font-bold underline text-xs inline-block" %>
+
+          <% if Current.user.manager? %>
+            <%= link_to "Edit", edit_manage_production_company_path(Current.production_company), class: "text-pink-500 font-bold underline text-xs inline-block" %>
+          <% end %>
         </div>
       <% end  %>
     </div>

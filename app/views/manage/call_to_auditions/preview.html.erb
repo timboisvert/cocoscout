@@ -3,7 +3,12 @@
     <div class="flex justify-between items-center h-full mx-auto content-center">
       <%= render partial: "shared/link_button", locals: {text: "Close Preview", color: "white", path: manage_production_auditions_path(@production)} %>
       <p class="text-white text-2xl font-medium">Preview</p>
-      <%= render partial: "shared/link_button", locals: {text: "Edit", color: "white", path: edit_manage_production_call_to_audition_path(@production, @call_to_audition)} %>
+
+      <% if Current.user.manager? %>
+        <%= render partial: "shared/link_button", locals: {text: "Edit", color: "white", path: edit_manage_production_call_to_audition_path(@production, @call_to_audition)} %>
+      <% else %>
+        <div></div>
+      <% end %>
     </div>
   </div>
 

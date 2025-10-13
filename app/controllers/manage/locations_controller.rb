@@ -1,5 +1,6 @@
 class Manage::LocationsController < Manage::ManageController
   before_action :set_location, only: %i[ show edit update destroy ]
+  before_action :ensure_user_is_manager, except: %i[index show]
 
   def index
     @locations = Location.all

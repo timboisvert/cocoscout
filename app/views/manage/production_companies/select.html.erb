@@ -41,10 +41,12 @@
     <% end %>
 </div>
 
-<% if @production_companies.any? %>
-    <div class="flex flex-col items-center mt-10">
-        <%= link_to "Add a Production Company", new_manage_production_company_path, class: "text-pink-500 underline text-sm" %>
-    </div>
+<% if Current.user.manager? %>
+    <% if @production_companies.any? %>
+        <div class="flex flex-col items-center mt-10">
+            <%= link_to "Add a Production Company", new_manage_production_company_path, class: "text-pink-500 underline text-sm" %>
+        </div>
+    <% end %>
 <% end %>
 
 <div class="flex flex-col items-center mt-5">

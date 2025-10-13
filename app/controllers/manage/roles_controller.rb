@@ -1,16 +1,10 @@
 class Manage::RolesController < Manage::ManageController
   before_action :set_production
-  before_action :set_role, only: %i[ show edit update destroy ]
+  before_action :set_role, only: %i[ edit update destroy ]
+  before_action :ensure_user_is_manager, except: %i[index]
 
   def index
     @roles = @production.roles.all
-    @role = @production.roles.new
-  end
-
-  def show
-  end
-
-  def new
     @role = @production.roles.new
   end
 

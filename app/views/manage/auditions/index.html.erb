@@ -14,7 +14,10 @@
       <div class="mb-5 text-gray-500 text-sm">
         You aren't currently offering auditions for <%= @production.name %>
       </div>
-      <%= render partial: "shared/link_button", locals: {text: "Open a Call to Audition", path: new_manage_production_call_to_audition_path(@production)} %>
+
+      <% if Current.user.manager? %>
+        <%= render partial: "shared/link_button", locals: {text: "Open a Call to Audition", path: new_manage_production_call_to_audition_path(@production)} %>
+      <% end %>
     <% end %>
 
     <% @production.call_to_auditions.order(:opens_at).each do |call_to_audition| %>
@@ -60,9 +63,12 @@
 
             <% end %>
 
-            <div class="mt-5">
-              <%= render partial: "shared/link_button", locals: {text: "Manage Audition Settings", path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
-            </div>
+
+            <% if Current.user.manager? %>
+              <div class="mt-5">
+                <%= render partial: "shared/link_button", locals: {text: "Manage Audition Settings", path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+              </div>
+            <% end %>
 
           </div>
 
@@ -77,14 +83,18 @@
                 <div data-countdown-target="clock" class="text-xl text-pink-500 font-bold"></div>
                 <div>
                   <%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %>
-                  <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                  <% if Current.user.manager? %>
+                    <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                  <% end %>
                 </div>
               </div>
             <% else %>
               <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
                 <div>Sign-up window opens on</div>
                 <div class="text-xl font-bold"><%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %></div>
-                <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                <% if Current.user.manager? %>
+                  <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                <% end %>
               </div>
             <% end %>
 
@@ -96,14 +106,18 @@
                 <div data-countdown-target="clock" class="text-xl text-pink-500 font-bold"></div>
                 <div>
                   <%= call_to_audition.closes_at.strftime("%B %-d, %Y at %l:%M %p") %>
-                  <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                  <% if Current.user.manager? %>
+                    <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                  <% end %>
                 </div>
               </div>
             <% else %>
               <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
                 <div>Sign-up window closes on</div>
                 <div class="text-xl font-bold"><%= call_to_audition.closes_at.strftime("%B %-d, %Y at %l:%M %p") %></div>
-                <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                <% if Current.user.manager? %>
+                  <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
+                <% end %>
               </div>
             <% end %>
 
@@ -132,7 +146,9 @@
             </p>
           </div>
           <div class="mt-2">
-            <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+            <% if Current.user.manager? %>
+              <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+            <% end %>
             <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, call_to_audition)} %>
           </div>
         </div>
@@ -230,13 +246,16 @@
             <% end %>
 
             <div class="flex justify-between space-x-2">
-              <div>
-                <% if @production.audition_sessions.any? %>
-                  <%= render partial: "shared/link_button", locals: {text: "Manage In-person Sessions", path: manage_production_audition_sessions_path(@production)} %>
-                <% end %>
 
-                <%= render partial: "shared/link_button", locals: {text: "+ Schedule an In-person Session", path: new_manage_production_audition_session_path(@production)} %>
-              </div>
+              <% if Current.user.manager? %>
+                <div>
+                  <% if @production.audition_sessions.any? %>
+                    <%= render partial: "shared/link_button", locals: {text: "Manage In-person Sessions", path: manage_production_audition_sessions_path(@production)} %>
+                  <% end %>
+
+                  <%= render partial: "shared/link_button", locals: {text: "+ Schedule an In-person Session", path: new_manage_production_audition_session_path(@production)} %>
+                </div>
+              <% end %>
               <div>
                 <%= render partial: "shared/link_button", locals: {text: "In-person Session Summary", path: manage_production_audition_session_summary_path(@production)} %>
               </div>

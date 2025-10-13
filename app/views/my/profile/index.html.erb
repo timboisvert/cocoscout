@@ -45,9 +45,7 @@
             <% if Current.user.person.headshot.attached? %>
                 <%= image_tag url_for(Current.user.person.headshot), class: "rounded-lg object-contain" %>
             <% else %>
-                <div class="w-32 h-32 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-4xl">
-                    <%= Current.user.person.initials %>
-                </div>
+                <p class="text-gray-500 text-sm">No headshot uploaded</p>
             <% end %>
         </div>
         <div class="p-4 md:w-1/2">
@@ -63,7 +61,7 @@
                     </div>
                 <% end %>
             <% else %>
-                <p class="text-gray-400 italic">No resume uploaded.</p>
+                <p class="text-gray-500 text-sm">No resume uploaded</p>
             <% end %>
         </div>
     </div>

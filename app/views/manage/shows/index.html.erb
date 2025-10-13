@@ -60,13 +60,17 @@
                   <%= show.location.name %>
                   </p>
                 <% end %>
-                <div class="mt-4 flex flex-col space-y-1">
-                  <%= link_to "Edit Show/Schedule", edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                  <%= link_to "Edit Cast", manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                  <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
-                  <%= link_to "Cancel Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel this show?"}, class: "text-xs text-pink-500 underline" %>
-                </div>
-                </div>
+
+                <% if Current.user.manager? %>
+                  <div class="mt-4 flex flex-col space-y-1">
+                    <%= link_to "Edit Show/Schedule", edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                    <%= link_to "Edit Cast", manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                    <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
+                    <%= link_to "Cancel Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel this show?"}, class: "text-xs text-pink-500 underline" %>
+                  </div>
+                <% end %>
+
+              </div>
             </div>
 
             <div class="w-1/2">
@@ -99,9 +103,10 @@
       </div>
     <% end %>
 
-
-    <div class="mt-2">
-      <%= render partial: "shared/link_button", locals: {text: "+ Schedule a Show", path: new_manage_production_show_path(@production)} %>
-    </div>
+    <% if Current.user.manager? %>
+      <div class="mt-2">
+        <%= render partial: "shared/link_button", locals: {text: "+ Schedule a Show", path: new_manage_production_show_path(@production)} %>
+      </div>
+    <% end %>
   </div>
 </div>

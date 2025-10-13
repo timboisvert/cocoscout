@@ -5,6 +5,7 @@ class Manage::TeamInvitationsController < Manage::ManageController
   skip_before_action :show_manage_sidebar
 
   before_action :set_team_invitation, only: [ :accept, :do_accept ]
+  before_action :ensure_user_is_manager, except: [ :accept, :do_accept ]
 
   def accept
     # Renders a form for the invitee to sign up or log in

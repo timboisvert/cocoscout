@@ -2,6 +2,7 @@ class Manage::QuestionsController < Manage::ManageController
   before_action :set_question, only: %i[ edit update destroy ]
   before_action :set_production
   before_action :set_call_to_audition
+  before_action :ensure_user_is_manager
 
   # GET /questions
   def index

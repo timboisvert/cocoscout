@@ -1,6 +1,7 @@
 class Manage::ProductionsController < Manage::ManageController
   before_action :set_production, only: %i[ show edit update destroy ]
-  skip_before_action :show_manage_sidebar, only: %i[ index new create]
+  before_action :ensure_user_is_manager, except: %i[index show]
+  skip_before_action :show_manage_sidebar, only: %i[ index new create ]
 
   def index
     @productions = Current.production_company.productions

@@ -56,7 +56,9 @@
 </div>
 
 <% if @productions.any? %>
-  <div class="flex flex-col items-center mt-10">
-    <%= link_to "Add a Production", new_manage_production_path, class: "text-pink-500 underline text-sm" %>
-  </div>
+  <% if Current.user.manager? %>
+    <div class="flex flex-col items-center mt-10">
+      <%= link_to "Add a Production", new_manage_production_path, class: "text-pink-500 underline text-sm" %>
+    </div>
+  <% end %>
 <% end %>

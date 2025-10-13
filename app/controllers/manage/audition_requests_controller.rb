@@ -2,6 +2,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   before_action :set_production
   before_action :set_audition_request, only: %i[ show edit_answers edit_video update destroy set_status ]
   before_action :set_call_to_audition
+  before_action :ensure_user_is_manager, except: %i[ index show ]
 
   def index
     # Store the status filter

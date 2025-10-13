@@ -1,6 +1,7 @@
 class Manage::ProductionCompaniesController < Manage::ManageController
   before_action :set_production_company, only: %i[ edit update destroy ]
   skip_before_action :show_manage_sidebar
+  before_action :ensure_user_is_manager, except: %i[select set_current]
 
   def new
     @production_company = ProductionCompany.new

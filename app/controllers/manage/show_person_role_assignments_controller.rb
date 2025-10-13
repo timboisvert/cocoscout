@@ -2,6 +2,7 @@ class Manage::ShowPersonRoleAssignmentsController < Manage::ManageController
   before_action :set_production
   before_action :set_show
   before_action :set_show_person_role_assignment, only: %i[ show edit update destroy ]
+  before_action :ensure_user_is_manager
 
   def index
     @show_person_role_assignments = @show.show_person_role_assignments.all
