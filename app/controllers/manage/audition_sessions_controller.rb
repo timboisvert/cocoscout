@@ -3,7 +3,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
   before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
 
    def index
-    @audition_sessions = @production.audition_sessions
+    @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
 
     if params[:filter].present?
       cookies[:audition_request_filter] = params[:filter]
