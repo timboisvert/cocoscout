@@ -13,6 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -29,6 +34,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -43,6 +53,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
