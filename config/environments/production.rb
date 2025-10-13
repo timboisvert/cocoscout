@@ -1,7 +1,6 @@
 require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
-  config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Code is not reloaded between requests.
@@ -55,13 +54,13 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
-
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
+  config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
+  config.action_mailer.delivery_method = :ses_v2
+  config.action_mailer.ses_v2_settings = { region: "us-east-2" }
   # config.action_mailer.smtp_settings = {
   #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
   #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
+  #   address: "email-smtp.us-east-2.amazonaws.com",
   #   port: 587,
   #   authentication: :plain
   # }
