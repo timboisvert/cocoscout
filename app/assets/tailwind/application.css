@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Change default focus ring color to pink */
+input:focus,
+textarea:focus,
+select:focus {
+    @apply ring-2 ring-pink-500 outline-none;
+}
+
 [data-form-toggle-target="section"][hidden] {
     display: none;
 }

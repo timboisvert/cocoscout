@@ -25,8 +25,8 @@
                 <div class="flex items-center mb-2 socials-fields-row" data-socials-target="row"<% if social_form.object.persisted? %> data-socials-persisted="true"<% end %>>
                     <%= social_form.hidden_field :id %>
                     <%= social_form.hidden_field :_destroy, value: "0", data: { socials_target: "destroy" } %>
-                    <%= social_form.select :platform, Social.platforms.keys.map { |k| [k.titleize, k] }, {}, class: "inline-block shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
-                    <%= social_form.text_field :handle, placeholder: "Username/Handle", class: "inline-block w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
+                    <%= social_form.select :platform, Social.platforms.keys.map { |k| [k.titleize, k] }, {}, class: "inline-block text-xs sm:text-sm shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
+                    <%= social_form.text_field :handle, placeholder: "Username/Handle", class: "inline-block w-32 sm:w-40 md:w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
                     <%= link_to "Remove", '#', class: "remove-social text-pink-500 underline text-sm", data: { action: "socials#remove" } %>
                 </div>
             <% end %>
@@ -39,22 +39,22 @@
                         <option value="<%= platform %>"><%= platform.titleize %></option>
                     <% end %>
                 </select>
-                <input type="text" name="" class="inline-block w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" placeholder="Username/Handle" />
+                <input type="text" name="" class="inline-block w-32 sm:w-40 md:w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" placeholder="Username/Handle" />
                 <a href="#" class="remove-social text-pink-500 underline text-sm" data-action="socials#remove">Remove</a>
             </div>
         </template>
     </div>
 
-    <div class="my-5 md:flex md:w-full">
-        <div class="md:mr-5 md:w-half">
+    <div class="my-5 md:flex md:w-full overflow-hidden">
+        <div class="md:mr-5 md:w-half min-w-0">
             <% if @person.headshot.attached? %>
                 <div class="text-md">Headshot</div>
-                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
-                    <div class="w-full">
+                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top w-full max-w-md">
+                    <div class="w-full min-w-0">
 
                         <% if displayable_attachment?(@person.headshot) %>
                             <div class="mb-4">
-                                <%= image_tag url_for(@person.headshot), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
+                                <%= image_tag url_for(@person.headshot), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
                             </div>
                         <% elsif pending_attachment?(@person.headshot) %>
                             <div class="mb-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -94,11 +94,11 @@
             <% end %>
         </div>
 
-        <div class="md:my-0 md:ml-5 md:w-half">
+        <div class="md:my-0 md:ml-5 md:w-half min-w-0">
             <% if @person.resume.attached? %>
                 <div class="text-md">Resume</div>
-                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
-                    <div class="w-full">
+                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top w-full max-w-md">
+                    <div class="w-full min-w-0">
 
                         <% if displayable_attachment?(@person.resume) && @person.resume.previewable? %>
                             <div class="mb-4">

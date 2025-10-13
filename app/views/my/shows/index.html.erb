@@ -12,7 +12,7 @@
 
     <% if @productions.any? %>
 
-        <div class="grid grid-cols-3 gap-2 mt-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
             <% @productions.each do |production| %>
 
                 <%= link_to my_production_path(production) do %>

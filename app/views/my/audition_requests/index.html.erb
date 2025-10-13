@@ -35,8 +35,8 @@
 
                     <% production = audition_request.call_to_audition.production %>
 
-                    <div class="grid grid-cols-5 gap-2 w-full">
-                        <div class="col-span-3 items-center">
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 w-full">
+                        <div class="col-span-1 sm:col-span-3 items-center">
                             <div class="flex items-center">
                                 <% if production.logo.attached? %>
                                     <div class="mr-4">
@@ -77,7 +77,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-span-2 flex flex-col justify-center items-start">
+                        <div class="col-span-1 sm:col-span-2 mt-2 sm:mt-0 flex flex-col justify-center items-start">
                             <div class="text-lg">
                                 <% if audition_request.call_to_audition.audition_type == "in_person" %>
                                     <%= in_person_signup_status_name(audition_request) %>

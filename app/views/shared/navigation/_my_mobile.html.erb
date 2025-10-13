@@ -5,7 +5,7 @@
       <span class="text-xl text-pink-500 coustard-regular">CocoScout</span>
     </button>
   </div>
-  <div data-mobile-nav-target="panel" class="hidden border-t border-pink-100 bg-white px-4 pb-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[65px] bg-white overflow-y-auto px-4 pb-4">
     <% if session[:impersonate_user_id] %>
       <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
       <% if impersonated %>

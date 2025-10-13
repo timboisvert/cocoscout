@@ -35,15 +35,6 @@ module Cocoscout
     config.semantic_logger.environment = ENV["STACK_NAME"] || Rails.env
     config.semantic_logger.add_appender(appender: :honeybadger_insights)
 
-    # Configuration for the application, engines, and railties goes here.
-    #
-    # These settings can be overridden in specific environments using the files
-    # in config/environments, which are processed later.
-    #
-    # config.time_zone = "Central Time (US & Canada)"
-    # config.eager_load_paths << Rails.root.join("extras")
-
-    # Don't generate system test files.
     config.generators.system_tests = nil
 
     config.active_record.timestamped_migrations = true
