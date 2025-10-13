@@ -17,13 +17,14 @@ gem "kamal", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
-gem "aws-actionmailer-ses"
 gem "honeybadger"
 gem "rails_semantic_logger"
 gem "pagy"
 
 group :production do
   gem "poppler"
+  # gem "aws-actionmailer-ses"
+  gem "mailgun_rails"
 end
 
 group :development do
