@@ -20,9 +20,10 @@ gem "aws-sdk-s3", require: false
 gem "honeybadger"
 gem "rails_semantic_logger"
 gem "pagy"
-gem "poppler"
 
-gem "dotenv-rails", groups: %i[ development test ]
+group :production do
+  gem "poppler"
+end
 
 group :development do
   gem "byebug", platforms: %i[ mri mingw x64_mingw ]
@@ -44,4 +45,5 @@ group :development, :test do
   gem "factory_bot_rails"
   gem "database_cleaner-active_record"
   gem "selenium-webdriver"
+  gem "dotenv-rails"
 end
