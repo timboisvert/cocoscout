@@ -27,14 +27,27 @@
   <% end %>
 
   <%= form_with url: do_accept_manage_team_invitations_path(token: @team_invitation.token), method: :post, local: true do |form| %>
-    <div class="my-5">
-      <%= form.password_field :password,
-            required: true,
-            autocomplete: "current-password",
-            placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password",
-            maxlength: 72,
-            class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full"
-      %>
+    <div class="my-5" data-controller="password-visibility">
+      <div class="relative">
+        <%= form.password_field :password,
+              required: true,
+              autocomplete: "current-password",
+              placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password",
+              maxlength: 72,
+              class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full pr-10",
+              data: { password_visibility_target: "input" }
+        %>
+        <button type="button"
+                data-action="password-visibility#toggle"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+          <span data-password-visibility-target="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </span>
+        </button>
+      </div>
     </div>
 
     <div class="col-span-6 sm:flex sm:items-center sm:gap-4">
