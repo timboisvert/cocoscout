@@ -2,7 +2,8 @@
   before_action :ensure_user_is_manager, except: %i[index]
 
   def index
-    @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+    members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+    @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
     @team_invitation = Current.production_company.team_invitations.new
     @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
   end
@@ -14,7 +15,8 @@
       Manage::TeamMailer.invite(@team_invitation).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
     else
-      @members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+      members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+      @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
       @team_invitation = Current.production_company.team_invitations.new
       @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
       @team_invitation_error = true
