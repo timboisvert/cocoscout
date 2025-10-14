@@ -54,23 +54,23 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
-  config.action_mailer.delivery_method = :mailgun
-  config.action_mailer.mailgun_settings = {
-    api_key: ENV["MAILGUN_API_KEY"], # Use environment variables for security
-    domain: "cocoscout.com"
-  }
-
-  # config.action_mailer.delivery_method = :ses_v2
-  # config.action_mailer.ses_v2_settings = { region: "us-east-2" }
-
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "email-smtp.us-east-2.amazonaws.com",
-  #   port: 587,
-  #   authentication: :plain
+  # config.action_mailer.delivery_method = :mailgun
+  # config.action_mailer.mailgun_settings = {
+  #   api_key: ENV["MAILGUN_API_KEY"], # Use environment variables for security
+  #   domain: "cocoscout.com"
   # }
+
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address: "smtp.mailersend.net",
+    port: 587,
+    user_name: "MS_fdbHlP@cocoscout.com",
+    password: ENV["MAILERSEND_API_KEY"],
+    starttls: true
+  }
+  config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
+
+
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

@@ -16,7 +16,7 @@
       </div>
 
       <% if Current.user.manager? %>
-        <%= render partial: "shared/link_button", locals: {text: "Open a Call to Audition", path: new_manage_production_call_to_audition_path(@production)} %>
+        <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
       <% end %>
     <% end %>
 
