@@ -23,7 +23,6 @@ gem "pagy"
 
 group :production do
   gem "poppler"
-  # gem "aws-actionmailer-ses"
   gem "mailgun_rails"
 end
 
