@@ -64,7 +64,7 @@ Rails.application.configure do
   config.action_mailer.smtp_settings = {
     address: "smtp.mailersend.net",
     port: 587,
-    user_name: "MS_fdbHlP@cocoscout.com",
+    user_name: ENV["MAILERSEND_USER_NAME"],
     password: ENV["MAILERSEND_API_KEY"],
     starttls: true
   }
