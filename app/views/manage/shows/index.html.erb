@@ -70,7 +70,10 @@
 
                 <% if Current.user.manager? %>
                   <div class="<%= show.canceled ? 'mt-0' : 'mt-4' %> flex flex-col space-y-1">
-                    <% if show.canceled %>
+                    <% if @filter == "past" %>
+                      <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
+                      <%= link_to "Delete Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this show?"}, class: "text-xs text-pink-500 underline" %>
+                    <% elsif show.canceled %>
                       <%= link_to "Uncancel Show", uncancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this show?"}, class: "text-xs text-pink-500 underline" %>
                       <%= link_to "Delete Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this show?"}, class: "text-xs text-pink-500 underline" %>
                     <% else %>
