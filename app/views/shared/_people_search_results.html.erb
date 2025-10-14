@@ -1,6 +1,6 @@
 <%# Shared people search results grid, using a configurable partial for each person %>
 <% if people.any? %>
-  <div class="grid grid-cols-8 lg:grid-cols-12 gap-1 w-full mt-4">
+  <div class="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12 gap-1 w-full mt-4">
     <% people.each do |person| %>
       <%= render partial: result_partial, locals: result_locals.merge(person: person) %>
     <% end %>

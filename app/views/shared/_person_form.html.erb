@@ -45,12 +45,12 @@
         </template>
     </div>
 
-    <div class="my-5 md:flex md:w-full overflow-hidden">
-        <div class="md:mr-5 md:w-half min-w-0">
+    <div class="my-5 md:flex md:space-x-5">
+        <div class="md:w-1/2">
             <% if @person.headshot.attached? %>
                 <div class="text-md">Headshot</div>
-                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top w-full max-w-md">
-                    <div class="w-full min-w-0">
+                <div class="my-2 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all">
+                    <div class="w-full">
 
                         <% if displayable_attachment?(@person.headshot) %>
                             <div class="mb-4">
@@ -80,7 +80,7 @@
                 </div>
             <% else %>
                 <div class="text-md pt-2">Headshot</div>
-                <div class="mr-5 inline-block">
+                <div>
 
                     <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
@@ -94,11 +94,11 @@
             <% end %>
         </div>
 
-        <div class="md:my-0 md:ml-5 md:w-half min-w-0">
+        <div class="md:w-1/2 mt-5 md:mt-0">
             <% if @person.resume.attached? %>
                 <div class="text-md">Resume</div>
-                <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top w-full max-w-md">
-                    <div class="w-full min-w-0">
+                <div class="my-2 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all">
+                    <div class="w-full">
 
                         <% if displayable_attachment?(@person.resume) && @person.resume.previewable? %>
                             <div class="mb-4">
@@ -128,7 +128,7 @@
                 </div>
             <% else %>
                 <div class="text-md pt-2">Resume</div>
-                <div class="mr-5 inline-block">
+                <div>
 
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-500">(PDF, JPG, or PNG)</span>

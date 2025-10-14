@@ -1,15 +1,24 @@
 <div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
   <div class="flex items-center justify-between px-4 py-3">
-    <button type="button" data-action="mobile-nav#toggle" class="flex items-center gap-3">
-      <%= image_tag "/icon.png", alt: "CocoScout", class: "h-10 w-10" %>
-      <span class="text-xl text-pink-500 coustard-regular">CocoScout</span>
+    <button type="button" data-action="mobile-nav#toggle" class="flex items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
     </button>
+    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+      <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
+      <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+    </div>
+    <div class="w-6"></div>
   </div>
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[65px] bg-white overflow-y-auto px-4 pb-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] pt-2 bg-white overflow-y-auto px-4 pb-4">
     <% if Current.production.present? && !Current.production.new_record? %>
-      <div class="py-4">
-        <div class="text-xs uppercase tracking-wide text-slate-400">Current production</div>
-        <%= link_to manage_production_path(Current.production), class: "mt-2 block rounded-lg border border-pink-100 bg-pink-50 px-4 py-3 text-sm font-semibold text-pink-600" do %>
+      <div class="pb-4">
+        <div class="flex items-center justify-between">
+          <div class="text-xs uppercase tracking-wide text-slate-400">Current production</div>
+          <%= link_to "Switch", manage_productions_path, class: "text-xs font-medium text-pink-500 underline" %>
+        </div>
+        <%= link_to manage_production_path(Current.production), class: "mt-2 block rounded-lg border border-pink-100 bg-pink-50 px-4 py-3 text-sm font-semibold text-pink-500" do %>
           <div class="truncate"><%= Current.production.name %></div>
           <span class="text-xs font-medium text-pink-400">View dashboard</span>
         <% end %>
@@ -32,11 +41,7 @@
       <%= link_to "Locations", manage_locations_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
     </div>
 
-    <div class="mt-2">
-        <%= link_to "Switch production", manage_productions_path, class: "text-sm font-medium text-pink-500 underline" %>
-    </div>
-
-    <div class="mt-4 flex items-center justify-between rounded-md bg-pink-500 px-4 py-3">
+    <div class="mt-6 flex items-center justify-between rounded-md bg-pink-500 px-4 py-3">
         <%= link_to "Exit Dashboard", my_dashboard_path, class: "text-sm font-medium text-white" %>
         <%= link_to "Sign Out", signout_path, class: "text-sm font-medium text-white" %>
     </div>

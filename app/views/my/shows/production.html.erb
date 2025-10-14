@@ -15,13 +15,13 @@
     <div class="grid grid-cols-1 gap-2 mt-2">
 
         <div class="col-span-1 p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-            <div class="w-1/4 flex-shrink-0 flex flex-col items-center justify-center">
+            <div class="w-1/2 sm:w-1/4 flex-shrink-0 flex flex-col items-top">
                 <% if @production.logo.attached? %>
                     <%= image_tag @production.logo.variant(resize_to_fit: [300, 200]), alt: "#{@production.name} logo", class: "w-full object-contain rounded-lg" %>
                 <% end %>
             </div>
-            <div class="w-3/4 pl-4 flex flex-col items-top">
-                <div class="font-bold text-2xl"><%= @production.name %></div>
+            <div class="w-1/2 sm:w-3/4 pl-4 flex flex-col items-top">
+                <div class="font-bold text-xl"><%= @production.name %></div>
             </div>
         </div>
 

@@ -43,7 +43,7 @@
         </div>
     </div>
 
-    <div class="mb-4 w-1/2">
+    <div class="mb-4 w-full sm:w-1/2">
         <%= form.label :name, "Poster Name/Description" %>
         <span class="text-sm text-gray-500"> (optional)</span>
         <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @poster.errors[:name].none?, "border-pink-500": @poster.errors[:name].any?}] %>
@@ -51,7 +51,7 @@
 
     <div class="inline">
         <%= form.submit "Update Poster", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer inline-block" %>
-        <%= link_to "Back", 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
     </div>
 
 <% end %>

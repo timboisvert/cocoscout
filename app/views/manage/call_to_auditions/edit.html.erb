@@ -25,20 +25,20 @@
 
     <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions above.</p>
 
-    <div class="flex my-5">
-      <div class="w-1/2 mr-5">
+    <div class="sm:flex my-5">
+      <div class="w-full sm:w-1/2 sm:mr-5">
         <%= form.label :opens_at, "Open At:" %>
         <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:opens_at].none?, "border-pink-500": @call_to_audition.errors[:opens_at].any?}] %>
       </div>
-      <div class="w-1/2 ml-5">
+      <div class="w-full mt-5 sm:w-1/2 sm:ml-5 sm:mt-0">
         <%= form.label :closes_at, "Close At:" %>
         <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:closes_at].none?, "border-pink-500": @call_to_audition.errors[:closes_at].any?}] %>
       </div>
     </div>
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
-      <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <%= form.submit "Update", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 

@@ -44,11 +44,11 @@
     %>
 
     <div class="w-full" data-controller="tabs">
-      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
-        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
-        <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Sign-up Questions</button>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Casting</button>
+      <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
+        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Profile</button>
+        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
+        <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
       </nav>
 
       <div data-tabs-target="panel">
@@ -88,19 +88,19 @@
 </div>
 
 <%# Bottom Navigation Bar %>
-<div class="fixed bottom-0 left-0 h-[84px] w-full bg-white text-pink-500 p-2 pb-1 border-t-4 border-pink-500 pl-56">
+<div class="fixed bottom-0 left-0 w-full lg:h-[84px] bg-white text-pink-500 p-2 pb-1 border-t-4 border-pink-500 lg:pl-56">
 
-  <div class="flex justify-center">
+  <div class="flex justify-start lg:justify-center gap-1 flex-wrap">
       <% @audition_session.auditions.each do |audition| %>
-        <%= link_to manage_production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg mr-1" do %>
+        <%= link_to manage_production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
           <div
             data-controller="tooltip"
             data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"
           >
             <% if audition.person.headshot.present? %>
-              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-16 h-16 rounded-lg object-cover" %>
+              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
             <% else %>
-              <div class="w-16 h-16 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
+              <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
                 <%= audition.person.initials %>
               </div>
             <% end %>

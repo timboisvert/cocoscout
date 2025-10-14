@@ -8,7 +8,7 @@
     ],
     text: "In-person Sessions",
     links: [
-      { text: "+ Schedule an In-person Session", path: new_manage_production_audition_session_path(@production) }
+      { text: "Schedule an In-person Session", path: new_manage_production_audition_session_path(@production) }
     ]
   } %>
 
@@ -44,7 +44,7 @@
             <%= render partial: "shared/link_button", locals: {text: "View Summary", path: manage_production_audition_session_summary_path(@production)} %>
           </div>
         <% else %>
-          <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "+ Schedule an In-person Session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
+          <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "Schedule an In-person Session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
         <% end %>
 
       </div>

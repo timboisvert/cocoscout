@@ -8,7 +8,7 @@
     text: "Sign-ups",
     links: [
       {
-        text: "+ Manually Create a Sign-up",
+        text: "Create a Sign-up",
         path: new_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition)
       }
     ]
@@ -47,30 +47,30 @@
   <div class="grid grid-cols-1 gap-2 mb-4">
     <% if @audition_requests.any? %>
       <% @audition_requests.each do |audition_request| %>
-        <div class="flex w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-center">
+        <div class="flex flex-col lg:flex-row w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all lg:items-center gap-4">
 
-          <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request), class: "flex items-center gap-4 w-1/2", data: { turbo_prefetch: false } do %>
-            <div class="grid place-items-left grid-cols-[auto_1fr] gap-4 mr-auto">
-              <div class="grid place-items-center">
+          <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request), class: "flex items-center gap-4", data: { turbo_prefetch: false } do %>
+            <div class="flex items-center gap-4">
+              <div class="flex-shrink-0">
                 <% if audition_request.person.headshot.attached? %>
                   <%= image_tag url_for(audition_request.person.headshot.variant(:thumb)), class: "relative inline-block h-12 w-12 !rounded-lg object-cover object-center" %>
                 <% else %>
-                  <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                  <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
                     <%= audition_request.person.initials %>
                   </div>
                 <% end %>
               </div>
-              <div class="font-medium text-xl flex items-center h-12">
+              <div class="font-medium text-xl">
                 <%= truncate(audition_request.person.name, length: 50, omission: "...") %>
               </div>
             </div>
           <% end %>
 
           <% if Current.user.manager? %>
-            <div class="grid grid-cols-4 gap-0 items-center ml-auto">
+            <div class="grid grid-cols-4 gap-0 items-center lg:ml-auto w-full lg:w-auto">
               <%
                 [:unreviewed, :undecided, :accepted, :passed].each do |status|
-                  classes = "text-sm px-3 py-2 text-center border border-gray-200 text-nowrap"
+                  classes = "text-xs lg:text-sm px-2 py-1.5 lg:px-3 lg:py-2 text-center border border-gray-200 text-nowrap"
 
                   # Set the borders based on position in the list of statuses
                   if status == :unreviewed

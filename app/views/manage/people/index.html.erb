@@ -14,11 +14,21 @@
 
   <% if @people.any? %>
 
-    <div class="flex w-full space-x-2 mb-4">
+    <div data-controller="show-toggle" class="mb-4">
+      <!-- Mobile filter button -->
+      <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-md border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
+        <span class="text-sm font-medium">Filters & View Options</span>
+        <span data-show-toggle-target="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </span>
+      </button>
 
-      <div class="flex flex-1 space-x-1">
-        <!-- Left: Sorting links -->
-        <div class="flex items-center text-sm text-gray-500">Sort:</div>
+      <!-- Filter sections -->
+      <div data-show-toggle-target="content" class="hidden lg:flex flex-col lg:flex-row w-full space-y-3 lg:space-y-0 lg:space-x-2">
+
+        <div class="flex space-x-1 lg:flex-1">
+          <!-- Left: Sorting links -->
+          <div class="flex items-center text-sm text-gray-500">Sort:</div>
         <%= link_to "A→Z",
                 manage_people_path(order: "alphabetical"),
                 data: { turbo_prefetch: false },
@@ -36,7 +46,7 @@
         %>
       </div>
 
-      <div class="flex flex-1 space-x-1 justify-center">
+      <div class="flex space-x-1 lg:flex-1 lg:justify-center">
         <!-- Center: Show links -->
         <div class="flex items-center text-sm text-gray-500">Show:</div>
 
@@ -53,7 +63,7 @@
         <% end %>
       </div>
 
-      <div class="flex flex-1 space-x-1 justify-end">
+      <div class="flex space-x-1 lg:flex-1 lg:justify-end">
         <!-- Right: Include links -->
         <div class="flex items-center text-sm text-gray-500">Include:</div>
         <%= link_to "Cast Members",
@@ -66,6 +76,7 @@
         %>
       </div>
 
+      </div>
     </div>
 
     <% if @show == "tiles" %>
@@ -104,7 +115,7 @@
     <% end %>
 
     <% if @pagy.pages > 1 %>
-      <div class="mt-6 flex justify-left">
+      <div class="my-6 flex justify-left">
         <%= pagy_nav_tailwind(@pagy) %>
       </div>
     <% end %>

@@ -1,5 +1,5 @@
-<div class="flex flex-col items-center mt-10">
-    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+<div class="flex flex-col items-center mt-2 sm:mt-10">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-24 sm:w-48 object-contain select-none pointer-events-none" />
 </div>
 
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
@@ -62,9 +62,10 @@
 </div>
 
 <div class="w-full text-center mx-auto p-6">
-    New to CocoScout? <%= link_to "Create an Account", signup_path, class: "text-pink-500 underline" %>
+    <div>New to CocoScout?</div>
+    <div><%= link_to "Create an Account", signup_path, class: "text-pink-500 underline" %></div>
 </div>
 
-<div class="flex flex-col items-center mt-5">
-    <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+<div class="flex flex-col items-center sm:mt-5">
+    <h1 class="sm:p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
 </div>

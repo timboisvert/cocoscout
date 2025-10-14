@@ -30,7 +30,7 @@
           <span data-show-toggle-target="icon" class="mr-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </span>
-          <p class="font-bold text-lg <%= 'line-through text-gray-500' if show.canceled %>">
+          <p class="font-bold text-sm sm:text-lg <%= 'line-through text-gray-500' if show.canceled %>">
             <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> &bull; <%= show.date_and_time.strftime("%l:%M %p") %>
           </p>
           <% if show.canceled %>
@@ -40,9 +40,9 @@
 
         <div data-show-toggle-target="content" class="mt-4 <%= 'hidden' unless idx == 0 %>">
 
-          <div class="flex items-start gap-6">
+          <div class="items-start gap-6 sm:flex">
 
-            <div class="flex w-1/2">
+            <div class="w-full sm:flex sm:w-1/2">
 
               <% unless show.canceled %>
                 <div class="flex-shrink">
@@ -89,8 +89,8 @@
             </div>
 
             <% unless show.canceled %>
-              <div class="w-1/2">
-                <div class="p-2 flex border border-gray-200 rounded-lg hover:border-gray-400 transition-all space-x-2">
+              <div class="w-full mt-5 sm:w-1/2 sm:mt-0">
+                <div class="p-2 grid grid-cols-4 sm:grid-cols-8 border border-gray-200 rounded-lg hover:border-gray-400 transition-all gap-2">
                   <% if show.show_person_role_assignments.any? %>
                     <% show.show_person_role_assignments.each do |assignment| %>
                       <%= link_to [:manage, assignment.person] do %>
@@ -122,7 +122,7 @@
 
     <% if Current.user.manager? %>
       <div class="mt-2">
-        <%= render partial: "shared/link_button", locals: {text: "+ Schedule a Show", path: new_manage_production_show_path(@production)} %>
+        <%= render partial: "shared/link_button", locals: {text: "Schedule a Show", path: new_manage_production_show_path(@production)} %>
       </div>
     <% end %>
   </div>
