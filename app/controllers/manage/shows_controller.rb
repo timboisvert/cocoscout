@@ -1,6 +1,6 @@
 class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
-  before_action :set_show, only: %i[ show edit update destroy assign_person_to_role remove_person_from_role ]
+  before_action :set_show, only: %i[ show edit update destroy cancel uncancel assign_person_to_role remove_person_from_role ]
   before_action :ensure_user_is_manager, except: %i[ index show ]
 
   def index
@@ -56,6 +56,16 @@ class Manage::ShowsController < Manage::ManageController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def cancel
+    @show.update!(canceled: true)
+    redirect_to manage_production_shows_path(@production), notice: "Show was successfully canceled", status: :see_other
+  end
+
+  def uncancel
+    @show.update!(canceled: false)
+    redirect_to manage_production_shows_path(@production), notice: "Show was successfully uncanceled", status: :see_other
   end
 
   def destroy

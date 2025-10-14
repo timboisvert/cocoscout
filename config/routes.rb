@@ -93,7 +93,12 @@ Rails.application.routes.draw do
 
     resources :productions do
       resources :posters, except: :index
-      resources :shows
+      resources :shows do
+        member do
+          patch :cancel
+          patch :uncancel
+        end
+      end
       resources :casts do
         member do
           # These two are only used when dragging and dropping on the cast members list
