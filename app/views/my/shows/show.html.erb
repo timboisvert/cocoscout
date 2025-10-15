@@ -6,7 +6,7 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["My Shows", my_shows_path],
+      ["My Shows & Events", my_shows_path],
       [@production.name, my_production_path(@production)]
     ],
     text: @show.date_and_time.strftime("%B %d, %Y at %l:%M %p"),
