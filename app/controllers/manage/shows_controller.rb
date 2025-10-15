@@ -20,6 +20,14 @@ class Manage::ShowsController < Manage::ManageController
     end
   end
 
+  def calendar
+    # Get all shows/events for the production, including canceled ones
+    @shows = @production.shows.order(:date_and_time)
+
+    # Group shows by month for calendar display
+    @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+  end
+
   def cast
   end
 

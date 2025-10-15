@@ -94,6 +94,9 @@ Rails.application.routes.draw do
     resources :productions do
       resources :posters, except: :index
       resources :shows do
+        collection do
+          get :calendar
+        end
         member do
           get   :cast
           patch :cancel
