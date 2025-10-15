@@ -25,7 +25,7 @@
       </div>
       <div>
         <%= link_to calendar_manage_production_shows_path(@production), class: "px-3 py-1 rounded-md border text-sm bg-pink-500 text-white border-pink-500 flex items-center space-x-2" do %>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
           </svg>
           <span>Calendar</span>
@@ -38,26 +38,30 @@
     <div class="grid grid-cols-1 gap-2">
       <% @shows.each_with_index do |show, idx| %>
         <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
-          <div class="flex items-center cursor-pointer select-none" data-action="click->show-toggle#toggle">
-            <span data-show-toggle-target="icon" class="mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </span>
+          <div class="cursor-pointer select-none" data-action="click->show-toggle#toggle">
+            <div class="flex items-center">
+              <span data-show-toggle-target="icon" class="mr-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </span>
 
-            <% event_type_badge_classes = case show.event_type
-              when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-              when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-              else "bg-pink-50 text-pink-700 ring-pink-600/10"
-            end %>
-            <span class="mr-2 inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset w-20 <%= event_type_badge_classes %>">
-              <%= show.event_type.titleize %>
-            </span>
+              <% event_type_badge_classes = case show.event_type
+                when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                else "bg-pink-50 text-pink-700 ring-pink-600/10"
+              end %>
+              <span class="mr-2 inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset w-20 <%= event_type_badge_classes %>">
+                <%= show.event_type.titleize %>
+              </span>
 
-            <p class="font-bold text-sm sm:text-lg <%= 'line-through text-red-400' if show.canceled %>">
-              <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
-            </p>
-            <% if show.canceled %>
-              <span class="ml-3 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
-            <% end %>
+              <div class="flex flex-col sm:flex-row sm:items-center flex-1">
+                <p class="font-bold text-sm sm:text-lg <%= 'line-through text-red-400' if show.canceled %>">
+                  <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
+                </p>
+                <% if show.canceled %>
+                  <span class="mt-1 sm:mt-0 sm:ml-3 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 w-fit">Canceled</span>
+                <% end %>
+              </div>
+            </div>
           </div>
 
           <div data-show-toggle-target="content" class="mt-4 <%= 'hidden' unless idx == 0 %>">
