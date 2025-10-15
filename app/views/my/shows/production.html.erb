@@ -14,13 +14,13 @@
 
     <div class="grid grid-cols-1 gap-2 mt-2">
 
-        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-center gap-4">
-            <% if @production.logo.attached? %>
-                <div class="w-full sm:w-auto sm:flex-shrink-0">
+        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-top gap-4">
+            <div class="w-full sm:w-auto sm:flex-shrink-0 flex items-top">
+                <% if @production.logo.attached? %>
                     <%= image_tag @production.logo.variant(:small), alt: "#{@production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
-                </div>
-            <% end %>
-            <div class="w-full sm:w-auto text-left">
+                <% end %>
+            </div>
+            <div class="w-full sm:w-auto text-left flex items-top">
                 <div class="font-bold text-lg sm:text-xl"><%= @production.name %></div>
             </div>
         </div>
@@ -29,27 +29,41 @@
 
             <% @shows.each do |show| %>
 
-                <%= link_to my_show_path(show.production, show) do %>
+                <%= link_to my_show_path(show.production, show), class: "" do %>
                     <% assignment = @assignments_by_show[show] %>
                     <div class="mb-2 border p-4 rounded-lg border-gray-200 hover:border-gray-400">
 
-                        <div class="font-bold text-md sm:text-lg">
-                            <%= show.date_and_time.strftime("%B %d, %Y at %l:%M %p") %>
-                        </div>
+                        <div class="flex items-start gap-2 mb-0 sm:mb-2">
+                            <% event_type_badge_classes = case show.event_type
+                              when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                              when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                              else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                            end %>
+                            <span class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset w-20 flex-shrink-0 <%= event_type_badge_classes %>">
+                              <%= show.event_type.titleize %>
+                            </span>
 
-                        <% if show.secondary_name.present? %>
-                            <div class="text-sm text-gray-500 mb-1">
-                                <%= show.secondary_name %>
+                            <div class="flex-1">
+                                <div class="font-bold text-md sm:text-lg">
+                                    <%= show.date_and_time.strftime("%B %d, %Y at %l:%M %p") %>
+                                </div>
+
+                                <% if show.secondary_name.present? %>
+                                    <div class="text-sm text-gray-500">
+                                        <%= show.secondary_name %>
+                                    </div>
+                                <% end %>
+
+                                 <% if show.event_type == "show" %>
+                                    <div class="text-sm text-gray-500">
+                                        <% if assignment %>
+                                            My Role: <strong class="text-pink-500"><%= assignment.role.name %></strong>
+                                        <% else %>
+                                            You aren't assigned a role for this show.
+                                        <% end %>
+                                    </div>
+                                <% end %>
                             </div>
-                        <% end %>
-
-
-                        <div class="text-sm text-gray-500">
-                            <% if assignment %>
-                                My Role: <strong class="text-pink-500"><%= assignment.role.name %></strong>
-                            <% else %>
-                                You aren't assigned a role for this show.
-                            <% end %>
                         </div>
 
                     </div>

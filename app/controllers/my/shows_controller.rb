@@ -1,11 +1,11 @@
 class My::ShowsController < ApplicationController
   def index
-    @productions = Production.joins(casts: [ :casts_people ]).where(casts_people: { person_id: Current.user.person.id }).distinct
+    @productions = Production.joins(casts: [ :casts_people ]).joins(:shows).where(casts_people: { person_id: Current.user.person.id }).distinct
   end
 
   def production
     @production = Production.find(params[:production_id])
-    @shows = @production.shows.where("date_and_time > ?", Time.current).order(date_and_time: :asc)
+    @shows = @production.shows.where("date_and_time > ?", Time.current).where.not(canceled: true).order(date_and_time: :asc)
 
     # Get my assignments, then relate them to each show
     show_person_role_assignments = @production.show_person_role_assignments.where(show_id: @shows.pluck(:id), person_id: Current.user.person.id)

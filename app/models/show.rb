@@ -13,7 +13,14 @@ class Show < ApplicationRecord
       attachable.variant :small, resize_to_limit: [ 200, 300 ], preprocessed: true
   end
 
+  enum :event_type, {
+    show: "show",
+    rehearsal: "rehearsal",
+    meeting: "meeting"
+  }
+
   validates :location, presence: true
+  validates :event_type, presence: true
   validate :poster_content_type
 
   private

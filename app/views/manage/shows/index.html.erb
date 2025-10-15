@@ -4,8 +4,10 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "Shows",
-    links: []
+    text: "Shows & Events",
+    links: [
+      { text: "Schedule Shows & Events", path: new_manage_production_show_path(@production)}
+    ]
   } %>
 
    <div class="flex w-full space-x-2 mb-4">
@@ -23,107 +25,126 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 gap-2">
-    <% @shows.each_with_index do |show, idx| %>
-      <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
-        <div class="flex items-center cursor-pointer select-none" data-action="click->show-toggle#toggle">
-          <span data-show-toggle-target="icon" class="mr-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </span>
-          <p class="font-bold text-sm sm:text-lg <%= 'line-through text-gray-500' if show.canceled %>">
-            <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> &bull; <%= show.date_and_time.strftime("%l:%M %p") %>
-          </p>
-          <% if show.canceled %>
-            <span class="ml-3 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
-          <% end %>
-        </div>
+  <% if @shows.any? %>
+    <div class="grid grid-cols-1 gap-2">
+      <% @shows.each_with_index do |show, idx| %>
+        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
+          <div class="flex items-center cursor-pointer select-none" data-action="click->show-toggle#toggle">
+            <span data-show-toggle-target="icon" class="mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </span>
 
-        <div data-show-toggle-target="content" class="mt-4 <%= 'hidden' unless idx == 0 %>">
+            <% event_type_badge_classes = case show.event_type
+              when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+              when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+              else "bg-pink-50 text-pink-700 ring-pink-600/10"
+            end %>
+            <span class="mr-2 inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset w-20 <%= event_type_badge_classes %>">
+              <%= show.event_type.titleize %>
+            </span>
 
-          <div class="items-start gap-6 sm:flex">
+            <p class="font-bold text-sm sm:text-lg <%= 'line-through text-red-400' if show.canceled %>">
+              <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
+            </p>
+            <% if show.canceled %>
+              <span class="ml-3 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
+            <% end %>
+          </div>
 
-            <div class="w-full sm:flex sm:w-1/2">
+          <div data-show-toggle-target="content" class="mt-4 <%= 'hidden' unless idx == 0 %>">
 
-              <% unless show.canceled %>
-                <div class="flex-shrink">
-                  <% if show.poster.present? %>
-                    <div class="mb-2 pr-4">
-                      <%= image_tag url_for(show.poster.variant(:small)), alt: "Show Poster", class: "rounded shadow max-w-36 border border-gray-200" %>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
+            <div class="items-start gap-6 sm:flex">
 
-              <div class="flex flex-col items-start justify-start w-2/3 min-w-0">
-                <% if show.secondary_name.present? %>
-                  <p class="text-md font-bold truncate"><%= show.secondary_name %></p>
-                <% end %>
-                <% if show.location.present? && !show.canceled %>
-                  <p class="text-sm text-gray-500 flex items-center mt-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 mr-1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                  </svg>
-                  <%= show.location.name %>
-                  </p>
-                <% end %>
+              <div class="w-full sm:flex sm:w-1/2">
 
-                <% if Current.user.manager? %>
-                  <div class="<%= show.canceled ? 'mt-0' : 'mt-4' %> flex flex-col space-y-1">
-                    <% if @filter == "past" %>
-                      <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
-                      <%= link_to "Delete Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this show?"}, class: "text-xs text-pink-500 underline" %>
-                    <% elsif show.canceled %>
-                      <%= link_to "Uncancel Show", uncancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this show?"}, class: "text-xs text-pink-500 underline" %>
-                      <%= link_to "Delete Show", manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this show?"}, class: "text-xs text-pink-500 underline" %>
-                    <% else %>
-                      <%= link_to "Edit Show/Schedule", edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                      <%= link_to "Edit Cast", manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                      <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
-                      <%= link_to "Cancel Show", cancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to cancel this show?"}, class: "text-xs text-pink-500 underline" %>
+                <% unless show.canceled %>
+                  <div class="flex-shrink">
+                    <% if show.poster.present? %>
+                      <div class="mb-2 pr-4">
+                        <%= image_tag url_for(show.poster.variant(:small)), alt: "Show Poster", class: "rounded shadow max-w-36 border border-gray-200" %>
+                      </div>
                     <% end %>
                   </div>
                 <% end %>
 
-              </div>
-            </div>
+                <div class="flex flex-col items-start justify-start w-2/3 min-w-0">
+                  <% if show.secondary_name.present? %>
+                    <p class="text-md font-bold truncate"><%= show.secondary_name %></p>
+                  <% end %>
+                  <% if show.location.present? && !show.canceled %>
+                    <p class="text-sm text-gray-500 flex items-center mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 mr-1">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    </svg>
+                    <%= show.location.name %>
+                    </p>
+                  <% end %>
 
-            <% unless show.canceled %>
-              <div class="w-full mt-5 sm:w-1/2 sm:mt-0">
-                <div class="p-2 grid grid-cols-4 sm:grid-cols-8 border border-gray-200 rounded-lg hover:border-gray-400 transition-all gap-2">
-                  <% if show.show_person_role_assignments.any? %>
-                    <% show.show_person_role_assignments.each do |assignment| %>
-                      <%= link_to [:manage, assignment.person] do %>
-                        <div class="flex flex-col items-center transition-all relative"
-                          data-controller="tooltip"
-                          data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
-                          <% if assignment.person.headshot.present? %>
-                            <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
-                          <% else %>
-                            <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
-                              <%= assignment.person.initials %>
-                            </div>
-                          <% end %>
-                        </div>
+                  <% if Current.user.manager? %>
+                    <%
+                      event_label = show.event_type.titleize
+                      edit_label = "Edit #{event_label}"
+                      cancel_label = "Cancel #{event_label}"
+                      uncancel_label = "Uncancel #{event_label}"
+                      delete_label = "Delete #{event_label}"
+                    %>
+                    <div class="<%= show.canceled ? 'mt-0' : 'mt-4' %> flex flex-col space-y-1">
+                      <% if @filter == "past" %>
+                        <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
+                        <%= link_to delete_label, manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                      <% elsif show.canceled %>
+                        <%= link_to uncancel_label, uncancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                        <%= link_to delete_label, manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                      <% else %>
+                        <%= link_to edit_label, edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        <% if show.event_type == "show" %>
+                          <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        <% end %>
+                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to cancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
                       <% end %>
-                    <% end %>
-                  <% else %>
-                    <div class="col-span-4 sm:col-span-8 text-sm text-gray-500 items-center">
-                      You haven't added any cast members to this show yet.
                     </div>
                   <% end %>
+
                 </div>
               </div>
-            <% end %>
+
+              <% if show.event_type == "show" && !show.canceled %>
+                <div class="w-full mt-5 sm:w-1/2 sm:mt-0">
+                  <div class="p-2 grid grid-cols-4 sm:grid-cols-8 border border-gray-200 rounded-lg hover:border-gray-400 transition-all gap-2">
+                    <% if show.show_person_role_assignments.any? %>
+                      <% show.show_person_role_assignments.each do |assignment| %>
+                        <%= link_to [:manage, assignment.person] do %>
+                          <div class="flex flex-col items-center transition-all relative"
+                            data-controller="tooltip"
+                            data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
+                            <% if assignment.person.headshot.present? %>
+                              <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
+                            <% else %>
+                              <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
+                                <%= assignment.person.initials %>
+                              </div>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      <% end %>
+                    <% else %>
+                      <div class="col-span-4 sm:col-span-8 text-sm text-gray-500 items-center">
+                        You haven't added any cast members to this show yet.
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
           </div>
         </div>
-      </div>
-    <% end %>
+      <% end %>
 
-    <% if Current.user.manager? %>
-      <div class="mt-2">
-        <%= render partial: "shared/link_button", locals: {text: "Schedule a Show", path: new_manage_production_show_path(@production)} %>
-      </div>
-    <% end %>
-  </div>
+    </div>
+  <% else %>
+    <div class="text-sm text-gray-500">
+      You haven't scheduled any shows or events.
+    </div>
+  <% end %>
 </div>

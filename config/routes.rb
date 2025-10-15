@@ -95,6 +95,7 @@ Rails.application.routes.draw do
       resources :posters, except: :index
       resources :shows do
         member do
+          get   :cast
           patch :cancel
           patch :uncancel
         end

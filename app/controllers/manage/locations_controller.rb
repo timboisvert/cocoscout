@@ -3,7 +3,7 @@ class Manage::LocationsController < Manage::ManageController
   before_action :ensure_user_is_manager, except: %i[index show]
 
   def index
-    @locations = Location.all
+    @locations = Current.production_company.locations.all
   end
 
   def show

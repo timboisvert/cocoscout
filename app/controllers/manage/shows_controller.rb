@@ -1,7 +1,7 @@
 class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
-  before_action :set_show, only: %i[ show edit update destroy cancel uncancel assign_person_to_role remove_person_from_role ]
-  before_action :ensure_user_is_manager, except: %i[ index show ]
+  before_action :set_show, only: %i[ cast edit update destroy cancel uncancel assign_person_to_role remove_person_from_role ]
+  before_action :ensure_user_is_manager, except: %i[ index ]
 
   def index
     # Store the shows filter
@@ -20,20 +20,20 @@ class Manage::ShowsController < Manage::ManageController
     end
   end
 
-  def show
+  def cast
   end
 
   def new
     @show = @production.shows.new
 
-    if params[:duplicate].present?
-      original = @production.shows.find_by(id: params[:duplicate])
-      if original.present?
-        @show.date_and_time = original.date_and_time
-        @show.secondary_name = original.secondary_name
-        @show.location = original.location
-      end
-    end
+    # if params[:duplicate].present?
+    #   original = @production.shows.find_by(id: params[:duplicate])
+    #   if original.present?
+    #     @show.date_and_time = original.date_and_time
+    #     @show.secondary_name = original.secondary_name
+    #     @show.location = original.location
+    #   end
+    # end
   end
 
   def edit
@@ -113,7 +113,7 @@ class Manage::ShowsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def show_params
-      params.require(:show).permit(:secondary_name, :date_and_time, :poster, :production_id, :location_id,
+      params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :production_id, :location_id,
         show_links_attributes: [ :id, :url, :_destroy ])
     end
 end

@@ -6,9 +6,9 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows", manage_production_shows_path(@production)]
+      ["Shows & Events", manage_production_shows_path(@production)]
     ],
-    text: "Schedule a Show",
+    text: "Schedule Shows & Events",
     links: []
   } %>
 
@@ -25,38 +25,26 @@
     </div>
   <% end %>
 
-  <div class="flex gap-4 w-full">
-    <div class="w-full md:w-1/2">
-      <%= form.label :date_and_time %>
-      <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
-    </div>
+  <div class="w-full">
+    <%= form.label :event_type, "Event Type" %>
+    <%= form.select :event_type,
+        Show.event_types.keys.map { |type| [type.titleize, type] },
+        { include_blank: false },
+        { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}] }
+    %>
+  </div>
 
-    <div class="w-full md:w-1/2">
-      <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Location.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
-      <div class="mt-1 ml-1">
-        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
-      </div>
+  <div class="w-full mt-5">
+    <%= form.label :location_id, "Location" %>
+    <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-96", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
+    <div class="mt-1 ml-1">
+      <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
     </div>
   </div>
 
-  <div class="my-5">
-    <%= form.label :secondary_name %>
-    <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-    <%= form.text_field :secondary_name, class: ["block w-64 shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
-  </div>
-
- <div class="text-md pt-5">Show Poster</div>
-  <div class="mr-5 inline-block">
-
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-      </div>
-
-      <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-          <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-      </div>
-
+  <div class="w-full mt-5">
+    <%= form.label :date_and_time %>
+    <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
   </div>
 
   <div class="w-full border-t border-gray-200 pt-5 my-5">

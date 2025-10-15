@@ -206,7 +206,7 @@
                   <div class="border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 %>>
                     <div class="flex items-center cursor-pointer select-none p-4" data-action="click->show-toggle#toggle">
                       <span data-show-toggle-target="icon" class="mr-2"></span>
-                      <p class="font-bold text-sm sm:text-lg "><%= session.start_at.strftime("%A, %B %-d, %Y") %> &bull; <%= session.start_at.strftime("%l:%M %p") %></p>
+                      <p class="font-bold text-sm sm:text-lg "><%= session.start_at.strftime("%A, %B %-d, %Y") %> at <%= session.start_at.strftime("%l:%M %p") %></p>
                     </div>
                     <div data-show-toggle-target="content" class="hidden p-4 pt-0 <%= 'hidden' unless idx == 0 %>">
                       <%= link_to manage_production_audition_session_path(@production, session) do %>

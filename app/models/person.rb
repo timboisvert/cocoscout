@@ -34,10 +34,19 @@ class Person < ApplicationRecord
   end
 
   # Returns the next show for a given production that this person has a role assignment in
-  def next_show_for_production(production)
+  def next_show_for_production_that_im_cast_in(production)
     shows
       .joins(:show_person_role_assignments)
       .where(production: production, show_person_role_assignments: { person_id: id })
+      .where("date_and_time >= ?", Time.current, canceled: false)
+      .order(:date_and_time)
+      .first
+  end
+
+  # Returns the next event (show, rehearsal, or meeting) for a given production, regardless of cast status
+  def next_event_for_production(production)
+    Show
+      .where(production: production, canceled: false)
       .where("date_and_time >= ?", Time.current)
       .order(:date_and_time)
       .first

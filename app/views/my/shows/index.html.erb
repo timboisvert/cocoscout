@@ -27,16 +27,18 @@
                             <div class="mt-2 font-bold text-xl"><%= production.name %></div>
 
                             <div class="mt-1 text-sm">
-                                <% next_show = Current.user.person.next_show_for_production(production) %>
-                                <% if next_show %>
-                                    <p class="text-gray-500">Your next scheduled show:</p>
-                                    <p class="inline-block text-sm font-bold bg-white text-pink-500"><%= next_show.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
+                                <% next_event = Current.user.person.next_event_for_production(production) %>
+                                <% if next_event %>
+                                    <% event_label = next_event.event_type.titleize %>
+                                    <p class="text-gray-500">Next scheduled <%= event_label.downcase %>:</p>
+                                    <p class="inline-block text-sm font-bold text-pink-500"><%= next_event.date_and_time.strftime('%b %d, %Y at %l:%M %p') %></p>
                                 <% else %>
                                     <p class="text-sm text-gray-500">
-                                        You aren't cast in any upcoming shows
+                                        No upcoming events scheduled
                                     </p>
                                 <% end %>
                             </div>
+
                         </div>
 
                     </div>
