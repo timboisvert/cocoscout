@@ -1,16 +1,47 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["tab", "panel"]
+    static targets = ["tab", "panel", "hiddenField"]
 
     connect() {
-        this.show(0);
+        let initialTab = 0;
+
+        // First check if there's a tab in the URL query params
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+
+        if (tabParam) {
+            const tabIndex = parseInt(tabParam, 10);
+            if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
+                initialTab = tabIndex;
+            }
+        }
+        // Fallback to URL hash
+        else {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#tab-')) {
+                const tabIndex = parseInt(hash.replace('#tab-', ''), 10);
+                if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
+                    initialTab = tabIndex;
+                }
+            }
+        }
+
+        this.show(initialTab);
     }
 
     select(e) {
         e.preventDefault();
         const idx = parseInt(e.target.dataset.index, 10);
         this.show(idx);
+
+        // Update the hidden field if it exists
+        if (this.hasHiddenFieldTarget) {
+            this.hiddenFieldTarget.value = idx;
+        }
+
+        // Update the URL hash without triggering a page scroll
+        history.replaceState(null, '', `#tab-${idx}`);
     }
 
     show(idx) {

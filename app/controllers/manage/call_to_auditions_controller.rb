@@ -40,7 +40,12 @@ class Manage::CallToAuditionsController < Manage::ManageController
 
   def update
     if @call_to_audition.update(call_to_audition_params)
-      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition), notice: "Audition Settings successfully updated", status: :see_other
+      # Preserve the active tab by including it in the redirect
+      tab_param = params[:active_tab].present? ? { tab: params[:active_tab] } : {}
+
+      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab_param),
+                  notice: "Audition Settings successfully updated",
+                  status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -60,13 +65,14 @@ class Manage::CallToAuditionsController < Manage::ManageController
   end
 
   private
-   def set_production
-      @production = Current.production_company.productions.find(params.expect(:production_id))
-    end
 
-    def set_call_to_audition
-      @call_to_audition = CallToAudition.find(params.expect(:id))
-    end
+  def set_production
+    @production = Current.production_company.productions.find(params.expect(:production_id))
+  end
+
+  def set_call_to_audition
+    @call_to_audition = CallToAudition.find(params.expect(:id))
+  end
 
     def call_to_audition_params
       params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :success_text, :token ])
