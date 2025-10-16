@@ -1,6 +1,6 @@
 <% content_for :title, "Shows" %>
 
-<div class="w-full mb-10">
+<div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
@@ -10,7 +10,7 @@
     ]
   } %>
 
-   <div class="flex w-full space-x-2 mb-4">
+  <div class="flex w-full space-x-2 mb-4">
     <div class="flex flex-1 space-x-1">
       <%= link_to "Upcoming",
               manage_production_shows_path(@production, filter: "upcoming"),
@@ -99,22 +99,22 @@
                       event_label = show.event_type.titleize
                       edit_label = "Edit #{event_label}"
                       cancel_label = "Cancel #{event_label}"
-                      uncancel_label = "Uncancel #{event_label}"
                       delete_label = "Delete #{event_label}"
+                      uncancel_label = "Uncancel #{event_label}"
                     %>
                     <div class="<%= show.canceled ? 'mt-0' : 'mt-4' %> flex flex-col space-y-1">
                       <% if @filter == "past" %>
                         <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
-                        <%= link_to delete_label, manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% elsif show.canceled %>
                         <%= link_to uncancel_label, uncancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
-                        <%= link_to delete_label, manage_production_show_path(@production, show), data: {turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently delete this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                        <%= link_to delete_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% else %>
                         <%= link_to edit_label, edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                         <% if show.event_type == "show" %>
                           <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                         <% end %>
-                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to cancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
+                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% end %>
                     </div>
                   <% end %>
@@ -160,4 +160,5 @@
       You haven't scheduled any shows or events.
     </div>
   <% end %>
+
 </div>

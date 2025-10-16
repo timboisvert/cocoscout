@@ -1,6 +1,6 @@
 class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
-  before_action :set_show, only: %i[ cast edit update destroy cancel uncancel assign_person_to_role remove_person_from_role ]
+  before_action :set_show, only: %i[ cast edit update destroy cancel cancel_show delete_show uncancel assign_person_to_role remove_person_from_role ]
   before_action :ensure_user_is_manager, except: %i[ index ]
 
   def index
@@ -63,7 +63,8 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def create_recurring_events
-    start_datetime = DateTime.parse(params[:show][:recurrence_start_datetime])
+    # Parse the datetime in the application's timezone
+    start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
     pattern = params[:show][:recurrence_pattern]
     end_type = params[:show][:recurrence_end_type]
 
@@ -113,8 +114,9 @@ class Manage::ShowsController < Manage::ManageController
         first_of_month = next_month.beginning_of_month
         days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
         first_occurrence = first_of_month + days_until_target_day.days
-        # Add weeks to get to the target week
-        current_datetime = first_occurrence + (initial_week_of_month - 1).weeks
+        # Add weeks to get to the target week, then preserve the original time
+        target_date = first_occurrence + (initial_week_of_month - 1).weeks
+        current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min, sec: start_datetime.sec)
       when "weekdays"
         if current_datetime.wday.between?(1, 5) # Monday to Friday
           datetimes << current_datetime
@@ -202,8 +204,8 @@ class Manage::ShowsController < Manage::ManageController
     # Delete all existing events in the series
     @show.recurrence_group.destroy_all
 
-    # Parse new recurrence parameters
-    start_datetime = DateTime.parse(params[:show][:recurrence_start_datetime])
+    # Parse new recurrence parameters - use Time.zone.parse to respect application timezone
+    start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
     pattern = params[:show][:recurrence_pattern]
     end_type = params[:show][:recurrence_end_type]
 
@@ -250,8 +252,9 @@ class Manage::ShowsController < Manage::ManageController
         first_of_month = next_month.beginning_of_month
         days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
         first_occurrence = first_of_month + days_until_target_day.days
-        # Add weeks to get to the target week
-        current_datetime = first_occurrence + (initial_week_of_month - 1).weeks
+        # Add weeks to get to the target week, then preserve the original time
+        target_date = first_occurrence + (initial_week_of_month - 1).weeks
+        current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min, sec: start_datetime.sec)
       end
     end
 
@@ -274,18 +277,70 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def cancel
-    @show.update!(canceled: true)
-    redirect_to manage_production_shows_path(@production), notice: "Show was successfully canceled", status: :see_other
+    # Shows the cancel/delete options page
+  end
+
+  def cancel_show
+    scope = params[:scope] || "this"
+    event_label = @show.event_type.titleize
+
+    if scope == "all" && @show.recurring?
+      # Cancel all occurrences in the recurrence group
+      count = @show.recurrence_group.update_all(canceled: true)
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
+                  status: :see_other
+    else
+      # Cancel just this occurrence
+      @show.update!(canceled: true)
+      redirect_to manage_production_shows_path(@production),
+                  notice: "#{event_label} was successfully canceled",
+                  status: :see_other
+    end
+  end
+
+  def delete_show
+    scope = params[:scope] || "this"
+    event_label = @show.event_type.titleize
+
+    if scope == "all" && @show.recurring?
+      # Delete all occurrences in the recurrence group
+      count = @show.recurrence_group.count
+      @show.recurrence_group.destroy_all
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}",
+                  status: :see_other
+    else
+      # Delete just this occurrence
+      @show.destroy!
+      redirect_to manage_production_shows_path(@production),
+                  notice: "#{event_label} was successfully deleted",
+                  status: :see_other
+    end
   end
 
   def uncancel
-    @show.update!(canceled: false)
-    redirect_to manage_production_shows_path(@production), notice: "Show was successfully uncanceled", status: :see_other
+    scope = params[:scope] || "this"
+    event_label = @show.event_type.titleize
+
+    if scope == "all" && @show.recurring?
+      # Uncancel all canceled occurrences in the recurrence group
+      count = @show.recurrence_group.where(canceled: true).update_all(canceled: false)
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
+                  status: :see_other
+    else
+      # Uncancel just this occurrence
+      @show.update!(canceled: false)
+      redirect_to manage_production_shows_path(@production),
+                  notice: "#{event_label} was successfully uncanceled",
+                  status: :see_other
+    end
   end
 
   def destroy
-    @show.destroy!
-    redirect_to manage_production_shows_path(@production), notice: "Show was successfully deleted", status: :see_other
+    # Legacy destroy action - redirects to new cancel page
+    redirect_to cancel_manage_production_show_path(@production, @show)
   end
 
   def assign_person_to_role

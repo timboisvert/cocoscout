@@ -236,15 +236,4 @@
 
 <% end %>
 
-
-
-  <div class="mt-10">
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Cancel #{@show.event_type.titleize}",
-      links: []
-    } %>
-    <%= button_to "Cancel #{@show.event_type.titleize}", cancel_manage_production_show_path(@production, @show), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to permanently cancel this #{@show.event_type}?" }, class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-red-500 hover:bg-red-600 focus:ring-4 focus:outline-none focus:ring-red-300 inline-block font-medium cursor-pointer" %>
-  </div>
-
 </div>

@@ -99,7 +99,9 @@ Rails.application.routes.draw do
         end
         member do
           get   :cast
-          patch :cancel
+          get   :cancel, action: :cancel
+          patch :cancel_show
+          delete :delete_show
           patch :uncancel
         end
       end
