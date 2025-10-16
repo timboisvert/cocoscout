@@ -1,23 +1,8 @@
-<% content_for :title, "Call to Audition" %>
-
-<div class="w-full">
-
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["Sign-up Form", form_manage_production_call_to_audition_path(@production, @call_to_audition)]
-    ],
-    text: "Custom Questions",
-    links: []
-  } %>
-
   <% if @questions.any? %>
-    <div class="w-full mb-4 grid grid-cols-1 gap-2 pb-4" data-controller="question-order" data-question-order-url="<%= reorder_manage_production_call_to_audition_questions_path(@production, @call_to_audition) %>">
+  <div class="w-full mb-4 grid grid-cols-1 gap-2 pb-4" data-controller="question-order" data-question-order-url="<%= reorder_questions_manage_production_call_to_audition_path(@production, @call_to_audition) %>">
       <% @questions.each do |question| %>
-        <div class="flex w-full p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop">
-          <div class="flex flex-row items-center mr-auto gap-4">
+        <div class="group flex flex-col sm:flex-row w-full p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd">
+          <div class="flex flex-row items-center mr-auto gap-4 flex-1">
             <p class="text-md flex items-center mb-0">
               <span class="mr-2 text-gray-400 cursor-move" title="Drag to reorder">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -25,7 +10,7 @@
                 </svg>
               </span>
             </p>
-            <div>
+            <div class="flex-1">
               <p class="mb-0">
                 <%= question.text %>
               </p>
@@ -43,12 +28,20 @@
                 <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
                 <% end %>
               </p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-0 ml-10 min-w-39 inline-block ">
-            <%= render partial: "shared/link_button", locals: {text: "Edit", path: edit_manage_production_call_to_audition_question_path(@production, @call_to_audition, question)} %>
-            <div class="inline-block">
-              <%= render partial: "shared/form_button", locals: {text: "Delete", path: manage_production_call_to_audition_question_path(@production, @call_to_audition, question), method: :delete, data: { turbo_confirm: "Are you sure?" }} %>
+              <div class="flex gap-2 items-center mt-2">
+                <%= link_to "Edit",
+                    form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2, question_id: question.id),
+                    class: "text-xs underline text-pink-500 hover:text-pink-600"
+                %>
+                <%= link_to "Delete",
+                    destroy_question_manage_production_call_to_audition_path(@production, @call_to_audition, question_id: question.id),
+                    class: "text-xs underline text-pink-500 hover:text-pink-600 cursor-pointer",
+                    data: {
+                      turbo_method: :delete,
+                      turbo_confirm: "Are you sure you want to delete this question?"
+                    }
+                %>
+              </div>
             </div>
           </div>
         </div>
@@ -60,14 +53,19 @@
 
      <%= render partial: "shared/top_menu", locals: {
       breadcrumbs: [],
-      text: "Add a Custom Question",
+      text: @question.persisted? ? "Edit Question" : "Add a Question",
       links: []
     } %>
 
     <p class="text-sm text-gray-500">Custom Questions are shown at the bottom of the Audition sign-up form.</p>
   </div>
 
-  <%= form_with(model: [:manage, @production, @call_to_audition, @question], class: "contents") do |form| %>
+  <%= form_with(
+    url: @question.persisted? ? update_question_manage_production_call_to_audition_path(@production, @call_to_audition, question_id: @question.id) : create_question_manage_production_call_to_audition_path(@production, @call_to_audition),
+    model: @question,
+    method: @question.persisted? ? :patch : :post,
+    class: "contents"
+  ) do |form| %>
 
     <div class="my-2 sm:my-5">
       <% if @question_error %>
@@ -96,9 +94,11 @@
     </div>
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
-      <%= form.submit "Add Question", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <%= form.submit @question.persisted? ? "Update Question" : "Add Question", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 text-white inline-block font-medium cursor-pointer" %>
+      <% if @question.persisted? %>
+        <%= link_to "Cancel", form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <% else %>
+        <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+      <% end %>
      </div>
   <% end %>
-
-</div>

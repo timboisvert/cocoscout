@@ -116,11 +116,6 @@ Rails.application.routes.draw do
       resources :roles
 
       resources :call_to_auditions do
-        resources :questions do
-          collection do
-            post :reorder
-          end
-        end
         resources :audition_requests do
           member do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
@@ -129,8 +124,12 @@ Rails.application.routes.draw do
           end
         end
         member do
-          get  "form",      to: "call_to_auditions#form",     as: "form"
-          get  "preview",   to: "call_to_auditions#preview",  as: "preview"
+          get    "form",              to: "call_to_auditions#form",              as: "form"
+          get    "preview",           to: "call_to_auditions#preview",           as: "preview"
+          post   "create_question",   to: "call_to_auditions#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "call_to_auditions#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "call_to_auditions#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "call_to_auditions#reorder_questions", as: "reorder_questions"
         end
       end
 
