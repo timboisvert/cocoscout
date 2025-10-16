@@ -48,14 +48,100 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def create
-    @show = Show.new(show_params)
-    @show.production = @production
-
-    if @show.save
-      redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
+    if params[:show][:event_frequency] == "recurring"
+      create_recurring_events
     else
-      render :new, status: :unprocessable_entity
+      @show = Show.new(show_params)
+      @show.production = @production
+
+      if @show.save
+        redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
+      else
+        render :new, status: :unprocessable_entity
+      end
     end
+  end
+
+  def create_recurring_events
+    start_datetime = DateTime.parse(params[:show][:recurrence_start_datetime])
+    pattern = params[:show][:recurrence_pattern]
+    end_type = params[:show][:recurrence_end_type]
+
+    # Calculate end date based on duration
+    end_date = case end_type
+    when "3_months"
+      start_datetime.to_date + 3.months
+    when "6_months"
+      start_datetime.to_date + 6.months
+    when "end_of_year"
+      Date.new(start_datetime.year, 12, 31)
+    when "12_months"
+      start_datetime.to_date + 12.months
+    when "18_months"
+      start_datetime.to_date + 18.months
+    when "24_months"
+      start_datetime.to_date + 24.months
+    when "custom"
+      Date.parse(params[:show][:recurrence_custom_end_date])
+    else
+      start_datetime.to_date + 6.months # default
+    end
+
+    datetimes = []
+    current_datetime = start_datetime
+
+    # Store initial values for monthly_week pattern
+    initial_day_of_week = start_datetime.wday
+    initial_week_of_month = (start_datetime.day - 1) / 7 + 1
+
+    # Generate datetimes based on pattern
+    while current_datetime.to_date <= end_date
+      case pattern
+      when "daily"
+        datetimes << current_datetime
+        current_datetime += 1.day
+      when "weekly"
+        datetimes << current_datetime
+        current_datetime += 1.week
+      when "biweekly"
+        datetimes << current_datetime
+        current_datetime += 2.weeks
+      when "monthly_date"
+        datetimes << current_datetime
+        current_datetime = current_datetime + 1.month
+      when "monthly_week"
+        datetimes << current_datetime
+        # Move to next month, then find the same week and day
+        next_month = current_datetime + 1.month
+        # Find the first occurrence of the target day in the next month
+        first_of_month = next_month.beginning_of_month
+        days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
+        first_occurrence = first_of_month + days_until_target_day.days
+        # Add weeks to get to the target week
+        current_datetime = first_occurrence + (initial_week_of_month - 1).weeks
+      when "weekdays"
+        if current_datetime.wday.between?(1, 5) # Monday to Friday
+          datetimes << current_datetime
+        end
+        current_datetime += 1.day
+      end
+    end
+
+    # Create shows for each datetime
+    created_count = 0
+    datetimes.each do |datetime|
+      show = Show.new(
+        event_type: params[:show][:event_type],
+        secondary_name: params[:show][:secondary_name],
+        location_id: params[:show][:location_id],
+        date_and_time: datetime,
+        production: @production
+      )
+      created_count += 1 if show.save
+    end
+
+    redirect_to manage_production_shows_path(@production),
+                notice: "Successfully created #{created_count} recurring events"
   end
 
   def update
@@ -122,6 +208,7 @@ class Manage::ShowsController < Manage::ManageController
     # Only allow a list of trusted parameters through.
     def show_params
       params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :production_id, :location_id,
+        :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
         show_links_attributes: [ :id, :url, :_destroy ])
     end
 end
