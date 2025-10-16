@@ -52,15 +52,18 @@
     </div>
 
     <% if @show.poster.attached? %>
-      <div class="text-md mt-5">Show Poster</div>
-      <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
+      <div class="text-md mt-5 flex items-center">
+        <span>Show Poster</span>
+        <button type="button" class="remove-poster-btn ml-3 px-3 py-1 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded-md transition-colors" data-action="click->show-edit#removePoster">
+          Remove Poster
+        </button>
+      </div>
+      <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
           <div class="w-full">
 
-              <% if @show.poster.attached? %>
-                  <div class="mb-4">
-                      <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
-                  </div>
-              <% end %>
+              <div class="mb-4 poster-image">
+                  <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
+              </div>
 
               <div class="flex items-center justify-between">
                 <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
@@ -70,6 +73,8 @@
               <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
                   <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
               </div>
+
+              <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
 
           </div>
       </div>

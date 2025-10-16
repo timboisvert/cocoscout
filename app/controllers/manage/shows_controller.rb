@@ -158,6 +158,17 @@ class Manage::ShowsController < Manage::ManageController
         update_params = show_params.except(:recurrence_edit_scope, :date_and_time,
                                           :recurrence_pattern, :recurrence_start_datetime,
                                           :recurrence_end_type, :recurrence_custom_end_date)
+
+        # Handle poster removal for all events in the group
+        if update_params[:remove_poster] == "1"
+          @show.recurrence_group.each do |show|
+            show.poster.purge if show.poster.attached?
+          end
+          update_params.delete(:remove_poster)
+        else
+          update_params.delete(:remove_poster)
+        end
+
         updated_count = 0
 
         @show.recurrence_group.each do |show|
@@ -180,6 +191,14 @@ class Manage::ShowsController < Manage::ManageController
       if @show.recurring? && update_params[:date_and_time].present? &&
          update_params[:date_and_time] != @show.date_and_time.to_s
         update_params[:recurrence_group_id] = nil
+      end
+
+      # Handle poster removal
+      if update_params[:remove_poster] == "1" && @show.poster.attached?
+        @show.poster.purge
+        update_params.delete(:remove_poster)
+      else
+        update_params.delete(:remove_poster)
       end
 
       if @show.update(update_params)
@@ -383,7 +402,7 @@ class Manage::ShowsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def show_params
-      params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :production_id, :location_id,
+      params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
         :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
         :recurrence_edit_scope, :recurrence_group_id,
         show_links_attributes: [ :id, :url, :_destroy ])

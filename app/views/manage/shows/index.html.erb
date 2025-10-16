@@ -68,7 +68,7 @@
 
             <div class="items-start gap-6 sm:flex">
 
-              <div class="w-full sm:flex sm:w-1/2">
+              <div class="w-full sm:flex">
 
                 <% unless show.canceled %>
                   <div class="flex-shrink">
@@ -80,10 +80,12 @@
                   </div>
                 <% end %>
 
-                <div class="flex flex-col items-start justify-start w-2/3 min-w-0">
+                <div class="flex flex-col items-start justify-start min-w-0">
+
                   <% if show.secondary_name.present? %>
                     <p class="text-md font-bold truncate"><%= show.secondary_name %></p>
                   <% end %>
+
                   <% if show.location.present? && !show.canceled %>
                     <p class="text-sm text-gray-500 flex items-center mt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 mr-1">
@@ -102,7 +104,7 @@
                       delete_label = "Delete #{event_label}"
                       uncancel_label = "Uncancel #{event_label}"
                     %>
-                    <div class="<%= show.canceled ? 'mt-0' : 'mt-4' %> flex flex-col space-y-1">
+                    <div class="mt-0 space-x-1">
                       <% if @filter == "past" %>
                         <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
                         <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
@@ -111,45 +113,52 @@
                         <%= link_to delete_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% else %>
                         <%= link_to edit_label, edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                        <% if show.event_type == "show" %>
-                          <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                        <% end %>
                         <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% end %>
                     </div>
                   <% end %>
 
-                </div>
-              </div>
-
-              <% if show.event_type == "show" && !show.canceled %>
-                <div class="w-full mt-5 sm:w-1/2 sm:mt-0">
-                  <div class="p-2 grid grid-cols-4 sm:grid-cols-8 border border-gray-200 rounded-lg hover:border-gray-400 transition-all gap-2">
-                    <% if show.show_person_role_assignments.any? %>
-                      <% show.show_person_role_assignments.each do |assignment| %>
-                        <%= link_to [:manage, assignment.person] do %>
-                          <div class="flex flex-col items-center transition-all relative"
-                            data-controller="tooltip"
-                            data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
-                            <% if assignment.person.headshot.present? %>
-                              <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
-                            <% else %>
-                              <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
-                                <%= assignment.person.initials %>
+                   <% if show.event_type == "show" && !show.canceled %>
+                    <div class="w-full mt-5">
+                      <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                        <% if show.show_person_role_assignments.any? %>
+                          <% show.show_person_role_assignments.each do |assignment| %>
+                            <%= link_to [:manage, assignment.person] do %>
+                              <div class="flex flex-col items-center transition-all relative"
+                                data-controller="tooltip"
+                                data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
+                                <% if assignment.person.headshot.present? %>
+                                  <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
+                                <% else %>
+                                  <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
+                                    <%= assignment.person.initials %>
+                                  </div>
+                                <% end %>
                               </div>
                             <% end %>
+                          <% end %>
+                        <% else %>
+                          <div class="col-span-4 sm:col-span-8 text-sm text-gray-500 items-center">
+                            You haven't added any cast members to this show
                           </div>
                         <% end %>
-                      <% end %>
-                    <% else %>
-                      <div class="col-span-4 sm:col-span-8 text-sm text-gray-500 items-center">
-                        You haven't added any cast members to this show yet.
                       </div>
-                    <% end %>
-                  </div>
+                      <% if Current.user.manager? %>
+                        <div class="mt-0">
+                          <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+
                 </div>
-              <% end %>
+
+              </div>
+
+
+
             </div>
+
           </div>
         </div>
       <% end %>
