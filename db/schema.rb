@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_15_181123) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_16_010632) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -240,6 +240,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_15_181123) do
     t.integer "location_id"
     t.boolean "canceled", default: false, null: false
     t.string "event_type"
+    t.string "recurrence_group_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
   end

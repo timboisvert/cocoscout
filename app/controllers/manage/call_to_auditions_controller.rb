@@ -40,7 +40,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
 
   def update
     if @call_to_audition.update(call_to_audition_params)
-      redirect_to manage_production_auditions_path(@production), notice: "Audition Settings successfully updated", status: :see_other
+      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition), notice: "Audition Settings successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end

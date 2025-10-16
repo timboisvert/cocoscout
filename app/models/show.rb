@@ -23,6 +23,26 @@ class Show < ApplicationRecord
   validates :event_type, presence: true
   validate :poster_content_type
 
+  # Scope to find all shows in a recurrence group
+  scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
+
+  # Check if this show is part of a recurring series
+  def recurring?
+    recurrence_group_id.present?
+  end
+
+  # Get all shows in the same recurrence group
+  def recurrence_siblings
+    return Show.none unless recurring?
+    Show.in_recurrence_group(recurrence_group_id).where.not(id: id)
+  end
+
+  # Get all shows in the recurrence group including self
+  def recurrence_group
+    return Show.none unless recurring?
+    Show.in_recurrence_group(recurrence_group_id)
+  end
+
   private
 
   def poster_content_type

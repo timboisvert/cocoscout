@@ -123,6 +123,9 @@ class Manage::ShowsController < Manage::ManageController
       end
     end
 
+    # Generate a UUID for this recurrence group
+    recurrence_group_id = SecureRandom.uuid
+
     # Create shows for each datetime
     created_count = 0
     datetimes.each do |datetime|
@@ -131,7 +134,8 @@ class Manage::ShowsController < Manage::ManageController
         secondary_name: params[:show][:secondary_name],
         location_id: params[:show][:location_id],
         date_and_time: datetime,
-        production: @production
+        production: @production,
+        recurrence_group_id: recurrence_group_id
       )
       created_count += 1 if show.save
     end
@@ -141,11 +145,132 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def update
-    if @show.update(show_params)
-      redirect_to manage_production_shows_path(@production), notice: "Show was successfully updated", status: :see_other
+    # Check if this is a recurring event and what scope to edit
+    if @show.recurring? && params[:show][:recurrence_edit_scope] == "all"
+      # Check if recurrence pattern is being changed
+      if params[:show][:recurrence_pattern].present?
+        # Recreate the entire series with new pattern
+        update_recurring_series
+      else
+        # Just update properties on all events in the group
+        update_params = show_params.except(:recurrence_edit_scope, :date_and_time,
+                                          :recurrence_pattern, :recurrence_start_datetime,
+                                          :recurrence_end_type, :recurrence_custom_end_date)
+        updated_count = 0
+
+        @show.recurrence_group.each do |show|
+          if show.update(update_params)
+            updated_count += 1
+          end
+        end
+
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully updated #{updated_count} events in the series",
+                    status: :see_other
+      end
     else
-      render :edit, status: :unprocessable_entity
+      # Update only this occurrence (remove from recurrence group if editing date/time)
+      update_params = show_params.except(:recurrence_edit_scope, :recurrence_pattern,
+                                        :recurrence_start_datetime, :recurrence_end_type,
+                                        :recurrence_custom_end_date)
+
+      # If date/time is being changed on a recurring event, unlink it from the group
+      if @show.recurring? && update_params[:date_and_time].present? &&
+         update_params[:date_and_time] != @show.date_and_time.to_s
+        update_params[:recurrence_group_id] = nil
+      end
+
+      if @show.update(update_params)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "#{@show.event_type.titleize} was successfully updated",
+                    status: :see_other
+      else
+        render :edit, status: :unprocessable_entity
+      end
     end
+  end
+
+  def update_recurring_series
+    # Get the recurrence group ID before deleting
+    recurrence_group_id = @show.recurrence_group_id
+
+    # Store the properties we want to keep
+    event_type = params[:show][:event_type] || @show.event_type
+    secondary_name = params[:show][:secondary_name] || @show.secondary_name
+    location_id = params[:show][:location_id] || @show.location_id
+
+    # Delete all existing events in the series
+    @show.recurrence_group.destroy_all
+
+    # Parse new recurrence parameters
+    start_datetime = DateTime.parse(params[:show][:recurrence_start_datetime])
+    pattern = params[:show][:recurrence_pattern]
+    end_type = params[:show][:recurrence_end_type]
+
+    # Calculate end date based on duration
+    end_date = case end_type
+    when "3_months"
+      start_datetime.to_date + 3.months
+    when "6_months"
+      start_datetime.to_date + 6.months
+    when "12_months"
+      start_datetime.to_date + 12.months
+    when "end_of_year"
+      Date.new(start_datetime.year, 12, 31)
+    when "custom"
+      Date.parse(params[:show][:recurrence_custom_end_date])
+    else
+      start_datetime.to_date + 6.months # default
+    end
+
+    datetimes = []
+    current_datetime = start_datetime
+
+    # Store initial values for monthly_week pattern
+    initial_day_of_week = start_datetime.wday
+    initial_week_of_month = (start_datetime.day - 1) / 7 + 1
+
+    # Generate datetimes based on pattern
+    while current_datetime.to_date <= end_date
+      case pattern
+      when "weekly"
+        datetimes << current_datetime
+        current_datetime += 1.week
+      when "biweekly"
+        datetimes << current_datetime
+        current_datetime += 2.weeks
+      when "monthly_date"
+        datetimes << current_datetime
+        current_datetime = current_datetime + 1.month
+      when "monthly_week"
+        datetimes << current_datetime
+        # Move to next month, then find the same week and day
+        next_month = current_datetime + 1.month
+        # Find the first occurrence of the target day in the next month
+        first_of_month = next_month.beginning_of_month
+        days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
+        first_occurrence = first_of_month + days_until_target_day.days
+        # Add weeks to get to the target week
+        current_datetime = first_occurrence + (initial_week_of_month - 1).weeks
+      end
+    end
+
+    # Create new shows for each datetime with the same recurrence group ID
+    created_count = 0
+    datetimes.each do |datetime|
+      show = Show.new(
+        event_type: event_type,
+        secondary_name: secondary_name,
+        location_id: location_id,
+        date_and_time: datetime,
+        production: @production,
+        recurrence_group_id: recurrence_group_id
+      )
+      created_count += 1 if show.save
+    end
+
+    redirect_to manage_production_shows_path(@production),
+                notice: "Successfully recreated series with #{created_count} events"
   end
 
   def cancel
@@ -205,6 +330,7 @@ class Manage::ShowsController < Manage::ManageController
     def show_params
       params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :production_id, :location_id,
         :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
+        :recurrence_edit_scope, :recurrence_group_id,
         show_links_attributes: [ :id, :url, :_destroy ])
     end
 end
