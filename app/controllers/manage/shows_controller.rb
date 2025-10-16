@@ -73,14 +73,10 @@ class Manage::ShowsController < Manage::ManageController
       start_datetime.to_date + 3.months
     when "6_months"
       start_datetime.to_date + 6.months
-    when "end_of_year"
-      Date.new(start_datetime.year, 12, 31)
     when "12_months"
       start_datetime.to_date + 12.months
-    when "18_months"
-      start_datetime.to_date + 18.months
-    when "24_months"
-      start_datetime.to_date + 24.months
+    when "end_of_year"
+      Date.new(start_datetime.year, 12, 31)
     when "custom"
       Date.parse(params[:show][:recurrence_custom_end_date])
     else

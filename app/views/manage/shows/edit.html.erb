@@ -10,39 +10,48 @@
     links: []
   } %>
 
-<%= form_with(model: [:manage, @production, @show], class: "contents") do |form| %>
+<%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit" }) do |form| %>
 
-  <div class="w-full mb-5">
+  <div class="w-full">
     <%= form.label :event_type, "Event Type" %>
     <%= form.select :event_type,
         Show.event_types.keys.map { |type| [type.titleize, type] },
         { include_blank: false },
-        { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}] }
+        {
+          class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
+          data: {
+            show_edit_target: "eventTypeSelect",
+            action: "change->show-edit#updateUI"
+          }
+        }
     %>
-  </div>  <div class="gap-4 w-full sm:flex">
-    <div class="w-full sm:w-1/2">
-      <%= form.label :date_and_time %>
-      <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
-    </div>
+  </div>
 
-    <div class="w-full mt-5 sm:mt-0 sm:w-1/2">
-      <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
-      <div class="mt-1 ml-1">
-        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
-      </div>
+  <div class="w-full mt-5">
+    <%= form.label :location_id, "Location" %>
+    <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-96", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
+    <div class="mt-1 ml-1">
+      <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
     </div>
   </div>
 
-  <% if form.object.event_type == "show" %>
-    <div class="my-5">
+  <div data-show-edit-target="showOnlyFields" class="<%= 'hidden' unless @show.event_type == 'show' %>">
+    <div class="w-full mt-5">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Show Settings",
+        links: []
+      } %>
+    </div>
+
+    <div class="mt-5">
       <%= form.label :secondary_name %>
       <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
       <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
     </div>
 
     <% if @show.poster.attached? %>
-      <div class="text-md pt-5">Show Poster</div>
+      <div class="text-md mt-5">Show Poster</div>
       <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
           <div class="w-full">
 
@@ -64,7 +73,7 @@
           </div>
       </div>
     <% else %>
-      <div class="text-md pt-5">Show Poster</div>
+      <div class="text-md mt-5">Show Poster</div>
       <div class="mr-5 inline-block">
 
           <div class="flex items-center justify-between">
@@ -78,7 +87,7 @@
       </div>
     <% end %>
 
-    <div class="mt-10" data-controller="show-links">
+    <div class="mt-5" data-controller="show-links">
       <label>Show Links</label>
       <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
       <div id="show-links-fields" data-show-links-target="list" class="mt-1">
@@ -101,10 +110,25 @@
         </div>
       </template>
     </div>
-  <% end %>
+  </div>
+
+  <div class="w-full mt-5">
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Schedule",
+      links: []
+    } %>
+  </div>
+
+  <div class="w-full">
+    <%= form.label :date_and_time, "Date and Time" %>
+    <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
+  </div>
 
   <div class="w-full border-t border-gray-200 pt-5 my-5">
-    <%= form.submit "Update Show", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+    <%= form.submit "Update #{@show.event_type.titleize}",
+        data: { show_edit_target: "submitButton" },
+        class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
     <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
   </div>
 
