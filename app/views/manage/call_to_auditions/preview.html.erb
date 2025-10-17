@@ -41,6 +41,14 @@
 
     <%= form_with(model: @audition_request, url: "", method: :get, class: "contents", data: { turbo: false }) do |form| %>
 
+      <%
+        # Show person form if there's an error, or if profile is incomplete
+        show_person_form = @update_person_error ||
+                          !Current.user.person.headshot.attached? ||
+                          !Current.user.person.resume.attached? ||
+                          Current.user.person.name == Current.user.email_address.split("@").first
+      %>
+
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
 
         <div class="p-5 flex items-top gap-4">
@@ -64,7 +72,7 @@
               <%= Current.user.email_address %>
             </div>
 
-            <% unless @update_person_error%>
+            <% unless show_person_form %>
               <div class="mt-2">
                 <a id="update-profile-link" class="text-sm text-pink-500 cursor-pointer underline" onclick="document.getElementById('person-form-div').classList.remove('hidden'); this.classList.add('hidden');">Update your profile</a>
               </div>
