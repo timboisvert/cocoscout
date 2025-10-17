@@ -62,7 +62,7 @@ export default class extends Controller {
         // This is a hack just for the edit call to audition form
         const buttonsDiv = document.getElementById('call-to-audition-form-buttons');
         if (buttonsDiv) {
-            if (idx === 2) {
+            if (idx === 3) {
                 buttonsDiv.style.display = "none";
             } else {
                 buttonsDiv.style.display = "";

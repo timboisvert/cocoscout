@@ -1,0 +1,29 @@
+<% content_for :title, "My Availability" %>
+
+<div class="w-full max-w-3xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6">My Availability</h1>
+  <% @productions.each do |production| %>
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold mb-2"><%= production.name %></h2>
+      <div class="divide-y divide-gray-100 border rounded-lg">
+        <% @shows_by_production[production].each do |show| %>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 group" data-controller="availability" data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
+            <div>
+              <span class="inline-block px-2 py-1 rounded text-xs font-medium <%= case show.event_type; when 'rehearsal' then 'bg-blue-50 text-blue-700'; when 'meeting' then 'bg-green-50 text-green-700'; else 'bg-pink-50 text-pink-700'; end %>">
+                <%= show.event_type.titleize %>
+              </span>
+              <span class="ml-2 font-semibold"><%= show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") %></span>
+              <% if show.canceled %>
+                <span class="ml-2 text-xs text-red-500">Canceled</span>
+              <% end %>
+            </div>
+            <div class="flex mt-2 sm:mt-0 gap-2">
+              <button type="button" class="availability-btn px-3 py-1 rounded border text-xs font-medium transition-colors" data-action="availability#setAvailable" data-selected="available">Available</button>
+              <button type="button" class="availability-btn px-3 py-1 rounded border text-xs font-medium transition-colors" data-action="availability#setUnavailable" data-selected="unavailable">Unavailable</button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -132,7 +132,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
   end
 
     def call_to_audition_params
-      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :success_text, :token ])
+      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token ])
     end
 
   def question_params

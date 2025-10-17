@@ -11,6 +11,9 @@ class Person < ApplicationRecord
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
+  has_many :show_availabilities, dependent: :destroy
+  has_many :available_shows, through: :show_availabilities, source: :show
+
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true

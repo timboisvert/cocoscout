@@ -13,6 +13,9 @@ class Show < ApplicationRecord
       attachable.variant :small, resize_to_limit: [ 200, 300 ], preprocessed: true
   end
 
+  has_many :show_availabilities, dependent: :destroy
+  has_many :available_people, through: :show_availabilities, source: :person
+
   enum :event_type, {
     show: "show",
     rehearsal: "rehearsal",

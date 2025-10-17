@@ -4,6 +4,7 @@ class CallToAudition < ApplicationRecord
   has_many :questions, as: :questionable, dependent: :destroy
 
   has_rich_text :header_text
+  has_rich_text :video_field_text
   has_rich_text :success_text
 
   belongs_to :production

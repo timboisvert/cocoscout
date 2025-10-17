@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_16_010632) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_17_000100) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -212,6 +212,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_010632) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "show_availabilities", force: :cascade do |t|
+    t.integer "person_id", null: false
+    t.integer "show_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id", "show_id"], name: "index_show_availabilities_on_person_id_and_show_id", unique: true
+    t.index ["person_id"], name: "index_show_availabilities_on_person_id"
+    t.index ["show_id"], name: "index_show_availabilities_on_show_id"
+  end
+
   create_table "show_links", force: :cascade do |t|
     t.integer "show_id", null: false
     t.string "url", null: false
@@ -309,6 +320,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_010632) do
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
+  add_foreign_key "show_availabilities", "people"
+  add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_links", "shows"
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"

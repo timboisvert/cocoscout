@@ -12,9 +12,16 @@
 
   <div class="w-full" data-controller="tabs">
     <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Success Text</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Custom Questions</button>
+       <% idx = 0 %>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
+      <% idx += 1 %>
+      <% if @call_to_audition.audition_type == "video_upload" %>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Video Field</button>
+        <% idx += 1 %>
+      <% end %>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Success Text</button>
+      <% idx += 1 %>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Custom Questions</button>
     </nav>
 
     <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
@@ -25,6 +32,16 @@
           <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto", {"border-gray-400": @call_to_audition.errors[:header_text].none?, "border-pink-500": @call_to_audition.errors[:header_text].any?}] %>
         </div>
       </div>
+
+      <% if @call_to_audition.audition_type == "video_upload" %>
+        <div data-tabs-target="panel" class="hidden">
+          <div class="my-5">
+            <p class="text-sm text-gray-500 pb-5">Add text that gets shown with the video upload URL, which can be used to provide instructions on what the video should be, how it should be uploaded, etc.</p>
+            <%= form.rich_text_area :video_field_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto", {"border-gray-400": @call_to_audition.errors[:video_field_text].none?, "border-pink-500": @call_to_audition.errors[:video_field_text].any?}] %>
+          </div>
+        </div>
+      <% end %>
+
       <div data-tabs-target="panel" class="hidden">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">After an auditionee submits the Sign-up form, they're shown text that you can customize here.</p>
