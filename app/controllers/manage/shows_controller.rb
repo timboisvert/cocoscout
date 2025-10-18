@@ -51,7 +51,9 @@ class Manage::ShowsController < Manage::ManageController
     if params[:show][:event_frequency] == "recurring"
       create_recurring_events
     else
-      @show = Show.new(show_params)
+      # Filter out virtual attributes used only for recurring event logic
+      filtered_params = show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope)
+      @show = Show.new(filtered_params)
       @show.production = @production
 
       if @show.save

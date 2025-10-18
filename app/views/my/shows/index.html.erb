@@ -1,15 +1,14 @@
 <% content_for :title, "My Shows" %>
 
+<%= render partial: "shared/notice", locals: { notice: notice } %>
+
+<%= render partial: "shared/top_menu", locals: {
+breadcrumbs: [],
+text: "My Shows & Events",
+links: []
+} %>
+
 <div class="w-full">
-
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Shows & Events",
-    links: []
-  } %>
-
     <% if @productions.any? %>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">

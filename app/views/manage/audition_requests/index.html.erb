@@ -97,7 +97,7 @@
     <% else %>
 
     <p class="text-gray-500 text-sm pt-2">
-      <% if @filter.blank? %>
+      <% if @filter.blank? || @filter == "all" %>
         No one has signed up for an audition yet.
       <% elsif @filter == "unreviewed" %>
         You have no unreviewed sign-ups

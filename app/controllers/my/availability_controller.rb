@@ -1,10 +1,27 @@
-class My::AvailabilitiesController < ApplicationController
+class My::AvailabilityController < ApplicationController
   def index
+    @filter = (params[:filter] || session[:availability_filter] || "all")
+    session[:availability_filter] = @filter
+
     @productions = Production.joins(casts: [ :casts_people ]).joins(:shows).where(casts_people: { person_id: Current.user.person.id }).distinct
+
+    # Get all upcoming non-canceled shows
+    @all_shows = Show.joins(production: { casts: [ :casts_people ] })
+      .where(casts_people: { person_id: Current.user.person.id })
+      .where.not(canceled: true)
+      .where("date_and_time > ?", Time.current)
+      .order(:date_and_time)
+      .distinct
+
+    # Group shows by production for the by_production view
     @shows_by_production = {}
     @productions.each do |production|
-      @shows_by_production[production] = production.shows.where.not(canceled: true).order(:date_and_time)
+      @shows_by_production[production] = production.shows
+        .where.not(canceled: true)
+        .where("date_and_time > ?", Time.current)
+        .order(:date_and_time)
     end
+
     @availabilities = ShowAvailability.where(person: Current.user.person).index_by(&:show_id)
   end
 

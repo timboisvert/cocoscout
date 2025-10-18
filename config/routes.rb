@@ -36,8 +36,8 @@ Rails.application.routes.draw do
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/:production_id",          to: "shows#production",         as: "production"
     get   "/shows/:production_id/:show_id", to: "shows#show",               as: "show"
-    get   "/availability",                  to: "availabilities#index",     as: "availability"
-    get   "/availability/:show_id",         to: "availabilities#update",    as: "update_availability"
+    get   "/availability",                  to: "availability#index",       as: "availability"
+    patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
     get   "/profile",                       to: "profile#index",            as: "profile"
@@ -155,4 +155,5 @@ Rails.application.routes.draw do
   # Junkers
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
+  get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
 end
