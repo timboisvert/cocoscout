@@ -173,7 +173,7 @@ GEM
       activesupport (>= 6.1)
     gobject-introspection (4.3.3)
       glib2 (= 4.3.3)
-    honeybadger (6.1.1)
+    honeybadger (6.1.2)
       logger
       ostruct
     http-accept (1.7.0)
