@@ -10,12 +10,11 @@ servers:
     hosts:
       # - 142.93.126.2
       - ec2-18-117-136-69.us-east-2.compute.amazonaws.com
-    options:
-      healthcheck:
-        path: /up
-        port: 3000
-        max_attempts: 10
-        interval: 10s
+    healthcheck:
+      path: /up
+      port: 3000
+      max_attempts: 10
+      interval: 10s
 
 ssh:
   user: ec2-user
