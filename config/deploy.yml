@@ -54,10 +54,10 @@ env:
     WEB_CONCURRENCY: 1
 
     # Set maximum number of threads per process (default: 3-5)
-    RAILS_MAX_THREADS: 3
+    RAILS_MAX_THREADS: 1
 
     # Database connection pool size (should be at least RAILS_MAX_THREADS)
-    DB_POOL: 3
+    DB_POOL: 1
 
     # Match this to any external database server to configure Active Record correctly
     # Use cocoscout-db for a db accessory server on same machine via local kamal docker network.
