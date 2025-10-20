@@ -57,6 +57,9 @@ env:
     # Set maximum number of threads per process (default: 3-5)
     RAILS_MAX_THREADS: 5
 
+    # Database connection pool size (should be at least RAILS_MAX_THREADS)
+    DB_POOL: 20
+
     # Match this to any external database server to configure Active Record correctly
     # Use cocoscout-db for a db accessory server on same machine via local kamal docker network.
     RAILS_ENV: production
@@ -84,3 +87,10 @@ asset_path: /rails/public/assets
 # Configure the image builder.
 builder:
   arch: amd64
+
+# Configure healthcheck
+healthcheck:
+  path: /up
+  port: 3000
+  max_attempts: 10
+  interval: 10s
