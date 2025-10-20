@@ -67,7 +67,7 @@ USER 1000:1000
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --start-interval=5s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=5 \
     CMD curl -f http://localhost:80/up || exit 1
 
 # Start server via Thruster by default, this can be overwritten at runtime
