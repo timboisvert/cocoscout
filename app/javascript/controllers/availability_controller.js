@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static values = { showId: Number, status: String }
+    static targets = ["success"]
 
     connect() {
         // Only update buttons if this is a show row (has showIdValue)
@@ -22,26 +23,6 @@ export default class extends Controller {
         }
     }
 
-    markAllAvailable(event) {
-        event.preventDefault();
-        this.markAllShows('available');
-    }
-
-    markAllUnavailable(event) {
-        event.preventDefault();
-        this.markAllShows('unavailable');
-    }
-
-    markAllShows(status) {
-        // Find all show rows on the page
-        const showRows = this.element.querySelectorAll('[data-availability-show-id-value]');
-
-        showRows.forEach(showRow => {
-            const showId = showRow.dataset.availabilityShowIdValue;
-            this.updateStatusForShow(showId, status, showRow);
-        });
-    }
-
     updateStatusForShow(showId, status, showRow) {
         fetch(`/my/availability/${showId}`, {
             method: "PATCH",
@@ -55,6 +36,8 @@ export default class extends Controller {
                     showRow.dataset.availabilityStatusValue = data.status;
                     // Update the buttons in this row
                     this.updateButtonsForRow(showRow, data.status);
+                    // Show success checkmark
+                    this.showSuccessForRow(showRow);
                 } else if (data.error) {
                     alert(data.error);
                 }
@@ -103,5 +86,17 @@ export default class extends Controller {
                 link.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-50');
             }
         });
+    }
+
+    showSuccessForRow(row) {
+        const successIcon = row.querySelector('[data-availability-target="success"]');
+        if (successIcon) {
+            setTimeout(() => {
+                successIcon.classList.remove('hidden');
+                setTimeout(() => {
+                    successIcon.classList.add('hidden');
+                }, 2000);
+            }, 200);
+        }
     }
 }

@@ -15,7 +15,7 @@ production:
   primary:
     adapter: postgresql
     encoding: unicode
-    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i * ENV.fetch("WEB_CONCURRENCY") { 2 }.to_i + 5 %>
     url: <%= ENV["DATABASE_URL"] %>
   cache:
     <<: *default

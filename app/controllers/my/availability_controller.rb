@@ -1,6 +1,6 @@
 class My::AvailabilityController < ApplicationController
   def index
-    @filter = (params[:filter] || session[:availability_filter] || "all")
+    @filter = (params[:filter] || session[:availability_filter] || "no_response")
     session[:availability_filter] = @filter
 
     @productions = Production.joins(casts: [ :casts_people ]).joins(:shows).where(casts_people: { person_id: Current.user.person.id }).distinct
@@ -12,6 +12,10 @@ class My::AvailabilityController < ApplicationController
       .where("date_and_time > ?", Time.current)
       .order(:date_and_time)
       .distinct
+
+    # Get shows with no response
+    availability_ids = ShowAvailability.where(person: Current.user.person).pluck(:show_id)
+    @no_response_shows = @all_shows.where.not(id: availability_ids)
 
     # Group shows by production for the by_production view
     @shows_by_production = {}
