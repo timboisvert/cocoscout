@@ -58,7 +58,7 @@ env:
     RAILS_MAX_THREADS: 5
 
     # Database connection pool size (should be at least RAILS_MAX_THREADS)
-    DB_POOL: 20
+    DB_POOL: 10
 
     # Match this to any external database server to configure Active Record correctly
     # Use cocoscout-db for a db accessory server on same machine via local kamal docker network.
