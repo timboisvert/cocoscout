@@ -7,7 +7,6 @@ image: cocorunseverything/cocoscout
 # Deploy to these servers.
 servers:
   web:
-    # - 142.93.126.2
     - ec2-18-117-136-69.us-east-2.compute.amazonaws.com
 
 ssh:
@@ -52,13 +51,13 @@ env:
     # JOB_CONCURRENCY: 3
 
     # Set number of cores available to the application on each server (default: 1).
-    # WEB_CONCURRENCY: 2
+    WEB_CONCURRENCY: 1
 
     # Set maximum number of threads per process (default: 3-5)
-    RAILS_MAX_THREADS: 5
+    RAILS_MAX_THREADS: 3
 
     # Database connection pool size (should be at least RAILS_MAX_THREADS)
-    DB_POOL: 5
+    DB_POOL: 3
 
     # Match this to any external database server to configure Active Record correctly
     # Use cocoscout-db for a db accessory server on same machine via local kamal docker network.
