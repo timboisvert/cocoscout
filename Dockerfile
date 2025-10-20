@@ -16,7 +16,7 @@ WORKDIR /rails
 
 # Install base packages
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 libvips libglib2.0-0 libcairo2 libcairo-gobject2 libpoppler-glib8 poppler-utils libgirepository-1.0-1 gir1.2-glib-2.0 gir1.2-poppler-0.18 && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 sqlite3 libpq5 libvips libglib2.0-0 libcairo2 libcairo-gobject2 libpoppler-glib8 poppler-utils libgirepository-1.0-1 gir1.2-glib-2.0 gir1.2-poppler-0.18 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment
@@ -30,7 +30,7 @@ FROM base AS build
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git pkg-config libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev && \
+    apt-get install --no-install-recommends -y build-essential git pkg-config libpq-dev libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install application gems
