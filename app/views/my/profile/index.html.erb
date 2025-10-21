@@ -1,4 +1,4 @@
-<% content_for :title, "My Profile" %>
+<% content_for :title, "Profile" %>
 
 <div class="w-full">
 
@@ -6,10 +6,10 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "My Profile",
+    text: "Profile",
     links: [
         {
-          text: "Edit My Profile",
+          text: "Edit Profile",
           path: my_edit_profile_path
         }
       ]
