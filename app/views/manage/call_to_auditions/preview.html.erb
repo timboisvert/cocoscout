@@ -117,26 +117,35 @@
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mb-6 space-y-5">
           <% @questions.each do |question| %>
             <div class="">
-              <label><%= question.text %></label>
+              <label>
+                <%= question.text %>
+                <% if question.required %>
+                  <span class="text-gray-500 text-sm">(required)</span>
+                <% end %>
+              </label>
 
               <% if question.question_type == "text" %>
 
-                <%= text_area_tag "question[#{question.id}]", @answers[question.id], class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:socials].none?, "border-pink-500": @person.errors[:socials].any?}] %>
+                <%= text_field_tag "question[#{question.id}]", @answers[question.id], class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:socials].none?, "border-pink-500": @person.errors[:socials].any?}], required: question.required %>
+
+              <% elsif question.question_type == "textarea" %>
+
+                <%= text_area_tag "question[#{question.id}]", @answers[question.id], class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:socials].none?, "border-pink-500": @person.errors[:socials].any?}], required: question.required %>
 
               <% elsif question.question_type == "yesno" %>
 
                 <div class="px-2 py-1">
-                  <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers[question.id] == "yes" || @answers[question.id].blank?), class: "accent-pink-500 mr-1" %>
+                  <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers[question.id] == "yes" || @answers[question.id].blank?), class: "accent-pink-500 mr-1", required: question.required %>
                   <%= label_tag "question[#{question.id}][yes]", "Yes" %>
                 </div>
                 <div class="px-2 py-1">
-                  <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers[question.id] == "no"), class: "accent-pink-500 mr-1" %>
+                  <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers[question.id] == "no"), class: "accent-pink-500 mr-1", required: question.required %>
                   <%= label_tag "question[#{question.id}][no]", "No" %>
                 </div>
 
               <% elsif question.question_type == "multiple-multiple" %>
 
-                <label class="text-sm text-gray-500">(Select all that apply)</label>
+                <div class="text-sm text-gray-500">Select all that apply</div>
 
                 <% question.question_options.each do |option| %>
                   <div class="px-2 py-1">
@@ -147,7 +156,7 @@
 
               <% elsif question.question_type == "multiple-single" %>
 
-                <label class="text-sm text-gray-500">(Select one)</label>
+                <div class="text-sm text-gray-500">Select one option</div>
 
                 <% question.question_options.each do |option| %>
                   <div class="px-2 py-1">

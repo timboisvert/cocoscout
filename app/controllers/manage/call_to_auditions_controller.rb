@@ -45,6 +45,9 @@ class Manage::CallToAuditionsController < Manage::ManageController
       @question.question_options.build if [ "multiple-multiple", "multiple-single" ].include?(@question.question_type)
     end
     @questions = @call_to_audition.questions.order(:position)
+
+    # Calculate the tab index for Custom Questions (it's the last tab)
+    @questions_tab_index = @call_to_audition.audition_type == "video_upload" ? 3 : 2
   end
 
   def update
@@ -83,7 +86,9 @@ class Manage::CallToAuditionsController < Manage::ManageController
     @questions = @call_to_audition.questions.order(:position)
 
     if @question.save
-      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2), notice: "Question was successfully created"
+      # Calculate the tab index for Custom Questions (it's the last tab)
+      questions_tab_index = @call_to_audition.audition_type == "video_upload" ? 3 : 2
+      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: questions_tab_index), notice: "Question was successfully created"
     else
       @question_error = true
       render :form, status: :unprocessable_entity
@@ -93,7 +98,9 @@ class Manage::CallToAuditionsController < Manage::ManageController
   # PATCH/PUT /call_to_auditions/:id/update_question/:question_id
   def update_question
     if @question.update(question_params)
-      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2), notice: "Question was successfully updated", status: :see_other
+      # Calculate the tab index for Custom Questions (it's the last tab)
+      questions_tab_index = @call_to_audition.audition_type == "video_upload" ? 3 : 2
+      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: questions_tab_index), notice: "Question was successfully updated", status: :see_other
     else
       render :form, status: :unprocessable_entity
     end
@@ -102,7 +109,9 @@ class Manage::CallToAuditionsController < Manage::ManageController
   # DELETE /call_to_auditions/:id/destroy_question/:question_id
   def destroy_question
     @question.destroy!
-    redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2), notice: "Question was successfully deleted", status: :see_other
+    # Calculate the tab index for Custom Questions (it's the last tab)
+    questions_tab_index = @call_to_audition.audition_type == "video_upload" ? 3 : 2
+    redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: questions_tab_index), notice: "Question was successfully deleted", status: :see_other
   end
 
   # POST /call_to_auditions/:id/reorder_questions
@@ -136,6 +145,6 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
   def question_params
-    params.require(:question).permit(:key, :text, :question_type, :questionable_id, :questionable_type, question_options_attributes: [ :id, :text, :_destroy ])
+    params.require(:question).permit(:key, :text, :question_type, :required, :questionable_id, :questionable_type, question_options_attributes: [ :id, :text, :_destroy ])
   end
 end

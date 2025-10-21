@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_17_000100) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_21_212924) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -132,6 +132,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_000100) do
     t.string "name"
     t.text "notes"
     t.integer "production_company_id"
+    t.boolean "default", default: false, null: false
     t.index ["production_company_id"], name: "index_locations_on_production_company_id"
   end
 
@@ -191,6 +192,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_17_000100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "position"
+    t.boolean "required", default: false, null: false
     t.index ["questionable_type", "questionable_id", "position"], name: "idx_qstnbl_type_id_pos"
     t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
   end

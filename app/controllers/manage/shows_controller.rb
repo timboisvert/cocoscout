@@ -34,6 +34,10 @@ class Manage::ShowsController < Manage::ManageController
   def new
     @show = @production.shows.new
 
+    # Set default location if available
+    default_location = Current.production_company.locations.find_by(default: true)
+    @show.location = default_location if default_location
+
     # if params[:duplicate].present?
     #   original = @production.shows.find_by(id: params[:duplicate])
     #   if original.present?

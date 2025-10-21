@@ -94,8 +94,19 @@ class My::RespondToCallToAuditionController < ApplicationController
     # Assign the submitted attributes to the audition request
     @audition_request.assign_attributes(person_params.except(:person))
 
+    # Validate required questions
+    @missing_required_questions = []
+    @questions.select(&:required).each do |question|
+      answer_value = @answers["#{question.id}"]
+      if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
+        @missing_required_questions << question
+      end
+    end
+
     # Validate and save
-    if @audition_request.valid?
+    if @missing_required_questions.any?
+      render :form, status: :unprocessable_entity
+    elsif @audition_request.valid?
 
       # Update the person with any updated details
       @person.assign_attributes(person_params[:person])

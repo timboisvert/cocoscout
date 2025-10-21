@@ -19,7 +19,12 @@
                 <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
 
                     <div class="flex-1">
-                      <div class="font-bold text-xl"><%= location.name %></div>
+                      <div class="font-bold text-xl">
+                        <%= location.name %>
+                        <% if location.default? %>
+                          <span class="text-sm font-normal text-gray-500">(Default)</span>
+                        <% end %>
+                      </div>
                       <div><%= location.address1 %></div>
                       <% if location.address2.present? %>
                         <div><%= location.address2 %></div>

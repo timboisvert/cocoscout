@@ -3,7 +3,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
   before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
   before_action :ensure_user_is_manager, except: %i[show summary]
 
-   def index
+  def index
     @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
 
     if params[:filter].present?
@@ -22,6 +22,10 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def new
     @audition_session = AuditionSession.new
+
+    # Set default location if available
+    default_location = Current.production_company.locations.find_by(default: true)
+    @audition_session.location_id = default_location.id if default_location
 
     if params[:duplicate].present?
       original = AuditionSession.find_by(id: params[:duplicate], production: @production)

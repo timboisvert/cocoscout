@@ -17,7 +17,9 @@
               <p class="text-sm font-normal text-gray-500 mb-0">
                 Type:
                 <% if question.question_type == "text" %>
-                Text
+                Short Text
+                <% elsif question.question_type == "textarea" %>
+                Long Text
                 <% elsif question.question_type == "yesno" %>
                 Yes/No
                 <% elsif question.question_type == "multiple-multiple" %>
@@ -28,10 +30,15 @@
                 <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
                 <% end %>
               </p>
+              <p class="text-sm font-normal text-gray-500 mb-0">
+                Required: <%= question.required ? "Yes" : "No" %>
+              </p>
               <div class="flex gap-2 items-center mt-2">
                 <%= link_to "Edit",
-                    form_manage_production_call_to_audition_path(@production, @call_to_audition, tab: 2, question_id: question.id),
-                    class: "text-xs underline text-pink-500 hover:text-pink-600"
+                    form_manage_production_call_to_audition_path(@production, @call_to_audition, question_id: question.id, tab: @questions_tab_index),
+                    class: "text-xs underline text-pink-500 hover:text-pink-600",
+                    data: { turbo_frame: "_top" },
+                    onclick: "setTimeout(() => document.getElementById('question-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)"
                 %>
                 <%= link_to "Delete",
                     destroy_question_manage_production_call_to_audition_path(@production, @call_to_audition, question_id: question.id),
@@ -49,7 +56,7 @@
     </div>
   <% end %>
 
-  <div class="w-full">
+  <div class="w-full" id="question-form">
 
      <%= render partial: "shared/top_menu", locals: {
       breadcrumbs: [],
@@ -67,20 +74,30 @@
     class: "contents"
   ) do |form| %>
 
-    <div class="my-2 sm:my-5">
-      <% if @question_error %>
-        <%= form.label :text, "Question Text is required", class: "text-pink-500" %>
-      <% else %>
-        <%= form.label :text, "Question Text" %>
-      <% end %>
-      <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
+    <div class="flex flex-col sm:flex-row gap-2 my-2 sm:my-5">
+      <div class="w-full sm:flex-1">
+        <% if @question_error %>
+          <%= form.label :text, "Question Text is required", class: "text-pink-500" %>
+        <% else %>
+          <%= form.label :text, "Question Text" %>
+        <% end %>
+        <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
+      </div>
+
+      <div class="w-full sm:w-64">
+        <%= form.label :required, "Required" %>
+        <%= form.select :required,
+          [["No", false], ["Yes", true]],
+          {},
+          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:required].none?, "border-pink-500": @question.errors[:required].any?}] } %>
+      </div>
     </div>
 
     <div data-controller="form-toggle">
       <div class="my-2 sm:my-5 sm:w-64">
         <%= form.label :question_type, "Question Type" %>
         <%= form.select :question_type,
-          [["Text", "text"], ["Yes/No", "yesno"], ["Select Multiple Options", "multiple-multiple"], ["Select Single Option", "multiple-single"]],
+          [["Short Text", "text"], ["Long Text", "textarea"], ["Yes/No", "yesno"], ["Select Multiple Options", "multiple-multiple"], ["Select Single Option", "multiple-single"]],
           {},
           { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:question_type].none?, "border-pink-500": @question.errors[:question_type].any?}],
             data: { "form-toggle-target": "select", action: "change->form-toggle#toggle"}

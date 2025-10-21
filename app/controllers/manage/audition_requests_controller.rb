@@ -71,6 +71,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def update
+    @questions = @audition_request.call_to_audition.questions.order(:position) if @call_to_audition.present?
     @answers = {}
     if params[:question]
       params[:question].each do |id, keyValue|
@@ -85,11 +86,22 @@ class Manage::AuditionRequestsController < Manage::ManageController
       @audition_request.assign_attributes(audition_request_params)
     end
 
-    if @audition_request.valid?
+    # Validate required questions
+    @missing_required_questions = []
+    @questions.select(&:required).each do |question|
+      answer_value = @answers["#{question.id}"]
+      if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
+        @missing_required_questions << question
+      end
+    end
+
+    if @missing_required_questions.any?
+      render :edit_answers, status: :unprocessable_entity
+    elsif @audition_request.valid?
       @audition_request.save!
       redirect_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request), notice: "Sign-up successfully updated", status: :see_other
     else
-      render :edit, status: :unprocessable_entity
+      render :edit_answers, status: :unprocessable_entity
     end
   end
 

@@ -46,6 +46,6 @@ class Manage::LocationsController < Manage::ManageController
     end
 
     def location_params
-      params.expect(location: [ :name, :address1, :address2, :city, :state, :postal_code, :notes ])
+      params.expect(location: [ :name, :address1, :address2, :city, :state, :postal_code, :notes, :default ])
     end
 end

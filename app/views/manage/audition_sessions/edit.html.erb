@@ -38,7 +38,7 @@
     <div class="my-5">
       <%= form.label :location_id, "Location" %>
       <%= form.collection_select :location_id, Current.production_company.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64", {"border-gray-400": @audition_session.errors[:location_id].none?, "border-pink-500": @audition_session.errors[:location_id].any?}] } %>
-      <div class="mt-2">
+      <div class="mt-1 ml-1">
         <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
       </div>
     </div>

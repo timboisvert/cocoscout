@@ -77,6 +77,14 @@
 
   </div>
 
+  <div class="my-5">
+    <div class="flex items-center">
+      <%= form.check_box :default, class: "mr-2 accent-pink-500" %>
+      <%= form.label :default, "Set as default location", class: "text-sm" %>
+    </div>
+    <div class="text-gray-500 text-sm mt-1">When creating shows or auditions, this location will be pre-selected.</div>
+  </div>
+
   <div class="inline">
     <%= form.submit class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
   </div>
