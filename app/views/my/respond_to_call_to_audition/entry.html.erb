@@ -1,5 +1,25 @@
-<div class="flex flex-col items-center mt-10">
-    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-48 object-contain select-none pointer-events-none" />
+<div class="max-w-4xl mx-auto p-6 bg-white rounded shadow">
+
+  <div class="w-full">
+    <h1 class="font-bold text-4xl"><%= @production.name %></h1>
+
+    <% if @call_to_audition.audition_type == "in_person" %>
+      <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
+    <% elsif @call_to_audition.audition_type == "video_upload" %>
+      <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
+    <% end %>
+
+    <% if @call_to_audition.header_text.present? %>
+      <div class="pt-5">
+        <%= @call_to_audition.header_text %>
+      </div>
+    <% end %>
+  </div>
+
+</div>
+
+<div class="flex flex-col items-center mt-2 sm:mt-10">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-24 sm:w-36 object-contain select-none pointer-events-none" />
 </div>
 
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
@@ -26,11 +46,11 @@
     <% end %>
 
   <%= form_with(model: @user, url: signup_path, class: "contents") do |form| %>
-    <div class="my-5">
+    <div class="my-5 w-full">
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address], class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full" %>
     </div>
 
-    <div class="my-5" data-controller="password-visibility">
+    <div class="my-5 w-full" data-controller="password-visibility">
       <div class="relative">
         <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: "Set a password", maxlength: 72, class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full pr-10", data: { password_visibility_target: "input" } %>
         <button type="button"

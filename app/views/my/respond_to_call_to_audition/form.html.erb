@@ -5,7 +5,7 @@
   <link rel="canonical" href="<%= respond_to_call_to_audition_url(@call_to_audition.token) %>">
 <% end %>
 
-<div class="w-full max-w-4xl mx-auto mt-2 sm:mt-10">
+<div class="max-w-4xl mx-auto p-6 bg-white rounded shadow mb-10">
   <h1 class="font-bold text-4xl"><%= @production.name %></h1>
 
   <% if @call_to_audition.audition_type == "in_person" %>
@@ -145,7 +145,7 @@
       <% end %>
     <% end %>
 
-    <div class="pb-5">
+    <div class="">
 
       <%
         if @call_to_audition.audition_type == "in_person"
