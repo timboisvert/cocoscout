@@ -7,11 +7,15 @@ image: cocorunseverything/cocoscout
 # Deploy to these servers.
 servers:
   web:
-    - ec2-18-117-136-69.us-east-2.compute.amazonaws.com
+    - ec2-3-131-95-52.us-east-2.compute.amazonaws.com
 
 ssh:
   user: ec2-user
   keys: [ "~/.ssh/Tim.pem" ]
+  options:
+    keepalive: true
+    keepalive_interval: 30
+    timeout: 30
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
@@ -75,8 +79,8 @@ aliases:
 
 # Use a persistent storage volume for sqlite database files and local Active Storage files.
 # Recommended to change this to a mounted volume path that is backed up off server.
-# volumes:
-#   - "volume_nyc1_01:/rails/storage"
+volumes:
+  - "volume_nyc1_01:/rails/storage"
 
 
 # Bridge fingerprinted assets, like JS and CSS, between versions to avoid
