@@ -29,6 +29,28 @@ class My::AvailabilityController < ApplicationController
     @availabilities = ShowAvailability.where(person: Current.user.person).index_by(&:show_id)
   end
 
+  def calendar
+    @event_filter = params[:event_type] || "all"
+
+    # Get all upcoming non-canceled shows
+    @shows = Show.joins(production: { casts: [ :casts_people ] })
+      .where(casts_people: { person_id: Current.user.person.id })
+      .where.not(canceled: true)
+      .where("date_and_time > ?", Time.current)
+      .order(:date_and_time)
+      .distinct
+
+    # Apply event type filter
+    unless @event_filter == "all"
+      @shows = @shows.where(event_type: @event_filter)
+    end
+
+    # Group shows by month
+    @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+
+    @availabilities = ShowAvailability.where(person: Current.user.person).index_by(&:show_id)
+  end
+
   def update
     @show = Show.find(params[:show_id])
     @availability = ShowAvailability.find_or_initialize_by(person: Current.user.person, show: @show)

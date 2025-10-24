@@ -37,6 +37,7 @@ Rails.application.routes.draw do
     get   "/shows/:production_id",          to: "shows#production",         as: "production"
     get   "/shows/:production_id/:show_id", to: "shows#show",               as: "show"
     get   "/availability",                  to: "availability#index",       as: "availability"
+    get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
