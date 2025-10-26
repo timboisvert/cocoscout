@@ -34,6 +34,9 @@ group :development do
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false
   gem "letter_opener"
+  gem "ruby-lsp", require: false
+  gem "ruby-lsp-rails", require: false
+  gem "ruby-lsp-rspec", require: false
 end
 
 group :test do

@@ -4,3 +4,15 @@
 require_relative "config/application"
 
 Rails.application.load_tasks
+
+# Use RSpec as the default test task
+begin
+  require 'rspec/core/rake_task'
+  RSpec::Core::RakeTask.new(:spec)
+  task default: :spec
+
+  # Make 'rails test' run rspec
+  task test: :spec
+rescue LoadError
+  # RSpec not available
+end

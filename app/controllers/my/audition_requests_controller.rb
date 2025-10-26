@@ -13,6 +13,6 @@ class My::AuditionRequestsController < ApplicationController
       @audition_requests = Current.user.person.audition_requests.includes(call_to_audition: :production)
     end
 
-    @audition_requests = @audition_requests.order("call_to_auditions.closes_at DESC")
+    @audition_requests = @audition_requests.order("call_to_auditions.closes_at ASC")
   end
 end
