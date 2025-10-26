@@ -1,8 +1,8 @@
  class Manage::TeamController < Manage::ManageController
-  before_action :ensure_user_is_manager, except: %i[index]
+  before_action :ensure_user_is_manager, except: %i[index production_permissions]
 
   def index
-    members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+    members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, company_role: [ "manager", "viewer", "none" ] }).distinct
     @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
     @team_invitation = Current.production_company.team_invitations.new
     @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
@@ -15,7 +15,7 @@
       Manage::TeamMailer.invite(@team_invitation).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
     else
-      members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, role: [ "manager", "viewer" ] }).distinct
+      members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, company_role: [ "manager", "viewer", "none" ] }).distinct
       @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
       @team_invitation = Current.production_company.team_invitations.new
       @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
@@ -28,8 +28,8 @@
     user = Current.production_company.users.find(params[:id])
     role = params[:role]
     user_role = UserRole.find_by(user: user, production_company: Current.production_company)
-    if user_role && %w[manager viewer].include?(role)
-      user_role.update(role: role)
+    if user_role && %w[manager viewer none].include?(role)
+      user_role.update(company_role: role)
       respond_to do |format|
         format.json { render json: { success: true } }
         format.html { redirect_to manage_team_index_path, notice: "Role updated" }
@@ -72,6 +72,73 @@
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
         format.html { redirect_to manage_team_index_path, alert: "Unable to remove team member" }
+      end
+    end
+  end
+
+  def production_permissions
+    @user = Current.production_company.users.find(params[:user_id])
+    @productions = Current.production_company.productions.order(:name)
+    @user_role = @user.user_roles.find_by(production_company: Current.production_company)
+  end
+
+  def update_production_permission
+    user = Current.production_company.users.find(params[:user_id])
+    production = Current.production_company.productions.find(params[:production_id])
+    role = params[:role]
+
+    if role.blank? || role == "default"
+      # Remove production-specific permission to use default role
+      permission = ProductionPermission.find_by(user: user, production: production)
+      permission&.destroy
+      message = "Using global role for #{production.name}"
+    elsif %w[manager viewer].include?(role)
+      # Set or update production-specific permission
+      permission = ProductionPermission.find_or_initialize_by(user: user, production: production)
+      permission.role = role
+      if permission.save
+        message = "Role updated for #{production.name}"
+      else
+        respond_to do |format|
+          format.json { render json: { success: false, error: permission.errors.full_messages.join(", ") }, status: :unprocessable_entity }
+          format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Could not update role" }
+        end
+        return
+      end
+    else
+      respond_to do |format|
+        format.json { render json: { success: false }, status: :unprocessable_entity }
+        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Invalid role" }
+      end
+      return
+    end
+
+    respond_to do |format|
+      format.json { render json: { success: true } }
+      format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), notice: message }
+    end
+  end
+
+  def update_global_role
+    user = Current.production_company.users.find(params[:user_id])
+    role = params[:global_role]
+    user_role = UserRole.find_by(user: user, production_company: Current.production_company)
+
+    if user_role && %w[manager viewer none].include?(role)
+      user_role.update(company_role: role)
+      role_display = case role
+      when "manager" then "Manager"
+      when "viewer" then "Viewer"
+      when "none" then "None"
+      end
+      respond_to do |format|
+        format.json { render json: { success: true } }
+        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), notice: "Global role updated to #{role_display}" }
+      end
+    else
+      respond_to do |format|
+        format.json { render json: { success: false }, status: :unprocessable_entity }
+        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Could not update global role" }
       end
     end
   end

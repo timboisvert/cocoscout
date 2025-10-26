@@ -71,6 +71,9 @@ Rails.application.routes.draw do
         patch :update_role
         delete :revoke_invite
         delete :remove_member
+        get :production_permissions
+        patch :update_production_permission
+        patch :update_global_role
       end
     end
 

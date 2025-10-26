@@ -7,6 +7,7 @@ class Production < ApplicationRecord
     has_many :casts, dependent: :destroy
     has_many :roles, dependent: :destroy
     has_many :show_person_role_assignments, through: :shows
+    has_many :production_permissions, dependent: :destroy
     belongs_to :production_company
 
     has_one_attached :logo, dependent: :purge_later do |attachable|

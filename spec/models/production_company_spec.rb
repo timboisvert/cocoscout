@@ -79,8 +79,8 @@ RSpec.describe ProductionCompany, type: :model do
       user1 = create(:user)
       user2 = create(:user)
 
-      create(:user_role, user: user1, production_company: company, role: "manager")
-      create(:user_role, user: user2, production_company: company, role: "viewer")
+      create(:user_role, user: user1, production_company: company, company_role: "manager")
+      create(:user_role, user: user2, production_company: company, company_role: "viewer")
 
       expect(company.users.reload).to include(user1, user2)
       expect(company.users.count).to eq(2)

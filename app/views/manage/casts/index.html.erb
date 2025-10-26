@@ -27,7 +27,7 @@
               <%= render 'manage/casts/cast_members_list', cast: cast %>
             </div>
 
-            <% if Current.user.manager? %>
+            <% if current_user_can_manage?(Current.production) %>
               <div id="cast-members-list-add-person-<%= cast.id %>" class="mt-4 hidden">
                 <h1 class="font-bold text-lg mb-1">Add a person to this cast:</h1>
                 <div class=""
@@ -46,7 +46,7 @@
 
           </div>
 
-          <% if Current.user.manager? %>
+          <% if current_user_can_manage?(Current.production) %>
             <div class="flex gap-1 mt-4">
               <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "text-pink-500 text-xs underline" %>
               <%= link_to "Delete Cast",
@@ -61,7 +61,7 @@
     <% else %>
       <p class="text-gray-500 text-sm">
         No casts have been created.
-        <% if Current.user.manager? %>
+        <% if current_user_can_manage?(Current.production) %>
           <%= link_to "Add a Cast", new_manage_production_cast_path(@production), class: "text-pink-500 underline" %>
         <% end %>
       </p>

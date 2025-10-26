@@ -1,6 +1,17 @@
 module ApplicationHelper
   include Pagy::Frontend
 
+  def current_user_can_manage?(production = nil)
+    return false unless Current.user
+
+    production ||= Current.production
+    if production
+      Current.user.manager_for_production?(production)
+    else
+      Current.user.manager?
+    end
+  end
+
   def displayable_attachment?(attachment)
     attachment.respond_to?(:attached?) &&
       attachment.attached? &&

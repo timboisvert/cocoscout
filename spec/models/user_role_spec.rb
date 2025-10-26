@@ -22,25 +22,25 @@ RSpec.describe UserRole, type: :model do
     end
 
     it "is invalid without a role" do
-      user_role = build(:user_role, role: nil)
+      user_role = build(:user_role, company_role: nil)
       expect(user_role).not_to be_valid
-      expect(user_role.errors[:role]).to include("can't be blank")
+      expect(user_role.errors[:company_role]).to include("can't be blank")
     end
 
-    it "only allows manager or viewer roles" do
-      user_role = build(:user_role, role: "invalid_role")
+    it "only allows manager, viewer, or none roles" do
+      user_role = build(:user_role, company_role: "invalid_role")
       expect(user_role).not_to be_valid
-      expect(user_role.errors[:role]).to include("is not included in the list")
+      expect(user_role.errors[:company_role]).to include("is not included in the list")
     end
 
     it "allows manager role" do
       user_role = build(:user_role, :manager)
       expect(user_role).to be_valid
-      expect(user_role.role).to eq("manager")
+      expect(user_role.company_role).to eq("manager")
     end
 
     it "allows viewer role" do
-      user_role = build(:user_role, role: "viewer")
+      user_role = build(:user_role, company_role: "viewer")
       expect(user_role).to be_valid
     end
 
@@ -68,8 +68,8 @@ RSpec.describe UserRole, type: :model do
       user1 = create(:user)
       user2 = create(:user)
 
-      create(:user_role, user: user1, production_company: company, role: "manager")
-      create(:user_role, user: user2, production_company: company, role: "viewer")
+      create(:user_role, user: user1, production_company: company, company_role: "manager")
+      create(:user_role, user: user2, production_company: company, company_role: "viewer")
 
       expect(company.users).to include(user1, user2)
     end
@@ -79,8 +79,8 @@ RSpec.describe UserRole, type: :model do
       company1 = create(:production_company)
       company2 = create(:production_company)
 
-      create(:user_role, user: user, production_company: company1, role: "manager")
-      create(:user_role, user: user, production_company: company2, role: "viewer")
+      create(:user_role, user: user, production_company: company1, company_role: "manager")
+      create(:user_role, user: user, production_company: company2, company_role: "viewer")
 
       expect(company1.users).to include(user)
       expect(company2.users).to include(user)

@@ -2,10 +2,10 @@ FactoryBot.define do
   factory :user_role do
     association :user
     association :production_company
-    role { "viewer" }
+    company_role { "viewer" }
 
     trait :manager do
-      role { "manager" }
+      company_role { "manager" }
     end
   end
 end

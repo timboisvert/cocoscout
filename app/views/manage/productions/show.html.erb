@@ -22,7 +22,7 @@
       <% else %>
         <span class="text-sm text-gray-500">
           You haven't added a description.
-          <% if Current.user.manager? %>
+          <% if current_user_can_manage?(@production) %>
             <%= link_to "Add a description", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
           <% end %>
         </span>
@@ -47,7 +47,7 @@
       <% else %>
         <span class="text-sm text-gray-500">
           No contact email provided.
-          <% if Current.user.manager? %>
+          <% if current_user_can_manage?(@production) %>
             <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
           <% end %>
         </span>
@@ -65,7 +65,7 @@
     <% if @production.logo.attached? %>
       <%= image_tag @production.logo.variant(:small), class: "h-auto" %>
 
-      <% if Current.user.manager? %>
+      <% if current_user_can_manage?(@production) %>
         <div>
           <%= link_to "Replace logo", edit_manage_production_path(@production), class: "text-pink-500 underline text-sm" %>
         </div>
@@ -74,7 +74,7 @@
       <span class="text-sm text-gray-500">
         No logo added.
 
-        <% if Current.user.manager? %>
+        <% if current_user_can_manage?(@production) %>
           <%= link_to "Upload a logo", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
         <% end %>
       </span>
@@ -100,7 +100,7 @@
             <% end %>
             <span class="font-semibold"><%= poster.name.presence || "Untitled Poster" %></span>
 
-            <% if Current.user.manager? %>
+            <% if current_user_can_manage?(@production) %>
               <div class="flex gap-2 mt-2">
                 <%= link_to "Edit", edit_manage_production_poster_path(@production, poster), class: "text-sm underline text-pink-500 hover:text-pink-600" %>
                 <%= link_to "Delete",
@@ -115,7 +115,7 @@
     <% else %>
       <div class="text-gray-500 text-sm mt-2">
         No posters added.
-        <% if Current.user.manager? %>
+        <% if current_user_can_manage?(@production) %>
           <%= link_to "Add a poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %>
         <% end %>
       </div>

@@ -20,8 +20,19 @@ class Manage::ManageController < ActionController::Base
   end
 
   def ensure_user_is_manager
-    unless Current.user&.manager?
+    # Check if we're in a production-specific context
+    production = instance_variable_get(:@production) || Current.production
+
+    if production
+      # Check production-specific permission
+      unless Current.user&.manager_for_production?(production)
         redirect_to manage_path, notice: "You do not have permission to access that page."
+      end
+    else
+      # Fall back to checking default role for production company
+      unless Current.user&.manager?
+        redirect_to manage_path, notice: "You do not have permission to access that page."
+      end
     end
   end
 

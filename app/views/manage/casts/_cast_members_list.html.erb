@@ -14,7 +14,7 @@
             <% end %>
             <span class="font-medium text-xs text-center"><%= cast_member.name.truncate(20, omission: '...') %></span>
 
-            <% if Current.user.manager? %>
+            <% if current_user_can_manage?(cast.production) %>
               <button type="button"
                   class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                   data-action="cast-person#remove"
@@ -29,7 +29,7 @@
       <% end %>
     <% end %>
 
-    <% if Current.user.manager? %>
+    <% if current_user_can_manage?(cast.production) %>
       <div class="flex flex-col items-center p-3 bg-gray-50 border border-dashed border-gray-200 rounded-lg justify-center cursor-pointer hover:border-pink-500 transition-all relative group"
           data-cast-id="<%= cast.id %>"
           onclick="this.classList.add('hidden'); document.getElementById('cast-members-list-add-person-<%= cast.id %>').classList.remove('hidden')">

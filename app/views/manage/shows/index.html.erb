@@ -105,7 +105,7 @@
                     </p>
                   <% end %>
 
-                  <% if Current.user.manager? %>
+                  <% if current_user_can_manage?(show.production) %>
                     <%
                       event_label = show.event_type.titleize
                       edit_label = "Edit #{event_label}"
@@ -152,7 +152,7 @@
                           </div>
                         <% end %>
                       </div>
-                      <% if Current.user.manager? %>
+                      <% if current_user_can_manage?(show.production) %>
                         <div class="mt-0">
                           <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                         </div>

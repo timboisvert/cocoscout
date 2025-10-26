@@ -4,7 +4,7 @@ class Manage::ProductionsController < Manage::ManageController
   skip_before_action :show_manage_sidebar, only: %i[ index new create ]
 
   def index
-    @productions = Current.production_company.productions
+    @productions = Current.user.accessible_productions
     @production = Production.new
   end
 
