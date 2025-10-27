@@ -9,7 +9,7 @@ class Manage::ManageController < ActionController::Base
   before_action :set_current_production, if: -> { Current.user.present? }
   before_action :require_current_production_company, if: -> { Current.user.present? }
   before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.production_company.present? }
-  before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? && Current.production.present? }
+  before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? }
 
   before_action :show_manage_sidebar
 
@@ -60,6 +60,13 @@ class Manage::ManageController < ActionController::Base
     return unless production
 
     unless Current.user.accessible_productions.include?(production)
+      redirect_to manage_productions_path, alert: "You do not have access to this production."
+    end
+  end
+
+  def check_production_access
+    # Explicit check for @production after it's been set in child controller
+    unless Current.user.accessible_productions.include?(@production)
       redirect_to manage_productions_path, alert: "You do not have access to this production."
     end
   end

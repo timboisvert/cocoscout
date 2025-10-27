@@ -1,5 +1,6 @@
 class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
+  before_action :check_production_access, except: %i[ assign_person_to_role remove_person_from_role ]
   before_action :set_show, only: %i[ cast edit update destroy cancel cancel_show delete_show uncancel assign_person_to_role remove_person_from_role ]
   before_action :ensure_user_is_manager, except: %i[ index ]
 

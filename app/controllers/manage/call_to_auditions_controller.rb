@@ -1,5 +1,6 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
+  before_action :check_production_access
   before_action :set_call_to_audition, only: %i[ edit form update destroy preview create_question update_question destroy_question reorder_questions ]
   before_action :set_question, only: %i[ update_question destroy_question ]
   before_action :ensure_user_is_manager, except: %i[ preview ]

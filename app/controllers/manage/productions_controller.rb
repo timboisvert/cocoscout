@@ -1,5 +1,6 @@
 class Manage::ProductionsController < Manage::ManageController
   before_action :set_production, only: %i[ show edit update destroy ]
+  before_action :check_production_access, only: %i[ show edit update destroy ]
   before_action :ensure_user_is_global_manager, only: %i[ new create ]
   before_action :ensure_user_is_manager, only: %i[ edit update destroy ]
   skip_before_action :show_manage_sidebar, only: %i[ index new create ]

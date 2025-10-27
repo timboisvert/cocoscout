@@ -1,5 +1,6 @@
 class Manage::CastsController < Manage::ManageController
   before_action :set_production
+  before_action :check_production_access
   before_action :set_cast, only: %i[ edit update destroy ]
   before_action :ensure_user_is_manager, except: %i[index]
 
