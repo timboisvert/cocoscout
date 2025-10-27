@@ -33,7 +33,7 @@
             </div>
         <% end %>
 
-        <% if current_user_can_manage?(cast_membership.cast.production) %>
+        <% if current_user_can_manage?(production) %>
             <% if available_casts.any? %>
                 <div class="w-full mt-1">
                     <a

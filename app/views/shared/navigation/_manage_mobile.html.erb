@@ -12,6 +12,17 @@
     <div class="w-6"></div>
   </div>
   <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] pt-2 bg-white overflow-y-auto px-4 pb-4">
+    <% if session[:impersonate_user_id] %>
+      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
+      <% if impersonated %>
+        <div class="mt-4 rounded-md border border-pink-200 bg-pink-50 px-4 py-3 text-sm">
+          <div class="font-medium text-pink-500">Impersonating</div>
+          <div class="truncate text-slate-700"><%= impersonated.email_address %></div>
+          <%= button_to "Stop impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 w-full rounded-md bg-pink-500 px-3 py-2 text-sm font-semibold text-white" %>
+        </div>
+      <% end %>
+    <% end %>
+
     <% if Current.production.present? && !Current.production.new_record? %>
       <div class="pb-4">
         <div class="flex items-center justify-between">
