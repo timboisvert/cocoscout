@@ -27,7 +27,7 @@ group :production do
 end
 
 group :development do
-  gem "byebug", platforms: %i[ mri mingw x64_mingw ]
+  gem "byebug", platforms: %i[ mri windows ]
   gem "web-console"
   gem "dockerfile-rails", ">= 1.7"
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
