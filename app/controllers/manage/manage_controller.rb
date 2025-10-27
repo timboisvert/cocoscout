@@ -8,6 +8,8 @@ class Manage::ManageController < ActionController::Base
   before_action :set_current_production_company, if: -> { Current.user.present? }
   before_action :set_current_production, if: -> { Current.user.present? }
   before_action :require_current_production_company, if: -> { Current.user.present? }
+  before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.production_company.present? }
+  before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? && Current.production.present? }
 
   before_action :show_manage_sidebar
 
@@ -41,6 +43,24 @@ class Manage::ManageController < ActionController::Base
     # Used for production-company level resources (people, team, locations)
     unless Current.user&.manager?
       redirect_to manage_path, notice: "You do not have permission to access that page."
+    end
+  end
+
+  def ensure_user_has_access_to_company
+    # Ensure user has at least some role/access to the current production company
+    unless Current.user&.has_access_to_current_company?
+      redirect_to my_dashboard_path, alert: "You do not have access to this production company."
+    end
+  end
+
+  def ensure_user_has_access_to_production
+    # Ensure user has access to the current production
+    # This checks if @production or Current.production is in the user's accessible productions
+    production = instance_variable_get(:@production) || Current.production
+    return unless production
+
+    unless Current.user.accessible_productions.include?(production)
+      redirect_to manage_productions_path, alert: "You do not have access to this production."
     end
   end
 

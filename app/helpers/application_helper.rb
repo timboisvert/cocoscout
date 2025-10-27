@@ -17,6 +17,14 @@ module ApplicationHelper
     Current.user.manager?
   end
 
+  def current_user_has_any_manage_access?
+    return false unless Current.user
+    # Check if user has any production company access with manager or viewer role,
+    # OR has per-production permissions
+    Current.user.user_roles.exists?(company_role: [ "manager", "viewer" ]) ||
+      Current.user.production_permissions.exists?
+  end
+
   def displayable_attachment?(attachment)
     attachment.respond_to?(:attached?) &&
       attachment.attached? &&

@@ -22,6 +22,23 @@
       user_roles.find_by(production_company_id: Current.production_company.id)&.company_role
     end
 
+    # Check if user has any access to the current production company
+    def has_access_to_current_company?
+      return false unless Current.production_company
+      role = default_role
+      # User has access if they have manager/viewer role, OR if they have "none" but have per-production permissions
+      return true if role == "manager" || role == "viewer"
+      return false if role.nil?
+      # If role is "none", check if they have any production-specific permissions
+      if role == "none"
+        production_permissions.joins(:production)
+          .where(productions: { production_company_id: Current.production_company.id })
+          .exists?
+      else
+        false
+      end
+    end
+
     # Returns the effective role for a specific production
     # Checks production-specific permission first, falls back to default role
     def role_for_production(production)
