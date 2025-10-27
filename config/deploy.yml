@@ -7,7 +7,8 @@ image: cocorunseverything/cocoscout
 # Deploy to these servers.
 servers:
   web:
-    - ec2-3-131-95-52.us-east-2.compute.amazonaws.com
+    - ec2-18-221-242-128.us-east-2.compute.amazonaws.com
+    #- ec2-3-131-95-52.us-east-2.compute.amazonaws.com
 
 ssh:
   user: ec2-user
