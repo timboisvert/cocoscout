@@ -47,7 +47,7 @@
                 <% end %>
             </div>
 
-            <% if Current.user.manager? %>
+            <% if current_user_is_global_manager? %>
                 <div class="mt-5">
                     <%= render partial: "shared/top_menu", locals: {
                         breadcrumbs: [],

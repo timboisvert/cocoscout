@@ -36,6 +36,14 @@ class Manage::ManageController < ActionController::Base
     end
   end
 
+  def ensure_user_is_global_manager
+    # Only check global manager role, not production-specific permissions
+    # Used for production-company level resources (people, team, locations)
+    unless Current.user&.manager?
+      redirect_to manage_path, notice: "You do not have permission to access that page."
+    end
+  end
+
   private
 
   def show_manage_sidebar

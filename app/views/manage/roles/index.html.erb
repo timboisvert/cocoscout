@@ -16,7 +16,7 @@
               <div class="flex flex-col items-left p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group">
                 <span class="font-bold text-md"><%= role.name %></span>
 
-                <% if Current.user.manager? %>
+                <% if current_user_can_manage?(@production) %>
                   <div>
                     <%= link_to "Edit", edit_manage_production_role_path(@production, role), class: "text-pink-500 text-xs underline" %>
                     <%= link_to "Delete",
@@ -37,7 +37,7 @@
     <% end %>
   </div>
 
-  <% if Current.user.manager? %>
+  <% if current_user_can_manage?(@production) %>
     <div class="w-full my-5"></div>
       <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [],

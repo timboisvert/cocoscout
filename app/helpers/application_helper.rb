@@ -12,6 +12,11 @@ module ApplicationHelper
     end
   end
 
+  def current_user_is_global_manager?
+    return false unless Current.user
+    Current.user.manager?
+  end
+
   def displayable_attachment?(attachment)
     attachment.respond_to?(:attached?) &&
       attachment.attached? &&

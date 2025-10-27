@@ -1,5 +1,5 @@
  class Manage::TeamController < Manage::ManageController
-  before_action :ensure_user_is_manager, except: %i[index production_permissions]
+  before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
     members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, company_role: [ "manager", "viewer", "none" ] }).distinct
@@ -76,14 +76,21 @@
     end
   end
 
-  def production_permissions
-    @user = Current.production_company.users.find(params[:user_id])
+  def permissions
+    @user = Current.production_company.users.find(params[:id])
+
+    # Don't let users access their own permissions page
+    if @user == Current.user
+      redirect_to manage_team_index_path, alert: "You cannot manage your own permissions."
+      return
+    end
+
     @productions = Current.production_company.productions.order(:name)
     @user_role = @user.user_roles.find_by(production_company: Current.production_company)
   end
 
   def update_production_permission
-    user = Current.production_company.users.find(params[:user_id])
+    user = Current.production_company.users.find(params[:id])
     production = Current.production_company.productions.find(params[:production_id])
     role = params[:role]
 
@@ -101,26 +108,26 @@
       else
         respond_to do |format|
           format.json { render json: { success: false, error: permission.errors.full_messages.join(", ") }, status: :unprocessable_entity }
-          format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Could not update role" }
+          format.html { redirect_to permissions_manage_team_path(user), alert: "Could not update role" }
         end
         return
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Invalid role" }
+        format.html { redirect_to permissions_manage_team_path(user), alert: "Invalid role" }
       end
       return
     end
 
     respond_to do |format|
       format.json { render json: { success: true } }
-      format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), notice: message }
+      format.html { redirect_to permissions_manage_team_path(user), notice: message }
     end
   end
 
   def update_global_role
-    user = Current.production_company.users.find(params[:user_id])
+    user = Current.production_company.users.find(params[:id])
     role = params[:global_role]
     user_role = UserRole.find_by(user: user, production_company: Current.production_company)
 
@@ -133,12 +140,12 @@
       end
       respond_to do |format|
         format.json { render json: { success: true } }
-        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), notice: "Global role updated to #{role_display}" }
+        format.html { redirect_to permissions_manage_team_path(user), notice: "Global role updated to #{role_display}" }
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to production_permissions_manage_team_index_path(user_id: user.id), alert: "Could not update global role" }
+        format.html { redirect_to permissions_manage_team_path(user), alert: "Could not update global role" }
       end
     end
   end

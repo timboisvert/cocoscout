@@ -18,6 +18,7 @@
 
     # Returns the role for the current production company (default role)
     def default_role
+      return nil unless Current.production_company
       user_roles.find_by(production_company_id: Current.production_company.id)&.company_role
     end
 

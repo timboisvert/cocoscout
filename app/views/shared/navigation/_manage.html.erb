@@ -42,8 +42,8 @@
         <%= link_to "Productions", manage_productions_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
       <% end %>
 
-      <%= link_to "People", manage_people_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <%= link_to "Team", manage_team_index_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "Directory", manage_people_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "Production Team", manage_team_index_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
       <%= link_to "Locations", manage_locations_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
     </div>
 
@@ -67,7 +67,7 @@
         <div>
           <%= link_to "Switch", select_manage_production_companies_path, class: "text-pink-500 font-bold underline text-xs inline-block" %>
 
-          <% if Current.user.manager? %>
+          <% if current_user_can_manage? %>
             <%= link_to "Edit", edit_manage_production_company_path(Current.production_company), class: "text-pink-500 font-bold underline text-xs inline-block" %>
           <% end %>
         </div>

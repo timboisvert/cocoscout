@@ -66,7 +66,7 @@
             </div>
           <% end %>
 
-          <% if Current.user.manager? %>
+          <% if current_user_can_manage?(@production) %>
             <div class="grid grid-cols-4 gap-0 items-center lg:ml-auto w-full lg:w-auto">
               <%
                 [:unreviewed, :undecided, :accepted, :passed].each do |status|

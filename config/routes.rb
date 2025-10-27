@@ -68,10 +68,11 @@ Rails.application.routes.draw do
     resources :team, only: [ :index ] do
       collection do
         post :invite
-        patch :update_role
         delete :revoke_invite
         delete :remove_member
-        get :production_permissions
+      end
+      member do
+        get :permissions
         patch :update_production_permission
         patch :update_global_role
       end

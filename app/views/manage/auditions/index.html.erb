@@ -145,7 +145,7 @@
             </p>
           </div>
           <div class="mt-2">
-            <% if Current.user.manager? %>
+            <% if current_user_can_manage?(@production) %>
               <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
             <% end %>
             <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, call_to_audition)} %>
@@ -246,7 +246,7 @@
 
             <div class="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:space-x-2">
 
-              <% if Current.user.manager? %>
+              <% if current_user_can_manage?(@production) %>
 
                   <% if @production.audition_sessions.any? %>
                     <div class="w-full sm:w-auto">

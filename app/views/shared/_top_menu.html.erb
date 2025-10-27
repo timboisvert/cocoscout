@@ -13,11 +13,18 @@
     <span class="text-md sm:text-xl mb-1 mr-2"><%= text %></span>
   </div>
 
-  <% if (!controller.class.ancestors.include?(Manage::ManageController)) || (controller.class.ancestors.include?(Manage::ManageController) && Current.user.manager?) %>
+  <% if (!controller.class.ancestors.include?(Manage::ManageController)) || (controller.class.ancestors.include?(Manage::ManageController) && current_user_can_manage?) %>
     <% if links.count > 0 %>
       <div>
         <% links.each do |link| %>
-          <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path]} %>
+          <%
+            # Check if this link requires global manager
+            requires_global_manager = link[:global_manager_required] || false
+            can_show_link = requires_global_manager ? current_user_is_global_manager? : current_user_can_manage?
+          %>
+          <% if can_show_link %>
+            <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path]} %>
+          <% end %>
         <% end %>
       </div>
     <% end %>

@@ -67,7 +67,7 @@
           <%= render "manage/audition_requests/answers", answers: @answers %>
         </div>
 
-        <% if Current.user.manager? %>
+        <% if current_user_can_manage?(@production) %>
           <div class="mt-2">
             <%= link_to "Edit Answers",
                 edit_answers_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request),
@@ -92,7 +92,7 @@
 </div>
 
 
-<% if Current.user.manager? %>
+<% if current_user_can_manage?(@production) %>
   <div class="fixed bottom-0 left-0 w-full lg:h-[84px] bg-white text-pink-500 p-2 border-t-4 border-pink-500 lg:pl-56">
     <div class="flex items-center gap-1 lg:gap-0">
 
