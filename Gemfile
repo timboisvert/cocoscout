@@ -39,10 +39,6 @@ group :development do
   gem "ruby-lsp-rspec", require: false
 end
 
-group :test do
-  # gem "minitest-rails" # removed in favor of RSpec
-end
-
 group :development, :test do
   gem "rspec-rails"
   gem "capybara"
