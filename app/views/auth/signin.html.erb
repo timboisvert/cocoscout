@@ -31,7 +31,7 @@
 
   <%= form_with url: handle_signin_path, class: "contents" do |form| %>
     <div class="my-5">
-      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", placeholder: "Enter your email address", value: (@email_address || params[:email_address]), class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full" %>
+      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", autocapitalize: "none", placeholder: "Enter your email address", value: (@email_address || params[:email_address]), class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full" %>
     </div>
 
     <div class="my-5" data-controller="password-visibility">

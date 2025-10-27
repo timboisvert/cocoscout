@@ -21,7 +21,7 @@
 
     <div class="my-5">
       <%= form.label :contact_email %>
-      <%= form.email_field :contact_email, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}] %>
+      <%= form.email_field :contact_email, autocapitalize: "none", class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}] %>
     </div>
 
     <div class="text-md pt-5">Logo</div>

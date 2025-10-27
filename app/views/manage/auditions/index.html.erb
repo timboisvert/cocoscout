@@ -246,20 +246,22 @@
 
             <div class="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:space-x-2">
 
-              <% if current_user_can_manage?(@production) %>
-
-                  <% if @production.audition_sessions.any? %>
+              <div class="flex flex-col sm:flex-row w-full justify-between">
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                  <% if current_user_can_manage?(@production) %>
+                    <% if @production.audition_sessions.any? %>
+                      <div class="w-full sm:w-auto">
+                        <%= render partial: "shared/link_button", locals: {text: "Manage In-person Sessions", path: manage_production_audition_sessions_path(@production), class: "w-full"} %>
+                      </div>
+                    <% end %>
                     <div class="w-full sm:w-auto">
-                      <%= render partial: "shared/link_button", locals: {text: "Manage In-person Sessions", path: manage_production_audition_sessions_path(@production), class: "w-full"} %>
+                      <%= render partial: "shared/link_button", locals: {text: "Schedule an In-person Session", path: new_manage_production_audition_session_path(@production), class: "w-full"} %>
                     </div>
                   <% end %>
-
-                  <div class="w-full sm:w-auto">
-                    <%= render partial: "shared/link_button", locals: {text: "Schedule an In-person Session", path: new_manage_production_audition_session_path(@production), class: "w-full"} %>
-                  </div>
-              <% end %>
-              <div class="w-full sm:w-auto">
-                <%= render partial: "shared/link_button", locals: {text: "In-person Session Summary", path: manage_production_audition_session_summary_path(@production), class: "w-full"} %>
+                </div>
+                <div class="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0 flex justify-end">
+                  <%= render partial: "shared/link_button", locals: {text: "In-person Session Summary", path: manage_production_audition_session_summary_path(@production), class: "w-full"} %>
+                </div>
               </div>
             </div>
 

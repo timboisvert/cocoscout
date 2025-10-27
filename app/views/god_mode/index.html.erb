@@ -14,7 +14,7 @@
     <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
       <h2 class="text-lg font-semibold mb-2">Impersonate a User</h2>
       <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2" do |f| %>
-        <%= f.email_field :email, required: true, class: "inline-block shadow-sm rounded-lg border px-3 py-2 w-96 border-gray-400" %>
+        <%= f.email_field :email, required: true, autocapitalize: "none", class: "inline-block shadow-sm rounded-lg border px-3 py-2 w-96 border-gray-400" %>
         <%= f.submit "Impersonate", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
       <% end %>
 

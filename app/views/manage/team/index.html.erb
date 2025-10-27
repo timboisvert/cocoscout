@@ -81,7 +81,7 @@
 
                 <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post) do |f| %>
                     <div class="flex gap-2 items-center">
-                        <%= f.email_field :email, placeholder: "Email address", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 flex-1 w-full" %>
+                        <%= f.email_field :email, placeholder: "Email address", autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 flex-1 w-full" %>
                         <%= f.submit "Send Invite", class: "px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                     </div>
                 <% end %>
