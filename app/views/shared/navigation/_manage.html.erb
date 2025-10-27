@@ -80,7 +80,7 @@
         <div>
           <%= link_to "Switch", select_manage_production_companies_path, class: "text-pink-500 font-bold underline text-xs inline-block" %>
 
-          <% if current_user_can_manage? %>
+          <% if current_user_is_global_manager? %>
             <%= link_to "Edit", edit_manage_production_company_path(Current.production_company), class: "text-pink-500 font-bold underline text-xs inline-block" %>
           <% end %>
         </div>
