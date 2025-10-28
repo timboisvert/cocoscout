@@ -57,24 +57,46 @@ class Manage::PeopleController < Manage::ManageController
   end
 
   def create
-    if Person.exists?(email: person_params[:email])
+    # First check if a user with this email already exists
+    existing_user = User.find_by(email_address: person_params[:email])
+    if existing_user
       @person = Person.new(person_params)
       @user_exists_error = true
       render :new, status: :unprocessable_entity
+      return
+    end
+
+    # Check if a person with this email already exists
+    existing_person = Person.find_by(email: person_params[:email])
+
+    if existing_person
+      # Person exists, create user and link them
+      user = User.create!(
+        email_address: existing_person.email,
+        password: SecureRandom.hex(16)
+      )
+      user.generate_invitation_token
+      existing_person.update!(user: user)
+
+      # Send invitation email
+      AuthMailer.invitation(user).deliver_later
+
+      redirect_to [ :manage, existing_person ], notice: "User account created and invitation sent to #{existing_person.name}"
     else
+      # Create both person and user
       @person = Person.new(person_params)
       if @person.save
-
-        # Make sure we have a user
-        user = User.find_or_create_by!(email_address: @person.email) do |user|
-          user.password = SecureRandom.hex(16)
-        end
+        user = User.create!(
+          email_address: @person.email,
+          password: SecureRandom.hex(16)
+        )
+        user.generate_invitation_token
         @person.update!(user: user)
 
-        # Email the user
-        AuthMailer.password_change_required(user).deliver_later
+        # Send invitation email
+        AuthMailer.invitation(user).deliver_later
 
-        redirect_to [ :manage, @person ], notice: "Person was successfully created"
+        redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
       else
         render :new, status: :unprocessable_entity
       end

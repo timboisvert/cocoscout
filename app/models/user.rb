@@ -83,4 +83,16 @@
     def god?
       GOD_MODE_EMAILS.include?(email_address.to_s.downcase)
     end
+
+    # Generate an invitation token for setting password
+    def generate_invitation_token
+      self.invitation_token = SecureRandom.urlsafe_base64(32)
+      self.invitation_sent_at = Time.current
+      save!
+    end
+
+    # Check if invitation token is still valid (24 hours)
+    def invitation_token_valid?
+      invitation_sent_at && invitation_sent_at > 24.hours.ago
+    end
   end

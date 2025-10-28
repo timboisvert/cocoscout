@@ -4,9 +4,10 @@ class AuthMailer < ApplicationMailer
     mail(to: @user.email_address, subject: "Welcome to CocoScout")
   end
 
-  def password_change_required(user)
+  def invitation(user)
     @user = user
-    mail(to: @user.email_address, subject: "Action Required: Set your CocoScout password")
+    @token = user.invitation_token
+    mail(to: @user.email_address, subject: "You've been invited to join CocoScout")
   end
 
   def password(user, token)

@@ -19,6 +19,8 @@ Rails.application.routes.draw do
   post  "/password",      to: "auth#handle_password", as: "handle_password"
   get   "/reset/:token",  to: "auth#reset",           as: "reset"
   post  "/reset/:token",  to: "auth#handle_reset",    as: "handle_reset"
+  get   "/set_password/:token",  to: "auth#set_password",        as: "set_password"
+  post  "/set_password/:token",  to: "auth#handle_set_password", as: "handle_set_password"
 
   # God mode
   scope "/god_mode" do

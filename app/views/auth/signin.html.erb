@@ -29,6 +29,12 @@
     </div>
   <% end %>
 
+  <% if @invitation_link_expired_or_invalid %>
+    <div class="text-pink-500">
+      Your invitation link has expired or is invalid. Please contact your administrator for a new invitation.
+    </div>
+  <% end %>
+
   <%= form_with url: handle_signin_path, class: "contents" do |form| %>
     <div class="my-5">
       <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", autocapitalize: "none", placeholder: "Enter your email address", value: (@email_address || params[:email_address]), class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full" %>

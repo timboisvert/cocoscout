@@ -1,5 +1,5 @@
 class AuthController < ApplicationController
-  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset]
+  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset set_password handle_set_password]
   rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later" }
 
   skip_before_action :show_my_sidebar
@@ -59,6 +59,11 @@ class AuthController < ApplicationController
     if session[:password_successfully_reset] == true
       session.delete(:password_successfully_reset)
       @password_successfully_reset = true
+    end
+
+    if session[:invitation_link_expired_or_invalid] == true
+      session.delete(:invitation_link_expired_or_invalid)
+      @invitation_link_expired_or_invalid = true
     end
   end
 
@@ -127,6 +132,31 @@ class AuthController < ApplicationController
     else
       @password_unsuccessfully_reset = true
       render :reset
+    end
+  end
+
+  def set_password
+    @user = User.find_by(invitation_token: params[:token])
+    if @user.nil? || !@user.invitation_token_valid?
+      session[:invitation_link_expired_or_invalid] = true
+      redirect_to signin_path and return
+    end
+  end
+
+  def handle_set_password
+    @user = User.find_by(invitation_token: params[:token])
+    if @user.nil? || !@user.invitation_token_valid?
+      session[:invitation_link_expired_or_invalid] = true
+      redirect_to signin_path and return
+    end
+
+    if @user.update(password: params[:password], invitation_token: nil, invitation_sent_at: nil)
+      # Automatically sign them in
+      start_new_session_for @user
+      redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your password has been set." and return
+    else
+      @password_unsuccessfully_set = true
+      render :set_password
     end
   end
 
