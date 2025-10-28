@@ -91,8 +91,8 @@
       save!
     end
 
-    # Check if invitation token is still valid (24 hours)
+    # Check if invitation token is still valid
     def invitation_token_valid?
-      invitation_sent_at && invitation_sent_at > 24.hours.ago
+      invitation_token.present?
     end
   end

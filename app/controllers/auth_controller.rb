@@ -61,9 +61,9 @@ class AuthController < ApplicationController
       @password_successfully_reset = true
     end
 
-    if session[:invitation_link_expired_or_invalid] == true
-      session.delete(:invitation_link_expired_or_invalid)
-      @invitation_link_expired_or_invalid = true
+    if session[:invitation_link_invalid] == true
+      session.delete(:invitation_link_invalid)
+      @invitation_link_invalid = true
     end
   end
 
@@ -138,7 +138,7 @@ class AuthController < ApplicationController
   def set_password
     @user = User.find_by(invitation_token: params[:token])
     if @user.nil? || !@user.invitation_token_valid?
-      session[:invitation_link_expired_or_invalid] = true
+      session[:invitation_link_invalid] = true
       redirect_to signin_path and return
     end
   end
@@ -146,7 +146,7 @@ class AuthController < ApplicationController
   def handle_set_password
     @user = User.find_by(invitation_token: params[:token])
     if @user.nil? || !@user.invitation_token_valid?
-      session[:invitation_link_expired_or_invalid] = true
+      session[:invitation_link_invalid] = true
       redirect_to signin_path and return
     end
 
