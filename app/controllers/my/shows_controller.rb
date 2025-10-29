@@ -24,8 +24,11 @@ class My::ShowsController < ApplicationController
       @shows = @shows.where(event_type: @event_type_filter)
     end
 
+    # Load shows to avoid pluck with distinct/order issue
+    @shows = @shows.to_a
+
     # Get assignments for these shows
-    show_ids = @shows.pluck(:id)
+    show_ids = @shows.map(&:id)
     assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
     @assignments_by_show = assignments.index_by(&:show_id)
   end
@@ -58,11 +61,14 @@ class My::ShowsController < ApplicationController
       @shows = @shows.where(event_type: @event_type_filter)
     end
 
+    # Load shows to avoid pluck with distinct/order issue
+    @shows = @shows.to_a
+
     # Group shows by month
     @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
 
     # Get assignments for these shows
-    show_ids = @shows.pluck(:id)
+    show_ids = @shows.map(&:id)
     assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
     @assignments_by_show = assignments.index_by(&:show_id)
   end
