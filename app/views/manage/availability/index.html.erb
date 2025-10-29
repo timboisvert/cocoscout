@@ -1,0 +1,105 @@
+<% content_for :title, "Availability for #{@production.name}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Productions", manage_productions_path],
+      [@production.name, manage_production_path(@production)]
+    ],
+    text: "Availability",
+    links: []
+  } %>
+
+  <% if @cast_members.empty? %>
+    <div class="text-gray-500 text-sm mt-4">
+      No cast members found. Add people to casts to see their availability.
+    </div>
+  <% elsif @shows.empty? %>
+    <div class="text-gray-500 text-sm mt-4">
+      No shows scheduled yet. Create shows to track availability.
+    </div>
+  <% else %>
+    <div class="mt-4 overflow-x-auto max-w-full">
+      <table class="border-collapse">
+        <thead>
+          <tr>
+            <th class="sticky left-0 bg-white z-20 border-b-2 border-r-2 border-gray-300 px-4 py-3 text-left w-[250px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <div class="font-semibold text-sm">Cast Member</div>
+            </th>
+            <% @shows.each do |show| %>
+              <th class="border-b-2 border-gray-300 px-4 py-3 text-center w-[140px] bg-white">
+                <% event_type_badge_classes = case show.event_type
+                  when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                  when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                  else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                end %>
+                <div class="mb-1">
+                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                    <%= show.event_type.titleize %>
+                  </span>
+                </div>
+                <% if show.secondary_name.present? %>
+                  <div class="text-xs font-medium text-gray-600 mt-1">
+                    <%= show.secondary_name %>
+                  </div>
+                <% end %>
+                <div class="text-xs text-gray-500 mt-1">
+                  <%= show.date_and_time.strftime("%b %d, %Y") %>
+                </div>
+                <div class="text-xs text-gray-500">
+                  <%= show.date_and_time.strftime("%l:%M %p") %>
+                </div>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @cast_members.each do |person| %>
+            <tr class="border-b border-gray-200 hover:bg-gray-50">
+              <td class="sticky left-0 bg-white hover:bg-gray-50 z-10 border-r-2 border-gray-200 px-4 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                <div class="flex items-center space-x-3">
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm flex-shrink-0">
+                      <%= person.initials %>
+                    </div>
+                  <% end %>
+                  <div class="min-w-0">
+                    <div class="font-medium text-sm truncate">
+                      <%= link_to person.name, manage_person_path(person), class: "text-pink-500 hover:underline" %>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <% @shows.each do |show| %>
+                <% availability = @availabilities[person.id][show.id] %>
+                <td class="px-4 py-3 text-center w-[140px] bg-white hover:bg-gray-50">
+                  <% if availability %>
+                    <% if availability.available? %>
+                      <span class="text-xs font-medium text-pink-500">
+                        Available
+                      </span>
+                    <% elsif availability.unavailable? %>
+                      <span class="text-xs text-gray-500">
+                        Unavailable
+                      </span>
+                    <% else %>
+                      <span class="text-gray-400 text-xs">-</span>
+                    <% end %>
+                  <% else %>
+                    <span class="text-gray-400 text-xs">-</span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+</div>

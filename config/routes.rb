@@ -102,6 +102,8 @@ Rails.application.routes.draw do
     resources :locations
 
     resources :productions do
+      get :availability, to: "availability#index"
+
       resources :posters, except: :index
       resources :shows do
         collection do
