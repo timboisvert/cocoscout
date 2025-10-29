@@ -47,6 +47,17 @@ class Manage::PeopleController < Manage::ManageController
   end
 
   def show
+    # Get all future shows for productions this person is a cast member of
+    production_ids = @person.casts.pluck(:production_id).uniq
+    @shows = Show.where(production_id: production_ids, canceled: false)
+                 .where("date_and_time >= ?", Time.current)
+                 .order(:date_and_time)
+
+    # Build a hash of availabilities: { show_id => show_availability }
+    @availabilities = {}
+    @person.show_availabilities.where(show: @shows).each do |availability|
+      @availabilities[availability.show_id] = availability
+    end
   end
 
   def new

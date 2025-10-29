@@ -2,8 +2,8 @@ class Manage::AvailabilityController < Manage::ManageController
   before_action :set_production
 
   def index
-    # Get all shows for this production, ordered by date
-    @shows = @production.shows.where(canceled: false).order(:date_and_time)
+    # Get all future shows for this production, ordered by date
+    @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
 
     # Get all cast members for this production
     @cast_members = @production.casts.flat_map(&:people).uniq.sort_by(&:name)

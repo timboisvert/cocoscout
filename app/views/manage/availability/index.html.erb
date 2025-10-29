@@ -41,7 +41,7 @@
                   </span>
                 </div>
                 <% if show.secondary_name.present? %>
-                  <div class="text-xs font-medium text-gray-600 mt-1">
+                  <div class="text-xs font-medium text-gray-500 mt-1">
                     <%= show.secondary_name %>
                   </div>
                 <% end %>
@@ -80,18 +80,18 @@
                 <td class="px-4 py-3 text-center w-[140px] bg-white hover:bg-gray-50">
                   <% if availability %>
                     <% if availability.available? %>
-                      <span class="text-xs font-medium text-pink-500">
+                      <span class="text-sm font-medium text-pink-500">
                         Available
                       </span>
                     <% elsif availability.unavailable? %>
-                      <span class="text-xs text-gray-500">
+                      <span class="text-sm font-medium text-gray-900">
                         Unavailable
                       </span>
                     <% else %>
-                      <span class="text-gray-400 text-xs">-</span>
+                      <span class="text-gray-400 text-sm">-</span>
                     <% end %>
                   <% else %>
-                    <span class="text-gray-400 text-xs">-</span>
+                    <span class="text-gray-400 text-sm">-</span>
                   <% end %>
                 </td>
               <% end %>

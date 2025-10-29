@@ -13,15 +13,22 @@
   <div id="casts" class="min-w-full space-y-5">
     <% if @casts.any? %>
       <% @casts.each do |cast| %>
-        <div class="grid grid-cols-1 gap-1 p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900"><%= cast.name %></h3>
 
-          <%= render partial: "shared/top_menu", locals: {
-            breadcrumbs: [],
-            text: cast.name,
-            links: []
-          } %>
+            <% if current_user_can_manage?(Current.production) %>
+              <div class="flex gap-2">
+                <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "text-pink-500 text-xs underline" %>
+                <%= link_to "Delete Cast",
+                      manage_production_cast_path(@production, cast),
+                      data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this cast?" },
+                      class: "text-pink-500 text-xs underline" %>
+              </div>
+            <% end %>
 
-          <div class="" data-controller="cast-person" data-cast-person-production-id-value="<%= @production.id %>" data-cast-person-cast-id-value="<%= cast.id %>">
+          </div>
+          <div class="grid grid-cols-1 gap-1 p-4" data-controller="cast-person" data-cast-person-production-id-value="<%= @production.id %>" data-cast-person-cast-id-value="<%= cast.id %>">
 
             <div id="cast-members-list-<%= cast.id %>">
               <%= render 'manage/casts/cast_members_list', cast: cast %>
@@ -45,16 +52,6 @@
             <% end %>
 
           </div>
-
-          <% if current_user_can_manage?(Current.production) %>
-            <div class="flex gap-1 mt-4">
-              <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "text-pink-500 text-xs underline" %>
-              <%= link_to "Delete Cast",
-                    manage_production_cast_path(@production, cast),
-                    data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this cast?" },
-                    class: "text-pink-500 text-xs underline" %>
-            </div>
-          <% end %>
 
         </div>
       <% end %>
