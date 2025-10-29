@@ -56,9 +56,10 @@
       </div>
 
       <div data-tabs-target="panel" class="hidden">
-        <% if @person.resume.attached? && @person.resume.previewable? %>
+        <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+        <% if resume_preview %>
           <div class="w-full">
-            <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+            <%= image_tag resume_preview, class: "object-contain" %>
           </div>
         <% else %>
           <p class="text-center mt-10">No resume found</p>
@@ -97,8 +98,9 @@
             data-controller="tooltip"
             data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"
           >
-            <% if audition.person.headshot.present? %>
-              <%= image_tag audition.person.headshot.variant(:thumb), alt: audition.person.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
+            <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: audition.person.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
             <% else %>
               <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
                 <%= audition.person.initials %>

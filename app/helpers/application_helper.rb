@@ -87,4 +87,19 @@ module ApplicationHelper
       %(<li><span class="#{disabled_classes}" aria-disabled="true">#{pagy_t('pagy.next')}</span></li>)
     end
   end
+
+  def safe_headshot_url(person, variant = :thumb)
+    variant_obj = person.safe_headshot_variant(variant)
+    variant_obj ? url_for(variant_obj) : nil
+  end
+
+  def safe_poster_url(show, variant = :small)
+    variant_obj = show.safe_poster_variant(variant)
+    variant_obj ? url_for(variant_obj) : nil
+  end
+
+  def safe_logo_url(production, variant = :small)
+    variant_obj = production.safe_logo_variant(variant)
+    variant_obj ? url_for(variant_obj) : nil
+  end
 end

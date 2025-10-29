@@ -16,9 +16,10 @@
     <div class="grid grid-cols-1 gap-2 mt-2">
 
       <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-top gap-4">
-          <% if @production.logo.attached? %>
+          <% logo_variant = @production.safe_logo_variant(:small) %>
+          <% if logo_variant %>
               <div class="w-full sm:w-auto sm:flex-shrink-0">
-                  <%= image_tag @production.logo.variant(:small), alt: "#{@production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
+                  <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
               </div>
           <% end %>
           <div class="w-full sm:w-auto text-left">
@@ -130,9 +131,10 @@
               links: []
             } %>
 
-            <% if @show.poster.present? %>
+            <% poster_url = safe_poster_url(@show) %>
+            <% if poster_url %>
               <div class="mt-2">
-                <%= image_tag url_for(@show.poster.variant(:small)), class: "" %>
+                <%= image_tag poster_url, class: "" %>
               </div>
             <% end %>
 

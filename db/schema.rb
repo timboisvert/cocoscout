@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_10_28_150133) do
+ActiveRecord::Schema[8.1].define(version: 2025_10_28_183546) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -150,6 +150,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_150133) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.index ["user_id"], name: "index_people_on_user_id"
+  end
+
+  create_table "people_production_companies", id: false, force: :cascade do |t|
+    t.integer "person_id", null: false
+    t.integer "production_company_id", null: false
+    t.index ["person_id", "production_company_id"], name: "idx_on_person_id_production_company_id_91fe15345c"
+    t.index ["production_company_id", "person_id"], name: "idx_on_production_company_id_person_id_c33b726b51"
   end
 
   create_table "posters", force: :cascade do |t|

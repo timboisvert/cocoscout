@@ -100,10 +100,13 @@
                 <div class="my-2 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all">
                     <div class="w-full">
 
-                        <% if displayable_attachment?(@person.resume) && @person.resume.previewable? %>
-                            <div class="mb-4">
-                                <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
-                            </div>
+                        <% if displayable_attachment?(@person.resume) %>
+                            <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+                            <% if resume_preview %>
+                                <div class="mb-4">
+                                    <%= image_tag resume_preview, class: "w-full object-contain" %>
+                                </div>
+                            <% end %>
                         <% elsif pending_attachment?(@person.resume) %>
                             <div class="mb-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                                 Resume will be uploaded after saving.

@@ -81,9 +81,10 @@
 
                 <% unless show.canceled %>
                   <div class="flex-shrink">
-                    <% if show.poster.present? %>
+                    <% poster_url = safe_poster_url(show) %>
+                    <% if poster_url %>
                       <div class="mb-2 pr-4">
-                        <%= image_tag url_for(show.poster.variant(:small)), alt: "Show Poster", class: "rounded shadow max-w-36 border border-gray-200" %>
+                        <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow max-w-36 border border-gray-200" %>
                       </div>
                     <% end %>
                   </div>
@@ -136,8 +137,9 @@
                               <div class="flex flex-col items-center transition-all relative"
                                 data-controller="tooltip"
                                 data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
-                                <% if assignment.person.headshot.present? %>
-                                  <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
+                                <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+                                <% if headshot_variant %>
+                                  <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
                                 <% else %>
                                   <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
                                     <%= assignment.person.initials %>

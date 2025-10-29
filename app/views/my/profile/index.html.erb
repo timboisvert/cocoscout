@@ -55,9 +55,10 @@
                 links: []
             } %>
             <% if Current.user.person.resume.attached? %>
-                <% if Current.user.person.resume.attached? && Current.user.person.resume.previewable? %>
+                <% resume_preview = Current.user.person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+                <% if resume_preview %>
                     <div class="w-full">
-                        <%= image_tag Current.user.person.resume.preview(resize_to_limit: [1224, 1584]), class: "w-full object-contain" %>
+                        <%= image_tag resume_preview, class: "w-full object-contain" %>
                     </div>
                 <% end %>
             <% else %>

@@ -371,7 +371,7 @@ class Manage::ShowsController < Manage::ManageController
 
   def assign_person_to_role
     # Get the person and the role
-    person = Person.find(params[:person_id])
+    person = Current.production_company.people.find(params[:person_id])
     role = Role.find(params[:role_id])
 
     # If this role already has someone in it for this show, remove the assignment

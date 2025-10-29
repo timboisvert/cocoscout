@@ -6,6 +6,7 @@ class Person < ApplicationRecord
   has_many :auditions
 
   has_and_belongs_to_many :casts
+  has_and_belongs_to_many :production_companies
 
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
@@ -30,6 +31,22 @@ class Person < ApplicationRecord
   def initials
     return "" if name.blank?
     name.split.map { |word| word[0] }.join.upcase
+  end
+
+  def safe_resume_preview(options = {})
+    return nil unless resume.attached? && resume.previewable?
+    resume.preview(options)
+  rescue ActiveStorage::PreviewError => e
+    Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
+    nil
+  end
+
+  def safe_headshot_variant(variant_name)
+    return nil unless headshot.attached?
+    headshot.variant(variant_name)
+  rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
+    Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
+    nil
   end
 
   def has_person_role_assignment_for_show?(show)

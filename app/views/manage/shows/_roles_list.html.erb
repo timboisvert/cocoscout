@@ -49,8 +49,9 @@
           <% assignments.each do |assignment| %>
 
             <div class="flex flex-col items-center p-3 border border-gray-200 min-w-24 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7] group relative">
-              <% if assignment.person.headshot.present? %>
-                <%= image_tag assignment.person.headshot.variant(:thumb), alt: assignment.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
+              <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1", draggable: false %>
               <% else %>
                 <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
                   <%= assignment.person.initials %>

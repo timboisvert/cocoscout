@@ -55,6 +55,12 @@ class My::RespondToCallToAuditionController < ApplicationController
   def submitform
     @person = Current.user.person
 
+    # Associate the person with the production company if not already
+    production_company = @call_to_audition.production.production_company
+    unless @person.production_companies.include?(production_company)
+      @person.production_companies << production_company
+    end
+
     # We may be updating an existing response, so check for that first
     if @call_to_audition.audition_requests.exists?(person: Current.user.person)
 

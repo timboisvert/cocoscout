@@ -29,6 +29,14 @@ class Production < ApplicationRecord
         shows.where("date_and_time > ?", Time.current).order(:date_and_time).first
     end
 
+    def safe_logo_variant(variant_name)
+        return nil unless logo.attached?
+        logo.variant(variant_name)
+    rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
+        Rails.logger.error("Failed to generate variant for production #{id} logo: #{e.message}")
+        nil
+    end
+
     private
 
     def logo_content_type

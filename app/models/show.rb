@@ -46,6 +46,14 @@ class Show < ApplicationRecord
     Show.in_recurrence_group(recurrence_group_id)
   end
 
+  def safe_poster_variant(variant_name)
+    return nil unless poster.attached?
+    poster.variant(variant_name)
+  rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
+    Rails.logger.error("Failed to generate variant for show #{id} poster: #{e.message}")
+    nil
+  end
+
   private
 
   def poster_content_type

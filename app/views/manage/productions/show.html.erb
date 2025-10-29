@@ -62,8 +62,9 @@
       links: []
     } %>
 
-    <% if @production.logo.attached? %>
-      <%= image_tag @production.logo.variant(:small), class: "h-auto" %>
+    <% logo_variant = @production.safe_logo_variant(:small) %>
+    <% if logo_variant %>
+      <%= image_tag logo_variant, class: "h-auto" %>
 
       <% if current_user_can_manage?(@production) %>
         <div>
@@ -95,8 +96,9 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
         <% @production.posters.each do |poster| %>
           <div class="bg-white rounded shadow p-4 flex flex-col">
-            <% if poster.image.attached? %>
-              <%= image_tag poster.image.variant(:small), class: "w-full h-auto object-cover mb-2" %>
+            <% image_variant = poster.safe_image_variant(:small) %>
+            <% if image_variant %>
+              <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
             <% end %>
             <span class="font-semibold"><%= poster.name.presence || "Untitled Poster" %></span>
 

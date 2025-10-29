@@ -34,10 +34,11 @@
 
       <div class="p-5 flex items-top gap-4">
 
-        <% if Current.user.person.headshot.attached? %>
+        <% headshot_url = safe_headshot_url(Current.user.person) %>
+        <% if headshot_url %>
           <div class="flex-shrink-0">
 
-            <%= image_tag url_for(Current.user.person.headshot.variant(:thumb)), class: "relative inline-block rounded-lg" %>
+            <%= image_tag headshot_url, class: "relative inline-block rounded-lg" %>
           </div>
         <% end %>
 

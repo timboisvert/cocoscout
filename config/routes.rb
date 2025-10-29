@@ -95,6 +95,7 @@ Rails.application.routes.draw do
         # Used when adding a person to a cast from a person (or person-like) page
         post :add_to_cast
         post :remove_from_cast
+        post :remove_from_production_company
       end
     end
 

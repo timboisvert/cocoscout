@@ -141,6 +141,9 @@ class AuthController < ApplicationController
       session[:invitation_link_invalid] = true
       redirect_to signin_path and return
     end
+
+    # Get the production companies associated with this user's person
+    @production_companies = @user.person&.production_companies || []
   end
 
   def handle_set_password

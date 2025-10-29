@@ -39,16 +39,16 @@ class Manage::CastsController < Manage::ManageController
     redirect_to manage_production_casts_path(@production), notice: "Cast was successfully deleted", status: :see_other
   end
 
-   def add_person
+  def add_person
     @cast = @production.casts.find(params[:id])
-    person = Person.find(params[:person_id])
+    person = Current.production_company.people.find(params[:person_id])
     @cast.people << person unless @cast.people.exists?(person.id)
     render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
   end
 
   def remove_person
     @cast = @production.casts.find(params[:id])
-    person = Person.find(params[:person_id])
+    person = Current.production_company.people.find(params[:person_id])
     @cast.people.delete(person)
     render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
   end

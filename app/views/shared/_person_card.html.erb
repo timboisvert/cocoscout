@@ -1,5 +1,4 @@
 <%
-    show_delete_person = false if local_assigns[:show_delete_person].nil?
     show_delete_signup = false if local_assigns[:show_delete_signup].nil?
 %>
 
@@ -47,7 +46,7 @@
                 <% end %>
             </div>
 
-            <% if current_user_is_global_manager? %>
+            <% if current_user_can_manage? || Current.user&.god? %>
                 <div class="mt-5">
                     <%= render partial: "shared/top_menu", locals: {
                         breadcrumbs: [],
@@ -57,26 +56,56 @@
                 </div>
 
                 <div class="mt-2">
-                    <%= link_to "Edit Person",
-                        edit_manage_person_path(person),
-                        class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer"
-                    %>
 
-                    <% if show_delete_person %>
-                        <%= link_to "Delete Person",
-                            manage_person_path(person),
+                    <% if current_user_can_manage? && person.production_companies.include?(Current.production_company) %>
+                        <%= link_to "Remove from #{Current.production_company.name}",
+                            remove_from_production_company_manage_person_path(person),
                             data: {
-                                turbo_method: :delete,
-                                turbo_confirm: "Are you sure you want to delete this person?"
+                                turbo_method: :post,
+                                turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.production_company.name}?"
                             },
                             class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer"
                         %>
                     <% end %>
 
-                    <% if Current.user.god? %>
-                        <%= button_to impersonate_user_path, method: :post, params: { email: person.user.email_address }, class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer" do %>
-                            Impersonate <%= person.name %>
-                        <% end %>
+                </div>
+
+            <% end %>
+
+            <% if Current.user&.god? %>
+                <div class="mt-5">
+                    <%= render partial: "shared/top_menu", locals: {
+                        breadcrumbs: [],
+                        text: "God Mode Actions",
+                        links: []
+                    } %>
+                </div>
+
+                <div class="mt-2">
+
+                    <% if Current.user&.god? %>
+                        <div class="flex flex-wrap gap-1">
+
+                            <% if person.user %>
+                                <%= button_to impersonate_user_path, method: :post, params: { email: person.user.email_address }, class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer" do %>
+                                    Impersonate
+                                <% end %>
+                            <% end %>
+
+                            <%= link_to "Edit",
+                                edit_manage_person_path(person),
+                                class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer"
+                            %>
+
+                            <%= link_to "Delete",
+                                manage_person_path(person),
+                                data: {
+                                    turbo_method: :delete,
+                                    turbo_confirm: "Are you sure you want to delete this person? This will remove them from ALL production companies."
+                                },
+                                class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center inline-block text-white bg-red-500 hover:bg-red-600 cursor-pointer"
+                            %>
+                        </div>
                     <% end %>
 
                     <% if show_delete_signup %>

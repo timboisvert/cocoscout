@@ -39,9 +39,10 @@
                         <div class="col-span-1 sm:col-span-3 items-center">
 
                             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                                <% if production.logo.attached? %>
+                                <% logo_variant = production.safe_logo_variant(:small) %>
+                                <% if logo_variant %>
                                     <div class="w-full sm:w-auto sm:flex-shrink-0">
-                                        <%= image_tag production.logo.variant(:small), alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
+                                        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
                                     </div>
                                 <% end %>
                                 <div class="w-full sm:w-auto text-left">

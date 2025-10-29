@@ -30,13 +30,14 @@
     </nav>
 
     <div data-tabs-target="panel">
-      <%= render "shared/person_card", person: @person, show_delete_person: true, show_delete_signup: true %>
+      <%= render "shared/person_card", person: @person, show_delete_signup: true %>
     </div>
 
     <div data-tabs-target="panel" class="hidden">
-      <% if @person.resume.attached? && @person.resume.previewable? %>
+      <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+      <% if resume_preview %>
         <div class="w-full">
-          <%= image_tag @person.resume.preview(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+          <%= image_tag resume_preview, class: "object-contain" %>
         </div>
       <% else %>
         <p class="text-center mt-10">No resume found</p>

@@ -1,6 +1,6 @@
 class Manage::PeopleController < Manage::ManageController
   before_action :set_person, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_global_manager, except: %i[index show search]
+  before_action :ensure_user_is_global_manager, except: %i[index show search remove_from_production_company]
 
   def index
     # Store the order
@@ -16,8 +16,8 @@ class Manage::PeopleController < Manage::ManageController
     @filter = (params[:filter] || session[:people_filter] || "everyone")
     session[:people_filter] = @filter
 
-    # Process the filter
-    @people = Person.all
+    # Process the filter - scope to current production company
+    @people = Current.production_company.people
 
     case @filter
     when "cast-members"
@@ -70,7 +70,12 @@ class Manage::PeopleController < Manage::ManageController
     existing_person = Person.find_by(email: person_params[:email])
 
     if existing_person
-      # Person exists, create user and link them
+      # Person exists, associate with current production company if not already
+      unless existing_person.production_companies.include?(Current.production_company)
+        existing_person.production_companies << Current.production_company
+      end
+
+      # Create user and link them
       user = User.create!(
         email_address: existing_person.email,
         password: SecureRandom.hex(16)
@@ -86,6 +91,9 @@ class Manage::PeopleController < Manage::ManageController
       # Create both person and user
       @person = Person.new(person_params)
       if @person.save
+        # Associate with current production company
+        @person.production_companies << Current.production_company
+
         user = User.create!(
           email_address: @person.email,
           password: SecureRandom.hex(16)
@@ -120,7 +128,7 @@ class Manage::PeopleController < Manage::ManageController
   def search
     q = params[:q].to_s.strip
     @people = if q.present?
-      Person.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+      Current.production_company.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
     else
       Person.none
     end
@@ -132,23 +140,42 @@ class Manage::PeopleController < Manage::ManageController
 
   def add_to_cast
     @cast = Cast.find(params[:cast_id])
-    @person = Person.find(params[:person_id])
+    @person = Current.production_company.people.find(params[:person_id])
     @cast.people << @person if !@cast.people.include?(@person)
     render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
   end
 
   def remove_from_cast
     @cast = Cast.find(params[:cast_id])
-    @person = Person.find(params[:person_id])
+    @person = Current.production_company.people.find(params[:person_id])
     @cast.people.delete(@person) if @cast.people.include?(@person)
     render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+  end
+
+  def remove_from_production_company
+    @person = Current.production_company.people.find(params[:id])
+
+    # Remove the person from the production company
+    Current.production_company.people.delete(@person)
+
+    # If the person has a user account, clean up their roles and permissions
+    if @person.user
+      # Remove user_role for this production company
+      @person.user.user_roles.where(production_company: Current.production_company).destroy_all
+
+      # Remove production_permissions for all productions in this production company
+      production_ids = Current.production_company.productions.pluck(:id)
+      @person.user.production_permissions.where(production_id: production_ids).destroy_all
+    end
+
+    redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.production_company.name}", status: :see_other
   end
 
 
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_person
-      @person = Person.find(params.expect(:id))
+      @person = Current.production_company.people.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.
