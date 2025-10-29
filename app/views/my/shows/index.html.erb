@@ -69,7 +69,7 @@
   <% if @filter == 'by_production' %>
     <!-- By Production View -->
     <% @productions.each do |production| %>
-      <% production_shows = @shows.where(production: production) %>
+      <% production_shows = @shows.select { |show| show.production_id == production.id } %>
       <% if production_shows.any? %>
         <div class="mb-6">
           <h2 class="text-lg font-bold mb-2"><%= production.name %></h2>

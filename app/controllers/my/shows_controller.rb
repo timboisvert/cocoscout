@@ -17,15 +17,14 @@ class My::ShowsController < ApplicationController
                 .where(canceled: false)
                 .select("shows.*")
                 .distinct
-                .order(:date_and_time)
 
     # Apply event type filter if specified
     if @event_type_filter.present?
       @shows = @shows.where(event_type: @event_type_filter)
     end
 
-    # Load shows to avoid pluck with distinct/order issue
-    @shows = @shows.to_a
+    # Order and load shows to avoid pluck with distinct/order issue
+    @shows = @shows.order(:date_and_time).to_a
 
     # Get assignments for these shows
     show_ids = @shows.map(&:id)
@@ -54,15 +53,14 @@ class My::ShowsController < ApplicationController
                 .where(canceled: false)
                 .select("shows.*")
                 .distinct
-                .order(:date_and_time)
 
     # Apply event type filter
     unless @event_type_filter == "all"
       @shows = @shows.where(event_type: @event_type_filter)
     end
 
-    # Load shows to avoid pluck with distinct/order issue
-    @shows = @shows.to_a
+    # Order and load shows to avoid pluck with distinct/order issue
+    @shows = @shows.order(:date_and_time).to_a
 
     # Group shows by month
     @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
