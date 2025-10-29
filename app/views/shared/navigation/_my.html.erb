@@ -10,7 +10,7 @@
       <% if impersonated %>
         <div class="w-full bg-pink-200 p-4 text-left text-sm">
           <div>Impersonating:</div>
-          <div class="font-bold"><%= impersonated.email_address %></div>
+          <div class="font-bold truncate"><%= impersonated.email_address %></div>
           <div>
             <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer text-left" %>
           </div>
