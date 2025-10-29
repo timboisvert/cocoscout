@@ -17,7 +17,7 @@ class Manage::PeopleController < Manage::ManageController
     session[:people_filter] = @filter
 
     # Process the filter - scope to current production company
-    @people = Current.production_company.people
+    @people = Current.production_company&.people || Person.none
 
     case @filter
     when "cast-members"
@@ -57,25 +57,26 @@ class Manage::PeopleController < Manage::ManageController
   end
 
   def create
-    # First check if a user with this email already exists
+    # Check if a user with this email already exists
     existing_user = User.find_by(email_address: person_params[:email])
-    if existing_user
-      @person = Person.new(person_params)
-      @user_exists_error = true
-      render :new, status: :unprocessable_entity
-      return
-    end
 
     # Check if a person with this email already exists
     existing_person = Person.find_by(email: person_params[:email])
 
-    if existing_person
-      # Person exists, associate with current production company if not already
+    if existing_user && existing_user.person
+      # User and person both exist - just add to production company if not already
+      existing_person = existing_user.person
       unless existing_person.production_companies.include?(Current.production_company)
         existing_person.production_companies << Current.production_company
       end
 
-      # Create user and link them
+      redirect_to [ :manage, existing_person ], notice: "#{existing_person.name} has been added to #{Current.production_company.name}"
+    elsif existing_person
+      # Person exists but no user - create user and link them
+      unless existing_person.production_companies.include?(Current.production_company)
+        existing_person.production_companies << Current.production_company
+      end
+
       user = User.create!(
         email_address: existing_person.email,
         password: SecureRandom.hex(16)

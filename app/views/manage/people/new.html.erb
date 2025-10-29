@@ -22,21 +22,12 @@
 
       <div class="flex flex-col sm:flex-row sm:gap-4">
         <div class="w-full sm:w-1/3">
-          <% if @person.errors[:name].none? %>
-              <%= person_form.label :name, "Name" %>
-          <% else %>
-              <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
-          <% end %>
-          <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:name].none?, "border-pink-500": @person.errors[:name].any?}] %>
-        </div>
-
-        <div class="w-full sm:w-1/3">
           <% if @user_exists_error %>
               <%= person_form.label :email, "A user with this email already exists", class: "text-pink-600" %>
           <% elsif @person.errors[:email].none? %>
               <%= person_form.label :email, "Email Address" %>
           <% else %>
-              <%= person_form.label :email, "Email Addressis required", class: "text-pink-600"  %>
+              <%= person_form.label :email, "Email Address is required", class: "text-pink-600"  %>
           <% end %>
           <%= person_form.email_field :email, autocapitalize: "none", class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:email].none? && !@user_exists_error, "border-pink-500": @person.errors[:email].any? || @user_exists_error}] %>
         </div>

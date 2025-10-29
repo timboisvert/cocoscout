@@ -50,6 +50,11 @@ class Manage::ProductionCompaniesController < Manage::ManageController
     if user_id
       session[:current_production_company_id] ||= {}
       session[:current_production_company_id]["#{user_id}"] = production_company.id
+
+      # Clear production-company specific session filters/settings
+      session.delete(:people_order)
+      session.delete(:people_show)
+      session.delete(:people_filter)
     end
     redirect_to manage_path
   end
