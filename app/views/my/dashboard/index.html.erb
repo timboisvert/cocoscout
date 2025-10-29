@@ -20,8 +20,8 @@
             <div class="text-xs sm:text-sm">
               <% next_event = Current.user.person.next_event_for_production(production) %>
               <% if next_event %>
-                  <% event_label = next_event.event_type.titleize.downcase %>
-                  The next <%= event_label %> is <span class="text-pink-500"><%= next_event.date_and_time.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= next_event.date_and_time.strftime('%l:%M %p') %></span>
+                  <% event_label = next_event.event_type.titleize %>
+                  Next: <%= event_label %> on <span class="text-pink-500"><%= next_event.date_and_time.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= next_event.date_and_time.strftime('%l:%M %p') %></span>
               <% else %>
                   No upcoming events scheduled
               <% end %>

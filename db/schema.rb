@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_10_28_183546) do
+ActiveRecord::Schema[8.1].define(version: 2025_10_29_200451) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -71,6 +71,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_183546) do
   end
 
   create_table "audition_sessions", force: :cascade do |t|
+    t.integer "call_to_audition_id"
     t.datetime "created_at", null: false
     t.datetime "end_at"
     t.integer "location_id"
@@ -78,6 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_183546) do
     t.integer "production_id", null: false
     t.datetime "start_at"
     t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_audition_sessions_on_call_to_audition_id"
     t.index ["location_id"], name: "index_audition_sessions_on_location_id"
     t.index ["production_id"], name: "index_audition_sessions_on_production_id"
   end
@@ -329,6 +331,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_28_183546) do
   add_foreign_key "answers", "questions"
   add_foreign_key "audition_requests", "call_to_auditions"
   add_foreign_key "audition_requests", "people"
+  add_foreign_key "audition_sessions", "call_to_auditions"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "audition_sessions", "productions"
   add_foreign_key "auditions", "audition_requests"
