@@ -40,133 +40,163 @@
         <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
 
           <div class="cursor-pointer select-none" data-action="click->show-toggle#toggle">
-            <div class="flex items-center">
-              <span data-show-toggle-target="icon" class="mr-2">
+            <div class="flex items-start gap-2">
+              <span data-show-toggle-target="icon" class="mt-0.5">
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               </span>
 
-              <div class="flex flex-col sm:flex-row sm:items-center flex-1">
-                <p class="font-bold text-sm sm:text-lg <%= 'line-through text-red-400' if show.canceled %>">
-                  <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
-                </p>
+              <div class="flex-1">
+                <div class="flex flex-row sm:items-center gap-2">
+                  <p class="font-bold text-sm sm:text-base <%= 'line-through text-red-400' if show.canceled %>">
+                    <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
+                  </p>
 
+                  <% if show.canceled %>
+                    <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 w-fit">Canceled</span>
+                  <% elsif show.recurring? %>
+                    <span data-controller="tooltip" data-tooltip-text="This is a recurring event">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      </svg>
+                    </span>
+                  <% end %>
+                </div>
 
-                <% if show.canceled %>
-                  <span class="mt-1 sm:mt-0 sm:ml-3 inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 w-fit">Canceled</span>
-                <% elsif show.recurring? %>
-                  <span class="ml-3" data-controller="tooltip" data-tooltip-text="This is a recurring event">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                  </span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-
-          <div data-show-toggle-target="content" class="ml-6 <%= 'hidden' unless idx == 0 %>">
-
-            <div class="items-start gap-6 sm:flex">
-
-              <div class="w-full sm:flex">
-
-                <% unless show.canceled %>
-                  <div class="flex-shrink">
-                    <% poster_url = safe_poster_url(show) %>
-                    <% if poster_url %>
-                      <div class="mb-2 pr-4">
-                        <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow max-w-36 border border-gray-200" %>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-
-                <div class="flex items-center gap-1 flex-wrap">
-
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
                   <% event_type_badge_classes = case show.event_type
                     when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
                     when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
                     else "bg-pink-50 text-pink-700 ring-pink-600/10"
                   end %>
-                  <span class="mr-2 inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
                     <%= show.event_type.titleize %>
                   </span>
 
                   <% if show.secondary_name.present? %>
-                      <span class="text-xs sm:text-sm text-gray-600 font-medium"><%= show.secondary_name %></span>
+                    <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
                   <% end %>
 
-                  <% if show.location.present? && !show.canceled %>
-                    <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
+                  <% if show.location.present? %>
+                    <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
                       <%= show.location.name %>
                     </span>
                   <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                  <% if current_user_can_manage?(show.production) %>
-                    <%
-                      event_label = show.event_type.titleize
-                      edit_label = "Edit #{event_label}"
-                      cancel_label = "Cancel #{event_label}"
-                      delete_label = "Delete #{event_label}"
-                      uncancel_label = "Uncancel #{event_label}"
-                    %>
-                    <div class="mt-0 space-x-1">
+          <div data-show-toggle-target="content" class="ml-7 mt-4 <%= 'hidden' unless idx == 0 %>">
+            <div class="flex flex-col sm:flex-row gap-6">
+
+              <% unless show.canceled %>
+                <% poster_url = safe_poster_url(show) %>
+                <% if poster_url %>
+                  <div class="flex-shrink-0">
+                    <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow w-36 border border-gray-200" %>
+                  </div>
+                <% end %>
+              <% end %>
+
+              <div class="flex-1 space-y-4">
+
+                <% if current_user_can_manage?(show.production) %>
+                  <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                      <h3 class="text-sm font-semibold text-gray-900">Manage <%= show.event_type.titleize %></h3>
+                    </div>
+                    <div class="p-4">
+                      <%
+                        event_label = show.event_type.titleize
+                        edit_label = "Edit #{event_label}"
+                        cancel_label = "Cancel #{event_label}"
+                        delete_label = "Delete #{event_label}"
+                        uncancel_label = "Uncancel #{event_label}"
+                      %>
                       <% if @filter == "past" %>
                         <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: show.id), class: "text-xs text-pink-500 underline" %>
-                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        <%= link_to delete_label, cancel_manage_production_show_path(@production, show), class: "ml-1 text-xs text-pink-500 underline" %>
                       <% elsif show.canceled %>
                         <%= link_to uncancel_label, uncancel_manage_production_show_path(@production, show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
-                        <%= link_to delete_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        <%= link_to delete_label, cancel_manage_production_show_path(@production, show), class: "ml-1 text-xs text-pink-500 underline" %>
                       <% else %>
                         <%= link_to edit_label, edit_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                        <%= link_to cancel_label, cancel_manage_production_show_path(@production, show), class: "ml-1 text-xs text-pink-500 underline" %>
                       <% end %>
                     </div>
-                  <% end %>
+                  </div>
+                <% end %>
 
-                   <% if show.event_type == "show" && !show.canceled %>
-                    <div class="w-full mt-5">
-                      <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                <% if show.event_type == "show" && !show.canceled %>
+                  <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                      <h3 class="text-sm font-semibold text-gray-900">Cast</h3>
+                      <% if current_user_can_manage?(show.production) %>
+                        <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
+                      <% end %>
+                    </div>
+                    <div class="p-1 py-2 sm:p-4 sm:py-4">
+                      <div class="flex flex-wrap gap-2">
                         <% if show.show_person_role_assignments.any? %>
                           <% show.show_person_role_assignments.each do |assignment| %>
                             <%= link_to [:manage, assignment.person] do %>
-                              <div class="flex flex-col items-center transition-all relative"
+                              <div class="flex flex-col items-center w-[100px] transition-all"
                                 data-controller="tooltip"
                                 data-tooltip-text="<%= assignment.person.name.truncate(40, omission: '...') %> - <%= assignment.role.name %>">
                                 <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
                                 <% if headshot_variant %>
-                                  <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-15 h-15 rounded-lg object-cover", draggable: false %>
+                                  <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200", draggable: false %>
                                 <% else %>
-                                  <div class="w-15 h-15 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
+                                  <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200">
                                     <%= assignment.person.initials %>
                                   </div>
                                 <% end %>
+                                <div class="text-xs text-center mt-2 text-gray-700 font-medium truncate w-full"><%= assignment.person.name %></div>
+                                <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role.name %></div>
                               </div>
                             <% end %>
                           <% end %>
                         <% else %>
-                          <div class="col-span-4 sm:col-span-8 text-sm text-gray-500 items-center">
-                            You haven't added any cast members to this show
+                          <div class="text-sm text-gray-500">
+                            No cast members added yet
                           </div>
                         <% end %>
                       </div>
-                      <% if current_user_can_manage?(show.production) %>
-                        <div class="mt-0">
-                          <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
-                        </div>
-                      <% end %>
                     </div>
-                  <% end %>
+                  </div>
+                <% end %>
 
-                </div>
+                <% if show.location.present? && !show.canceled %>
+                  <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-start gap-2 mb-2">
+                      <svg class="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      <div>
+                        <div class="font-medium text-sm text-gray-900"><%= show.location.name %></div>
+                      </div>
+                    </div>
+
+                    <% loc = show.location %>
+                    <% if loc.present? %>
+                      <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+                      <div class="w-full">
+                        <iframe
+                          width="100%"
+                          height="400"
+                          style="border:0"
+                          loading="lazy"
+                          allowfullscreen
+                          referrerpolicy="no-referrer-when-downgrade"
+                          src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                        </iframe>
+                      </div>
+                    <% end %>
+
+                  </div>
+                <% end %>
 
               </div>
-
-
-
             </div>
-
           </div>
         </div>
       <% end %>
