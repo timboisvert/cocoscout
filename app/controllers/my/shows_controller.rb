@@ -15,6 +15,7 @@ class My::ShowsController < ApplicationController
                 .where(casts_people: { person_id: Current.user.person.id })
                 .where("date_and_time >= ?", Time.current)
                 .where(canceled: false)
+                .select("shows.*")
                 .distinct
                 .order(:date_and_time)
 
@@ -48,6 +49,7 @@ class My::ShowsController < ApplicationController
                 .where(casts_people: { person_id: Current.user.person.id })
                 .where("date_and_time >= ?", Time.current)
                 .where(canceled: false)
+                .select("shows.*")
                 .distinct
                 .order(:date_and_time)
 
