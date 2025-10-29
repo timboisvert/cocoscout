@@ -36,8 +36,8 @@ Rails.application.routes.draw do
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     get   "/shows",                         to: "shows#index",              as: "shows"
-    get   "/shows/:production_id",          to: "shows#production",         as: "production"
-    get   "/shows/:production_id/:show_id", to: "shows#show",               as: "show"
+    get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
+    get   "/shows/:id",                     to: "shows#show",               as: "show"
     get   "/availability",                  to: "availability#index",       as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"

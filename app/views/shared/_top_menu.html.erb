@@ -28,7 +28,7 @@
           end
         %>
         <% if can_show_link %>
-          <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path]} %>
+          <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path], icon: link[:icon]} %>
         <% end %>
       <% end %>
     </div>

@@ -1,22 +1,67 @@
 class My::ShowsController < ApplicationController
   def index
-    @productions = Production.joins(casts: [ :casts_people ]).joins(:shows).where(casts_people: { person_id: Current.user.person.id }).distinct
-  end
+    # Get all productions where user is a cast member
+    @productions = Production.joins(casts: [ :casts_people ])
+                             .where(casts_people: { person_id: Current.user.person.id })
+                             .distinct
+                             .order(:name)
 
-  def production
-    @production = Production.find(params[:production_id])
-    @shows = @production.shows.where("date_and_time > ?", Time.current).order(date_and_time: :asc)
+    # Handle filter parameters
+    @filter = params[:filter] || "all"
+    @event_type_filter = params[:event_type]
 
-    # Get my assignments, then relate them to each show
-    show_person_role_assignments = @production.show_person_role_assignments.where(show_id: @shows.pluck(:id), person_id: Current.user.person.id)
-    @assignments_by_show = @shows.index_with do |show|
-      show_person_role_assignments.find { |assignment| assignment.show_id == show.id }
+    # Get all upcoming shows for user's productions
+    @shows = Show.joins(production: { casts: :casts_people })
+                .where(casts_people: { person_id: Current.user.person.id })
+                .where("date_and_time >= ?", Time.current)
+                .where(canceled: false)
+                .distinct
+                .order(:date_and_time)
+
+    # Apply event type filter if specified
+    if @event_type_filter.present?
+      @shows = @shows.where(event_type: @event_type_filter)
     end
+
+    # Get assignments for these shows
+    show_ids = @shows.pluck(:id)
+    assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
+    @assignments_by_show = assignments.index_by(&:show_id)
   end
 
   def show
-    @production = Production.joins(casts: [ :casts_people ]).where(casts_people: { person_id: Current.user.person.id }).find(params[:production_id])
-    @show = @production.shows.find(params[:show_id])
-    @show_person_role_assignments = @show.show_person_role_assignments
+    @show = Show.joins(production: { casts: :casts_people })
+               .where(casts_people: { person_id: Current.user.person.id })
+               .find(params[:id])
+    @production = @show.production
+    @show_person_role_assignments = @show.show_person_role_assignments.includes(:person, :role)
+
+    # Get my assignment for this show
+    @my_assignment = @show_person_role_assignments.find { |a| a.person_id == Current.user.person.id }
+  end
+
+  def calendar
+    @event_type_filter = params[:event_type] || "all"
+
+    # Get all upcoming non-canceled shows
+    @shows = Show.joins(production: { casts: :casts_people })
+                .where(casts_people: { person_id: Current.user.person.id })
+                .where("date_and_time >= ?", Time.current)
+                .where(canceled: false)
+                .distinct
+                .order(:date_and_time)
+
+    # Apply event type filter
+    unless @event_type_filter == "all"
+      @shows = @shows.where(event_type: @event_type_filter)
+    end
+
+    # Group shows by month
+    @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+
+    # Get assignments for these shows
+    show_ids = @shows.pluck(:id)
+    assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
+    @assignments_by_show = assignments.index_by(&:show_id)
   end
 end

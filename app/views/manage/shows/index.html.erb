@@ -168,30 +168,29 @@
                 <% end %>
 
                 <% if show.location.present? && !show.canceled %>
-                  <div class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-start gap-2 mb-2">
-                      <svg class="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-                      <div>
-                        <div class="font-medium text-sm text-gray-900"><%= show.location.name %></div>
-                      </div>
+
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-left">
+                      <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      <h3 class="ml-1 text-sm font-semibold text-gray-900"><%= show.location.name %></h3>
                     </div>
-
-                    <% loc = show.location %>
-                    <% if loc.present? %>
-                      <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
-                      <div class="w-full">
-                        <iframe
-                          width="100%"
-                          height="400"
-                          style="border:0"
-                          loading="lazy"
-                          allowfullscreen
-                          referrerpolicy="no-referrer-when-downgrade"
-                          src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
-                        </iframe>
-                      </div>
-                    <% end %>
-
+                    <div class="p-0">
+                      <% loc = show.location %>
+                      <% if loc.present? %>
+                        <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+                        <div class="w-full">
+                          <iframe
+                            width="100%"
+                            height="400"
+                            style="border:0"
+                            loading="lazy"
+                            allowfullscreen
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                          </iframe>
+                        </div>
+                      <% end %>
+                    </div>
                   </div>
                 <% end %>
 

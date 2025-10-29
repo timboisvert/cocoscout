@@ -1,4 +1,4 @@
-<% content_for :title, "My Shows" %>
+<% content_for :title, @production.name %>
 
 <div class="w-full">
 
@@ -6,152 +6,146 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows & Events", my_shows_path],
-      [@production.name, my_production_path(@production)]
+      ["Shows & Events", my_shows_path]
     ],
-    text: @show.date_and_time.strftime("%B %d, %Y at %l:%M %p"),
+    text: @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p"),
     links: []
   } %>
 
-    <div class="grid grid-cols-1 gap-2 mt-2">
-
-      <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-top gap-4">
-          <% logo_variant = @production.safe_logo_variant(:small) %>
-          <% if logo_variant %>
-              <div class="w-full sm:w-auto sm:flex-shrink-0">
-                  <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
-              </div>
-          <% end %>
-          <div class="w-full sm:w-auto text-left">
-              <div class="font-bold text-lg sm:text-xl"><%= @production.name %></div>
-
-              <% if @show.secondary_name.present? %>
-                <div class="mb-1 text-sm sm:text-md"><%= @show.secondary_name %></div>
-              <% end %>
-
-              <div class="flex items-center gap-2 pt-2">
-                <% event_type_badge_classes = case @show.event_type
-                  when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                  when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                  else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                end %>
-                <span class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset w-20 flex-shrink-0 <%= event_type_badge_classes %>">
-                  <%= @show.event_type.titleize %>
-                </span>
-                <% date_classes = @show.canceled ? "text-red-400 line-through" : "" %>
-                <div class="text-sm sm:text-md <%= date_classes %>"><%= @show.date_and_time.strftime("%B %d, %Y at %l:%M %p") %></div>
-                <% if @show.canceled %>
-                  <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 w-20 justify-center text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
-                <% end %>
-              </div>
-          </div>
-      </div>
-
-      <div class="col-span-1 space-y-2">
-
-        <% if @show.event_type == "show" %>
-          <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-            <%= render partial: "shared/top_menu", locals: {
-              breadcrumbs: [],
-              text: "Full Cast",
-              links: []
-            } %>
-
-            <div class="text-sm sm:text-md">
-              <table>
-                <% @show_person_role_assignments.each do |assignment| %>
-                  <tr class="<%= 'text-pink-500' if assignment.person == Current.user.person %>">
-                    <td class=""><%= assignment.role.name %></td>
-                    <td class="pl-4 font-bold"><%= assignment.person.name %></td>
-                  </tr>
-                <% end %>
-              </table>
-            </div>
-
+  <div class="mt-4 space-y-4">
+    <!-- Header Card with Production Info -->
+    <div class="p-4 border border-gray-200 rounded-lg">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <% logo_variant = @production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <div class="flex-shrink-0">
+            <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-24 h-24 object-contain rounded" %>
           </div>
         <% end %>
-
-        <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-          <%= render partial: "shared/top_menu", locals: {
-            breadcrumbs: [],
-            text: "Location",
-            links: []
-          } %>
-
-          <% if @show.location.present? %>
-            <div class="text-xs sm:text-md flex flex-col md:flex-row md:space-x-4">
-              <div class="md:w-1/2 ">
-                <div class="font-bold"><%= @show.location.name %></div>
-                <div class="text-gray-500">
-                  <%= @show.location.address1 %><br>
-                  <% if @show.location.address2.present? %>
-                  <%= @show.location.address2 %><br>
-                  <% end %>
-                  <%= "#{@show.location.city}, #{@show.location.state} #{@show.location.postal_code}" %>
-                </div>
-
-                <% if @show.location.notes.present? %>
-                  <div class="mt-2">
-                    <div class="font-bold">Notes/Instructions:</div>
-                    <div class="text-gray-500">
-                      <%= @show.location.notes %>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-
-              <div class="md:w-1/2 mt-4 md:mt-0">
-                <% loc = @show.location %>
-                <% if loc.present? %>
-                  <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
-                  <div class="w-full">
-                    <iframe
-                      width="100%"
-                      height="400"
-                      style="border:0"
-                      loading="lazy"
-                      allowfullscreen
-                      referrerpolicy="no-referrer-when-downgrade"
-                      src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
-                    </iframe>
-                  </div>
-                <% end %>
-              </div>
+        <div class="flex-1">
+          <h2 class="text-lg font-bold text-gray-900"><%= @production.name %></h2>
+          <% if @show.secondary_name.present? %>
+            <div class="text-sm text-gray-600 mt-1"><%= @show.secondary_name %></div>
+          <% end %>
+          <div class="flex items-center gap-2 mt-2 flex-wrap">
+            <% event_type_badge_classes = case @show.event_type
+              when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+              when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+              else "bg-pink-50 text-pink-700 ring-pink-600/10"
+            end %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+              <%= @show.event_type.titleize %>
+            </span>
+            <% if @show.canceled %>
+              <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
+            <% end %>
+          </div>
+          <% if @show.event_type == "show" && @my_assignment %>
+            <div class="mt-2 text-sm text-gray-600">
+              Your Role: <strong class="text-pink-500"><%= @my_assignment.role.name %></strong>
             </div>
           <% end %>
-
         </div>
-
-
-        <% if @show.poster.present? || @show.show_links.any? %>
-          <div class="flex flex-col w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
-            <%= render partial: "shared/top_menu", locals: {
-              breadcrumbs: [],
-              text: "Social Media & Links",
-              links: []
-            } %>
-
-            <% poster_url = safe_poster_url(@show) %>
-            <% if poster_url %>
-              <div class="mt-2">
-                <%= image_tag poster_url, class: "" %>
-              </div>
-            <% end %>
-
-            <% if @show.show_links.any? %>
-              <div class="mt-2 flex flex-col space-y-1">
-                <% @show.show_links.each do |link| %>
-                  <%= link_to link.url, link.url, target: "_blank", rel: "noopener", class: "text-sm text-pink-500 underline" %>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-
       </div>
-
     </div>
 
+    <!-- Poster and Links -->
+    <% poster_url = safe_poster_url(@show) %>
+    <% if poster_url || @show.show_links.any? %>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">Poster & Links</h3>
+        <div class="flex flex-col sm:flex-row gap-4">
+          <% if poster_url %>
+            <div class="flex-shrink-0">
+              <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow w-48 border border-gray-200" %>
+            </div>
+          <% end %>
+          <% if @show.show_links.any? %>
+            <div class="flex-1">
+              <div class="space-y-2">
+                <% @show.show_links.each do |link| %>
+                  <%= link_to link.url, target: "_blank", rel: "noopener", class: "flex items-center gap-2 text-sm text-pink-500 hover:underline" do %>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    <span><%= link.url %></span>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
+    <!-- Cast (for shows only) -->
+    <% if @show.event_type == "show" %>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">Cast</h3>
+        <% if @show_person_role_assignments.any? %>
+          <div class="flex flex-wrap gap-2">
+            <% @show_person_role_assignments.each do |assignment| %>
+              <div class="flex flex-col items-center w-[100px]">
+                <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}" %>
+                <% else %>
+                  <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}">
+                    <%= assignment.person.initials %>
+                  </div>
+                <% end %>
+                <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if assignment.person == Current.user.person %>"><%= assignment.person.name %></div>
+                <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role.name %></div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-sm text-gray-500">No cast members assigned yet</div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Location -->
+    <% if @show.location.present? %>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">Location</h3>
+        <div class="flex items-start gap-2 mb-3">
+          <svg class="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+          <div>
+            <div class="font-medium text-sm text-gray-900"><%= @show.location.name %></div>
+            <% if @show.location.address1.present? %>
+              <div class="text-sm text-gray-600 mt-1">
+                <%= @show.location.address1 %><br>
+                <% if @show.location.address2.present? %>
+                  <%= @show.location.address2 %><br>
+                <% end %>
+                <%= "#{@show.location.city}, #{@show.location.state} #{@show.location.postal_code}" %>
+              </div>
+            <% end %>
+            <% if @show.location.notes.present? %>
+              <div class="mt-2">
+                <div class="font-medium text-sm text-gray-900">Notes/Instructions:</div>
+                <div class="text-sm text-gray-600"><%= @show.location.notes %></div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <% loc = @show.location %>
+        <% if loc.present? %>
+          <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+          <div class="w-full">
+            <iframe
+              width="100%"
+              height="400"
+              style="border:0"
+              loading="lazy"
+              allowfullscreen
+              referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+            </iframe>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+  </div>
 
 </div>
