@@ -1,14 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["specificSection", "castDropdown", "specificOption"]
+    static targets = ["specificSection", "castDropdown", "viewDetailsButton"]
 
     connect() {
-        // Hide the specific people option by default
-        if (this.hasSpecificOptionTarget) {
-            this.specificOptionTarget.classList.add("hidden")
-        }
-
         // Listen to all radio button changes
         this.element.addEventListener('change', (e) => {
             if (e.target.name === 'recipient_type') {
@@ -30,12 +25,12 @@ export default class extends Controller {
             statusDiv.classList.add("hidden")
         }
 
-        // Show/hide the specific people option based on selection
-        if (this.hasSpecificOptionTarget) {
+        // Show/hide the "View Details" button based on selection
+        if (this.hasViewDetailsButtonTarget) {
             if (value === "all") {
-                this.specificOptionTarget.classList.remove("hidden")
+                this.viewDetailsButtonTarget.classList.remove("hidden")
             } else {
-                this.specificOptionTarget.classList.add("hidden")
+                this.viewDetailsButtonTarget.classList.add("hidden")
             }
         }
 
