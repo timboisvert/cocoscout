@@ -10,7 +10,7 @@
     normalizes :email_address, with: ->(e) { e.strip.downcase }
     validates :email_address, presence: true, uniqueness: { case_sensitive: false }
 
-    GOD_MODE_EMAILS = [ "boisvert@gmail.com" ].freeze
+    GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
     def can_manage?
       user_roles.any?
