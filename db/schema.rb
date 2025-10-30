@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_10_29_200451) do
+ActiveRecord::Schema[8.1].define(version: 2025_10_29_234747) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -123,6 +123,19 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_29_200451) do
     t.index ["person_id"], name: "index_casts_people_on_person_id"
   end
 
+  create_table "invitations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.integer "production_company_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id"
+    t.index ["production_company_id"], name: "index_invitations_on_production_company_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
+    t.index ["user_id"], name: "index_invitations_on_user_id"
+  end
+
   create_table "locations", force: :cascade do |t|
     t.string "address1"
     t.string "address2"
@@ -159,6 +172,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_29_200451) do
     t.integer "production_company_id", null: false
     t.index ["person_id", "production_company_id"], name: "idx_on_person_id_production_company_id_91fe15345c"
     t.index ["production_company_id", "person_id"], name: "idx_on_production_company_id_person_id_c33b726b51"
+  end
+
+  create_table "person_invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.integer "production_company_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_company_id"], name: "index_person_invitations_on_production_company_id"
+    t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
   create_table "posters", force: :cascade do |t|
@@ -339,8 +363,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_29_200451) do
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "casts", "productions"
+  add_foreign_key "invitations", "production_companies"
+  add_foreign_key "invitations", "users"
   add_foreign_key "locations", "production_companies"
   add_foreign_key "people", "users"
+  add_foreign_key "person_invitations", "production_companies"
   add_foreign_key "posters", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"

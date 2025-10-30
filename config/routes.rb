@@ -87,9 +87,14 @@ Rails.application.routes.draw do
       end
     end
 
+    # Person invitations - for inviting cast members to join a production company
+    get  "person_invitations/accept/:token",  to: "person_invitations#accept",    as: "accept_person_invitations"
+    post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
+
     resources :people do
       collection do
         get :search
+        post :batch_invite
       end
       member do
         # Used when adding a person to a cast from a person (or person-like) page
@@ -102,7 +107,12 @@ Rails.application.routes.draw do
     resources :locations
 
     resources :productions do
-      get :availability, to: "availability#index"
+      resources :availability, only: [ :index ] do
+        collection do
+          get  :request_availability
+          post :handle_request_availability
+        end
+      end
 
       resources :posters, except: :index
       resources :shows do

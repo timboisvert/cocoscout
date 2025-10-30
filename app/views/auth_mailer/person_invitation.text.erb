@@ -1,0 +1,4 @@
+Welcome to CocoScout
+<%= @production_company.name %> is using CocoScout to manage its productions, auditions, and casting.
+To get started, please click the link below to set a password:
+<%= link_to "Set your password", manage_accept_person_invitations_url(token: @token), target: "_blank", class: "text-pink-500" %>

@@ -10,12 +10,11 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Productions", manage_productions_path],
-      [@production.name, manage_production_path(@production)]
-    ],
+    breadcrumbs: [],
     text: "Availability",
-    links: []
+    links: [
+      { text: "Request Availability", path: request_availability_manage_production_availability_index_path(@production) }
+    ]
   } %>
 
   <% if @cast_members.empty? %>

@@ -135,6 +135,8 @@ class AuthController < ApplicationController
     end
   end
 
+  # DEPRECATED: This flow is replaced by PersonInvitation system
+  # Keeping for backwards compatibility with any old invitation links
   def set_password
     @user = User.find_by(invitation_token: params[:token])
     if @user.nil? || !@user.invitation_token_valid?
@@ -146,6 +148,8 @@ class AuthController < ApplicationController
     @production_companies = @user.person&.production_companies || []
   end
 
+  # DEPRECATED: This flow is replaced by PersonInvitation system
+  # Keeping for backwards compatibility with any old invitation links
   def handle_set_password
     @user = User.find_by(invitation_token: params[:token])
     if @user.nil? || !@user.invitation_token_valid?

@@ -92,11 +92,16 @@ class Manage::PeopleController < Manage::ManageController
         email_address: existing_person.email,
         password: SecureRandom.hex(16)
       )
-      user.generate_invitation_token
       existing_person.update!(user: user)
 
+      # Create person invitation with production company context
+      person_invitation = PersonInvitation.create!(
+        email: existing_person.email,
+        production_company: Current.production_company
+      )
+
       # Send invitation email
-      AuthMailer.invitation(user).deliver_later
+      AuthMailer.person_invitation(person_invitation).deliver_later
 
       redirect_to [ :manage, existing_person ], notice: "User account created and invitation sent to #{existing_person.name}"
     else
@@ -110,11 +115,16 @@ class Manage::PeopleController < Manage::ManageController
           email_address: @person.email,
           password: SecureRandom.hex(16)
         )
-        user.generate_invitation_token
         @person.update!(user: user)
 
+        # Create person invitation with production company context
+        person_invitation = PersonInvitation.create!(
+          email: @person.email,
+          production_company: Current.production_company
+        )
+
         # Send invitation email
-        AuthMailer.invitation(user).deliver_later
+        AuthMailer.person_invitation(person_invitation).deliver_later
 
         redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
       else
@@ -132,7 +142,21 @@ class Manage::PeopleController < Manage::ManageController
   end
 
   def destroy
+    user = @person.user
+
+    # Manually destroy associations that don't have dependent: :destroy
+    @person.auditions.destroy_all
+
+    # Remove from join tables
+    @person.casts.clear
+    @person.production_companies.clear
+
+    # Destroy the user first (which will nullify the person association)
+    user&.destroy!
+
+    # Now destroy the person (dependent associations will be handled automatically)
     @person.destroy!
+
     redirect_to manage_people_path, notice: "Person was successfully deleted", status: :see_other
   end
 
@@ -148,6 +172,77 @@ class Manage::PeopleController < Manage::ManageController
     result_locals = params[:result_locals] || {}
 
     render partial: "shared/people_search_results", locals: { people: @people, result_partial: result_partial, result_locals: result_locals }
+  end
+
+  def batch_invite
+    emails_text = params[:emails].to_s
+    email_lines = emails_text.split(/\r?\n/).map(&:strip).reject(&:blank?)
+
+    invited_count = 0
+    skipped_count = 0
+    errors = []
+
+    email_lines.each do |email|
+      # Validate email format
+      unless email.match?(/\A[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+\z/i)
+        errors << "Invalid email format: #{email}"
+        next
+      end
+
+      # Check if user already exists
+      if User.exists?(email_address: email.downcase)
+        skipped_count += 1
+        next
+      end
+
+      # Check if person already exists
+      if Person.exists?(email: email.downcase)
+        skipped_count += 1
+        next
+      end
+
+      # Generate name from email (part before @)
+      name = email.split("@").first.gsub(/[._-]/, " ").titleize
+
+      # Create person
+      person = Person.new(name: name, email: email.downcase)
+
+      if person.save
+        # Associate with current production company
+        person.production_companies << Current.production_company
+
+        # Create user account
+        user = User.create!(
+          email_address: person.email,
+          password: SecureRandom.hex(16)
+        )
+        person.update!(user: user)
+
+        # Create person invitation
+        person_invitation = PersonInvitation.create!(
+          email: person.email,
+          production_company: Current.production_company
+        )
+
+        # Send invitation email
+        AuthMailer.person_invitation(person_invitation).deliver_later
+
+        invited_count += 1
+      else
+        errors << "Failed to create person for #{email}: #{person.errors.full_messages.join(', ')}"
+      end
+    end
+
+    # Build notice message
+    notice_parts = []
+    notice_parts << "#{invited_count} #{'person'.pluralize(invited_count)} invited" if invited_count > 0
+    notice_parts << "#{skipped_count} skipped (already exists)" if skipped_count > 0
+
+    if errors.any?
+      redirect_to new_manage_person_path, alert: "Errors occurred: #{errors.join('; ')}"
+    else
+      redirect_to manage_people_path, notice: notice_parts.join(", ")
+    end
   end
 
   def add_to_cast
