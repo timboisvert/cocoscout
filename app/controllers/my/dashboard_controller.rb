@@ -13,7 +13,7 @@ class My::DashboardController < ApplicationController
     # My audition requests for call to auditions that are still open
     @open_audition_requests = Current.user.person.audition_requests
       .joins(:call_to_audition)
-      .where("call_to_auditions.closes_at >= ?", Date.current)
+      .where("call_to_auditions.closes_at >= ?", Time.current)
       .includes(:call_to_audition)
       .order("call_to_auditions.closes_at")
   end

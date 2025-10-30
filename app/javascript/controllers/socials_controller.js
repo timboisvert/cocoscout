@@ -11,23 +11,36 @@ export default class extends Controller {
         // Find the current max index
         let maxIndex = -1;
         list.querySelectorAll('.socials-fields-row').forEach(row => {
-            const select = row.querySelector('select[name^="person[socials_attributes]"]');
+            const select = row.querySelector('select[name*="[socials_attributes]"]');
             if (select) {
-                const match = select.name.match(/person\[socials_attributes\]\[(\d+)\]/);
+                const match = select.name.match(/\[socials_attributes\]\[(\d+)\]/);
                 if (match) {
                     maxIndex = Math.max(maxIndex, parseInt(match[1], 10));
                 }
             }
         });
         const nextIndex = maxIndex + 1;
+
+        // Determine the correct base name by checking existing fields
+        let baseName = 'audition_request[person][socials_attributes]';
+        let baseId = 'audition_request_person_socials_attributes';
+        const existingSelect = list.querySelector('select[name*="[socials_attributes]"]');
+        if (existingSelect) {
+            const nameMatch = existingSelect.name.match(/(.*)\[socials_attributes\]/);
+            if (nameMatch) {
+                baseName = nameMatch[1] + '[socials_attributes]';
+                baseId = nameMatch[1].replace(/\[/g, '_').replace(/\]/g, '') + '_socials_attributes';
+            }
+        }
+
         // Set correct names/ids for new fields
         clone.querySelectorAll('select').forEach((el) => {
-            el.name = `person[socials_attributes][${nextIndex}][platform]`;
-            el.id = `person_socials_attributes_${nextIndex}_platform`;
+            el.name = `${baseName}[${nextIndex}][platform]`;
+            el.id = `${baseId}_${nextIndex}_platform`;
         });
         clone.querySelectorAll('input[type="text"]').forEach((el) => {
-            el.name = `person[socials_attributes][${nextIndex}][handle]`;
-            el.id = `person_socials_attributes_${nextIndex}_handle`;
+            el.name = `${baseName}[${nextIndex}][handle]`;
+            el.id = `${baseId}_${nextIndex}_handle`;
         });
         list.appendChild(clone);
     }
@@ -41,7 +54,11 @@ export default class extends Controller {
             const destroyInput = row.querySelector('input[name$="[_destroy]"]');
             if (destroyInput) {
                 destroyInput.value = "1";
-                row.style.display = "none";
+                // Hide the row but keep it in the DOM so the form submits the _destroy field
+                row.style.visibility = "hidden";
+                row.style.height = "0";
+                row.style.overflow = "hidden";
+                row.style.margin = "0";
             }
         } else {
             row.remove();
