@@ -22,6 +22,8 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :letter_opener
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_caching = false
+  config.action_mailer.show_previews = true
+  config.action_mailer.preview_paths << Rails.root.join("spec/mailers/previews")
 
   config.active_support.deprecation = :log
 

@@ -1,5 +1,10 @@
-<p>Hi <%= @person.name %>,</p>
+<h1 style="border-bottom: 2px solid #ec4899; padding-bottom: 15px;">Availability Request</h1>
 
-<p><%= simple_format(@message) %></p>
+<div>
+  <%= simple_format(@message, {}, sanitize: false) %>
+</div>
 
-<p>Thanks!</p>
+<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 25px; font-size: 14px; color: #6b7280;">
+  Thanks!<br>
+  <%= @production.name %>
+</div>

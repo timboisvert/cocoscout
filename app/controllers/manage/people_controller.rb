@@ -101,7 +101,7 @@ class Manage::PeopleController < Manage::ManageController
       )
 
       # Send invitation email
-      AuthMailer.person_invitation(person_invitation).deliver_later
+      Manage::PersonMailer.person_invitation(person_invitation).deliver_later
 
       redirect_to [ :manage, existing_person ], notice: "User account created and invitation sent to #{existing_person.name}"
     else
@@ -124,7 +124,7 @@ class Manage::PeopleController < Manage::ManageController
         )
 
         # Send invitation email
-        AuthMailer.person_invitation(person_invitation).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
 
         redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
       else
@@ -225,7 +225,7 @@ class Manage::PeopleController < Manage::ManageController
         )
 
         # Send invitation email
-        AuthMailer.person_invitation(person_invitation).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
 
         invited_count += 1
       else
