@@ -34,6 +34,22 @@
 
       <% end %>
     </div>
+
+    <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
+      <h2 class="text-lg font-semibold mb-2">Change Email Address</h2>
+      <%= form_with url: change_email_user_path, method: :post, local: true, class: "space-y-3" do |f| %>
+        <div>
+          <%= f.label :old_email, "Current Email Address", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.email_field :old_email, required: true, autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
+        </div>
+        <div>
+          <%= f.label :new_email, "New Email Address", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.email_field :new_email, required: true, autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
+        </div>
+        <%= f.submit "Change Email", class: "w-full rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium cursor-pointer" %>
+      <% end %>
+      <p class="text-xs text-gray-500 mt-2">This will update the user's email_address and their person's email to the new address.</p>
+    </div>
   </div>
 
 

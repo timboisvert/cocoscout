@@ -1,5 +1,5 @@
 class GodModeController < ApplicationController
-  before_action :require_god_mode, only: [ :index, :impersonate ]
+  before_action :require_god_mode, only: [ :index, :impersonate, :change_email ]
 
   def index
     @users = User.order(:email_address)
@@ -69,6 +69,49 @@ class GodModeController < ApplicationController
 
     session.delete(:user_doing_the_impersonating)
     redirect_to my_dashboard_path
+  end
+
+  def change_email
+    old_email = params[:old_email].to_s.strip.downcase
+    new_email = params[:new_email].to_s.strip.downcase
+
+    # Find user and person with old email
+    user = User.find_by(email_address: old_email)
+    person = Person.find_by(email: old_email)
+
+    if user.nil?
+      redirect_to god_mode_path, alert: "No user found with email: #{old_email}"
+      return
+    end
+
+    # Check if new email is already taken
+    if User.exists?(email_address: new_email)
+      redirect_to god_mode_path, alert: "A user with email #{new_email} already exists"
+      return
+    end
+
+    # Wrap in a transaction so both updates succeed or both are rolled back
+    updates_made = []
+    ActiveRecord::Base.transaction do
+      # Update user email
+      user.update!(email_address: new_email)
+      updates_made << "User email"
+
+      # Update person email if person exists
+      if person
+        person.update!(email: new_email)
+        updates_made << "Person email"
+
+        # If person has no production companies, note that
+        if person.production_companies.empty?
+          updates_made << "(Note: Person has no production company associations)"
+        end
+      end
+    end
+
+    redirect_to god_mode_path, notice: "Successfully changed email from #{old_email} to #{new_email}. Updated: #{updates_made.join(', ')}"
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to god_mode_path, alert: "Failed to change email: #{e.message}"
   end
 
   private

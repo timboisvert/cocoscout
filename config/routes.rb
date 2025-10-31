@@ -27,6 +27,7 @@ Rails.application.routes.draw do
     get  "/",                   to: "god_mode#index",               as: "god_mode"
     post "/impersonate",        to: "god_mode#impersonate",         as: "impersonate_user"
     post "/stop_impersonating", to: "god_mode#stop_impersonating",  as: "stop_impersonating_user"
+    post "/change_email",       to: "god_mode#change_email",        as: "change_email_user"
   end
 
   # Respond to an audition request
