@@ -2,7 +2,7 @@ class Show < ApplicationRecord
   belongs_to :production
   belongs_to :location
 
-  has_many :show_person_role_assignments, dependent: :destroy
+  has_many :show_person_role_assignments, -> { joins(:role).order("roles.position ASC, roles.created_at ASC") }, dependent: :destroy
   has_many :people, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 

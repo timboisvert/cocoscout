@@ -5,7 +5,7 @@ class Manage::RolesController < Manage::ManageController
   before_action :ensure_user_is_manager, except: %i[index]
 
   def index
-    @roles = @production.roles.all
+    @roles = @production.roles.order(:position, :created_at)
     @role = @production.roles.new
   end
 
@@ -13,8 +13,12 @@ class Manage::RolesController < Manage::ManageController
   end
 
   def create
-    @roles = @production.roles.all
+    @roles = @production.roles.order(:position, :created_at)
     @role = @production.roles.new(role_params)
+
+    # Set position to be at the end of the list
+    max_position = @production.roles.maximum(:position) || -1
+    @role.position = max_position + 1
 
     if @role.save
       redirect_to manage_production_roles_path(@production), notice: "Role was successfully created"
@@ -24,7 +28,7 @@ class Manage::RolesController < Manage::ManageController
   end
 
   def update
-    @roles = @production.roles.all
+    @roles = @production.roles.order(:position, :created_at)
     if @role.update(role_params)
       redirect_to manage_production_roles_path(@production), notice: "Role was successfully updated", status: :see_other
     else
@@ -35,6 +39,14 @@ class Manage::RolesController < Manage::ManageController
   def destroy
     @role.destroy!
     redirect_to manage_production_roles_path(@production), notice: "Role was successfully deleted", status: :see_other
+  end
+
+  def reorder
+    role_ids = params[:role_ids]
+    role_ids.each_with_index do |id, index|
+      @production.roles.find(id).update(position: index)
+    end
+    head :ok
   end
 
   private

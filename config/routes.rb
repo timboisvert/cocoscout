@@ -136,7 +136,11 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :roles
+      resources :roles do
+        collection do
+          post :reorder
+        end
+      end
 
       resources :call_to_auditions do
         resources :audition_requests do
