@@ -55,7 +55,7 @@
             <% permission = @user.production_permissions.find_by(production: production) %>
             <% effective_role = @user.role_for_production(production) %>
             <% global_role = @user_role&.company_role %>
-            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div class="flex-1">
                 <p class="font-medium"><%= production.name %></p>
                 <% if permission %>

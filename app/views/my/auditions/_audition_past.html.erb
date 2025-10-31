@@ -1,6 +1,6 @@
 <% production = audition.audition_request.call_to_audition.production %>
 
-<div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-center gap-4">
+<div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-center gap-4">
     <% logo_variant = production.safe_logo_variant(:small) %>
     <% if logo_variant %>
         <div class="w-full sm:w-auto sm:flex-shrink-0">

@@ -76,7 +76,7 @@
           <div class="space-y-1">
             <% production_shows.each do |show| %>
               <%= link_to my_show_path(show), class: "block" do %>
-                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm sm:text-base font-semibold">
                       <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
@@ -121,7 +121,7 @@
       <div class="space-y-1">
         <% @shows.each do |show| %>
           <%= link_to my_show_path(show), class: "block" do %>
-            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div class="flex-1 min-w-0">
                 <div class="text-sm sm:text-base font-semibold">
                   <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>

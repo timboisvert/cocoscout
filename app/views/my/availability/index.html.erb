@@ -54,7 +54,7 @@
         <% if @no_response_shows.any? %>
           <div class="space-y-1">
             <% @no_response_shows.each do |show| %>
-            <div class="flex items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
+            <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
               <div class="flex-1 min-w-0 mr-2">
                 <div class="text-sm sm:text-base font-semibold">
                   <span class="sm:hidden">
@@ -138,7 +138,7 @@
         <% if @all_shows.any? %>
           <div class="space-y-1">
             <% @all_shows.each do |show| %>
-            <div class="flex items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
+            <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
               <div class="flex-1 min-w-0 mr-2">
                 <div class="text-sm sm:text-base font-semibold">
                   <span class="sm:hidden">
@@ -232,7 +232,7 @@
 
               <% @shows_by_production[production].each do |show| %>
 
-                <div class="flex items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
+                <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm sm:text-base font-semibold">
                       <span class="sm:hidden">

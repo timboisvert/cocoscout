@@ -18,8 +18,8 @@
       <%= render "shared/person_form", person_form: person_form %>
 
       <div class="w-full border-t border-gray-200 pt-5 my-5">
-        <%= person_form.submit "Update Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
-        <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-block font-medium cursor-pointer" %>
+        <%= person_form.submit "Update Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+        <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
       </div>
 
     <% end %>
