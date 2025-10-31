@@ -14,7 +14,7 @@
       <% if @roles.any? %>
         <div data-controller="role-order" data-role-order-url-value="<%= reorder_manage_production_roles_path(@production) %>">
           <% @roles.each do |role| %>
-            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex cursor-move mb-2" draggable="true" data-role-order-target="item" data-id="<%= role.id %>" data-action="dragstart->role-order#startDrag dragend->role-order#endDrag dragover->role-order#dragOver drop->role-order#drop touchstart->role-order#touchStart touchmove->role-order#touchMove touchend->role-order#touchEnd">
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex cursor-move mb-2" draggable="true" data-role-order-target="item" data-id="<%= role.id %>" data-action="dragstart->role-order#startDrag dragend->role-order#endDrag dragover->role-order#dragOver drop->role-order#drop touchstart->role-order#touchStart touchmove->role-order#touchMove touchend->role-order#touchEnd">
               <div class="flex items-center gap-4 flex-1">
                 <span class="text-gray-400 cursor-move" title="Drag to reorder">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">

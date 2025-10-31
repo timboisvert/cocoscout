@@ -4,7 +4,7 @@
       <% cast.people.each do |cast_member| %>
 
         <%= link_to manage_person_path(cast_member) do %>
-          <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-[120px]">
+          <div class="flex flex-col bg-white items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-[120px]">
             <% headshot_variant = cast_member.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
                 <%= image_tag headshot_variant, alt: cast_member.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>

@@ -84,7 +84,7 @@
         <% @people.each do |person| %>
 
           <%= link_to manage_person_path(person) do %>
-            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
+            <div class="flex flex-col items-center p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
               <% headshot_variant = person.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
                   <%= image_tag headshot_variant, alt: person.name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
@@ -101,7 +101,7 @@
     <% elsif @show == "list" %>
       <div class="flex flex-col w-full mt-4 space-y-2">
         <% @people.each do |person| %>
-          <%= link_to manage_person_path(person), class: "flex items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group cursor-pointer" do %>
+          <%= link_to manage_person_path(person), class: "flex bg-white items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group cursor-pointer" do %>
             <% headshot_variant = person.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover mr-3" %>
