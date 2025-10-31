@@ -25,185 +25,182 @@
       </div>
     <% end %>
 
-    <div class="w-full">
+    <div class="w-full sm:flex sm:space-x-5">
+      <div class="w-full sm:w-1/2">
       <%= form.label :event_type, "Event Type" %>
       <%= form.select :event_type,
-          Show.event_types.keys.map { |type| [type.titleize, type] },
-          { include_blank: false },
-          {
-            class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
-            data: {
-              recurring_event_target: "eventTypeSelect",
-              show_edit_target: "eventTypeSelect",
-              action: "change->recurring-event#updateButtonText change->show-edit#updateUI"
-            }
+        Show.event_types.keys.map { |type| [type.titleize, type] },
+        { include_blank: false },
+        {
+          class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
+          data: {
+          recurring_event_target: "eventTypeSelect",
+          show_edit_target: "eventTypeSelect",
+          action: "change->recurring-event#updateButtonText change->show-edit#updateUI"
           }
+        }
       %>
-    </div>
+      </div>
 
-    <div class="w-full mt-5">
-      <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-96", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
-      <div class="mt-1 ml-1">
-        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
+      <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+        <%= form.label :location_id, "Location" %>
+        <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
+        <div class="mt-1 ml-1">
+          <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
+        </div>
       </div>
     </div>
 
-    <div data-show-edit-target="showOnlyFields" class="<%= 'hidden' unless @show.event_type == 'show' %>">
-      <div class="w-full mt-5">
-        <%= render partial: "shared/top_menu", locals: {
-          breadcrumbs: [],
-          text: "Show Settings",
-          links: []
-        } %>
+    <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-900">Schedule</h3>
       </div>
-
-      <div class="mt-5">
-        <%= form.label :secondary_name %>
-        <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-        <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
-      </div>
-
-      <% if @show.poster.attached? %>
-        <div class="text-md mt-5">Show Poster</div>
-        <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
-            <div class="w-full">
-
-                <% if @show.poster.attached? %>
-                    <div class="mb-4">
-                        <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
-                    </div>
-                <% end %>
-
-                <div class="flex items-center justify-between">
-                  <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
-                  <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-                </div>
-
-                <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                    <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-                </div>
-
-            </div>
+      <div class="p-4">
+        <div class="mb-4">
+          <%= form.label :event_frequency, "Event Frequency" %>
+          <%= form.select :event_frequency,
+              [
+                ["Single Event", "single"],
+                ["Recurring Event", "recurring"]
+              ],
+              { selected: "single" },
+              {
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
+                data: { action: "change->recurring-event#toggle" }
+              }
+          %>
         </div>
-      <% else %>
-        <div class="text-md mt-5">Show Poster</div>
-        <div class="mr-5 inline-block">
 
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-            </div>
-
-            <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-            </div>
-
+        <!-- Single Event Fields -->
+        <div data-recurring-event-target="singleFields">
+          <%= form.label :date_and_time, "Date and Time" %>
+          <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
         </div>
-      <% end %>
 
-      <div class="mt-5" data-controller="show-links">
-        <label>Show Links</label>
-        <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
-        <div id="show-links-fields" data-show-links-target="list" class="mt-1">
-          <%= form.fields_for :show_links do |show_link_form| %>
-            <div class="flex items-center mb-2 show-links-fields-row" data-show-links-target="row">
-              <%= show_link_form.hidden_field :id %>
-              <%= show_link_form.hidden_field :_destroy, value: "0", class: "destroy-flag" %>
-              <%= show_link_form.text_field :url, placeholder: "URL", class: "inline-block w-full sm:w-128 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
-              <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm", data: { action: "show-links#remove" } %>
-            </div>
-          <% end %>
-        </div>
-        <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
-        <template data-show-links-target="template">
-          <div class="flex items-center mb-2 show-links-fields-row" data-show-links-target="row">
-            <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
-            <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
-            <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="inline-block w-full sm:w-128 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" />
-            <a href="#" class="remove-show-link text-pink-500 underline text-sm" data-action="show-links#remove">Remove</a>
+        <!-- Recurring Event Fields -->
+        <div data-recurring-event-target="recurringFields" class="hidden space-y-4">
+          <div>
+            <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
+            <%= form.datetime_field :recurrence_start_datetime,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
+                data: { action: "change->recurring-event#updatePatternOptions" } %>
           </div>
-        </template>
+
+          <div>
+            <%= form.label :recurrence_pattern, "Repeat Pattern" %>
+            <%= form.select :recurrence_pattern,
+                [
+                  ["Weekly (same day each week)", "weekly"],
+                  ["Every other week", "biweekly"],
+                  ["Monthly (same date each month)", "monthly_date"],
+                  ["Monthly (same week and day)", "monthly_week"]
+                ],
+                { include_blank: "Select pattern" },
+                {
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                  data: { recurring_event_target: "patternSelect" }
+                }
+            %>
+          </div>
+          <div>
+            <%= form.label :recurrence_end_type, "Duration" %>
+            <%= form.select :recurrence_end_type,
+                [
+                  ["3 Months", "3_months"],
+                  ["6 Months", "6_months"],
+                  ["12 Months", "12_months"],
+                  ["Until End of #{Date.current.year}", "end_of_year"],
+                  ["Until Specific Date", "custom"]
+                ],
+                { include_blank: "Select duration" },
+                {
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                  data: { action: "change->recurring-event#toggleCustomEndDate" }
+                }
+            %>
+          </div>
+
+          <div data-recurring-event-target="customEndDateField" class="hidden">
+            <%= form.label :recurrence_custom_end_date, "End Date" %>
+            <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
+          </div>
+        </div>
       </div>
     </div>
 
-
-    <div class="w-full mt-5">
-      <%= render partial: "shared/top_menu", locals: {
-        breadcrumbs: [],
-        text: "Schedule",
-        links: []
-      } %>
-    </div>
-
-    <div class="w-full">
-      <div class="mb-4">
-        <%= form.label :event_frequency, "Event Frequency" %>
-        <%= form.select :event_frequency,
-            [
-              ["Single Event", "single"],
-              ["Recurring Event", "recurring"]
-            ],
-            { selected: "single" },
-            {
-              class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
-              data: { action: "change->recurring-event#toggle" }
-            }
-        %>
+    <div data-show-edit-target="showOnlyFields" class="mt-5 border border-gray-200 rounded-lg overflow-hidden <%= 'hidden' unless @show.event_type == 'show' %>">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-900">Optional Show Settings</h3>
       </div>
-
-      <!-- Single Event Fields -->
-      <div data-recurring-event-target="singleFields">
-        <%= form.label :date_and_time, "Date and Time" %>
-        <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
-      </div>
-
-      <!-- Recurring Event Fields -->
-      <div data-recurring-event-target="recurringFields" class="hidden space-y-4">
-        <div>
-          <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
-          <%= form.datetime_field :recurrence_start_datetime,
-              class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
-              data: { action: "change->recurring-event#updatePatternOptions" } %>
-        </div>
+      <div class="p-4">
 
         <div>
-          <%= form.label :recurrence_pattern, "Repeat Pattern" %>
-          <%= form.select :recurrence_pattern,
-              [
-                ["Weekly (same day each week)", "weekly"],
-                ["Every other week", "biweekly"],
-                ["Monthly (same date each month)", "monthly_date"],
-                ["Monthly (same week and day)", "monthly_week"]
-              ],
-              { include_blank: "Select pattern" },
-              {
-                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-                data: { recurring_event_target: "patternSelect" }
-              }
-          %>
-        </div>
-        <div>
-          <%= form.label :recurrence_end_type, "Duration" %>
-          <%= form.select :recurrence_end_type,
-              [
-                ["3 Months", "3_months"],
-                ["6 Months", "6_months"],
-                ["12 Months", "12_months"],
-                ["Until End of #{Date.current.year}", "end_of_year"],
-                ["Until Specific Date", "custom"]
-              ],
-              { include_blank: "Select duration" },
-              {
-                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-                data: { action: "change->recurring-event#toggleCustomEndDate" }
-              }
-          %>
+          <%= form.label :secondary_name %>
+          <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
+          <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
         </div>
 
-        <div data-recurring-event-target="customEndDateField" class="hidden">
-          <%= form.label :recurrence_custom_end_date, "End Date" %>
-          <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
+        <% if @show.poster.attached? %>
+          <div class="text-md mt-5">Show Poster</div>
+          <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md">
+              <div class="w-full">
+
+                  <% if @show.poster.attached? %>
+                      <div class="mb-4">
+                          <%= image_tag url_for(@show.poster), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
+                      </div>
+                  <% end %>
+
+                  <div class="flex items-center justify-between">
+                    <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
+                    <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                  </div>
+
+                  <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                      <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                  </div>
+
+              </div>
+          </div>
+        <% else %>
+          <div class="text-md mt-5">Show Poster</div>
+          <div class="mr-5 inline-block">
+
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+              </div>
+
+              <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                  <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+              </div>
+
+          </div>
+        <% end %>
+
+        <div class="mt-5" data-controller="show-links">
+          <label>Show Links</label>
+          <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
+          <div id="show-links-fields" data-show-links-target="list" class="mt-1">
+            <%= form.fields_for :show_links do |show_link_form| %>
+              <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+                <%= show_link_form.hidden_field :id %>
+                <%= show_link_form.hidden_field :_destroy, value: "0", class: "destroy-flag" %>
+                <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+                <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap", data: { action: "show-links#remove" } %>
+              </div>
+            <% end %>
+          </div>
+          <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
+          <template data-show-links-target="template">
+            <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+              <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
+              <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
+              <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+              <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap" data-action="show-links#remove">Remove</a>
+            </div>
+          </template>
         </div>
+
       </div>
     </div>
 

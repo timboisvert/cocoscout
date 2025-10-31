@@ -12,222 +12,223 @@
 
 <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit" }) do |form| %>
 
-  <div class="w-full">
-    <%= form.label :event_type, "Event Type" %>
-    <%= form.select :event_type,
-        Show.event_types.keys.map { |type| [type.titleize, type] },
-        { include_blank: false },
-        {
-          class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
-          data: {
-            show_edit_target: "eventTypeSelect",
-            recurring_edit_target: "eventTypeSelect",
-            action: "change->show-edit#updateUI change->recurring-edit#updateButtonText"
-          }
-        }
-    %>
-  </div>
-
-  <div class="w-full mt-5">
-    <%= form.label :location_id, "Location" %>
-    <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-96", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
-    <div class="mt-1 ml-1">
-      <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
-    </div>
-  </div>
-
-  <div data-show-edit-target="showOnlyFields" class="<%= 'hidden' unless @show.event_type == 'show' %>">
-    <div class="w-full mt-5">
-      <%= render partial: "shared/top_menu", locals: {
-        breadcrumbs: [],
-        text: "Show Settings",
-        links: []
-      } %>
-    </div>
-
-    <div class="mt-5">
-      <%= form.label :secondary_name %>
-      <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-      <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
-    </div>
-
-    <% if @show.poster.attached? %>
-      <div class="text-md mt-5 flex items-center">
-        <span>Show Poster</span>
-        <button type="button" class="remove-poster-btn ml-3 px-3 py-1 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded-md transition-colors" data-action="click->show-edit#removePoster">
-          Remove Poster
-        </button>
-      </div>
-      <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
-          <div class="w-full">
-
-              <div class="mb-4 poster-image">
-                  <%= image_tag url_for(@show.poster), class: "rounded shadow max-w-72 rounded-lg border border-gray-200" %>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
-                <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-              </div>
-
-              <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                  <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-              </div>
-
-              <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
-
-          </div>
-      </div>
-    <% else %>
-      <div class="text-md mt-5">Show Poster</div>
-      <div class="mr-5 inline-block">
-
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-          </div>
-
-          <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-              <%= form.file_field :poster, class: "text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-          </div>
-
-      </div>
-    <% end %>
-
-    <div class="mt-5" data-controller="show-links">
-      <label>Show Links</label>
-      <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
-      <div id="show-links-fields" data-show-links-target="list" class="mt-1">
-        <%= form.fields_for :show_links do |show_link_form| %>
-          <div class="flex items-center mb-2 show-links-fields-row" data-show-links-target="row">
-            <%= show_link_form.hidden_field :id %>
-            <%= show_link_form.hidden_field :_destroy, value: "0", class: "destroy-flag" %>
-            <%= show_link_form.text_field :url, placeholder: "URL", class: "inline-block w-full sm:w-128 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
-            <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm", data: { action: "show-links#remove" } %>
-          </div>
-        <% end %>
-      </div>
-      <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
-      <template data-show-links-target="template">
-        <div class="flex items-center mb-2 show-links-fields-row" data-show-links-target="row">
-          <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
-          <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
-          <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="inline-block w-full sm:w-128 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" />
-          <a href="#" class="remove-show-link text-pink-500 underline text-sm" data-action="show-links#remove">Remove</a>
-        </div>
-      </template>
-    </div>
-  </div>
-
-  <div class="w-full mt-5">
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Schedule",
-      links: []
-    } %>
-  </div>
-
-  <% if @show.recurring? %>
-    <div class="w-full mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
-      <div class="flex items-center mb-2">
-        <svg class="w-5 h-5 text-pink-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-        <span class="font-medium text-pink-900">This is a recurring event</span>
-      </div>
-      <p class="text-sm text-pink-700 mb-3">This event is part of a series of <%= @show.recurrence_group.count %> events.</p>
-
-      <%= form.label :recurrence_edit_scope, "What would you like to edit?", class: "block text-sm font-medium text-gray-700 mb-2" %>
-      <div class="space-y-2">
-        <label class="flex items-center">
-          <%= form.radio_button :recurrence_edit_scope, "this", checked: true, class: "accent-pink-500 mr-2",
-              data: { recurring_edit_target: "editScopeThis", action: "change->recurring-edit#toggleFields" } %>
-          <span class="text-sm">Only this occurrence (<%= @show.date_and_time.strftime("%B %-d, %Y at %-l:%M %p") %>)</span>
-        </label>
-        <label class="flex items-center">
-          <%= form.radio_button :recurrence_edit_scope, "all", class: "accent-pink-500 mr-2",
-              data: { recurring_edit_target: "editScopeAll", action: "change->recurring-edit#toggleFields" } %>
-          <span class="text-sm">All <%= @show.recurrence_group.count %> occurrences in this series</span>
-        </label>
-      </div>
-    </div>
-  <% end %>
-
-  <!-- Single Event Fields (shown when editing just this occurrence) -->
-  <div data-recurring-edit-target="singleFields" class="<%= @show.recurring? ? '' : '' %>">
-    <div class="w-full">
-      <%= form.label :date_and_time, "Date and Time" %>
-      <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
-    </div>
-  </div>
-
-  <!-- Recurring Event Fields (shown when editing all occurrences) -->
-  <% if @show.recurring? %>
-    <div data-recurring-edit-target="recurringFields" class="hidden space-y-4">
-      <div>
-        <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
-        <%= form.datetime_field :recurrence_start_datetime,
-            value: @show.recurrence_group.order(:date_and_time).first.date_and_time,
-            class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
+  <div class="w-full sm:flex sm:space-x-5">
+    <div class="w-full sm:w-1/2">
+      <%= form.label :event_type, "Event Type" %>
+      <%= form.select :event_type,
+          Show.event_types.keys.map { |type| [type.titleize, type] },
+          { include_blank: false },
+          {
+            class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
             data: {
-              recurring_edit_target: "startDatetime",
-              action: "change->recurring-edit#updatePatternOptions"
-            } %>
-        <p class="text-sm text-gray-500 mt-1">This will become the new first event in the series</p>
-      </div>
-
-      <div>
-        <%= form.label :recurrence_pattern, "Repeat Pattern" %>
-        <%= form.select :recurrence_pattern,
-            [
-              ["Weekly (same day each week)", "weekly"],
-              ["Every other week", "biweekly"],
-              ["Monthly (same date each month)", "monthly_date"],
-              ["Monthly (same week and day)", "monthly_week"]
-            ],
-            { include_blank: "Select pattern" },
-            {
-              class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-              data: { recurring_edit_target: "patternSelect" }
+              show_edit_target: "eventTypeSelect",
+              recurring_edit_target: "eventTypeSelect",
+              action: "change->show-edit#updateUI change->recurring-edit#updateButtonText"
             }
-        %>
-      </div>
+          }
+      %>
+    </div>
 
-      <div>
-        <%= form.label :recurrence_end_type, "Duration" %>
-        <%= form.select :recurrence_end_type,
-            [
-              ["3 Months", "3_months"],
-              ["6 Months", "6_months"],
-              ["12 Months", "12_months"],
-              ["Until End of #{Date.current.year}", "end_of_year"],
-              ["Until Specific Date", "custom"]
-            ],
-            { include_blank: "Select duration" },
-            {
-              class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-              data: { action: "change->recurring-edit#toggleCustomEndDate" }
-            }
-        %>
-      </div>
-
-      <div data-recurring-edit-target="customEndDateField" class="hidden">
-        <%= form.label :recurrence_custom_end_date, "End Date" %>
-        <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
-      </div>
-
-      <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div class="flex items-start">
-          <svg class="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
-          <div>
-            <p class="text-sm font-medium text-yellow-900">Important</p>
-            <p class="text-sm text-yellow-700 mt-1">Changing the recurrence pattern will delete all existing events in this series and create new ones based on the new pattern. Any cast assignments or customizations will be lost.</p>
-          </div>
-        </div>
+    <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+      <%= form.label :location_id, "Location" %>
+      <%= form.collection_select :location_id, Current.production_company.locations.all, :id, :name, { prompt: "Select a location" }, { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )], required: true } %>
+      <div class="mt-1 ml-1">
+        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
       </div>
     </div>
-  <% end %>
+  </div>
+
+  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-900">Schedule</h3>
+    </div>
+    <div class="p-4">
+
+      <% if @show.recurring? %>
+        <div class="w-full mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
+          <div class="flex items-center mb-2">
+            <svg class="w-5 h-5 text-pink-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span class="font-medium text-pink-900">This is a recurring event</span>
+          </div>
+          <p class="text-sm text-pink-700 mb-3">This event is part of a series of <%= @show.recurrence_group.count %> events.</p>
+
+          <%= form.label :recurrence_edit_scope, "What would you like to edit?", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <div class="space-y-2">
+            <label class="flex items-center">
+              <%= form.radio_button :recurrence_edit_scope, "this", checked: true, class: "accent-pink-500 mr-2",
+                  data: { recurring_edit_target: "editScopeThis", action: "change->recurring-edit#toggleFields" } %>
+              <span class="text-sm">Only this occurrence (<%= @show.date_and_time.strftime("%B %-d, %Y at %-l:%M %p") %>)</span>
+            </label>
+            <label class="flex items-center">
+              <%= form.radio_button :recurrence_edit_scope, "all", class: "accent-pink-500 mr-2",
+                  data: { recurring_edit_target: "editScopeAll", action: "change->recurring-edit#toggleFields" } %>
+              <span class="text-sm">All <%= @show.recurrence_group.count %> occurrences in this series</span>
+            </label>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Single Event Fields (shown when editing just this occurrence) -->
+      <div data-recurring-edit-target="singleFields" class="<%= @show.recurring? ? '' : '' %>">
+        <div class="w-full">
+          <%= form.label :date_and_time, "Date and Time" %>
+          <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
+        </div>
+      </div>
+
+      <!-- Recurring Event Fields (shown when editing all occurrences) -->
+      <% if @show.recurring? %>
+        <div data-recurring-edit-target="recurringFields" class="hidden space-y-4">
+          <div>
+            <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
+            <%= form.datetime_field :recurrence_start_datetime,
+                value: @show.recurrence_group.order(:date_and_time).first.date_and_time,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
+                data: {
+                  recurring_edit_target: "startDatetime",
+                  action: "change->recurring-edit#updatePatternOptions"
+                } %>
+            <p class="text-sm text-gray-500 mt-1">This will become the new first event in the series</p>
+          </div>
+
+          <div>
+            <%= form.label :recurrence_pattern, "Repeat Pattern" %>
+            <%= form.select :recurrence_pattern,
+                [
+                  ["Weekly (same day each week)", "weekly"],
+                  ["Every other week", "biweekly"],
+                  ["Monthly (same date each month)", "monthly_date"],
+                  ["Monthly (same week and day)", "monthly_week"]
+                ],
+                { include_blank: "Select pattern" },
+                {
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                  data: { recurring_edit_target: "patternSelect" }
+                }
+            %>
+          </div>
+
+          <div>
+            <%= form.label :recurrence_end_type, "Duration" %>
+            <%= form.select :recurrence_end_type,
+                [
+                  ["3 Months", "3_months"],
+                  ["6 Months", "6_months"],
+                  ["12 Months", "12_months"],
+                  ["Until End of #{Date.current.year}", "end_of_year"],
+                  ["Until Specific Date", "custom"]
+                ],
+                { include_blank: "Select duration" },
+                {
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                  data: { action: "change->recurring-edit#toggleCustomEndDate" }
+                }
+            %>
+          </div>
+
+          <div data-recurring-edit-target="customEndDateField" class="hidden">
+            <%= form.label :recurrence_custom_end_date, "End Date" %>
+            <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
+          </div>
+
+          <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-start">
+              <svg class="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-yellow-900">Important</p>
+                <p class="text-sm text-yellow-700 mt-1">Changing the recurrence pattern will delete all existing events in this series and create new ones based on the new pattern. Any cast assignments or customizations will be lost.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div data-show-edit-target="showOnlyFields" class="mt-5 border border-gray-200 rounded-lg overflow-hidden <%= 'hidden' unless @show.event_type == 'show' %>">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-900">Other Show Settings</h3>
+    </div>
+    <div class="p-4">
+      <div>
+        <%= form.label :secondary_name %>
+        <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
+        <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
+      </div>
+
+      <% if @show.poster.attached? %>
+        <div class="text-md mt-5 flex items-center">
+          <span>Show Poster</span>
+          <button type="button" class="remove-poster-btn ml-3 px-3 py-1 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded-md transition-colors" data-action="click->show-edit#removePoster">
+            Remove Poster
+          </button>
+        </div>
+        <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
+            <div class="w-full">
+
+                <div class="mb-4 poster-image">
+                    <%= image_tag url_for(@show.poster), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
+                  <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+                </div>
+
+                <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                    <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                </div>
+
+                <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
+
+            </div>
+        </div>
+      <% else %>
+        <div class="text-md mt-5">Show Poster</div>
+        <div class="mr-5 inline-block">
+
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+            </div>
+
+            <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+            </div>
+
+        </div>
+      <% end %>
+
+      <div class="mt-5" data-controller="show-links">
+        <label>Show Links</label>
+        <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
+        <div id="show-links-fields" data-show-links-target="list" class="mt-1">
+          <%= form.fields_for :show_links do |show_link_form| %>
+            <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+              <%= show_link_form.hidden_field :id %>
+              <%= show_link_form.hidden_field :_destroy, value: "0", class: "destroy-flag" %>
+              <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+              <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap", data: { action: "show-links#remove" } %>
+            </div>
+          <% end %>
+        </div>
+        <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
+        <template data-show-links-target="template">
+          <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+            <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
+            <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
+            <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+            <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap" data-action="show-links#remove">Remove</a>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+
 
   <div class="w-full border-t border-gray-200 pt-5 my-5">
     <%= form.submit "Update #{@show.event_type.titleize}",
