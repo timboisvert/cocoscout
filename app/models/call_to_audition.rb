@@ -17,6 +17,9 @@ class CallToAudition < ApplicationRecord
     video_upload: "video_upload"
   }
 
+  # Serialize availability_event_types as an array
+  serialize :availability_event_types, coder: JSON
+
   def production_name
     self.production.name
   end

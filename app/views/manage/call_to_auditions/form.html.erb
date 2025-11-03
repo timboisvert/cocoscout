@@ -10,21 +10,90 @@
     links: []
   } %>
 
-  <div class="w-full" data-controller="tabs">
-    <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-       <% idx = 0 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
-      <% idx += 1 %>
-      <% if @call_to_audition.audition_type == "video_upload" %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Video Field</button>
-        <% idx += 1 %>
-      <% end %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Success Text</button>
-      <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Custom Questions</button>
-    </nav>
+  <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+    <!-- Upper Tabs: Availability & Custom Questions -->
+    <div class="w-full mb-6" data-controller="tabs">
+      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Availability</button>
+        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Custom Questions</button>
+      </nav>
 
-    <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+      <!-- Availability Panel -->
+      <div data-tabs-target="panel">
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-4">Availability Section</h3>
+          <p class="text-sm text-gray-500 mb-4">Include a section on the sign-up form where auditionees can indicate their availability for scheduled events.</p>
+
+          <div class="mb-4">
+            <%= form.check_box :include_availability_section, class: "rounded border-gray-300 text-pink-600 focus:ring-pink-500" %>
+            <%= form.label :include_availability_section, "Include availability section on sign-up form", class: "ml-2 text-sm font-medium text-gray-700" %>
+          </div>
+
+          <div class="mb-4">
+            <label class="text-sm font-medium text-gray-700 block mb-2">Show event types:</label>
+            <div class="space-y-2">
+              <% Show.event_types.keys.each do |event_type| %>
+                <div>
+                  <%= check_box_tag "call_to_audition[availability_event_types][]", event_type, @call_to_audition.availability_event_types&.include?(event_type), class: "rounded border-gray-300 text-pink-600 focus:ring-pink-500" %>
+                  <%= label_tag "call_to_audition_availability_event_types_#{event_type}", event_type.titleize, class: "ml-2 text-sm text-gray-700" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <% if @production.shows.any? %>
+            <div class="mb-4">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Currently scheduled events:</h4>
+              <div class="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <ul class="space-y-1 text-sm">
+                  <% @production.shows.order(:date_and_time).each do |show| %>
+                    <li class="flex justify-between">
+                      <span>
+                        <%= show.event_type.titleize %>
+                        <% if show.secondary_name.present? %>
+                          - <%= show.secondary_name %>
+                        <% end %>
+                      </span>
+                      <span class="text-gray-500"><%= show.date_and_time.strftime("%b %d, %Y at %I:%M %p") %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          <% else %>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p class="text-sm text-yellow-800">No events scheduled yet.</p>
+            </div>
+          <% end %>
+
+          <div>
+            <%= link_to "Schedule shows and events", manage_production_shows_path(@production), class: "text-sm text-pink-600 hover:text-pink-700 font-medium" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Questions Panel -->
+      <div data-tabs-target="panel" class="hidden">
+        <div class="my-5">
+          <p class="text-sm text-gray-500 pb-5">You can add additional questions to your Sign-up form.</p>
+          <%= render partial: "questions" %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lower Tabs: Text Content -->
+    <div class="w-full" data-controller="tabs">
+      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+        <% idx = 0 %>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
+        <% idx += 1 %>
+        <% if @call_to_audition.audition_type == "video_upload" %>
+          <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Video Field Text</button>
+          <% idx += 1 %>
+        <% end %>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Success Text</button>
+      </nav>
+
       <%= hidden_field_tag :active_tab, params[:tab] || 0, data: { tabs_target: "hiddenField" } %>
       <div data-tabs-target="panel">
         <div class="my-5">
@@ -63,14 +132,7 @@
           <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
         </div>
       </div>
-    <% end %>
-
-    <div data-tabs-target="panel" class="hidden">
-      <div class="my-5">
-        <p class="text-sm text-gray-500 pb-5">You can add additional questions to your Sign-up form.</p>
-        <%= render partial: "questions" %>
-      </div>
     </div>
-  </div>
+  <% end %>
 
 </div>

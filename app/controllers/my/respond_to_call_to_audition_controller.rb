@@ -29,6 +29,23 @@ class My::RespondToCallToAuditionController < ApplicationController
 
     @person = Current.user.person
 
+    # Load shows for availability section if enabled
+    if @call_to_audition.include_availability_section
+      @production = @call_to_audition.production
+      @shows = @production.shows.order(:date_and_time)
+
+      # Filter by event types if specified
+      if @call_to_audition.availability_event_types.present?
+        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      end
+
+      # Load existing availability data
+      @availability = {}
+      ShowAvailability.where(person: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+        @availability["#{show_availability.show_id}"] = show_availability.status.to_s
+      end
+    end
+
     # First we'll check if they've already responded to this call to audition
     if @call_to_audition.audition_requests.exists?(person: Current.user.person)
 
@@ -127,6 +144,31 @@ class My::RespondToCallToAuditionController < ApplicationController
 
       # Save the audition request and redirect to the success page
       @audition_request.save!
+
+      # Save availability data if included
+      if @call_to_audition.include_availability_section && params[:availability].present?
+        params[:availability].each do |show_id, status|
+          next if status.blank?
+
+          show_availability = ShowAvailability.find_or_initialize_by(
+            person: @person,
+            show_id: show_id
+          )
+
+          # Map the status values to the enum
+          show_availability.status = if status == "available"
+            :available
+          elsif status == "unavailable"
+            :unavailable
+          elsif status == "maybe"
+            :unset  # Map "maybe" to unset for now
+          else
+            :unset
+          end
+          show_availability.save!
+        end
+      end
+
       redirect_to my_respond_to_call_to_audition_success_path(token: @call_to_audition.token), status: :see_other
     else
       render :form

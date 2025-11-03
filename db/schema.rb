@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_10_31_143618) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_03_154713) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -87,7 +87,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_10_31_143618) do
   create_table "auditions", force: :cascade do |t|
     t.integer "audition_request_id", null: false
     t.integer "audition_session_id"
+    t.text "availability_event_types"
     t.datetime "created_at", null: false
+    t.boolean "include_availability_section", default: false
     t.integer "person_id", null: false
     t.datetime "updated_at", null: false
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
