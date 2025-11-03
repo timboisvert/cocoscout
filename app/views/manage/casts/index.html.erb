@@ -1,14 +1,16 @@
-<% content_for :title, "Casting" %>
+<% content_for :title, "Cast" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "Casting",
+    text: "Cast",
     links: [
       { text: "Add a Cast", path: new_manage_production_cast_path(@production) }
     ]
   } %>
+
+  <p class="text-sm text-gray-500 pb-4">You can create any number of casts, each with its own group of cast members.</p>
 
   <div id="casts" class="min-w-full space-y-5">
     <% if @casts.any? %>

@@ -21,10 +21,12 @@
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Video</button>
         <% idx += 1 %>
       <% end %>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Availability</button>
+      <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
       <% idx += 1 %>
       <% if @call_to_audition.audition_type == "video_upload" %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Cast Membership</button>
       <% end %>
 
     </nav>
@@ -61,6 +63,51 @@
         <% end %>
       </div>
     <% end %>
+
+    <div data-tabs-target="panel" class="hidden">
+      <% if @call_to_audition.include_availability_section && @shows.present? %>
+        <div class="space-y-2 mt-2">
+          <% @shows.each do |show| %>
+            <div class="p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+              <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0 mr-4">
+                  <div class="text-sm font-semibold text-gray-900">
+                    <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                    <%= show.date_and_time.strftime("%l:%M %p") %>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                    <% event_type_badge_classes = case show.event_type
+                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                    end %>
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                      <%= show.event_type.titleize %>
+                    </span>
+                    <% if show.secondary_name.present? %>
+                      <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
+                    <% end %>
+                  </div>
+                </div>
+
+                <div class="flex-shrink-0">
+                  <% status = @availability&.dig("#{show.id}") %>
+                  <% if status == "available" %>
+                    <span class="text-sm font-medium text-pink-500">Available</span>
+                  <% elsif status == "unavailable" %>
+                    <span class="text-sm font-medium text-gray-900">Unavailable</span>
+                  <% else %>
+                    <span class="text-sm font-medium text-gray-400">-</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-center mt-10 text-gray-500">No availability entered</p>
+      <% end %>
+    </div>
 
     <div data-tabs-target="panel" class="hidden">
       <% if @answers.any? %>

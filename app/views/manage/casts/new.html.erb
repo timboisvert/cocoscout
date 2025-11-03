@@ -1,10 +1,10 @@
-<% content_for :title, "Casting" %>
+<% content_for :title, "Cast" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casts_path(@production)]
+      ["Cast", manage_production_casts_path(@production)]
     ],
     text: "Create a Cast",
     links: []

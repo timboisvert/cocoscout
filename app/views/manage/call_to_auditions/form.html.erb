@@ -31,7 +31,7 @@
           <div class="<%= @call_to_audition.include_availability_section == true ? '' : 'hidden' %>" data-availability-filter-target="eventSection">
             <div class="mb-4">
               <%= form.check_box :require_all_availability, class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" %>
-              <%= form.label :require_all_availability, "Require auditionees to respond to all shows and events", class: "ml-2 text-sm text-gray-700" %>
+              <%= form.label :require_all_availability, "Require auditionees to enter availability in order to submit sign-up form", class: "ml-2 text-sm text-gray-700" %>
             </div>
 
           <div class="flex flex-col md:flex-row gap-6">

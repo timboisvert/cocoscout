@@ -39,6 +39,19 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
     # Get status counts for buttons
     @status_counts = @call_to_audition.audition_requests.group(:status).count
+
+    # Load availability data if enabled
+    if @call_to_audition.include_availability_section
+      @shows = @production.shows.order(:date_and_time)
+      if @call_to_audition.availability_event_types.present?
+        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      end
+
+      @availability = {}
+      ShowAvailability.where(person: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+        @availability["#{show_availability.show_id}"] = show_availability.status.to_s
+      end
+    end
   end
 
   def new
