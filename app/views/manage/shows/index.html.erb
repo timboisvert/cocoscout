@@ -37,7 +37,7 @@
   <% if @shows.any? %>
     <div class="grid grid-cols-1 gap-2">
       <% @shows.each_with_index do |show, idx| %>
-        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" %>>
+        <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 && @filter == "upcoming" && !@first_item_closed %>>
 
           <div class="cursor-pointer select-none" data-action="click->show-toggle#toggle">
             <div class="flex items-start gap-2">
@@ -47,7 +47,7 @@
 
               <div class="flex-1">
                 <div class="flex flex-row sm:items-center gap-2">
-                  <p class="font-bold text-sm sm:text-base <%= 'line-through text-red-400' if show.canceled %>">
+                  <p class="font-bold text-sm <%= 'line-through text-red-400' if show.canceled %>">
                     <%= show.date_and_time.strftime("%A, %B %-d, %Y") %> at <%= show.date_and_time.strftime("%l:%M %p") %>
                   </p>
 
@@ -68,7 +68,7 @@
                     when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
                     else "bg-pink-50 text-pink-700 ring-pink-600/10"
                   end %>
-                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
                     <%= show.event_type.titleize %>
                   </span>
 

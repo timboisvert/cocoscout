@@ -56,7 +56,7 @@
             <% @no_response_shows.each do |show| %>
             <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
               <div class="flex-1 min-w-0 mr-2">
-                <div class="text-sm sm:text-base font-semibold">
+                <div class="text-sm font-semibold">
                   <span class="sm:hidden">
                     <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
                     <%= show.date_and_time.strftime("%l:%M %p") %>
@@ -140,7 +140,7 @@
             <% @all_shows.each do |show| %>
             <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
               <div class="flex-1 min-w-0 mr-2">
-                <div class="text-sm sm:text-base font-semibold">
+                <div class="text-sm font-semibold">
                   <span class="sm:hidden">
                     <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
                     <%= show.date_and_time.strftime("%l:%M %p") %>
@@ -234,7 +234,7 @@
 
                 <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
                   <div class="flex-1 min-w-0">
-                    <div class="text-sm sm:text-base font-semibold">
+                    <div class="text-sm font-semibold">
                       <span class="sm:hidden">
                         <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
                         <%= show.date_and_time.strftime("%l:%M %p") %>

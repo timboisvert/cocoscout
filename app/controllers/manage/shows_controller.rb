@@ -7,7 +7,19 @@ class Manage::ShowsController < Manage::ManageController
   def index
     # Store the shows filter
     @filter = (params[:filter] || session[:shows_filter] || "upcoming")
+
+    # Reset the first_item_closed session variable if the filter changed
+    if session[:shows_filter] != @filter
+      session[:shows_first_item_closed] = nil
+    end
+
     session[:shows_filter] = @filter
+
+    # Check if first item should be closed (from param or session)
+    if params[:first_closed].present?
+      session[:shows_first_item_closed] = params[:first_closed] == "true"
+    end
+    @first_item_closed = session[:shows_first_item_closed] == true
 
     # Get the shows using the shows filter
     @shows = @production.shows

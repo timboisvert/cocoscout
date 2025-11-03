@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_03_154713) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_03_165517) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -87,9 +87,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_03_154713) do
   create_table "auditions", force: :cascade do |t|
     t.integer "audition_request_id", null: false
     t.integer "audition_session_id"
-    t.text "availability_event_types"
     t.datetime "created_at", null: false
-    t.boolean "include_availability_section", default: false
     t.integer "person_id", null: false
     t.datetime "updated_at", null: false
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
@@ -99,11 +97,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_03_154713) do
 
   create_table "call_to_auditions", force: :cascade do |t|
     t.string "audition_type", default: "in_person", null: false
+    t.text "availability_event_types"
     t.datetime "closes_at"
     t.datetime "created_at", null: false
     t.text "header_text"
+    t.boolean "include_availability_section", default: false
     t.datetime "opens_at"
     t.integer "production_id", null: false
+    t.boolean "require_all_availability", default: false
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false

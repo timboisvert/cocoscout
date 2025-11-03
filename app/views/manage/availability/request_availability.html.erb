@@ -18,8 +18,8 @@
   <%= form_with url: handle_request_availability_manage_production_availability_index_path(@production), method: :post, local: true, class: "contents", data: { controller: "availability-request" } do |form| %>
 
     <div class="mb-5">
-      <label class="block font-semibold mb-2">
-        Send to
+      <label class="block font-semibold mb-2 text-sm">
+        Send to:
       </label>
       <div class="space-y-2">
         <div>
@@ -115,7 +115,7 @@
     </div>
 
     <div class="mb-5">
-      <%= label_tag :message, "Message Preview", class: "block font-semibold mb-2" %>
+      <%= label_tag :message, "Message Preview:", class: "block font-semibold mb-2 text-sm" %>
       <%= text_area_tag :message, @default_message, rows: 12, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
       <p class="mt-2 text-sm text-gray-500">
         This is a preview of the email message. Each person will receive a personalized version listing only the shows they haven't submitted availability for yet.

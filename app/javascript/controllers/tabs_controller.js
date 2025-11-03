@@ -42,9 +42,7 @@ export default class extends Controller {
 
         // Update the URL hash without triggering a page scroll
         history.replaceState(null, '', `#tab-${idx}`);
-    }
-
-    show(idx) {
+    } show(idx) {
         this.tabTargets.forEach((tab, i) => {
             if (i === idx) {
                 tab.classList.add("border-pink-500", "text-pink-600", "bg-white");
@@ -57,16 +55,5 @@ export default class extends Controller {
         this.panelTargets.forEach((panel, i) => {
             panel.classList.toggle("hidden", i !== idx);
         });
-
-        // Hide/show the form buttons based on active tab
-        // This is a hack just for the edit call to audition form
-        const buttonsDiv = document.getElementById('call-to-audition-form-buttons');
-        if (buttonsDiv) {
-            if (idx === 3) {
-                buttonsDiv.style.display = "none";
-            } else {
-                buttonsDiv.style.display = "";
-            }
-        }
     }
 }

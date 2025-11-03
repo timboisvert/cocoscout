@@ -126,8 +126,26 @@ class My::RespondToCallToAuditionController < ApplicationController
       end
     end
 
+    # Validate required availability if enabled
+    @missing_availability = false
+    if @call_to_audition.include_availability_section && @call_to_audition.require_all_availability
+      # Load shows to check
+      @shows = @production.shows.order(:date_and_time)
+      if @call_to_audition.availability_event_types.present?
+        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      end
+
+      # Check if all shows have a response
+      @shows.each do |show|
+        if params[:availability].blank? || params[:availability]["#{show.id}"].blank?
+          @missing_availability = true
+          break
+        end
+      end
+    end
+
     # Validate and save
-    if @missing_required_questions.any?
+    if @missing_required_questions.any? || @missing_availability
       render :form, status: :unprocessable_entity
     elsif @audition_request.valid?
 
@@ -160,8 +178,6 @@ class My::RespondToCallToAuditionController < ApplicationController
             :available
           elsif status == "unavailable"
             :unavailable
-          elsif status == "maybe"
-            :unset  # Map "maybe" to unset for now
           else
             :unset
           end
