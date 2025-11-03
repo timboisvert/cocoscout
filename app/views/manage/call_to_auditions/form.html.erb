@@ -31,6 +31,11 @@
           <p class="text-sm text-gray-500 pb-5">At the top of the Sign-up form you can add text to describe the production, the audition process, cast expectations, etc.</p>
           <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto", {"border-gray-400": @call_to_audition.errors[:header_text].none?, "border-pink-500": @call_to_audition.errors[:header_text].any?}] %>
         </div>
+
+        <div class="w-full border-t border-gray-200 pt-5 my-5">
+          <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+          <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        </div>
       </div>
 
       <% if @call_to_audition.audition_type == "video_upload" %>
@@ -38,6 +43,11 @@
           <div class="my-5">
             <p class="text-sm text-gray-500 pb-5">Add text that gets shown with the video upload URL, which can be used to provide instructions on what the video should be, how it should be uploaded, etc.</p>
             <%= form.rich_text_area :video_field_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto", {"border-gray-400": @call_to_audition.errors[:video_field_text].none?, "border-pink-500": @call_to_audition.errors[:video_field_text].any?}] %>
+          </div>
+
+          <div class="w-full border-t border-gray-200 pt-5 my-5">
+            <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+            <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
           </div>
         </div>
       <% end %>
@@ -47,11 +57,11 @@
           <p class="text-sm text-gray-500 pb-5">After an auditionee submits the Sign-up form, they're shown text that you can customize here.</p>
           <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto", {"border-gray-400": @call_to_audition.errors[:success_text].none?, "border-pink-500": @call_to_audition.errors[:success_text].any?}] %>
         </div>
-      </div>
 
-      <div class="w-full border-t border-gray-200 pt-5 my-5" id="call-to-audition-form-buttons">
-        <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-        <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        <div class="w-full border-t border-gray-200 pt-5 my-5" id="call-to-audition-form-buttons">
+          <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+          <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        </div>
       </div>
     <% end %>
 
