@@ -12,6 +12,7 @@
                 <div class="mb-3">
                     <h3 class="font-semibold text-sm text-gray-700 mb-2"><%= cast.name %></h3>
 
+                    <div class="space-y-1">
                     <% cast.people.each do |person| %>
                         <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
                         <% person_availability = availability[person.id] %>
@@ -38,9 +39,11 @@
                         </div>
                         <% has_visible_people = true %>
                     <% end %>
+                    </div>
                 </div>
             <% else %>
                 <!-- Single cast - no cast name header -->
+                <div class="space-y-1">
                 <% cast.people.each do |person| %>
                     <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
                     <% person_availability = availability[person.id] %>
@@ -67,6 +70,7 @@
                     </div>
                     <% has_visible_people = true %>
                 <% end %>
+                </div>
             <% end %>
         <% end %>
 

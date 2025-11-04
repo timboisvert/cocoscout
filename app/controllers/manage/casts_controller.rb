@@ -69,7 +69,7 @@ class Manage::CastsController < Manage::ManageController
       @people = @people.where.not(id: cast.people.pluck(:id))
     end
 
-    render partial: "manage/casts/search_results", locals: { people: @people }
+    render partial: "manage/casts/search_results", locals: { people: @people, cast_id: cast_id }
   end
 
   private

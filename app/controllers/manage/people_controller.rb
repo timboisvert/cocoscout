@@ -1,6 +1,6 @@
 class Manage::PeopleController < Manage::ManageController
   before_action :set_person, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_global_manager, except: %i[index show search remove_from_production_company]
+  before_action :ensure_user_is_global_manager, except: %i[index show remove_from_production_company]
 
   def index
     # Store the order

@@ -14,28 +14,141 @@ export default class extends Controller {
         event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50');
     }
 
+    dragStartAssignment(event) {
+        const element = event.currentTarget;
+        const personId = element.dataset.personId;
+        const sourceRoleId = element.dataset.sourceRoleId;
+
+        // Store data for role-to-role dragging
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("personId", personId);
+        event.dataTransfer.setData("sourceRoleId", sourceRoleId);
+
+        // Visual feedback
+        element.style.opacity = "0.5";
+    }
+
+    dragEnd(event) {
+        // Remove visual feedback
+        event.currentTarget.style.opacity = "1";
+    }
+
     assign(event) {
         event.preventDefault();
+        event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50');
+
         const roleId = event.currentTarget.dataset.roleId;
-        const personId = event.dataTransfer.getData("text/plain");
+        let personId = event.dataTransfer.getData("personId");
+        let sourceRoleId = event.dataTransfer.getData("sourceRoleId");
+        
+        // Fallback to text/plain for cast members dragged from other sources
+        if (!personId) {
+            personId = event.dataTransfer.getData("text/plain");
+        }
+        
         const showId = this.element.dataset.showId;
 
-        fetch(`/manage/shows/${showId}/assign_person_to_role`, {
+        // If dragging from an assignment (role-to-role), sourceRoleId will be set
+        if (sourceRoleId && sourceRoleId !== roleId) {
+            // Remove from source role first, then add to target role
+            this.moveAssignment(showId, personId, sourceRoleId, roleId);
+        } else {
+            // Dragging from cast members list (cast-person drag)
+            // First, remove anyone from the target role
+            fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                },
+                body: JSON.stringify({ role_id: roleId })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    // Get the person who was removed from target role (if any)
+                    const removedPersonId = data.person_id;
+                    
+                    // Ungray the person who was removed from the target role
+                    if (removedPersonId) {
+                        const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${removedPersonId}"]`);
+                        if (personElement) {
+                            personElement.classList.remove('opacity-50');
+                        }
+                    }
+                    
+                    // Now assign the person to the target role
+                    return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                        },
+                        body: JSON.stringify({ person_id: personId, role_id: roleId })
+                    });
+                })
+                .then(r => r.json())
+                .then(data => {
+                    // Find the person element and add opacity-50
+                    const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${personId}"]`);
+                    if (personElement) {
+                        personElement.classList.add('opacity-50');
+                    }
+
+                    // Update roles list
+                    if (data.roles_html) {
+                        document.getElementById("show-roles").outerHTML = data.roles_html;
+                    }
+                });
+        }
+    }
+
+    moveAssignment(showId, personId, sourceRoleId, targetRoleId) {
+        // First, remove the person from the source role
+        fetch(`/manage/shows/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify({ person_id: personId, role_id: roleId })
+            body: JSON.stringify({ role_id: sourceRoleId })
         })
             .then(r => r.json())
             .then(data => {
-                // Find the person element and add opacity-50
-                const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${personId}"]`);
-                if (personElement) {
-                    personElement.classList.add('opacity-50');
+                // Now check if target role has an assignment and remove it
+                return fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ role_id: targetRoleId })
+                });
+            })
+            .then(r => r.json())
+            .then(data => {
+                // Get the person who was removed from target role (if any)
+                const removedPersonId = data.person_id;
+                
+                // Ungray the person who was removed from the target role
+                if (removedPersonId) {
+                    const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${removedPersonId}"]`);
+                    if (personElement) {
+                        personElement.classList.remove('opacity-50');
+                    }
                 }
-
+                
+                // Now assign the person to the target role
+                return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ person_id: personId, role_id: targetRoleId })
+                });
+            })
+            .then(r => r.json())
+            .then(data => {
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;

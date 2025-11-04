@@ -403,14 +403,26 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def remove_person_from_role
-    assignment = @show.show_person_role_assignments.find(params[:assignment_id])
-    assignment.destroy! if assignment
+    # Support both assignment_id and role_id for removal
+    removed_person_id = nil
+    
+    if params[:assignment_id]
+      assignment = @show.show_person_role_assignments.find(params[:assignment_id])
+      removed_person_id = assignment&.person_id
+      assignment.destroy! if assignment
+    elsif params[:role_id]
+      # Get the person before removing (there should only be one per role)
+      assignment = @show.show_person_role_assignments.where(role_id: params[:role_id]).first
+      removed_person_id = assignment&.person_id
+      # Remove all assignments for this role
+      @show.show_person_role_assignments.where(role_id: params[:role_id]).destroy_all
+    end
 
     # Generate the HTML to return - pass availability data
     @availability = ShowAvailability.where(show: @show).index_by(&:person_id)
     cast_members_html = render_to_string(partial: "manage/shows/cast_members_list", locals: { show: @show, availability: @availability })
     roles_html = render_to_string(partial: "manage/shows/roles_list", locals: { show: @show })
-    render json: { cast_members_html: cast_members_html, roles_html: roles_html }
+    render json: { cast_members_html: cast_members_html, roles_html: roles_html, person_id: removed_person_id }
   end
 
   private

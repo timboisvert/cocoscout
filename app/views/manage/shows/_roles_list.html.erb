@@ -42,7 +42,12 @@
             <div class="space-y-2 flex-1">
               <% assignments.each do |assignment| %>
 
-                <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative">
+                <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
+                    draggable="true"
+                    data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
+                    data-person-id="<%= assignment.person.id %>"
+                    data-assignment-id="<%= assignment.id %>"
+                    data-source-role-id="<%= role.id %>">
                   <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
                   <% if headshot_variant %>
                     <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
