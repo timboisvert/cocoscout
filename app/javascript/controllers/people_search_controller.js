@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["input", "results"]
-    static values = { url: String, resultPartial: String }
+    static values = { url: String, resultPartial: String, castId: String }
 
     connect() {
         this.timeout = null;
@@ -12,6 +12,10 @@ export default class extends Controller {
         this.inputTarget.value = "";
         this.resultsTarget.innerHTML = "";
         this.inputTarget.focus();
+    }
+
+    updateCastId(event) {
+        this.castIdValue = event.target.value;
     }
 
     search() {
@@ -30,6 +34,9 @@ export default class extends Controller {
         let url = `${this.urlValue}?q=${encodeURIComponent(query)}`;
         if (this.hasResultPartialValue && this.resultPartialValue) {
             url += `&result_partial=${encodeURIComponent(this.resultPartialValue)}`;
+        }
+        if (this.hasCastIdValue && this.castIdValue) {
+            url += `&cast_id=${encodeURIComponent(this.castIdValue)}`;
         }
         fetch(url)
             .then(r => r.text())

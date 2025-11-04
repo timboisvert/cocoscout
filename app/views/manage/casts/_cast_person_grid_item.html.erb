@@ -1,17 +1,17 @@
 
 
-<div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group">
+<div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-full">
   <% headshot_variant = person.safe_headshot_variant(:thumb) %>
   <% if headshot_variant %>
-    <%= image_tag headshot_variant, alt: person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
+    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
   <% else %>
-    <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center mb-1 text-white font-bold">
+    <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
       <%= person.initials %>
     </div>
   <% end %>
-  <span class="font-medium text-xs text-center"><%= person.name.truncate(20, omission: '...') %></span>
+  <span class="font-medium text-sm flex-grow"><%= person.name %></span>
   <button type="button"
-    class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+    class="px-3 py-1 text-pink-500 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 cursor-pointer flex-shrink-0"
     data-action="cast-person#add"
     data-person-id="<%= person.id %>"
   >

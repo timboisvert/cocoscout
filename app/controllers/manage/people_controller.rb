@@ -160,20 +160,6 @@ class Manage::PeopleController < Manage::ManageController
     redirect_to manage_people_path, notice: "Person was successfully deleted", status: :see_other
   end
 
-  # GET /people?q=searchterm
-  def search
-    q = params[:q].to_s.strip
-    @people = if q.present?
-      Current.production_company.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
-    else
-      Person.none
-    end
-    result_partial = params[:result_partial].presence || "people/person_grid_item"
-    result_locals = params[:result_locals] || {}
-
-    render partial: "shared/people_search_results", locals: { people: @people, result_partial: result_partial, result_locals: result_locals }
-  end
-
   def batch_invite
     emails_text = params[:emails].to_s
     email_lines = emails_text.split(/\r?\n/).map(&:strip).reject(&:blank?)

@@ -53,6 +53,24 @@ class Manage::CastsController < Manage::ManageController
     render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
   end
 
+  def search_people
+    q = params[:q].to_s.strip
+    cast_id = params[:cast_id].to_s.strip
+
+    @people = if q.present?
+      Current.production_company.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+    else
+      Person.none
+    end
+
+    # Exclude people already in the selected cast
+    if cast_id.present?
+      cast = @production.casts.find(cast_id)
+      @people = @people.where.not(id: cast.people.pluck(:id))
+    end
+
+    render partial: "manage/casts/search_results", locals: { people: @people }
+  end
 
   private
     def set_production

@@ -1,8 +1,0 @@
-<%# Usage: render 'shared/people_search', url: search_manage_people_path(format: :html), result_partial: 'people/person_grid_item', result_locals: { extra: ... } %>
-<div class="" data-controller="people-search" data-people-search-url-value="<%= url %>" <%= "data-people-search-result-partial-value=#{result_partial}" if defined?(result_partial) %> <%= "data-people-search-result-locals-value='#{result_locals.to_json}'" if defined?(result_locals) && result_locals.present? %>>
-  <div class="flex items-center gap-2">
-    <input type="text" class="w-full md:w-1/2 px-3 py-2 border rounded shadow-sm" placeholder="Search for people..." data-people-search-target="input" data-action="input->people-search#search">
-    <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium" data-action="people-search#reset">Done</button>
-  </div>
-  <div class="mt-4" data-people-search-target="results"></div>
-</div>

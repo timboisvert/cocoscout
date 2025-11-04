@@ -129,6 +129,9 @@ Rails.application.routes.draw do
         end
       end
       resources :casts do
+        collection do
+          get :search_people
+        end
         member do
           # These two are only used when dragging and dropping on the cast members list
           post :add_person
