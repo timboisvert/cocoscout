@@ -13,7 +13,7 @@
   } %>
 
   <!-- Section 1: Availability -->
-  <div class="mb-6 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].blank? && params[:questions_open].blank? && @question_error.blank? %>">
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].blank? && params[:questions_open].blank? && @question_error.blank? %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
       <h3 class="text-sm font-semibold text-gray-900">Availability</h3>
       <div data-show-toggle-target="icon"></div>
@@ -109,7 +109,7 @@
   </div>
 
   <!-- Section 2: Custom Questions -->
-  <div class="mb-6 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].present? || params[:questions_open].present? || @question_error.present? %>">
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].present? || params[:questions_open].present? || @question_error.present? %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
       <h3 class="text-sm font-semibold text-gray-900">Custom Questions</h3>
       <div data-show-toggle-target="icon"></div>
@@ -123,7 +123,7 @@
   </div>
 
   <!-- Section 3: Text and Instructions -->
-  <div class="mb-6 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle">
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
       <h3 class="text-sm font-semibold text-gray-900">Text and Instructions</h3>
       <div data-show-toggle-target="icon"></div>

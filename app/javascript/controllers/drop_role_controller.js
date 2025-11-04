@@ -5,6 +5,13 @@ export default class extends Controller {
 
     allowDrop(event) {
         event.preventDefault();
+        // Add visual feedback when dragging over a role
+        event.currentTarget.classList.add('ring-2', 'ring-pink-400', 'bg-pink-50');
+    }
+
+    dragLeave(event) {
+        // Remove visual feedback when drag leaves the role
+        event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50');
     }
 
     assign(event) {
@@ -12,6 +19,7 @@ export default class extends Controller {
         const roleId = event.currentTarget.dataset.roleId;
         const personId = event.dataTransfer.getData("text/plain");
         const showId = this.element.dataset.showId;
+
         fetch(`/manage/shows/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
@@ -22,9 +30,13 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
-                if (data.cast_members_html) {
-                    document.getElementById("show-cast-members").outerHTML = data.cast_members_html;
+                // Find the person element and add opacity-50
+                const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${personId}"]`);
+                if (personElement) {
+                    personElement.classList.add('opacity-50');
                 }
+
+                // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
                 }
@@ -34,7 +46,9 @@ export default class extends Controller {
     removeAssignment(event) {
         event.preventDefault();
         const assignmentId = event.currentTarget.dataset.assignmentId;
+        const personId = event.currentTarget.dataset.personId;
         const showId = this.element.dataset.showId;
+
         fetch(`/manage/shows/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
@@ -45,9 +59,15 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
-                if (data.cast_members_html) {
-                    document.getElementById("show-cast-members").outerHTML = data.cast_members_html;
+                // Find the person element and remove opacity-50
+                if (personId) {
+                    const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${personId}"]`);
+                    if (personElement) {
+                        personElement.classList.remove('opacity-50');
+                    }
                 }
+
+                // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
                 }

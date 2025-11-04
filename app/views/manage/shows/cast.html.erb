@@ -1,6 +1,6 @@
 <% content_for :title, "Show: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
 
-<div class="w-full mb-10">
+<div class="w-full pb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -11,14 +11,61 @@
     links: []
   } %>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-    <div>
-      <h2 class="font-bold text-lg mb-3">Cast Members</h2>
-      <%= render partial: "manage/shows/cast_members_list", locals: { show: @show } %>
+    <!-- Roles on the left - spans 2 columns on desktop -->
+    <div class="lg:col-span-2">
+      <%= render partial: "manage/shows/roles_list", locals: { show: @show } %>
     </div>
 
-    <%= render partial: "manage/shows/roles_list", locals: { show: @show } %>
+    <!-- Cast Members on the right - pinned -->
+    <div class="lg:sticky lg:top-4 lg:h-fit">
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-900">Cast Members</h2>
+        </div>
+        <div class="p-4 space-y-1 border-b border-gray-200" data-controller="cast-filter">
+          <!-- Availability Filter -->
+          <div class="flex gap-2">
+            <button type="button"
+              class="px-3 py-1 rounded-md border text-sm bg-pink-500 text-white border-pink-500 transition-all cursor-pointer"
+              data-action="cast-filter#filterByAvailability"
+              data-value="available"
+              title="Show only available people">
+              Available
+            </button>
+            <button type="button"
+              class="px-3 py-1 rounded-md border text-sm bg-white text-gray-700 border-gray-200 hover:border-gray-300 transition-all cursor-pointer"
+              data-action="cast-filter#filterByAvailability"
+              data-value="all"
+              title="Show all cast members">
+              All Cast Members
+            </button>
+          </div>
+
+          <!-- View Availability Matrix link (shown when Available filter is active) -->
+          <div id="availability-matrix-link" class="">
+            <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
+          </div>
+
+          <!-- Cast Filter (only show if more than one cast) -->
+          <% if @show.production.casts.count > 1 %>
+            <div class="flex gap-2">
+              <select class="px-3 py-1 rounded-md border text-sm bg-white text-gray-700 border-gray-200 hover:border-gray-300 transition-all focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer"
+                data-action="cast-filter#filterByCast">
+                <option value="">All Casts</option>
+                <% @show.production.casts.each do |cast| %>
+                  <option value="<%= cast.id %>"><%= cast.name %></option>
+                <% end %>
+              </select>
+            </div>
+          <% end %>
+        </div>
+        <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto" data-cast-filter-target="list">
+          <%= render partial: "manage/shows/cast_members_list", locals: { show: @show, availability: @availability } %>
+        </div>
+      </div>
+    </div>
 
   </div>
 

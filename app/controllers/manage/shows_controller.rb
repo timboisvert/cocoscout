@@ -42,6 +42,7 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def cast
+    @availability = ShowAvailability.where(show: @show).index_by(&:person_id)
   end
 
   def new
@@ -394,8 +395,9 @@ class Manage::ShowsController < Manage::ManageController
     assignment = @show.show_person_role_assignments.find_or_initialize_by(person: person, role: role)
     assignment.save!
 
-    # Generate the HTML to return
-    cast_members_html = render_to_string(partial: "manage/shows/cast_members_list", locals: { show: @show })
+    # Generate the HTML to return - pass availability data
+    @availability = ShowAvailability.where(show: @show).index_by(&:person_id)
+    cast_members_html = render_to_string(partial: "manage/shows/cast_members_list", locals: { show: @show, availability: @availability })
     roles_html = render_to_string(partial: "manage/shows/roles_list", locals: { show: @show })
     render json: { cast_members_html: cast_members_html, roles_html: roles_html }
   end
@@ -404,8 +406,9 @@ class Manage::ShowsController < Manage::ManageController
     assignment = @show.show_person_role_assignments.find(params[:assignment_id])
     assignment.destroy! if assignment
 
-    # Generate the HTML to return
-    cast_members_html = render_to_string(partial: "manage/shows/cast_members_list", locals: { show: @show })
+    # Generate the HTML to return - pass availability data
+    @availability = ShowAvailability.where(show: @show).index_by(&:person_id)
+    cast_members_html = render_to_string(partial: "manage/shows/cast_members_list", locals: { show: @show, availability: @availability })
     roles_html = render_to_string(partial: "manage/shows/roles_list", locals: { show: @show })
     render json: { cast_members_html: cast_members_html, roles_html: roles_html }
   end

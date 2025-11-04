@@ -1,34 +1,79 @@
-<div id="show-cast-members" data-controller="drag-cast-member">
+<div id="show-cast-members" data-controller="drag-cast-member" class="space-y-1">
+    <% has_multiple_casts = show.production.casts.count > 1 %>
+    <% availability ||= {} %>
+    <% has_visible_people = false %>
 
     <% show.production.casts.each do |cast| %>
 
-        <h1 class="font-bold text-lg mb-2"><%= cast.name %></h1>
+        <% cast_people = cast.people %>
 
-        <div class="grid grid-cols-3 lg:grid-cols-4 gap-1 w-full mb-6">
+        <% if cast_people.any? %>
+            <% if has_multiple_casts %>
+                <div class="mb-3">
+                    <h3 class="font-semibold text-sm text-gray-700 mb-2"><%= cast.name %></h3>
 
-        <% cast.people.each do |person| %>
+                    <% cast.people.each do |person| %>
+                        <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
+                        <% person_availability = availability[person.id] %>
+                        <% is_available = person_availability&.available? %>
 
-            <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
+                        <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
+                            data-drag-cast-member-target="person"
+                            data-person-id="<%= person.id %>"
+                            data-cast-id="<%= cast.id %>"
+                            data-availability-status="<%= person_availability&.status || 'unset' %>"
+                            data-is-available="<%= is_available ? 'true' : 'false' %>"
+                            draggable="true">
 
-            <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7]  <%= 'text-gray-300' if has_show_person_role_assignment %>"
-                data-drag-cast-member-target="person"
-                data-person-id="<%= person.id %>"
-                draggable="true">
+                            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                            <% if headshot_variant %>
+                                <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
+                            <% else %>
+                                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
+                                    <%= person.initials %>
+                                </div>
+                            <% end %>
 
-                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: person.name, class: "w-12 h-12 rounded-lg object-cover mb-1 #{'opacity-40' if has_show_person_role_assignment}", draggable: false %>
-                <% else %>
-                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
-                        <%= person.initials %>
+                            <span class="font-medium text-sm flex-1 truncate"><%= person.name %></span>
+                        </div>
+                        <% has_visible_people = true %>
+                    <% end %>
+                </div>
+            <% else %>
+                <!-- Single cast - no cast name header -->
+                <% cast.people.each do |person| %>
+                    <% has_show_person_role_assignment = person.has_person_role_assignment_for_show?(show) %>
+                    <% person_availability = availability[person.id] %>
+                    <% is_available = person_availability&.available? %>
+
+                    <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
+                        data-drag-cast-member-target="person"
+                        data-person-id="<%= person.id %>"
+                        data-cast-id="<%= cast.id %>"
+                        data-availability-status="<%= person_availability&.status || 'unset' %>"
+                        data-is-available="<%= is_available ? 'true' : 'false' %>"
+                        draggable="true">
+
+                        <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
+                        <% else %>
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
+                                <%= person.initials %>
+                            </div>
+                        <% end %>
+
+                        <span class="font-medium text-sm flex-1 truncate"><%= person.name %></span>
                     </div>
+                    <% has_visible_people = true %>
                 <% end %>
-
-                <span class="font-medium text-xs text-center"><%= person.name.truncate(20, omission: '...') %></span>
-            </div>
+            <% end %>
         <% end %>
 
-        </div>
-
     <% end %>
+
+    <!-- Empty state message (shown by JavaScript when filtered list is empty) -->
+    <div id="cast-members-empty-state" class="p-0 text-left text-gray-500 text-sm hidden">
+        <p id="empty-state-message"></p>
+    </div>
 </div>
