@@ -12,9 +12,9 @@
 
   <p class="text-sm text-gray-500 pb-4">You can create any number of casts, each with its own group of cast members.</p>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" data-controller="add-person-panel" data-production-id="<%= @production.id %>">
-    <!-- Left side: Casts List (full width initially, spans 2 columns when panel is open) -->
-    <div id="casts-container" class="lg:col-span-3" data-add-person-panel-target="castsContainer">
+  <div class="lg:flex gap-6" data-controller="add-person-panel" data-production-id="<%= @production.id %>">
+    <!-- Left side: Casts List (flexible width on desktop, full width on mobile) -->
+    <div id="casts-container" class="lg:flex-1" data-add-person-panel-target="castsContainer">
       <div id="casts" class="space-y-5">
         <% if @casts.any? %>
           <% @casts.each do |cast| %>
@@ -54,9 +54,9 @@
       </div>
     </div>
 
-    <!-- Right side: Add Person to Cast Panel (sticky, hidden by default) -->
+    <!-- Right side: Add Person to Cast Panel (fixed width on desktop, full width on mobile, sticky, hidden by default) -->
     <% if current_user_can_manage?(Current.production) && @casts.any? %>
-      <div id="add-person-panel" class="hidden lg:sticky lg:top-4 lg:h-fit" data-add-person-panel-target="panel">
+      <div id="add-person-panel" class="hidden w-full lg:w-100 lg:sticky lg:top-4 lg:h-fit" data-add-person-panel-target="panel">
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-gray-900" data-add-person-panel-target="title">Add Person</h3>

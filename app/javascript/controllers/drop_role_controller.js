@@ -40,12 +40,12 @@ export default class extends Controller {
         const roleId = event.currentTarget.dataset.roleId;
         let personId = event.dataTransfer.getData("personId");
         let sourceRoleId = event.dataTransfer.getData("sourceRoleId");
-        
+
         // Fallback to text/plain for cast members dragged from other sources
         if (!personId) {
             personId = event.dataTransfer.getData("text/plain");
         }
-        
+
         const showId = this.element.dataset.showId;
 
         // If dragging from an assignment (role-to-role), sourceRoleId will be set
@@ -67,7 +67,7 @@ export default class extends Controller {
                 .then(data => {
                     // Get the person who was removed from target role (if any)
                     const removedPersonId = data.person_id;
-                    
+
                     // Ungray the person who was removed from the target role
                     if (removedPersonId) {
                         const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${removedPersonId}"]`);
@@ -75,7 +75,7 @@ export default class extends Controller {
                             personElement.classList.remove('opacity-50');
                         }
                     }
-                    
+
                     // Now assign the person to the target role
                     return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
                         method: "POST",
@@ -128,7 +128,7 @@ export default class extends Controller {
             .then(data => {
                 // Get the person who was removed from target role (if any)
                 const removedPersonId = data.person_id;
-                
+
                 // Ungray the person who was removed from the target role
                 if (removedPersonId) {
                     const personElement = document.querySelector(`[data-drag-cast-member-target="person"][data-person-id="${removedPersonId}"]`);
@@ -136,7 +136,7 @@ export default class extends Controller {
                         personElement.classList.remove('opacity-50');
                     }
                 }
-                
+
                 // Now assign the person to the target role
                 return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
                     method: "POST",

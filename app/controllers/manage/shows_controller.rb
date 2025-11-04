@@ -405,7 +405,7 @@ class Manage::ShowsController < Manage::ManageController
   def remove_person_from_role
     # Support both assignment_id and role_id for removal
     removed_person_id = nil
-    
+
     if params[:assignment_id]
       assignment = @show.show_person_role_assignments.find(params[:assignment_id])
       removed_person_id = assignment&.person_id

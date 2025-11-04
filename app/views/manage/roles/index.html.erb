@@ -8,11 +8,11 @@
     links: []
   } %>
 
-  <p class="text-sm text-gray-500">Roles represent the parts within your production. For example, "Host" or "Comic 1"</p>
+  <p class="text-sm text-gray-500 pb-4">Roles represent the parts within your production. For example, "Host" or "Comic 1"</p>
 
-  <div class="flex flex-col md:flex-row gap-2 mt-4">
+  <div class="lg:flex gap-6">
 
-    <div class="flex-1 space-y-2">
+    <div class="lg:flex-1 space-y-2">
       <% if @roles.any? %>
         <div data-controller="role-order" data-role-order-url-value="<%= reorder_manage_production_roles_path(@production) %>">
           <% @roles.each do |role| %>
@@ -56,9 +56,9 @@
     </div>
 
     <% if current_user_can_manage?(@production) %>
-      <div class="flex-1">
+      <div class="w-full lg:w-100">
 
-        <div class="sticky top-4 border border-gray-200 rounded-lg overflow-hidden">
+        <div class="lg:sticky lg:top-4 border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-gray-900">Add a Role</h3>
           </div>
