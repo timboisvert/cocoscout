@@ -128,11 +128,11 @@
                   </div>
                 <% end %>
 
-                <% if show.event_type == "show" && !show.canceled %>
+                <% if show.event_type == "show" %>
                   <div class="border border-gray-200 rounded-lg overflow-hidden">
                     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                       <h3 class="text-sm font-semibold text-gray-900">Cast</h3>
-                      <% if current_user_can_manage?(show.production) %>
+                        <% if current_user_can_manage?(show.production) && show.date_and_time >= Time.current %>
                         <%= link_to "Edit Cast", cast_manage_production_show_path(@production, show), class: "text-xs text-pink-500 underline" %>
                       <% end %>
                     </div>
