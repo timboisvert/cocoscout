@@ -182,27 +182,40 @@ class Manage::PeopleController < Manage::ManageController
       end
 
       # Check if person already exists
-      if Person.exists?(email: email.downcase)
-        skipped_count += 1
-        next
+      existing_person = Person.find_by(email: email.downcase)
+
+      if existing_person
+        # Person exists but may or may not have a user
+        if existing_person.user
+          # Person and user both exist - skip
+          skipped_count += 1
+          next
+        else
+          # Person exists but no user - create user and send invitation
+          person = existing_person
+        end
+      else
+        # Generate name from email (part before @)
+        name = email.split("@").first.gsub(/[._-]/, " ").titleize
+
+        # Create person
+        person = Person.new(name: name, email: email.downcase)
       end
 
-      # Generate name from email (part before @)
-      name = email.split("@").first.gsub(/[._-]/, " ").titleize
-
-      # Create person
-      person = Person.new(name: name, email: email.downcase)
-
       if person.save
-        # Associate with current production company
-        person.production_companies << Current.production_company
+        # Associate with current production company (in case it's a new person)
+        unless person.production_companies.include?(Current.production_company)
+          person.production_companies << Current.production_company
+        end
 
-        # Create user account
-        user = User.create!(
-          email_address: person.email,
-          password: SecureRandom.hex(16)
-        )
-        person.update!(user: user)
+        # Create user account if it doesn't exist
+        if person.user.nil?
+          user = User.create!(
+            email_address: person.email,
+            password: SecureRandom.hex(16)
+          )
+          person.update!(user: user)
+        end
 
         # Create person invitation
         person_invitation = PersonInvitation.create!(

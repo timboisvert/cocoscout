@@ -1,11 +1,11 @@
 
-# Associate all people with production company 1 if it's named "Coco Runs Everything"
+# Associate all people with production company 1 if it's namedCoco Runs Everything"
 production_company = ProductionCompany.find_by(id: 1)
-if production_company && production_company.name == "Coco Runs Everything"
+if production_company && production_company.name ==Coco Runs Everything"
   Person.find_each do |person|
     unless person.production_companies.include?(production_company)
       person.production_companies << production_company
-      puts "Added #{person.name} to #{production_company.name}"
+      putsAdded #{person.name} to #{production_company.name}"
     end
   end
 end
@@ -14,20 +14,6 @@ people = []
 Person.where(user_id: nil).each do |person|
   productions = person.casts.includes(:production).map(&:production).uniq
   next if productions.empty?
-  people << { name: person.name, email: person.email, casts: productions.map(&:name).join(', ') }
+  people << person.email
 end
 people
-
-[ { name: "Carlos Rivera", email: "miamicomedyarts@gmail.com", casts: "Comedy Pageant" },
- { name: "Thom Murray", email: "thomjmurray@gmail.com", casts: "Comedy Pageant" },
- { name: "Declan Parker Rhodes", email: "DeclanParkerRhodes@gmail.com", casts: "Comedy Pageant" },
- { name: "Dan Feltey", email: "dfeltey@gmail.com", casts: "Comedy Pageant" },
- { name: "Colleen Grogan", email: "colleengrogantrack@gmail.com", casts: "Comedy Pageant" },
- { name: "Quinn Hatch", email: "hatchquinn@gmail.com", casts: "Comedy Pageant" },
- { name: "Cassie McGrath", email: "cassiemcgrath3@gmail.com", casts: "Comedy Pageant" },
- { name: "Clay Smith", email: "claytonrsmith2@gmail.com", casts: "Comedy Pageant" },
- { name: "Pasquale-Monk", email: "pasqualemonk@gmail.com", casts: "Comedy Pageant" },
- { name: "Ben House", email: "benjaminhouse.e@gmail.com", casts: "Comedy Pageant" },
- { name: "Janelle Kloth ", email: "janelle.kloth@gmail.com", casts: "Comedy Pageant" },
- { name: "Katie Rae Horn", email: "ktraehorn@gmail.com", casts: "Comedy Pageant" },
- { name: "Zach Masso", email: "massozach@gmail.com", casts: "Comedy Pageant" } ]
