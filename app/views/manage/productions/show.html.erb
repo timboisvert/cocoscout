@@ -10,120 +10,304 @@
     ]
   } %>
 
-  <div class="w-full">
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Description",
-      links: []
-    } %>
-    <div class="mb-5">
-      <% if @production.description.present? %>
-        <%= @production.description %>
-      <% else %>
-        <span class="text-sm text-gray-500">
-          You haven't added a description.
-          <% if current_user_can_manage?(@production) %>
-            <%= link_to "Add a description", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
-          <% end %>
-        </span>
-      <% end %>
+  <!-- Quick Stats Row -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <!-- Shows Summary -->
+    <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all">
+      <div class="mb-2">
+        <h3 class="font-semibold text-gray-700">Shows</h3>
+      </div>
+      <div class="text-3xl font-bold text-gray-900"><%= @dashboard[:shows_summary][:total] %></div>
+      <div class="text-sm text-gray-600 mt-1">
+        <span class="text-green-600 font-medium"><%= @dashboard[:shows_summary][:fully_cast] %></span> fully cast
+      </div>
+    </div>
+
+    <!-- Uncast Roles Summary -->
+    <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all">
+      <div class="mb-2">
+        <h3 class="font-semibold text-gray-700">Uncast Roles</h3>
+      </div>
+      <div class="text-3xl font-bold text-gray-900"><%= @dashboard[:uncast_roles][:total_uncast] %></div>
+      <div class="text-sm text-gray-600 mt-1">
+        across <span class="font-medium"><%= @dashboard[:uncast_roles][:shows_with_uncast] %></span> shows
+      </div>
+    </div>
+
+    <!-- Open Calls Summary -->
+    <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all">
+      <div class="mb-2">
+        <h3 class="font-semibold text-gray-700">Open Calls</h3>
+      </div>
+      <div class="text-3xl font-bold text-gray-900"><%= @dashboard[:open_calls][:total_open] %></div>
+      <div class="text-sm text-gray-600 mt-1">
+        <%= link_to "View calls", manage_production_call_to_auditions_path(@production), class: "text-blue-500 hover:text-blue-600 underline" %>
+      </div>
+    </div>
+
+    <!-- Audition Requests Summary -->
+    <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all">
+      <div class="mb-2">
+        <h3 class="font-semibold text-gray-700">Audition Requests</h3>
+      </div>
+      <div class="text-3xl font-bold text-gray-900"><%= @dashboard[:audition_requests_summary][:total] %></div>
+      <div class="text-sm text-gray-600 mt-1">
+        <span class="text-yellow-600 font-medium"><%= @dashboard[:audition_requests_summary][:pending] %></span> pending
+      </div>
     </div>
   </div>
 
-  <div class="w-full pt-4">
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Contact Email",
-      links: []
-    } %>
-    <div class="mb-5 text-nowrap">
-      <% if @production.contact_email.present? %>
-        <%= mail_to @production.contact_email, class: "font-medium rounded-lg text-xs px-3 py-1.5 sm:text-sm sm:px-5 sm:h-10 sm:py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 flex items-center gap-2" do %>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-          </svg>
-          <span><%= @production.contact_email %></span>
-        <% end %>
-      <% else %>
-        <span class="text-sm text-gray-500">
-          No contact email provided.
-          <% if current_user_can_manage?(@production) %>
-            <%= link_to "Add a contact email", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
+  <!-- Upcoming Shows & Attention Needed -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Upcoming Shows -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Upcoming Shows",
+        links: [
+          { text: "View all", path: manage_production_shows_path(@production) }
+        ]
+      } %>
+      <% if @dashboard[:upcoming_shows].any? %>
+        <div class="space-y-3 mt-4">
+          <% @dashboard[:upcoming_shows].each do |show_data| %>
+            <div class="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">
+                  <%= link_to show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p"), cast_manage_production_show_path(@production, show_data[:show]), class: "text-pink-500 hover:text-pink-600 underline" %>
+                </div>
+                <div class="text-sm text-gray-600 mt-1">
+                  <%= show_data[:show].event_type.capitalize %>
+                  <% if show_data[:show].date_and_time %>
+                    <span class="text-gray-500">(<%= show_data[:days_until] %> days away)</span>
+                  <% end %>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div class="bg-pink-500 h-2 rounded-full" style="width: <%= show_data[:cast_percentage] %>%"></div>
+                  </div>
+                  <span><%= show_data[:cast_percentage] %>% cast</span>
+                </div>
+              </div>
+              <% if show_data[:uncast_count] > 0 %>
+                <span class="inline-block bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full ml-2">
+                  <%= show_data[:uncast_count] %> open
+                </span>
+              <% else %>
+                <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full ml-2">
+                  Fully Cast
+                </span>
+              <% end %>
+            </div>
           <% end %>
-        </span>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500 mt-4">No upcoming shows in the next 30 days</p>
       <% end %>
     </div>
-  </div>
 
-  <div class="w-full pt-4">
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Logo",
-      links: []
-    } %>
-
-    <% logo_variant = @production.safe_logo_variant(:small) %>
-    <% if logo_variant %>
-      <%= image_tag logo_variant, class: "h-auto" %>
-
-      <% if current_user_can_manage?(@production) %>
-        <div>
-          <%= link_to "Replace logo", edit_manage_production_path(@production), class: "text-pink-500 underline text-sm" %>
+    <!-- Availability Status -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Availability Status",
+        links: []
+      } %>
+      <% if @dashboard[:availability_summary][:shows_with_availability].any? %>
+        <div class="space-y-3 mt-4">
+          <% @dashboard[:availability_summary][:shows_with_availability].each do |show_data| %>
+            <div class="flex items-start justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">
+                  <%= link_to show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p"), cast_manage_production_show_path(@production, show_data[:show]), class: "text-pink-500 hover:text-pink-600 underline" %>
+                </div>
+                <div class="text-sm text-gray-600 mt-1">
+                  <span class="font-medium text-gray-900"><%= show_data[:with_availability] %></span> of <span class="font-medium text-gray-900"><%= show_data[:total_cast_people] %></span> cast provided availability
+                </div>
+                <% if show_data[:without_availability] > 0 %>
+                  <div class="text-xs mt-2">
+                    <span class="font-semibold text-amber-700"><%= show_data[:without_availability] %> still need to respond</span>
+                  </div>
+                <% end %>
+              </div>
+              <% if show_data[:percentage_responded] == 100 %>
+                <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800">
+                  <%= show_data[:percentage_responded] %>% responded
+                </span>
+              <% elsif show_data[:percentage_responded] >= 75 %>
+                <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                  <%= show_data[:percentage_responded] %>% responded
+                </span>
+              <% else %>
+                <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-red-100 text-red-800">
+                  <%= show_data[:percentage_responded] %>% responded
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500 mt-4">No upcoming shows scheduled</p>
+      <% end %>
+      <% if @dashboard[:availability_summary][:shows_needing_responses].any? %>
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="text-sm text-gray-700">
+            <span class="font-semibold text-amber-700"><%= @dashboard[:availability_summary][:shows_needing_responses].length %></span> show<%= @dashboard[:availability_summary][:shows_needing_responses].length != 1 ? 's' : '' %> still waiting on cast availability responses
+          </div>
         </div>
       <% end %>
-    <% else %>
-      <span class="text-sm text-gray-500">
-        No logo added.
-
-        <% if current_user_can_manage?(@production) %>
-          <%= link_to "Upload a logo", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
-        <% end %>
-      </span>
-    <% end %>
+    </div>
   </div>
 
-  <div class="w-full pt-4">
-
-    <%= render partial: "shared/top_menu", locals: {
-      breadcrumbs: [],
-      text: "Production/Season Posters",
-      links: [
-        { text: "Add a Poster", path: new_manage_production_poster_path(@production) }
-      ]
-    } %>
-
-    <% if @production.posters.any? %>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-        <% @production.posters.each do |poster| %>
-          <div class="bg-white rounded shadow p-4 flex flex-col">
-            <% image_variant = poster.safe_image_variant(:small) %>
-            <% if image_variant %>
-              <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
-            <% end %>
-            <span class="font-semibold"><%= poster.name.presence || "Untitled Poster" %></span>
-
-            <% if current_user_can_manage?(@production) %>
-              <div class="flex gap-2 mt-2">
-                <%= link_to "Edit", edit_manage_production_poster_path(@production, poster), class: "text-sm underline text-pink-500 hover:text-pink-600" %>
-                <%= link_to "Delete",
-                      manage_production_poster_path(@production, poster),
-                      data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" },
-                      class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+  <!-- Open Calls with Auditionees -->
+  <% if @dashboard[:open_calls][:with_auditionees].any? %>
+    <div class="border border-gray-200 rounded-lg p-4 mb-8">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Open Calls & Auditionees",
+        links: []
+      } %>
+      <div class="space-y-3 mt-4">
+        <% @dashboard[:open_calls][:with_auditionees].each do |call_data| %>
+          <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_data[:call]), class: "flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors no-underline" do %>
+            <div>
+              <div class="font-medium text-gray-900 text-pink-500">
+                Call to Audition
               </div>
-            <% end %>
+              <div class="text-sm text-gray-600 mt-1">
+                <%= call_data[:call].opens_at.strftime("%b %d, %Y") %> - <%= call_data[:call].closes_at.strftime("%b %d, %Y") %>
+              </div>
+              <div class="text-xs text-gray-600 mt-2 space-x-3">
+                <span><span class="font-semibold text-gray-900"><%= call_data[:call].counts[:unreviewed] %></span> unreviewed</span>
+                <span><span class="font-semibold text-gray-900"><%= call_data[:call].counts[:undecided] %></span> undecided</span>
+                <span><span class="font-semibold text-green-600"><%= call_data[:call].counts[:passed] %></span> passed</span>
+                <span><span class="font-semibold text-green-600"><%= call_data[:call].counts[:accepted] %></span> accepted</span>
+              </div>
+            </div>
+            <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-lg">
+              <%= pluralize(call_data[:auditionee_count], "auditionee") %>
+            </span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Casts & Roles Overview -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Casts Overview -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Casts",
+        links: [
+          { text: "View all", path: manage_production_casts_path(@production) }
+        ]
+      } %>
+      <% if @dashboard[:cast_summary][:casts].any? %>
+        <div class="space-y-2 mt-4">
+          <% @dashboard[:cast_summary][:casts].each do |cast_data| %>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div class="font-medium text-gray-900">
+                <%= link_to cast_data[:cast].name, manage_production_cast_path(@production, cast_data[:cast]), class: "text-pink-500 hover:text-pink-600 underline" %>
+              </div>
+              <div class="text-sm text-gray-600">
+                <span class="font-medium"><%= cast_data[:people_count] %></span> people
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500 mt-4">No casts created yet</p>
+      <% end %>
+    </div>
+
+    <!-- Roles Overview -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Roles",
+        links: [
+          { text: "View all", path: manage_production_roles_path(@production) }
+        ]
+      } %>
+      <div class="space-y-3 mt-4">
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-gray-700">Total Roles</span>
+            <span class="text-2xl font-bold text-gray-900"><%= @dashboard[:roles_summary][:total_roles] %></span>
+          </div>
+        </div>
+        <div class="text-sm text-gray-600 mt-2">
+          <%= link_to "Manage roles", manage_production_roles_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Production Info & Recent Activity -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Description & Contact -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Production Info",
+        links: []
+      } %>
+      <div class="mt-4 space-y-4">
+        <div>
+          <h4 class="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+          <% if @production.description.present? %>
+            <p class="text-sm text-gray-600"><%= @production.description %></p>
+          <% else %>
+            <p class="text-sm text-gray-500">
+              No description yet.
+              <% if current_user_can_manage?(@production) %>
+                <%= link_to "Add one", edit_manage_production_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
+              <% end %>
+            </p>
+          <% end %>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-gray-700 mb-2">Contact Email</h4>
+          <% if @production.contact_email.present? %>
+            <%= mail_to @production.contact_email, @production.contact_email, class: "text-pink-500 hover:text-pink-600 underline" %>
+          <% else %>
+            <p class="text-sm text-gray-500">
+              No contact email yet.
+              <% if current_user_can_manage?(@production) %>
+                <%= link_to "Add one", edit_manage_production_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
+              <% end %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [],
+        text: "Quick Links",
+        links: []
+      } %>
+      <div class="mt-4 space-y-2">
+        <% links = [
+          { name: "Manage Shows", path: manage_production_shows_path(@production) },
+          { name: "Manage Casts", path: manage_production_casts_path(@production) },
+          { name: "Manage Roles", path: manage_production_roles_path(@production) },
+          { name: "Open Calls", path: manage_production_call_to_auditions_path(@production) },
+          { name: "Audition Sessions", path: manage_production_audition_sessions_path(@production) },
+          { name: "Visual Assets", path: manage_production_visual_assets_path(@production) },
+          { name: "Production Settings", path: edit_manage_production_path(@production) }
+        ] %>
+        <% links.each do |link| %>
+          <div>
+            <%= link_to link[:name], link[:path], class: "text-pink-500 hover:text-pink-600 underline block py-1" %>
           </div>
         <% end %>
       </div>
-    <% else %>
-      <div class="text-gray-500 text-sm mt-2">
-        No posters added.
-        <% if current_user_can_manage?(@production) %>
-          <%= link_to "Add a poster", new_manage_production_poster_path(@production), class: "text-pink-500 underline" %>
-        <% end %>
-      </div>
-    <% end %>
-
+    </div>
   </div>
-
 
 </div>

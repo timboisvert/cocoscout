@@ -115,7 +115,18 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :posters, except: :index
+      resources :visual_assets, only: [ :index ] do
+        collection do
+          get :new_poster
+          post :create_poster
+        end
+        member do
+          get :edit_poster
+          patch :update_poster
+          delete :destroy_poster
+        end
+      end
+
       resources :shows do
         collection do
           get :calendar

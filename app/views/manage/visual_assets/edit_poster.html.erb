@@ -4,14 +4,14 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      [@production.name, manage_production_path(@production)]
+      ["Visual Assets", manage_production_visual_assets_path(@production)]
     ],
     text: "Edit Poster",
     links: []
   } %>
 </div>
 
-<%= form_with(model: [:manage, @production, @poster], local: true, html: { multipart: true }) do |form| %>
+<%= form_with(model: @poster, local: true, html: { multipart: true }, url: update_poster_manage_production_visual_asset_path(@production, @poster), method: :patch) do |form| %>
 
   <% if @poster.errors.any? %>
     <div class="mb-4 text-pink-600">
@@ -51,7 +51,7 @@
 
     <div class="inline">
         <%= form.submit "Update Poster", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
-        <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+        <%= link_to "Back", manage_production_visual_assets_path(@production), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
     </div>
 
 <% end %>
