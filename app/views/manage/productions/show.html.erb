@@ -53,17 +53,17 @@
         <% if @dashboard[:upcoming_shows].any? %>
           <div class="space-y-3">
             <% @dashboard[:upcoming_shows].each do |show_data| %>
-              <%= link_to cast_manage_production_show_path(@production, show_data[:show]), class: "flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors no-underline" do %>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <p class="font-bold text-sm">
+              <%= link_to cast_manage_production_show_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                    <p class="font-bold text-sm whitespace-normal">
                       <%= show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p") %>
                     </p>
                     <% if show_data[:show].date_and_time %>
-                      <span class="text-xs text-gray-500">(<%= show_data[:days_until] %> days away)</span>
+                      <span class="text-xs text-gray-500 sm:whitespace-nowrap">(<%= show_data[:days_until] %> days away)</span>
                     <% end %>
                   </div>
-                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <% event_type_badge_classes = case show_data[:show].event_type
                       when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
                       when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
@@ -79,27 +79,29 @@
 
                     <% if show_data[:show].location.present? %>
                       <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-                        <%= show_data[:show].location.name %>
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                        <span class="truncate"><%= show_data[:show].location.name %></span>
                       </span>
                     <% end %>
                   </div>
-                  <div class="text-xs text-gray-500 mt-2">
+                  <div class="text-xs text-gray-500 mt-3">
                     <div class="w-full bg-gray-200 rounded-full h-2">
                       <div class="bg-pink-500 h-2 rounded-full" style="width: <%= show_data[:cast_percentage] %>%"></div>
                     </div>
                     <span><%= show_data[:cast_percentage] %>% cast</span>
                   </div>
                 </div>
-                <% if show_data[:uncast_count] > 0 %>
-                  <span class="inline-block bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full ml-2">
-                    <%= show_data[:uncast_count] %> uncast
-                  </span>
-                <% else %>
-                  <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full ml-2">
-                    Fully Cast
-                  </span>
-                <% end %>
+                <div class="flex-shrink-0 sm:ml-2">
+                  <% if show_data[:uncast_count] > 0 %>
+                    <span class="inline-block bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full w-full sm:w-auto text-center">
+                      <%= show_data[:uncast_count] %> uncast
+                    </span>
+                  <% else %>
+                    <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full w-full sm:w-auto text-center">
+                      Fully Cast
+                    </span>
+                  <% end %>
+                </div>
               <% end %>
             <% end %>
           </div>
@@ -118,8 +120,8 @@
         <% if @dashboard[:availability_summary][:shows_with_availability].any? %>
           <div class="space-y-3">
             <% @dashboard[:availability_summary][:shows_with_availability].each do |show_data| %>
-              <%= link_to manage_production_availability_path(@production, show_data[:show]), class: "flex items-start justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors no-underline" do %>
-                <div class="flex-1">
+              <%= link_to manage_production_availability_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
+                <div class="flex-1 min-w-0">
                   <p class="font-bold text-sm">
                     <%= show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p") %>
                   </p>
@@ -132,19 +134,21 @@
                     </div>
                   <% end %>
                 </div>
-                <% if show_data[:percentage_responded] == 100 %>
-                  <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800">
-                    <%= show_data[:percentage_responded] %>% responded
-                  </span>
-                <% elsif show_data[:percentage_responded] >= 75 %>
-                  <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                    <%= show_data[:percentage_responded] %>% responded
-                  </span>
-                <% else %>
-                  <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-red-100 text-red-800">
-                    <%= show_data[:percentage_responded] %>% responded
-                  </span>
-                <% end %>
+                <div class="flex-shrink-0 sm:ml-2">
+                  <% if show_data[:percentage_responded] == 100 %>
+                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800 w-full sm:w-auto text-center">
+                      <%= show_data[:percentage_responded] %>% responded
+                    </span>
+                  <% elsif show_data[:percentage_responded] >= 75 %>
+                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto text-center">
+                      <%= show_data[:percentage_responded] %>% responded
+                    </span>
+                  <% else %>
+                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-red-100 text-red-800 w-full sm:w-auto text-center">
+                      <%= show_data[:percentage_responded] %>% responded
+                    </span>
+                  <% end %>
+                </div>
               <% end %>
             <% end %>
           </div>
@@ -204,12 +208,12 @@
       </div>
       <div class="p-4 space-y-2">
         <% links = [
-          { name: "Manage Shows", path: manage_production_shows_path(@production) },
-          { name: "Manage Casts", path: manage_production_casts_path(@production) },
+          { name: "Manage Shows & Events", path: manage_production_shows_path(@production) },
+          { name: "Manage Availability", path: manage_production_availability_index_path(@production) },
+          { name: "Manage Cast Membership", path: manage_production_casts_path(@production) },
           { name: "Manage Roles", path: manage_production_roles_path(@production) },
-          { name: "Open Calls", path: manage_production_call_to_auditions_path(@production) },
-          { name: "Audition Sessions", path: manage_production_audition_sessions_path(@production) },
-          { name: "Visual Assets", path: manage_production_visual_assets_path(@production) },
+          { name: "Manage Auditions & Sign-ups", path: manage_production_auditions_path(@production) },
+          { name: "View and Manage Visual Assets", path: manage_production_visual_assets_path(@production) },
           { name: "Production Settings", path: edit_manage_production_path(@production) }
         ] %>
         <% links.each do |link| %>
