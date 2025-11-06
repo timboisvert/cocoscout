@@ -34,28 +34,30 @@
               <div class="font-semibold text-sm">Cast Member</div>
             </th>
             <% @shows.each_with_index do |show, col_index| %>
-              <th class="border-b-2 border-gray-300 px-4 py-3 text-center w-[140px] bg-white" data-col="<%= col_index %>">
-                <% event_type_badge_classes = case show.event_type
-                  when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                  when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                  else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                end %>
-                <div class="mb-1">
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
-                    <%= show.event_type.titleize %>
-                  </span>
-                </div>
-                <% if show.secondary_name.present? %>
-                  <div class="text-xs font-medium text-gray-500 mt-1">
-                    <%= show.secondary_name %>
+              <th class="border-b-2 border-gray-300 px-4 py-3 text-center w-[140px] bg-white cursor-pointer hover:bg-gray-50" data-col="<%= col_index %>">
+                <%= link_to manage_production_availability_path(@production, show), class: "block no-underline text-gray-900 hover:text-gray-900" do %>
+                  <% event_type_badge_classes = case show.event_type
+                    when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                    when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                    else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                  end %>
+                  <div class="mb-1">
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                      <%= show.event_type.titleize %>
+                    </span>
+                  </div>
+                  <% if show.secondary_name.present? %>
+                    <div class="text-xs font-medium text-gray-500 mt-1">
+                      <%= show.secondary_name %>
+                    </div>
+                  <% end %>
+                  <div class="text-xs text-gray-500 mt-1">
+                    <%= show.date_and_time.strftime("%b %d, %Y") %>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    <%= show.date_and_time.strftime("%l:%M %p") %>
                   </div>
                 <% end %>
-                <div class="text-xs text-gray-500 mt-1">
-                  <%= show.date_and_time.strftime("%b %d, %Y") %>
-                </div>
-                <div class="text-xs text-gray-500">
-                  <%= show.date_and_time.strftime("%l:%M %p") %>
-                </div>
               </th>
             <% end %>
           </tr>
@@ -88,20 +90,22 @@
                     data-col="<%= col_index %>"
                     data-availability-grid-target="cell"
                     data-action="mouseenter->availability-grid#highlightColumn mouseleave->availability-grid#unhighlightColumn">
-                  <% if availability %>
-                    <% if availability.available? %>
-                      <span class="text-sm font-medium text-pink-500">
-                        Available
-                      </span>
-                    <% elsif availability.unavailable? %>
-                      <span class="text-sm font-medium text-gray-900">
-                        Unavailable
-                      </span>
+                  <%= link_to manage_production_availability_path(@production, show), class: "block no-underline text-gray-900 hover:text-gray-900" do %>
+                    <% if availability %>
+                      <% if availability.available? %>
+                        <span class="text-sm font-medium text-pink-500">
+                          Available
+                        </span>
+                      <% elsif availability.unavailable? %>
+                        <span class="text-sm font-medium text-gray-900">
+                          Unavailable
+                        </span>
+                      <% else %>
+                        <span class="text-gray-400 text-sm">-</span>
+                      <% end %>
                     <% else %>
                       <span class="text-gray-400 text-sm">-</span>
                     <% end %>
-                  <% else %>
-                    <span class="text-gray-400 text-sm">-</span>
                   <% end %>
                 </td>
               <% end %>

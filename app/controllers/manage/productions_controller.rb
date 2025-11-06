@@ -12,6 +12,7 @@ class Manage::ProductionsController < Manage::ManageController
 
   def show
     set_production_in_session
+    @dashboard = DashboardService.new(@production).generate
   end
 
   def new
