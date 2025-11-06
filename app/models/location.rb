@@ -1,11 +1,25 @@
 class Location < ApplicationRecord
   belongs_to :production_company
+  has_many :shows, dependent: :restrict_with_error
+  has_many :audition_sessions, dependent: :restrict_with_error
 
   validates :name, :address1, :city, :state, :postal_code, presence: true
 
   # Ensure only one location is default per production company
   before_save :ensure_single_default
   after_create :set_as_default_if_only_location
+
+  def upcoming_shows
+    shows.where("date_and_time > ?", Time.current).order(:date_and_time)
+  end
+
+  def upcoming_audition_sessions
+    audition_sessions.where("start_at > ?", Time.current).order(:start_at)
+  end
+
+  def has_upcoming_events?
+    upcoming_shows.exists? || upcoming_audition_sessions.exists?
+  end
 
   private
 

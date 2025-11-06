@@ -30,7 +30,7 @@ class DashboardService
 
   def upcoming_shows
     @production.shows
-      .where("date_and_time >= ?", Date.today)
+      .where("date_and_time >= ? AND date_and_time <= ?", Date.today, 6.weeks.from_now)
       .order(date_and_time: :asc)
       .limit(5)
       .map do |show|
@@ -53,7 +53,9 @@ class DashboardService
   end
 
   def availability_summary
-    upcoming_shows = @production.shows.where("date_and_time > ?", Time.current).order(date_and_time: :asc)
+    upcoming_shows = @production.shows
+      .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+      .order(date_and_time: :asc)
 
     # Get all people in the production's casts
     all_cast_people = @production.casts.flat_map(&:people).uniq

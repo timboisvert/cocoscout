@@ -105,7 +105,11 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :locations
+    resources :locations do
+      member do
+        get :cannot_delete
+      end
+    end
 
     resources :productions do
       resources :availability, only: [ :index, :show ] do

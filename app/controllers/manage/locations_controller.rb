@@ -1,5 +1,5 @@
 class Manage::LocationsController < Manage::ManageController
-  before_action :set_location, only: %i[ show edit update destroy ]
+  before_action :set_location, only: %i[ show edit update destroy cannot_delete ]
   before_action :ensure_user_is_global_manager, except: %i[index show]
 
   def index
@@ -20,9 +20,21 @@ class Manage::LocationsController < Manage::ManageController
     @location = Current.production_company.locations.new(location_params)
 
     if @location.save
-      redirect_to [ :manage, :locations ], notice: "Location was successfully created"
+      # Handle AJAX requests (from modal)
+      if request.accept == "application/json" || request.xhr?
+        render json: { id: @location.id, name: @location.name }, status: :created
+      else
+        # Handle standard form submissions
+        redirect_to [ :manage, :locations ], notice: "Location was successfully created"
+      end
     else
-      render :new, status: :unprocessable_entity
+      # Handle AJAX error requests
+      if request.accept == "application/json" || request.xhr?
+        render json: { errors: @location.errors.messages }, status: :unprocessable_entity
+      else
+        # Handle standard form submission errors
+        render :new, status: :unprocessable_entity
+      end
     end
   end
 
@@ -35,8 +47,15 @@ class Manage::LocationsController < Manage::ManageController
   end
 
   def destroy
-    @location.destroy!
-    redirect_to manage_locations_path, notice: "Location was successfully deleted", status: :see_other
+    if @location.has_upcoming_events?
+      redirect_to cannot_delete_manage_location_path(@location), status: :see_other
+    else
+      @location.destroy!
+      redirect_to manage_locations_path, notice: "Location was successfully deleted", status: :see_other
+    end
+  end
+
+  def cannot_delete
   end
 
   private
