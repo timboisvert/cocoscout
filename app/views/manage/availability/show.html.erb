@@ -1,0 +1,110 @@
+<% content_for :title, "Availability for #{@show.date_and_time.strftime('%b %d, %Y')}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Availability", manage_production_availability_index_path(@production)]
+    ],
+    text: @show.date_and_time.strftime("%b %d, %Y at %l:%M %p"),
+    links: []
+  } %>
+
+  <div class="mt-4">
+    <!-- Availability Form/Display -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Cast Availability</h3>
+        <% if current_user_can_manage?(@production) %>
+          <% if @edit_mode %>
+            <div class="flex gap-2">
+              <%= link_to "Done", manage_production_availability_path(@production, @show), class: "text-pink-500 text-xs underline" %>
+            </div>
+          <% else %>
+            <div class="flex gap-2">
+              <%= link_to "Edit Availability", manage_production_availability_path(@production, @show, edit: 'true'), class: "text-pink-500 text-xs underline" %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="p-4">
+        <% if @cast_members.empty? %>
+          <p class="text-sm text-gray-500">No cast members found.</p>
+        <% else %>
+          <% if @edit_mode %>
+            <%= form_with url: update_show_availability_manage_production_availability_path(@production, @show), method: :patch, local: true do |f| %>
+              <div class="space-y-3">
+                <% @cast_members.each do |person| %>
+                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm flex-shrink-0">
+                          <%= person.initials %>
+                        </div>
+                      <% end %>
+                      <div>
+                        <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-0 flex-shrink-0">
+                      <% availability = @availabilities[person.id] %>
+                      <%= f.radio_button "availability_#{person.id}", 'available', { checked: availability&.available?, class: "sr-only peer/available", id: "availability_#{person.id}_available" } %>
+                      <%= label_tag "availability_#{person.id}_available", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l-lg border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500" do %>
+                        Available
+                      <% end %>
+
+                      <%= f.radio_button "availability_#{person.id}", 'unavailable', { checked: availability&.unavailable?, class: "sr-only peer/unavailable", id: "availability_#{person.id}_unavailable" } %>
+                      <%= label_tag "availability_#{person.id}_unavailable", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r-lg bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500" do %>
+                        Unavailable
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <div class="mt-4">
+                <%= f.submit "Update Availability", class: "px-4 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="space-y-3">
+              <% @cast_members.each do |person| %>
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div class="flex items-center space-x-3">
+                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm flex-shrink-0">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
+                    <div>
+                      <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
+                    </div>
+                  </div>
+                  <% availability = @availabilities[person.id] %>
+                  <% if availability %>
+                    <% if availability.available? %>
+                      <span class="text-sm font-medium text-pink-500">Available</span>
+                    <% elsif availability.unavailable? %>
+                      <span class="text-sm font-medium text-gray-900">Unavailable</span>
+                    <% else %>
+                      <span class="text-gray-400 text-sm">-</span>
+                    <% end %>
+                  <% else %>
+                    <span class="text-gray-400 text-sm">-</span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+</div>

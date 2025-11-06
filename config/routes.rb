@@ -108,10 +108,13 @@ Rails.application.routes.draw do
     resources :locations
 
     resources :productions do
-      resources :availability, only: [ :index ] do
+      resources :availability, only: [ :index, :show ] do
         collection do
           get  :request_availability
           post :handle_request_availability
+        end
+        member do
+          patch :update_show_availability
         end
       end
 

@@ -18,6 +18,23 @@ class Manage::AvailabilityController < Manage::ManageController
     end
   end
 
+  def show
+    # Get the specific show
+    @show = @production.shows.find(params[:id])
+
+    # Get all cast members for this production
+    @cast_members = @production.casts.flat_map(&:people).uniq.sort_by(&:name)
+
+    # Build a hash of availabilities for this show
+    @availabilities = {}
+    @cast_members.each do |person|
+      @availabilities[person.id] = person.show_availabilities.find_by(show: @show)
+    end
+
+    # Track edit mode
+    @edit_mode = params[:edit] == "true"
+  end
+
   def request_availability
     # Get all future shows for this production
     @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
@@ -89,6 +106,29 @@ class Manage::AvailabilityController < Manage::ManageController
     end
 
     redirect_to manage_production_availability_index_path(@production), notice: "Availability request sent to #{recipients.count} #{'person'.pluralize(recipients.count)}"
+  end
+
+  def update_show_availability
+    @show = @production.shows.find(params[:id])
+
+    # Update availabilities for each person
+    params.each do |key, value|
+      if key.match?(/^availability_/)
+        person_id = key.match(/availability_(\d+)/)[1].to_i
+        person = Person.find(person_id)
+        availability = person.show_availabilities.find_or_initialize_by(show: @show)
+
+        if value == "available"
+          availability.available!
+        elsif value == "unavailable"
+          availability.unavailable!
+        end
+
+        availability.save
+      end
+    end
+
+    redirect_to manage_production_availability_path(@production, @show), notice: "Availability updated"
   end
 
   private
