@@ -6,8 +6,10 @@
       </svg>
     </button>
     <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-      <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
-      <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+      <%= link_to manage_path, class: "flex items-center gap-2" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
+        <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+      <% end %>
     </div>
     <div class="w-6"></div>
   </div>
