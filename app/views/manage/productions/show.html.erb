@@ -53,14 +53,14 @@
         <% if @dashboard[:upcoming_shows].any? %>
           <div class="space-y-3">
             <% @dashboard[:upcoming_shows].each do |show_data| %>
-              <%= link_to cast_manage_production_show_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
+              <%= link_to cast_manage_production_show_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
                 <div class="flex-1 min-w-0">
                   <div class="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                     <p class="font-bold text-sm whitespace-normal">
                       <%= show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p") %>
                     </p>
                     <% if show_data[:show].date_and_time %>
-                      <span class="text-xs text-gray-500 sm:whitespace-nowrap">(<%= show_data[:days_until] %> days away)</span>
+                      <span class="text-xs text-gray-500 sm:whitespace-nowrap">(<%= show_data[:days_until] %>)</span>
                     <% end %>
                   </div>
                   <div class="flex items-center gap-2 mt-2 flex-wrap">
@@ -188,12 +188,12 @@
         <div>
           <h4 class="text-sm font-semibold text-gray-700 mb-2">Contact Email</h4>
           <% if @production.contact_email.present? %>
-            <%= mail_to @production.contact_email, @production.contact_email, class: "text-pink-500 hover:text-pink-600 underline" %>
+            <%= mail_to @production.contact_email, @production.contact_email, class: "text-sm text-pink-500 hover:text-pink-600 underline" %>
           <% else %>
             <p class="text-sm text-gray-500">
               No contact email yet.
               <% if current_user_can_manage?(@production) %>
-                <%= link_to "Add one", edit_manage_production_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
+                <%= link_to "Add one", edit_manage_production_path(@production), class: "text-sm text-pink-500 hover:text-pink-600 underline" %>
               <% end %>
             </p>
           <% end %>
@@ -206,7 +206,7 @@
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Quick Links</h3>
       </div>
-      <div class="p-4 space-y-2">
+      <div class="p-4">
         <% links = [
           { name: "Manage Shows & Events", path: manage_production_shows_path(@production) },
           { name: "Manage Availability", path: manage_production_availability_index_path(@production) },

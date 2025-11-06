@@ -35,10 +35,18 @@ class DashboardService
       .limit(5)
       .map do |show|
         uncast_count = @production.roles.count - show.show_person_role_assignments.count
+        days_until = (show.date_and_time.to_date - Date.today).to_i
+
+        days_label = case days_until
+        when 0 then "today"
+        when 1 then "tomorrow"
+        else "#{days_until} days from now"
+        end
+
         {
           show: show,
           uncast_count: uncast_count,
-          days_until: (show.date_and_time.to_date - Date.today).to_i,
+          days_until: days_label,
           cast_percentage: ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
         }
       end
