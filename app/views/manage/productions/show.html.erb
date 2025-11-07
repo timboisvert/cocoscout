@@ -130,7 +130,7 @@
                   </div>
                   <% if show_data[:without_availability] > 0 %>
                     <div class="text-xs mt-2">
-                      <span class="font-semibold text-amber-700"><%= show_data[:without_availability] %> still need to respond</span>
+                        <span class="font-semibold text-amber-700"><%= pluralize(show_data[:without_availability], "still needs", "still need") %> to respond</span>
                     </div>
                   <% end %>
                 </div>
