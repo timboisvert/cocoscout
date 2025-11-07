@@ -203,7 +203,7 @@
           <%= form.label :form_reviewed, "I have reviewed the sign-up form and it's ready to be shared", { class: "ml-2 text-sm text-gray-700" } %>
         </div>
         <div class="w-full border-t border-gray-200 pt-4">
-          <%= form.submit "Save Review Status", { class: "hidden rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer", data: { form_review_target: "submitButton" } } %>
+          <%= form.submit "Save Review Status", { class: "rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer", style: "display: none;", data: { form_review_target: "submitButton" } } %>
         </div>
       <% end %>
     </div>

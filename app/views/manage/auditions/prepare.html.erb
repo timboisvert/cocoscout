@@ -25,7 +25,7 @@
             ⚠️ Sign-up window opens in <%= distance_of_time_in_words(@production.call_to_audition.opens_at, Time.current) %>
           </p>
           <p class="text-sm text-yellow-700 mt-1">
-            Please review and approve the sign-up form before the window opens. 
+            Please review and approve the sign-up form before the window opens.
             <%= link_to "Review Form", form_manage_production_call_to_audition_path(@production, @production.call_to_audition), class: "font-semibold underline" %>
           </p>
         </div>
@@ -92,7 +92,6 @@
 
       <% if @production.audition_sessions.any? %>
         <div class="mb-4">
-          <p class="text-sm text-gray-600 mb-3">Scheduled Sessions: <span class="font-semibold"><%= @production.audition_sessions.count %></span></p>
           <div class="space-y-2">
             <% @production.audition_sessions.order(:start_at).each do |session| %>
               <div class="border border-gray-200 rounded-lg p-3">
