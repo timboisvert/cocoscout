@@ -8,269 +8,113 @@
     links: []
   } %>
 
-  <div class="w-full">
-
-    <% if !@production.call_to_auditions.any? %>
-      <div class="mb-5 text-gray-500 text-sm">
-        You aren't currently offering auditions for <%= @production.name %>
+  <% if @production.call_to_audition.present? %>
+    <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Audition Process</h3>
       </div>
 
-      <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
-      <% end %>
-    <% end %>
+      <div class="p-8">
+        <div class="relative">
+          <div class="grid grid-cols-1 gap-12">
 
-    <% @production.call_to_auditions.order(:opens_at).each do |call_to_audition| %>
-      <div class="w-full mt-5 sm:flex sm:flex-row sm:justify-between sm:items-top">
-        <div class="w-full sm:w-1/2">
-
-          <div class="text-xs">
-            <% if call_to_audition.timeline_status == :upcoming %>
-
-              <p>Your sign-up window for</p>
-
-              <% if call_to_audition.audition_type == "in_person" %>
-                <p class="text-lg font-bold">In-person Auditions</p>
-              <% elsif call_to_audition.audition_type == "video_upload" %>
-                <p class="text-lg font-bold">Video Upload Auditions</p>
-              <% end %>
-
-              <p>will open soon</p>
-
-            <% elsif call_to_audition.timeline_status == :open %>
-
-              <p>You are currently accepting sign-ups for</p>
-
-              <% if call_to_audition.audition_type == "in_person" %>
-                <p class="text-lg font-bold">In-person Auditions</p>
-              <% elsif call_to_audition.audition_type == "video_upload" %>
-                <p class="text-lg font-bold">Video Upload Auditions</p>
-              <% end %>
-
-              <p>via the Sign-up form</p>
-
-            <% else %>
-
-              <p>Your sign-up window for</p>
-
-               <% if call_to_audition.audition_type == "in_person" %>
-                <p class="text-lg font-bold">In-person Auditions</p>
-              <% elsif call_to_audition.audition_type == "video_upload" %>
-                <p class="text-lg font-bold">Video Upload Auditions</p>
-              <% end %>
-
-              <p>is currently closed</p>
-
-            <% end %>
-
-          </div>
-
-        </div>
-        <div class="w-full mt-5 sm:mt-0 sm:w-1/2 flex flex-col">
-
-          <% if call_to_audition.timeline_status == :upcoming %>
-
-            <% if call_to_audition.opens_at < 2.days.from_now %>
-              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
-                <div>Sign-up window opens in</div>
-                <div data-countdown-target="clock" class="text-xl text-pink-500 font-bold"></div>
-                <div>
-                  <%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %>
-                  <% if current_user_can_manage?(@production) %>
-                    <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
-                  <% end %>
-                </div>
-              </div>
-            <% else %>
-              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
-                <div>Sign-up window opens on</div>
-                <div class="text-xl font-bold"><%= call_to_audition.opens_at.strftime("%B %-d, %Y at %l:%M %p") %></div>
-                <% if current_user_can_manage?(@production) %>
-                  <%= link_to "Reschedule", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
-                <% end %>
-              </div>
-            <% end %>
-
-           <% elsif call_to_audition.timeline_status == :open %>
-
-            <% if call_to_audition.closes_at < 2.days.from_now %>
-              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
-                <div>Sign-up window closes in</div>
-                <div data-countdown-target="clock" class="text-xl text-pink-500 font-bold"></div>
-                <div>
-                  <%= call_to_audition.closes_at.strftime("%B %-d, %Y at %l:%M %p") %>
-                  <% if current_user_can_manage?(@production) %>
-                    <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
-                  <% end %>
-                </div>
-              </div>
-            <% else %>
-              <div class="text-xs" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
-                <div>Sign-up window closes on</div>
-                <div class="text-xl font-bold"><%= call_to_audition.closes_at.strftime("%B %-d, %Y at %l:%M %p") %></div>
-                <% if current_user_can_manage?(@production) %>
-                  <%= link_to "Extend", edit_manage_production_call_to_audition_path(@production, call_to_audition), class: "text-pink-500 underline" %>
-                <% end %>
-              </div>
-            <% end %>
-
-          <% end %>
-
-
-
-        </div>
-      </div>
-
-      <% if current_user_can_manage?(@production) %>
-        <div class="w-full mt-5">
-          <%= render partial: "shared/link_button", locals: {text: "Manage Audition Settings", path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
-        </div>
-      <% end %>
-
-      <div class="w-full mt-10">
-
-        <%= render partial: "shared/top_menu", locals: {
-          breadcrumbs: [],
-          text: "Sign-up Form",
-          links: []
-        } %>
-
-        <div>
-          <div class="w-full sm:w-1/2 flex items-center" data-controller="clipboard">
-            <%= text_field_tag "", call_to_audition.respond_url, class: "block w-full text-sm text-black bg-white shadow-sm rounded-lg border px-3 py-2 border-gray-400", disabled: true, data: { clipboard_target: "textField" } %>
-            <p class="ml-1 font-medium rounded-lg text-sm px-2 py-1 h-9 text-center mb-0 inline-block bg-pink-500 text-white hover:bg-gray-100 hover:text-pink-500 cursor-pointer" data-action="click->clipboard#copy" data-clipboard-target="button">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
-              </svg>
-            </p>
-          </div>
-          <div class="mt-2">
-            <% if current_user_can_manage?(@production) %>
-              <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
-            <% end %>
-            <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, call_to_audition)} %>
-          </div>
-        </div>
-      </div>
-
-      <div class="w-full mt-10">
-
-          <%= render partial: "shared/top_menu", locals: {
-            breadcrumbs: [],
-            text: "Sign-ups",
-            links: []
-          } %>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :unreviewed) do %>
-              <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-                <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:unreviewed] %></p>
-                <p class="text-xs text-center">Unreviewed</p>
-              </div>
-            <% end %>
-            <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :undecided) do %>
-              <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-                <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:undecided] %></p>
-                <p class="text-xs text-center">Revisit</p>
-              </div>
-            <% end %>
-            <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :accepted) do %>
-              <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-                <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:accepted] %></p>
-                <p class="text-xs text-center">Yes</p>
-              </div>
-            <% end %>
-            <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :passed) do %>
-              <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-                <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:passed] %></p>
-                <p class="text-xs text-center">No</p>
-              </div>
-            <% end %>
-          </div>
-          <%= render partial: "shared/link_button", locals: {text: "View all Sign-ups", path: manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :all)} %>
-
-      </div>
-
-      <% if call_to_audition.audition_type == "in_person" %>
-        <div class="w-full mt-10">
-          <%= render partial: "shared/top_menu", locals: {
-            breadcrumbs: [],
-            text: "In-Person Sessions",
-            links: []
-          } %>
-
-          <div class="grid grid-cols-1">
-            <% if @production.audition_sessions.any? %>
-              <div class="grid grid-cols-1 gap-1 mb-2">
-                <% @production.audition_sessions.order(:start_at).each_with_index do |session, idx| %>
-                  <div class="border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-controller="show-toggle" <%= 'data-show-toggle-initial-open-value="true"' if idx == 0 %>>
-                    <div class="flex items-center cursor-pointer select-none p-4" data-action="click->show-toggle#toggle">
-                      <span data-show-toggle-target="icon" class="mr-2"></span>
-                      <p class="font-bold text-sm sm:text-lg "><%= session.start_at.strftime("%A, %B %-d, %Y") %> at <%= session.start_at.strftime("%l:%M %p") %></p>
-                    </div>
-                    <div data-show-toggle-target="content" class="hidden p-4 pt-0 <%= 'hidden' unless idx == 0 %>">
-                      <%= link_to manage_production_audition_session_path(@production, session) do %>
-                        <div>
-                          <% if session.auditions.any? %>
-                            <div class="grid grid-cols-3 sm:grid-cols-8 lg:grid-cols-12 gap-1 w-full">
-                              <% session.auditions.each do |audition| %>
-                                <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-                                  <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
-                                  <% if headshot_variant %>
-                                    <%= image_tag headshot_variant, alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
-                                  <% else %>
-                                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
-                                      <%= audition.person.initials %>
-                                    </div>
-                                  <% end %>
-                                  <span class="font-medium text-xs text-center"><%= audition.person.name.truncate(20, omission: '...') %></span>
-                                </div>
-                              <% end %>
-                              <% if (!session.is_full? && !session.is_overbooked?) %>
-                                <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
-                                  <div class="flex flex-col items-center justify-center">
-                                    Add up to<br><%= session.maximum_auditionees - session.auditions.count %> more
-                                  </div>
-                                </span>
-                              <% end %>
-                            </div>
-                          <% else %>
-                            <p class="text-gray-500 font-semibold text-xs">No auditions scheduled for this session.</p>
-                          <% end %>
-                        </div>
-                      <% end %>
-                    </div>
+            <!-- Step 1: Prepare -->
+            <%= link_to manage_production_auditions_prepare_path(@production), class: "no-underline" do %>
+              <div class="relative flex flex-col items-start text-left group">
+                <div class="flex items-start gap-6">
+                  <div class="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                   </div>
-                <% end %>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Prepare</h4>
+                    <p class="text-gray-600 text-sm mt-1">Configure settings, plan sessions, and customize sign-up form</p>
+                  </div>
+                </div>
               </div>
             <% end %>
 
-            <div class="flex flex-col sm:flex-row justify-between space-y-2 sm:space-y-0 sm:space-x-2">
-
-              <div class="flex flex-col sm:flex-row w-full justify-between">
-                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-                  <% if current_user_can_manage?(@production) %>
-                    <% if @production.audition_sessions.any? %>
-                      <div class="w-full sm:w-auto">
-                        <%= render partial: "shared/link_button", locals: {text: "Manage In-person Sessions", path: manage_production_audition_sessions_path(@production), class: "w-full"} %>
-                      </div>
-                    <% end %>
-                    <div class="w-full sm:w-auto">
-                      <%= render partial: "shared/link_button", locals: {text: "Schedule an In-person Session", path: new_manage_production_audition_session_path(@production), class: "w-full"} %>
-                    </div>
-                  <% end %>
-                </div>
-                <div class="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0 flex justify-end">
-                  <%= render partial: "shared/link_button", locals: {text: "In-person Session Summary", path: manage_production_audition_session_summary_path(@production), class: "w-full"} %>
+            <!-- Step 2: Publicize -->
+            <%= link_to manage_production_auditions_publicize_path(@production), class: "no-underline" do %>
+              <div class="relative flex flex-col items-start text-left group">
+                <div class="flex items-start gap-6">
+                  <div class="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Publicize</h4>
+                    <p class="text-gray-600 text-sm mt-1">Share sign-up link and collect applications</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            <% end %>
+
+            <!-- Step 3: Review -->
+            <%= link_to manage_production_auditions_review_path(@production), class: "no-underline" do %>
+              <div class="relative flex flex-col items-start text-left group">
+                <div class="flex items-start gap-6">
+                  <div class="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Review</h4>
+                    <p class="text-gray-600 text-sm mt-1">Accept or decline applications and schedule auditions</p>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Step 4: Run Auditions -->
+            <%= link_to manage_production_auditions_run_path(@production), class: "no-underline" do %>
+              <div class="relative flex flex-col items-start text-left group">
+                <div class="flex items-start gap-6">
+                  <div class="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Run Auditions</h4>
+                    <p class="text-gray-600 text-sm mt-1">Conduct sessions and evaluate performances</p>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Step 5: Communicate -->
+            <%= link_to manage_production_auditions_communicate_path(@production), class: "no-underline" do %>
+              <div class="relative flex flex-col items-start text-left group">
+                <div class="flex items-start gap-6">
+                  <div class="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Communicate</h4>
+                    <p class="text-gray-600 text-sm mt-1">Send decisions and add people to cast</p>
+                  </div>
+                </div>
+              </div>
+            <% end %>
 
           </div>
-
         </div>
-      <% end %>
+            </div>
+    </div>
+  <% else %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
 
+    <% if current_user_can_manage?(@production) %>
+      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
     <% end %>
-  </div>
+  <% end %>
 </div>

@@ -14,17 +14,18 @@ class DashboardService
   private
 
   def open_calls_summary
-    calls = @production.call_to_auditions
-      .where("opens_at <= ? AND closes_at >= ?", Time.current, Time.current)
-      .includes(:audition_requests)
+    call = @production.call_to_audition
+    return { total_open: 0, with_auditionees: [] } if call.blank?
+
+    is_open = call.opens_at <= Time.current && call.closes_at >= Time.current
+    return { total_open: 0, with_auditionees: [] } unless is_open
+
     {
-      total_open: calls.count,
-      with_auditionees: calls.map do |call|
-        {
-          call: call,
-          auditionee_count: call.audition_requests.count
-        }
-      end
+      total_open: 1,
+      with_auditionees: [ {
+        call: call,
+        auditionee_count: call.audition_requests.count
+      } ]
     }
   end
 

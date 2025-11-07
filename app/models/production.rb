@@ -1,8 +1,8 @@
 class Production < ApplicationRecord
     has_many :posters, dependent: :destroy
     has_many :shows, dependent: :destroy
-    has_many :call_to_auditions, dependent: :destroy
-    has_many :audition_requests, through: :call_to_auditions
+    has_one :call_to_audition, dependent: :destroy
+    has_many :audition_requests, through: :call_to_audition
     has_many :audition_sessions, dependent: :destroy
     has_many :casts, dependent: :destroy
     has_many :roles, dependent: :destroy

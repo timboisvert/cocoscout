@@ -1,0 +1,81 @@
+<% content_for :title, "Run Auditions - Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Run Auditions",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :run } %>
+
+  <% if @production.call_to_audition.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <% call_to_audition = @production.call_to_audition %>
+
+    <% if call_to_audition.audition_type == "in_person" %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">In-Person Sessions</h3>
+        </div>
+        <div class="p-6">
+        <p class="text-gray-600 mb-6">Manage and conduct your in-person audition sessions.</p>
+
+        <% if @production.audition_sessions.any? %>
+          <div class="grid grid-cols-1 gap-4 mb-6">
+            <% @production.audition_sessions.order(:start_at).each_with_index do |session, idx| %>
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-start mb-3">
+                  <div>
+                    <p class="font-semibold text-gray-900"><%= session.start_at&.strftime("%A, %B %-d, %Y") %></p>
+                    <p class="text-sm text-gray-600"><%= session.start_at&.strftime("%l:%M %p") %></p>
+                  </div>
+                  <p class="text-sm text-gray-600"><%= session.auditions.count %> / <%= session.maximum_auditionees %> auditions</p>
+                </div>
+                <% if session.location.present? %>
+                  <p class="text-sm text-gray-600 mb-3"><%= session.location.name %></p>
+                <% end %>
+                <%= link_to "Manage Session", manage_production_audition_session_path(@production, session), class: "inline-block font-medium text-sm px-3 py-1 bg-pink-100 text-pink-500 rounded hover:bg-pink-200" %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <p class="text-gray-600 text-sm">No sessions scheduled yet. <%= link_to "Schedule a session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
+          </div>
+        <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Session Summary</h3>
+        </div>
+        <div class="p-6">
+        <%= link_to "View Full Summary", manage_production_audition_session_summary_path(@production), class: "inline-block font-medium rounded-lg text-sm px-4 py-2 bg-pink-500 text-white hover:bg-pink-600" %>
+        </div>
+      </div>
+    <% elsif call_to_audition.audition_type == "video_upload" %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Video Upload Auditions</h3>
+        </div>
+        <div class="p-6">
+        <p class="text-gray-600 mb-4">Auditionees have submitted their video uploads. Review their submissions.</p>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-gray-700 font-semibold mb-2">Total Submissions: <span class="text-lg"><%= call_to_audition.audition_requests.count %></span></p>
+          <p class="text-sm text-gray-600">Video auditions don't require in-person sessions.</p>
+        </div>
+        </div>
+      </div>
+    <% end %>
+
+  <% end %>
+</div>

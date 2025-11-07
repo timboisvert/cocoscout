@@ -1,0 +1,75 @@
+<% content_for :title, "Communicate - Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Communicate",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
+
+  <% if @production.call_to_audition.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <% call_to_audition = @production.call_to_audition %>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Send Communications</h3>
+      </div>
+      <div class="p-6">
+      <p class="text-gray-600 mb-6">Send callback notifications, rejections, or thank you messages to auditionees.</p>
+
+      <div class="space-y-4">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <h3 class="font-semibold text-gray-900 mb-2">Accepted Candidates</h3>
+          <p class="text-2xl font-bold text-pink-500 mb-2"><%= call_to_audition.counts[:accepted] %></p>
+          <p class="text-sm text-gray-600 mb-3">Ready to send callback notifications</p>
+          <button class="inline-block font-medium text-sm px-3 py-1 bg-pink-100 text-pink-500 rounded hover:bg-pink-200" disabled>
+            Send Callbacks (Coming Soon)
+          </button>
+        </div>
+
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <h3 class="font-semibold text-gray-900 mb-2">Declined Candidates</h3>
+          <p class="text-2xl font-bold text-gray-400 mb-2"><%= call_to_audition.counts[:passed] %></p>
+          <p class="text-sm text-gray-600 mb-3">Ready to send thank you/rejection messages</p>
+          <button class="inline-block font-medium text-sm px-3 py-1 bg-gray-200 text-gray-500 rounded hover:bg-gray-300" disabled>
+            Send Messages (Coming Soon)
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add to Cast</h3>
+      </div>
+      <div class="p-6">
+      <p class="text-gray-600 mb-4">Add accepted candidates to your production's cast.</p>
+
+      <div class="bg-gray-50 rounded-lg p-4">
+        <p class="text-gray-700 mb-3">
+          <span class="font-semibold"><%= call_to_audition.counts[:accepted] %></span> candidates are ready to be added to your cast.
+        </p>
+        <button class="inline-block font-medium text-sm px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600" disabled>
+          Add Selected to Cast (Coming Soon)
+        </button>
+      </div>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-blue-900 mb-2">Audition Process Complete</h2>
+      <p class="text-blue-800">Once you've communicated with all candidates and added them to your cast, your audition process is complete!</p>
+    </div>
+
+  <% end %>
+</div>

@@ -24,6 +24,7 @@ class Show < ApplicationRecord
 
   validates :location, presence: true
   validates :event_type, presence: true
+  validates :date_and_time, presence: true
   validate :poster_content_type
 
   # Scope to find all shows in a recurrence group

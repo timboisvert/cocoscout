@@ -4,13 +4,16 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)]
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Prepare", manage_production_auditions_prepare_path(@production)]
     ],
     text: "Sign-up Form",
     links: [
       { text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, @call_to_audition), target: "_blank" }
     ]
   } %>
+
+  <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
 
   <!-- Section 1: Availability -->
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].blank? && params[:questions_open].blank? && @question_error.blank? %>">
@@ -182,6 +185,25 @@
         </div>
       </div>
           </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Section 4: Form Review Status -->
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Form Review Status</h3>
+    </div>
+    <div class="p-4" data-controller="form-review">
+      <p class="text-sm text-gray-500 mb-4">Mark the sign-up form as reviewed once you've confirmed all questions and settings are correct. This helps you keep track of what's ready to be shared.</p>
+      <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+        <div class="flex items-center mb-4">
+          <%= form.check_box :form_reviewed, { class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { form_review_target: "checkbox", action: "change->form-review#toggleSubmitButton" } } %>
+          <%= form.label :form_reviewed, "I have reviewed the sign-up form and it's ready to be shared", { class: "ml-2 text-sm text-gray-700" } %>
+        </div>
+        <div class="w-full border-t border-gray-200 pt-4">
+          <%= form.submit "Save Review Status", { class: "hidden rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer", data: { form_review_target: "submitButton" } } %>
         </div>
       <% end %>
     </div>

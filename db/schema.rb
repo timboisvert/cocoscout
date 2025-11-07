@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_03_165517) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_07_211712) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -100,6 +100,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_03_165517) do
     t.text "availability_event_types"
     t.datetime "closes_at"
     t.datetime "created_at", null: false
+    t.boolean "form_reviewed", default: false
     t.text "header_text"
     t.boolean "include_availability_section", default: false
     t.datetime "opens_at"

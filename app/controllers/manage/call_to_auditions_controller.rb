@@ -57,10 +57,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     if @call_to_audition.update(params_to_update)
-      # Preserve the active tab by including it in the redirect
-      tab_param = params[:active_tab].present? ? { tab: params[:active_tab] } : {}
-
-      redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition, tab_param),
+      redirect_to manage_production_auditions_prepare_path(@production),
                   notice: "Audition Settings successfully updated",
                   status: :see_other
     else
@@ -153,7 +150,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
   end
 
     def call_to_audition_params
-      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, { availability_event_types: [] } ])
+      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, { availability_event_types: [] } ])
     end
 
   def question_params

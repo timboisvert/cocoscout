@@ -1,0 +1,115 @@
+<% content_for :title, "Review - Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Review",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+
+  <% if @production.call_to_audition.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <% call_to_audition = @production.call_to_audition %>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-ups Review</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-gray-600 mb-6">Review and decide on each auditionee's application.</p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+        <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :unreviewed) do %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+            <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:unreviewed] %></p>
+            <p class="text-xs text-center">Unreviewed</p>
+          </div>
+        <% end %>
+        <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :undecided) do %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+            <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:undecided] %></p>
+            <p class="text-xs text-center">Revisit</p>
+          </div>
+        <% end %>
+        <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :accepted) do %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+            <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:accepted] %></p>
+            <p class="text-xs text-center">Yes</p>
+          </div>
+        <% end %>
+        <%= link_to manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :passed) do %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+            <p class="font-bold text-5xl text-center"><%= call_to_audition.counts[:passed] %></p>
+            <p class="text-xs text-center">No</p>
+          </div>
+        <% end %>
+      </div>
+
+      <%= render partial: "shared/link_button", locals: {text: "View all Sign-ups", path: manage_production_call_to_audition_audition_requests_path(@production, call_to_audition, filter: :all)} %>
+      </div>
+    </div>
+
+    <% if call_to_audition.audition_type == "in_person" %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-gray-600 mb-6">Review the audition sessions and who is scheduled for each.</p>
+
+        <% if @production.audition_sessions.any? %>
+          <div class="space-y-4">
+            <% @production.audition_sessions.order(:start_at).each do |session| %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h4 class="font-semibold text-gray-900"><%= session.start_at.strftime("%A, %B %-d, %Y at %l:%M %p") %></h4>
+                  <% if session.location.present? %>
+                    <p class="text-sm text-gray-600"><%= session.location %></p>
+                  <% end %>
+                </div>
+                <div class="p-4">
+                  <% if session.auditions.any? %>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                      <% session.auditions.each do |audition| %>
+                        <div class="flex flex-col items-center text-center">
+                          <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: audition.person.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
+                          <% else %>
+                            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mb-1 text-pink-600 font-bold text-xs">
+                              <%= audition.person.initials %>
+                            </div>
+                          <% end %>
+                          <span class="text-xs text-gray-700 font-medium text-center"><%= audition.person.name.truncate(12, omission: '...') %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="text-gray-500 text-sm">No auditions scheduled for this session</p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="mt-4">
+            <%= render partial: "shared/link_button", locals: {text: "Manage Sessions", path: manage_production_audition_sessions_path(@production)} %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
+          <%= render partial: "shared/link_button", locals: {text: "Schedule Sessions", path: new_manage_production_audition_session_path(@production)} %>
+        <% end %>
+      </div>
+    </div>
+    <% end %>
+
+  <% end %>
+</div>

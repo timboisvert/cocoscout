@@ -4,15 +4,24 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)]
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Prepare", manage_production_auditions_prepare_path(@production)]
     ],
     text: "Audition Settings",
     links: []
   } %>
 
+  <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
+
   <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [],
+      text: "Audition Type",
+      links: []
+    } %>
+
     <div class="mt-5 mb-7">
-      <%= form.label :audition_type, "Audition Type:" %>
       <p class="text-sm text-gray-500">Choosing "In-Person" auditions will enable people to sign up for an audition, while "Video Upload" auditions will allow them to submit a video during the sign-up process.</p>
       <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400" %>
     </div>
@@ -38,7 +47,7 @@
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Update", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", manage_production_auditions_prepare_path(@production), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 

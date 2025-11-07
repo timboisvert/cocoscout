@@ -2,11 +2,31 @@ class Manage::AuditionsController < Manage::ManageController
   before_action :set_production, except: %i[ add_to_session remove_from_session ]
   before_action :check_production_access, except: %i[ add_to_session remove_from_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_manager, except: %i[index show]
+  before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run communicate]
 
   # GET /auditions
   def index
     @auditions = Audition.all
+  end
+
+  # GET /auditions/prepare
+  def prepare
+  end
+
+  # GET /auditions/publicize
+  def publicize
+  end
+
+  # GET /auditions/review
+  def review
+  end
+
+  # GET /auditions/run
+  def run
+  end
+
+  # GET /auditions/communicate
+  def communicate
   end
 
   # GET /auditions/1

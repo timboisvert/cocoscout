@@ -1,0 +1,107 @@
+<% content_for :title, "Publicize - Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Publicize",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :publicize } %>
+
+  <% if @production.call_to_audition.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <% call_to_audition = @production.call_to_audition %>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-gray-600 mb-6">Share the sign-up link with potential auditionees and manage the form content.</p>
+
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-700 mb-2">Sign-up Link</h3>
+        <div class="flex items-center space-x-2">
+          <%= text_field_tag "", call_to_audition.respond_url, class: "block flex-1 text-sm text-black bg-white shadow-sm rounded-lg border px-3 py-2 border-gray-400", disabled: true, data: { clipboard_target: "textField" } %>
+          <p class="font-medium rounded-lg text-sm px-2 py-1 h-9 text-center mb-0 inline-block bg-pink-500 text-white hover:bg-gray-100 hover:text-pink-500 cursor-pointer" data-action="click->clipboard#copy" data-clipboard-target="button">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+            </svg>
+          </p>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Share</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-gray-600 mb-6">Share the sign-up link with your auditionees through various channels.</p>
+
+        <div class="space-y-4">
+          <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-900 mb-1">Email</h4>
+              <p class="text-sm text-gray-600 mb-2">Send the sign-up link directly to your cast members or interested auditionees</p>
+              <button class="text-sm text-pink-500 hover:text-pink-600 font-medium">Copy link to send</button>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-900 mb-1">Social Media</h4>
+              <p class="text-sm text-gray-600 mb-2">Share the sign-up link on Instagram, Facebook, Twitter, or other social platforms</p>
+              <button class="text-sm text-pink-500 hover:text-pink-600 font-medium">Copy link to share</button>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20a4 4 0 100-8 4 4 0 000 8zM0 10a6 6 0 1112 0A6 6 0 010 10z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-900 mb-1">Team & Collaborators</h4>
+              <p class="text-sm text-gray-600 mb-2">Share the link with your team members so they can help promote the audition</p>
+              <button class="text-sm text-pink-500 hover:text-pink-600 font-medium">Copy link to share</button>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+            <div class="flex-shrink-0">
+              <svg class="w-5 h-5 text-pink-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-900 mb-1">QR Code</h4>
+              <p class="text-sm text-gray-600 mb-2">Generate a QR code for easy sharing on printed materials or presentations</p>
+              <button class="text-sm text-pink-500 hover:text-pink-600 font-medium">Generate QR code</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <% end %>
+</div>

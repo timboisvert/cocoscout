@@ -11,6 +11,7 @@ class CallToAudition < ApplicationRecord
 
   validates :opens_at, presence: true
   validates :closes_at, presence: true
+  validate :form_must_be_reviewed_before_opening
 
   enum :audition_type, {
     in_person: "in_person",
@@ -49,5 +50,20 @@ class CallToAudition < ApplicationRecord
     else
       "https://www.cocoscout.com/a/#{self.token}"
     end
+  end
+
+  def form_must_be_reviewed_before_opening
+    # Only enforce if opens_at is in the past or very near future, meaning window is open/opening
+    if opens_at.present? && opens_at <= 30.minutes.from_now && !form_reviewed
+      errors.add(:form_reviewed, "must be reviewed before the sign-up window opens")
+    end
+  end
+
+  def opening_soon?
+    opens_at.present? && opens_at <= 7.days.from_now && opens_at > Time.current
+  end
+
+  def opening_soon_and_not_reviewed?
+    opening_soon? && !form_reviewed
   end
 end
