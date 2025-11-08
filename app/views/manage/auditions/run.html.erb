@@ -25,7 +25,7 @@
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">In-Person Sessions</h3>
         </div>
         <div class="p-6">
-        <p class="text-gray-600 mb-6">Manage and conduct your in-person audition sessions.</p>
+        <p class="text-sm text-gray-500 mb-6">Manage and conduct your in-person audition sessions.</p>
 
         <% if @production.audition_sessions.any? %>
           <div class="grid grid-cols-1 gap-4 mb-6">
@@ -47,7 +47,7 @@
           </div>
         <% else %>
           <div class="bg-gray-50 rounded-lg p-4 mb-6">
-            <p class="text-gray-600 text-sm">No sessions scheduled yet. <%= link_to "Schedule a session", new_manage_production_audition_session_path(@production), class: "text-pink-500 underline" %></p>
+            <p class="text-gray-600 text-sm">No sessions scheduled yet. <%= link_to "Schedule a session", manage_production_auditions_prepare_audition_sessions_path(@production), class: "text-pink-500 underline" %></p>
           </div>
         <% end %>
         </div>

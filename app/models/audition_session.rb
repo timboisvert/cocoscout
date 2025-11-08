@@ -2,7 +2,7 @@ class AuditionSession < ApplicationRecord
   belongs_to :production
   belongs_to :call_to_audition, optional: true
   has_many :auditions, dependent: :destroy
-  belongs_to :location, dependent: :destroy
+  belongs_to :location
 
   validates :start_at, presence: true
   validates :production, presence: true

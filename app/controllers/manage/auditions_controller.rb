@@ -13,6 +13,11 @@ class Manage::AuditionsController < Manage::ManageController
   def prepare
   end
 
+  # GET /auditions/prepare/audition_sessions
+  def prepare_audition_sessions
+    @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
+  end
+
   # GET /auditions/publicize
   def publicize
   end

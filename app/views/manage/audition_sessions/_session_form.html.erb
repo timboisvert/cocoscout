@@ -1,0 +1,41 @@
+<% audition_session ||= AuditionSession.new %>
+<%= form_with(model: [:manage, @production, audition_session], local: true, class: "contents") do |form| %>
+  <% if audition_session.errors.any? %>
+    <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mb-3">
+      <h2><%= pluralize(audition_session.errors.count, "error") %> prohibited this audition_session from being saved:</h2>
+
+      <ul class="list-disc ml-6">
+        <% audition_session.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-5">
+    <%= form.label :start_at, "Start Session At" %>
+    <%= form.datetime_field :start_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": audition_session.errors[:start_at].none?, "border-pink-500": audition_session.errors[:start_at].any?}] %>
+  </div>
+
+  <div class="my-5">
+    <%= form.label :maximum_auditionees, "Maximum # of Auditionees" %>
+    <p class="text-sm text-gray-500">Set the maximum number of auditionees this session should have. Leave blank for unlimited.</p>
+    <%= form.number_field :maximum_auditionees, min: 1, class: ["block w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": audition_session.errors[:maximum_auditionees].none?, "border-pink-500": audition_session.errors[:maximum_auditionees].any?}] %>
+  </div>
+
+  <div class="my-5">
+    <%= form.label :location_id, "Location" %>
+    <%= form.collection_select :location_id, Current.production_company.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": audition_session.errors[:location_id].none?, "border-pink-500": audition_session.errors[:location_id].any?}], data: { "location-modal-target": "locationSelect", action: "change->location-modal#handleLocationChange" } } %>
+    <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
+  </div>
+
+  <div class="w-full border-t border-gray-200 pt-5 my-5">
+    <% button_text = audition_session.persisted? ? "Update Session" : "Schedule Session" %>
+    <div class="flex gap-2">
+      <%= form.submit button_text, class: "flex-1 rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+      <% if audition_session.persisted? %>
+        <button type="button" data-action="click->audition-session-form#resetForm" class="flex-1 rounded-lg px-3.5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 inline-block font-medium">Cancel</button>
+      <% end %>
+    </div>
+  </div>
+<% end %>

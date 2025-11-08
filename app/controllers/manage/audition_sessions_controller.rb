@@ -35,9 +35,12 @@ class Manage::AuditionSessionsController < Manage::ManageController
         @audition_session.maximum_auditionees = original.maximum_auditionees
       end
     end
+
+    render :new, layout: request.xhr? ? false : true
   end
 
   def edit
+    render :edit, layout: request.xhr? ? false : true
   end
 
   def create
@@ -45,7 +48,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
     @audition_session.production = @production
 
     if @audition_session.save
-      redirect_to manage_production_audition_sessions_path(@production), notice: "Audition session was successfully scheduled"
+      redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully scheduled"
     else
       render :new, status: :unprocessable_entity
     end
@@ -53,7 +56,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def update
     if @audition_session.update(audition_session_params)
-      redirect_to manage_production_audition_sessions_path(@production), notice: "Audition session was successfully rescheduled", status: :see_other
+      redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully rescheduled", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -61,7 +64,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def destroy
     @audition_session.destroy!
-    redirect_to manage_production_audition_sessions_path(@production), notice: "Audition session was successfully canceled", status: :see_other
+    redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully canceled", status: :see_other
   end
 
   def summary

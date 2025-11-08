@@ -49,7 +49,7 @@
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Settings</h3>
       </div>
       <div class="p-6">
-        <p class="text-gray-600 mb-4">Configure audition type, dates, and basic settings for your audition process.</p>
+        <p class="text-sm text-gray-500 mb-4">Configure audition type, dates, and basic settings for your audition process.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div class="p-3 bg-gray-50 rounded-lg">
@@ -88,7 +88,7 @@
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Plan your Audition Sessions</h3>
       </div>
       <div class="p-6">
-        <p class="text-gray-600 mb-6">Schedule when and where auditions will take place, and set how many people you want to audition at each session.</p>
+        <p class="text-sm text-gray-500 mb-6">Schedule when and where auditions will take place, and set how many people you want to audition at each session.</p>
 
       <% if @production.audition_sessions.any? %>
         <div class="mb-4">
@@ -121,7 +121,7 @@
       <% end %>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: "Manage Sessions", path: manage_production_audition_sessions_path(@production)} %>
+        <%= render partial: "shared/link_button", locals: {text: "Manage Sessions", path: manage_production_auditions_prepare_audition_sessions_path(@production)} %>
       <% end %>
       </div>
     </div>
@@ -132,7 +132,7 @@
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
       </div>
       <div class="p-6">
-        <p class="text-gray-600 mb-4">Customize the questions and information you want to collect from auditionees. This form will be shared with everyone you invite to audition.</p>
+        <p class="text-sm text-gray-500 mb-4">Customize the questions and information you want to collect from auditionees. This form will be shared with everyone you invite to audition.</p>
 
         <div class="bg-gray-50 rounded-lg p-4 mb-4">
           <p class="text-sm text-gray-600 mb-1">Current Form Status</p>
