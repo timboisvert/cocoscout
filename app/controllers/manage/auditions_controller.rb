@@ -29,6 +29,16 @@ class Manage::AuditionsController < Manage::ManageController
   def communicate
   end
 
+  # GET /auditions/schedule_auditions
+  def schedule_auditions
+    @call_to_audition = CallToAudition.find(params[:id])
+    @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
+    @available_people = @call_to_audition.audition_requests
+      .where(status: [ :unreviewed, :undecided ])
+      .includes(:person)
+      .where.not(id: Audition.where(audition_session: @audition_sessions).select(:audition_request_id))
+  end
+
   # GET /auditions/1
   def show
   end

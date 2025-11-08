@@ -3,7 +3,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)]
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Review", manage_production_auditions_review_path(@production)]
     ],
     text: "Sign-ups",
     links: []
@@ -14,6 +15,8 @@
       #   }
       # ]
   } %>
+
+  <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
 
   <div class="flex w-full space-x-2 mb-4">
     <div class="flex flex-1 space-x-1">

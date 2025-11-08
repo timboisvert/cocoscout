@@ -173,6 +173,7 @@ Rails.application.routes.draw do
         end
         resources :audition_sessions
         member do
+          get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
           get    "form",              to: "call_to_auditions#form",              as: "form"
           get    "preview",           to: "call_to_auditions#preview",           as: "preview"
           post   "create_question",   to: "call_to_auditions#create_question",   as: "create_question"

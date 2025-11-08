@@ -49,8 +49,13 @@ class Manage::CallToAuditionsController < Manage::ManageController
   end
 
   def update
-    # Clean up availability_event_types to remove empty strings
     params_to_update = call_to_audition_params
+
+    # Convert form_reviewed to proper boolean
+    if params_to_update[:form_reviewed].present?
+      params_to_update[:form_reviewed] = params_to_update[:form_reviewed] == "1"
+    end
+
     if params_to_update[:availability_event_types].present?
       params_to_update[:availability_event_types] = params_to_update[:availability_event_types].reject(&:blank?)
       params_to_update[:availability_event_types] = nil if params_to_update[:availability_event_types].empty?
@@ -61,7 +66,15 @@ class Manage::CallToAuditionsController < Manage::ManageController
                   notice: "Audition Settings successfully updated",
                   status: :see_other
     else
-      render :edit, status: :unprocessable_entity
+      # Determine which view to render based on what params were sent
+      # If form_reviewed is the only param, it came from the form page
+      # Otherwise it came from the edit page
+      if params[:call_to_audition]&.keys == [ "form_reviewed" ]
+        setup_form_variables
+        render :form, status: :unprocessable_entity
+      else
+        render :edit, status: :unprocessable_entity
+      end
     end
   end
 
@@ -137,6 +150,16 @@ class Manage::CallToAuditionsController < Manage::ManageController
 
   private
 
+  def setup_form_variables
+    if params[:question_id].present?
+      @question = @call_to_audition.questions.find(params[:question_id])
+    else
+      @question = @call_to_audition.questions.new
+      @question.question_options.build if [ "multiple-multiple", "multiple-single" ].include?(@question.question_type)
+    end
+    @questions = @call_to_audition.questions.order(:position)
+  end
+
   def set_production
     @production = Current.production_company.productions.find(params.expect(:production_id))
   end
@@ -149,9 +172,9 @@ class Manage::CallToAuditionsController < Manage::ManageController
     @question = @call_to_audition.questions.find(params[:question_id]) if params[:question_id]
   end
 
-    def call_to_audition_params
-      params.expect(call_to_audition: [ :production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, { availability_event_types: [] } ])
-    end
+  def call_to_audition_params
+    params.require(:call_to_audition).permit(:production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_event_types: [])
+  end
 
   def question_params
     params.require(:question).permit(:key, :text, :question_type, :required, :questionable_id, :questionable_type, question_options_attributes: [ :id, :text, :_destroy ])

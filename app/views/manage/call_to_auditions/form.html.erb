@@ -195,15 +195,16 @@
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Form Review Status</h3>
     </div>
-    <div class="p-4" data-controller="form-review">
+    <div class="p-4">
       <p class="text-sm text-gray-500 mb-4">Mark the sign-up form as reviewed once you've confirmed all questions and settings are correct. This helps you keep track of what's ready to be shared.</p>
-      <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+      <%= form_with url: manage_production_call_to_audition_path(@production, @call_to_audition), method: :patch, class: "contents", data: { turbo: false } do |form| %>
         <div class="flex items-center mb-4">
-          <%= form.check_box :form_reviewed, { class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { form_review_target: "checkbox", action: "change->form-review#toggleSubmitButton" } } %>
-          <%= form.label :form_reviewed, "I have reviewed the sign-up form and it's ready to be shared", { class: "ml-2 text-sm text-gray-700" } %>
+          <input type="hidden" name="call_to_audition[form_reviewed]" value="0" />
+          <input type="checkbox" id="form_reviewed" name="call_to_audition[form_reviewed]" value="1" <%= @call_to_audition.form_reviewed ? 'checked' : '' %> class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" />
+          <label for="form_reviewed" class="ml-2 text-sm text-gray-700 cursor-pointer">I have reviewed the sign-up form and it's ready to be shared</label>
         </div>
         <div class="w-full border-t border-gray-200 pt-4">
-          <%= form.submit "Save Review Status", { class: "rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer", style: "display: none;", data: { form_review_target: "submitButton" } } %>
+          <button type="submit" class="rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer">Save Review Status</button>
         </div>
       <% end %>
     </div>

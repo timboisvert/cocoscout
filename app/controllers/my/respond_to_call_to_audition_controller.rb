@@ -195,7 +195,7 @@ class My::RespondToCallToAuditionController < ApplicationController
   end
 
   def inactive
-    if @call_to_audition.timeline_status == :open && params[:force].blank?
+    if @call_to_audition.timeline_status == :open && @call_to_audition.form_reviewed && params[:force].blank?
       redirect_to respond_to_call_to_audition_path(token: @call_to_audition.token), status: :see_other
     end
   end
@@ -213,7 +213,7 @@ class My::RespondToCallToAuditionController < ApplicationController
   end
 
   def ensure_call_to_audition_is_open
-    unless @call_to_audition.timeline_status == :open
+    unless @call_to_audition.timeline_status == :open && @call_to_audition.form_reviewed
       redirect_to my_respond_to_call_to_audition_inactive_path(token: @call_to_audition.token), status: :see_other
     end
   end

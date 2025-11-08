@@ -57,7 +57,7 @@
     <!-- Right side: Add Person to Cast Panel (fixed width on desktop, full width on mobile, sticky, hidden by default) -->
     <% if current_user_can_manage?(Current.production) && @casts.any? %>
       <div id="add-person-panel" class="hidden w-full lg:w-100 lg:sticky lg:top-4 lg:h-fit" data-add-person-panel-target="panel">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-gray-900" data-add-person-panel-target="title">Add Person</h3>
             <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="add-person-panel#close">

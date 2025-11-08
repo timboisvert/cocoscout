@@ -60,10 +60,10 @@
     <% if call_to_audition.audition_type == "in_person" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Auditions</h3>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500 mb-6">Review the audition sessions and who is scheduled for each.</p>
+        <p class="text-sm text-gray-500 mb-6">Assign people to audition sessions.</p>
 
         <% if @production.audition_sessions.any? %>
           <div class="space-y-3">
@@ -109,11 +109,11 @@
           </div>
 
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: {text: "Manage Sessions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition)} %>
+            <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_call_to_audition_path(@production, @production.call_to_audition)} %>
           </div>
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: {text: "Schedule Sessions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_call_to_audition_path(@production, @production.call_to_audition)} %>
         <% end %>
       </div>
     </div>

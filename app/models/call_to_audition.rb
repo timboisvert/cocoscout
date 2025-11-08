@@ -12,6 +12,7 @@ class CallToAudition < ApplicationRecord
   validates :opens_at, presence: true
   validates :closes_at, presence: true
   validate :form_must_be_reviewed_before_opening
+  validate :closes_at_after_opens_at
 
   enum :audition_type, {
     in_person: "in_person",
@@ -53,9 +54,14 @@ class CallToAudition < ApplicationRecord
   end
 
   def form_must_be_reviewed_before_opening
-    # Only enforce if opens_at is in the past or very near future, meaning window is open/opening
-    if opens_at.present? && opens_at <= 30.minutes.from_now && !form_reviewed
-      errors.add(:form_reviewed, "must be reviewed before the sign-up window opens")
+    # If the audition has already started and form isn't reviewed, it should be hidden/inactive
+    # (same as if it wasn't opened yet). This doesn't prevent saving the checkbox value though.
+    # That's a display/UX concern, not a validation concern.
+  end
+
+  def closes_at_after_opens_at
+    if opens_at.present? && closes_at.present? && closes_at <= opens_at
+      errors.add(:closes_at, "must be after the opening date and time")
     end
   end
 

@@ -1,0 +1,94 @@
+<% content_for :title, "Schedule Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Review", manage_production_auditions_review_path(@production)]
+    ],
+    text: "Schedule Auditions",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+
+  <div class="flex gap-8">
+    <!-- Sessions on the left -->
+    <div class="flex-1">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
+            </div>
+            <div class="p-6">
+              <% if @audition_sessions.any? %>
+                <div class="space-y-3">
+                  <% @audition_sessions.each do |session| %>
+                    <div class="border border-gray-200 rounded-lg p-4">
+                      <div class="flex gap-4">
+                        <!-- Left: Date/Time and Location -->
+                        <div class="flex-shrink-0 w-72">
+                          <p class="font-semibold text-gray-900"><%= session.start_at.strftime("%a, %b %-d at %-l:%M %p") %></p>
+                          <% if session.location.present? %>
+                            <div class="mt-2">
+                              <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                                <%= session.location.name %>
+                              </span>
+                            </div>
+                          <% end %>
+                        </div>
+
+                        <!-- Right: Dropzone -->
+                        <div class="flex-1 border-2 border-dashed border-gray-300 rounded p-3 min-h-24 flex flex-col items-center justify-center"
+                             data-droppable="true"
+                             data-session-id="<%= session.id %>"
+                             data-controller="audition-session-drop">
+                          <% if session.auditions.any? %>
+                            <div class="w-full space-y-2">
+                              <% session.auditions.each do |audition| %>
+                                <div class="bg-white p-2 rounded border border-gray-200 text-center">
+                                  <span class="text-sm font-medium text-gray-900"><%= audition.audition_request.person.name %></span>
+                                </div>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <p class="text-gray-500 text-sm text-center">Drag people here</p>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-gray-500 text-sm">No audition sessions scheduled.</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+    <!-- Available People on the right -->
+    <div class="w-96 flex-shrink-0">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-900">Available People</h2>
+        </div>
+        <div class="p-4 space-y-2">
+          <% if @available_people.any? %>
+            <% @available_people.each do |request| %>
+              <div class="bg-white p-3 rounded border border-gray-300 shadow-sm cursor-move hover:shadow-md transition text-sm"
+                   draggable="true"
+                   data-audition-request-id="<%= request.id %>"
+                   data-controller="audition-draggable"
+                   data-action="dragstart->audition-draggable#dragStart dragend->audition-draggable#dragEnd">
+                <div class="font-medium text-gray-900"><%= request.person.name %></div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-gray-500 text-sm">All people have been assigned.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

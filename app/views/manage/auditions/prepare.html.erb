@@ -22,7 +22,7 @@
         </div>
         <div class="ml-3">
           <p class="text-sm font-medium text-yellow-800">
-            ⚠️ Sign-up window opens in <%= distance_of_time_in_words(@production.call_to_audition.opens_at, Time.current) %>
+            Sign-up window opens in <%= distance_of_time_in_words(@production.call_to_audition.opens_at, Time.current) %>
           </p>
           <p class="text-sm text-yellow-700 mt-1">
             Please review and approve the sign-up form before the window opens.
@@ -63,16 +63,46 @@
             </p>
           </div>
           <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Sign-up Opens</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1"><%= call_to_audition.opens_at.strftime("%b %-d, %Y") %></p>
+            <p class="text-xs text-gray-600 font-medium"><% if call_to_audition.opens_at > Time.current %>Sign-up Opens<% else %>Sign-up Opened<% end %></p>
+            <p class="text-sm font-semibold text-gray-900 mt-1">
+              <%= call_to_audition.opens_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <% seconds_until = (call_to_audition.opens_at - Time.current).to_i %>
+              <% if seconds_until > 0 && seconds_until < 172800 %>
+                <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
+                  Starts in <span data-countdown-target="clock"></span>
+                </div>
+              <% elsif seconds_until > 0 %>
+                <span class="block text-xs text-pink-500 mt-1">Starts in <%= distance_of_time_in_words(Time.current, call_to_audition.opens_at) %></span>
+              <% end %>
+            </p>
           </div>
           <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Sign-up Closes</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1"><%= call_to_audition.closes_at.strftime("%b %-d, %Y") %></p>
+            <p class="text-xs text-gray-600 font-medium"><% if call_to_audition.closes_at > Time.current %>Sign-up Closes<% else %>Sign-up Closed<% end %></p>
+            <p class="text-sm font-semibold text-gray-900 mt-1">
+              <%= call_to_audition.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <% if call_to_audition.timeline_status == :open %>
+                <% seconds_until = (call_to_audition.closes_at - Time.current).to_i %>
+                <% if seconds_until > 0 && seconds_until < 172800 %>
+                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
+                    Closes in <span data-countdown-target="clock"></span>
+                  </div>
+                <% elsif seconds_until > 0 %>
+                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, call_to_audition.closes_at) %></span>
+                <% end %>
+              <% end %>
+            </p>
           </div>
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Status</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1 capitalize"><%= call_to_audition.timeline_status %></p>
+            <p class="text-sm font-semibold text-gray-900 mt-1 capitalize">
+              <% if call_to_audition.opens_at > Time.current %>
+                Upcoming
+              <% elsif call_to_audition.closes_at <= Time.current %>
+                Closed
+              <% else %>
+                Open
+              <% end %>
+            </p>
           </div>
         </div>
 
@@ -149,7 +179,7 @@
           <% end %>
         </div>
 
-        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+        <div class="flex flex-col sm:flex-row sm:space-x-2 gap-4 sm:gap-0">
           <% if current_user_can_manage?(@production) %>
             <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
           <% end %>
