@@ -1,4 +1,5 @@
 class Manage::AuditionSessionsController < Manage::ManageController
+  before_action :set_call_to_audition
   before_action :set_production
   before_action :check_production_access
   before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
@@ -46,9 +47,10 @@ class Manage::AuditionSessionsController < Manage::ManageController
   def create
     @audition_session = AuditionSession.new(audition_session_params)
     @audition_session.production = @production
+    @audition_session.call_to_audition = @call_to_audition
 
     if @audition_session.save
-      redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully scheduled"
+      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully created", status: :see_other
     else
       render :new, status: :unprocessable_entity
     end
@@ -56,7 +58,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def update
     if @audition_session.update(audition_session_params)
-      redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully rescheduled", status: :see_other
+      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully rescheduled", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -64,7 +66,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def destroy
     @audition_session.destroy!
-    redirect_to manage_production_auditions_prepare_audition_sessions_path(@production), notice: "Audition session was successfully canceled", status: :see_other
+    redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully canceled", status: :see_other
   end
 
   def summary
@@ -72,8 +74,12 @@ class Manage::AuditionSessionsController < Manage::ManageController
   end
 
   private
+    def set_call_to_audition
+      @call_to_audition = CallToAudition.find(params.expect(:call_to_audition_id))
+    end
+
     def set_production
-      @production = Current.production_company.productions.find(params.expect(:production_id))
+      @production = @call_to_audition.production
     end
 
     def set_audition_session_and_audition_and_audition_request

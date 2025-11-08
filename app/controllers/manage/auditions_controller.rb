@@ -13,11 +13,6 @@ class Manage::AuditionsController < Manage::ManageController
   def prepare
   end
 
-  # GET /auditions/prepare/audition_sessions
-  def prepare_audition_sessions
-    @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
-  end
-
   # GET /auditions/publicize
   def publicize
   end
@@ -103,7 +98,7 @@ class Manage::AuditionsController < Manage::ManageController
 
 
   private
-   def set_production
+    def set_production
       @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 

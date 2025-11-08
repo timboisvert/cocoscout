@@ -23,10 +23,11 @@ export default class extends Controller {
     openEditForm(event) {
         event.preventDefault()
         const sessionId = event.currentTarget.dataset.sessionId
-        const productionId = event.currentTarget.dataset.productionId
+        const callToAuditionId = event.currentTarget.dataset.callToAuditionId
+        const productionId = this.element.dataset.productionId
 
         // Fetch the edit form partial
-        fetch(`/manage/productions/${productionId}/audition_sessions/${sessionId}/edit`, {
+        fetch(`/manage/productions/${productionId}/call_to_auditions/${callToAuditionId}/audition_sessions/${sessionId}/edit`, {
             headers: {
                 "X-Requested-With": "XMLHttpRequest"
             }
@@ -41,8 +42,9 @@ export default class extends Controller {
     resetForm(event) {
         if (event) event.preventDefault()
         // Reset to new form
+        const callToAuditionId = this.element.dataset.callToAuditionId
         const productionId = this.element.dataset.productionId
-        fetch(`/manage/productions/${productionId}/audition_sessions/new`, {
+        fetch(`/manage/productions/${productionId}/call_to_auditions/${callToAuditionId}/audition_sessions/new`, {
             headers: {
                 "X-Requested-With": "XMLHttpRequest"
             }
@@ -55,9 +57,10 @@ export default class extends Controller {
     }
 
     refreshSessionsList() {
+        const callToAuditionId = this.element.dataset.callToAuditionId
         const productionId = this.element.dataset.productionId
         // Fetch and update the sessions list
-        fetch(`/manage/productions/${productionId}/audition_sessions`)
+        fetch(`/manage/productions/${productionId}/call_to_auditions/${callToAuditionId}/audition_sessions`)
             .then(response => response.text())
             .then(html => {
                 // Extract just the sessions list from the response

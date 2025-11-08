@@ -145,7 +145,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
     end
 
     def set_call_to_audition
-      @call_to_audition = @production.call_to_auditions.find(params.expect(:call_to_audition_id))
+      @call_to_audition = @production.call_to_audition
     end
 
     def audition_request_params
