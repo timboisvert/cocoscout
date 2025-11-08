@@ -196,6 +196,7 @@ Rails.application.routes.draw do
     # Used for adding people and removing them from an audition session
     post "/auditions/add_to_session",       to: "auditions#add_to_session"
     post "/auditions/remove_from_session",  to: "auditions#remove_from_session"
+    post "/auditions/move_to_session",      to: "auditions#move_to_session"
 
     # Used for adding people and removing them from a cast
     post "/shows/:id/assign_person_to_role",    to: "shows#assign_person_to_role"

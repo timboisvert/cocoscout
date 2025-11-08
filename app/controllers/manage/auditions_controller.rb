@@ -1,6 +1,6 @@
 class Manage::AuditionsController < Manage::ManageController
-  before_action :set_production, except: %i[ add_to_session remove_from_session ]
-  before_action :check_production_access, except: %i[ add_to_session remove_from_session ]
+  before_action :set_production, except: %i[ add_to_session remove_from_session move_to_session ]
+  before_action :check_production_access, except: %i[ add_to_session remove_from_session move_to_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
   before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run communicate]
 
@@ -33,10 +33,23 @@ class Manage::AuditionsController < Manage::ManageController
   def schedule_auditions
     @call_to_audition = CallToAudition.find(params[:id])
     @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
-    @available_people = @call_to_audition.audition_requests
-      .where(status: [ :unreviewed, :undecided ])
-      .includes(:person)
-      .where.not(id: Audition.where(audition_session: @audition_sessions).select(:audition_request_id))
+
+    filter = params[:filter]
+    audition_requests = @call_to_audition.audition_requests
+
+    if filter == "all"
+      audition_requests = audition_requests.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
+    elsif filter == "accepted"
+      audition_requests = audition_requests.where(status: :accepted)
+    else
+      # "to_be_scheduled" (default)
+      audition_requests = audition_requests.where(status: :accepted)
+      audition_requests = audition_requests.where.not(id: Audition.where(audition_session: @audition_sessions).select(:audition_request_id))
+    end
+
+    @available_people = audition_requests.includes(:person).order(created_at: :asc)
+    @scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(:person_id).uniq.to_set
+    @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { production_id: @production.id }).pluck(:audition_request_id).uniq
   end
 
   # GET /auditions/1
@@ -85,13 +98,51 @@ class Manage::AuditionsController < Manage::ManageController
     audition_request = AuditionRequest.find(params[:audition_request_id])
     audition_session = AuditionSession.find(params[:audition_session_id])
 
-    Audition.create!(audition_request: audition_request, audition_session: audition_session, person: audition_request.person)
+    # Check if this person is already in this session
+    existing = Audition.joins(:audition_request).where(
+      audition_session: audition_session,
+      audition_requests: { person_id: audition_request.person_id }
+    ).exists?
 
-    # Re-render the left list and the dropzone partials
-    left_list_html = render_to_string(partial: "manage/audition_sessions/left_list", locals: { production: audition_session.production, filter: cookies[:audition_request_filter] })
+    unless existing
+      Audition.create!(audition_request: audition_request, audition_session: audition_session, person: audition_request.person)
+    end
+
+    # Get the production and call_to_audition
+    production = audition_session.production
+    call_to_audition = audition_request.call_to_audition
+
+    # Get the filter from params
+    filter = params[:filter] || "to_be_scheduled"
+
+    # Determine which audition_requests to show
+    available_people = call_to_audition.audition_requests
+
+    if filter == "all"
+      available_people = available_people.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
+    elsif filter == "accepted"
+      available_people = available_people.where(status: :accepted)
+    else
+      # "to_be_scheduled" (default)
+      available_people = available_people.where(status: :accepted)
+      available_people = available_people.where.not(id: Audition.where(audition_session: production.audition_sessions).select(:audition_request_id))
+    end
+
+    available_people = available_people.includes(:person).order(created_at: :asc)
+
+    # Get list of already scheduled person IDs for this production
+    audition_sessions = production.audition_sessions.includes(:location).order(start_at: :asc)
+    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { production_id: production.id }).pluck(:audition_request_id).uniq
+
+    # Re-render the right list and the dropzone
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
 
-    render json: { left_list_html: left_list_html, dropzone_html: dropzone_html }
+    # Also re-render the sessions list to update all dropzones
+    sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list", locals: { audition_sessions: production.audition_sessions.includes(:location).order(start_at: :asc) })
+
+    render json: { right_list_html: right_list_html, dropzone_html: dropzone_html, sessions_list_html: sessions_list_html }
   end
 
   def remove_from_session
@@ -100,12 +151,91 @@ class Manage::AuditionsController < Manage::ManageController
     audition_session.auditions.delete(audition)
     audition.destroy!
 
-    left_list_html = render_to_string(partial: "manage/audition_sessions/left_list", locals: { production: audition_session.production, filter: cookies[:audition_request_filter] })
+    # Get the production and call_to_audition
+    production = audition_session.production
+    call_to_audition = audition.audition_request.call_to_audition
+
+    # Get the filter from params
+    filter = params[:filter] || "to_be_scheduled"
+
+    # Determine which audition_requests to show
+    available_people = call_to_audition.audition_requests
+
+    if filter == "all"
+      available_people = available_people.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
+    elsif filter == "accepted"
+      available_people = available_people.where(status: :accepted)
+    else
+      # "to_be_scheduled" (default)
+      available_people = available_people.where(status: :accepted)
+      available_people = available_people.where.not(id: Audition.where(audition_session: production.audition_sessions).select(:audition_request_id))
+    end
+
+    available_people = available_people.includes(:person).order(created_at: :asc)
+
+    # Get list of already scheduled person IDs and audition request IDs for this production
+    audition_sessions = production.audition_sessions.includes(:location).order(start_at: :asc)
+    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { production_id: production.id }).pluck(:audition_request_id).uniq
+
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
 
-    render json: { left_list_html: left_list_html, dropzone_html: dropzone_html }
+    # Also re-render the sessions list to update all dropzones
+    sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list", locals: { audition_sessions: audition_sessions })
+
+    render json: { right_list_html: right_list_html, dropzone_html: dropzone_html, sessions_list_html: sessions_list_html }
   end
 
+  def move_to_session
+    audition = Audition.find(params[:audition_id])
+    new_audition_session = AuditionSession.find(params[:audition_session_id])
+
+    # Check if person is already in the new session
+    existing = Audition.joins(:audition_request).where(
+      audition_session: new_audition_session,
+      audition_requests: { person_id: audition.person_id }
+    ).where.not(id: audition.id).exists?
+
+    unless existing
+      # Update the audition to the new session
+      audition.update!(audition_session: new_audition_session)
+    end
+
+    # Get the production and call_to_audition
+    production = new_audition_session.production
+    call_to_audition = audition.audition_request.call_to_audition
+
+    # Get the filter from params
+    filter = params[:filter] || "to_be_scheduled"
+
+    # Determine which audition_requests to show
+    available_people = call_to_audition.audition_requests
+
+    if filter == "all"
+      available_people = available_people.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
+    elsif filter == "accepted"
+      available_people = available_people.where(status: :accepted)
+    else
+      # "to_be_scheduled" (default)
+      available_people = available_people.where(status: :accepted)
+      available_people = available_people.where.not(id: Audition.where(audition_session: production.audition_sessions).select(:audition_request_id))
+    end
+
+    available_people = available_people.includes(:person).order(created_at: :asc)
+
+    # Get list of already scheduled person IDs and audition request IDs for this production
+    audition_sessions = production.audition_sessions.includes(:location).order(start_at: :asc)
+    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { production_id: production.id }).pluck(:audition_request_id).uniq
+
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
+
+    # Also re-render the sessions list to update all dropzones
+    sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list", locals: { audition_sessions: audition_sessions })
+
+    render json: { right_list_html: right_list_html, sessions_list_html: sessions_list_html }
+  end
 
   private
     def set_production

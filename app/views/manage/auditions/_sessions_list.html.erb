@@ -1,0 +1,68 @@
+<div class="flex-1 space-y-3" id="audition_sessions_list">
+  <% if audition_sessions.any? %>
+    <% audition_sessions.each do |session| %>
+      <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+        <!-- Session Info -->
+        <div class="mb-4 flex justify-between items-center">
+          <p class="font-semibold text-gray-900"><%= session.start_at.strftime("%A, %b %-d, %Y at %-l:%M %p") %></p>
+          <% if session.maximum_auditionees %>
+            <span class="text-xs <%= session.is_overbooked? ? 'text-red-500' : (session.is_full? ? 'text-pink-500' : 'text-gray-500') %>">
+              <%= session.auditions.count %>/<%= session.maximum_auditionees %> scheduled
+            </span>
+          <% else %>
+            <span class="text-xs text-gray-500">
+              <%= session.auditions.count %>/∞ scheduled
+            </span>
+          <% end %>
+        </div>
+
+        <!-- Dropzone -->
+        <%
+          if session.is_full?
+            border_color = "border-pink-500 border-solid"
+          elsif session.is_overbooked?
+            border_color = "border-red-500 border-solid"
+          else
+            border_color = "border-gray-300 border-dashed"
+          end
+        %>
+        <div class="border-2 <%= border_color %> p-4 min-h-24 flex flex-col items-center justify-center rounded-lg"
+             data-drag-target="dropzone"
+             data-id="<%= session.id %>"
+             data-action="dragover->drag-audition#dragOver dragleave->drag-audition#dragLeave drop->drag-audition#drop">
+          <% if session.auditions.any? %>
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-2 w-full">
+              <% session.auditions.each do |audition| %>
+                <div class="flex flex-col items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-move"
+                     draggable="true"
+                     data-audition-id="<%= audition.id %>"
+                     data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
+                  <% headshot_variant = audition.audition_request.person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: audition.audition_request.person.name, class: "w-10 h-10 rounded-lg object-cover mb-1 pointer-events-none" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-xs pointer-events-none">
+                      <%= audition.audition_request.person.initials %>
+                    </div>
+                  <% end %>
+                  <span class="font-medium text-xs text-center pointer-events-none"><%= audition.audition_request.person.name.truncate(20, omission: '...') %></span>
+                  <button type="button"
+                    class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                    data-action="click->drag-audition#removeAudition"
+                    data-audition-id="<%= audition.id %>"
+                    data-session-id="<%= session.id %>">
+                    Remove
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <span class="text-xs text-gray-500">Drag an Auditionee here to schedule them in this session</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <p class="text-gray-500 text-sm">No audition sessions scheduled.</p>
+  <% end %>
+</div>
