@@ -60,7 +60,7 @@
     <% if call_to_audition.audition_type == "in_person" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Auditions</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule Auditions</h3>
       </div>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Assign people to audition sessions.</p>
@@ -113,7 +113,7 @@
           </div>
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_call_to_audition_path(@production, @production.call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition)} %>
         <% end %>
       </div>
     </div>
@@ -121,10 +121,18 @@
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Invitations</h3>
+        <% if call_to_audition.audition_type == "video_upload" %>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Review</h3>
+        <% else %>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans</h3>
+        <% end %>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Once you finalize the audition invitations, applicants will see the results on their Sign-ups page and their audition schedule on their Auditions page. Until then, they will only see "In Review".</p>
+        <% if call_to_audition.audition_type == "video_upload" %>
+          <p class="text-sm text-gray-500 mb-4">Once you finalize the audition review, applicants will see the results on their Sign-ups page. Until then, they will only see that their Sign-up is "In Review".</p>
+        <% else %>
+          <p class="text-sm text-gray-500 mb-4">Once you finalize the audition plans, applicants will see the results on their Sign-ups page and their audition schedule on their Auditions page. Until then, they will only see "In Review".</p>
+        <% end %>
         <%= form_with url: manage_production_auditions_finalize_invitations_path(@production), method: :patch, class: "contents", local: true do |f| %>
           <div class="flex items-center mb-4">
             <input type="hidden" name="finalize" value="0" />
@@ -137,7 +145,11 @@
               class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
             >
             <label for="finalize_audition_invitations" class="ml-2 text-sm text-gray-700 cursor-pointer">
-              Finalize audition invitations and reveal results to applicants
+              <% if call_to_audition.audition_type == "video_upload" %>
+                Finalize audition review and reveal results to applicants
+              <% else %>
+                Finalize audition plans and reveal results to applicants
+              <% end %>
             </label>
           </div>
           <div class="w-full border-t border-gray-200 pt-4">

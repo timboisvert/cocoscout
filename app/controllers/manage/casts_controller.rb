@@ -50,7 +50,13 @@ class Manage::CastsController < Manage::ManageController
     @cast = @production.casts.find(params[:id])
     person = Current.production_company.people.find(params[:person_id])
     @cast.people.delete(person)
-    render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
+
+    # If it's an AJAX request, render the partial; otherwise redirect
+    if request.xhr?
+      render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
+    else
+      redirect_to request.referrer || manage_production_auditions_casting_path(@production), notice: "Person removed from cast"
+    end
   end
 
   def search_people

@@ -9,15 +9,10 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["In-person Sessions", manage_production_audition_sessions_path(@production)]
+          ["Run Auditions", manage_production_auditions_run_path(@production)]
         ],
         text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
-        links: [
-          {
-            text: "Manage In-person Sessions",
-            path: manage_production_audition_sessions_path(@production)
-          }
-        ]
+        links: []
       }
     %>
 
@@ -30,16 +25,11 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["In-person Sessions", manage_production_audition_sessions_path(@production)],
-          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_session_path(@production, @audition_session)]
+          ["Run Auditions", manage_production_auditions_run_path(@production)],
+          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_call_to_audition_audition_session_path(@production, @production.call_to_audition, @audition_session)]
         ],
         text: "#{@person.name}",
-        links: [
-          {
-            text: "Manage In-person Sessions",
-            path: manage_production_audition_sessions_path(@production)
-          }
-        ]
+        links: []
       }
     %>
 
@@ -93,7 +83,7 @@
 
   <div class="flex justify-start lg:justify-center gap-1 flex-wrap">
       <% @audition_session.auditions.each do |audition| %>
-        <%= link_to manage_production_audition_session_audition_path(@production, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
+        <%= link_to manage_production_call_to_audition_audition_session_audition_path(@production, @production.call_to_audition, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
           <div
             data-controller="tooltip"
             data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"

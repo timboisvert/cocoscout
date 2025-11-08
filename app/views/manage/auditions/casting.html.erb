@@ -1,0 +1,121 @@
+<% content_for :title, "Casting - Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Casting",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
+
+  <% if @production.call_to_audition.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <% call_to_audition = @production.call_to_audition %>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add To Cast</h3>
+      </div>
+      <div class="p-6" data-controller="casting-drag" data-production-id="<%= @production.id %>">
+        <div class="grid grid-cols-12 gap-6">
+          <!-- Left side: Auditionees grid -->
+          <div class="col-span-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-4">Accepted Auditionees</h4>
+            <div class="bg-gray-50 rounded-lg p-4 min-h-96">
+              <div class="grid grid-cols-3 gap-3">
+                <% @accepted_audition_requests.each do |audition_request| %>
+                  <div
+                    class="flex flex-col items-center p-3 bg-white border-2 border-gray-200 rounded-lg cursor-move hover:border-pink-400 hover:bg-pink-50 transition-all"
+                    draggable="true"
+                    data-casting-drag-target="item"
+                    data-drag-drop-target="auditionee"
+                    data-person-id="<%= audition_request.person.id %>"
+                    data-person-name="<%= audition_request.person.name %>"
+                    data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd"
+                  >
+                    <% headshot_variant = audition_request.person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: audition_request.person.name, class: "w-12 h-12 rounded-lg object-cover mb-2" %>
+                    <% else %>
+                      <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mb-2 text-pink-600 font-bold text-xs">
+                        <%= audition_request.person.initials %>
+                      </div>
+                    <% end %>
+                    <span class="text-xs text-gray-700 font-medium text-center truncate w-full"><%= audition_request.person.name.truncate(12, omission: '...') %></span>
+                  </div>
+                <% end %>
+              </div>
+              <% if @accepted_audition_requests.empty? %>
+                <p class="text-gray-500 text-sm text-center py-8">No accepted candidates</p>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Right side: Cast boxes -->
+          <div class="col-span-8">
+            <h4 class="text-sm font-semibold text-gray-900 mb-4">Production Casts</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <% @casts.each do |cast| %>
+                <div
+                  class="border-2 border-dashed border-gray-400 rounded-lg p-4 min-h-96 bg-white hover:border-pink-400 transition-colors"
+                  data-casting-drag-target="item"
+                  data-drag-drop-type="cast"
+                  data-cast-id="<%= cast.id %>"
+                  data-action="dragover->casting-drag#dragOver dragleave->casting-drag#dragLeave drop->casting-drag#drop"
+                >
+                  <div class="text-center mb-4 pb-3 border-b border-gray-200">
+                    <p class="text-sm font-semibold text-gray-900">Add to</p>
+                    <p class="text-lg font-bold text-pink-600"><%= cast.name %></p>
+                  </div>
+
+                  <div class="space-y-2 mb-4" data-casting-drag-target="castMembers">
+                    <% cast.people.each do |person| %>
+                      <div
+                        class="flex items-center justify-between bg-pink-50 p-3 rounded border border-pink-200 cursor-move"
+                        draggable="true"
+                        data-casting-drag-target="item"
+                        data-drag-drop-target="cast-item"
+                        data-person-id="<%= person.id %>"
+                        data-person-name="<%= person.name %>"
+                        data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd"
+                      >
+                        <span class="text-sm font-medium text-gray-900"><%= person.name %></span>
+                        <%= button_to remove_person_manage_production_cast_path(@production, cast),
+                            params: { person_id: person.id },
+                            method: :post,
+                            form_class: "inline",
+                            class: "text-xs px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200" do %>
+                          Remove
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+
+                  <% if cast.people.empty? %>
+                    <p class="text-gray-400 text-xs text-center py-8">Drag candidates here</p>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+            <% if @casts.empty? %>
+              <p class="text-gray-500 text-sm text-center py-8">No casts available for this production</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-blue-900 mb-2">Audition Process Complete</h2>
+      <p class="text-blue-800">Once you've added all candidates to your cast, your audition process is complete!</p>
+    </div>
+
+  <% end %>
+</div>

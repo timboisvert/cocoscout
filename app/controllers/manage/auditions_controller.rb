@@ -25,8 +25,10 @@ class Manage::AuditionsController < Manage::ManageController
   def run
   end
 
-  # GET /auditions/communicate
-  def communicate
+  # GET /auditions/casting
+  def casting
+    @casts = @production.casts
+    @accepted_audition_requests = @production.call_to_audition&.audition_requests&.where(status: :accepted) || []
   end
 
   # PATCH /auditions/finalize_invitations
@@ -250,7 +252,14 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     def set_audition
-      @audition = @production.auditions.find(params.expect(:id))
+      if params[:audition_session_id].present?
+        # Nested route: /call_to_auditions/:call_to_audition_id/audition_sessions/:audition_session_id/auditions/:id
+        @audition_session = AuditionSession.find(params[:audition_session_id])
+        @audition = @audition_session.auditions.find(params.expect(:id))
+      else
+        # Direct route for audition show (if needed)
+        @audition = Audition.joins(:audition_session).where(audition_sessions: { production_id: @production.id }).find(params.expect(:id))
+      end
     end
 
     # Only allow a list of trusted parameters through.

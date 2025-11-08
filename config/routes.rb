@@ -171,7 +171,9 @@ Rails.application.routes.draw do
             post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
           end
         end
-        resources :audition_sessions
+        resources :audition_sessions do
+          resources :auditions, only: [ :show ], to: "audition_sessions#show"
+        end
         member do
           get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
           get    "form",              to: "call_to_auditions#form",              as: "form"
@@ -189,7 +191,7 @@ Rails.application.routes.draw do
       get "/auditions/review", to: "auditions#review", as: "auditions_review"
       patch "/auditions/finalize_invitations", to: "auditions#finalize_invitations", as: "auditions_finalize_invitations"
       get "/auditions/run", to: "auditions#run", as: "auditions_run"
-      get "/auditions/communicate", to: "auditions#communicate", as: "auditions_communicate"
+      get "/auditions/casting", to: "auditions#casting", as: "auditions_casting"
 
       resources :auditions
     end
