@@ -29,6 +29,13 @@ class Manage::AuditionsController < Manage::ManageController
   def communicate
   end
 
+  # PATCH /auditions/finalize_invitations
+  def finalize_invitations
+    call_to_audition = @production.call_to_audition
+    call_to_audition.update(finalize_audition_invitations: params[:finalize])
+    redirect_to manage_production_auditions_review_path(@production), notice: "Audition invitations #{params[:finalize] == 'true' ? 'finalized' : 'unfin finalized'}"
+  end
+
   # GET /auditions/schedule_auditions
   def schedule_auditions
     @call_to_audition = CallToAudition.find(params[:id])

@@ -41,7 +41,7 @@
                 <% if session.location.present? %>
                   <p class="text-sm text-gray-600 mb-3"><%= session.location.name %></p>
                 <% end %>
-                <%= link_to "Manage Session", manage_production_audition_session_path(@production, session), class: "inline-block font-medium text-sm px-3 py-1 bg-pink-100 text-pink-500 rounded hover:bg-pink-200" %>
+                <%= link_to "Manage Session", manage_production_call_to_audition_audition_session_path(@production, @production.call_to_audition, session), class: "inline-block font-medium text-sm px-3 py-1 bg-pink-100 text-pink-500 rounded hover:bg-pink-200" %>
               </div>
             <% end %>
           </div>

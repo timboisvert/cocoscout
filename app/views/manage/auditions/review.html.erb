@@ -119,5 +119,33 @@
     </div>
     <% end %>
 
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Invitations</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-500 mb-4">Once you finalize the audition invitations, applicants will see the results on their Sign-ups page and their audition schedule on their Auditions page. Until then, they will only see "In Review".</p>
+        <%= form_with url: manage_production_auditions_finalize_invitations_path(@production), method: :patch, class: "contents", local: true do |f| %>
+          <div class="flex items-center mb-4">
+            <input type="hidden" name="finalize" value="0" />
+            <input
+              type="checkbox"
+              name="finalize"
+              value="1"
+              id="finalize_audition_invitations"
+              <%= "checked" if call_to_audition.finalize_audition_invitations %>
+              class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+            >
+            <label for="finalize_audition_invitations" class="ml-2 text-sm text-gray-700 cursor-pointer">
+              Finalize audition invitations and reveal results to applicants
+            </label>
+          </div>
+          <div class="w-full border-t border-gray-200 pt-4">
+            <button type="submit" class="rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm cursor-pointer">Save Finalization Status</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
   <% end %>
 </div>

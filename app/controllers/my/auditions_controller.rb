@@ -5,7 +5,11 @@ class My::AuditionsController < ApplicationController
     session[:auditions_filter] = @auditions_filter
 
     # Get the auditions using the auditions filter
-    @auditions = Current.user.person.auditions.includes(:audition_session, :audition_request)
+    # Only show auditions where invitations have been finalized
+    @auditions = Current.user.person.auditions
+      .includes(:audition_session, :audition_request)
+      .joins(audition_request: :call_to_audition)
+      .where(call_to_auditions: { finalize_audition_invitations: true })
 
     case @auditions_filter
     when "past"

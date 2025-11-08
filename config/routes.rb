@@ -187,6 +187,7 @@ Rails.application.routes.draw do
       get "/auditions/prepare", to: "auditions#prepare", as: "auditions_prepare"
       get "/auditions/publicize", to: "auditions#publicize", as: "auditions_publicize"
       get "/auditions/review", to: "auditions#review", as: "auditions_review"
+      patch "/auditions/finalize_invitations", to: "auditions#finalize_invitations", as: "auditions_finalize_invitations"
       get "/auditions/run", to: "auditions#run", as: "auditions_run"
       get "/auditions/communicate", to: "auditions#communicate", as: "auditions_communicate"
 
