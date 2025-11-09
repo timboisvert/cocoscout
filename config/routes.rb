@@ -192,6 +192,9 @@ Rails.application.routes.draw do
       patch "/auditions/finalize_invitations", to: "auditions#finalize_invitations", as: "auditions_finalize_invitations"
       get "/auditions/run", to: "auditions#run", as: "auditions_run"
       get "/auditions/casting", to: "auditions#casting", as: "auditions_casting"
+      get "/auditions/casting/select", to: "auditions#casting_select", as: "auditions_casting_select"
+      post "/auditions/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "auditions_add_to_cast_assignment"
+      post "/auditions/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "auditions_remove_from_cast_assignment"
 
       resources :auditions
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_08_212415) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -111,6 +111,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_08_212415) do
     t.string "token"
     t.datetime "updated_at", null: false
     t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
+  end
+
+  create_table "cast_assignment_stages", force: :cascade do |t|
+    t.integer "cast_id", null: false
+    t.datetime "created_at", null: false
+    t.text "notification_email"
+    t.integer "person_id", null: false
+    t.integer "production_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["cast_id"], name: "index_cast_assignment_stages_on_cast_id"
+    t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
+    t.index ["production_id", "cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
+    t.index ["production_id"], name: "index_cast_assignment_stages_on_production_id"
   end
 
   create_table "casts", force: :cascade do |t|
@@ -368,6 +382,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_08_212415) do
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
+  add_foreign_key "cast_assignment_stages", "casts"
+  add_foreign_key "cast_assignment_stages", "people"
+  add_foreign_key "cast_assignment_stages", "productions"
   add_foreign_key "casts", "productions"
   add_foreign_key "invitations", "production_companies"
   add_foreign_key "invitations", "users"

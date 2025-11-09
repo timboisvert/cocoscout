@@ -2,7 +2,7 @@ class Manage::AuditionsController < Manage::ManageController
   before_action :set_production, except: %i[ add_to_session remove_from_session move_to_session ]
   before_action :check_production_access, except: %i[ add_to_session remove_from_session move_to_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run communicate]
+  before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run casting casting_select]
 
   # GET /auditions
   def index
@@ -28,7 +28,25 @@ class Manage::AuditionsController < Manage::ManageController
   # GET /auditions/casting
   def casting
     @casts = @production.casts
-    @accepted_audition_requests = @production.call_to_audition&.audition_requests&.where(status: :accepted) || []
+    # Get people who actually auditioned (have an Audition record for this production's sessions)
+    audition_session_ids = @production.audition_sessions.pluck(:id)
+    @auditioned_people = Person.joins(:auditions)
+                                .where(auditions: { audition_session_id: audition_session_ids })
+                                .distinct
+                                .order(:name)
+    @cast_assignment_stages = @production.cast_assignment_stages.includes(:person, :cast)
+  end
+
+  # GET /auditions/casting/select
+  def casting_select
+    @casts = @production.casts
+    # Get people who actually auditioned (have an Audition record for this production's sessions)
+    audition_session_ids = @production.audition_sessions.pluck(:id)
+    @auditioned_people = Person.joins(:auditions)
+                                .where(auditions: { audition_session_id: audition_session_ids })
+                                .distinct
+                                .order(:name)
+    @cast_assignment_stages = @production.cast_assignment_stages.includes(:person, :cast)
   end
 
   # PATCH /auditions/finalize_invitations
@@ -244,6 +262,32 @@ class Manage::AuditionsController < Manage::ManageController
     sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list", locals: { audition_sessions: audition_sessions })
 
     render json: { right_list_html: right_list_html, sessions_list_html: sessions_list_html }
+  end
+
+  # POST /auditions/add_to_cast_assignment
+  def add_to_cast_assignment
+    cast = @production.casts.find(params[:cast_id])
+    person = Person.find(params[:person_id])
+
+    CastAssignmentStage.find_or_create_by(
+      production_id: @production.id,
+      cast_id: cast.id,
+      person_id: person.id
+    )
+
+    head :ok
+  end
+
+  # POST /auditions/remove_from_cast_assignment
+  def remove_from_cast_assignment
+    cast = @production.casts.find(params[:cast_id])
+    CastAssignmentStage.where(
+      production_id: @production.id,
+      cast_id: cast.id,
+      person_id: params[:person_id]
+    ).destroy_all
+
+    head :ok
   end
 
   private

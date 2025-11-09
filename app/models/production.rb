@@ -5,6 +5,7 @@ class Production < ApplicationRecord
     has_many :audition_requests, through: :call_to_audition
     has_many :audition_sessions, dependent: :destroy
     has_many :casts, dependent: :destroy
+    has_many :cast_assignment_stages, dependent: :destroy
     has_many :roles, dependent: :destroy
     has_many :show_person_role_assignments, through: :shows
     has_many :production_permissions, dependent: :destroy

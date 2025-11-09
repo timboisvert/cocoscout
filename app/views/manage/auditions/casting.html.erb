@@ -19,103 +19,176 @@
   <% else %>
     <% call_to_audition = @production.call_to_audition %>
 
+    <!-- Casting Changes Summary -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add To Cast</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Changes</h3>
       </div>
-      <div class="p-6" data-controller="casting-drag" data-production-id="<%= @production.id %>">
-        <div class="grid grid-cols-12 gap-6">
-          <!-- Left side: Auditionees grid -->
-          <div class="col-span-4">
-            <h4 class="text-sm font-semibold text-gray-900 mb-4">Accepted Auditionees</h4>
-            <div class="bg-gray-50 rounded-lg p-4 min-h-96">
-              <div class="grid grid-cols-3 gap-3">
-                <% @accepted_audition_requests.each do |audition_request| %>
-                  <div
-                    class="flex flex-col items-center p-3 bg-white border-2 border-gray-200 rounded-lg cursor-move hover:border-pink-400 hover:bg-pink-50 transition-all"
-                    draggable="true"
-                    data-casting-drag-target="item"
-                    data-drag-drop-target="auditionee"
-                    data-person-id="<%= audition_request.person.id %>"
-                    data-person-name="<%= audition_request.person.name %>"
-                    data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd"
-                  >
-                    <% headshot_variant = audition_request.person.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: audition_request.person.name, class: "w-12 h-12 rounded-lg object-cover mb-2" %>
-                    <% else %>
-                      <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mb-2 text-pink-600 font-bold text-xs">
-                        <%= audition_request.person.initials %>
-                      </div>
-                    <% end %>
-                    <span class="text-xs text-gray-700 font-medium text-center truncate w-full"><%= audition_request.person.name.truncate(12, omission: '...') %></span>
-                  </div>
-                <% end %>
-              </div>
-              <% if @accepted_audition_requests.empty? %>
-                <p class="text-gray-500 text-sm text-center py-8">No accepted candidates</p>
-              <% end %>
-            </div>
-          </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-500 mb-4">Review the casting decisions below. Click "Select Cast Members" button to make changes.</p>
 
-          <!-- Right side: Cast boxes -->
-          <div class="col-span-8">
-            <h4 class="text-sm font-semibold text-gray-900 mb-4">Production Casts</h4>
-            <div class="grid grid-cols-2 gap-4">
-              <% @casts.each do |cast| %>
-                <div
-                  class="border-2 border-dashed border-gray-400 rounded-lg p-4 min-h-96 bg-white hover:border-pink-400 transition-colors"
-                  data-casting-drag-target="item"
-                  data-drag-drop-type="cast"
-                  data-cast-id="<%= cast.id %>"
-                  data-action="dragover->casting-drag#dragOver dragleave->casting-drag#dragLeave drop->casting-drag#drop"
-                >
-                  <div class="text-center mb-4 pb-3 border-b border-gray-200">
-                    <p class="text-sm font-semibold text-gray-900">Add to</p>
-                    <p class="text-lg font-bold text-pink-600"><%= cast.name %></p>
-                  </div>
-
-                  <div class="space-y-2 mb-4" data-casting-drag-target="castMembers">
-                    <% cast.people.each do |person| %>
-                      <div
-                        class="flex items-center justify-between bg-pink-50 p-3 rounded border border-pink-200 cursor-move"
-                        draggable="true"
-                        data-casting-drag-target="item"
-                        data-drag-drop-target="cast-item"
-                        data-person-id="<%= person.id %>"
-                        data-person-name="<%= person.name %>"
-                        data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd"
-                      >
-                        <span class="text-sm font-medium text-gray-900"><%= person.name %></span>
-                        <%= button_to remove_person_manage_production_cast_path(@production, cast),
-                            params: { person_id: person.id },
-                            method: :post,
-                            form_class: "inline",
-                            class: "text-xs px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200" do %>
-                          Remove
+        <% has_any_changes = @cast_assignment_stages.any? %>
+        <% if has_any_changes %>
+          <div class="space-y-4 mb-6">
+            <!-- People being added to casts -->
+            <% @casts.each do |cast| %>
+              <% cast_stages = @cast_assignment_stages.select { |stage| stage.cast_id == cast.id } %>
+              <% if cast_stages.any? %>
+                <div class="border-l-4 border-pink-500 pl-4">
+                  <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to <%= cast.name %></h4>
+                  <div class="flex flex-wrap gap-2">
+                    <% cast_stages.each do |stage| %>
+                      <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                        <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: stage.person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                        <% else %>
+                          <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                            <%= stage.person.initials %>
+                          </div>
                         <% end %>
-                      </div>
+                        <%= stage.person.name %>
+                      <% end %>
                     <% end %>
                   </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm mb-6">No casting decisions have been made yet.</p>
+        <% end %>
 
-                  <% if cast.people.empty? %>
-                    <p class="text-gray-400 text-xs text-center py-8">Drag candidates here</p>
-                  <% end %>
+        <%= render partial: "shared/link_button", locals: { text: "Select Cast Members", path: manage_production_auditions_casting_select_path(@production) } %>
+      </div>
+    </div>
+
+    <!-- Finalize and Notify -->
+    <% staged_casts = @casts.select { |cast| @cast_assignment_stages.any? { |stage| stage.cast_id == cast.id } } %>
+    <% # Calculate unassigned people - those who auditioned but aren't in any cast %>
+    <% assigned_person_ids = @cast_assignment_stages.pluck(:person_id).uniq %>
+    <% unassigned_people = @auditioned_people.reject { |person| assigned_person_ids.include?(person.id) } %>
+    <% if staged_casts.any? || unassigned_people.any? %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize and Notify</h3>
+        </div>
+        <div class="p-6">
+          <div data-controller="tabs">
+            <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
+              <% staged_casts.each_with_index do |cast, index| %>
+                <button
+                  type="button"
+                  data-tabs-target="tab"
+                  data-index="<%= index %>"
+                  data-action="tabs#select"
+                  class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 <%= index == 0 ? 'text-pink-600 border-pink-600' : 'text-gray-500 bg-gray-50 border-transparent' %> cursor-pointer whitespace-nowrap hover:text-pink-600"
+                >
+                  <%= cast.name %>
+                </button>
+              <% end %>
+              <% if unassigned_people.any? %>
+                <button
+                  type="button"
+                  data-tabs-target="tab"
+                  data-index="<%= staged_casts.length %>"
+                  data-action="tabs#select"
+                  class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 <%= staged_casts.empty? ? 'text-pink-600 border-pink-600' : 'text-gray-500 bg-gray-50 border-transparent' %> cursor-pointer whitespace-nowrap hover:text-pink-600"
+                >
+                  Not Being Added
+                </button>
+              <% end %>
+            </nav>
+
+            <div class="space-y-4">
+              <% staged_casts.each_with_index do |cast, index| %>
+                <div data-tabs-target="panel" class="<%= 'hidden' if index > 0 %>">
+                  <div class="mb-4">
+                    <h4 class="text-sm font-semibold text-gray-900 mb-3">People to be added to <%= cast.name %>:</h4>
+                    <div class="flex flex-wrap gap-2">
+                      <% @cast_assignment_stages.select { |stage| stage.cast_id == cast.id }.each do |stage| %>
+                        <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                          <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: stage.person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= stage.person.initials %>
+                            </div>
+                          <% end %>
+                          <%= stage.person.name %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email for <%= cast.name %></label>
+                    <textarea
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      rows="6"
+                    >Dear [Name],
+
+Congratulations! We're excited to invite you to join the <%= cast.name %> for <%= @production.name %>.
+
+Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
+
+Please confirm your acceptance by [date].
+
+Best regards,
+The <%= @production.name %> Team</textarea>
+                  </div>
+                </div>
+              <% end %>
+
+              <% if unassigned_people.any? %>
+                <div data-tabs-target="panel" class="<%= 'hidden' unless staged_casts.empty? %>">
+                  <div class="mb-4">
+                    <h4 class="text-sm font-semibold text-gray-900 mb-3">People not being added to the cast:</h4>
+                    <div class="flex flex-wrap gap-2">
+                      <% unassigned_people.each do |person| %>
+                        <%= link_to manage_person_path(person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= person.initials %>
+                            </div>
+                          <% end %>
+                          <%= person.name %>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
+                    <textarea
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      rows="6"
+                    >Dear [Name],
+
+Thank you so much for auditioning for <%= @production.name %>. We truly appreciate the time and effort you put into your audition.
+
+Unfortunately, we won't be able to offer you a role in this production at this time. We were impressed by your talent and encourage you to audition for future productions.
+
+We hope to work with you in the future.
+
+Best regards,
+The <%= @production.name %> Team</textarea>
+                  </div>
                 </div>
               <% end %>
             </div>
-            <% if @casts.empty? %>
-              <p class="text-gray-500 text-sm text-center py-8">No casts available for this production</p>
-            <% end %>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-sm p-6">
-      <h2 class="text-xl font-semibold text-blue-900 mb-2">Audition Process Complete</h2>
-      <p class="text-blue-800">Once you've added all candidates to your cast, your audition process is complete!</p>
-    </div>
+    <% else %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
+        <p class="text-gray-600 text-sm text-center">Select auditionees for casts above to continue to notification stage</p>
+      </div>
+    <% end %>
 
   <% end %>
 </div>
