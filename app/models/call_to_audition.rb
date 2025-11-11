@@ -2,6 +2,8 @@ class CallToAudition < ApplicationRecord
   has_many :audition_requests, dependent: :destroy
   has_many :audition_sessions, dependent: :destroy
   has_many :questions, as: :questionable, dependent: :destroy
+  has_many :email_groups, dependent: :destroy
+  has_many :audition_email_assignments, dependent: :destroy
 
   has_rich_text :header_text
   has_rich_text :video_field_text

@@ -277,6 +277,23 @@ class Manage::PeopleController < Manage::ManageController
     redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.production_company.name}", status: :see_other
   end
 
+  def contact
+    @person = Current.production_company.people.find(params[:id])
+  end
+
+  def send_contact_email
+    @person = Current.production_company.people.find(params[:id])
+    subject = params[:subject]
+    message = params[:message]
+
+    if subject.present? && message.present?
+      Manage::PersonMailer.contact_email(@person, subject, message, Current.user).deliver_later
+      redirect_to manage_person_path(@person), notice: "Email sent to #{@person.name}"
+    else
+      redirect_to contact_manage_person_path(@person), alert: "Subject and message are required"
+    end
+  end
+
 
   private
     # Use callbacks to share common setup or constraints between actions.

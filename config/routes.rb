@@ -102,6 +102,8 @@ Rails.application.routes.draw do
         post :add_to_cast
         post :remove_from_cast
         post :remove_from_production_company
+        get :contact
+        post :send_contact_email
       end
     end
 
@@ -126,11 +128,15 @@ Rails.application.routes.draw do
         collection do
           get :new_poster
           post :create_poster
+          get :new_logo
+          post :create_logo
         end
         member do
           get :edit_poster
           patch :update_poster
           delete :destroy_poster
+          get :edit_logo
+          patch :update_logo
         end
       end
 
@@ -196,6 +202,9 @@ Rails.application.routes.draw do
       post "/auditions/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "auditions_add_to_cast_assignment"
       post "/auditions/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "auditions_remove_from_cast_assignment"
 
+      resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
+      resources :email_groups, only: [ :create, :destroy ]
+      resources :audition_email_assignments, only: [ :create, :update, :destroy ]
       resources :auditions
     end
 

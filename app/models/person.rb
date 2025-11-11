@@ -34,9 +34,17 @@ class Person < ApplicationRecord
   end
 
   def safe_resume_preview(options = {})
-    return nil unless resume.attached? && resume.previewable?
+    return nil unless resume.attached?
+
+    # For image files (JPEG, PNG), display directly with variant
+    if resume.content_type.start_with?("image/")
+      return resume.variant(options)
+    end
+
+    # For other files (PDF), generate preview
+    return nil unless resume.previewable?
     resume.preview(options)
-  rescue ActiveStorage::PreviewError => e
+  rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
     Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
     nil
   end

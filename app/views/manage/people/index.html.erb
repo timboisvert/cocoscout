@@ -80,20 +80,20 @@
     </div>
 
     <% if @show == "tiles" %>
-      <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1 w-full mt-4">
+      <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 w-full mt-4">
         <% @people.each do |person| %>
 
           <%= link_to manage_person_path(person) do %>
-            <div class="flex flex-col items-center p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
+            <div class="flex flex-col items-center p-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
               <% headshot_variant = person.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: person.name, class: "w-16 h-16 rounded-lg object-cover mb-1" %>
+                  <%= image_tag headshot_variant, alt: person.name, class: "w-14 h-14 rounded-lg object-cover mb-1.5" %>
               <% else %>
-                  <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold">
+                  <div class="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center mb-1.5 text-black font-bold text-sm">
                       <%= person.initials %>
                   </div>
               <% end %>
-              <span class="font-medium text-sm text-center"><%= person.name.truncate(20, omission: '...') %></span>
+              <span class="font-medium text-xs text-center leading-tight h-8 flex items-center overflow-hidden"><%= person.name.truncate(18, omission: '...') %></span>
             </div>
           <% end %>
         <% end %>

@@ -135,11 +135,12 @@
       </div>
     </div>
 
-    <div data-show-edit-target="showOnlyFields" class="mt-5 border border-gray-200 rounded-lg overflow-hidden <%= 'hidden' unless @show.event_type == 'show' %>">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+    <div data-show-edit-target="showOnlyFields" data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden <%= 'hidden' unless @show.event_type == 'show' %>">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">Optional Show Settings</h3>
+          <div data-show-toggle-target="icon"></div>
       </div>
-      <div class="p-4">
+      <div data-show-toggle-target="content" class="p-4">
 
         <div>
           <%= form.label :secondary_name %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -57,6 +57,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
     t.string "value"
     t.index ["audition_request_id"], name: "index_answers_on_audition_request_id"
     t.index ["question_id"], name: "index_answers_on_question_id"
+  end
+
+  create_table "audition_email_assignments", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
+    t.datetime "created_at", null: false
+    t.string "email_group_id"
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_audition_email_assignments_on_call_to_audition_id"
+    t.index ["person_id"], name: "index_audition_email_assignments_on_person_id"
   end
 
   create_table "audition_requests", force: :cascade do |t|
@@ -116,6 +126,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
   create_table "cast_assignment_stages", force: :cascade do |t|
     t.integer "cast_id", null: false
     t.datetime "created_at", null: false
+    t.string "email_group_id"
     t.text "notification_email"
     t.integer "person_id", null: false
     t.integer "production_id", null: false
@@ -140,6 +151,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
     t.integer "person_id"
     t.index ["cast_id"], name: "index_casts_people_on_cast_id"
     t.index ["person_id"], name: "index_casts_people_on_person_id"
+  end
+
+  create_table "email_groups", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
+    t.datetime "created_at", null: false
+    t.text "email_template"
+    t.string "group_id"
+    t.string "name"
+    t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_email_groups_on_call_to_audition_id"
   end
 
   create_table "invitations", force: :cascade do |t|
@@ -373,6 +394,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
+  add_foreign_key "audition_email_assignments", "call_to_auditions"
+  add_foreign_key "audition_email_assignments", "people"
   add_foreign_key "audition_requests", "call_to_auditions"
   add_foreign_key "audition_requests", "people"
   add_foreign_key "audition_sessions", "call_to_auditions"
@@ -386,6 +409,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_09_173635) do
   add_foreign_key "cast_assignment_stages", "people"
   add_foreign_key "cast_assignment_stages", "productions"
   add_foreign_key "casts", "productions"
+  add_foreign_key "email_groups", "call_to_auditions"
   add_foreign_key "invitations", "production_companies"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "production_companies"

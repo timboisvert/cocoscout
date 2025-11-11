@@ -44,11 +44,17 @@ class DashboardService
         else "#{days_until} days from now"
         end
 
+        cast_percentage = if @production.roles.count > 0
+          ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
+        else
+          0
+        end
+
         {
           show: show,
           uncast_count: uncast_count,
           days_until: days_label,
-          cast_percentage: ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
+          cast_percentage: cast_percentage
         }
       end
   end

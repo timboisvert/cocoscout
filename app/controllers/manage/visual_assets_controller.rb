@@ -7,6 +7,28 @@ class Manage::VisualAssetsController < Manage::ManageController
   def index
   end
 
+  def new_logo
+  end
+
+  def create_logo
+    if @production.update(logo_params)
+      redirect_to [ :manage, @production, :visual_assets ], notice: "Logo was successfully uploaded"
+    else
+      render :new_logo, status: :unprocessable_entity
+    end
+  end
+
+  def edit_logo
+  end
+
+  def update_logo
+    if @production.update(logo_params)
+      redirect_to [ :manage, @production, :visual_assets ], notice: "Logo was successfully updated"
+    else
+      render :edit_logo, status: :unprocessable_entity
+    end
+  end
+
   def new_poster
     @poster = @production.posters.new
   end
@@ -47,5 +69,9 @@ class Manage::VisualAssetsController < Manage::ManageController
 
     def poster_params
       params.require(:poster).permit(:name, :image)
+    end
+
+    def logo_params
+      params.require(:production).permit(:logo)
     end
 end
