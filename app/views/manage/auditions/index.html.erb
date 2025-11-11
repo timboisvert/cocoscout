@@ -198,13 +198,14 @@
                     <p class="text-gray-600 text-sm mt-1">Accept or decline applications and schedule auditions</p>
                     <%
                       total_signups = @active_call_to_audition.audition_requests.count
-                      accepted_count = @active_call_to_audition.audition_requests.where(status: :accepted).count
+                      # Count people who are actually scheduled for auditions
+                      scheduled_count = @active_call_to_audition.audition_sessions.joins(:auditions).select('auditions.person_id').distinct.count
                     %>
                     <% if total_signups > 0 %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= total_signups %> <%= 'sign-up'.pluralize(total_signups) %> received</p>
                     <% end %>
-                    <% if accepted_count > 0 %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= accepted_count %> <%= 'person'.pluralize(accepted_count) %> offered <%= 'an audition'.pluralize(accepted_count) %></p>
+                    <% if scheduled_count > 0 %>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= scheduled_count %> <%= 'person'.pluralize(scheduled_count) %> offered <%= 'an audition'.pluralize(scheduled_count) %></p>
                     <% end %>
                     <% if @active_call_to_audition.finalize_audition_invitations %>
                       <% notified_count = @active_call_to_audition.audition_requests.count %>
@@ -251,8 +252,8 @@
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Casting</h4>
                     <p class="text-gray-600 text-sm mt-1">Send decisions and add people to cast(s)</p>
                     <%
-                      # Count unique people added to any cast
-                      cast_people_count = @production.casts.joins(:people).distinct.count('people.id')
+                      # Count unique people added to casts during THIS audition cycle
+                      cast_people_count = @active_call_to_audition.cast_assignment_stages.select(:person_id).distinct.count
                       if cast_people_count > 0
                     %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= cast_people_count %> <%= 'person'.pluralize(cast_people_count) %> added to <%= 'a cast'.pluralize(cast_people_count) %></p>
@@ -290,7 +291,7 @@
     <% if @past_calls_to_audition.any? %>
       <div class="divide-y divide-gray-200">
         <% @past_calls_to_audition.each do |call_to_audition| %>
-          <%= link_to prepare_manage_production_call_to_audition_path(@production, call_to_audition), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
+          <%= link_to manage_production_call_to_audition_path(@production, call_to_audition), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
             <div class="flex justify-between items-start">
               <div>
                 <h4 class="font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">

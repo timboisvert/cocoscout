@@ -1,9 +1,9 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_call_to_audition, only: %i[ edit form update destroy preview create_question update_question destroy_question reorder_questions archive ]
+  before_action :set_call_to_audition, only: %i[ show edit form update destroy preview create_question update_question destroy_question reorder_questions archive ]
   before_action :set_question, only: %i[ update_question destroy_question ]
-  before_action :ensure_user_is_manager, except: %i[ preview ]
+  before_action :ensure_user_is_manager, except: %i[ preview show ]
 
   # Skip the sidebar on the preview
   skip_before_action :show_manage_sidebar, only: %i[ preview ]
@@ -13,6 +13,19 @@ class Manage::CallToAuditionsController < Manage::ManageController
 
   def new
     @call_to_audition = CallToAudition.new
+  end
+
+  def show
+    # Summary view for archived auditions
+    @custom_questions = @call_to_audition.questions.order(:position)
+    @audition_requests = @call_to_audition.audition_requests.includes(:person).order(created_at: :desc)
+    @accepted_requests = @audition_requests.where(status: :accepted)
+
+    # Get people added to casts during this audition cycle via cast_assignment_stages
+    @cast_people = Person.joins(:cast_assignment_stages)
+                         .where(cast_assignment_stages: { call_to_audition_id: @call_to_audition.id })
+                         .distinct
+                         .order(:name)
   end
 
   def create
@@ -91,7 +104,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
                     notice: notice_message,
                     status: :see_other
       else
-        redirect_to manage_production_auditions_prepare_path(@production),
+        redirect_to prepare_manage_production_call_to_audition_path(@production, @call_to_audition),
                     notice: "Audition Settings successfully updated",
                     status: :see_other
       end

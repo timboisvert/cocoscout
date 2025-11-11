@@ -9,7 +9,7 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", manage_production_auditions_run_path(@production)]
+          ["Run Auditions", run_manage_production_call_to_audition_path(@production, @call_to_audition)]
         ],
         text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
         links: []
@@ -25,8 +25,8 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", manage_production_auditions_run_path(@production)],
-          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_call_to_audition_audition_session_path(@production, @production.call_to_audition, @audition_session)]
+          ["Run Auditions", run_manage_production_call_to_audition_path(@production, @call_to_audition)],
+          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_call_to_audition_audition_session_path(@production, @call_to_audition, @audition_session)]
         ],
         text: "#{@person.name}",
         links: []
@@ -62,7 +62,7 @@
             <%= render "manage/audition_requests/answers", answers: @answers %>
           </div>
         <% else %>
-          <p class="text-center mt-10">No sign-up questions answered</p>
+          <p class="text-left text-gray-500 text-sm">No sign-up questions answered</p>
         <% end %>
       </div>
 

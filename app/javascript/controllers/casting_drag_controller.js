@@ -2,6 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["dropZone", "auditionee", "person"]
+    static values = { 
+        callToAuditionId: String,
+        productionId: String
+    }
 
     connect() {
         console.log("Casting drag controller connected")
@@ -98,7 +102,7 @@ export default class extends Controller {
     }
 
     addToCast(personId, personName, castId, csrfToken, productionId) {
-        fetch(`/manage/productions/${productionId}/auditions/add_to_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -122,9 +126,8 @@ export default class extends Controller {
 
     removeFromCast(personId, castId, callback) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
-        const productionId = this.element.dataset.productionId
 
-        fetch(`/manage/productions/${productionId}/auditions/remove_from_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -151,9 +154,8 @@ export default class extends Controller {
         const castId = button.dataset.castId
         const personId = button.dataset.personId
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
-        const productionId = this.element.dataset.productionId
 
-        fetch(`/manage/productions/${productionId}/auditions/remove_from_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

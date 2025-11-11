@@ -8,6 +8,8 @@ class Person < ApplicationRecord
   has_and_belongs_to_many :casts
   has_and_belongs_to_many :production_companies
 
+  has_many :cast_assignment_stages, dependent: :destroy
+
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments

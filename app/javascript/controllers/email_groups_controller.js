@@ -532,8 +532,8 @@ export default class extends Controller {
         button.textContent = "Sending..."
 
         const endpoint = isInvitation
-            ? `/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify_invitations`
-            : `/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify`
+            ? `/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/finalize_and_notify_invitations`
+            : `/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/finalize_and_notify`
 
         fetch(endpoint, {
             method: "POST",

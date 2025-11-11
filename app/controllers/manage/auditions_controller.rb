@@ -13,22 +13,28 @@ class Manage::AuditionsController < Manage::ManageController
 
   # GET /auditions/prepare
   def prepare
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
   end
 
   # GET /auditions/publicize
   def publicize
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
   end
 
   # GET /auditions/review
   def review
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
   end
 
   # GET /auditions/run
   def run
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
   end
 
   # GET /auditions/casting
   def casting
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+
     @casts = @production.casts
     # Get people who actually auditioned (have an Audition record for this call to audition's sessions)
     audition_session_ids = @call_to_audition.audition_sessions.pluck(:id)
@@ -41,6 +47,8 @@ class Manage::AuditionsController < Manage::ManageController
 
   # GET /auditions/casting/select
   def casting_select
+    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+
     @casts = @production.casts
     # Get people who actually auditioned (have an Audition record for this call to audition's sessions)
     audition_session_ids = @call_to_audition.audition_sessions.pluck(:id)
@@ -540,5 +548,9 @@ class Manage::AuditionsController < Manage::ManageController
     # Only allow a list of trusted parameters through.
     def audition_params
       params.expect(audition: [ :audition_session_id, :audition_request_id ])
+    end
+
+    def redirect_to_archived_summary
+      redirect_to manage_production_call_to_audition_path(@production, @call_to_audition)
     end
 end

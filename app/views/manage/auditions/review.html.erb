@@ -141,6 +141,9 @@
         <% accepted_requests = audition_requests.where(status: :accepted) %>
         <% not_accepted_requests = audition_requests.where.not(status: :accepted) %>
 
+        <% # Get all scheduled person IDs for this call to audition %>
+        <% scheduled_person_ids = call_to_audition.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
+
         <% # Load email assignments for all people %>
         <% email_assignments = call_to_audition.audition_email_assignments.where(person_id: audition_requests.map(&:person_id)).index_by(&:person_id) %>
         <% # Load custom email groups %>
@@ -183,9 +186,13 @@
                 if assignment&.email_group_id.present?
                   assignment.email_group_id
                 else
-                  # Default group based on whether they're accepted
-                  request = audition_requests.find { |r| r.person_id == person.id }
-                  request&.status == 'accepted' ? "invitation_accepted" : "invitation_not_accepted"
+                  # Default group: people are in "Invited to Audition" ONLY if they're currently scheduled
+                  # Otherwise they go to "Not Invited" even if their request status is "accepted"
+                  if scheduled_person_ids.include?(person.id)
+                    "invitation_accepted"
+                  else
+                    "invitation_not_accepted"
+                  end
                 end
               end %>
               <% # Group all applicants by their email group %>
@@ -308,18 +315,20 @@ Best regards,
 The <%= @production.name %> Team</textarea>
                   </div>
 
-                  <div class="mt-4 pt-4 border-t border-gray-200">
-                    <label class="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        data-email-groups-target="reviewCheckbox"
-                        data-checkbox-group-id="invitation_accepted"
-                        data-action="change->email-groups#checkAllReviewed"
-                        class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-                      >
-                      <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
-                    </label>
-                  </div>
+                  <% if accepted_group_people.any? %>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                      <label class="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          data-email-groups-target="reviewCheckbox"
+                          data-checkbox-group-id="invitation_accepted"
+                          data-action="change->email-groups#checkAllReviewed"
+                          class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+                        >
+                        <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
+                      </label>
+                    </div>
+                  <% end %>
                 </div>
 
               <%# Panel for not accepted %>
@@ -373,18 +382,20 @@ Best regards,
 The <%= @production.name %> Team</textarea>
                   </div>
 
-                  <div class="mt-4 pt-4 border-t border-gray-200">
-                    <label class="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        data-email-groups-target="reviewCheckbox"
-                        data-checkbox-group-id="invitation_not_accepted"
-                        data-action="change->email-groups#checkAllReviewed"
-                        class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-                      >
-                      <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
-                    </label>
-                  </div>
+                  <% if not_accepted_group_people.any? %>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                      <label class="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          data-email-groups-target="reviewCheckbox"
+                          data-checkbox-group-id="invitation_not_accepted"
+                          data-action="change->email-groups#checkAllReviewed"
+                          class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+                        >
+                        <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
+                      </label>
+                    </div>
+                  <% end %>
                 </div>
 
               <%# Custom email group panels %>
