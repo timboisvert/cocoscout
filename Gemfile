@@ -12,6 +12,7 @@ gem "stimulus-rails"
 gem "bcrypt", "~> 3.1.7"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "solid_cache"
+gem "solid_queue"
 gem "bootsnap", require: false
 gem "kamal", require: false
 gem "thruster", require: false
@@ -19,7 +20,7 @@ gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
 gem "honeybadger"
 # gem "rails_semantic_logger" Check soon if you can put this back, and also uncomment the config in application.rb
-gem "pagy"
+gem "pagy", "~> 9.4.0"
 
 group :production do
   gem "poppler"

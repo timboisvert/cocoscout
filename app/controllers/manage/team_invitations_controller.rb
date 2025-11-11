@@ -43,6 +43,11 @@ class Manage::TeamInvitationsController < Manage::ManageController
       AuthMailer.signup(person.user).deliver_later
     end
 
+    # Add the person to the production company if not already added
+    unless person.production_companies.include?(@team_invitation.production_company)
+      person.production_companies << @team_invitation.production_company
+    end
+
     # Set a role and the production company
     unless UserRole.exists?(user: user, production_company: @team_invitation.production_company)
       UserRole.create!(user: user, production_company: @team_invitation.production_company, company_role: "none")
