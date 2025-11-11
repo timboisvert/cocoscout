@@ -12,12 +12,14 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :publicize } %>
 
-  <% if @production.call_to_audition.blank? %>
+  <%= render partial: "archived_banner" %>
+
+  <% if @call_to_audition.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @production.call_to_audition %>
+    <% call_to_audition = @call_to_audition %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">

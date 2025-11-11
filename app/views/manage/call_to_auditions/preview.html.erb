@@ -5,7 +5,7 @@
       <p class="text-white text-2xl font-medium">Preview</p>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: "Edit Form", color: "white", path: form_manage_production_call_to_audition_path(@production, @call_to_audition)} %>
+        <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Edit Form" : "View Form"), color: "white", path: form_manage_production_call_to_audition_path(@production, @call_to_audition)} %>
       <% else %>
         <div></div>
       <% end %>

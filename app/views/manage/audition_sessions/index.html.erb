@@ -5,7 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", manage_production_auditions_prepare_path(@production)]
+      ["Prepare", prepare_manage_production_call_to_audition_path(@production, @call_to_audition)]
     ],
     text: "Manage Audition Sessions",
     links: []

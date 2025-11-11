@@ -4,7 +4,8 @@ export default class extends Controller {
     static targets = ["tabContainer", "panelContainer", "personBadge", "popup", "menu", "modal", "nameInput", "reviewCheckbox", "sendSection", "tabIndicator"]
     static values = {
         productionId: Number,
-        callToAuditionId: Number
+        callToAuditionId: Number,
+        groupType: String  // 'casting' or 'invitation'
     }
 
     connect() {
@@ -199,6 +200,7 @@ export default class extends Controller {
         }
 
         const newGroupId = `group_${Date.now()}`
+        const groupType = this.groupTypeValue || 'casting'
 
         // Create the new group via AJAX
         fetch(`/manage/productions/${this.productionIdValue}/email_groups`, {
@@ -210,7 +212,8 @@ export default class extends Controller {
             body: JSON.stringify({
                 email_group: {
                     group_id: newGroupId,
-                    name: groupName
+                    name: groupName,
+                    group_type: groupType
                 }
             })
         })
@@ -242,12 +245,17 @@ export default class extends Controller {
         // Close any existing popup
         this.closePopup()
 
-        // Determine if this person is in a cast
+        // Determine the group type (casting vs invitation)
+        const groupType = this.groupTypeValue || 'casting'
+        const isInvitationType = groupType === 'invitation'
+
+        // Determine if this person is in a cast (for casting type)
         const isInCast = personCastId && personCastId !== ''
 
         // Determine if we're currently viewing a custom group tab
         const isCustomGroupActive = this.activeGroupId &&
             !this.activeGroupId.startsWith('default_') &&
+            !this.activeGroupId.startsWith('invitation_') &&
             this.activeGroupId !== 'unassigned'
 
         // Get available groups from the page
@@ -263,30 +271,58 @@ export default class extends Controller {
             }
 
             // Determine if this tab is a custom group
-            const isCustomGroup = !groupId.startsWith('default_') && groupId !== 'unassigned'
+            const isCustomGroup = !groupId.startsWith('default_') &&
+                !groupId.startsWith('invitation_') &&
+                groupId !== 'unassigned'
 
-            // Apply filtering rules based on where we are and where the person belongs
-            if (isCustomGroupActive) {
-                // From a custom group, can move to:
-                // 1. Other custom groups
-                // 2. Their actual cast's "Added to" tab (if in a cast)
-                // 3. "Not Being Added" tab (if not in a cast)
+            if (isInvitationType) {
+                // INVITATION TYPE LOGIC
+                // From "Invited to Audition": can move to custom groups only
+                // From "Not Invited": can move to custom groups only
+                // From custom group: can move to other custom groups OR back to THEIR ORIGINAL group
 
-                if (isCustomGroup) {
-                    // Allow: other custom groups
-                } else if (groupId === 'unassigned' && !isInCast) {
-                    // Allow: "Not Being Added" if person is not in a cast
-                } else if (groupId.startsWith('default_') && tabCastId === personCastId && isInCast) {
-                    // Allow: their actual cast's default tab
-                } else {
-                    return // Skip this option
+                if (this.activeGroupId === 'invitation_accepted') {
+                    // From "Invited to Audition" - can only move to custom groups
+                    if (!isCustomGroup) {
+                        return // Skip default invitation tabs
+                    }
+                } else if (this.activeGroupId === 'invitation_not_accepted') {
+                    // From "Not Invited" - can only move to custom groups
+                    if (!isCustomGroup) {
+                        return // Skip default invitation tabs
+                    }
+                } else if (isCustomGroupActive) {
+                    // From custom group - can move to other custom groups OR back to their original group only
+                    const originalGroup = badge.dataset.originalGroup
+                    if (!isCustomGroup && groupId !== originalGroup) {
+                        return // Skip - not their original group
+                    }
                 }
             } else {
-                // From a default cast tab or "Not Being Added" tab, can move to:
-                // - Any custom group
+                // CASTING TYPE LOGIC
+                // Apply filtering rules based on where we are and where the person belongs
+                if (isCustomGroupActive) {
+                    // From a custom group, can move to:
+                    // 1. Other custom groups
+                    // 2. Their actual cast's "Added to" tab (if in a cast)
+                    // 3. "Not Being Added" tab (if not in a cast)
 
-                if (!isCustomGroup) {
-                    return // Skip default/unassigned tabs
+                    if (isCustomGroup) {
+                        // Allow: other custom groups
+                    } else if (groupId === 'unassigned' && !isInCast) {
+                        // Allow: "Not Being Added" if person is not in a cast
+                    } else if (groupId.startsWith('default_') && tabCastId === personCastId && isInCast) {
+                        // Allow: their actual cast's default tab
+                    } else {
+                        return // Skip this option
+                    }
+                } else {
+                    // From a default cast tab or "Not Being Added" tab, can move to:
+                    // - Any custom group
+
+                    if (!isCustomGroup) {
+                        return // Skip default/unassigned tabs
+                    }
                 }
             }
 
@@ -479,7 +515,14 @@ export default class extends Controller {
     }
 
     sendNotifications(event) {
-        if (!confirm("Are you sure you want to finalize cast changes and send notification emails to all auditionees? This action cannot be undone.")) {
+        const groupType = this.groupTypeValue || 'casting'
+        const isInvitation = groupType === 'invitation'
+
+        const confirmMessage = isInvitation
+            ? "Are you sure you want to send audition invitation emails to all applicants? This action cannot be undone."
+            : "Are you sure you want to finalize cast changes and send notification emails to all auditionees? This action cannot be undone."
+
+        if (!confirm(confirmMessage)) {
             return
         }
 
@@ -488,7 +531,11 @@ export default class extends Controller {
         button.disabled = true
         button.textContent = "Sending..."
 
-        fetch(`/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify`, {
+        const endpoint = isInvitation
+            ? `/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify_invitations`
+            : `/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify`
+
+        fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -498,19 +545,23 @@ export default class extends Controller {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`Success! ${data.emails_sent} notification emails sent and ${data.people_added_to_casts} people added to casts.`)
+                    if (isInvitation) {
+                        alert(`Success! ${data.emails_sent} invitation emails sent.`)
+                    } else {
+                        alert(`Success! ${data.emails_sent} notification emails sent and ${data.people_added_to_casts} people added to casts.`)
+                    }
                     window.location.reload()
                 } else {
                     alert(`Error: ${data.error || "Failed to send notifications"}`)
                     button.disabled = false
-                    button.textContent = "Finalize Cast & Send Notifications"
+                    button.textContent = isInvitation ? "Send Audition Invitation Notifications" : "Finalize Cast & Send Notifications"
                 }
             })
             .catch(error => {
                 console.error("Error:", error)
                 alert("An error occurred while sending notifications")
                 button.disabled = false
-                button.textContent = "Finalize Cast & Send Notifications"
+                button.textContent = isInvitation ? "Send Audition Invitation Notifications" : "Finalize Cast & Send Notifications"
             })
     }
 

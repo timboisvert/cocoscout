@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_11_145106) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -158,6 +158,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_145106) do
     t.datetime "created_at", null: false
     t.text "email_template"
     t.string "group_id"
+    t.string "group_type"
     t.string "name"
     t.datetime "updated_at", null: false
     t.index ["call_to_audition_id"], name: "index_email_groups_on_call_to_audition_id"

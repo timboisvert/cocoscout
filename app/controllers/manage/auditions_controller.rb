@@ -1,9 +1,9 @@
 class Manage::AuditionsController < Manage::ManageController
   before_action :set_production, except: %i[ add_to_session remove_from_session move_to_session ]
   before_action :check_production_access, except: %i[ add_to_session remove_from_session move_to_session ]
-  before_action :set_call_to_audition, except: %i[ index add_to_session remove_from_session move_to_session ]
+  before_action :set_call_to_audition, except: %i[ index schedule_auditions add_to_session remove_from_session move_to_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run casting casting_select]
+  before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run casting casting_select schedule_auditions]
 
   # GET /auditions
   def index
@@ -374,6 +374,64 @@ class Manage::AuditionsController < Manage::ManageController
     }
   end
 
+  # POST /auditions/finalize_and_notify_invitations
+  def finalize_and_notify_invitations
+    call_to_audition = @call_to_audition
+
+    unless call_to_audition
+      render json: { error: "No call to audition found" }, status: :unprocessable_entity
+      return
+    end
+
+    # Get all audition requests
+    audition_requests = call_to_audition.audition_requests.includes(:person)
+    email_assignments = call_to_audition.audition_email_assignments.includes(:person).index_by(&:person_id)
+    email_groups = call_to_audition.email_groups.where(group_type: "invitation").index_by(&:group_id)
+
+    emails_sent = 0
+
+    audition_requests.each do |request|
+      person = request.person
+      email_assignment = email_assignments[person.id]
+
+      # Determine which email template to use
+      email_body = nil
+
+      if email_assignment&.email_group_id.present?
+        # Custom email group
+        custom_group = email_groups[email_assignment.email_group_id]
+        email_body = custom_group&.email_template
+      elsif request.status == "accepted"
+        # Default "invited to audition" email
+        email_body = generate_default_invitation_email(person, @production, call_to_audition)
+      else
+        # Default "not invited" email
+        email_body = generate_default_not_invited_email(person, @production)
+      end
+
+      # Send the email if we have a body
+      if email_body.present? && person.email.present?
+        # Replace [Name] placeholder with actual name
+        personalized_body = email_body.gsub("[Name]", person.name)
+
+        begin
+          Manage::AuditionMailer.invitation_notification(person, @production, personalized_body).deliver_later
+          emails_sent += 1
+        rescue => e
+          Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
+        end
+      end
+    end
+
+    # Set finalize_audition_invitations to true so applicants can see results
+    call_to_audition.update(finalize_audition_invitations: true)
+
+    render json: {
+      success: true,
+      emails_sent: emails_sent
+    }
+  end
+
   private
 
     def generate_default_cast_email(person, cast, production)
@@ -406,14 +464,65 @@ class Manage::AuditionsController < Manage::ManageController
       EMAIL
     end
 
+    def generate_default_invitation_email(person, production, call_to_audition)
+      if call_to_audition.audition_type == "video_upload"
+        <<~EMAIL
+          Dear #{person.name},
+
+          Congratulations! You've been invited to audition for #{production.name}.
+
+          Your audition materials have been received and are under review. We'll notify you once decisions have been made.
+
+          We look forward to seeing your work!
+
+          Best regards,
+          The #{production.name} Team
+        EMAIL
+      else
+        <<~EMAIL
+          Dear #{person.name},
+
+          Congratulations! You've been invited to audition for #{production.name}.
+
+          Your audition schedule is now available. Please log in to view your audition time and location details.
+
+          We look forward to seeing you!
+
+          Best regards,
+          The #{production.name} Team
+        EMAIL
+      end
+    end
+
+    def generate_default_not_invited_email(person, production)
+      <<~EMAIL
+        Dear #{person.name},
+
+        Thank you so much for your interest in #{production.name}. We truly appreciate you taking the time to apply.
+
+        Unfortunately, we won't be able to offer you an audition for this production at this time. We received many qualified applicants and had to make some difficult decisions.
+
+        We encourage you to apply for future productions and wish you all the best in your performing arts journey.
+
+        Best regards,
+        The #{production.name} Team
+      EMAIL
+    end
+
     def set_production
       @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
     def set_call_to_audition
-      @call_to_audition = @production.active_call_to_audition
-      unless @call_to_audition
-        redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
+      if params[:id].present?
+        # When coming from /call_to_auditions/:id/prepare (or other workflow steps)
+        @call_to_audition = @production.call_to_auditions.find(params[:id])
+      else
+        # Default to active call to audition (for legacy routes or index page)
+        @call_to_audition = @production.active_call_to_audition
+        unless @call_to_audition
+          redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
+        end
       end
     end
 

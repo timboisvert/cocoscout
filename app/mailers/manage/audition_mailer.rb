@@ -9,4 +9,15 @@ class Manage::AuditionMailer < ApplicationMailer
       subject: "Audition Results for #{production.name}"
     )
   end
+
+  def invitation_notification(person, production, email_body)
+    @person = person
+    @production = production
+    @email_body = email_body
+
+    mail(
+      to: person.email,
+      subject: "Audition Invitation for #{production.name}"
+    )
+  end
 end

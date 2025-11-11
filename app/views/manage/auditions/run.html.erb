@@ -12,12 +12,14 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :run } %>
 
-  <% if @production.call_to_audition.blank? %>
+  <%= render partial: "archived_banner" %>
+
+  <% if @call_to_audition.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @production.call_to_audition %>
+    <% call_to_audition = @call_to_audition %>
 
     <% if call_to_audition.audition_type == "in_person" %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
@@ -49,7 +51,7 @@
                   <% if session.auditions.any? %>
                     <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-10 gap-2">
                       <% session.auditions.each do |audition| %>
-                        <%= link_to manage_production_call_to_audition_audition_session_audition_path(@production, @production.call_to_audition, session, audition), class: "flex flex-col items-center text-center no-underline hover:opacity-80 transition-opacity" do %>
+                        <%= link_to manage_production_call_to_audition_audition_session_audition_path(@production, @call_to_audition, session, audition), class: "flex flex-col items-center text-center no-underline hover:opacity-80 transition-opacity" do %>
                           <div class="flex flex-col items-center text-center">
                             <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
                             <% if headshot_variant %>
@@ -74,7 +76,7 @@
 
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: { text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition) } %>
+          <%= render partial: "shared/link_button", locals: { text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition) } %>
         <% end %>
         </div>
       </div>

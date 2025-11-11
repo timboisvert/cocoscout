@@ -189,20 +189,21 @@ Rails.application.routes.draw do
           delete "destroy_question/:question_id", to: "call_to_auditions#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "call_to_auditions#reorder_questions", as: "reorder_questions"
           patch  "archive",           to: "call_to_auditions#archive",           as: "archive"
+          get    "prepare",           to: "auditions#prepare",                   as: "prepare"
+          get    "publicize",         to: "auditions#publicize",                 as: "publicize"
+          get    "review",            to: "auditions#review",                    as: "review"
+          patch  "finalize_invitations", to: "auditions#finalize_invitations",  as: "finalize_invitations"
+          get    "run",               to: "auditions#run",                       as: "run"
+          get    "casting",           to: "auditions#casting",                   as: "casting"
+          get    "casting/select",    to: "auditions#casting_select",           as: "casting_select"
+          post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
+          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment"
+          post   "finalize_and_notify", to: "auditions#finalize_and_notify",    as: "finalize_and_notify"
+          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations"
         end
       end
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
-      get "/auditions/prepare", to: "auditions#prepare", as: "auditions_prepare"
-      get "/auditions/publicize", to: "auditions#publicize", as: "auditions_publicize"
-      get "/auditions/review", to: "auditions#review", as: "auditions_review"
-      patch "/auditions/finalize_invitations", to: "auditions#finalize_invitations", as: "auditions_finalize_invitations"
-      get "/auditions/run", to: "auditions#run", as: "auditions_run"
-      get "/auditions/casting", to: "auditions#casting", as: "auditions_casting"
-      get "/auditions/casting/select", to: "auditions#casting_select", as: "auditions_casting_select"
-      post "/auditions/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "auditions_add_to_cast_assignment"
-      post "/auditions/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "auditions_remove_from_cast_assignment"
-      post "/auditions/finalize_and_notify", to: "auditions#finalize_and_notify", as: "auditions_finalize_and_notify"
 
       resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
       resources :email_groups, only: [ :create, :destroy ]

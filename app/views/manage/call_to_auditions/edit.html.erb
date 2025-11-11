@@ -5,7 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", manage_production_auditions_prepare_path(@production)]
+      ["Prepare", prepare_manage_production_call_to_audition_path(@production, @call_to_audition)]
     ],
     text: "Audition Settings",
     links: []
@@ -47,7 +47,7 @@
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Update", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", manage_production_auditions_prepare_path(@production), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", prepare_manage_production_call_to_audition_path(@production, @call_to_audition), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 

@@ -12,12 +12,14 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
 
-  <% if @production.call_to_audition.blank? %>
+  <%= render partial: "archived_banner" %>
+
+  <% if @call_to_audition.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @production.call_to_audition %>
+    <% call_to_audition = @call_to_audition %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -109,11 +111,11 @@
           </div>
 
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_call_to_audition_path(@production, @production.call_to_audition)} %>
+            <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_call_to_audition_path(@production, @call_to_audition)} %>
           </div>
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition)} %>
         <% end %>
       </div>
     </div>
@@ -122,39 +124,366 @@
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <% if call_to_audition.audition_type == "video_upload" %>
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Review</h3>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Review and Notify</h3>
         <% else %>
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans</h3>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>
         <% end %>
       </div>
       <div class="p-6">
         <% if call_to_audition.audition_type == "video_upload" %>
-          <p class="text-sm text-gray-500 mb-4">Once you finalize the audition review, applicants will see the results on their Sign-ups page. Until then, they will only see that their Sign-up is "In Review".</p>
+          <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status.</p>
         <% else %>
-          <p class="text-sm text-gray-500 mb-4">Once you finalize the audition plans, applicants will see the results on their Sign-ups page and their audition schedule on their Auditions page. Until then, they will only see "In Review".</p>
+          <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
         <% end %>
-        <%= form_with url: manage_production_auditions_finalize_invitations_path(@production), method: :patch, class: "contents", local: true do |f| %>
-          <div class="flex items-center mb-4">
-            <input type="hidden" name="finalize" value="0" />
-            <input
-              type="checkbox"
-              name="finalize"
-              value="1"
-              id="finalize_audition_invitations"
-              <%= "checked" if call_to_audition.finalize_audition_invitations %>
-              class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-            >
-            <label for="finalize_audition_invitations" class="ml-2 text-sm text-gray-700 cursor-pointer">
-              <% if call_to_audition.audition_type == "video_upload" %>
-                Finalize audition review and reveal results to applicants
-              <% else %>
-                Finalize audition plans and reveal results to applicants
+
+        <% # Get all audition requests %>
+        <% audition_requests = call_to_audition.audition_requests.includes(:person) %>
+        <% accepted_requests = audition_requests.where(status: :accepted) %>
+        <% not_accepted_requests = audition_requests.where.not(status: :accepted) %>
+
+        <% # Load email assignments for all people %>
+        <% email_assignments = call_to_audition.audition_email_assignments.where(person_id: audition_requests.map(&:person_id)).index_by(&:person_id) %>
+        <% # Load custom email groups %>
+        <% custom_groups = call_to_audition.email_groups.where(group_type: 'invitation').order(:created_at) %>
+
+        <% if call_to_audition.finalize_audition_invitations %>
+          <%# Finalized state - show notice and require button click to edit %>
+          <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-sm font-semibold text-green-900 mb-1">Audition Invitations Finalized</h4>
+                <p class="text-sm text-green-800 mb-3">
+                  Notification emails have been sent and applicants can now see their invitation status. To make changes and send additional notifications, click the button below.
+                </p>
+                <button
+                  type="button"
+                  onclick="this.parentElement.parentElement.parentElement.style.display='none'; document.getElementById('invitation-editing-area').style.display='block';"
+                  class="font-medium rounded-lg text-sm px-4 py-2 text-center text-white bg-green-600 hover:bg-green-700 transition cursor-pointer"
+                >
+                  Edit Invitations & Send More Notifications
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="invitation-editing-area" style="display: none;">
+        <% end %>
+
+        <% if accepted_requests.any? || not_accepted_requests.any? %>
+          <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-call-to-audition-id-value="<%= call_to_audition.id %>" data-email-groups-group-type-value="invitation">
+
+            <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
+              <% # Helper method to get email group ID for a person %>
+              <% get_email_group_id = lambda do |person|
+                assignment = email_assignments[person.id]
+                if assignment&.email_group_id.present?
+                  assignment.email_group_id
+                else
+                  # Default group based on whether they're accepted
+                  request = audition_requests.find { |r| r.person_id == person.id }
+                  request&.status == 'accepted' ? "invitation_accepted" : "invitation_not_accepted"
+                end
+              end %>
+              <% # Group all applicants by their email group %>
+              <% people_by_group = audition_requests.map(&:person).group_by(&get_email_group_id) %>
+
+              <%# Tab for accepted invitations %>
+              <% accepted_group_people = people_by_group["invitation_accepted"] || [] %>
+              <button
+                type="button"
+                data-tabs-target="tab"
+                data-index="0"
+                data-group-tab
+                data-group-id="invitation_accepted"
+                data-action="tabs#select email-groups#selectGroup"
+                class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 border-pink-600 cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
+              >
+                <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="invitation_accepted" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                </svg>
+                <span>Invited to Audition (<%= accepted_group_people.size %>)</span>
+              </button>
+
+              <%# Tab for not accepted %>
+              <% not_accepted_group_people = people_by_group["invitation_not_accepted"] || [] %>
+              <button
+                type="button"
+                data-tabs-target="tab"
+                data-index="1"
+                data-group-tab
+                data-group-id="invitation_not_accepted"
+                data-action="tabs#select email-groups#selectGroup"
+                class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
+              >
+                <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="invitation_not_accepted" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                </svg>
+                <span>Not Invited (<%= not_accepted_group_people.size %>)</span>
+              </button>
+
+              <%# Custom email group tabs %>
+              <% custom_groups.each_with_index do |custom_group, idx| %>
+                <% group_people = people_by_group[custom_group.group_id] || [] %>
+                <button
+                  type="button"
+                  data-tabs-target="tab"
+                  data-index="<%= 2 + idx %>"
+                  data-group-tab
+                  data-group-id="<%= custom_group.group_id %>"
+                  data-action="tabs#select email-groups#selectGroup"
+                  class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
+                >
+                  <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="<%= custom_group.group_id %>" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                  </svg>
+                  <span><%= custom_group.name %> (<%= group_people.size %>)</span>
+                </button>
               <% end %>
-            </label>
+
+              <%# Add button for creating new email group %>
+              <button
+                type="button"
+                data-action="click->email-groups#createNewGroup"
+                class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 border-transparent text-gray-400 hover:text-pink-600 cursor-pointer whitespace-nowrap"
+              >
+                + New Email Group
+              </button>
+            </nav>
+
+            <div class="space-y-4">
+              <%# Panel for accepted invitations %>
+              <div data-tabs-target="panel" data-group-panel data-group-id="invitation_accepted">
+                <div class="mb-4">
+                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People being invited to audition:</h5>
+                  <div class="flex flex-wrap gap-2">
+                    <% if accepted_group_people.any? %>
+                      <% accepted_group_people.each do |person| %>
+                        <% assignment = email_assignments[person.id] %>
+                        <% request = audition_requests.find { |r| r.person_id == person.id } %>
+                        <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                        <div
+                          class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
+                          data-person-id="<%= person.id %>"
+                          data-email-assignment-id="<%= assignment&.id || '' %>"
+                          data-original-group="<%= original_group %>"
+                          data-action="click->email-groups#showPopup"
+                        >
+                          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= person.initials %>
+                            </div>
+                          <% end %>
+                          <span><%= person.name %></span>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <p class="text-sm text-gray-500 italic">No people in this group yet.</p>
+                    <% end %>
+                  </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
+                    <textarea
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      rows="6"
+                    >Dear [Name],
+
+Congratulations! You've been invited to audition for <%= @production.name %>.
+
+<% if call_to_audition.audition_type == "video_upload" %>Your audition materials have been received and are under review. We'll notify you once decisions have been made.<% else %>Your audition is scheduled for [Date and Time] at [Location]. Please arrive 10 minutes early.
+
+You can view your full audition details on your Auditions page.<% end %>
+
+We look forward to seeing you!
+
+Best regards,
+The <%= @production.name %> Team</textarea>
+                  </div>
+
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        data-email-groups-target="reviewCheckbox"
+                        data-checkbox-group-id="invitation_accepted"
+                        data-action="change->email-groups#checkAllReviewed"
+                        class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+                      >
+                      <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
+                    </label>
+                  </div>
+                </div>
+
+              <%# Panel for not accepted %>
+              <div data-tabs-target="panel" data-group-panel data-group-id="invitation_not_accepted" class="hidden">
+                <div class="mb-4">
+                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People not being invited to audition:</h5>
+                  <div class="flex flex-wrap gap-2">
+                    <% if not_accepted_group_people.any? %>
+                      <% not_accepted_group_people.each do |person| %>
+                        <% assignment = email_assignments[person.id] %>
+                        <% request = audition_requests.find { |r| r.person_id == person.id } %>
+                        <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                        <div
+                          class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
+                          data-person-id="<%= person.id %>"
+                          data-email-assignment-id="<%= assignment&.id || '' %>"
+                          data-original-group="<%= original_group %>"
+                          data-action="click->email-groups#showPopup"
+                        >
+                          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= person.initials %>
+                            </div>
+                          <% end %>
+                          <%= person.name %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <p class="text-sm text-gray-500 italic">No people in this group yet.</p>
+                    <% end %>
+                  </div>
+                </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
+                    <textarea
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      rows="6"
+                    >Dear [Name],
+
+Thank you so much for your interest in <%= @production.name %>. We truly appreciate you taking the time to apply.
+
+Unfortunately, we won't be able to offer you an audition for this production at this time. We received many qualified applicants and had to make some difficult decisions.
+
+We encourage you to apply for future productions and wish you all the best in your performing arts journey.
+
+Best regards,
+The <%= @production.name %> Team</textarea>
+                  </div>
+
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        data-email-groups-target="reviewCheckbox"
+                        data-checkbox-group-id="invitation_not_accepted"
+                        data-action="change->email-groups#checkAllReviewed"
+                        class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+                      >
+                      <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
+                    </label>
+                  </div>
+                </div>
+
+              <%# Custom email group panels %>
+              <% custom_groups.each do |custom_group| %>
+                <% group_people = people_by_group[custom_group.group_id] || [] %>
+                <div data-tabs-target="panel" data-group-panel data-group-id="<%= custom_group.group_id %>" class="hidden">
+                  <div class="mb-4">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3">People in this email group:</h5>
+                    <div class="flex flex-wrap gap-2">
+                      <% if group_people.any? %>
+                        <% group_people.each do |person| %>
+                          <% assignment = email_assignments[person.id] %>
+                          <% request = audition_requests.find { |r| r.person_id == person.id } %>
+                          <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                          <div
+                            class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
+                            data-person-id="<%= person.id %>"
+                            data-email-assignment-id="<%= assignment&.id || '' %>"
+                            data-original-group="<%= original_group %>"
+                            data-action="click->email-groups#showPopup"
+                          >
+                            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                            <% if headshot_variant %>
+                              <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                            <% else %>
+                              <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                                <%= person.initials %>
+                              </div>
+                            <% end %>
+                            <span><%= person.name %></span>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <p class="text-sm text-gray-500 italic">No people in this group yet. Click on people in other groups to move them here.</p>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
+                    <textarea
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      rows="6"
+                      placeholder="Type your custom email message here..."
+                    ><%= custom_group.email_template %></textarea>
+                  </div>
+
+                  <% if group_people.empty? %>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        data-action="click->email-groups#deleteGroup"
+                        data-group-id="<%= custom_group.id %>"
+                        class="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
+                      >
+                        Delete this empty email group
+                      </button>
+                    </div>
+                  <% else %>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                      <label class="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          data-email-groups-target="reviewCheckbox"
+                          data-checkbox-group-id="<%= custom_group.group_id %>"
+                          data-action="change->email-groups#checkAllReviewed"
+                          class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
+                        >
+                        <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
+                      </label>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+
+            <%# Send notifications section (shown when all groups are reviewed) %>
+            <div
+              data-email-groups-target="sendSection"
+              class="hidden mt-6 p-4 bg-pink-50 border border-pink-200 rounded-lg"
+            >
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Ready to Send Notifications and Reveal Decisions</h4>
+              <p class="text-sm text-gray-700 mb-4">
+                All email groups have been reviewed. Click the button below to send notification emails to all applicants about their audition status.
+              </p>
+              <button
+                type="button"
+                data-action="click->email-groups#sendNotifications"
+                data-email-groups-notification-type-value="invitation"
+                class="font-medium rounded-lg text-sm px-5 py-2.5 text-center text-white bg-pink-500 hover:bg-pink-600 inline-block cursor-pointer transition"
+              >
+                Send Audition Invitation Notifications
+              </button>
+            </div>
           </div>
-          <div class="w-full border-t border-gray-200 pt-4">
-            <button type="submit" class="rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm cursor-pointer">Save Finalization Status</button>
-          </div>
+        <% end %>
+
+        <% if call_to_audition.finalize_audition_invitations %>
+          </div> <%# Close invitation-editing-area %>
         <% end %>
       </div>
     </div>

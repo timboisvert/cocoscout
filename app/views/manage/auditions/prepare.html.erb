@@ -12,7 +12,9 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :prepare } %>
 
-  <% if @production.call_to_audition.present? && @production.call_to_audition.opening_soon_and_not_reviewed? %>
+  <%= render partial: "archived_banner" %>
+
+  <% if @call_to_audition.present? && @call_to_audition.opening_soon_and_not_reviewed? %>
     <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
       <div class="flex">
         <div class="flex-shrink-0">
@@ -22,18 +24,18 @@
         </div>
         <div class="ml-3">
           <p class="text-sm font-medium text-yellow-800">
-            Sign-up window opens in <%= distance_of_time_in_words(@production.call_to_audition.opens_at, Time.current) %>
+            Sign-up window opens in <%= distance_of_time_in_words(@call_to_audition.opens_at, Time.current) %>
           </p>
           <p class="text-sm text-yellow-700 mt-1">
             Please review and approve the sign-up form before the window opens.
-            <%= link_to "Review Form", form_manage_production_call_to_audition_path(@production, @production.call_to_audition), class: "font-semibold underline" %>
+            <%= link_to "Review Form", form_manage_production_call_to_audition_path(@production, @call_to_audition), class: "font-semibold underline" %>
           </p>
         </div>
       </div>
     </div>
   <% end %>
 
-  <% if @production.call_to_audition.blank? %>
+  <% if @call_to_audition.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
@@ -42,7 +44,7 @@
       <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
     <% end %>
   <% else %>
-    <% call_to_audition = @production.call_to_audition %>
+    <% call_to_audition = @call_to_audition %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -101,7 +103,7 @@
         </div>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: "Edit Settings", path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+        <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
       <% end %>
       </div>
     </div>
@@ -145,7 +147,7 @@
       <% end %>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: "Manage Sessions", path: manage_production_call_to_audition_audition_sessions_path(@production, @production.call_to_audition)} %>
+        <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition)} %>
       <% end %>
       </div>
     </div>
@@ -175,7 +177,7 @@
 
         <div class="flex flex-col sm:flex-row sm:space-x-2 gap-4 sm:gap-0">
           <% if current_user_can_manage?(@production) %>
-            <%= render partial: "shared/link_button", locals: {text: "Edit Form", path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+            <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Edit Form" : "View Form"), path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
           <% end %>
           <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, call_to_audition)} %>
         </div>

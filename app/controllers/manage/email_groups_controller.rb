@@ -34,7 +34,7 @@ module Manage
     end
 
     def email_group_params
-      params.require(:email_group).permit(:group_id, :name, :email_template)
+      params.require(:email_group).permit(:group_id, :name, :email_template, :group_type)
     end
   end
 end

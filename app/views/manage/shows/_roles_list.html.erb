@@ -3,18 +3,24 @@
   <%
     assignment_count = show.show_person_role_assignments.count
     role_count = show.production.roles.count
-    full = assignment_count == role_count
+    full = role_count > 0 && assignment_count == role_count
   %>
 
-  <div class="mb-4 p-4 rounded-lg <%= full ? 'bg-pink-50' : 'bg-yellow-50' %>">
-    <span class="font-semibold text-black">
-      <% if full %>
-        🎉 This show is fully cast
-      <% else %>
-        <%= assignment_count %> of <%= role_count %> roles have been cast
-      <% end %>
-    </span>
-  </div>
+  <% if role_count > 0 %>
+    <div class="mb-4 p-4 rounded-lg <%= full ? 'bg-pink-50' : 'bg-yellow-50' %>">
+      <span class="font-semibold text-black">
+        <% if full %>
+          🎉 This show is fully cast
+        <% else %>
+          <%= assignment_count %> of <%= role_count %> roles have been cast
+        <% end %>
+      </span>
+    </div>
+  <% else %>
+    <div class="text-sm text-gray-500">
+      You haven't added any roles to this production yet. <%= link_to "Add Roles", manage_production_roles_path(show.production), class: "text-pink-500 underline" %>
+    </div>
+  <% end %>
 
   <div class="space-y-2">
 
