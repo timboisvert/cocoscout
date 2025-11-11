@@ -201,6 +201,7 @@ Rails.application.routes.draw do
       get "/auditions/casting/select", to: "auditions#casting_select", as: "auditions_casting_select"
       post "/auditions/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "auditions_add_to_cast_assignment"
       post "/auditions/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "auditions_remove_from_cast_assignment"
+      post "/auditions/finalize_and_notify", to: "auditions#finalize_and_notify", as: "auditions_finalize_and_notify"
 
       resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
       resources :email_groups, only: [ :create, :destroy ]

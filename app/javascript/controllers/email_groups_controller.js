@@ -478,17 +478,40 @@ export default class extends Controller {
         }
     }
 
-    sendNotifications() {
+    sendNotifications(event) {
         if (!confirm("Are you sure you want to finalize cast changes and send notification emails to all auditionees? This action cannot be undone.")) {
             return
         }
 
-        // TODO: Implement the actual sending logic
-        // This will need a backend endpoint to:
-        // 1. Finalize all cast_assignment_stages (change status from pending to confirmed)
-        // 2. Send emails to each person based on their email group
+        // Disable the button to prevent double-clicks
+        const button = event.target
+        button.disabled = true
+        button.textContent = "Sending..."
 
-        alert("Sending notifications... (This feature needs backend implementation)")
+        fetch(`/manage/productions/${this.productionIdValue}/auditions/finalize_and_notify`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Success! ${data.emails_sent} notification emails sent and ${data.people_added_to_casts} people added to casts.`)
+                    window.location.reload()
+                } else {
+                    alert(`Error: ${data.error || "Failed to send notifications"}`)
+                    button.disabled = false
+                    button.textContent = "Finalize Cast & Send Notifications"
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error)
+                alert("An error occurred while sending notifications")
+                button.disabled = false
+                button.textContent = "Finalize Cast & Send Notifications"
+            })
     }
 
     deleteGroup(event) {
