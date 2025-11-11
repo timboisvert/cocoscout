@@ -1,10 +1,11 @@
 module Manage
   class CastAssignmentStagesController < ManageController
     before_action :set_production
+    before_action :set_call_to_audition
     before_action :set_stage, only: [ :update, :destroy ]
 
     def create
-      @stage = @production.cast_assignment_stages.new(create_stage_params)
+      @stage = @call_to_audition.cast_assignment_stages.new(create_stage_params)
       if @stage.save
         head :ok
       else
@@ -34,8 +35,15 @@ module Manage
       @production = Current.production_company.productions.find(params[:production_id])
     end
 
+    def set_call_to_audition
+      @call_to_audition = @production.active_call_to_audition
+      unless @call_to_audition
+        redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
+      end
+    end
+
     def set_stage
-      @stage = @production.cast_assignment_stages.find(params[:id])
+      @stage = @call_to_audition.cast_assignment_stages.find(params[:id])
     end
 
     def stage_params

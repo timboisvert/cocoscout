@@ -1,8 +1,8 @@
 class Manage::AuditionRequestsController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_audition_request, only: %i[ show edit_answers edit_video update destroy set_status ]
   before_action :set_call_to_audition
+  before_action :set_audition_request, only: %i[ show edit_answers edit_video update destroy set_status ]
   before_action :ensure_user_is_manager, except: %i[ index show ]
 
   def index
@@ -11,7 +11,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
     session[:audition_requests_filter] = @filter
 
     # Process the filter
-    @audition_requests = @production.audition_requests
+    @audition_requests = @call_to_audition.audition_requests
 
     case @filter
     when "unreviewed", "undecided", "accepted", "passed"
@@ -55,12 +55,12 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def new
-    @audition_request = @production.audition_requests.new
+    @audition_request = @call_to_audition.audition_requests.new
     @audition_request.status = :unreviewed
   end
 
   def create
-    @audition_request = @production.audition_requests.new(audition_request_params)
+    @audition_request = @call_to_audition.audition_requests.new(audition_request_params)
     @audition_request.call_to_audition = @call_to_audition
     @audition_request.status = :unreviewed
 
@@ -141,11 +141,18 @@ class Manage::AuditionRequestsController < Manage::ManageController
     end
 
     def set_audition_request
-      @audition_request = @production.audition_requests.find(params.expect(:id))
+      @audition_request = @call_to_audition.audition_requests.find(params.expect(:id))
     end
 
     def set_call_to_audition
-      @call_to_audition = @production.call_to_audition
+      if params[:call_to_audition_id].present?
+        @call_to_audition = CallToAudition.find(params[:call_to_audition_id])
+      else
+        @call_to_audition = @production.active_call_to_audition
+        unless @call_to_audition
+          redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
+        end
+      end
     end
 
     def audition_request_params

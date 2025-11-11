@@ -13,13 +13,11 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
 
-  <% if @production.call_to_audition.blank? %>
+  <% if @call_to_audition.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @production.call_to_audition %>
-
     <div class="flex gap-8" data-controller="casting-drag" data-production-id="<%= @production.id %>">
       <!-- Left side: Casts (flex-1) -->
       <div class="flex-1">
@@ -79,13 +77,17 @@
           <% end %>
 
           <% if @casts.empty? %>
-            <p class="text-gray-500 text-sm text-center py-8">No casts available for this production</p>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <p class="text-gray-700 text-sm font-medium mb-2">No casts available for this production</p>
+              <p class="text-gray-600 text-sm mb-4">You need to create at least one cast before you can add cast members.</p>
+              <%= link_to "Create Cast", manage_production_casts_path(@production), class: "inline-block rounded-lg px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm" %>
+            </div>
           <% end %>
         </div>
 
         <% if @casts.any? %>
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: { text: "Done Selecting Cast Members", path: manage_production_auditions_casting_path(@production), color: "pink" } %>
+            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: manage_production_auditions_casting_path(@production), color: "pink" } %>
           </div>
         <% end %>
       </div>      <!-- Right side: Auditionees (fixed width, sticky) -->

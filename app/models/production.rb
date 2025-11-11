@@ -1,11 +1,9 @@
 class Production < ApplicationRecord
     has_many :posters, dependent: :destroy
     has_many :shows, dependent: :destroy
-    has_one :call_to_audition, dependent: :destroy
-    has_many :audition_requests, through: :call_to_audition
-    has_many :audition_sessions, dependent: :destroy
+    has_many :call_to_auditions, dependent: :destroy
+    has_many :audition_requests, through: :call_to_auditions
     has_many :casts, dependent: :destroy
-    has_many :cast_assignment_stages, dependent: :destroy
     has_many :roles, dependent: :destroy
     has_many :show_person_role_assignments, through: :shows
     has_many :production_permissions, dependent: :destroy
@@ -20,6 +18,23 @@ class Production < ApplicationRecord
     validates :name, presence: true
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
     validate :logo_content_type
+
+    def active_call_to_audition
+        call_to_auditions.find_by(active: true)
+    end
+
+    # For backwards compatibility during transition
+    def call_to_audition
+        active_call_to_audition
+    end
+
+    def audition_sessions
+        active_call_to_audition&.audition_sessions || AuditionSession.none
+    end
+
+    def cast_assignment_stages
+        active_call_to_audition&.cast_assignment_stages || CastAssignmentStage.none
+    end
 
     def initials
       return "" if name.blank?

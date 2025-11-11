@@ -1,7 +1,7 @@
 class Manage::CallToAuditionsController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_call_to_audition, only: %i[ edit form update destroy preview create_question update_question destroy_question reorder_questions ]
+  before_action :set_call_to_audition, only: %i[ edit form update destroy preview create_question update_question destroy_question reorder_questions archive ]
   before_action :set_question, only: %i[ update_question destroy_question ]
   before_action :ensure_user_is_manager, except: %i[ preview ]
 
@@ -18,6 +18,7 @@ class Manage::CallToAuditionsController < Manage::ManageController
   def create
     @call_to_audition = CallToAudition.new(call_to_audition_params)
     @call_to_audition.production = @production
+    @call_to_audition.active = true
 
     # Create a random hex code for the audition link
     @call_to_audition.token = SecureRandom.alphanumeric(5).upcase
@@ -27,11 +28,18 @@ class Manage::CallToAuditionsController < Manage::ManageController
       @call_to_audition.token = SecureRandom.alphanumeric(5).upcase
     end
 
-    if @call_to_audition.save
-      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully scheduled"
-    else
-      render :new, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      # Deactivate all other calls to audition for this production
+      @production.call_to_auditions.where(active: true).update_all(active: false)
+
+      if @call_to_audition.save
+        redirect_to manage_production_auditions_path(@production), notice: "Call to Audition was successfully scheduled"
+      else
+        raise ActiveRecord::Rollback
+      end
     end
+
+    render :new, status: :unprocessable_entity unless @call_to_audition.persisted?
   end
 
   def edit
@@ -62,9 +70,31 @@ class Manage::CallToAuditionsController < Manage::ManageController
     end
 
     if @call_to_audition.update(params_to_update)
-      redirect_to manage_production_auditions_prepare_path(@production),
-                  notice: "Audition Settings successfully updated",
-                  status: :see_other
+      # Check if this is from the form page (availability, text sections, or form_reviewed)
+      if params[:call_to_audition]&.key?(:include_availability_section) ||
+         params[:call_to_audition]&.key?(:availability_event_types) ||
+         params[:call_to_audition]&.key?(:header_text) ||
+         params[:call_to_audition]&.key?(:video_field_text) ||
+         params[:call_to_audition]&.key?(:success_text) ||
+         params[:call_to_audition]&.keys == [ "form_reviewed" ]
+
+        # Determine the appropriate notice message
+        if params[:call_to_audition]&.key?(:include_availability_section) || params[:call_to_audition]&.key?(:availability_event_types)
+          notice_message = "Availability settings successfully updated"
+        elsif params[:call_to_audition]&.key?(:header_text) || params[:call_to_audition]&.key?(:video_field_text) || params[:call_to_audition]&.key?(:success_text)
+          notice_message = "Text successfully updated"
+        else
+          notice_message = "Form review status successfully updated"
+        end
+
+        redirect_to form_manage_production_call_to_audition_path(@production, @call_to_audition),
+                    notice: notice_message,
+                    status: :see_other
+      else
+        redirect_to manage_production_auditions_prepare_path(@production),
+                    notice: "Audition Settings successfully updated",
+                    status: :see_other
+      end
     else
       # Determine which view to render based on what params were sent
       # If form_reviewed is the only param, it came from the form page
@@ -146,6 +176,15 @@ class Manage::CallToAuditionsController < Manage::ManageController
       end
     end
     head :ok
+  end
+
+  # PATCH /call_to_auditions/:id/archive
+  def archive
+    if @call_to_audition.update(active: false)
+      redirect_to manage_production_auditions_path(@production), notice: "Call to Audition has been archived", status: :see_other
+    else
+      redirect_to manage_production_auditions_path(@production), alert: "Failed to archive Call to Audition", status: :see_other
+    end
   end
 
   private

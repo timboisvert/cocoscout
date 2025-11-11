@@ -6,7 +6,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
   before_action :ensure_user_is_manager, except: %i[show summary]
 
   def index
-    @audition_sessions = @production.audition_sessions.includes(:location).order(start_at: :asc)
+    @audition_sessions = @call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
 
     if params[:filter].present?
       cookies[:audition_request_filter] = params[:filter]
@@ -70,12 +70,22 @@ class Manage::AuditionSessionsController < Manage::ManageController
   end
 
   def summary
-    @audition_sessions = @production.audition_sessions
+    @audition_sessions = @call_to_audition.audition_sessions
   end
 
   private
     def set_call_to_audition
-      @call_to_audition = CallToAudition.find(params.expect(:call_to_audition_id))
+      if params[:call_to_audition_id].present?
+        @call_to_audition = CallToAudition.find(params[:call_to_audition_id])
+      elsif params[:production_id].present?
+        production = Current.production_company.productions.find(params[:production_id])
+        @call_to_audition = production.active_call_to_audition
+        unless @call_to_audition
+          redirect_to manage_production_path(production), alert: "No active call to audition. Please create one first."
+        end
+      else
+        redirect_to manage_path, alert: "Call to audition not found"
+      end
     end
 
     def set_production
@@ -84,15 +94,15 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
     def set_audition_session_and_audition_and_audition_request
       if params[:audition_session_id].present?
-        @audition_session = @production.audition_sessions.find(params.expect(:audition_session_id))
+        @audition_session = @call_to_audition.audition_sessions.find(params.expect(:audition_session_id))
         @audition = @audition_session.auditions.find(params.expect(:id))
         @audition_request = @audition.audition_request
       else
-        @audition_session = @production.audition_sessions.find(params.expect(:id))
+        @audition_session = @call_to_audition.audition_sessions.find(params.expect(:id))
       end
     end
 
     def audition_session_params
-      params.expect(audition_session: [ :production_id, :start_at, :end_at, :maximum_auditionees, :location_id ])
+      params.expect(audition_session: [ :start_at, :end_at, :maximum_auditionees, :location_id ])
     end
 end

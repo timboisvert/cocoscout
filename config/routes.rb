@@ -188,6 +188,7 @@ Rails.application.routes.draw do
           patch  "update_question/:question_id", to: "call_to_auditions#update_question", as: "update_question"
           delete "destroy_question/:question_id", to: "call_to_auditions#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "call_to_auditions#reorder_questions", as: "reorder_questions"
+          patch  "archive",           to: "call_to_auditions#archive",           as: "archive"
         end
       end
 

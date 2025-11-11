@@ -65,9 +65,9 @@
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Assign people to audition sessions.</p>
 
-        <% if @production.audition_sessions.any? %>
-          <div class="space-y-3">
-            <% @production.audition_sessions.order(:start_at).each do |session| %>
+        <% if @call_to_audition.audition_sessions.any? %>
+          <div class="space-y-2">
+            <% @call_to_audition.audition_sessions.order(:start_at).each do |session| %>
               <div class="border border-gray-200 rounded-lg p-4 flex items-start gap-6">
                 <!-- Date/Time on the left -->
                 <div class="w-72 flex-shrink-0">

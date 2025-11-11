@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_11_145106) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -81,17 +81,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
   end
 
   create_table "audition_sessions", force: :cascade do |t|
-    t.integer "call_to_audition_id"
+    t.integer "call_to_audition_id", null: false
     t.datetime "created_at", null: false
     t.datetime "end_at"
     t.integer "location_id"
     t.integer "maximum_auditionees"
-    t.integer "production_id", null: false
     t.datetime "start_at"
     t.datetime "updated_at", null: false
     t.index ["call_to_audition_id"], name: "index_audition_sessions_on_call_to_audition_id"
     t.index ["location_id"], name: "index_audition_sessions_on_location_id"
-    t.index ["production_id"], name: "index_audition_sessions_on_production_id"
   end
 
   create_table "auditions", force: :cascade do |t|
@@ -106,6 +104,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
   end
 
   create_table "call_to_auditions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.string "audition_type", default: "in_person", null: false
     t.text "availability_event_types"
     t.datetime "closes_at"
@@ -120,22 +119,23 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false
+    t.index ["production_id", "active"], name: "index_call_to_auditions_on_production_id_and_active", unique: true, where: "active = true"
     t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
     t.integer "cast_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
     t.text "notification_email"
     t.integer "person_id", null: false
-    t.integer "production_id", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_cast_assignment_stages_on_call_to_audition_id"
+    t.index ["cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["cast_id"], name: "index_cast_assignment_stages_on_cast_id"
     t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
-    t.index ["production_id", "cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
-    t.index ["production_id"], name: "index_cast_assignment_stages_on_production_id"
   end
 
   create_table "casts", force: :cascade do |t|
@@ -400,14 +400,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_10_223401) do
   add_foreign_key "audition_requests", "people"
   add_foreign_key "audition_sessions", "call_to_auditions"
   add_foreign_key "audition_sessions", "locations"
-  add_foreign_key "audition_sessions", "productions"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
   add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "cast_assignment_stages", "casts"
   add_foreign_key "cast_assignment_stages", "people"
-  add_foreign_key "cast_assignment_stages", "productions"
   add_foreign_key "casts", "productions"
   add_foreign_key "email_groups", "call_to_auditions"
   add_foreign_key "invitations", "production_companies"

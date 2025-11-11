@@ -19,20 +19,81 @@
   <% else %>
     <% call_to_audition = @production.call_to_audition %>
 
+    <%# Check if any notifications have been sent %>
+    <% has_sent_notifications = @cast_assignment_stages.any?(&:finalized?) %>
+    <% notified_stages = @cast_assignment_stages.select(&:finalized?) %>
+
+    <%# Show summary if notifications have been sent %>
+    <% if has_sent_notifications %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Complete</h3>
+        </div>
+        <div class="p-6">
+          <div class="flex items-start gap-3 mb-4">
+            <svg class="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm text-gray-700">
+                You've finalized casting and sent notifications to <%= notified_stages.count %> <%= 'person'.pluralize(notified_stages.count) %>.
+              </p>
+            </div>
+          </div>
+
+          <%# Group notified people by cast %>
+          <div class="space-y-3 mb-4">
+            <% notified_by_cast = notified_stages.group_by(&:cast_id) %>
+            <% notified_by_cast.each do |cast_id, stages| %>
+              <% cast = @casts.find { |c| c.id == cast_id } %>
+              <div class="border-l-4 border-green-500 pl-4">
+                <h4 class="text-sm font-semibold text-gray-900 mb-2">Added to <%= cast.name %></h4>
+                <div class="flex flex-wrap gap-2">
+                  <% stages.each do |stage| %>
+                    <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                      <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: stage.person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                      <% else %>
+                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                          <%= stage.person.initials %>
+                        </div>
+                      <% end %>
+                      <%= stage.person.name %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div data-controller="show-toggle">
+            <button
+              type="button"
+              data-action="click->show-toggle#toggle"
+              class="font-medium rounded-lg text-sm px-5 py-2.5 text-center text-white bg-pink-500 hover:bg-pink-600 inline-block cursor-pointer"
+            >
+              Add More Cast Members
+            </button>
+
+            <div data-show-toggle-target="content" class="hidden mt-6">
+              <!-- Casting Changes and Finalize sections will be shown here when button clicked -->
+    <% end %>
+
     <!-- Casting Changes Summary -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Changes</h3>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Review the casting decisions below. Click "Select Cast Members" button to make changes.</p>
+        <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your cast(s).</p>
 
-        <% has_any_changes = @cast_assignment_stages.any? %>
+        <% has_any_changes = @cast_assignment_stages.where(status: :pending).any? %>
         <% if has_any_changes %>
           <div class="space-y-4 mb-6">
             <!-- People being added to casts -->
             <% @casts.each do |cast| %>
-              <% cast_stages = @cast_assignment_stages.select { |stage| stage.cast_id == cast.id } %>
+              <% cast_stages = @cast_assignment_stages.where(status: :pending).select { |stage| stage.cast_id == cast.id } %>
               <% if cast_stages.any? %>
                 <div class="border-l-4 border-pink-500 pl-4">
                   <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to <%= cast.name %></h4>
@@ -55,8 +116,6 @@
               <% end %>
             <% end %>
           </div>
-        <% else %>
-          <p class="text-gray-500 text-sm mb-6">No casting decisions have been made yet.</p>
         <% end %>
 
         <%= render partial: "shared/link_button", locals: { text: "Select New Cast Members", path: manage_production_auditions_casting_select_path(@production) } %>
@@ -64,14 +123,16 @@
     </div>
 
     <!-- Finalize and Notify -->
-    <% staged_casts = @casts.select { |cast| @cast_assignment_stages.any? { |stage| stage.cast_id == cast.id } } %>
+    <% pending_stages = @cast_assignment_stages.where(status: :pending) %>
+    <% staged_casts = @casts.select { |cast| pending_stages.any? { |stage| stage.cast_id == cast.id } } %>
     <% # Calculate unassigned people - those who auditioned but aren't in any cast %>
-    <% assigned_person_ids = @cast_assignment_stages.pluck(:person_id).uniq %>
+    <% assigned_person_ids = pending_stages.pluck(:person_id).uniq %>
     <% unassigned_people = @auditioned_people.reject { |person| assigned_person_ids.include?(person.id) } %>
     <% if staged_casts.any? || unassigned_people.any? %>
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6"
+           data-<%= has_sent_notifications ? 'show-toggle-target="content"' : '' %>>
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize and Notify</h3>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Casting and Notify</h3>
         </div>
         <div class="p-6">
           <% # Load email assignments for all auditioned people %>
@@ -89,7 +150,7 @@
                     assignment.email_group_id
                   else
                     # Default group based on whether they're in a cast
-                    stage = @cast_assignment_stages.find { |s| s.person_id == person.id }
+                    stage = pending_stages.find { |s| s.person_id == person.id }
                     stage ? "default_#{stage.cast_id}" : "unassigned"
                   end
                 end %>
@@ -308,7 +369,7 @@ The <%= @production.name %> Team</textarea>
                         <% if group_people.any? %>
                           <% group_people.each do |person| %>
                             <% assignment = email_assignments[person.id] %>
-                            <% stage = @cast_assignment_stages.find { |s| s.person_id == person.id } %>
+                            <% stage = pending_stages.find { |s| s.person_id == person.id } %>
                             <div
                               class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                               data-person-id="<%= person.id %>"
@@ -386,7 +447,7 @@ The <%= @production.name %> Team</textarea>
                 <button
                   type="button"
                   data-action="click->email-groups#sendNotifications"
-                  class="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors"
+                  class="font-medium rounded-lg text-sm px-5 py-2.5 text-center text-white bg-pink-500 hover:bg-pink-600 inline-block cursor-pointer transition"
                 >
                   Finalize Cast Changes & Send Notifications
                 </button>
@@ -395,10 +456,13 @@ The <%= @production.name %> Team</textarea>
           <% end %>
         </div>
       </div>
-    <% else %>
-      <div class="bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
-        <p class="text-gray-600 text-sm text-center">Select auditionees for casts above to continue to notification stage</p>
-      </div>
+    <% end %>
+
+    <% if has_sent_notifications %>
+            </div><%# Close the show-toggle content div %>
+          </div><%# Close the show-toggle controller div %>
+        </div><%# Close the Casting Complete box padding %>
+      </div><%# Close the Casting Complete box %>
     <% end %>
 
   <% end %>

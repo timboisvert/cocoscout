@@ -4,6 +4,7 @@ class CallToAudition < ApplicationRecord
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :email_groups, dependent: :destroy
   has_many :audition_email_assignments, dependent: :destroy
+  has_many :cast_assignment_stages, dependent: :destroy
 
   has_rich_text :header_text
   has_rich_text :video_field_text
@@ -15,6 +16,7 @@ class CallToAudition < ApplicationRecord
   validates :closes_at, presence: true
   validate :form_must_be_reviewed_before_opening
   validate :closes_at_after_opens_at
+  validate :only_one_active_per_production
 
   enum :audition_type, {
     in_person: "in_person",
@@ -64,6 +66,17 @@ class CallToAudition < ApplicationRecord
   def closes_at_after_opens_at
     if opens_at.present? && closes_at.present? && closes_at <= opens_at
       errors.add(:closes_at, "must be after the opening date and time")
+    end
+  end
+
+  def only_one_active_per_production
+    if active && production_id.present?
+      existing = CallToAudition.where(production_id: production_id, active: true)
+                                .where.not(id: id)
+                                .exists?
+      if existing
+        errors.add(:active, "can only have one active call to audition per production")
+      end
     end
   end
 
