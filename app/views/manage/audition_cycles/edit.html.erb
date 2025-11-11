@@ -5,7 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", prepare_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
     text: "Audition Settings",
     links: []
@@ -13,7 +13,7 @@
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
 
-  <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+  <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
 
     <%= render partial: "shared/top_menu", locals: {
       breadcrumbs: [],
@@ -37,17 +37,17 @@
     <div class="sm:flex my-5">
       <div class="w-full sm:w-1/2 sm:mr-5">
         <%= form.label :opens_at, "Open At:" %>
-        <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:opens_at].none?, "border-pink-500": @call_to_audition.errors[:opens_at].any?}] %>
+        <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:opens_at].none?, "border-pink-500": @audition_cycle.errors[:opens_at].any?}] %>
       </div>
       <div class="w-full mt-5 sm:w-1/2 sm:ml-5 sm:mt-0">
         <%= form.label :closes_at, "Close At:" %>
-        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:closes_at].none?, "border-pink-500": @call_to_audition.errors[:closes_at].any?}] %>
+        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}] %>
       </div>
     </div>
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Update", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", prepare_manage_production_call_to_audition_path(@production, @call_to_audition), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", prepare_manage_production_audition_cycle_path(@production, @audition_cycle), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 

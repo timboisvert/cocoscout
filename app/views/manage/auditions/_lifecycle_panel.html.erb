@@ -10,14 +10,14 @@
     <div class="md:hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="false">
       <%
         steps = [
-          { key: :prepare, label: "Prepare", path: prepare_manage_production_call_to_audition_path(@production, @call_to_audition), icon: "settings" },
-          { key: :publicize, label: "Publicize", path: publicize_manage_production_call_to_audition_path(@production, @call_to_audition), icon: "megaphone" },
-          { key: :review, label: "Review", path: review_manage_production_call_to_audition_path(@production, @call_to_audition), icon: "clipboard" }
+          { key: :prepare, label: "Prepare", path: prepare_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "settings" },
+          { key: :publicize, label: "Publicize", path: publicize_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "megaphone" },
+          { key: :review, label: "Review", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "clipboard" }
         ]
-        if @production.call_to_audition&.audition_type == 'in_person'
-          steps.insert(3, { key: :run, label: "Run Auditions", path: run_manage_production_call_to_audition_path(@production, @call_to_audition), icon: "star" })
+        if @production.audition_cycle&.audition_type == 'in_person'
+          steps.insert(3, { key: :run, label: "Run Auditions", path: run_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "star" })
         end
-        steps.push({ key: :communicate, label: "Casting", path: casting_manage_production_call_to_audition_path(@production, @call_to_audition), icon: "users" })
+        steps.push({ key: :communicate, label: "Casting", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "users" })
 
         current_step_info = steps.find { |s| s[:key] == current_step } || steps.first
       %>
@@ -93,10 +93,10 @@
         <!-- Timeline line (hidden on mobile, shown on larger screens) -->
         <div class="absolute top-6 left-0 right-0 h-0.5 bg-gray-200" aria-hidden="true" style="left: 3rem; right: 3rem;"></div>
 
-        <div class="grid grid-cols-1 <%= !defined?(current_step) || current_step.nil? ? (@production.call_to_audition&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') : (@production.call_to_audition&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') %> gap-8">
+        <div class="grid grid-cols-1 <%= !defined?(current_step) || current_step.nil? ? (@production.audition_cycle&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') : (@production.audition_cycle&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') %> gap-8">
 
         <!-- Step 1: Prepare -->
-        <%= link_to prepare_manage_production_call_to_audition_path(@production, @call_to_audition), class: "no-underline" do %>
+        <%= link_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :prepare %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :prepare %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :prepare ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :prepare ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,12 +105,12 @@
               </svg>
             </div>
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :prepare ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Prepare</h4>
-            <p class="text-xs text-gray-500"><%= @production.call_to_audition&.audition_type == 'video_upload' ? 'Configure settings and customize sign-up form' : 'Configure settings, plan sessions, and customize sign-up form' %></p>
+            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Configure settings and customize sign-up form' : 'Configure settings, plan sessions, and customize sign-up form' %></p>
           </div>
         <% end %>
 
         <!-- Step 2: Publicize -->
-        <%= link_to publicize_manage_production_call_to_audition_path(@production, @call_to_audition), class: "no-underline" do %>
+        <%= link_to publicize_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :publicize %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :publicize %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :publicize ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :publicize ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@
         <% end %>
 
         <!-- Step 3: Review -->
-        <%= link_to review_manage_production_call_to_audition_path(@production, @call_to_audition), class: "no-underline" do %>
+        <%= link_to review_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :review %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :review %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :review ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :review ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,13 +131,13 @@
               </svg>
             </div>
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :review ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Review</h4>
-            <p class="text-xs text-gray-500"><%= @production.call_to_audition&.audition_type == 'video_upload' ? 'Accept or decline applications' : 'Accept or decline applications and schedule auditions' %></p>
+            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Accept or decline applications' : 'Accept or decline applications and schedule auditions' %></p>
           </div>
         <% end %>
 
         <!-- Step 4: Run Auditions (In-Person Only) -->
-        <% if @production.call_to_audition&.audition_type == 'in_person' %>
-          <%= link_to run_manage_production_call_to_audition_path(@production, @call_to_audition), class: "no-underline" do %>
+        <% if @production.audition_cycle&.audition_type == 'in_person' %>
+          <%= link_to run_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
             <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :run %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :run %>">
               <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :run ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
                 <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :run ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +151,7 @@
         <% end %>
 
         <!-- Step 5: Casting -->
-        <%= link_to casting_manage_production_call_to_audition_path(@production, @call_to_audition), class: "no-underline" do %>
+        <%= link_to casting_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :communicate %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :communicate %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :communicate ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :communicate ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">

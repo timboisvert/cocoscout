@@ -14,12 +14,12 @@
 
   <%= render partial: "archived_banner" %>
 
-  <% if @call_to_audition.blank? %>
+  <% if @audition_cycle.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @call_to_audition %>
+    <% audition_cycle = @audition_cycle %>
 
     <%# Check if any notifications have been sent %>
     <% has_sent_notifications = @cast_assignment_stages.any?(&:finalized?) %>
@@ -127,7 +127,7 @@
           </div>
         <% end %>
 
-        <%= render partial: "shared/link_button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_call_to_audition_path(@production, @call_to_audition) } %>
+        <%= render partial: "shared/link_button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle) } %>
       </div>
     </div>
 
@@ -145,11 +145,11 @@
         </div>
         <div class="p-6">
           <% # Load email assignments for all auditioned people %>
-          <% email_assignments = call_to_audition.audition_email_assignments.where(person_id: @auditioned_people.map(&:id)).index_by(&:person_id) %>
+          <% email_assignments = audition_cycle.audition_email_assignments.where(person_id: @auditioned_people.map(&:id)).index_by(&:person_id) %>
           <% # Load custom email groups %>
-          <% custom_groups = call_to_audition.email_groups.where(group_type: 'casting').order(:created_at) %>
+          <% custom_groups = audition_cycle.email_groups.where(group_type: 'casting').order(:created_at) %>
           <% if staged_casts.any? || unassigned_people.any? %>
-            <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-call-to-audition-id-value="<%= call_to_audition.id %>" data-email-groups-group-type-value="casting">
+            <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= audition_cycle.id %>" data-email-groups-group-type-value="casting">
 
               <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
                 <% # Helper method to get email group ID for a person %>

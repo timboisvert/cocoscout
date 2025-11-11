@@ -11,7 +11,7 @@
     links: []
   } %>
 
-  <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+  <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
     <div class="mt-5 mb-7">
       <%= form.label :audition_type, "Audition Type:" %>
       <p class="text-sm text-gray-500">Choosing "In-Person" auditions will enable people to sign up for an audition, while "Video Upload" auditions will allow them to submit a video during the sign-up process.</p>
@@ -29,11 +29,11 @@
     <div class="flex">
       <div class="w-1/2 mr-5">
         <%= form.label :opens_at, "Open At:" %>
-        <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:opens_at].none?, "border-pink-500": @call_to_audition.errors[:opens_at].any?}] %>
+        <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:opens_at].none?, "border-pink-500": @audition_cycle.errors[:opens_at].any?}] %>
       </div>
       <div class="w-1/2 ml-5">
         <%= form.label :closes_at, "Close At:" %>
-        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @call_to_audition.errors[:closes_at].none?, "border-pink-500": @call_to_audition.errors[:closes_at].any?}] %>
+        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}] %>
       </div>
     </div>
 

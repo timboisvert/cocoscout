@@ -3,15 +3,15 @@
   <div class="w-full">
     <h1 class="font-bold text-4xl"><%= @production.name %></h1>
 
-    <% if @call_to_audition.audition_type == "in_person" %>
+    <% if @audition_cycle.audition_type == "in_person" %>
       <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
-    <% elsif @call_to_audition.audition_type == "video_upload" %>
+    <% elsif @audition_cycle.audition_type == "video_upload" %>
       <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
     <% end %>
 
-    <% if @call_to_audition.header_text.present? %>
+    <% if @audition_cycle.header_text.present? %>
       <div class="pt-5">
-        <%= @call_to_audition.header_text %>
+        <%= @audition_cycle.header_text %>
       </div>
     <% end %>
   </div>
@@ -26,9 +26,9 @@
   <h1 class="text-xl font-bold mb-4 text-center">Join CocoScout</h1>
 
     <div class="my-5">
-        <p><%= @call_to_audition.production.production_company.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
+        <p><%= @audition_cycle.production.production_company.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
         <p class="mt-4">
-            In order to sign up for a <b><%= @call_to_audition.production.name %></b> audition, you must sign up for a
+            In order to sign up for a <b><%= @audition_cycle.production.name %></b> audition, you must sign up for a
             CocoScout account, which will allow you to save and update your audition submission, view the status of your audition sign-up, and more.
         </p>
     </div>
@@ -41,7 +41,7 @@
 
     <% if @user_exists_error %>
         <div class="text-pink-500">
-            You already have a CocoScout account. Please <a href="<%= signin_respond_to_call_to_audition_path %>" class="underline text-pink-500">sign in</a> to continue.
+            You already have a CocoScout account. Please <a href="<%= signin_respond_to_audition_cycle_path %>" class="underline text-pink-500">sign in</a> to continue.
         </div>
     <% end %>
 

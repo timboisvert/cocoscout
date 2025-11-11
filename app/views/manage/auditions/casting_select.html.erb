@@ -5,7 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Casting", casting_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Casting", casting_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
     text: "Select Cast Members",
     links: []
@@ -13,12 +13,12 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
 
-  <% if @call_to_audition.blank? %>
+  <% if @audition_cycle.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <div class="flex gap-8" data-controller="casting-drag" data-casting-drag-production-id-value="<%= @production.id %>" data-casting-drag-call-to-audition-id-value="<%= @call_to_audition.id %>">
+    <div class="flex gap-8" data-controller="casting-drag" data-casting-drag-production-id-value="<%= @production.id %>" data-casting-drag-audition-cycle-id-value="<%= @audition_cycle.id %>">
       <!-- Left side: Casts (flex-1) -->
       <div class="flex-1">
         <div class="space-y-4">
@@ -87,7 +87,7 @@
 
         <% if @casts.any? %>
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_call_to_audition_path(@production, @call_to_audition), color: "pink" } %>
+            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), color: "pink" } %>
           </div>
         <% end %>
       </div>      <!-- Right side: Auditionees (fixed width, sticky) -->

@@ -1,5 +1,5 @@
 class AuditionRequest < ApplicationRecord
-  belongs_to :call_to_audition
+  belongs_to :audition_cycle
   belongs_to :person
   has_many :answers, dependent: :destroy
 
@@ -10,18 +10,18 @@ class AuditionRequest < ApplicationRecord
     accepted: 3
   }
 
-  validates :video_url, presence: true, if: -> { call_to_audition&.audition_type == "video_upload" }
+  validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
   def display_name
     person.name
   end
 
   def next
-    call_to_audition.audition_requests.where("created_at > ?", created_at).order(created_at: :asc).first
+    audition_cycle.audition_requests.where("created_at > ?", created_at).order(created_at: :asc).first
   end
 
   def previous
-    call_to_audition.audition_requests.where("created_at < ?", created_at).order(created_at: :desc).first
+    audition_cycle.audition_requests.where("created_at < ?", created_at).order(created_at: :desc).first
   end
 
   def scheduled_in_any?(audition_sessions)

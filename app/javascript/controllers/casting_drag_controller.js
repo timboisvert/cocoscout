@@ -2,8 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["dropZone", "auditionee", "person"]
-    static values = { 
-        callToAuditionId: String,
+    static values = {
+        auditionCycleId: String,
         productionId: String
     }
 
@@ -102,7 +102,7 @@ export default class extends Controller {
     }
 
     addToCast(personId, personName, castId, csrfToken, productionId) {
-        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/add_to_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -127,7 +127,7 @@ export default class extends Controller {
     removeFromCast(personId, castId, callback) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
-        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/remove_from_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -155,7 +155,7 @@ export default class extends Controller {
         const personId = button.dataset.personId
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
-        fetch(`/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/remove_from_cast_assignment`, {
+        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

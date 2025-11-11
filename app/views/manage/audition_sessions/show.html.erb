@@ -9,7 +9,7 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", run_manage_production_call_to_audition_path(@production, @call_to_audition)]
+          ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)]
         ],
         text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
         links: []
@@ -25,8 +25,8 @@
     <%= render partial: "shared/top_menu", locals: {
         breadcrumbs: [
           ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", run_manage_production_call_to_audition_path(@production, @call_to_audition)],
-          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_call_to_audition_audition_session_path(@production, @call_to_audition, @audition_session)]
+          ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)],
+          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_cycle_audition_session_path(@production, @audition_cycle, @audition_session)]
         ],
         text: "#{@person.name}",
         links: []
@@ -83,7 +83,7 @@
 
   <div class="flex justify-start lg:justify-center gap-1 flex-wrap">
       <% @audition_session.auditions.each do |audition| %>
-        <%= link_to manage_production_call_to_audition_audition_session_audition_path(@production, @production.call_to_audition, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
+        <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @production.audition_cycle, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
           <div
             data-controller="tooltip"
             data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"

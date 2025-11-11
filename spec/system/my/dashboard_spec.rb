@@ -43,8 +43,8 @@ RSpec.describe "My::Dashboard", type: :system do
   end
 
   describe "when user has upcoming audition sessions" do
-    let!(:call_to_audition) { create(:call_to_audition, production: production) }
-    let!(:audition_request) { create(:audition_request, person: person, call_to_audition: call_to_audition) }
+    let!(:audition_cycle) { create(:audition_cycle, production: production) }
+    let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
     let!(:audition_session) { create(:audition_session, :upcoming, production: production) }
     let!(:audition) { create(:audition, person: person, audition_request: audition_request, audition_session: audition_session) }
 
@@ -55,8 +55,8 @@ RSpec.describe "My::Dashboard", type: :system do
   end
 
   describe "when user has open audition requests" do
-    let!(:call_to_audition) { create(:call_to_audition, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now) }
-    let!(:audition_request) { create(:audition_request, person: person, call_to_audition: call_to_audition) }
+    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now) }
+    let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
 
     it "shows open sign-ups" do
       sign_in_as(user)

@@ -1,6 +1,6 @@
 class AuditionEmailAssignment < ApplicationRecord
-  belongs_to :call_to_audition
+  belongs_to :audition_cycle
   belongs_to :person
 
-  validates :person_id, uniqueness: { scope: :call_to_audition_id }
+  validates :person_id, uniqueness: { scope: :audition_cycle_id }
 end

@@ -1,8 +1,8 @@
 class Production < ApplicationRecord
     has_many :posters, dependent: :destroy
     has_many :shows, dependent: :destroy
-    has_many :call_to_auditions, dependent: :destroy
-    has_many :audition_requests, through: :call_to_auditions
+    has_many :audition_cycles, dependent: :destroy
+    has_many :audition_requests, through: :audition_cycles
     has_many :casts, dependent: :destroy
     has_many :roles, dependent: :destroy
     has_many :show_person_role_assignments, through: :shows
@@ -19,21 +19,21 @@ class Production < ApplicationRecord
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
     validate :logo_content_type
 
-    def active_call_to_audition
-        call_to_auditions.find_by(active: true)
+    def active_audition_cycle
+        audition_cycles.find_by(active: true)
     end
 
     # For backwards compatibility during transition
-    def call_to_audition
-        active_call_to_audition
+    def audition_cycle
+        active_audition_cycle
     end
 
     def audition_sessions
-        active_call_to_audition&.audition_sessions || AuditionSession.none
+        active_audition_cycle&.audition_sessions || AuditionSession.none
     end
 
     def cast_assignment_stages
-        active_call_to_audition&.cast_assignment_stages || CastAssignmentStage.none
+        active_audition_cycle&.cast_assignment_stages || CastAssignmentStage.none
     end
 
     def initials

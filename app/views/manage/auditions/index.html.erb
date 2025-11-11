@@ -8,19 +8,19 @@
     links: []
   } %>
 
-  <% if @active_call_to_audition.present? %>
+  <% if @active_audition_cycle.present? %>
     <!-- Active Call to Audition Info -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Active Audition Cycle</h3>
         <% if current_user_can_manage?(@production) %>
-          <%= button_to "Archive This Audition Cycle", archive_manage_production_call_to_audition_path(@production, @active_call_to_audition), method: :patch, class: "text-xs text-pink-500 underline cursor-pointer", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
+          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-xs text-pink-500 underline cursor-pointer", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
         <% end %>
       </div>
       <div class="p-6">
         <%
           # Check if casting has been completed
-          has_casting_notifications = @active_call_to_audition.cast_assignment_stages.where(status: :finalized).any?
+          has_casting_notifications = @active_audition_cycle.cast_assignment_stages.where(status: :finalized).any?
         %>
 
         <% if has_casting_notifications %>
@@ -45,9 +45,9 @@
 
         <%
           # Determine status
-          if @active_call_to_audition.opens_at > Time.current
+          if @active_audition_cycle.opens_at > Time.current
             status = :upcoming
-          elsif @active_call_to_audition.closes_at <= Time.current
+          elsif @active_audition_cycle.closes_at <= Time.current
             status = :closed
           else
             status = :open
@@ -58,9 +58,9 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Audition Type</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <% if @active_call_to_audition.audition_type == "in_person" %>
+              <% if @active_audition_cycle.audition_type == "in_person" %>
                 In-person Auditions
-              <% elsif @active_call_to_audition.audition_type == "video_upload" %>
+              <% elsif @active_audition_cycle.audition_type == "video_upload" %>
                 Video Upload Auditions
               <% end %>
             </p>
@@ -68,24 +68,24 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= @active_call_to_audition.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= @active_call_to_audition.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <%= @active_audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
               <% if status == :upcoming %>
-                <% seconds_until = (@active_call_to_audition.opens_at - Time.current).to_i %>
+                <% seconds_until = (@active_audition_cycle.opens_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_call_to_audition.opens_at.utc.iso8601 %>">
+                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_audition_cycle.opens_at.utc.iso8601 %>">
                     Opens in <span data-countdown-target="clock"></span>
                   </div>
                 <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, @active_call_to_audition.opens_at) %></span>
+                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, @active_audition_cycle.opens_at) %></span>
                 <% end %>
               <% elsif status == :open %>
-                <% seconds_until = (@active_call_to_audition.closes_at - Time.current).to_i %>
+                <% seconds_until = (@active_audition_cycle.closes_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_call_to_audition.closes_at.utc.iso8601 %>">
+                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_audition_cycle.closes_at.utc.iso8601 %>">
                     Closes in <span data-countdown-target="clock"></span>
                   </div>
                 <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, @active_call_to_audition.closes_at) %></span>
+                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, @active_audition_cycle.closes_at) %></span>
                 <% end %>
               <% end %>
             </p>
@@ -94,22 +94,22 @@
           <% if status == :open %>
             <div class="p-3 bg-gray-50 rounded-lg">
               <p class="text-xs text-gray-600 font-medium">Sign-ups Received</p>
-              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_call_to_audition.audition_requests.count %></p>
+              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.count %></p>
             </div>
             <div class="p-3 bg-gray-50 rounded-lg">
               <p class="text-xs text-gray-600 font-medium">Sign-ups To Be Reviewed</p>
-              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_call_to_audition.audition_requests.where(status: [:unreviewed, :undecided]).count %></p>
+              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.where(status: [:unreviewed, :undecided]).count %></p>
             </div>
-          <% elsif status == :closed && @active_call_to_audition.audition_type == 'in_person' %>
+          <% elsif status == :closed && @active_audition_cycle.audition_type == 'in_person' %>
             <%
               # Only show these stats if auditions haven't happened yet
-              last_session = @active_call_to_audition.audition_sessions.order(start_at: :desc).first
+              last_session = @active_audition_cycle.audition_sessions.order(start_at: :desc).first
               auditions_not_yet_happened = last_session.nil? || last_session.start_at.nil? || last_session.start_at > Time.current
 
               if auditions_not_yet_happened
-                scheduled_person_ids = @active_call_to_audition.audition_sessions.joins(:auditions).distinct.pluck('auditions.person_id')
-                accepted_people_count = @active_call_to_audition.audition_requests.where(status: :accepted).count
-                to_be_scheduled_count = @active_call_to_audition.audition_requests.where(status: :accepted).where.not(person_id: scheduled_person_ids).count
+                scheduled_person_ids = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.person_id')
+                accepted_people_count = @active_audition_cycle.audition_requests.where(status: :accepted).count
+                to_be_scheduled_count = @active_audition_cycle.audition_requests.where(status: :accepted).where.not(person_id: scheduled_person_ids).count
             %>
               <div class="p-3 bg-gray-50 rounded-lg">
                 <p class="text-xs text-gray-600 font-medium">Auditions Scheduled</p>
@@ -124,7 +124,7 @@
         </div>
 
         <% if current_user_can_manage?(@production) %>
-          <%= render partial: "shared/link_button", locals: {text: "Edit Settings", path: edit_manage_production_call_to_audition_path(@production, @active_call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "Edit Settings", path: edit_manage_production_audition_cycle_path(@production, @active_audition_cycle)} %>
         <% end %>
       </div>
     </div>
@@ -143,7 +143,7 @@
           <div class="grid grid-cols-1 gap-12">
 
             <!-- Step 1: Prepare -->
-            <%= link_to prepare_manage_production_call_to_audition_path(@production, @active_call_to_audition), class: "no-underline" do %>
+            <%= link_to prepare_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -155,11 +155,11 @@
                   <div class="flex-1">
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Prepare</h4>
                     <p class="text-gray-600 text-sm mt-1">Configure settings, plan sessions, and customize sign-up form</p>
-                    <% if @active_call_to_audition.audition_type == 'in_person' && @active_call_to_audition.audition_sessions.any? %>
-                      <% session_count = @active_call_to_audition.audition_sessions.count %>
+                    <% if @active_audition_cycle.audition_type == 'in_person' && @active_audition_cycle.audition_sessions.any? %>
+                      <% session_count = @active_audition_cycle.audition_sessions.count %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= session_count %> audition <%= 'session'.pluralize(session_count) %> scheduled</p>
                     <% end %>
-                    <% if @active_call_to_audition.form_reviewed %>
+                    <% if @active_audition_cycle.form_reviewed %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ Sign-up form finalized</p>
                     <% end %>
                   </div>
@@ -168,7 +168,7 @@
             <% end %>
 
             <!-- Step 2: Publicize -->
-            <%= link_to publicize_manage_production_call_to_audition_path(@production, @active_call_to_audition), class: "no-underline" do %>
+            <%= link_to publicize_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -185,7 +185,7 @@
             <% end %>
 
             <!-- Step 3: Review -->
-            <%= link_to review_manage_production_call_to_audition_path(@production, @active_call_to_audition), class: "no-underline" do %>
+            <%= link_to review_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -197,9 +197,9 @@
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Review</h4>
                     <p class="text-gray-600 text-sm mt-1">Accept or decline applications and schedule auditions</p>
                     <%
-                      total_signups = @active_call_to_audition.audition_requests.count
+                      total_signups = @active_audition_cycle.audition_requests.count
                       # Count people who are actually scheduled for auditions
-                      scheduled_count = @active_call_to_audition.audition_sessions.joins(:auditions).select('auditions.person_id').distinct.count
+                      scheduled_count = @active_audition_cycle.audition_sessions.joins(:auditions).select('auditions.person_id').distinct.count
                     %>
                     <% if total_signups > 0 %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= total_signups %> <%= 'sign-up'.pluralize(total_signups) %> received</p>
@@ -207,8 +207,8 @@
                     <% if scheduled_count > 0 %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= scheduled_count %> <%= 'person'.pluralize(scheduled_count) %> offered <%= 'an audition'.pluralize(scheduled_count) %></p>
                     <% end %>
-                    <% if @active_call_to_audition.finalize_audition_invitations %>
-                      <% notified_count = @active_call_to_audition.audition_requests.count %>
+                    <% if @active_audition_cycle.finalize_audition_invitations %>
+                      <% notified_count = @active_audition_cycle.audition_requests.count %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ Audition decision notifications sent to <%= notified_count %> <%= 'person'.pluralize(notified_count) %></p>
                     <% end %>
                   </div>
@@ -217,7 +217,7 @@
             <% end %>
 
             <!-- Step 4: Run Auditions -->
-            <%= link_to run_manage_production_call_to_audition_path(@production, @active_call_to_audition), class: "no-underline" do %>
+            <%= link_to run_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -229,7 +229,7 @@
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Run Auditions</h4>
                     <p class="text-gray-600 text-sm mt-1">Conduct sessions and evaluate performances</p>
                     <%
-                      completed_sessions = @active_call_to_audition.audition_sessions.where("end_at < ?", Time.current).count
+                      completed_sessions = @active_audition_cycle.audition_sessions.where("end_at < ?", Time.current).count
                       if completed_sessions > 0
                     %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= completed_sessions %> audition <%= 'session'.pluralize(completed_sessions) %> completed</p>
@@ -240,7 +240,7 @@
             <% end %>
 
             <!-- Step 5: Casting -->
-            <%= link_to casting_manage_production_call_to_audition_path(@production, @active_call_to_audition), class: "no-underline" do %>
+            <%= link_to casting_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -253,13 +253,13 @@
                     <p class="text-gray-600 text-sm mt-1">Send decisions and add people to cast(s)</p>
                     <%
                       # Count unique people added to casts during THIS audition cycle
-                      cast_people_count = @active_call_to_audition.cast_assignment_stages.select(:person_id).distinct.count
+                      cast_people_count = @active_audition_cycle.cast_assignment_stages.select(:person_id).distinct.count
                       if cast_people_count > 0
                     %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= cast_people_count %> <%= 'person'.pluralize(cast_people_count) %> added to <%= 'a cast'.pluralize(cast_people_count) %></p>
                     <% end %>
                     <%
-                      finalized_stages = @active_call_to_audition.cast_assignment_stages.where(status: :finalized)
+                      finalized_stages = @active_audition_cycle.cast_assignment_stages.where(status: :finalized)
                       if finalized_stages.any?
                     %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ Casting decision notifications sent to <%= finalized_stages.count %> <%= 'person'.pluralize(finalized_stages.count) %></p>
@@ -279,7 +279,7 @@
     </div>
 
     <% if current_user_can_manage?(@production) %>
-      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
+      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production)} %>
     <% end %>
   <% end %>
 
@@ -290,15 +290,15 @@
     </div>
     <% if @past_calls_to_audition.any? %>
       <div class="divide-y divide-gray-200">
-        <% @past_calls_to_audition.each do |call_to_audition| %>
-          <%= link_to manage_production_call_to_audition_path(@production, call_to_audition), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
+        <% @past_calls_to_audition.each do |audition_cycle| %>
+          <%= link_to manage_production_audition_cycle_path(@production, audition_cycle), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
             <div class="flex justify-between items-start">
               <div>
                 <h4 class="font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">
-                  <%= call_to_audition.audition_type.titleize %> Auditions
+                  <%= audition_cycle.audition_type.titleize %> Auditions
                 </h4>
                 <p class="text-sm text-gray-600 mt-1">
-                  <%= call_to_audition.opens_at&.strftime("%b %d, %Y") %> - <%= call_to_audition.closes_at&.strftime("%b %d, %Y") %>
+                  <%= audition_cycle.opens_at&.strftime("%b %d, %Y") %> - <%= audition_cycle.closes_at&.strftime("%b %d, %Y") %>
                 </p>
               </div>
               <div class="text-sm text-gray-500">

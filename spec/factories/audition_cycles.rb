@@ -1,5 +1,5 @@
 FactoryBot.define do
-  factory :call_to_audition do
+  factory :audition_cycle do
     association :production
     opens_at { 1.day.ago }
     closes_at { 1.week.from_now }

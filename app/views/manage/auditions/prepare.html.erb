@@ -14,7 +14,7 @@
 
   <%= render partial: "archived_banner" %>
 
-  <% if @call_to_audition.present? && @call_to_audition.opening_soon_and_not_reviewed? %>
+  <% if @audition_cycle.present? && @audition_cycle.opening_soon_and_not_reviewed? %>
     <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
       <div class="flex">
         <div class="flex-shrink-0">
@@ -24,27 +24,27 @@
         </div>
         <div class="ml-3">
           <p class="text-sm font-medium text-yellow-800">
-            Sign-up window opens in <%= distance_of_time_in_words(@call_to_audition.opens_at, Time.current) %>
+            Sign-up window opens in <%= distance_of_time_in_words(@audition_cycle.opens_at, Time.current) %>
           </p>
           <p class="text-sm text-yellow-700 mt-1">
             Please review and approve the sign-up form before the window opens.
-            <%= link_to "Review Form", form_manage_production_call_to_audition_path(@production, @call_to_audition), class: "font-semibold underline" %>
+            <%= link_to "Review Form", form_manage_production_audition_cycle_path(@production, @audition_cycle), class: "font-semibold underline" %>
           </p>
         </div>
       </div>
     </div>
   <% end %>
 
-  <% if @call_to_audition.blank? %>
+  <% if @audition_cycle.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
 
     <% if current_user_can_manage?(@production) %>
-      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_call_to_audition_path(@production)} %>
+      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production)} %>
     <% end %>
   <% else %>
-    <% call_to_audition = @call_to_audition %>
+    <% audition_cycle = @audition_cycle %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -55,9 +55,9 @@
 
         <%
           # Determine status
-          if call_to_audition.opens_at > Time.current
+          if audition_cycle.opens_at > Time.current
             status = :upcoming
-          elsif call_to_audition.closes_at <= Time.current
+          elsif audition_cycle.closes_at <= Time.current
             status = :closed
           else
             status = :open
@@ -68,9 +68,9 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Audition Type</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <% if call_to_audition.audition_type == "in_person" %>
+              <% if audition_cycle.audition_type == "in_person" %>
                 In-person Auditions
-              <% elsif call_to_audition.audition_type == "video_upload" %>
+              <% elsif audition_cycle.audition_type == "video_upload" %>
                 Video Upload Auditions
               <% end %>
             </p>
@@ -78,24 +78,24 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= call_to_audition.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= call_to_audition.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <%= audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
               <% if status == :upcoming %>
-                <% seconds_until = (call_to_audition.opens_at - Time.current).to_i %>
+                <% seconds_until = (audition_cycle.opens_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.opens_at.utc.iso8601 %>">
+                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.opens_at.utc.iso8601 %>">
                     Opens in <span data-countdown-target="clock"></span>
                   </div>
                 <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, call_to_audition.opens_at) %></span>
+                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, audition_cycle.opens_at) %></span>
                 <% end %>
               <% elsif status == :open %>
-                <% seconds_until = (call_to_audition.closes_at - Time.current).to_i %>
+                <% seconds_until = (audition_cycle.closes_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= call_to_audition.closes_at.utc.iso8601 %>">
+                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>">
                     Closes in <span data-countdown-target="clock"></span>
                   </div>
                 <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, call_to_audition.closes_at) %></span>
+                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, audition_cycle.closes_at) %></span>
                 <% end %>
               <% end %>
             </p>
@@ -103,12 +103,12 @@
         </div>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+        <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_audition_cycle_path(@production, audition_cycle)} %>
       <% end %>
       </div>
     </div>
 
-    <% if call_to_audition.audition_type == "in_person" %>
+    <% if audition_cycle.audition_type == "in_person" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Plan your Audition Sessions</h3>
@@ -116,10 +116,10 @@
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Schedule when and where auditions will take place, and set how many people you want to audition at each session.</p>
 
-      <% if @call_to_audition.audition_sessions.any? %>
+      <% if @audition_cycle.audition_sessions.any? %>
         <div class="mb-4">
           <div class="space-y-2">
-            <% @call_to_audition.audition_sessions.order(:start_at).each do |session| %>
+            <% @audition_cycle.audition_sessions.order(:start_at).each do |session| %>
               <div class="border border-gray-200 rounded-lg p-3">
                 <div class="flex justify-between items-start">
                   <div>
@@ -147,7 +147,7 @@
       <% end %>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition)} %>
+        <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle)} %>
       <% end %>
       </div>
     </div>
@@ -162,7 +162,7 @@
 
         <div class="bg-gray-50 rounded-lg p-4 mb-4">
           <p class="text-sm text-gray-600 mb-1">Current Form Status</p>
-          <% if call_to_audition.form_reviewed %>
+          <% if audition_cycle.form_reviewed %>
             <div class="flex items-center">
               <svg class="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
               <span class="text-gray-700 font-semibold text-green-700">Reviewed and ready to share</span>
@@ -177,9 +177,9 @@
 
         <div class="flex flex-col sm:flex-row sm:space-x-2 gap-4 sm:gap-0">
           <% if current_user_can_manage?(@production) %>
-            <%= render partial: "shared/link_button", locals: {text: (@call_to_audition.active ? "Edit Form" : "View Form"), path: form_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+            <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Edit Form" : "View Form"), path: form_manage_production_audition_cycle_path(@production, audition_cycle)} %>
           <% end %>
-          <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, call_to_audition)} %>
+          <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, audition_cycle)} %>
         </div>
       </div>
     </div>

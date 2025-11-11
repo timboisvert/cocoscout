@@ -4,7 +4,7 @@ export default class extends Controller {
     static targets = ["tabContainer", "panelContainer", "personBadge", "popup", "menu", "modal", "nameInput", "reviewCheckbox", "sendSection", "tabIndicator"]
     static values = {
         productionId: Number,
-        callToAuditionId: Number,
+        auditionCycleId: Number,
         groupType: String  // 'casting' or 'invitation'
     }
 
@@ -532,8 +532,8 @@ export default class extends Controller {
         button.textContent = "Sending..."
 
         const endpoint = isInvitation
-            ? `/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/finalize_and_notify_invitations`
-            : `/manage/productions/${this.productionIdValue}/call_to_auditions/${this.callToAuditionIdValue}/finalize_and_notify`
+            ? `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify_invitations`
+            : `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify`
 
         fetch(endpoint, {
             method: "POST",

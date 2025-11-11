@@ -1,4 +1,4 @@
-<% production = audition.audition_request.call_to_audition.production %>
+<% production = audition.audition_request.audition_cycle.production %>
 
 <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex flex-col sm:flex-row sm:items-center gap-4">
     <% logo_variant = production.safe_logo_variant(:small) %>

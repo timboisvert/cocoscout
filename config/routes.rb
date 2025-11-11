@@ -31,7 +31,7 @@ Rails.application.routes.draw do
   end
 
   # Respond to an audition request
-  get "/a/:token", to: "my/respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
+  get "/a/:token", to: "my/respond_to_audition_cycle#entry", as: "respond_to_audition_cycle"
 
   # Talent-facing interface
   namespace :my do
@@ -50,10 +50,10 @@ Rails.application.routes.draw do
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
-      get "/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
-      post "/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
-      get "/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
-      get "/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
+      get "/form", to: "respond_to_audition_cycle#form", as: "respond_to_audition_cycle_form"
+      post "/form", to: "respond_to_audition_cycle#submitform", as: "submit_respond_to_audition_cycle_form"
+      get "/success", to: "respond_to_audition_cycle#success", as: "respond_to_audition_cycle_success"
+      get "/inactive", to: "respond_to_audition_cycle#inactive", as: "respond_to_audition_cycle_inactive"
     end
   end
 
@@ -169,7 +169,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :call_to_auditions do
+      resources :audition_cycles do
         resources :audition_requests do
           member do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
@@ -182,13 +182,13 @@ Rails.application.routes.draw do
         end
         member do
           get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
-          get    "form",              to: "call_to_auditions#form",              as: "form"
-          get    "preview",           to: "call_to_auditions#preview",           as: "preview"
-          post   "create_question",   to: "call_to_auditions#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "call_to_auditions#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "call_to_auditions#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "call_to_auditions#reorder_questions", as: "reorder_questions"
-          patch  "archive",           to: "call_to_auditions#archive",           as: "archive"
+          get    "form",              to: "audition_cycles#form",              as: "form"
+          get    "preview",           to: "audition_cycles#preview",           as: "preview"
+          post   "create_question",   to: "audition_cycles#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "audition_cycles#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
+          patch  "archive",           to: "audition_cycles#archive",           as: "archive"
           get    "prepare",           to: "auditions#prepare",                   as: "prepare"
           get    "publicize",         to: "auditions#publicize",                 as: "publicize"
           get    "review",            to: "auditions#review",                    as: "review"

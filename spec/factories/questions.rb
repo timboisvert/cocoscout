@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :question do
-    association :questionable, factory: :call_to_audition
+    association :questionable, factory: :audition_cycle
     text { "What is your favorite color?" }
     question_type { "short_text" }
     required { false }

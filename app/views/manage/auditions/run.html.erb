@@ -14,14 +14,14 @@
 
   <%= render partial: "archived_banner" %>
 
-  <% if @call_to_audition.blank? %>
+  <% if @audition_cycle.blank? %>
     <div class="mb-5 text-gray-500 text-sm">
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% call_to_audition = @call_to_audition %>
+    <% audition_cycle = @audition_cycle %>
 
-    <% if call_to_audition.audition_type == "in_person" %>
+    <% if audition_cycle.audition_type == "in_person" %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
@@ -29,9 +29,9 @@
         <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">View and manage your in-person audition sessions.</p>
 
-        <% if @call_to_audition.audition_sessions.any? %>
+        <% if @audition_cycle.audition_sessions.any? %>
           <div class="space-y-2">
-            <% @call_to_audition.audition_sessions.order(:start_at).each do |session| %>
+            <% @audition_cycle.audition_sessions.order(:start_at).each do |session| %>
               <div class="border border-gray-200 rounded-lg p-4 flex items-start gap-6">
                 <!-- Date/Time on the left -->
                 <div class="w-72 flex-shrink-0">
@@ -51,7 +51,7 @@
                   <% if session.auditions.any? %>
                     <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-10 gap-2">
                       <% session.auditions.each do |audition| %>
-                        <%= link_to manage_production_call_to_audition_audition_session_audition_path(@production, @call_to_audition, session, audition), class: "flex flex-col items-center text-center no-underline hover:opacity-80 transition-opacity" do %>
+                        <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, session, audition), class: "flex flex-col items-center text-center no-underline hover:opacity-80 transition-opacity" do %>
                           <div class="flex flex-col items-center text-center">
                             <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
                             <% if headshot_variant %>
@@ -76,11 +76,11 @@
 
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: { text: "Schedule Auditions", path: manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition) } %>
+          <%= render partial: "shared/link_button", locals: { text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle) } %>
         <% end %>
         </div>
       </div>
-    <% elsif call_to_audition.audition_type == "video_upload" %>
+    <% elsif audition_cycle.audition_type == "video_upload" %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">Video Upload Auditions</h3>
@@ -89,7 +89,7 @@
         <p class="text-gray-600 mb-4">Auditionees have submitted their video uploads. Review their submissions.</p>
 
         <div class="bg-gray-50 rounded-lg p-4">
-          <p class="text-gray-700 font-semibold mb-2">Total Submissions: <span class="text-lg"><%= call_to_audition.audition_requests.count %></span></p>
+          <p class="text-gray-700 font-semibold mb-2">Total Submissions: <span class="text-lg"><%= audition_cycle.audition_requests.count %></span></p>
           <p class="text-sm text-gray-600">Video auditions don't require in-person sessions.</p>
         </div>
         </div>

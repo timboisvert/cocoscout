@@ -4,14 +4,14 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Review", review_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
     text: "Sign-ups",
     links: []
       # [
       #   {
       #     text: "Create a Sign-up",
-      #     path: new_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition)
+      #     path: new_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle)
       #   }
       # ]
   } %>
@@ -21,27 +21,27 @@
   <div class="flex w-full space-x-2 mb-4">
     <div class="flex flex-1 space-x-1">
       <%= link_to "All",
-              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "all"),
+              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "all"),
               data: { turbo_prefetch: false },
               class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
       %>
       <%= link_to "Unreviewed",
-              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "unreviewed"),
+              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "unreviewed"),
               data: { turbo_prefetch: false },
               class: "px-3 py-1 rounded-md border text-sm #{(@filter == "unreviewed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
       %>
       <%= link_to "Revisit",
-              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "undecided"),
+              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "undecided"),
               data: { turbo_prefetch: false },
               class: "px-3 py-1 rounded-md border text-sm #{(@filter == "undecided") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
       %>
       <%= link_to "Yes",
-              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "accepted"),
+              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "accepted"),
               data: { turbo_prefetch: false },
               class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
       %>
       <%= link_to "No",
-              manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition, filter: "passed"),
+              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "passed"),
               data: { turbo_prefetch: false },
               class: "px-3 py-1 rounded-md border text-sm #{(@filter == "passed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
       %>
@@ -53,7 +53,7 @@
       <% @audition_requests.each do |audition_request| %>
         <div class="flex flex-col lg:flex-row bg-white w-full p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all lg:items-center gap-4">
 
-          <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request), class: "flex items-center gap-4", data: { turbo_prefetch: false } do %>
+          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, audition_request), class: "flex items-center gap-4", data: { turbo_prefetch: false } do %>
             <div class="flex items-center gap-4">
               <div class="flex-shrink-0">
                 <% headshot_url = safe_headshot_url(audition_request.person) %>
@@ -93,7 +93,7 @@
                     classes += " bg-pink-500 hover:bg-pink-600 text-white"
                   end
               %>
-                <%= link_to manage_signup_status_name(status), set_status_manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
+                <%= link_to manage_signup_status_name(status), set_status_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, audition_request, status: status), class: classes, data: { turbo_method: :post } %>
               <% end %>
             </div>
           <% end %>

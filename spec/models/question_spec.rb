@@ -40,8 +40,8 @@ RSpec.describe Question, type: :model do
 
   describe "nested attributes" do
     it "accepts nested attributes for question_options" do
-      call_to_audition = create(:call_to_audition)
-      question = call_to_audition.questions.create(
+      audition_cycle = create(:audition_cycle)
+      question = audition_cycle.questions.create(
         text: "What is your favorite color?",
         question_type: "multiple_choice",
         question_options_attributes: [
@@ -95,12 +95,12 @@ RSpec.describe Question, type: :model do
   end
 
   describe "polymorphic questionable" do
-    it "can belong to a CallToAudition" do
-      call_to_audition = create(:call_to_audition)
-      question = create(:question, questionable: call_to_audition)
+    it "can belong to a AuditionCycle" do
+      audition_cycle = create(:audition_cycle)
+      question = create(:question, questionable: audition_cycle)
 
-      expect(question.questionable).to eq(call_to_audition)
-      expect(question.questionable_type).to eq("CallToAudition")
+      expect(question.questionable).to eq(audition_cycle)
+      expect(question.questionable_type).to eq("AuditionCycle")
     end
   end
 end

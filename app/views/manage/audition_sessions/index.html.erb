@@ -1,11 +1,11 @@
 <% content_for :title, "Plan your Audition Sessions" %>
 
-<div class="w-full" data-controller="location-modal audition-session-form" data-production-id="<%= @production.id %>" data-call-to-audition-id="<%= @call_to_audition.id %>">
+<div class="w-full" data-controller="location-modal audition-session-form" data-production-id="<%= @production.id %>" data-audition-cycle-id="<%= @audition_cycle.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", prepare_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
     text: "Manage Audition Sessions",
     links: []
@@ -13,7 +13,7 @@
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
 
-  <div class="flex gap-8" data-controller="audition-session-form" data-production-id="<%= @production.id %>" data-call-to-audition-id="<%= @call_to_audition.id %>">
+  <div class="flex gap-8" data-controller="audition-session-form" data-production-id="<%= @production.id %>" data-audition-cycle-id="<%= @audition_cycle.id %>">
     <!-- Scheduled sessions on the left -->
     <div class="flex-1 space-y-3" id="audition_sessions_list">
       <% if @audition_sessions.any? %>
@@ -37,8 +37,8 @@
               </div>
             </div>
             <div class="mt-3 flex gap-2">
-              <a href="#" data-action="click->audition-session-form#openEditForm" data-session-id="<%= session.id %>" data-call-to-audition-id="<%= @call_to_audition.id %>" class="text-xs text-pink-500 underline">Edit</a>
-              <%= link_to "Delete", manage_production_call_to_audition_audition_session_path(@production, @call_to_audition, session), data: { turbo_method: :delete, turbo_confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline" %>
+              <a href="#" data-action="click->audition-session-form#openEditForm" data-session-id="<%= session.id %>" data-audition-cycle-id="<%= @audition_cycle.id %>" class="text-xs text-pink-500 underline">Edit</a>
+              <%= link_to "Delete", manage_production_audition_cycle_audition_session_path(@production, @audition_cycle, session), data: { turbo_method: :delete, turbo_confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline" %>
             </div>
           </div>
         <% end %>

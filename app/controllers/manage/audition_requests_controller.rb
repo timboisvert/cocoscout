@@ -1,7 +1,7 @@
 class Manage::AuditionRequestsController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_call_to_audition
+  before_action :set_audition_cycle
   before_action :set_audition_request, only: %i[ show edit_answers edit_video update destroy set_status ]
   before_action :ensure_user_is_manager, except: %i[ index show ]
 
@@ -11,7 +11,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
     session[:audition_requests_filter] = @filter
 
     # Process the filter
-    @audition_requests = @call_to_audition.audition_requests
+    @audition_requests = @audition_cycle.audition_requests
 
     case @filter
     when "unreviewed", "undecided", "accepted", "passed"
@@ -38,13 +38,13 @@ class Manage::AuditionRequestsController < Manage::ManageController
     @answers = @audition_request.answers.includes(:question)
 
     # Get status counts for buttons
-    @status_counts = @call_to_audition.audition_requests.group(:status).count
+    @status_counts = @audition_cycle.audition_requests.group(:status).count
 
     # Load availability data if enabled
-    if @call_to_audition.include_availability_section
+    if @audition_cycle.include_availability_section
       @shows = @production.shows.order(:date_and_time)
-      if @call_to_audition.availability_event_types.present?
-        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      if @audition_cycle.availability_event_types.present?
+        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
       end
 
       @availability = {}
@@ -55,24 +55,24 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def new
-    @audition_request = @call_to_audition.audition_requests.new
+    @audition_request = @audition_cycle.audition_requests.new
     @audition_request.status = :unreviewed
   end
 
   def create
-    @audition_request = @call_to_audition.audition_requests.new(audition_request_params)
-    @audition_request.call_to_audition = @call_to_audition
+    @audition_request = @audition_cycle.audition_requests.new(audition_request_params)
+    @audition_request.call_to_audition = @audition_cycle
     @audition_request.status = :unreviewed
 
     if @audition_request.save
-      redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Sign-up was successfully created"
+      redirect_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle), notice: "Sign-up was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit_answers
-    @questions = @audition_request.call_to_audition.questions.order(:position) if @call_to_audition.present?
+    @questions = @audition_request.call_to_audition.questions.order(:position) if @audition_cycle.present?
 
     @answers = {}
     @questions.each do |question|
@@ -85,7 +85,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def update
-    @questions = @audition_request.call_to_audition.questions.order(:position) if @call_to_audition.present?
+    @questions = @audition_request.call_to_audition.questions.order(:position) if @audition_cycle.present?
     @answers = {}
     if params[:question]
       params[:question].each do |id, keyValue|
@@ -113,7 +113,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
       render :edit_answers, status: :unprocessable_entity
     elsif @audition_request.valid?
       @audition_request.save!
-      redirect_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request), notice: "Sign-up successfully updated", status: :see_other
+      redirect_to manage_production_call_to_audition_audition_request_path(@production, @audition_cycle, @audition_request), notice: "Sign-up successfully updated", status: :see_other
     else
       render :edit_answers, status: :unprocessable_entity
     end
@@ -121,14 +121,14 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   def destroy
     @audition_request.destroy!
-    redirect_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), notice: "Sign-up successfully deleted", status: :see_other
+    redirect_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle), notice: "Sign-up successfully deleted", status: :see_other
   end
 
   def set_status
     @audition_request.status = params.expect(:status)
 
     if @audition_request.save
-      redirect_back_or_to manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition)
+      redirect_back_or_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle)
     else
       render :show, status: :unprocessable_entity
     end
@@ -141,21 +141,21 @@ class Manage::AuditionRequestsController < Manage::ManageController
     end
 
     def set_audition_request
-      @audition_request = @call_to_audition.audition_requests.find(params.expect(:id))
+      @audition_request = @audition_cycle.audition_requests.find(params.expect(:id))
     end
 
-    def set_call_to_audition
-      if params[:call_to_audition_id].present?
-        @call_to_audition = CallToAudition.find(params[:call_to_audition_id])
+    def set_audition_cycle
+      if params[:audition_cycle_id].present?
+        @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
       else
-        @call_to_audition = @production.active_call_to_audition
-        unless @call_to_audition
+        @audition_cycle = @production.active_audition_cycle
+        unless @audition_cycle
           redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
         end
       end
     end
 
     def audition_request_params
-      params.expect(audition_request: [ :call_to_audition_id, :person_id, :video_url ])
+      params.expect(audition_request: [ :audition_cycle_id, :person_id, :video_url ])
     end
 end

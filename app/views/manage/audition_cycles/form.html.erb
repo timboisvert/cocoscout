@@ -5,11 +5,11 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", prepare_manage_production_call_to_audition_path(@production, @call_to_audition)]
+      ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
     text: "Sign-up Form",
     links: [
-      { text: "Preview Form", path: preview_manage_production_call_to_audition_path(@production, @call_to_audition), target: "_blank" }
+      { text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, @audition_cycle), target: "_blank" }
     ]
   } %>
 
@@ -22,7 +22,7 @@
       <div data-show-toggle-target="icon"></div>
     </div>
     <div data-show-toggle-target="content">
-      <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+      <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
         <div class="p-4" data-controller="availability-filter">
           <p class="text-sm text-gray-500 mb-4">Include a section on the sign-up form where auditionees can indicate their availability for scheduled events.</p>
 
@@ -31,7 +31,7 @@
             <%= form.label :include_availability_section, "Request availability in sign-up form", class: "ml-2 text-sm text-gray-700" %>
           </div>
 
-          <div class="<%= @call_to_audition.include_availability_section == true ? '' : 'hidden' %>" data-availability-filter-target="eventSection">
+          <div class="<%= @audition_cycle.include_availability_section == true ? '' : 'hidden' %>" data-availability-filter-target="eventSection">
             <div class="mb-4">
               <%= form.check_box :require_all_availability, class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" %>
               <%= form.label :require_all_availability, "Require auditionees to enter availability in order to submit sign-up form", class: "ml-2 text-sm text-gray-700" %>
@@ -43,20 +43,20 @@
               <label class="text-sm font-medium text-gray-700 block mb-2">Include:</label>
               <div class="space-y-2">
                 <div>
-                  <%= radio_button_tag "event_filter_mode", "all", @call_to_audition.availability_event_types.blank?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
+                  <%= radio_button_tag "event_filter_mode", "all", @audition_cycle.availability_event_types.blank?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
                   <%= label_tag "event_filter_mode_all", "All Shows & Events", class: "ml-2 text-sm text-gray-700" %>
                 </div>
                 <div>
-                  <%= radio_button_tag "event_filter_mode", "specific", @call_to_audition.availability_event_types.present?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
+                  <%= radio_button_tag "event_filter_mode", "specific", @audition_cycle.availability_event_types.present?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
                   <%= label_tag "event_filter_mode_specific", "Only specific show & event types", class: "ml-2 text-sm text-gray-700" %>
                 </div>
               </div>
 
-              <%= hidden_field_tag "call_to_audition[availability_event_types][]", "" %>
-              <div class="ml-6 mt-2 space-y-1 <%= @call_to_audition.availability_event_types.present? ? '' : 'hidden' %>" data-availability-filter-target="checkboxes">
+              <%= hidden_field_tag "audition_cycle[availability_event_types][]", "" %>
+              <div class="ml-6 mt-2 space-y-1 <%= @audition_cycle.availability_event_types.present? ? '' : 'hidden' %>" data-availability-filter-target="checkboxes">
                 <% Show.event_types.keys.each do |event_type| %>
                   <div>
-                    <%= check_box_tag "call_to_audition[availability_event_types][]", event_type, @call_to_audition.availability_event_types&.include?(event_type), id: "call_to_audition_availability_event_types_#{event_type}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateEventList", availability_filter_target: "checkbox" } %>
+                    <%= check_box_tag "audition_cycle[availability_event_types][]", event_type, @audition_cycle.availability_event_types&.include?(event_type), id: "call_to_audition_availability_event_types_#{event_type}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateEventList", availability_filter_target: "checkbox" } %>
                     <%= label_tag "call_to_audition_availability_event_types_#{event_type}", event_type.titleize.pluralize, class: "ml-2 text-sm text-gray-700 cursor-pointer" %>
                   </div>
                 <% end %>
@@ -71,8 +71,8 @@
             <div class="flex-1">
               <% if @production.shows.any? %>
                 <%
-                  selected_count = if @call_to_audition.availability_event_types.present?
-                    @production.shows.where(event_type: @call_to_audition.availability_event_types).count
+                  selected_count = if @audition_cycle.availability_event_types.present?
+                    @production.shows.where(event_type: @audition_cycle.availability_event_types).count
                   else
                     @production.shows.count
                   end
@@ -132,14 +132,14 @@
       <div data-show-toggle-target="icon"></div>
     </div>
     <div data-show-toggle-target="content" class="hidden">
-      <%= form_with(model: [:manage, @production, @call_to_audition], class: "contents") do |form| %>
+      <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
         <div class="p-4 overflow-x-hidden">
           <div class="w-full max-w-4xl overflow-x-auto" data-controller="tabs">
       <nav class="flex space-x-2 border-b border-gray-200 mb-4">
         <% idx = 0 %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
         <% idx += 1 %>
-        <% if @call_to_audition.audition_type == "video_upload" %>
+        <% if @audition_cycle.audition_type == "video_upload" %>
           <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Video Field Text</button>
           <% idx += 1 %>
         <% end %>
@@ -150,7 +150,7 @@
       <div data-tabs-target="panel">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">At the top of the Sign-up form you can add text to describe the production, the audition process, cast expectations, etc.</p>
-          <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @call_to_audition.errors[:header_text].none?, "border-pink-500": @call_to_audition.errors[:header_text].any?}] %>
+          <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:header_text].none?, "border-pink-500": @audition_cycle.errors[:header_text].any?}] %>
         </div>
 
         <div class="w-full border-t border-gray-200 pt-5 my-5">
@@ -159,11 +159,11 @@
         </div>
       </div>
 
-      <% if @call_to_audition.audition_type == "video_upload" %>
+      <% if @audition_cycle.audition_type == "video_upload" %>
         <div data-tabs-target="panel" class="hidden">
           <div class="my-5">
             <p class="text-sm text-gray-500 pb-5">Add text that gets shown with the video upload URL, which can be used to provide instructions on what the video should be, how it should be uploaded, etc.</p>
-            <%= form.rich_text_area :video_field_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @call_to_audition.errors[:video_field_text].none?, "border-pink-500": @call_to_audition.errors[:video_field_text].any?}] %>
+            <%= form.rich_text_area :video_field_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:video_field_text].none?, "border-pink-500": @audition_cycle.errors[:video_field_text].any?}] %>
           </div>
 
           <div class="w-full border-t border-gray-200 pt-5 my-5">
@@ -176,7 +176,7 @@
       <div data-tabs-target="panel" class="hidden">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">After an auditionee submits the Sign-up form, they're shown text that you can customize here.</p>
-          <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @call_to_audition.errors[:success_text].none?, "border-pink-500": @call_to_audition.errors[:success_text].any?}] %>
+          <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:success_text].none?, "border-pink-500": @audition_cycle.errors[:success_text].any?}] %>
         </div>
 
         <div class="w-full border-t border-gray-200 pt-5 my-5">
@@ -197,10 +197,10 @@
     </div>
     <div class="p-4">
       <p class="text-sm text-gray-500 mb-4">Mark the sign-up form as reviewed once you've confirmed all questions and settings are correct. This helps you keep track of what's ready to be shared.</p>
-      <%= form_with url: manage_production_call_to_audition_path(@production, @call_to_audition), method: :patch, class: "contents", data: { turbo: false } do |form| %>
+      <%= form_with url: manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, class: "contents", data: { turbo: false } do |form| %>
         <div class="flex items-center mb-4">
-          <input type="hidden" name="call_to_audition[form_reviewed]" value="0" />
-          <input type="checkbox" id="form_reviewed" name="call_to_audition[form_reviewed]" value="1" <%= @call_to_audition.form_reviewed ? 'checked' : '' %> class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" />
+          <input type="hidden" name="audition_cycle[form_reviewed]" value="0" />
+          <input type="checkbox" id="form_reviewed" name="audition_cycle[form_reviewed]" value="1" <%= @audition_cycle.form_reviewed ? 'checked' : '' %> class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" />
           <label for="form_reviewed" class="ml-2 text-sm text-gray-700 cursor-pointer">I have reviewed the sign-up form and it's ready to be shared</label>
         </div>
         <div class="w-full border-t border-gray-200 pt-4">

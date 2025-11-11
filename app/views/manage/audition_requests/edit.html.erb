@@ -5,14 +5,14 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Sign-ups", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition)],
-      [@audition_request.person.name, manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, @audition_request)]
+      ["Sign-ups", manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
+      [@audition_request.person.name, manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
     ],
     text: "Edit Answers",
     links: []
   } %>
 
-  <%= form_with(model: [:manage, @production, @call_to_audition, @audition_request], class: "contents") do |form| %>
+  <%= form_with(model: [:manage, @production, @audition_cycle, @audition_request], class: "contents") do |form| %>
 
     <div class="inline">
       <%= form.submit 'Update Sign-up', class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>

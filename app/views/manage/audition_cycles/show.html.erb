@@ -21,7 +21,7 @@
       <div class="flex-1">
         <h4 class="text-sm font-semibold text-blue-900 mb-1">Archived Audition Cycle</h4>
         <p class="text-sm text-blue-800">
-          This audition cycle ran from <%= @call_to_audition.opens_at&.strftime("%B %-d, %Y") %> to <%= @call_to_audition.closes_at&.strftime("%B %-d, %Y") %>.
+          This audition cycle ran from <%= @audition_cycle.opens_at&.strftime("%B %-d, %Y") %> to <%= @audition_cycle.closes_at&.strftime("%B %-d, %Y") %>.
         </p>
       </div>
     </div>
@@ -37,9 +37,9 @@
         <div class="p-3 bg-gray-50 rounded-lg">
           <p class="text-xs text-gray-600 font-medium">Audition Type</p>
           <p class="text-sm font-semibold text-gray-900 mt-1">
-            <% if @call_to_audition.audition_type == "in_person" %>
+            <% if @audition_cycle.audition_type == "in_person" %>
               In-person Auditions
-            <% elsif @call_to_audition.audition_type == "video_upload" %>
+            <% elsif @audition_cycle.audition_type == "video_upload" %>
               Video Upload Auditions
             <% end %>
           </p>
@@ -47,7 +47,7 @@
         <div class="p-3 bg-gray-50 rounded-lg">
           <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
           <p class="text-sm font-semibold text-gray-900 mt-1">
-            <%= @call_to_audition.opens_at.strftime("%b %-d, %Y") %> - <%= @call_to_audition.closes_at.strftime("%b %-d, %Y") %>
+            <%= @audition_cycle.opens_at.strftime("%b %-d, %Y") %> - <%= @audition_cycle.closes_at.strftime("%b %-d, %Y") %>
           </p>
         </div>
       </div>
@@ -66,7 +66,7 @@
       <% if @audition_requests.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <% @audition_requests.each do |request| %>
-            <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+            <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
               <div class="flex items-center gap-3">
                 <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>
@@ -115,7 +115,7 @@
       <% if @accepted_requests.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <% @accepted_requests.each do |request| %>
-            <%= link_to manage_production_call_to_audition_audition_request_path(@production, @call_to_audition, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+            <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
               <div class="flex items-center gap-3">
                 <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>
@@ -168,7 +168,7 @@
                   <%
                     # Get their cast assignments from this audition cycle
                     cast_names = person.cast_assignment_stages
-                                       .where(call_to_audition_id: @call_to_audition.id)
+                                       .where(audition_cycle_id: @audition_cycle.id)
                                        .includes(:cast)
                                        .map { |stage| stage.cast.name }
                                        .uniq

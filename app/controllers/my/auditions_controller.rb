@@ -8,8 +8,8 @@ class My::AuditionsController < ApplicationController
     # Only show auditions where invitations have been finalized
     @auditions = Current.user.person.auditions
       .includes(:audition_session, :audition_request)
-      .joins(audition_request: :call_to_audition)
-      .where(call_to_auditions: { finalize_audition_invitations: true })
+      .joins(audition_request: :audition_cycle)
+      .where(audition_cycles: { finalize_audition_invitations: true })
 
     case @auditions_filter
     when "past"

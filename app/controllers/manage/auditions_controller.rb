@@ -1,62 +1,62 @@
 class Manage::AuditionsController < Manage::ManageController
   before_action :set_production, except: %i[ add_to_session remove_from_session move_to_session ]
   before_action :check_production_access, except: %i[ add_to_session remove_from_session move_to_session ]
-  before_action :set_call_to_audition, except: %i[ index schedule_auditions add_to_session remove_from_session move_to_session ]
+  before_action :set_audition_cycle, except: %i[ index schedule_auditions add_to_session remove_from_session move_to_session ]
   before_action :set_audition, only: %i[ show edit update destroy ]
   before_action :ensure_user_is_manager, except: %i[index show prepare publicize review run casting casting_select schedule_auditions]
 
   # GET /auditions
   def index
-    @active_call_to_audition = @production.active_call_to_audition
-    @past_calls_to_audition = @production.call_to_auditions.where(active: false).order(created_at: :desc)
+    @active_audition_cycle = @production.active_audition_cycle
+    @past_audition_cycles = @production.call_to_auditions.where(active: false).order(created_at: :desc)
   end
 
   # GET /auditions/prepare
   def prepare
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
   end
 
   # GET /auditions/publicize
   def publicize
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
   end
 
   # GET /auditions/review
   def review
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
   end
 
   # GET /auditions/run
   def run
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
   end
 
   # GET /auditions/casting
   def casting
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
     @casts = @production.casts
     # Get people who actually auditioned (have an Audition record for this call to audition's sessions)
-    audition_session_ids = @call_to_audition.audition_sessions.pluck(:id)
+    audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
     @auditioned_people = Person.joins(:auditions)
                                 .where(auditions: { audition_session_id: audition_session_ids })
                                 .distinct
                                 .order(:name)
-    @cast_assignment_stages = @call_to_audition.cast_assignment_stages.includes(:person, :cast)
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :cast)
   end
 
   # GET /auditions/casting/select
   def casting_select
-    redirect_to_archived_summary if @call_to_audition && !@call_to_audition.active
+    redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
     @casts = @production.casts
     # Get people who actually auditioned (have an Audition record for this call to audition's sessions)
-    audition_session_ids = @call_to_audition.audition_sessions.pluck(:id)
+    audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
     @auditioned_people = Person.joins(:auditions)
                                 .where(auditions: { audition_session_id: audition_session_ids })
                                 .distinct
                                 .order(:name)
-    @cast_assignment_stages = @call_to_audition.cast_assignment_stages.includes(:person, :cast)
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :cast)
   end
 
   # PATCH /auditions/finalize_invitations
@@ -68,11 +68,11 @@ class Manage::AuditionsController < Manage::ManageController
 
   # GET /auditions/schedule_auditions
   def schedule_auditions
-    @call_to_audition = CallToAudition.find(params[:id])
-    @audition_sessions = @call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
+    @audition_cycle = AuditionCycle.find(params[:id])
+    @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
 
     filter = params[:filter]
-    audition_requests = @call_to_audition.audition_requests
+    audition_requests = @audition_cycle.audition_requests
 
     if filter == "all"
       audition_requests = audition_requests.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
@@ -86,7 +86,7 @@ class Manage::AuditionsController < Manage::ManageController
 
     @available_people = audition_requests.includes(:person).order(created_at: :asc)
     @scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(:person_id).uniq.to_set
-    @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { call_to_audition_id: @call_to_audition.id }).pluck(:audition_request_id).uniq
+    @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: @audition_cycle.id }).pluck(:audition_request_id).uniq
   end
 
   # GET /auditions/1
@@ -170,7 +170,7 @@ class Manage::AuditionsController < Manage::ManageController
     # Get list of already scheduled person IDs for this call to audition
     audition_sessions = call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
     scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
-    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { call_to_audition_id: call_to_audition.id }).pluck(:audition_request_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: call_to_audition.id }).pluck(:audition_request_id).uniq
 
     # Re-render the right list and the dropzone
     right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
@@ -213,7 +213,7 @@ class Manage::AuditionsController < Manage::ManageController
     # Get list of already scheduled person IDs and audition request IDs for this call to audition
     audition_sessions = call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
     scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
-    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { call_to_audition_id: call_to_audition.id }).pluck(:audition_request_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: call_to_audition.id }).pluck(:audition_request_id).uniq
 
     right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
@@ -264,7 +264,7 @@ class Manage::AuditionsController < Manage::ManageController
     # Get list of already scheduled person IDs and audition request IDs for this call to audition
     audition_sessions = call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
     scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
-    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { call_to_audition_id: call_to_audition.id }).pluck(:audition_request_id).uniq
+    scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: call_to_audition.id }).pluck(:audition_request_id).uniq
 
     right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, call_to_audition: call_to_audition, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
 
@@ -280,7 +280,7 @@ class Manage::AuditionsController < Manage::ManageController
     person = Person.find(params[:person_id])
 
     CastAssignmentStage.find_or_create_by(
-      call_to_audition_id: @call_to_audition.id,
+      audition_cycle_id: @audition_cycle.id,
       cast_id: cast.id,
       person_id: person.id
     )
@@ -292,7 +292,7 @@ class Manage::AuditionsController < Manage::ManageController
   def remove_from_cast_assignment
     cast = @production.casts.find(params[:cast_id])
     CastAssignmentStage.where(
-      call_to_audition_id: @call_to_audition.id,
+      audition_cycle_id: @audition_cycle.id,
       cast_id: cast.id,
       person_id: params[:person_id]
     ).destroy_all
@@ -302,7 +302,7 @@ class Manage::AuditionsController < Manage::ManageController
 
   # POST /auditions/finalize_and_notify
   def finalize_and_notify
-    call_to_audition = @call_to_audition
+    call_to_audition = @audition_cycle
 
     unless call_to_audition
       render json: { error: "No call to audition found" }, status: :unprocessable_entity
@@ -384,7 +384,7 @@ class Manage::AuditionsController < Manage::ManageController
 
   # POST /auditions/finalize_and_notify_invitations
   def finalize_and_notify_invitations
-    call_to_audition = @call_to_audition
+    call_to_audition = @audition_cycle
 
     unless call_to_audition
       render json: { error: "No call to audition found" }, status: :unprocessable_entity
@@ -521,14 +521,14 @@ class Manage::AuditionsController < Manage::ManageController
       @production = Current.production_company.productions.find(params.expect(:production_id))
     end
 
-    def set_call_to_audition
+    def set_audition_cycle
       if params[:id].present?
         # When coming from /call_to_auditions/:id/prepare (or other workflow steps)
-        @call_to_audition = @production.call_to_auditions.find(params[:id])
+        @audition_cycle = @production.call_to_auditions.find(params[:id])
       else
         # Default to active call to audition (for legacy routes or index page)
-        @call_to_audition = @production.active_call_to_audition
-        unless @call_to_audition
+        @audition_cycle = @production.active_audition_cycle
+        unless @audition_cycle
           redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
         end
       end
@@ -536,12 +536,12 @@ class Manage::AuditionsController < Manage::ManageController
 
     def set_audition
       if params[:audition_session_id].present?
-        # Nested route: /call_to_auditions/:call_to_audition_id/audition_sessions/:audition_session_id/auditions/:id
+        # Nested route: /call_to_auditions/:audition_cycle_id/audition_sessions/:audition_session_id/auditions/:id
         @audition_session = AuditionSession.find(params[:audition_session_id])
         @audition = @audition_session.auditions.find(params.expect(:id))
       else
         # Direct route for audition show (if needed)
-        @audition = Audition.joins(:audition_session).where(audition_sessions: { call_to_audition_id: @call_to_audition.id }).find(params.expect(:id))
+        @audition = Audition.joins(:audition_session).where(audition_sessions: { audition_cycle_id: @audition_cycle.id }).find(params.expect(:id))
       end
     end
 
@@ -551,6 +551,6 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     def redirect_to_archived_summary
-      redirect_to manage_production_call_to_audition_path(@production, @call_to_audition)
+      redirect_to manage_production_call_to_audition_path(@production, @audition_cycle)
     end
 end

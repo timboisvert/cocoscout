@@ -1,12 +1,12 @@
 class Manage::AuditionSessionsController < Manage::ManageController
-  before_action :set_call_to_audition
+  before_action :set_audition_cycle
   before_action :set_production
   before_action :check_production_access
   before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
   before_action :ensure_user_is_manager, except: %i[show summary]
 
   def index
-    @audition_sessions = @call_to_audition.audition_sessions.includes(:location).order(start_at: :asc)
+    @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
 
     if params[:filter].present?
       cookies[:audition_request_filter] = params[:filter]
@@ -47,10 +47,10 @@ class Manage::AuditionSessionsController < Manage::ManageController
   def create
     @audition_session = AuditionSession.new(audition_session_params)
     @audition_session.production = @production
-    @audition_session.call_to_audition = @call_to_audition
+    @audition_session.call_to_audition = @audition_cycle
 
     if @audition_session.save
-      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully created", status: :see_other
+      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully created", status: :see_other
     else
       render :new, status: :unprocessable_entity
     end
@@ -58,7 +58,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def update
     if @audition_session.update(audition_session_params)
-      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully rescheduled", status: :see_other
+      redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully rescheduled", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -66,21 +66,21 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def destroy
     @audition_session.destroy!
-    redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @call_to_audition), notice: "Audition session was successfully canceled", status: :see_other
+    redirect_to manage_production_call_to_audition_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully canceled", status: :see_other
   end
 
   def summary
-    @audition_sessions = @call_to_audition.audition_sessions
+    @audition_sessions = @audition_cycle.audition_sessions
   end
 
   private
-    def set_call_to_audition
-      if params[:call_to_audition_id].present?
-        @call_to_audition = CallToAudition.find(params[:call_to_audition_id])
+    def set_audition_cycle
+      if params[:audition_cycle_id].present?
+        @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
       elsif params[:production_id].present?
         production = Current.production_company.productions.find(params[:production_id])
-        @call_to_audition = production.active_call_to_audition
-        unless @call_to_audition
+        @audition_cycle = production.active_audition_cycle
+        unless @audition_cycle
           redirect_to manage_production_path(production), alert: "No active call to audition. Please create one first."
         end
       else
@@ -89,16 +89,16 @@ class Manage::AuditionSessionsController < Manage::ManageController
     end
 
     def set_production
-      @production = @call_to_audition.production
+      @production = @audition_cycle.production
     end
 
     def set_audition_session_and_audition_and_audition_request
       if params[:audition_session_id].present?
-        @audition_session = @call_to_audition.audition_sessions.find(params.expect(:audition_session_id))
+        @audition_session = @audition_cycle.audition_sessions.find(params.expect(:audition_session_id))
         @audition = @audition_session.auditions.find(params.expect(:id))
         @audition_request = @audition.audition_request
       else
-        @audition_session = @call_to_audition.audition_sessions.find(params.expect(:id))
+        @audition_session = @audition_cycle.audition_sessions.find(params.expect(:id))
       end
     end
 

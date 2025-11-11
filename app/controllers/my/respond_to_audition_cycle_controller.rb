@@ -1,23 +1,23 @@
-class My::RespondToCallToAuditionController < ApplicationController
+class My::RespondToAuditionCycleController < ApplicationController
   allow_unauthenticated_access only: [ :entry, :inactive ]
 
   skip_before_action :show_my_sidebar
 
   before_action :ensure_user_is_signed_in, only: [ :form, :submitform, :success ]
-  before_action :get_call_to_audition_and_questions
-  before_action :ensure_call_to_audition_is_open, only: [ :entry, :form, :submitform, :success ]
+  before_action :get_audition_cycle_and_questions
+  before_action :ensure_audition_cycle_is_open, only: [ :entry, :form, :submitform, :success ]
 
   def entry
     # If the user is already signed in, redirect them to the form
     if authenticated?
-      redirect_to my_respond_to_call_to_audition_form_path(token: @call_to_audition.token), status: :see_other
+      redirect_to my_respond_to_call_to_audition_form_path(token: @audition_cycle.token), status: :see_other
       return
     end
 
     @user = User.new
 
     # Set the return_to path in case we sign up or sign in
-    session[:return_to] = my_respond_to_call_to_audition_form_path(token: @call_to_audition.token)
+    session[:return_to] = my_respond_to_call_to_audition_form_path(token: @audition_cycle.token)
   end
 
   def form
@@ -30,13 +30,13 @@ class My::RespondToCallToAuditionController < ApplicationController
     @person = Current.user.person
 
     # Load shows for availability section if enabled
-    if @call_to_audition.include_availability_section
-      @production = @call_to_audition.production
+    if @audition_cycle.include_availability_section
+      @production = @audition_cycle.production
       @shows = @production.shows.order(:date_and_time)
 
       # Filter by event types if specified
-      if @call_to_audition.availability_event_types.present?
-        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      if @audition_cycle.availability_event_types.present?
+        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
       end
 
       # Load existing availability data
@@ -47,9 +47,9 @@ class My::RespondToCallToAuditionController < ApplicationController
     end
 
     # First we'll check if they've already responded to this call to audition
-    if @call_to_audition.audition_requests.exists?(person: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(person: Current.user.person)
 
-      @audition_request = @call_to_audition.audition_requests.find_by(person: Current.user.person)
+      @audition_request = @audition_cycle.audition_requests.find_by(person: Current.user.person)
       @answers = {}
       @questions.each do |question|
         answer = @audition_request.answers.find_by(question: question)
@@ -73,16 +73,16 @@ class My::RespondToCallToAuditionController < ApplicationController
     @person = Current.user.person
 
     # Associate the person with the production company if not already
-    production_company = @call_to_audition.production.production_company
+    production_company = @audition_cycle.production.production_company
     unless @person.production_companies.include?(production_company)
       @person.production_companies << production_company
     end
 
     # We may be updating an existing response, so check for that first
-    if @call_to_audition.audition_requests.exists?(person: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(person: Current.user.person)
 
       # Get the person and audition request
-      @audition_request = @call_to_audition.audition_requests.find_by(person: @person)
+      @audition_request = @audition_cycle.audition_requests.find_by(person: @person)
 
       # Update the answers
       @answers = {}
@@ -99,7 +99,7 @@ class My::RespondToCallToAuditionController < ApplicationController
 
       # It's a new request, so instantiate the objects
       @audition_request = AuditionRequest.new(person: @person)
-      @audition_request.call_to_audition = @call_to_audition
+      @audition_request.call_to_audition = @audition_cycle
 
       # Loop through the questions and store the answers
       @answers = {}
@@ -128,11 +128,11 @@ class My::RespondToCallToAuditionController < ApplicationController
 
     # Validate required availability if enabled
     @missing_availability = false
-    if @call_to_audition.include_availability_section && @call_to_audition.require_all_availability
+    if @audition_cycle.include_availability_section && @audition_cycle.require_all_availability
       # Load shows to check
       @shows = @production.shows.order(:date_and_time)
-      if @call_to_audition.availability_event_types.present?
-        @shows = @shows.where(event_type: @call_to_audition.availability_event_types)
+      if @audition_cycle.availability_event_types.present?
+        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
       end
 
       # Check if all shows have a response
@@ -164,7 +164,7 @@ class My::RespondToCallToAuditionController < ApplicationController
       @audition_request.save!
 
       # Save availability data if included
-      if @call_to_audition.include_availability_section && params[:availability].present?
+      if @audition_cycle.include_availability_section && params[:availability].present?
         params[:availability].each do |show_id, status|
           next if status.blank?
 
@@ -185,7 +185,7 @@ class My::RespondToCallToAuditionController < ApplicationController
         end
       end
 
-      redirect_to my_respond_to_call_to_audition_success_path(token: @call_to_audition.token), status: :see_other
+      redirect_to my_respond_to_call_to_audition_success_path(token: @audition_cycle.token), status: :see_other
     else
       render :form
     end
@@ -195,26 +195,26 @@ class My::RespondToCallToAuditionController < ApplicationController
   end
 
   def inactive
-    if @call_to_audition.timeline_status == :open && @call_to_audition.form_reviewed && params[:force].blank?
-      redirect_to respond_to_call_to_audition_path(token: @call_to_audition.token), status: :see_other
+    if @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed && params[:force].blank?
+      redirect_to respond_to_call_to_audition_path(token: @audition_cycle.token), status: :see_other
     end
   end
 
-  def get_call_to_audition_and_questions
-    @call_to_audition = CallToAudition.find_by(token: params[:token].upcase)
-    @questions = @call_to_audition.questions.order(:position) if @call_to_audition.present?
+  def get_audition_cycle_and_questions
+    @audition_cycle = AuditionCycle.find_by(token: params[:token].upcase)
+    @questions = @audition_cycle.questions.order(:position) if @audition_cycle.present?
 
-    if @call_to_audition.nil?
+    if @audition_cycle.nil?
       redirect_to root_path, alert: "Invalid call to audition"
       return
     end
 
-    @production = @call_to_audition.production
+    @production = @audition_cycle.production
   end
 
-  def ensure_call_to_audition_is_open
-    unless @call_to_audition.timeline_status == :open && @call_to_audition.form_reviewed
-      redirect_to my_respond_to_call_to_audition_inactive_path(token: @call_to_audition.token), status: :see_other
+  def ensure_audition_cycle_is_open
+    unless @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed
+      redirect_to my_respond_to_call_to_audition_inactive_path(token: @audition_cycle.token), status: :see_other
     end
   end
 

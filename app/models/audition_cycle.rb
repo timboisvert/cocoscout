@@ -1,4 +1,4 @@
-class CallToAudition < ApplicationRecord
+class AuditionCycle < ApplicationRecord
   has_many :audition_requests, dependent: :destroy
   has_many :audition_sessions, dependent: :destroy
   has_many :questions, as: :questionable, dependent: :destroy
@@ -71,11 +71,11 @@ class CallToAudition < ApplicationRecord
 
   def only_one_active_per_production
     if active && production_id.present?
-      existing = CallToAudition.where(production_id: production_id, active: true)
+      existing = AuditionCycle.where(production_id: production_id, active: true)
                                 .where.not(id: id)
                                 .exists?
       if existing
-        errors.add(:active, "can only have one active call to audition per production")
+        errors.add(:active, "can only have one active audition cycle per production")
       end
     end
   end

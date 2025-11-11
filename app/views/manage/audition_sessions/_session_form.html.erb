@@ -1,5 +1,5 @@
 <% audition_session ||= AuditionSession.new %>
-<%= form_with(model: [:manage, @production, @call_to_audition, audition_session], local: true, class: "contents") do |form| %>
+<%= form_with(model: [:manage, @production, @audition_cycle, audition_session], local: true, class: "contents") do |form| %>
   <% if audition_session.errors.any? %>
     <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mb-3">
       <h2><%= pluralize(audition_session.errors.count, "error") %> prohibited this audition_session from being saved:</h2>

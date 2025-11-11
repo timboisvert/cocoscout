@@ -1,11 +1,11 @@
 class AuditionSession < ApplicationRecord
-  belongs_to :call_to_audition
-  has_one :production, through: :call_to_audition
+  belongs_to :audition_cycle
+  has_one :production, through: :audition_cycle
   has_many :auditions, dependent: :destroy
   belongs_to :location
 
   validates :start_at, presence: true
-  validates :call_to_audition, presence: true
+  validates :audition_cycle, presence: true
   validates :location, presence: true
 
   def display_name

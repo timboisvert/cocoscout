@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_11_203237) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -59,51 +59,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
     t.index ["question_id"], name: "index_answers_on_question_id"
   end
 
-  create_table "audition_email_assignments", force: :cascade do |t|
-    t.integer "call_to_audition_id", null: false
-    t.datetime "created_at", null: false
-    t.string "email_group_id"
-    t.integer "person_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["call_to_audition_id"], name: "index_audition_email_assignments_on_call_to_audition_id"
-    t.index ["person_id"], name: "index_audition_email_assignments_on_person_id"
-  end
-
-  create_table "audition_requests", force: :cascade do |t|
-    t.integer "call_to_audition_id", null: false
-    t.datetime "created_at", null: false
-    t.integer "person_id", null: false
-    t.integer "status", default: 0
-    t.datetime "updated_at", null: false
-    t.string "video_url"
-    t.index ["call_to_audition_id"], name: "index_audition_requests_on_call_to_audition_id"
-    t.index ["person_id"], name: "index_audition_requests_on_person_id"
-  end
-
-  create_table "audition_sessions", force: :cascade do |t|
-    t.integer "call_to_audition_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "end_at"
-    t.integer "location_id"
-    t.integer "maximum_auditionees"
-    t.datetime "start_at"
-    t.datetime "updated_at", null: false
-    t.index ["call_to_audition_id"], name: "index_audition_sessions_on_call_to_audition_id"
-    t.index ["location_id"], name: "index_audition_sessions_on_location_id"
-  end
-
-  create_table "auditions", force: :cascade do |t|
-    t.integer "audition_request_id", null: false
-    t.integer "audition_session_id"
-    t.datetime "created_at", null: false
-    t.integer "person_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
-    t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
-    t.index ["person_id"], name: "index_auditions_on_person_id"
-  end
-
-  create_table "call_to_auditions", force: :cascade do |t|
+  create_table "audition_cycles", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "audition_type", default: "in_person", null: false
     t.text "availability_event_types"
@@ -119,12 +75,56 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false
-    t.index ["production_id", "active"], name: "index_call_to_auditions_on_production_id_and_active", unique: true, where: "active = true"
-    t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
+    t.index ["production_id", "active"], name: "index_audition_cycles_on_production_id_and_active", unique: true, where: "active = true"
+    t.index ["production_id"], name: "index_audition_cycles_on_production_id"
+  end
+
+  create_table "audition_email_assignments", force: :cascade do |t|
+    t.integer "audition_cycle_id", null: false
+    t.datetime "created_at", null: false
+    t.string "email_group_id"
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audition_cycle_id"], name: "index_audition_email_assignments_on_audition_cycle_id"
+    t.index ["person_id"], name: "index_audition_email_assignments_on_person_id"
+  end
+
+  create_table "audition_requests", force: :cascade do |t|
+    t.integer "audition_cycle_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.integer "status", default: 0
+    t.datetime "updated_at", null: false
+    t.string "video_url"
+    t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
+    t.index ["person_id"], name: "index_audition_requests_on_person_id"
+  end
+
+  create_table "audition_sessions", force: :cascade do |t|
+    t.integer "audition_cycle_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "end_at"
+    t.integer "location_id"
+    t.integer "maximum_auditionees"
+    t.datetime "start_at"
+    t.datetime "updated_at", null: false
+    t.index ["audition_cycle_id"], name: "index_audition_sessions_on_audition_cycle_id"
+    t.index ["location_id"], name: "index_audition_sessions_on_location_id"
+  end
+
+  create_table "auditions", force: :cascade do |t|
+    t.integer "audition_request_id", null: false
+    t.integer "audition_session_id"
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
+    t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
+    t.index ["person_id"], name: "index_auditions_on_person_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
-    t.integer "call_to_audition_id", null: false
+    t.integer "audition_cycle_id", null: false
     t.integer "cast_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
@@ -132,7 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
     t.integer "person_id", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
-    t.index ["call_to_audition_id"], name: "index_cast_assignment_stages_on_call_to_audition_id"
+    t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
     t.index ["cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["cast_id"], name: "index_cast_assignment_stages_on_cast_id"
     t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
@@ -154,14 +154,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
   end
 
   create_table "email_groups", force: :cascade do |t|
-    t.integer "call_to_audition_id", null: false
+    t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
     t.text "email_template"
     t.string "group_id"
     t.string "group_type"
     t.string "name"
     t.datetime "updated_at", null: false
-    t.index ["call_to_audition_id"], name: "index_email_groups_on_call_to_audition_id"
+    t.index ["audition_cycle_id"], name: "index_email_groups_on_audition_cycle_id"
   end
 
   create_table "invitations", force: :cascade do |t|
@@ -395,20 +395,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_162907) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
-  add_foreign_key "audition_email_assignments", "call_to_auditions"
+  add_foreign_key "audition_cycles", "productions"
+  add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_email_assignments", "people"
-  add_foreign_key "audition_requests", "call_to_auditions"
+  add_foreign_key "audition_requests", "audition_cycles"
   add_foreign_key "audition_requests", "people"
-  add_foreign_key "audition_sessions", "call_to_auditions"
+  add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
-  add_foreign_key "call_to_auditions", "productions"
   add_foreign_key "cast_assignment_stages", "casts"
   add_foreign_key "cast_assignment_stages", "people"
   add_foreign_key "casts", "productions"
-  add_foreign_key "email_groups", "call_to_auditions"
+  add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "invitations", "production_companies"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "production_companies"
