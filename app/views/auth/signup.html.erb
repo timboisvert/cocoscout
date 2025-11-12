@@ -6,11 +6,12 @@
   </div>
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 lg:items-start">
+    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
       <!-- Left Column: Value Proposition -->
       <div class="order-2 lg:order-1">
-        <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
+        <div class="lg:sticky lg:top-8">
+          <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <div class="inline-block bg-pink-100 text-pink-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
               FREE FOR PERFORMERS
             </div>
@@ -74,11 +75,11 @@
             </div>
           </div>
         </div>
+      </div>
 
       <!-- Right Column: Signup Form -->
       <div class="order-1 lg:order-2">
-        <div class="lg:sticky lg:top-8">
-          <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+        <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
           <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Create your account</h2>
           <p class="text-sm text-slate-600 mb-6 text-center">Start collaborating on your next great show</p>
 
@@ -140,7 +141,6 @@
           <p class="text-xs text-slate-500">
             By creating an account, you agree to our <%= link_to "Terms of Service", terms_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %> and <%= link_to "Privacy Policy", privacy_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
           </p>
-        </div>
         </div>
       </div>
 

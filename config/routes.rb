@@ -40,6 +40,8 @@ Rails.application.routes.draw do
   # Talent-facing interface
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
+    get   "/welcome",                       to: "dashboard#welcome",        as: "welcome"
+    post  "/dismiss_welcome",               to: "dashboard#dismiss_welcome", as: "dismiss_welcome"
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",               as: "show"
