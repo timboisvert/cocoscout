@@ -56,18 +56,9 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.delivery_method = :mailgun
   config.action_mailer.mailgun_settings = {
-    api_key: ENV["MAILGUN_API_KEY"], # Use environment variables for security
+    api_key: ENV["MAILGUN_API_KEY"],
     domain: "cocoscout.com"
   }
-
-  # config.action_mailer.delivery_method = :smtp
-  # config.action_mailer.smtp_settings = {
-  #   address: "smtp.mailersend.net",
-  #   port: 587,
-  #   user_name: ENV["MAILERSEND_USER_NAME"],
-  #   password: ENV["MAILERSEND_API_KEY"],
-  #   starttls: true
-  # }
   config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
 
 

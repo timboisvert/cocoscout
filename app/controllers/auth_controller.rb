@@ -10,7 +10,8 @@ class AuthController < ApplicationController
 
   def handle_signup
     # Get the email and show an error if it already exists
-    normalized_email = user_params[:email_address].to_s.strip.downcase
+    # Remove null bytes to prevent database errors
+    normalized_email = user_params[:email_address].to_s.delete("\0").strip.downcase
     if User.exists?(email_address: normalized_email)
       @user = User.new(user_params)
       @user_exists_error = true
@@ -126,7 +127,11 @@ class AuthController < ApplicationController
       session[:reset_link_expired_or_invalid] = true
       redirect_to password_path and return
     end
-    if @user.update(password: params[:password], password_reset_token: nil, password_reset_sent_at: nil)
+
+    # Remove null bytes from password to prevent BCrypt errors
+    sanitized_password = params[:password].to_s.delete("\0")
+
+    if @user.update(password: sanitized_password, password_reset_token: nil, password_reset_sent_at: nil)
       session[:password_successfully_reset] = true
       redirect_to signin_path and return
     else
@@ -157,7 +162,10 @@ class AuthController < ApplicationController
       redirect_to signin_path and return
     end
 
-    if @user.update(password: params[:password], invitation_token: nil, invitation_sent_at: nil)
+    # Remove null bytes from password to prevent BCrypt errors
+    sanitized_password = params[:password].to_s.delete("\0")
+
+    if @user.update(password: sanitized_password, invitation_token: nil, invitation_sent_at: nil)
       # Automatically sign them in
       start_new_session_for @user
       redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your password has been set." and return
@@ -170,6 +178,10 @@ class AuthController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:email_address, :password)
+    permitted_params = params.require(:user).permit(:email_address, :password)
+    # Remove null bytes from email and password to prevent database/BCrypt errors
+    permitted_params[:email_address] = permitted_params[:email_address].to_s.delete("\0") if permitted_params[:email_address].present?
+    permitted_params[:password] = permitted_params[:password].to_s.delete("\0") if permitted_params[:password].present?
+    permitted_params
   end
 end
