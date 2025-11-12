@@ -71,7 +71,7 @@
                                             </div>
                                         <% end %>
 
-                                        <%= link_to "Edit my Sign-up", my_respond_to_audition_cycle_form_path(audition_request.audition_cycle.token), class: "text-xs text-pink-500 underline", target: "_blank" %>
+                                        <%= link_to "Edit my Sign-up", my_submit_audition_request_form_path(audition_request.audition_cycle.token), class: "text-xs text-pink-500 underline", target: "_blank" %>
 
                                     <% elsif audition_request.audition_cycle.timeline_status == :closed %>
                                         <div class="text-xs text-gray-500 mt-1">Sign-up window closed on <%= audition_request.audition_cycle.closes_at.strftime('%b %d, %Y') %></div>

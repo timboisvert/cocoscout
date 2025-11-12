@@ -1,4 +1,4 @@
-class My::RespondToAuditionCycleController < ApplicationController
+class My::SubmitAuditionRequestController < ApplicationController
   allow_unauthenticated_access only: [ :entry, :inactive ]
 
   skip_before_action :show_my_sidebar
@@ -10,20 +10,20 @@ class My::RespondToAuditionCycleController < ApplicationController
   def entry
     # If the user is already signed in, redirect them to the form
     if authenticated?
-      redirect_to my_respond_to_call_to_audition_form_path(token: @audition_cycle.token), status: :see_other
+      redirect_to my_submit_audition_request_form_path(token: @audition_cycle.token), status: :see_other
       return
     end
 
     @user = User.new
 
     # Set the return_to path in case we sign up or sign in
-    session[:return_to] = my_respond_to_call_to_audition_form_path(token: @audition_cycle.token)
+    session[:return_to] = my_submit_audition_request_form_path(token: @audition_cycle.token)
   end
 
   def form
     # If the user isn't signed in, redirect them to the entry
     unless authenticated?
-      redirect_to respond_to_call_to_audition_path, status: :see_other
+      redirect_to submit_audition_request_path, status: :see_other
       return
     end
 
@@ -46,7 +46,7 @@ class My::RespondToAuditionCycleController < ApplicationController
       end
     end
 
-    # First we'll check if they've already responded to this call to audition
+    # First we'll check if they've already responded to this audition cycle
     if @audition_cycle.audition_requests.exists?(person: Current.user.person)
 
       @audition_request = @audition_cycle.audition_requests.find_by(person: Current.user.person)
@@ -99,7 +99,7 @@ class My::RespondToAuditionCycleController < ApplicationController
 
       # It's a new request, so instantiate the objects
       @audition_request = AuditionRequest.new(person: @person)
-      @audition_request.call_to_audition = @audition_cycle
+      @audition_request.audition_cycle = @audition_cycle
 
       # Loop through the questions and store the answers
       @answers = {}
@@ -185,7 +185,7 @@ class My::RespondToAuditionCycleController < ApplicationController
         end
       end
 
-      redirect_to my_respond_to_call_to_audition_success_path(token: @audition_cycle.token), status: :see_other
+      redirect_to my_submit_audition_request_success_path(token: @audition_cycle.token), status: :see_other
     else
       render :form
     end
@@ -196,7 +196,7 @@ class My::RespondToAuditionCycleController < ApplicationController
 
   def inactive
     if @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed && params[:force].blank?
-      redirect_to respond_to_call_to_audition_path(token: @audition_cycle.token), status: :see_other
+      redirect_to submit_audition_request_path(token: @audition_cycle.token), status: :see_other
     end
   end
 
@@ -205,7 +205,7 @@ class My::RespondToAuditionCycleController < ApplicationController
     @questions = @audition_cycle.questions.order(:position) if @audition_cycle.present?
 
     if @audition_cycle.nil?
-      redirect_to root_path, alert: "Invalid call to audition"
+      redirect_to root_path, alert: "Invalid audition cycle"
       return
     end
 
@@ -214,13 +214,13 @@ class My::RespondToAuditionCycleController < ApplicationController
 
   def ensure_audition_cycle_is_open
     unless @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed
-      redirect_to my_respond_to_call_to_audition_inactive_path(token: @audition_cycle.token), status: :see_other
+      redirect_to my_submit_audition_request_inactive_path(token: @audition_cycle.token), status: :see_other
     end
   end
 
   def ensure_user_is_signed_in
     unless authenticated?
-      redirect_to respond_to_call_to_audition_path, status: :see_other
+      redirect_to submit_audition_request_path, status: :see_other
     end
   end
 

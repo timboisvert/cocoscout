@@ -1,12 +1,16 @@
 class Production < ApplicationRecord
+    # Delete cast_assignment_stages first since they reference both audition_cycles and casts
+    before_destroy :delete_cast_assignment_stages
+    before_destroy :delete_casts_people_joins
+
     has_many :posters, dependent: :destroy
     has_many :shows, dependent: :destroy
     has_many :audition_cycles, dependent: :destroy
     has_many :audition_requests, through: :audition_cycles
-    has_many :casts, dependent: :destroy
-    has_many :roles, dependent: :destroy
+    has_many :casts, dependent: :delete_all
+    has_many :roles, dependent: :delete_all
     has_many :show_person_role_assignments, through: :shows
-    has_many :production_permissions, dependent: :destroy
+    has_many :production_permissions, dependent: :delete_all
     belongs_to :production_company
 
     has_one_attached :logo, dependent: :purge_later do |attachable|
@@ -54,6 +58,23 @@ class Production < ApplicationRecord
     end
 
     private
+
+    def delete_cast_assignment_stages
+        # Delete all cast_assignment_stages for all audition_cycles in this production
+        CastAssignmentStage.where(audition_cycle_id: audition_cycles.pluck(:id)).delete_all
+    end
+
+    def delete_casts_people_joins
+        # Delete all entries in the casts_people join table for this production's casts
+        ActiveRecord::Base.connection.execute(
+            "DELETE FROM casts_people WHERE cast_id IN (SELECT id FROM casts WHERE production_id = #{id})"
+        )
+
+        # Delete all auditions before deleting audition_requests or audition_sessions
+        # Auditions reference both audition_requests and audition_sessions
+        audition_session_ids = AuditionSession.joins(:audition_cycle).where(audition_cycles: { production_id: id }).pluck(:id)
+        Audition.where(audition_session_id: audition_session_ids).delete_all
+    end
 
     def logo_content_type
         if logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png])

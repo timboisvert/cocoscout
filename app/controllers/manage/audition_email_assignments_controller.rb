@@ -6,11 +6,11 @@
 module Manage
   class AuditionEmailAssignmentsController < ManageController
     before_action :set_production
-    before_action :set_call_to_audition
+    before_action :set_audition_cycle
     before_action :set_assignment, only: [ :update, :destroy ]
 
     def create
-      @assignment = @call_to_audition.audition_email_assignments.new(assignment_params)
+      @assignment = @audition_cycle.audition_email_assignments.new(assignment_params)
       if @assignment.save
         head :ok
       else
@@ -40,12 +40,12 @@ module Manage
       @production = Current.production_company.productions.find(params[:production_id])
     end
 
-    def set_call_to_audition
-      @call_to_audition = @production.call_to_audition
+    def set_audition_cycle
+      @audition_cycle = @production.audition_cycle
     end
 
     def set_assignment
-      @assignment = @call_to_audition.audition_email_assignments.find(params[:id])
+      @assignment = @audition_cycle.audition_email_assignments.find(params[:id])
     end
 
     def assignment_params

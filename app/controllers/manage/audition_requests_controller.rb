@@ -61,18 +61,18 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   def create
     @audition_request = @audition_cycle.audition_requests.new(audition_request_params)
-    @audition_request.call_to_audition = @audition_cycle
+    @audition_request.audition_cycle = @audition_cycle
     @audition_request.status = :unreviewed
 
     if @audition_request.save
-      redirect_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle), notice: "Sign-up was successfully created"
+      redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), notice: "Sign-up was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit_answers
-    @questions = @audition_request.call_to_audition.questions.order(:position) if @audition_cycle.present?
+    @questions = @audition_request.audition_cycle.questions.order(:position) if @audition_cycle.present?
 
     @answers = {}
     @questions.each do |question|
@@ -85,7 +85,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
   end
 
   def update
-    @questions = @audition_request.call_to_audition.questions.order(:position) if @audition_cycle.present?
+    @questions = @audition_request.audition_cycle.questions.order(:position) if @audition_cycle.present?
     @answers = {}
     if params[:question]
       params[:question].each do |id, keyValue|
@@ -113,7 +113,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
       render :edit_answers, status: :unprocessable_entity
     elsif @audition_request.valid?
       @audition_request.save!
-      redirect_to manage_production_call_to_audition_audition_request_path(@production, @audition_cycle, @audition_request), notice: "Sign-up successfully updated", status: :see_other
+      redirect_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request), notice: "Sign-up successfully updated", status: :see_other
     else
       render :edit_answers, status: :unprocessable_entity
     end
@@ -121,14 +121,14 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
   def destroy
     @audition_request.destroy!
-    redirect_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle), notice: "Sign-up successfully deleted", status: :see_other
+    redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), notice: "Sign-up successfully deleted", status: :see_other
   end
 
   def set_status
     @audition_request.status = params.expect(:status)
 
     if @audition_request.save
-      redirect_back_or_to manage_production_call_to_audition_audition_requests_path(@production, @audition_cycle)
+      redirect_back_or_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)
     else
       render :show, status: :unprocessable_entity
     end
@@ -150,7 +150,7 @@ class Manage::AuditionRequestsController < Manage::ManageController
       else
         @audition_cycle = @production.active_audition_cycle
         unless @audition_cycle
-          redirect_to manage_production_path(@production), alert: "No active call to audition. Please create one first."
+          redirect_to manage_production_path(@production), alert: "No active audition cycle. Please create one first."
         end
       end
     end

@@ -10,7 +10,7 @@ class My::DashboardController < ApplicationController
       .order("audition_sessions.start_at")
       .distinct
 
-    # My audition requests for call to auditions that are still open
+    # My audition requests for audition cycles that are still open
     @open_audition_requests = Current.user.person.audition_requests
       .joins(:audition_cycle)
       .where("audition_cycles.closes_at >= ?", Time.current)

@@ -1,7 +1,7 @@
 module MyHelper
   def in_person_signup_status_name(audition_request)
     # If audition invitations haven't been finalized, show "In Review"
-    if audition_request.call_to_audition.finalize_audition_invitations != true
+    if audition_request.audition_cycle.finalize_audition_invitations != true
       return "<div class=\"bg-gray-500 text-white px-2 py-1 text-sm rounded-lg\">In Review</div>".html_safe
     end
 
@@ -19,7 +19,7 @@ module MyHelper
 
   def in_person_signup_status_text(audition_request)
     # If audition invitations haven't been finalized, show "In Review"
-    if audition_request.call_to_audition.finalize_audition_invitations != true
+    if audition_request.audition_cycle.finalize_audition_invitations != true
       return "Your sign-up is in review. Results will be shared once the audition schedule is finalized."
     end
 
@@ -37,7 +37,7 @@ module MyHelper
 
   def video_audition_status_name(audition_request)
     # If audition invitations haven't been finalized, show "In Review"
-    if audition_request.call_to_audition.finalize_audition_invitations != true
+    if audition_request.audition_cycle.finalize_audition_invitations != true
       return "<div class=\"bg-gray-500 text-white px-2 py-1 text-sm rounded-lg\">In Review</div>".html_safe
     end
 
@@ -55,7 +55,7 @@ module MyHelper
 
   def video_audition_status_text(audition_request)
     # If audition invitations haven't been finalized, show "In Review"
-    if audition_request.call_to_audition.finalize_audition_invitations != true
+    if audition_request.audition_cycle.finalize_audition_invitations != true
       return "Your video audition is in review. Results will be shared once the audition schedule is finalized."
     end
 

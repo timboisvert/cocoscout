@@ -22,7 +22,7 @@
     <% audition_cycle = @audition_cycle %>
 
     <%# Check if any notifications have been sent %>
-    <% has_sent_notifications = @cast_assignment_stages.any?(&:finalized?) %>
+    <% has_sent_notifications = audition_cycle.casting_finalized_at.present? %>
     <% notified_stages = @cast_assignment_stages.select(&:finalized?) %>
 
     <%# Show summary if notifications have been sent %>

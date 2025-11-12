@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_11_203237) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_11_235018) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -63,6 +63,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_11_203237) do
     t.boolean "active", default: true, null: false
     t.string "audition_type", default: "in_person", null: false
     t.text "availability_event_types"
+    t.datetime "casting_finalized_at"
     t.datetime "closes_at"
     t.datetime "created_at", null: false
     t.boolean "finalize_audition_invitations", default: false

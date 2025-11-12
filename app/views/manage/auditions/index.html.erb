@@ -20,7 +20,7 @@
       <div class="p-6">
         <%
           # Check if casting has been completed
-          has_casting_notifications = @active_audition_cycle.cast_assignment_stages.where(status: :finalized).any?
+          has_casting_notifications = @active_audition_cycle.casting_finalized_at.present?
         %>
 
         <% if has_casting_notifications %>
@@ -34,7 +34,7 @@
               <div class="flex-1">
                 <h4 class="text-sm font-semibold text-green-900 mb-1">Audition Process Complete</h4>
                 <p class="text-sm text-green-800">
-                  Casting notifications have been sent and this audition cycle is complete. You can now archive this call to audition and start a new one if needed.
+                  Casting notifications have been sent and this audition cycle is complete. You can now archive this audition cycle and start a new one if needed.
                 </p>
               </div>
             </div>
@@ -259,11 +259,25 @@
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= cast_people_count %> <%= 'person'.pluralize(cast_people_count) %> added to <%= 'a cast'.pluralize(cast_people_count) %></p>
                     <% end %>
                     <%
-                      finalized_stages = @active_audition_cycle.cast_assignment_stages.where(status: :finalized)
-                      if finalized_stages.any?
+                      # Check if casting was finalized
+                      if @active_audition_cycle.casting_finalized_at.present?
+                        finalized_stages = @active_audition_cycle.cast_assignment_stages.where(status: :finalized)
+                        # Count total people who auditioned to show how many were notified
+                        audition_session_ids = @active_audition_cycle.audition_sessions.pluck(:id)
+                        total_auditioned = Person.joins(:auditions).where(auditions: { audition_session_id: audition_session_ids }).distinct.count
+
+                        if finalized_stages.any?
                     %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ Casting decision notifications sent to <%= finalized_stages.count %> <%= 'person'.pluralize(finalized_stages.count) %></p>
-                    <% end %>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ Casting decision notifications sent to <%= total_auditioned %> <%= 'person'.pluralize(total_auditioned) %></p>
+                    <%
+                        else
+                    %>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ Casting finalized with no new cast members added</p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ Casting decision notifications sent to <%= total_auditioned %> <%= 'person'.pluralize(total_auditioned) %></p>
+                    <%
+                        end
+                      end
+                    %>
                   </div>
                 </div>
               </div>
@@ -288,9 +302,9 @@
     <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
       <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Past Audition Cycles</h3>
     </div>
-    <% if @past_calls_to_audition.any? %>
+    <% if @past_audition_cycles.any? %>
       <div class="divide-y divide-gray-200">
-        <% @past_calls_to_audition.each do |audition_cycle| %>
+        <% @past_audition_cycles.each do |audition_cycle| %>
           <%= link_to manage_production_audition_cycle_path(@production, audition_cycle), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
             <div class="flex justify-between items-start">
               <div>

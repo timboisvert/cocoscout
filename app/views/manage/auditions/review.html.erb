@@ -141,7 +141,7 @@
         <% accepted_requests = audition_requests.where(status: :accepted) %>
         <% not_accepted_requests = audition_requests.where.not(status: :accepted) %>
 
-        <% # Get all scheduled person IDs for this call to audition %>
+        <% # Get all scheduled person IDs for this audition cycle %>
         <% scheduled_person_ids = audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
 
         <% # Load email assignments for all people %>

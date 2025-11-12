@@ -14,7 +14,7 @@ class DashboardService
   private
 
   def open_calls_summary
-    call = @production.call_to_audition
+    call = @production.audition_cycle
     return { total_open: 0, with_auditionees: [] } if call.blank?
 
     is_open = call.opens_at <= Time.current && call.closes_at >= Time.current

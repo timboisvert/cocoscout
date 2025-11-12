@@ -25,7 +25,7 @@
     </div>
 
     <%
-        ar = AuditionRequest.joins(:audition_cycle).where(call_to_auditions: { production_id: production.id })
+        ar = AuditionRequest.joins(:audition_cycle).where(audition_cycles: { production_id: production.id })
 
         if filter == "all"
             ar = ar.where(status: [ :unreviewed, :undecided, :passed, :accepted ])

@@ -17,10 +17,10 @@ namespace :seed do
     end
     puts "Deleted #{existing_sessions.count} existing audition sessions"
 
-    # Create or find call to audition
-    call_to_audition = production.call_to_audition
-    unless call_to_audition
-      call_to_audition = CallToAudition.create!(
+    # Create or find audition cycle
+    audition_cycle = production.audition_cycle
+    unless audition_cycle
+      audition_cycle = AuditionCycle.create!(
         production: production,
         audition_type: :in_person,
         opens_at: 1.week.ago,
@@ -29,18 +29,18 @@ namespace :seed do
         include_availability_section: true,
         token: SecureRandom.hex(16)
       )
-      puts "Created new call to audition"
+      puts "Created new audition cycle"
     end
 
     # Get existing questions or create sample questions if none exist
-    questions = call_to_audition.questions.to_a
+    questions = audition_cycle.questions.to_a
     if questions.empty?
       puts "Creating sample questions..."
-      questions << call_to_audition.questions.create!(
+      questions << audition_cycle.questions.create!(
         text: "Why do you want to be in this production?",
         question_type: "text"
       )
-      questions << call_to_audition.questions.create!(
+      questions << audition_cycle.questions.create!(
         text: "Do you have any conflicts with rehearsal dates?",
         question_type: "yesno"
       )
@@ -65,7 +65,7 @@ namespace :seed do
     3.times do |i|
       session = AuditionSession.create!(
         production: production,
-        call_to_audition: call_to_audition,
+        audition_cycle: audition_cycle,
         location: location,
         start_at: base_time + (i * 1).hours,
         end_at: base_time + (i * 1).hours + 50.minutes,
@@ -81,11 +81,11 @@ namespace :seed do
 
     # Get availability events if they exist
     availability_events = []
-    if call_to_audition.include_availability_section && call_to_audition.availability_event_types.present?
+    if audition_cycle.include_availability_section && audition_cycle.availability_event_types.present?
       begin
-        availability_event_ids = JSON.parse(call_to_audition.availability_event_types)
+        availability_event_ids = JSON.parse(audition_cycle.availability_event_types)
         availability_events = production.shows.where(id: availability_event_ids)
-        puts "Found #{availability_events.count} events configured in call to audition"
+        puts "Found #{availability_events.count} events configured in audition cycle"
       rescue JSON::ParserError
         puts "No valid availability events configured"
       end
@@ -192,7 +192,7 @@ namespace :seed do
     audition_requests = []
     people.each_with_index do |person, index|
       audition_request = AuditionRequest.create!(
-        call_to_audition: call_to_audition,
+        audition_cycle: audition_cycle,
         person: person,
         status: :unreviewed
       )
@@ -296,7 +296,7 @@ namespace :seed do
     puts "- Test people created: 60 (all with TEST suffix)"
     puts "- Headshots: Created for all 60 people (from pravatar.cc)"
     puts "- Resumes: Created for all 60 people (JPEG images)"
-    puts "- Call to audition: #{call_to_audition.id}"
+    puts "- Audition cycle: #{audition_cycle.id}"
     puts "- Questions: #{questions.count}"
     puts "- Audition sessions created: #{sessions.count} (1 week from now, 1 hour apart, max 8 people each)"
     puts "- Audition requests: 60 total (all with answers)"

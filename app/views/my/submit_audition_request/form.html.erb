@@ -2,7 +2,7 @@
 
 <% content_for :head do %>
   <meta name="description" content="Apply to audition for <%= @production.name %>">
-  <link rel="canonical" href="<%= respond_to_audition_cycle_url(@audition_cycle.token) %>">
+  <link rel="canonical" href="<%= submit_audition_request_url(@audition_cycle.token) %>">
 <% end %>
 
 <div class="max-w-4xl mx-auto p-0 sm:p-6 pt-3 sm:pt-6 mb-10">
@@ -20,7 +20,7 @@
     </div>
   <% end %>
 
-  <%= form_with(model: @audition_request, url: my_submit_respond_to_audition_cycle_form_path(@audition_cycle.token), method: :post, class: "contents", data: { turbo: false }) do |form| %>
+  <%= form_with(model: @audition_request, url: my_submit_submit_audition_request_form_path(@audition_cycle.token), method: :post, class: "contents", data: { turbo: false }) do |form| %>
 
     <%
       # Show person form if there's an error, or if profile is incomplete

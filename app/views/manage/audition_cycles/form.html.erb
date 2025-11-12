@@ -1,4 +1,4 @@
-<% content_for :title, "Editing call to audition" %>
+<% content_for :title, "Editing audition cycle" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -56,8 +56,8 @@
               <div class="ml-6 mt-2 space-y-1 <%= @audition_cycle.availability_event_types.present? ? '' : 'hidden' %>" data-availability-filter-target="checkboxes">
                 <% Show.event_types.keys.each do |event_type| %>
                   <div>
-                    <%= check_box_tag "audition_cycle[availability_event_types][]", event_type, @audition_cycle.availability_event_types&.include?(event_type), id: "call_to_audition_availability_event_types_#{event_type}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateEventList", availability_filter_target: "checkbox" } %>
-                    <%= label_tag "call_to_audition_availability_event_types_#{event_type}", event_type.titleize.pluralize, class: "ml-2 text-sm text-gray-700 cursor-pointer" %>
+                    <%= check_box_tag "audition_cycle[availability_event_types][]", event_type, @audition_cycle.availability_event_types&.include?(event_type), id: "audition_cycle_availability_event_types_#{event_type}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateEventList", availability_filter_target: "checkbox" } %>
+                    <%= label_tag "audition_cycle_availability_event_types_#{event_type}", event_type.titleize.pluralize, class: "ml-2 text-sm text-gray-700 cursor-pointer" %>
                   </div>
                 <% end %>
               </div>

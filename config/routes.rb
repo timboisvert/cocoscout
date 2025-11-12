@@ -31,7 +31,7 @@ Rails.application.routes.draw do
   end
 
   # Respond to an audition request
-  get "/a/:token", to: "my/respond_to_audition_cycle#entry", as: "respond_to_audition_cycle"
+  get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
   # Talent-facing interface
   namespace :my do
@@ -50,10 +50,10 @@ Rails.application.routes.draw do
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
-      get "/form", to: "respond_to_audition_cycle#form", as: "respond_to_audition_cycle_form"
-      post "/form", to: "respond_to_audition_cycle#submitform", as: "submit_respond_to_audition_cycle_form"
-      get "/success", to: "respond_to_audition_cycle#success", as: "respond_to_audition_cycle_success"
-      get "/inactive", to: "respond_to_audition_cycle#inactive", as: "respond_to_audition_cycle_inactive"
+      get "/form", to: "submit_audition_request#form", as: "submit_audition_request_form"
+      post "/form", to: "submit_audition_request#submitform", as: "submit_submit_audition_request_form"
+      get "/success", to: "submit_audition_request#success", as: "submit_audition_request_success"
+      get "/inactive", to: "submit_audition_request#inactive", as: "submit_audition_request_inactive"
     end
   end
 
