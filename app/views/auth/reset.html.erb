@@ -1,47 +1,88 @@
-<div class="flex flex-col items-center mt-2 sm:mt-10">
-    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-24 sm:w-36 object-contain select-none pointer-events-none" />
-</div>
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-20 sm:w-28 object-contain select-none pointer-events-none" />
+    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
+  </div>
 
-<div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
-  <h1 class="text-xl font-bold mb-4 text-center">Set Password</h1>
+  <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <div class="flex justify-center">
 
-  <% if @reset_link_expired_or_invalid %>
-    <div class="text-pink-500">
-      Reset link expired or invalid. Please try again.
-    </div>
-  <% end %>
+      <!-- Password Reset Form -->
+      <div class="w-full">
+        <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+          <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Set your new password</h2>
+          <p class="text-sm text-slate-600 mb-6 text-center">Enter a secure password for your account</p>
 
-  <% if @password_unsuccessfully_reset %>
-    <div class="text-pink-500">
-      Password couldn't be reset. Please try again.
-    </div>
-  <% end %>
+          <!-- Error Messages -->
+          <% if @reset_link_expired_or_invalid %>
+            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
+              <div class="flex items-start gap-2">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p class="font-medium mb-1">Reset link expired or invalid</p>
+                  <p>Please <%= link_to "request a new password reset link", password_path, class: "underline font-medium hover:text-pink-800" %>.</p>
+                </div>
+              </div>
+            </div>
+          <% end %>
 
-  <%= form_with url: reset_path(token: params[:token]), method: :post, local: true do |form| %>
+          <% if @password_unsuccessfully_reset %>
+            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
+              Password couldn't be reset. Please ensure it meets the requirements and try again.
+            </div>
+          <% end %>
 
-    <div class="mb-4" data-controller="password-visibility">
-      <div class="relative">
-        <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: "Enter new password", maxlength: 72, class: "block shadow-sm rounded-md border border-gray-400 px-3 py-2 mt-2 w-full pr-10", data: { password_visibility_target: "input" } %>
-        <button type="button"
-                data-action="password-visibility#toggle"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
-          <span data-password-visibility-target="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <%= form_with url: reset_path(token: params[:token]), method: :post, local: true, class: "space-y-5" do |form| %>
+            <div data-controller="password-visibility">
+              <label for="password" class="block text-sm font-medium text-slate-700 mb-1">New password</label>
+              <div class="relative">
+                <%= form.password_field :password,
+                    required: true,
+                    autocomplete: "new-password",
+                    placeholder: "Create a strong password",
+                    maxlength: 72,
+                    class: "block shadow-sm rounded-md border border-gray-300 px-3 py-2.5 w-full pr-10 focus:border-pink-500 focus:ring-pink-500",
+                    data: { password_visibility_target: "input" } %>
+                <button type="button"
+                        data-action="password-visibility#toggle"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                  <span data-password-visibility-target="icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </span>
+                </button>
+              </div>
+              <p class="mt-1.5 text-xs text-slate-500">Must be at least 8 characters long</p>
+            </div>
+
+            <div class="pt-2">
+              <%= form.submit "Set Password & Sign In", class: "w-full text-center rounded-md px-4 py-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold cursor-pointer transition shadow-sm hover:shadow-md" %>
+            </div>
+
+            <div class="text-center text-sm text-slate-600 pt-4">
+              <%= link_to signin_path, class: "text-pink-600 hover:text-pink-700 font-medium underline" do %>
+                Cancel and return to sign in
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Security note -->
+        <div class="mt-6 text-center">
+          <p class="text-xs text-slate-500 flex items-center justify-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-          </span>
-        </button>
+            Your connection is secure and encrypted
+          </p>
+        </div>
       </div>
+
     </div>
-
-    <div class="col-span-6 sm:flex sm:items-center sm:gap-4">
-      <%= form.submit "Set Password", class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-    </div>
-
-  <% end %>
-</div>
-
-<div class="flex flex-col items-center mt-6">
-    <h1 class="sm:p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
+  </div>
 </div>

@@ -9,6 +9,10 @@ Rails.application.routes.draw do
   post "/notify_me", to: "home#notify_me", as: "notify_me"
   get "/notify_me/success", to: "home#notify_me_success", as: "notify_me_success"
 
+  # Legal pages
+  get "/terms", to: "legal#terms", as: "terms"
+  get "/privacy", to: "legal#privacy", as: "privacy"
+
   # Authentication
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
