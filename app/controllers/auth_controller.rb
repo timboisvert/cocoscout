@@ -69,7 +69,12 @@ class AuthController < ApplicationController
   end
 
   def handle_signin
-    if user = User.authenticate_by(params.permit(:email_address, :password))
+    # Remove null bytes from credentials to prevent database/BCrypt errors
+    credentials = params.permit(:email_address, :password)
+    credentials[:email_address] = credentials[:email_address].to_s.delete("\0") if credentials[:email_address].present?
+    credentials[:password] = credentials[:password].to_s.delete("\0") if credentials[:password].present?
+
+    if user = User.authenticate_by(credentials)
 
       # Make sure we have a person for this user
       if user.person.nil?
@@ -104,7 +109,10 @@ class AuthController < ApplicationController
   end
 
   def handle_password
-    if user = User.find_by(email_address: params[:email_address])
+    # Remove null bytes to prevent database errors
+    sanitized_email = params[:email_address].to_s.delete("\0")
+
+    if user = User.find_by(email_address: sanitized_email)
       token = SecureRandom.urlsafe_base64(32)
       user.update(password_reset_token: token, password_reset_sent_at: Time.current)
       AuthMailer.password(user, token).deliver_later
