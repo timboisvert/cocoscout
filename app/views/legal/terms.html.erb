@@ -1,0 +1,159 @@
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <div class="border-b border-slate-200 bg-white px-6 py-6">
+    <div class="mx-auto flex w-full max-w-4xl items-center justify-between">
+      <%= link_to root_path, class: "flex items-center gap-3" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-10 w-10" %>
+        <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-4xl px-6 py-12">
+    <h1 class="text-4xl font-bold text-slate-900 mb-4 coustard-regular">Terms of Service</h1>
+    <p class="text-sm text-slate-500 mb-8">Last updated: November 12, 2025</p>
+
+    <div class="prose prose-slate max-w-none">
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">1. Acceptance of Terms</h2>
+        <p class="text-slate-700 mb-4">
+          Welcome to CocoScout. By accessing or using our platform, you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use our service.
+        </p>
+        <p class="text-slate-700">
+          CocoScout is a production management platform designed to help theater producers, directors, performers, and other production staff coordinate auditions, casting, scheduling, and communications for live theatrical productions.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">2. Account Types and Usage</h2>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">2.1 Free Performer Accounts</h3>
+        <p class="text-slate-700 mb-4">
+          All users receive a free performer account by default. Free accounts allow you to:
+        </p>
+        <ul class="list-disc pl-6 mb-4 text-slate-700 space-y-2">
+          <li>Sign up for auditions</li>
+          <li>View show schedules and rehearsal calendars</li>
+          <li>Communicate with castmates and production teams</li>
+          <li>Track your performance history</li>
+          <li>Manage your profile and headshots</li>
+        </ul>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">2.2 Paid Producer Accounts</h3>
+        <p class="text-slate-700 mb-4">
+          To create and manage productions, run auditions, or organize festivals, you must subscribe to a paid producer account. Paid features include:
+        </p>
+        <ul class="list-disc pl-6 mb-4 text-slate-700 space-y-2">
+          <li>Creating and managing productions</li>
+          <li>Running audition cycles and accepting applications</li>
+          <li>Coordinating casting and availability</li>
+          <li>Managing production teams and permissions</li>
+          <li>Centralizing cast communications and announcements</li>
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">3. User Responsibilities</h2>
+        <p class="text-slate-700 mb-4">You agree to:</p>
+        <ul class="list-disc pl-6 mb-4 text-slate-700 space-y-2">
+          <li>Provide accurate, current, and complete information during registration</li>
+          <li>Maintain the security of your account password</li>
+          <li>Notify us immediately of any unauthorized use of your account</li>
+          <li>Use the service in compliance with all applicable laws and regulations</li>
+          <li>Treat other users with respect and professionalism</li>
+          <li>Not use the service for any unlawful or fraudulent purposes</li>
+          <li>Not impersonate any person or entity</li>
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">4. Content and Intellectual Property</h2>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">4.1 Your Content</h3>
+        <p class="text-slate-700 mb-4">
+          You retain ownership of all content you upload to CocoScout, including headshots, resumes, audition materials, and production information. By uploading content, you grant CocoScout a non-exclusive, worldwide license to use, store, and display your content as necessary to provide the service.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">4.2 CocoScout's Intellectual Property</h3>
+        <p class="text-slate-700 mb-4">
+          The CocoScout platform, including its design, features, functionality, and all related intellectual property, is owned by CocoScout and protected by copyright, trademark, and other laws.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">5. Payment and Subscriptions</h2>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">5.1 Paid Subscriptions</h3>
+        <p class="text-slate-700 mb-4">
+          Producer subscriptions are billed on a recurring basis (monthly or annually). By subscribing, you authorize us to charge your payment method on file.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-3 mt-4">5.2 Cancellation and Refunds</h3>
+        <p class="text-slate-700 mb-4">
+          You may cancel your paid subscription at any time. Cancellations take effect at the end of the current billing period. We do not provide refunds for partial subscription periods except as required by law.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">6. Privacy and Data Protection</h2>
+        <p class="text-slate-700 mb-4">
+          Your privacy is important to us. Please review our <%= link_to "Privacy Policy", privacy_path, class: "text-pink-600 hover:text-pink-700 underline" %> to understand how we collect, use, and protect your personal information.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">7. Termination</h2>
+        <p class="text-slate-700 mb-4">
+          We reserve the right to suspend or terminate your account if you violate these Terms or engage in conduct that we determine to be harmful to other users or to CocoScout. You may also delete your account at any time through your account settings.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">8. Limitation of Liability</h2>
+        <p class="text-slate-700 mb-4">
+          CocoScout is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the service. In no event shall our total liability exceed the amount you paid us in the twelve months preceding the claim.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">9. Dispute Resolution</h2>
+        <p class="text-slate-700 mb-4">
+          Any disputes arising from these Terms or your use of CocoScout shall be resolved through binding arbitration in accordance with the rules of the American Arbitration Association, except where prohibited by law.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">10. Changes to Terms</h2>
+        <p class="text-slate-700 mb-4">
+          We may update these Terms from time to time. We will notify you of material changes by email or through a prominent notice on the platform. Your continued use of CocoScout after such changes constitutes acceptance of the updated Terms.
+        </p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">11. Contact Information</h2>
+        <p class="text-slate-700 mb-4">
+          If you have questions about these Terms, please contact us at:
+        </p>
+        <p class="text-slate-700">
+          Email: <a href="mailto:support@cocoscout.com" class="text-pink-600 hover:text-pink-700 underline">support@cocoscout.com</a>
+        </p>
+      </section>
+
+      <div class="mt-12 pt-8 border-t border-slate-200">
+        <p class="text-sm text-slate-500">
+          These Terms of Service constitute a legally binding agreement between you and CocoScout.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-200 px-6 py-8 text-sm text-slate-500 bg-slate-50">
+    <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p>&copy; <%= Time.current.year %> CocoScout. All rights reserved.</p>
+      <div class="flex gap-4">
+        <%= link_to "Terms of Service", terms_path, class: "hover:text-pink-600" %>
+        <%= link_to "Privacy Policy", privacy_path, class: "hover:text-pink-600" %>
+      </div>
+    </div>
+  </footer>
+</div>
