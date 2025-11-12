@@ -28,15 +28,17 @@
 
       <% if @show_manage_sidebar %>
 
+        <%= render "shared/navigation/manage_header" %>
         <%= render "shared/navigation/manage_mobile" %>
         <%= render "shared/navigation/manage" %>
-        <main class="flex-1 px-5 pt-16 lg:pt-0 lg:mt-5 lg:ml-56">
+        <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56">
 
       <% elsif @show_my_sidebar %>
 
+        <%= render "shared/navigation/my_header" %>
         <%= render "shared/navigation/my_mobile" %>
         <%= render "shared/navigation/my" %>
-        <main class="flex-1 px-5 pt-16 lg:pt-0 lg:mt-5 lg:ml-56">
+        <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56">
 
       <% else %>
 

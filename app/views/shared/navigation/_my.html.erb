@@ -1,9 +1,5 @@
-<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 justify-between fixed left-0 top-0 h-screen">
-  <div>
-
-    <%= link_to my_dashboard_path, class: "mb-2" do %>
-      <h1 class="p-5 pb-3 text-3xl coustard-regular text-pink-500">CocoScout</h1>
-    <% end %>
+<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between">
+  <div class="flex-1 overflow-y-auto">
 
     <% if session[:impersonate_user_id] %>
       <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
@@ -18,42 +14,19 @@
       <% end %>
     <% end %>
 
-    <div class="">
-      <%= link_to "Shows & Events", my_shows_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_shows_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "Availability", my_availability_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_availability_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "Auditions", my_auditions_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_auditions_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "Sign-ups", my_audition_requests_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_audition_requests_path)} hover:bg-pink-500 hover:text-white" %>
-      <%= link_to "Profile", my_profile_path, class: "flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_profile_path)} hover:bg-pink-500 hover:text-white" %>    </div>
-
-    <% if current_user_has_any_manage_access? %>
-      <div class="border-t-2 border-pink-500">
-        <%= link_to "Manage Productions", manage_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-        <% if Current.user.god? %>
-          <%= link_to "God Mode", god_mode_path, class: "flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-        <% end %>
-      </div>
-    <% end %>
-
-
+    <div class="mt-2">
+      <%= link_to "Shows & Events", my_shows_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_shows_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "Availability", my_availability_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_availability_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "Auditions", my_auditions_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_auditions_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "Sign-ups", my_audition_requests_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_audition_requests_path)} hover:bg-pink-500 hover:text-white" %>
+      <%= link_to "Profile", my_profile_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 transition-all font-medium #{'bg-pink-500 text-white' if current_page?(my_profile_path)} hover:bg-pink-500 hover:text-white" %>
+    </div>
 
   </div>
 
   <!-- Bottom section -->
-  <div>
-
-    <div class="flex justify-center">
-      <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
-    </div>
-
-    <div class="p-5 pb-4 border-t-4 border-pink-500 transition-all flex flex-col">
-      <% if Current.user %>
-        <div class="font-bold text-sm"><%= Current.user.email_address %></div>
-        <div>
-          <%= link_to "Sign out", signout_path, class: "text-pink-500 font-bold underline text-xs inline-block", data: { turbo_prefetch: false } %>
-        </div>
-      <% end  %>
-    </div>
-
+  <div class="flex justify-center">
+    <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
   </div>
 
 </nav>

@@ -26,7 +26,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
     @audition_session = AuditionSession.new
 
     # Set default location if available
-    default_location = Current.production_company.locations.find_by(default: true)
+    default_location = Current.organization.locations.find_by(default: true)
     @audition_session.location_id = default_location.id if default_location
 
     if params[:duplicate].present?
@@ -78,7 +78,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
       if params[:audition_cycle_id].present?
         @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
       elsif params[:production_id].present?
-        production = Current.production_company.productions.find(params[:production_id])
+        production = Current.organization.productions.find(params[:production_id])
         @audition_cycle = production.active_audition_cycle
         unless @audition_cycle
           redirect_to manage_production_path(production), alert: "No active audition cycle. Please create one first."

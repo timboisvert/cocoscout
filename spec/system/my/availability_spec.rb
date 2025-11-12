@@ -3,8 +3,8 @@ require 'rails_helper'
 RSpec.describe "My::Availability", type: :system do
   let!(:user) { create(:user) }
   let!(:person) { create(:person, user: user, email: user.email_address) }
-  let(:production_company) { create(:production_company) }
-  let(:production) { create(:production, production_company: production_company, name: "Wicked") }
+  let(:organization) { create(:organization) }
+  let(:production) { create(:production, organization: organization, name: "Wicked") }
   let(:cast) { create(:cast, production: production) }
 
   describe "availability index" do

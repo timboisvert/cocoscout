@@ -6,7 +6,7 @@ class Person < ApplicationRecord
   has_many :auditions
 
   has_and_belongs_to_many :casts
-  has_and_belongs_to_many :production_companies
+  has_and_belongs_to_many :organizations
 
   has_many :cast_assignment_stages, dependent: :destroy
 

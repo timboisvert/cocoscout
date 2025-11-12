@@ -25,7 +25,7 @@
 
   <div class="my-5">
     <%= form.label :location_id, "Location" %>
-    <%= form.collection_select :location_id, Current.production_company.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": audition_session.errors[:location_id].none?, "border-pink-500": audition_session.errors[:location_id].any?}], data: { "location-modal-target": "locationSelect", action: "change->location-modal#handleLocationChange" } } %>
+    <%= form.collection_select :location_id, Current.organization.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": audition_session.errors[:location_id].none?, "border-pink-500": audition_session.errors[:location_id].any?}], data: { "location-modal-target": "locationSelect", action: "change->location-modal#handleLocationChange" } } %>
     <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
   </div>
 

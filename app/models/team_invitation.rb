@@ -1,5 +1,5 @@
 class TeamInvitation < ApplicationRecord
-  belongs_to :production_company
+  belongs_to :organization
 
   validates :email, presence: true
   validates :token, presence: true, uniqueness: true

@@ -1,7 +1,7 @@
 class Manage::TeamInvitationsController < Manage::ManageController
   allow_unauthenticated_access only: [ :accept, :do_accept ]
 
-  skip_before_action :require_current_production_company, only: [ :accept, :do_accept ]
+  skip_before_action :require_current_organization, only: [ :accept, :do_accept ]
   skip_before_action :show_manage_sidebar
 
   before_action :set_team_invitation, only: [ :accept, :do_accept ]
@@ -43,14 +43,14 @@ class Manage::TeamInvitationsController < Manage::ManageController
       AuthMailer.signup(person.user).deliver_later
     end
 
-    # Add the person to the production company if not already added
-    unless person.production_companies.include?(@team_invitation.production_company)
-      person.production_companies << @team_invitation.production_company
+    # Add the person to the organization if not already added
+    unless person.organizations.include?(@team_invitation.organization)
+      person.organizations << @team_invitation.organization
     end
 
-    # Set a role and the production company
-    unless UserRole.exists?(user: user, production_company: @team_invitation.production_company)
-      UserRole.create!(user: user, production_company: @team_invitation.production_company, company_role: "none")
+    # Set a role and the organization
+    unless UserRole.exists?(user: user, organization: @team_invitation.organization)
+      UserRole.create!(user: user, organization: @team_invitation.organization, company_role: "none")
     end
 
     # Mark the invitation as accepted
@@ -59,15 +59,15 @@ class Manage::TeamInvitationsController < Manage::ManageController
     # Sign the user in
     start_new_session_for user
 
-    # Set the current production company in session
+    # Set the current organization in session
     user_id = user&.id
     if user_id
-      session[:current_production_company_id] ||= {}
-      session[:current_production_company_id]["#{user_id}"] = @team_invitation.production_company.id
+      session[:current_organization_id] ||= {}
+      session[:current_organization_id]["#{user_id}"] = @team_invitation.organization.id
     end
 
     # And redirect
-    redirect_to manage_path, notice: "You have joined #{@team_invitation.production_company.name}", status: :see_other
+    redirect_to manage_path, notice: "You have joined #{@team_invitation.organization.name}", status: :see_other
   end
 
   private

@@ -32,7 +32,7 @@ module Manage
     private
 
     def set_production
-      @production = Current.production_company.productions.find(params[:production_id])
+      @production = Current.organization.productions.find(params[:production_id])
     end
 
     def set_audition_cycle

@@ -2,32 +2,32 @@
   before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
-    members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, company_role: [ "manager", "viewer", "none" ] }).distinct
+    members = Current.organization.users.joins(:user_roles).where(user_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
     @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
-    @team_invitation = Current.production_company.team_invitations.new
-    @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
+    @team_invitation = Current.organization.team_invitations.new
+    @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
   end
 
   def invite
     @team_invitation = TeamInvitation.new(team_invitation_params)
-    @team_invitation.production_company = Current.production_company
+    @team_invitation.organization = Current.organization
     if @team_invitation.save
       Manage::TeamMailer.invite(@team_invitation).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
     else
-      members = Current.production_company.users.joins(:user_roles).where(user_roles: { production_company_id: Current.production_company.id, company_role: [ "manager", "viewer", "none" ] }).distinct
+      members = Current.organization.users.joins(:user_roles).where(user_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
       @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
-      @team_invitation = Current.production_company.team_invitations.new
-      @team_invitations = Current.production_company.team_invitations.where(accepted_at: nil)
+      @team_invitation = Current.organization.team_invitations.new
+      @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
       @team_invitation_error = true
       render :index, status: :unprocessable_entity
     end
   end
 
   def update_role
-    user = Current.production_company.users.find(params[:id])
+    user = Current.organization.users.find(params[:id])
     role = params[:role]
-    user_role = UserRole.find_by(user: user, production_company: Current.production_company)
+    user_role = UserRole.find_by(user: user, organization: Current.organization)
     if user_role && %w[manager viewer none].include?(role)
       user_role.update(company_role: role)
       respond_to do |format|
@@ -43,7 +43,7 @@
   end
 
   def revoke_invite
-    team_invitation = Current.production_company.team_invitations.find_by(id: params[:id], accepted_at: nil)
+    team_invitation = Current.organization.team_invitations.find_by(id: params[:id], accepted_at: nil)
     if team_invitation
       team_invitation.destroy
       redirect_to manage_team_index_path, notice: "Invitation revoked"
@@ -53,9 +53,9 @@
   end
 
   def remove_member
-    user = Current.production_company.users.find_by(id: params[:id])
+    user = Current.organization.users.find_by(id: params[:id])
     if user && user != Current.user
-      user_role = UserRole.find_by(user: user, production_company: Current.production_company)
+      user_role = UserRole.find_by(user: user, organization: Current.organization)
       if user_role
         user_role.destroy
         respond_to do |format|
@@ -77,7 +77,7 @@
   end
 
   def permissions
-    @user = Current.production_company.users.find(params[:id])
+    @user = Current.organization.users.find(params[:id])
 
     # Don't let users access their own permissions page
     if @user == Current.user
@@ -85,13 +85,13 @@
       return
     end
 
-    @productions = Current.production_company.productions.order(:name)
-    @user_role = @user.user_roles.find_by(production_company: Current.production_company)
+    @productions = Current.organization.productions.order(:name)
+    @user_role = @user.user_roles.find_by(organization: Current.organization)
   end
 
   def update_production_permission
-    user = Current.production_company.users.find(params[:id])
-    production = Current.production_company.productions.find(params[:production_id])
+    user = Current.organization.users.find(params[:id])
+    production = Current.organization.productions.find(params[:production_id])
     role = params[:role]
 
     if role.blank? || role == "default"
@@ -127,9 +127,9 @@
   end
 
   def update_global_role
-    user = Current.production_company.users.find(params[:id])
+    user = Current.organization.users.find(params[:id])
     role = params[:global_role]
-    user_role = UserRole.find_by(user: user, production_company: Current.production_company)
+    user_role = UserRole.find_by(user: user, organization: Current.organization)
 
     if user_role && %w[manager viewer none].include?(role)
       user_role.update(company_role: role)

@@ -44,10 +44,6 @@
         <%= link_to "Auditions", manage_production_auditions_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
         <%= link_to "Visual Assets", manage_production_visual_assets_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
       </div>
-    <% else %>
-      <div class="py-4">
-        <%= link_to "Productions", manage_productions_path, class: "block rounded-md border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      </div>
     <% end %>
 
     <div class="mt-6 grid gap-2">

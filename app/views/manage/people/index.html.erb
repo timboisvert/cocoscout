@@ -117,8 +117,22 @@
     <% end %>
 
     <% if @pagy.pages > 1 %>
-      <div class="my-6 flex justify-left">
-        <%= pagy_nav_tailwind(@pagy) %>
+      <div class="my-6">
+        <nav class="flex items-center gap-2">
+          <% if @pagy.page > 1 %>
+            <%= link_to "Previous", manage_people_path(page: @pagy.page - 1, order: params[:order], show: params[:show], filter: params[:filter]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
+          <% else %>
+            <span class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed">Previous</span>
+          <% end %>
+
+          <span class="text-sm text-slate-600">Page <%= @pagy.page %> of <%= @pagy.pages %></span>
+
+          <% if @pagy.page < @pagy.pages %>
+            <%= link_to "Next", manage_people_path(page: @pagy.page + 1, order: params[:order], show: params[:show], filter: params[:filter]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
+          <% else %>
+            <span class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed">Next</span>
+          <% end %>
+        </nav>
       </div>
     <% end %>
 

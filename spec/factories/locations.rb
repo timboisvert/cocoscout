@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :location do
-    association :production_company
+    association :organization
     sequence(:name) { |n| "Location #{n}" }
     address1 { "123 Main Street" }
     address2 { "Suite 100" }

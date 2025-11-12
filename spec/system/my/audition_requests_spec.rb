@@ -3,8 +3,8 @@ require 'rails_helper'
 RSpec.describe "My::AuditionRequests", type: :system do
   let!(:user) { create(:user) }
   let!(:person) { create(:person, user: user, email: user.email_address) }
-  let(:production_company) { create(:production_company) }
-  let(:production) { create(:production, production_company: production_company, name: "The Phantom of the Opera") }
+  let(:organization) { create(:organization) }
+  let(:production) { create(:production, organization: organization, name: "The Phantom of the Opera") }
 
   describe "when user has no audition requests" do
     it "shows no sign-ups message" do

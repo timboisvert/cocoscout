@@ -1,0 +1,123 @@
+<header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
+  <div class="flex items-center gap-8 pl-4">
+    <%= link_to manage_path, class:"mt-2" do %>
+      <span class="text-3xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+    <% end %>
+
+    <div class="flex items-center gap-4 mt-2 ml-10">
+      <span class="text-2xl font-semibold coustard-regular text-slate-800">Production Dashboard</span>
+      <%= link_to "Switch to Talent Dashboard", my_dashboard_path, class: "text-xs text-pink-500 hover:text-pink-600 transition font-medium mt-1" %>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-4 mr-2">
+    <!-- Production Selector -->
+    <% if Current.organization.present? %>
+      <div class="relative" data-controller="dropdown">
+        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center hover:bg-slate-50 rounded-lg py-1 pr-3 transition cursor-pointer border border-slate-200">
+          <% if Current.production.present? && !Current.production.new_record? %>
+            <% logo_variant = Current.production.safe_logo_variant(:small) %>
+            <% if logo_variant %>
+              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 pl-2">
+                <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-16 h-8 object-cover rounded" %>
+              </div>
+            <% else %>
+              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 pl-2">
+                <div class="w-12 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs">
+                  <%= Current.production.initials %>
+                </div>
+              </div>
+            <% end %>
+            <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate ml-2"><%= Current.production.name %></div>
+          <% else %>
+            <div class="text-sm font-medium text-slate-700 px-3">Select Production</div>
+          <% end %>
+          <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-96 overflow-y-auto">
+          <% Current.organization.productions.each do |production| %>
+            <%= link_to manage_production_path(production), class: "flex items-center hover:bg-slate-50 transition cursor-pointer #{'bg-pink-50 text-pink-600 font-medium' if production.id == Current.production&.id}" do %>
+              <% logo_variant = production.safe_logo_variant(:small) %>
+              <% if logo_variant %>
+                <div class="w-20 h-10 flex items-center justify-center flex-shrink-0 py-2 pl-2">
+                  <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-20 h-10 object-cover rounded" %>
+                </div>
+              <% else %>
+                <div class="w-20 h-10 flex items-center justify-center flex-shrink-0 py-2 pl-2">
+                  <div class="w-16 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm">
+                    <%= production.initials %>
+                  </div>
+                </div>
+              <% end %>
+              <span class="truncate text-sm py-3 pr-4 pl-2"><%= production.name %></span>
+            <% end %>
+          <% end %>
+
+          <% if Current.user.manager? %>
+            <div class="border-t border-slate-200 my-1"></div>
+            <%= link_to new_manage_production_path, class: "flex items-center gap-3 px-4 py-2 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium" do %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add a Production
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- User Profile -->
+    <div class="relative" data-controller="dropdown">
+      <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer">
+        <% if Current.user.person&.headshot&.attached? %>
+          <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
+            <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+          </div>
+        <% end %>
+        <div class="flex flex-col items-start">
+          <div class="text-sm font-medium text-slate-700"><%= Current.user.person&.name || Current.user.email_address %></div>
+          <% if Current.organization.present? %>
+            <div class="text-xs text-slate-500"><%= Current.organization.name %></div>
+          <% end %>
+        </div>
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-96 overflow-y-auto">
+        <%= link_to "My Dashboard", my_dashboard_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+
+        <% if Current.user.god? %>
+          <%= link_to "God Mode", god_mode_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% end %>
+
+        <% if Current.organization.present? %>
+          <div class="border-t border-slate-200 my-1"></div>
+
+          <div class="px-4 py-2 flex items-center justify-between">
+            <span class="text-xs text-slate-500 font-semibold uppercase">Organizations</span>
+            <% if current_user_is_global_manager? %>
+              <%= link_to "Manage", select_manage_organizations_path, class: "text-xs text-pink-500 underline hover:text-pink-600" %>
+            <% end %>
+          </div>
+
+          <% Current.user.organizations.each do |organization| %>
+            <%= button_to set_current_manage_organizations_path(id: organization.id), method: :post, class: "block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer #{'bg-pink-50 text-pink-600 font-medium' if organization.id == Current.organization.id}" do %>
+              <%= organization.name %>
+            <% end %>
+          <% end %>
+        <% end %>
+
+        <div class="border-t border-slate-200 my-1"></div>
+
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+      </div>
+    </div>
+  </div>
+</header>

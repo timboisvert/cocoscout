@@ -158,7 +158,7 @@ class AuthController < ApplicationController
     end
 
     # Get the production companies associated with this user's person
-    @production_companies = @user.person&.production_companies || []
+    @organizations = @user.person&.organizations || []
   end
 
   # DEPRECATED: This flow is replaced by PersonInvitation system

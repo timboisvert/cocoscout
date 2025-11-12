@@ -33,7 +33,7 @@ class GodModeController < ApplicationController
       end
       # Remove if already present, then unshift new record
       recent.reject! { |e| e["email"] == user.email_address }
-      recent.unshift({ "email" => user.email_address, "name" => user.person.name })
+      recent.unshift({ "email" => user.email_address, "name" => user.person&.name || user.email_address })
       # Keep only the 5 most recent
       recent = recent.first(5)
       cookies.encrypted[:recent_impersonations] = {
@@ -103,7 +103,7 @@ class GodModeController < ApplicationController
         updates_made << "Person email"
 
         # If person has no production companies, note that
-        if person.production_companies.empty?
+        if person.organizations.empty?
           updates_made << "(Note: Person has no production company associations)"
         end
       end

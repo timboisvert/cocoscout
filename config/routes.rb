@@ -67,7 +67,7 @@ Rails.application.routes.draw do
   namespace :manage do
     get "/", to: "manage#index"
 
-    resources :production_companies do
+    resources :organizations do
       collection do
         get :select
         post :set_current
@@ -107,7 +107,7 @@ Rails.application.routes.draw do
         # Used when adding a person to a cast from a person (or person-like) page
         post :add_to_cast
         post :remove_from_cast
-        post :remove_from_production_company
+        post :remove_from_organization
         get :contact
         post :send_contact_email
         patch :update_availability

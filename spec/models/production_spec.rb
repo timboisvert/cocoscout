@@ -31,10 +31,10 @@ RSpec.describe Production, type: :model do
   end
 
   describe "associations" do
-    it "belongs to production_company" do
+    it "belongs to organization" do
       production = create(:production)
-      expect(production.production_company).to be_present
-      expect(production).to respond_to(:production_company)
+      expect(production.organization).to be_present
+      expect(production).to respond_to(:organization)
     end
 
     it "has many shows" do

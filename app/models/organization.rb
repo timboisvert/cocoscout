@@ -1,4 +1,4 @@
-class ProductionCompany < ApplicationRecord
+class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
   has_many :user_roles, dependent: :destroy

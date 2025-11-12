@@ -1,14 +1,14 @@
 require 'rails_helper'
 
-RSpec.describe ProductionCompany, type: :model do
+RSpec.describe Organization, type: :model do
   describe "validations" do
     it "is valid with valid attributes" do
-      company = build(:production_company)
+      company = build(:organization)
       expect(company).to be_valid
     end
 
     it "is invalid without a name" do
-      company = build(:production_company, name: nil)
+      company = build(:organization, name: nil)
       expect(company).not_to be_valid
       expect(company.errors[:name]).to include("can't be blank")
     end
@@ -16,45 +16,45 @@ RSpec.describe ProductionCompany, type: :model do
 
   describe "associations" do
     it "has many productions" do
-      company = create(:production_company)
+      company = create(:organization)
       expect(company).to respond_to(:productions)
     end
 
     it "has many user_roles" do
-      company = create(:production_company)
+      company = create(:organization)
       expect(company).to respond_to(:user_roles)
     end
 
     it "has many users through user_roles" do
-      company = create(:production_company)
+      company = create(:organization)
       expect(company).to respond_to(:users)
     end
 
     it "has many locations" do
-      company = create(:production_company)
+      company = create(:organization)
       expect(company).to respond_to(:locations)
     end
   end
 
   describe "dependent destroy behavior" do
-    let(:company) { create(:production_company) }
+    let(:company) { create(:organization) }
 
     it "destroys associated productions when destroyed" do
-      create(:production, production_company: company)
-      create(:production, production_company: company)
+      create(:production, organization: company)
+      create(:production, organization: company)
 
       expect { company.destroy }.to change { Production.count }.by(-2)
     end
 
     it "destroys associated locations when destroyed" do
-      create(:location, production_company: company)
-      create(:location, production_company: company)
+      create(:location, organization: company)
+      create(:location, organization: company)
 
       expect { company.destroy }.to change { Location.count }.by(-2)
     end
 
     it "cascades destroy to productions and their shows" do
-      production = create(:production, production_company: company)
+      production = create(:production, organization: company)
       create(:show, production: production)
       create(:show, production: production)
 
@@ -64,9 +64,9 @@ RSpec.describe ProductionCompany, type: :model do
 
   describe "with multiple productions" do
     it "can have multiple productions" do
-      company = create(:production_company)
-      production1 = create(:production, production_company: company, name: "Hamilton")
-      production2 = create(:production, production_company: company, name: "Wicked")
+      company = create(:organization)
+      production1 = create(:production, organization: company, name: "Hamilton")
+      production2 = create(:production, organization: company, name: "Wicked")
 
       expect(company.productions).to include(production1, production2)
       expect(company.productions.count).to eq(2)
@@ -75,12 +75,12 @@ RSpec.describe ProductionCompany, type: :model do
 
   describe "with users and roles" do
     it "can have multiple users through user_roles" do
-      company = create(:production_company)
+      company = create(:organization)
       user1 = create(:user)
       user2 = create(:user)
 
-      create(:user_role, user: user1, production_company: company, company_role: "manager")
-      create(:user_role, user: user2, production_company: company, company_role: "viewer")
+      create(:user_role, user: user1, organization: company, company_role: "manager")
+      create(:user_role, user: user2, organization: company, company_role: "viewer")
 
       expect(company.users.reload).to include(user1, user2)
       expect(company.users.count).to eq(2)

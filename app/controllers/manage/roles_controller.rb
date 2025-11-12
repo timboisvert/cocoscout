@@ -51,7 +51,7 @@ class Manage::RolesController < Manage::ManageController
 
   private
     def set_production
-      @production = Current.production_company.productions.find(params.expect(:production_id))
+      @production = Current.organization.productions.find(params.expect(:production_id))
     end
 
     def set_role

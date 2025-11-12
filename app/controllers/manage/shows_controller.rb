@@ -49,7 +49,7 @@ class Manage::ShowsController < Manage::ManageController
     @show = @production.shows.new
 
     # Set default location if available
-    default_location = Current.production_company.locations.find_by(default: true)
+    default_location = Current.organization.locations.find_by(default: true)
     @show.location = default_location if default_location
 
     # if params[:duplicate].present?
@@ -384,7 +384,7 @@ class Manage::ShowsController < Manage::ManageController
 
   def assign_person_to_role
     # Get the person and the role
-    person = Current.production_company.people.find(params[:person_id])
+    person = Current.organization.people.find(params[:person_id])
     role = Role.find(params[:role_id])
 
     # If this role already has someone in it for this show, remove the assignment
@@ -427,7 +427,7 @@ class Manage::ShowsController < Manage::ManageController
 
   private
     def set_production
-      @production = Current.production_company.productions.find(params.expect(:production_id))
+      @production = Current.organization.productions.find(params.expect(:production_id))
     end
 
     def set_show

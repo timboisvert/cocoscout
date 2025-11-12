@@ -4,7 +4,7 @@
     has_many :sessions, dependent: :destroy
 
     has_many :user_roles, dependent: :destroy
-    has_many :production_companies, through: :user_roles
+    has_many :organizations, through: :user_roles
     has_many :production_permissions, dependent: :destroy
 
     normalizes :email_address, with: ->(e) { e.strip.downcase }
@@ -16,15 +16,15 @@
       user_roles.any?
     end
 
-    # Returns the role for the current production company (default role)
+    # Returns the role for the current organization (default role)
     def default_role
-      return nil unless Current.production_company
-      user_roles.find_by(production_company_id: Current.production_company.id)&.company_role
+      return nil unless Current.organization
+      user_roles.find_by(organization_id: Current.organization.id)&.company_role
     end
 
-    # Check if user has any access to the current production company
+    # Check if user has any access to the current organization
     def has_access_to_current_company?
-      return false unless Current.production_company
+      return false unless Current.organization
       role = default_role
       # User has access if they have manager/viewer role, OR if they have "none" but have per-production permissions
       return true if role == "manager" || role == "viewer"
@@ -32,7 +32,7 @@
       # If role is "none", check if they have any production-specific permissions
       if role == "none"
         production_permissions.joins(:production)
-          .where(productions: { production_company_id: Current.production_company.id })
+          .where(productions: { organization_id: Current.organization.id })
           .exists?
       else
         false
@@ -58,25 +58,25 @@
       role_for_production(production) == "manager"
     end
 
-    # Legacy method - checks default role for the production company
+    # Legacy method - checks default role for the organization
     def manager?
       default_role == "manager"
     end
 
-    # Returns all productions the user has access to in the current production company
+    # Returns all productions the user has access to in the current organization
     def accessible_productions
-      return Production.none unless Current.production_company
+      return Production.none unless Current.organization
 
       # If user has manager or viewer as default role, they have access to all productions
       role = default_role
       if role == "manager" || role == "viewer"
-        Current.production_company.productions
+        Current.organization.productions
       else
         # Otherwise, only return productions they have specific permissions for
         production_ids = production_permissions.where(
-          production_id: Current.production_company.productions.pluck(:id)
+          production_id: Current.organization.productions.pluck(:id)
         ).pluck(:production_id)
-        Current.production_company.productions.where(id: production_ids)
+        Current.organization.productions.where(id: production_ids)
       end
     end
 

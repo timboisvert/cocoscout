@@ -3,21 +3,21 @@ class Manage::LocationsController < Manage::ManageController
   before_action :ensure_user_is_global_manager, except: %i[index show]
 
   def index
-    @locations = Current.production_company.locations.all
+    @locations = Current.organization.locations.all
   end
 
   def show
   end
 
   def new
-    @location = Current.production_company.locations.new
+    @location = Current.organization.locations.new
   end
 
   def edit
   end
 
   def create
-    @location = Current.production_company.locations.new(location_params)
+    @location = Current.organization.locations.new(location_params)
 
     if @location.save
       # Handle AJAX requests (from modal)

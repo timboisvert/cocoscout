@@ -8,10 +8,10 @@ RSpec.describe UserRole, type: :model do
       expect(user_role).to respond_to(:user)
     end
 
-    it "belongs to production_company" do
+    it "belongs to organization" do
       user_role = create(:user_role)
-      expect(user_role.production_company).to be_present
-      expect(user_role).to respond_to(:production_company)
+      expect(user_role.organization).to be_present
+      expect(user_role).to respond_to(:organization)
     end
   end
 
@@ -44,12 +44,12 @@ RSpec.describe UserRole, type: :model do
       expect(user_role).to be_valid
     end
 
-    it "validates uniqueness of user_id scoped to production_company_id" do
+    it "validates uniqueness of user_id scoped to organization_id" do
       user = create(:user)
-      company = create(:production_company)
-      create(:user_role, user: user, production_company: company)
+      company = create(:organization)
+      create(:user_role, user: user, organization: company)
 
-      duplicate = build(:user_role, user: user, production_company: company)
+      duplicate = build(:user_role, user: user, organization: company)
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:user_id]).to include("has already been taken")
     end
@@ -60,27 +60,27 @@ RSpec.describe UserRole, type: :model do
       user_role = create(:user_role)
 
       expect(user_role.user).to be_present
-      expect(user_role.production_company).to be_present
+      expect(user_role.organization).to be_present
     end
 
     it "allows multiple users for one production company" do
-      company = create(:production_company)
+      company = create(:organization)
       user1 = create(:user)
       user2 = create(:user)
 
-      create(:user_role, user: user1, production_company: company, company_role: "manager")
-      create(:user_role, user: user2, production_company: company, company_role: "viewer")
+      create(:user_role, user: user1, organization: company, company_role: "manager")
+      create(:user_role, user: user2, organization: company, company_role: "viewer")
 
       expect(company.users).to include(user1, user2)
     end
 
     it "allows one user to belong to multiple production companies" do
       user = create(:user)
-      company1 = create(:production_company)
-      company2 = create(:production_company)
+      company1 = create(:organization)
+      company2 = create(:organization)
 
-      create(:user_role, user: user, production_company: company1, company_role: "manager")
-      create(:user_role, user: user, production_company: company2, company_role: "viewer")
+      create(:user_role, user: user, organization: company1, company_role: "manager")
+      create(:user_role, user: user, organization: company2, company_role: "viewer")
 
       expect(company1.users).to include(user)
       expect(company2.users).to include(user)

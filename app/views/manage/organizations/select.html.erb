@@ -3,33 +3,33 @@
 </div>
 
 <div class="max-w-lg mx-auto p-6 bg-white rounded shadow">
-    <% if @production_companies.any? %>
-        <h1 class="text-xl font-bold mb-4 text-center">Select a Production Company</h1>
+    <% if @organizations.any? %>
+        <h1 class="text-xl font-bold mb-4 text-center">Select an Organization</h1>
         <div class="space-y-2">
-            <% @production_companies.each do |production_company| %>
+            <% @organizations.each do |organization| %>
                 <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <span><%= production_company.name %></span>
-                    <%= button_to "Select", set_current_manage_production_companies_path(id: production_company.id), method: :post, class: "px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
+                    <span><%= organization.name %></span>
+                    <%= button_to "Select", set_current_manage_organizations_path(id: organization.id), method: :post, class: "px-3 py-1 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                 </div>
             <% end %>
         </div>
     <% else %>
-        <h1 class="text-xl font-bold mb-4 text-center">Add your Production Company</h1>
+        <h1 class="text-xl font-bold mb-4 text-center">Add your Organization</h1>
 
-        <%= form_with(model: [:manage, @production_company], class: "contents") do |form| %>
+        <%= form_with(model: [:manage, @organization], class: "contents") do |form| %>
 
             <div class="mb-5">
-                <% if @production_company.errors[:name].none? %>
+                <% if @organization.errors[:name].none? %>
                     <%= form.label :name, "Name:" %>
                 <% else %>
                     <%= form.label :name, "Name is required", class: "text-pink-600"  %>
                 <% end %>
                 <span class="text-sm text-gray-500"> (Your company or organization)</span>
-                <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production_company.errors[:name].none?, "border-pink-500": @production_company.errors[:name].any?}] %>
+                <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @organization.errors[:name].none?, "border-pink-500": @organization.errors[:name].any?}] %>
             </div>
 
             <div class="inline">
-                <%= form.submit "Add Production Company", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+                <%= form.submit "Add Organization", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
                 <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
             </div>
 
@@ -42,9 +42,9 @@
 </div>
 
 <% if current_user_can_manage? %>
-    <% if @production_companies.any? %>
+    <% if @organizations.any? %>
         <div class="flex flex-col items-center mt-10">
-            <%= link_to "Add a Production Company", new_manage_production_company_path, class: "text-pink-500 underline text-sm" %>
+            <%= link_to "Add an Organization", new_manage_organization_path, class: "text-pink-500 underline text-sm" %>
         </div>
     <% end %>
 <% end %>

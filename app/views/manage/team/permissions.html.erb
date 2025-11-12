@@ -16,7 +16,7 @@
     <div class="p-4 border border-gray-200 rounded-lg mb-4">
       <h2 class="text-lg font-semibold mb-2">Global Role</h2>
       <p class="text-sm text-gray-600 mb-3">
-        This role applies to all productions managed by <%= Current.production_company.name %>. You can override this role for specific productions below.
+        This role applies to all productions managed by <%= Current.organization.name %>. You can override this role for specific productions below.
       </p>
       <div class="flex flex-col md:flex-row md:items-center gap-4">
         <div class="w-full md:w-96">
@@ -102,7 +102,7 @@
     <div class="p-4 border border-gray-200 rounded-lg mb-4">
         <h2 class="text-lg font-semibold mb-2">Remove from Production Team</h2>
         <p class="text-sm text-gray-600 mb-3">
-            Removing this person from the production company will take away all of their ability to manage any of <%= Current.production_company.name %>'s productions.
+            Removing this person from the production company will take away all of their ability to manage any of <%= Current.organization.name %>'s productions.
         </p>
         <a
             href="#"

@@ -3,8 +3,8 @@ require 'rails_helper'
 RSpec.describe "My::Dashboard", type: :system do
   let!(:user) { create(:user) }
   let!(:person) { create(:person, user: user, email: user.email_address) }
-  let(:production_company) { create(:production_company) }
-  let(:production) { create(:production, production_company: production_company) }
+  let(:organization) { create(:organization) }
+  let(:production) { create(:production, organization: organization) }
 
   describe "when user is not in any productions" do
     it "shows no upcoming events" do

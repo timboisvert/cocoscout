@@ -15,7 +15,7 @@
     <div class="flex-1 space-y-2">
 
         <% @members.each do |member| %>
-            <% user_role = member.user_roles.find_by(production_company: Current.production_company) %>
+            <% user_role = member.user_roles.find_by(organization: Current.organization) %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex" data-controller="team-remove" data-team-remove-target="row">
 
                 <div class="<%= current_user_can_manage? ? 'w-2/3' : 'w-full' %>">

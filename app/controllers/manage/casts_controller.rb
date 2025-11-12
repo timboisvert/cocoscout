@@ -41,14 +41,14 @@ class Manage::CastsController < Manage::ManageController
 
   def add_person
     @cast = @production.casts.find(params[:id])
-    person = Current.production_company.people.find(params[:person_id])
+    person = Current.organization.people.find(params[:person_id])
     @cast.people << person unless @cast.people.exists?(person.id)
     render partial: "manage/casts/cast_members_list", locals: { cast: @cast }
   end
 
   def remove_person
     @cast = @production.casts.find(params[:id])
-    person = Current.production_company.people.find(params[:person_id])
+    person = Current.organization.people.find(params[:person_id])
     @cast.people.delete(person)
 
     # If it's an AJAX request, render the partial; otherwise redirect
@@ -64,7 +64,7 @@ class Manage::CastsController < Manage::ManageController
     cast_id = params[:cast_id].to_s.strip
 
     @people = if q.present?
-      Current.production_company.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+      Current.organization.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
     else
       Person.none
     end
@@ -80,7 +80,7 @@ class Manage::CastsController < Manage::ManageController
 
   private
     def set_production
-      @production = Current.production_company.productions.find(params.require(:production_id))
+      @production = Current.organization.productions.find(params.require(:production_id))
     end
 
     def set_cast

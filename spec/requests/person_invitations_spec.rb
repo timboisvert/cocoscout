@@ -1,15 +1,15 @@
 require 'rails_helper'
 
 RSpec.describe "PersonInvitations", type: :request do
-  let!(:production_company) { create(:production_company) }
-  let!(:person_invitation) { create(:person_invitation, production_company: production_company, email: "talent@example.com") }
+  let!(:organization) { create(:organization) }
+  let!(:person_invitation) { create(:person_invitation, organization: organization, email: "talent@example.com") }
 
   describe "GET /manage/person_invitations/accept/:token" do
     it "displays the invitation accept form" do
       get "/manage/person_invitations/accept/#{person_invitation.token}"
 
       expect(response).to have_http_status(:success)
-      expect(response.body).to include("Join #{production_company.name}")
+      expect(response.body).to include("Join #{organization.name}")
       expect(response.body).to include(person_invitation.email)
     end
   end
@@ -31,10 +31,10 @@ RSpec.describe "PersonInvitations", type: :request do
       person = Person.find_by(email: person_invitation.email.downcase)
       expect(person).to be_present
       expect(person.user).to eq(user)
-      expect(person.production_companies).to include(production_company)
+      expect(person.organizations).to include(organization)
 
       # Verify the user role was created
-      user_role = UserRole.find_by(user: user, production_company: production_company)
+      user_role = UserRole.find_by(user: user, organization: organization)
       expect(user_role).to be_present
       expect(user_role.company_role).to eq("none")
 

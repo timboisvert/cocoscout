@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_12_221518) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -168,12 +168,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
   create_table "invitations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
-    t.integer "production_company_id", null: false
+    t.integer "organization_id", null: false
     t.integer "status", default: 0, null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
-    t.index ["production_company_id"], name: "index_invitations_on_production_company_id"
+    t.index ["organization_id"], name: "index_invitations_on_organization_id"
     t.index ["token"], name: "index_invitations_on_token", unique: true
     t.index ["user_id"], name: "index_invitations_on_user_id"
   end
@@ -186,17 +186,30 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
     t.boolean "default", default: false, null: false
     t.string "name"
     t.text "notes"
+    t.integer "organization_id"
     t.string "postal_code"
-    t.integer "production_company_id"
     t.string "state"
     t.datetime "updated_at", null: false
-    t.index ["production_company_id"], name: "index_locations_on_production_company_id"
+    t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
   create_table "notify_mes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "organizations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "organizations_people", id: false, force: :cascade do |t|
+    t.integer "organization_id", null: false
+    t.integer "person_id", null: false
+    t.index ["organization_id", "person_id"], name: "index_organizations_people_on_organization_id_and_person_id"
+    t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
   end
 
   create_table "people", force: :cascade do |t|
@@ -209,21 +222,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
     t.index ["user_id"], name: "index_people_on_user_id"
   end
 
-  create_table "people_production_companies", id: false, force: :cascade do |t|
-    t.integer "person_id", null: false
-    t.integer "production_company_id", null: false
-    t.index ["person_id", "production_company_id"], name: "idx_on_person_id_production_company_id_91fe15345c"
-    t.index ["production_company_id", "person_id"], name: "idx_on_production_company_id_person_id_c33b726b51"
-  end
-
   create_table "person_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
-    t.integer "production_company_id", null: false
+    t.integer "organization_id", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
-    t.index ["production_company_id"], name: "index_person_invitations_on_production_company_id"
+    t.index ["organization_id"], name: "index_person_invitations_on_organization_id"
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
@@ -233,12 +239,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
     t.integer "production_id", null: false
     t.datetime "updated_at", null: false
     t.index ["production_id"], name: "index_posters_on_production_id"
-  end
-
-  create_table "production_companies", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "name"
-    t.datetime "updated_at", null: false
   end
 
   create_table "production_permissions", force: :cascade do |t|
@@ -257,9 +257,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name"
-    t.integer "production_company_id", null: false
+    t.integer "organization_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["production_company_id"], name: "index_productions_on_production_company_id"
+    t.index ["organization_id"], name: "index_productions_on_organization_id"
   end
 
   create_table "question_options", force: :cascade do |t|
@@ -358,21 +358,21 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
-    t.integer "production_company_id", null: false
+    t.integer "organization_id", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
-    t.index ["production_company_id"], name: "index_team_invitations_on_production_company_id"
+    t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
   create_table "user_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
-    t.integer "production_company_id", null: false
+    t.integer "organization_id", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
-    t.index ["production_company_id"], name: "index_user_roles_on_production_company_id"
-    t.index ["user_id", "production_company_id"], name: "index_user_roles_on_user_id_and_production_company_id", unique: true
+    t.index ["organization_id"], name: "index_user_roles_on_organization_id"
+    t.index ["user_id", "organization_id"], name: "index_user_roles_on_user_id_and_organization_id", unique: true
     t.index ["user_id"], name: "index_user_roles_on_user_id"
   end
 
@@ -411,15 +411,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
   add_foreign_key "cast_assignment_stages", "people"
   add_foreign_key "casts", "productions"
   add_foreign_key "email_groups", "audition_cycles"
-  add_foreign_key "invitations", "production_companies"
+  add_foreign_key "invitations", "organizations"
   add_foreign_key "invitations", "users"
-  add_foreign_key "locations", "production_companies"
+  add_foreign_key "locations", "organizations"
   add_foreign_key "people", "users"
-  add_foreign_key "person_invitations", "production_companies"
+  add_foreign_key "person_invitations", "organizations"
   add_foreign_key "posters", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
-  add_foreign_key "productions", "production_companies"
+  add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
@@ -432,8 +432,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_184116) do
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "socials", "people"
-  add_foreign_key "team_invitations", "production_companies"
-  add_foreign_key "user_roles", "production_companies"
+  add_foreign_key "team_invitations", "organizations"
+  add_foreign_key "user_roles", "organizations"
   add_foreign_key "user_roles", "users"
   add_foreign_key "users", "people"
 end

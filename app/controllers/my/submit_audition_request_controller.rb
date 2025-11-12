@@ -72,10 +72,10 @@ class My::SubmitAuditionRequestController < ApplicationController
   def submitform
     @person = Current.user.person
 
-    # Associate the person with the production company if not already
-    production_company = @audition_cycle.production.production_company
-    unless @person.production_companies.include?(production_company)
-      @person.production_companies << production_company
+    # Associate the person with the organization if not already
+    organization = @audition_cycle.production.organization
+    unless @person.organizations.include?(organization)
+      @person.organizations << organization
     end
 
     # We may be updating an existing response, so check for that first

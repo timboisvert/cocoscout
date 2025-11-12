@@ -1,6 +1,6 @@
 class Manage::PeopleController < Manage::ManageController
   before_action :set_person, only: %i[ show edit update destroy update_availability ]
-  before_action :ensure_user_is_global_manager, except: %i[index show remove_from_production_company]
+  before_action :ensure_user_is_global_manager, except: %i[index show remove_from_organization]
 
   def index
     # Store the order
@@ -17,7 +17,7 @@ class Manage::PeopleController < Manage::ManageController
     session[:people_filter] = @filter
 
     # Process the filter - scope to current production company
-    @people = Current.production_company&.people || Person.none
+    @people = Current.organization&.people || Person.none
 
     case @filter
     when "cast-members"
@@ -80,15 +80,15 @@ class Manage::PeopleController < Manage::ManageController
     if existing_user && existing_user.person
       # User and person both exist - just add to production company if not already
       existing_person = existing_user.person
-      unless existing_person.production_companies.include?(Current.production_company)
-        existing_person.production_companies << Current.production_company
+      unless existing_person.organizations.include?(Current.organization)
+        existing_person.organizations << Current.organization
       end
 
-      redirect_to [ :manage, existing_person ], notice: "#{existing_person.name} has been added to #{Current.production_company.name}"
+      redirect_to [ :manage, existing_person ], notice: "#{existing_person.name} has been added to #{Current.organization.name}"
     elsif existing_person
       # Person exists but no user - create user and link them
-      unless existing_person.production_companies.include?(Current.production_company)
-        existing_person.production_companies << Current.production_company
+      unless existing_person.organizations.include?(Current.organization)
+        existing_person.organizations << Current.organization
       end
 
       user = User.create!(
@@ -100,7 +100,7 @@ class Manage::PeopleController < Manage::ManageController
       # Create person invitation with production company context
       person_invitation = PersonInvitation.create!(
         email: existing_person.email,
-        production_company: Current.production_company
+        organization: Current.organization
       )
 
       # Send invitation email
@@ -112,7 +112,7 @@ class Manage::PeopleController < Manage::ManageController
       @person = Person.new(person_params)
       if @person.save
         # Associate with current production company
-        @person.production_companies << Current.production_company
+        @person.organizations << Current.organization
 
         user = User.create!(
           email_address: @person.email,
@@ -123,7 +123,7 @@ class Manage::PeopleController < Manage::ManageController
         # Create person invitation with production company context
         person_invitation = PersonInvitation.create!(
           email: @person.email,
-          production_company: Current.production_company
+          organization: Current.organization
         )
 
         # Send invitation email
@@ -173,7 +173,7 @@ class Manage::PeopleController < Manage::ManageController
 
     # Remove from join tables
     @person.casts.clear
-    @person.production_companies.clear
+    @person.organizations.clear
 
     # Destroy the user first (which will nullify the person association)
     user&.destroy!
@@ -228,8 +228,8 @@ class Manage::PeopleController < Manage::ManageController
 
       if person.save
         # Associate with current production company (in case it's a new person)
-        unless person.production_companies.include?(Current.production_company)
-          person.production_companies << Current.production_company
+        unless person.organizations.include?(Current.organization)
+          person.organizations << Current.organization
         end
 
         # Create user account if it doesn't exist
@@ -244,7 +244,7 @@ class Manage::PeopleController < Manage::ManageController
         # Create person invitation
         person_invitation = PersonInvitation.create!(
           email: person.email,
-          production_company: Current.production_company
+          organization: Current.organization
         )
 
         # Send invitation email
@@ -270,43 +270,43 @@ class Manage::PeopleController < Manage::ManageController
 
   def add_to_cast
     @cast = Cast.find(params[:cast_id])
-    @person = Current.production_company.people.find(params[:person_id])
+    @person = Current.organization.people.find(params[:person_id])
     @cast.people << @person if !@cast.people.include?(@person)
     render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
   end
 
   def remove_from_cast
     @cast = Cast.find(params[:cast_id])
-    @person = Current.production_company.people.find(params[:person_id])
+    @person = Current.organization.people.find(params[:person_id])
     @cast.people.delete(@person) if @cast.people.include?(@person)
     render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
   end
 
-  def remove_from_production_company
-    @person = Current.production_company.people.find(params[:id])
+  def remove_from_organization
+    @person = Current.organization.people.find(params[:id])
 
-    # Remove the person from the production company
-    Current.production_company.people.delete(@person)
+    # Remove the person from the organization
+    Current.organization.people.delete(@person)
 
     # If the person has a user account, clean up their roles and permissions
     if @person.user
-      # Remove user_role for this production company
-      @person.user.user_roles.where(production_company: Current.production_company).destroy_all
+      # Remove user_role for this organization
+      @person.user.user_roles.where(organization: Current.organization).destroy_all
 
       # Remove production_permissions for all productions in this production company
-      production_ids = Current.production_company.productions.pluck(:id)
+      production_ids = Current.organization.productions.pluck(:id)
       @person.user.production_permissions.where(production_id: production_ids).destroy_all
     end
 
-    redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.production_company.name}", status: :see_other
+    redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.organization.name}", status: :see_other
   end
 
   def contact
-    @person = Current.production_company.people.find(params[:id])
+    @person = Current.organization.people.find(params[:id])
   end
 
   def send_contact_email
-    @person = Current.production_company.people.find(params[:id])
+    @person = Current.organization.people.find(params[:id])
     subject = params[:subject]
     message = params[:message]
 
@@ -322,7 +322,7 @@ class Manage::PeopleController < Manage::ManageController
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_person
-      @person = Current.production_company.people.find(params.expect(:id))
+      @person = Current.organization.people.find(params.expect(:id))
     end
 
     # Only allow a list of trusted parameters through.

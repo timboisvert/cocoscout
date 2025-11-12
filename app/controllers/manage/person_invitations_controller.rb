@@ -1,7 +1,7 @@
 class Manage::PersonInvitationsController < Manage::ManageController
   allow_unauthenticated_access only: [ :accept, :do_accept ]
 
-  skip_before_action :require_current_production_company, only: [ :accept, :do_accept ]
+  skip_before_action :require_current_organization, only: [ :accept, :do_accept ]
   skip_before_action :show_manage_sidebar
 
   before_action :set_person_invitation, only: [ :accept, :do_accept ]
@@ -55,14 +55,14 @@ class Manage::PersonInvitationsController < Manage::ManageController
       end
     end
 
-    # Ensure the person is in the production company
-    unless person.production_companies.include?(@person_invitation.production_company)
-      person.production_companies << @person_invitation.production_company
+    # Ensure the person is in the organization
+    unless person.organizations.include?(@person_invitation.organization)
+      person.organizations << @person_invitation.organization
     end
 
-    # Create a user role for this production company (default to "none" role)
-    unless UserRole.exists?(user: user, production_company: @person_invitation.production_company)
-      UserRole.create!(user: user, production_company: @person_invitation.production_company, company_role: "none")
+    # Create a user role for this organization (default to "none" role)
+    unless UserRole.exists?(user: user, organization: @person_invitation.organization)
+      UserRole.create!(user: user, organization: @person_invitation.organization, company_role: "none")
     end
 
     # Mark the invitation as accepted
@@ -74,12 +74,12 @@ class Manage::PersonInvitationsController < Manage::ManageController
     # Set the current production company in session
     user_id = user&.id
     if user_id
-      session[:current_production_company_id] ||= {}
-      session[:current_production_company_id]["#{user_id}"] = @person_invitation.production_company.id
+      session[:current_organization_id] ||= {}
+      session[:current_organization_id]["#{user_id}"] = @person_invitation.organization.id
     end
 
     # And redirect to the directory
-    redirect_to manage_people_path, notice: "Welcome to #{@person_invitation.production_company.name}!", status: :see_other
+    redirect_to manage_people_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
   end
 
   private

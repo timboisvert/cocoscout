@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :production do
-    association :production_company
+    association :organization
     sequence(:name) { |n| "Production #{n}" }
     contact_email { "contact@example.com" }
   end

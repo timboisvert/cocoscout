@@ -5,7 +5,7 @@ class Manage::PersonMailerPreview < ActionMailer::Preview
     person_invitation = PersonInvitation.first || PersonInvitation.new(
       email: "person@example.com",
       token: "sample_token_123",
-      production_company: ProductionCompany.first || ProductionCompany.new(name: "Example Theatre Company")
+      organization: Organization.first || Organization.new(name: "Example Theatre Company")
     )
     Manage::PersonMailer.person_invitation(person_invitation)
   end

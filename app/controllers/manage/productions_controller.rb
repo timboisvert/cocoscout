@@ -16,14 +16,14 @@ class Manage::ProductionsController < Manage::ManageController
   end
 
   def new
-    @production = Current.production_company.productions.new
+    @production = Current.organization.productions.new
   end
 
   def edit
   end
 
   def create
-    @production = Current.production_company.productions.new(production_params)
+    @production = Current.organization.productions.new(production_params)
 
     if @production.save
       set_production_in_session
@@ -42,8 +42,8 @@ class Manage::ProductionsController < Manage::ManageController
   end
 
   def destroy
-    if Current.production_company && Current.user
-      session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = nil
+    if Current.organization && Current.user
+      session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.organization&.id}"] = nil
       @production.destroy!
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
     end
@@ -52,23 +52,23 @@ class Manage::ProductionsController < Manage::ManageController
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_production
-      @production = Current.production_company.productions.find_by(id: params[:id])
+      @production = Current.organization.productions.find_by(id: params[:id])
       unless @production
         redirect_to manage_productions_path, alert: "Not authorized or not found" and return
       end
     end
 
     def set_production_in_session
-      if Current.production_company && Current.user
+      if Current.organization && Current.user
 
         # Make sure we have the sessions hash set for production IDs
         session[:current_production_id_for_company] ||= {}
 
         # Store the current one
-        previous_production_id = session[:current_production_id_for_company]&.dig("#{Current.user&.id}_#{Current.production_company&.id}")
+        previous_production_id = session[:current_production_id_for_company]&.dig("#{Current.user&.id}_#{Current.organization&.id}")
 
         # Set the new one
-        session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.production_company&.id}"] = @production.id
+        session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
 
         # If the production changed, redirect to the manage home so the left nav resets
         if previous_production_id != @production.id
@@ -79,6 +79,6 @@ class Manage::ProductionsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def production_params
-      params.require(:production).permit(:name, :logo, :description, :contact_email).merge(production_company_id: Current.production_company&.id)
+      params.require(:production).permit(:name, :logo, :description, :contact_email).merge(organization_id: Current.organization&.id)
     end
 end

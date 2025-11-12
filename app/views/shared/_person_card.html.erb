@@ -57,17 +57,16 @@
 
                 <div class="mt-2">
 
-                    <% if current_user_can_manage? && person.production_companies.include?(Current.production_company) %>
-                        <%= link_to "Remove from #{Current.production_company.name}",
-                            remove_from_production_company_manage_person_path(person),
+                    <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
+                        <%= link_to "Remove from #{Current.organization.name}",
+                            remove_from_organization_manage_person_path(person),
                             data: {
                                 turbo_method: :post,
-                                turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.production_company.name}?"
+                                turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?"
                             },
                             class: "font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600 cursor-pointer"
                         %>
                     <% end %>
-
                 </div>
 
             <% end %>
