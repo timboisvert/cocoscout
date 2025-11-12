@@ -23,6 +23,6 @@ class RenameCallToAuditionToAuditionCycle < ActiveRecord::Migration[8.1]
     rename_index :email_groups, 'index_email_groups_on_call_to_audition_id', 'index_email_groups_on_audition_cycle_id'
 
     # Re-add the unique constraint with new name
-    add_index :audition_cycles, [:production_id, :active], unique: true, where: "active = true", name: "index_audition_cycles_on_production_id_and_active"
+    add_index :audition_cycles, [ :production_id, :active ], unique: true, where: "active = true", name: "index_audition_cycles_on_production_id_and_active"
   end
 end

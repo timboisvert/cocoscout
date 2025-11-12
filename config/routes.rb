@@ -104,6 +104,7 @@ Rails.application.routes.draw do
         post :remove_from_production_company
         get :contact
         post :send_contact_email
+        patch :update_availability
       end
     end
 
