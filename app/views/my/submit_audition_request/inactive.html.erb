@@ -1,0 +1,22 @@
+<div class="w-full max-w-4xl mx-auto mt-10">
+  <h1 class="font-bold text-4xl"><%= @production.name %></h1>
+
+  <% if @audition_cycle.audition_type == "in_person" %>
+    <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
+  <% elsif @audition_cycle.audition_type == "video_upload" %>
+    <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
+  <% end %>
+
+  <div class="mt-5 bg-pink-100 border border-pink-200 rounded-lg p-5 flex items-center">
+    <span class="ml-3">
+      This production is not currently auditioning. Please contact the team for more information.
+    </span>
+  </div>
+
+  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+    <a href="https://cocoscout.com" target="_blank" rel="noopener">
+      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+    </a>
+  </div>
+
+</div>

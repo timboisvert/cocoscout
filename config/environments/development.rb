@@ -20,6 +20,7 @@ Rails.application.configure do
   config.active_storage.service = :local
 
   config.action_mailer.delivery_method = :letter_opener
+  config.action_mailer.perform_deliveries = true
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_caching = false
   config.action_mailer.show_previews = true
@@ -31,6 +32,7 @@ Rails.application.configure do
   config.active_record.verbose_query_logs = true
   config.active_record.query_log_tags_enabled = true
 
+  config.active_job.queue_adapter = :async
   config.active_job.verbose_enqueue_logs = true
 
   config.action_view.annotate_rendered_view_with_filenames = true

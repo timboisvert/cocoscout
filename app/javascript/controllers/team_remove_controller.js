@@ -15,7 +15,8 @@ export default class extends Controller {
             method: 'DELETE',
             headers: {
                 'X-CSRF-Token': token,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
             .then(response => {
@@ -23,8 +24,13 @@ export default class extends Controller {
                 return response.json()
             })
             .then(() => {
-                // Remove the row from the DOM
-                this.rowTarget.remove()
+                // If there's a row target, remove it (on index page)
+                // Otherwise redirect to team page (on permissions page)
+                if (this.hasRowTarget) {
+                    this.rowTarget.remove()
+                } else {
+                    window.location.href = '/manage/team'
+                }
             })
             .catch(() => {
                 // Optionally show error

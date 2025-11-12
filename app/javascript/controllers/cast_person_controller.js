@@ -21,7 +21,8 @@ export default class extends Controller {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
+                "X-Requested-With": "XMLHttpRequest"
             },
             body: JSON.stringify({ person_id: personId })
         })
@@ -42,7 +43,8 @@ export default class extends Controller {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
+                "X-Requested-With": "XMLHttpRequest"
             },
             body: JSON.stringify({ person_id: personId })
         })

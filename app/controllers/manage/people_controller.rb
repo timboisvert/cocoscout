@@ -1,5 +1,5 @@
 class Manage::PeopleController < Manage::ManageController
-  before_action :set_person, only: %i[ show edit update destroy ]
+  before_action :set_person, only: %i[ show edit update destroy update_availability ]
   before_action :ensure_user_is_global_manager, except: %i[index show remove_from_production_company]
 
   def index
@@ -58,6 +58,9 @@ class Manage::PeopleController < Manage::ManageController
     @person.show_availabilities.where(show: @shows).each do |availability|
       @availabilities[availability.show_id] = availability
     end
+
+    # Track edit mode
+    @edit_mode = params[:edit] == "true"
   end
 
   def new
@@ -139,6 +142,27 @@ class Manage::PeopleController < Manage::ManageController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def update_availability
+    # Update availabilities for each show
+    params.each do |key, value|
+      if key.match?(/^availability_/)
+        show_id = key.match(/availability_(\d+)/)[1].to_i
+        show = Show.find(show_id)
+        availability = @person.show_availabilities.find_or_initialize_by(show: show)
+
+        if value == "available"
+          availability.available!
+        elsif value == "unavailable"
+          availability.unavailable!
+        end
+
+        availability.save
+      end
+    end
+
+    redirect_to manage_person_path(@person, tab: 2), notice: "Availability updated"
   end
 
   def destroy
@@ -275,6 +299,23 @@ class Manage::PeopleController < Manage::ManageController
     end
 
     redirect_to manage_people_path, notice: "#{@person.name} was removed from #{Current.production_company.name}", status: :see_other
+  end
+
+  def contact
+    @person = Current.production_company.people.find(params[:id])
+  end
+
+  def send_contact_email
+    @person = Current.production_company.people.find(params[:id])
+    subject = params[:subject]
+    message = params[:message]
+
+    if subject.present? && message.present?
+      Manage::PersonMailer.contact_email(@person, subject, message, Current.user).deliver_later
+      redirect_to manage_person_path(@person), notice: "Email sent to #{@person.name}"
+    else
+      redirect_to contact_manage_person_path(@person), alert: "Subject and message are required"
+    end
   end
 
 

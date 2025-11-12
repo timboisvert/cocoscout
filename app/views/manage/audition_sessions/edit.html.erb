@@ -1,51 +1,20 @@
-<% content_for :title, "Edit Audition Session" %>
+<% if request.xhr? %>
+  <%= render "manage/audition_sessions/session_form", audition_session: @audition_session %>
+<% else %>
+  <% content_for :title, "Edit Audition Session" %>
 
-<div class="w-full">
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["In-person Sessions", manage_production_audition_sessions_path(@production)]
-    ],
-    text: @audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p"),
-    links: []
-  } %>
+  <div class="w-full">
+    <%= render partial: "shared/notice", locals: { notice: notice } %>
+    <%= render partial: "shared/top_menu", locals: {
+      breadcrumbs: [
+        ["Auditions", manage_production_auditions_path(@production)],
+        ["In-person Sessions", manage_production_audition_sessions_path(@production)]
+      ],
+      text: @audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p"),
+      links: []
+    } %>
 
-  <%= form_with(model: [:manage, @production, @audition_session], class: "contents") do |form| %>
-    <% if @audition_session.errors.any? %>
-      <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(@audition_session.errors.count, "error") %> prohibited this audition_session from being saved:</h2>
-
-        <ul class="list-disc ml-6">
-          <% @audition_session.errors.each do |error| %>
-            <li><%= error.full_message %></li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
-
-    <div class="my-5 ">
-      <%= form.label :start_at, "Start Session At" %>
-      <%= form.datetime_field :start_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64", {"border-gray-400": @audition_session.errors[:start_at].none?, "border-pink-500": @audition_session.errors[:start_at].any?}] %>
-    </div>
-
-    <div class="my-5">
-      <%= form.label :maximum_auditionees, "Maximum # of Auditionees" %>
-      <p class="text-sm text-gray-500">Set the maximum number of auditionees this session should have. Leave blank for unlimited.</p>
-      <%= form.number_field :maximum_auditionees, min: 1, class: ["block w-24 shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @audition_session.errors[:maximum_auditionees].none?, "border-pink-500": @audition_session.errors[:maximum_auditionees].any?}] %>
-    </div>
-
-    <div class="my-5">
-      <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Current.production_company.locations, :id, :name, { prompt: "Select a location" }, { required: true, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64", {"border-gray-400": @audition_session.errors[:location_id].none?, "border-pink-500": @audition_session.errors[:location_id].any?}] } %>
-      <div class="mt-1 ml-1">
-        <%= link_to "Manage Locations", manage_locations_path, class: "text-pink-500 underline text-sm" %>
-      </div>
-    </div>
-    <div class="w-full border-t border-gray-200 pt-5 my-5">
-      <%= form.submit "Update Session", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
-      <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
-    </div>
-  <% end %>
-
+    <%= render "manage/audition_sessions/session_form", audition_session: @audition_session %>
+  </div>
+<% end %>
 </div>

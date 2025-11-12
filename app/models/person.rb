@@ -8,6 +8,8 @@ class Person < ApplicationRecord
   has_and_belongs_to_many :casts
   has_and_belongs_to_many :production_companies
 
+  has_many :cast_assignment_stages, dependent: :destroy
+
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
@@ -34,9 +36,17 @@ class Person < ApplicationRecord
   end
 
   def safe_resume_preview(options = {})
-    return nil unless resume.attached? && resume.previewable?
+    return nil unless resume.attached?
+
+    # For image files (JPEG, PNG), display directly with variant
+    if resume.content_type.start_with?("image/")
+      return resume.variant(options)
+    end
+
+    # For other files (PDF), generate preview
+    return nil unless resume.previewable?
     resume.preview(options)
-  rescue ActiveStorage::PreviewError => e
+  rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
     Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
     nil
   end

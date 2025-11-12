@@ -1,0 +1,191 @@
+<% content_for :title, "Archived Audition Cycle" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Archived Audition Cycle",
+    links: []
+  } %>
+
+  <!-- Archived Banner -->
+  <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div class="flex items-start gap-3">
+      <div class="flex-shrink-0">
+        <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-sm font-semibold text-blue-900 mb-1">Archived Audition Cycle</h4>
+        <p class="text-sm text-blue-800">
+          This audition cycle ran from <%= @audition_cycle.opens_at&.strftime("%B %-d, %Y") %> to <%= @audition_cycle.closes_at&.strftime("%B %-d, %Y") %>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audition Type & Settings -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Settings</h3>
+    </div>
+    <div class="p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <p class="text-xs text-gray-600 font-medium">Audition Type</p>
+          <p class="text-sm font-semibold text-gray-900 mt-1">
+            <% if @audition_cycle.audition_type == "in_person" %>
+              In-person Auditions
+            <% elsif @audition_cycle.audition_type == "video_upload" %>
+              Video Upload Auditions
+            <% end %>
+          </p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
+          <p class="text-sm font-semibold text-gray-900 mt-1">
+            <%= @audition_cycle.opens_at.strftime("%b %-d, %Y") %> - <%= @audition_cycle.closes_at.strftime("%b %-d, %Y") %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign-ups Received -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+        Sign-ups Received
+        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @audition_requests.count %>)</span>
+      </h3>
+    </div>
+    <div class="p-6">
+      <% if @audition_requests.any? %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <% @audition_requests.each do |request| %>
+            <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+              <div class="flex items-center gap-3">
+                <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: request.person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                    <%= request.person.initials %>
+                  </div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate"><%= request.person.name %></p>
+                  <p class="text-xs text-gray-500">
+                    <%= request.created_at.strftime("%b %-d, %Y") %>
+                  </p>
+                </div>
+                <% if request.status.present? %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%=
+                    case request.status
+                    when 'accepted' then 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
+                    when 'passed' then 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
+                    else 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10'
+                    end
+                  %>">
+                    <%= request.status == 'accepted' ? 'Yes' : (request.status == 'passed' ? 'No' : request.status.titleize) %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">No sign-ups were received for this audition cycle.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- People Offered Auditions -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+        People Offered Auditions
+        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @accepted_requests.count %>)</span>
+      </h3>
+    </div>
+    <div class="p-6">
+      <% if @accepted_requests.any? %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <% @accepted_requests.each do |request| %>
+            <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+              <div class="flex items-center gap-3">
+                <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: request.person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                    <%= request.person.initials %>
+                  </div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate"><%= request.person.name %></p>
+                  <p class="text-xs text-gray-500">
+                    <%= request.created_at.strftime("%b %-d, %Y") %>
+                  </p>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">No people were offered auditions in this cycle.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- People Added to Cast -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+        People Added to Cast
+        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @cast_people.count %>)</span>
+      </h3>
+    </div>
+    <div class="p-6">
+      <% if @cast_people.any? %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <% @cast_people.each do |person| %>
+            <%= link_to manage_person_path(person), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+              <div class="flex items-center gap-3">
+                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                    <%= person.initials %>
+                  </div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                  <%
+                    # Get their cast assignments from this audition cycle
+                    cast_names = person.cast_assignment_stages
+                                       .where(audition_cycle_id: @audition_cycle.id)
+                                       .includes(:cast)
+                                       .map { |stage| stage.cast.name }
+                                       .uniq
+                  %>
+                  <% if cast_names.any? %>
+                    <p class="text-xs text-gray-500 truncate">
+                      <%= cast_names.first(2).join(", ") %><%= cast_names.count > 2 ? "..." : "" %>
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">No people were added to cast during this audition cycle.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

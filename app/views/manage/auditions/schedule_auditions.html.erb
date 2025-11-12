@@ -1,0 +1,50 @@
+<% content_for :title, "Schedule Auditions" %>
+
+<div class="w-full mb-10" data-controller="drag-audition">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
+    ],
+    text: "Schedule Auditions",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+
+  <div class="flex gap-8">
+    <!-- Sessions on the left -->
+    <%= render partial: "sessions_list", locals: { audition_sessions: @audition_sessions } %>
+
+    <!-- Available People on the right -->
+    <div class="w-96 flex-shrink-0">
+      <div class="sticky top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h2 class="text-md font-semibold text-gray-900 coustard-regular mb-3">Sign-ups</h2>
+          <p class="text-xs text-gray-500 mb-3">
+            Drag each person from the list on the left to an audition slot on the right to schedule them.
+          </p>
+          <div class="flex gap-2 flex-wrap">
+            <%= link_to "To Be Scheduled",
+                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "to_be_scheduled"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter].blank? || params[:filter] == "to_be_scheduled") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+            <%= link_to "All Yes",
+                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "accepted"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter] == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+            <%= link_to "All Sign-ups",
+                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "all"),
+                    data: { turbo_prefetch: false },
+                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter] == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+            %>
+          </div>
+        </div>
+        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, filter: params[:filter], scheduled_request_ids: @scheduled_request_ids, scheduled_person_ids: @scheduled_person_ids } %>
+      </div>
+    </div>
+  </div>
+</div>

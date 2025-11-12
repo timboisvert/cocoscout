@@ -1,0 +1,133 @@
+<% content_for :title, "Select Cast Members" %>
+
+<div class="w-full pb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Casting", casting_manage_production_audition_cycle_path(@production, @audition_cycle)]
+    ],
+    text: "Select Cast Members",
+    links: []
+  } %>
+
+  <%= render partial: "lifecycle_panel", locals: { current_step: :communicate } %>
+
+  <% if @audition_cycle.blank? %>
+    <div class="mb-5 text-gray-500 text-sm">
+      You aren't currently offering auditions for <%= @production.name %>
+    </div>
+  <% else %>
+    <div class="flex gap-8" data-controller="casting-drag" data-casting-drag-production-id-value="<%= @production.id %>" data-casting-drag-audition-cycle-id-value="<%= @audition_cycle.id %>">
+      <!-- Left side: Casts (flex-1) -->
+      <div class="flex-1">
+        <div class="space-y-4">
+          <% @casts.each do |cast| %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all"
+                data-casting-drag-target="dropZone"
+                data-drag-drop-type="cast"
+                data-cast-id="<%= cast.id %>"
+                data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
+              <% cast_stages = @cast_assignment_stages.select { |stage| stage.cast_id == cast.id } %>
+
+              <div class="flex items-center gap-4">
+                <div class="font-bold text-md flex-shrink-0">
+                  <%= cast.name %>
+                </div>
+
+                <div class="flex-1">
+                  <% if cast_stages.any? %>
+                    <div class="space-y-2">
+                      <% cast_stages.each do |stage| %>
+                        <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
+                            draggable="true"
+                            data-casting-drag-target="person"
+                            data-person-id="<%= stage.person.id %>"
+                            data-person-name="<%= stage.person.name %>"
+                            data-source-cast-id="<%= cast.id %>"
+                            data-action="dragstart->casting-drag#dragStartPerson dragend->casting-drag#dragEnd">
+                          <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: stage.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                          <% else %>
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= stage.person.initials %>
+                            </div>
+                          <% end %>
+
+                          <span class="font-medium text-sm flex-1 truncate"><%= stage.person.name %></span>
+                          <button type="button"
+                            class="text-pink-500 hover:bg-pink-100 rounded px-2 py-1 text-xs font-bold transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            data-action="click->casting-drag#removePerson"
+                            data-cast-id="<%= cast.id %>"
+                            data-person-id="<%= stage.person.id %>">
+                            Remove
+                          </button>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm min-h-12">
+                      <span>Drag auditionees here to add to <%= cast.name %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <% if @casts.empty? %>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <p class="text-gray-700 text-sm font-medium mb-2">No casts available for this production</p>
+              <p class="text-gray-600 text-sm mb-4">You need to create at least one cast before you can add cast members.</p>
+              <%= link_to "Create Cast", manage_production_casts_path(@production), class: "inline-block rounded-lg px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm" %>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @casts.any? %>
+          <div class="mt-4">
+            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), color: "pink" } %>
+          </div>
+        <% end %>
+      </div>      <!-- Right side: Auditionees (fixed width, sticky) -->
+      <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h2 class="text-md font-semibold text-gray-900 coustard-regular">Auditionees</h2>
+          </div>
+          <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <div class="space-y-1">
+              <% @auditioned_people.each do |person| %>
+                <% is_assigned = @cast_assignment_stages.any? { |stage| stage.person_id == person.id } %>
+
+                <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if is_assigned %>"
+                    data-casting-drag-target="auditionee"
+                    data-person-id="<%= person.id %>"
+                    data-person-name="<%= person.name %>"
+                    draggable="true"
+                    data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd">
+
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if is_assigned}", draggable: false %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if is_assigned}">
+                      <%= person.initials %>
+                    </div>
+                  <% end %>
+
+                  <span class="font-medium text-sm flex-1 truncate"><%= person.name %></span>
+                </div>
+              <% end %>
+
+              <% if @auditioned_people.empty? %>
+                <p class="text-gray-500 text-sm text-center py-8">No one has auditioned yet</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -18,7 +18,7 @@ RSpec.describe Answer, type: :model do
   describe "creating answers" do
     it "can be created with value" do
       audition_request = create(:audition_request)
-      question = create(:question, questionable: audition_request.call_to_audition)
+      question = create(:question, questionable: audition_request.audition_cycle)
       answer = Answer.create(
         audition_request: audition_request,
         question: question,
@@ -35,14 +35,14 @@ RSpec.describe Answer, type: :model do
     let(:audition_request) { create(:audition_request) }
 
     it "can store short text answers" do
-      question = create(:question, question_type: "short_text", questionable: audition_request.call_to_audition)
+      question = create(:question, question_type: "short_text", questionable: audition_request.audition_cycle)
       answer = create(:answer, question: question, audition_request: audition_request, value: "Short answer")
 
       expect(answer.value).to eq("Short answer")
     end
 
     it "can store long text answers" do
-      question = create(:question, :long_text, questionable: audition_request.call_to_audition)
+      question = create(:question, :long_text, questionable: audition_request.audition_cycle)
       answer = create(:answer, question: question, audition_request: audition_request, value: "This is a much longer answer with multiple sentences.")
 
       expect(answer.value).to eq("This is a much longer answer with multiple sentences.")

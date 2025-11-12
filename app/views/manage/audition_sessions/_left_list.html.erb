@@ -25,12 +25,13 @@
     </div>
 
     <%
-        ar = AuditionRequest.joins(:call_to_audition).where(call_to_auditions: { production_id: production.id })
+        ar = AuditionRequest.joins(:audition_cycle).where(audition_cycles: { production_id: production.id })
 
         if filter == "all"
             ar = ar.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
         elsif filter == "to_be_scheduled"
-            ar = ar.where(status: :accepted).where.not(person_id: production.audition_sessions.joins(:auditions).select("auditions.person_id"))
+            audition_cycle = production.active_audition_cycle
+            ar = ar.where(status: :accepted).where.not(person_id: audition_cycle&.audition_sessions&.joins(:auditions)&.select("auditions.person_id") || [])
         elsif filter == "accepted"
             ar = ar.where(status: :accepted)
         end
@@ -44,7 +45,8 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             <% ar.each do |audition_request| %>
 
-                <% scheduled = audition_request.scheduled_in_any?(production.audition_sessions) %>
+                <% audition_cycle = production.active_audition_cycle %>
+                <% scheduled = audition_request.scheduled_in_any?(audition_cycle&.audition_sessions || []) %>
 
                 <div
                     class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-[#f9f9f7]"

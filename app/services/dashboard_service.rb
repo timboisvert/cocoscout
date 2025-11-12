@@ -14,17 +14,18 @@ class DashboardService
   private
 
   def open_calls_summary
-    calls = @production.call_to_auditions
-      .where("opens_at <= ? AND closes_at >= ?", Time.current, Time.current)
-      .includes(:audition_requests)
+    call = @production.audition_cycle
+    return { total_open: 0, with_auditionees: [] } if call.blank?
+
+    is_open = call.opens_at <= Time.current && call.closes_at >= Time.current
+    return { total_open: 0, with_auditionees: [] } unless is_open
+
     {
-      total_open: calls.count,
-      with_auditionees: calls.map do |call|
-        {
-          call: call,
-          auditionee_count: call.audition_requests.count
-        }
-      end
+      total_open: 1,
+      with_auditionees: [ {
+        call: call,
+        auditionee_count: call.audition_requests.count
+      } ]
     }
   end
 
@@ -43,11 +44,17 @@ class DashboardService
         else "#{days_until} days from now"
         end
 
+        cast_percentage = if @production.roles.count > 0
+          ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
+        else
+          0
+        end
+
         {
           show: show,
           uncast_count: uncast_count,
           days_until: days_label,
-          cast_percentage: ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
+          cast_percentage: cast_percentage
         }
       end
   end

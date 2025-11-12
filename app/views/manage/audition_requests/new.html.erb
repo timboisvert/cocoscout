@@ -4,12 +4,12 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Sign-ups", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition)]
+      ["Sign-ups", manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
     ],
     text: "Manually Create a Sign-up",
     links: []
   } %>
 
 
-  <%= link_to "Back", manage_production_call_to_audition_audition_requests_path(@production, @call_to_audition), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+  <%= link_to "Back", manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
 </div>

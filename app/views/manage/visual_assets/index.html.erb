@@ -21,7 +21,7 @@
 
       <% if current_user_can_manage?(@production) %>
         <div>
-          <%= link_to "Replace logo", edit_manage_production_path(@production), class: "text-pink-500 underline text-sm" %>
+          <%= link_to "Replace logo", edit_logo_manage_production_visual_asset_path(@production, :logo), class: "text-pink-500 underline text-sm" %>
         </div>
       <% end %>
     <% else %>
@@ -29,7 +29,7 @@
         No logo added.
 
         <% if current_user_can_manage?(@production) %>
-          <%= link_to "Upload a logo", edit_manage_production_path(@production), class: "text-pink-500 underline" %>
+          <%= link_to "Upload a logo", new_logo_manage_production_visual_assets_path(@production), class: "text-pink-500 underline" %>
         <% end %>
       </span>
     <% end %>

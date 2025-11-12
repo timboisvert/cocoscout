@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :audition_request do
-    association :call_to_audition
+    association :audition_cycle
     association :person
     status { :unreviewed }
 

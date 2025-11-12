@@ -31,7 +31,7 @@ Rails.application.routes.draw do
   end
 
   # Respond to an audition request
-  get "/a/:token", to: "my/respond_to_call_to_audition#entry", as: "respond_to_call_to_audition"
+  get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
   # Talent-facing interface
   namespace :my do
@@ -50,10 +50,10 @@ Rails.application.routes.draw do
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
-      get "/form", to: "respond_to_call_to_audition#form", as: "respond_to_call_to_audition_form"
-      post "/form", to: "respond_to_call_to_audition#submitform", as: "submit_respond_to_call_to_audition_form"
-      get "/success", to: "respond_to_call_to_audition#success", as: "respond_to_call_to_audition_success"
-      get "/inactive", to: "respond_to_call_to_audition#inactive", as: "respond_to_call_to_audition_inactive"
+      get "/form", to: "submit_audition_request#form", as: "submit_audition_request_form"
+      post "/form", to: "submit_audition_request#submitform", as: "submit_submit_audition_request_form"
+      get "/success", to: "submit_audition_request#success", as: "submit_audition_request_success"
+      get "/inactive", to: "submit_audition_request#inactive", as: "submit_audition_request_inactive"
     end
   end
 
@@ -102,6 +102,9 @@ Rails.application.routes.draw do
         post :add_to_cast
         post :remove_from_cast
         post :remove_from_production_company
+        get :contact
+        post :send_contact_email
+        patch :update_availability
       end
     end
 
@@ -126,11 +129,15 @@ Rails.application.routes.draw do
         collection do
           get :new_poster
           post :create_poster
+          get :new_logo
+          post :create_logo
         end
         member do
           get :edit_poster
           patch :update_poster
           delete :destroy_poster
+          get :edit_logo
+          patch :update_logo
         end
       end
 
@@ -163,7 +170,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :call_to_auditions do
+      resources :audition_cycles do
         resources :audition_requests do
           member do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
@@ -171,27 +178,44 @@ Rails.application.routes.draw do
             post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
           end
         end
+        resources :audition_sessions do
+          resources :auditions, only: [ :show ], to: "audition_sessions#show"
+        end
         member do
-          get    "form",              to: "call_to_auditions#form",              as: "form"
-          get    "preview",           to: "call_to_auditions#preview",           as: "preview"
-          post   "create_question",   to: "call_to_auditions#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "call_to_auditions#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "call_to_auditions#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "call_to_auditions#reorder_questions", as: "reorder_questions"
+          get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
+          get    "form",              to: "audition_cycles#form",              as: "form"
+          get    "preview",           to: "audition_cycles#preview",           as: "preview"
+          post   "create_question",   to: "audition_cycles#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "audition_cycles#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
+          patch  "archive",           to: "audition_cycles#archive",           as: "archive"
+          get    "prepare",           to: "auditions#prepare",                   as: "prepare"
+          get    "publicize",         to: "auditions#publicize",                 as: "publicize"
+          get    "review",            to: "auditions#review",                    as: "review"
+          patch  "finalize_invitations", to: "auditions#finalize_invitations",  as: "finalize_invitations"
+          get    "run",               to: "auditions#run",                       as: "run"
+          get    "casting",           to: "auditions#casting",                   as: "casting"
+          get    "casting/select",    to: "auditions#casting_select",           as: "casting_select"
+          post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
+          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment"
+          post   "finalize_and_notify", to: "auditions#finalize_and_notify",    as: "finalize_and_notify"
+          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations"
         end
       end
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
-      resources :audition_sessions do
-        get "/auditions/:id", to: "audition_sessions#show", as: "audition"
-      end
 
+      resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
+      resources :email_groups, only: [ :create, :destroy ]
+      resources :audition_email_assignments, only: [ :create, :update, :destroy ]
       resources :auditions
     end
 
     # Used for adding people and removing them from an audition session
     post "/auditions/add_to_session",       to: "auditions#add_to_session"
     post "/auditions/remove_from_session",  to: "auditions#remove_from_session"
+    post "/auditions/move_to_session",      to: "auditions#move_to_session"
 
     # Used for adding people and removing them from a cast
     post "/shows/:id/assign_person_to_role",    to: "shows#assign_person_to_role"

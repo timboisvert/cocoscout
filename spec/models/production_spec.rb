@@ -42,9 +42,9 @@ RSpec.describe Production, type: :model do
       expect(production).to respond_to(:shows)
     end
 
-    it "has many call_to_auditions" do
+    it "has many audition_cycles" do
       production = create(:production)
-      expect(production).to respond_to(:call_to_auditions)
+      expect(production).to respond_to(:audition_cycles)
     end
 
     it "has many roles" do
