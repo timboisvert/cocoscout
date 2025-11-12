@@ -1,6 +1,6 @@
 class Manage::ManageController < ActionController::Base
   include Authentication
-  include Pagy::Backend
+  include Pagy::Method
 
   layout "application"
 

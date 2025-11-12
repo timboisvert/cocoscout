@@ -1,6 +1,4 @@
 module ApplicationHelper
-  include Pagy::Frontend
-
   def current_user_can_manage?(production = nil)
     return false unless Current.user
 
