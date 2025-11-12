@@ -20,7 +20,7 @@ gem "image_processing", "~> 1.2"
 gem "aws-sdk-s3", require: false
 gem "honeybadger"
 # gem "rails_semantic_logger" Check soon if you can put this back, and also uncomment the config in application.rb
-gem "pagy", "~> 9.4.0"
+gem "pagy", "~> 43.0.3"
 
 group :production do
   gem "poppler"
