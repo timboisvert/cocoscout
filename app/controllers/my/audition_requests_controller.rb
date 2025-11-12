@@ -7,7 +7,11 @@ class My::AuditionRequestsController < ApplicationController
     # Get the audition requests using the requests filter
     case @requests_filter
     when "open"
-      @audition_requests = Current.user.person.audition_requests.eager_load(audition_cycle: :production).where("closes_at > ?", Time.current)
+      # Open means: active (not archived), form reviewed, and closes_at is in the future
+      @audition_requests = Current.user.person.audition_requests
+        .eager_load(audition_cycle: :production)
+        .where(audition_cycles: { active: true, form_reviewed: true })
+        .where("audition_cycles.closes_at > ?", Time.current)
     else
       @requests_filter = "all"
       @audition_requests = Current.user.person.audition_requests.includes(audition_cycle: :production)

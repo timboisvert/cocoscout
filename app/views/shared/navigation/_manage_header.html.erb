@@ -91,8 +91,6 @@
       </button>
 
       <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-96 overflow-y-auto">
-        <%= link_to "My Dashboard", my_dashboard_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-
         <% if Current.user.god? %>
           <%= link_to "God Mode", god_mode_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
         <% end %>

@@ -36,11 +36,11 @@ export default class extends Controller {
 
     remove(event) {
         event.preventDefault();
-        
+
         if (!confirm("Are you sure you want to remove this person from the cast?")) {
             return;
         }
-        
+
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const castId = this.castIdValue;

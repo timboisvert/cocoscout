@@ -51,6 +51,14 @@ class AuditionCycle < ApplicationRecord
     end
   end
 
+  def editable_by_talent?
+    # Can only edit if:
+    # - The cycle is active (not archived)
+    # - The form has been reviewed/validated
+    # - Current time is between opens_at and closes_at
+    active && form_reviewed && timeline_status == :open
+  end
+
   def respond_url
     if Rails.env.development?
       "http://localhost:3000/a/#{self.token}"
