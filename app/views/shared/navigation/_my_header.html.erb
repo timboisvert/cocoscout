@@ -12,31 +12,43 @@
     </div>
   </div>
 
-  <div class="relative mr-4 mt-1" data-controller="dropdown">
-    <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-0 py-2 transition cursor-pointer">
-      <% if Current.user.person&.headshot&.attached? %>
-        <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
-      <% else %>
-        <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
-          <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
-        </div>
+  <% if impersonating? %>
+    <div class="flex items-center gap-3 mr-4 bg-yellow-100 border border-yellow-300 px-4 py-2 rounded-lg">
+      <div class="flex flex-col">
+        <div class="text-xs font-semibold text-yellow-800 uppercase">Impersonating</div>
+        <div class="text-sm font-medium text-yellow-900"><%= Current.user.person&.name || Current.user.email_address %></div>
+      </div>
+      <%= button_to stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded-md bg-yellow-600 text-white font-semibold text-sm hover:bg-yellow-700 cursor-pointer transition" do %>
+        Stop
       <% end %>
-      <div class="text-sm font-medium text-slate-700"><%= Current.user.person&.name || Current.user.email_address %></div>
-      <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-
-    <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-      <%= link_to "My Profile", my_profile_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-
-      <% if Current.user.god? %>
-        <%= link_to "God Mode", god_mode_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-      <% end %>
-
-      <div class="border-t border-slate-200 my-1"></div>
-
-      <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
     </div>
-  </div>
+  <% else %>
+    <div class="relative mr-4 mt-1" data-controller="dropdown">
+      <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-0 py-2 transition cursor-pointer">
+        <% if Current.user.person&.headshot&.attached? %>
+          <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
+            <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+          </div>
+        <% end %>
+        <div class="text-sm font-medium text-slate-700"><%= Current.user.person&.name || Current.user.email_address %></div>
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+        <%= link_to "My Profile", my_profile_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+
+        <% if Current.user.god? %>
+          <%= link_to "God Mode", god_mode_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% end %>
+
+        <div class="border-t border-slate-200 my-1"></div>
+
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+      </div>
+    </div>
+  <% end %>
 </header>

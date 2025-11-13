@@ -1,4 +1,8 @@
 module ApplicationHelper
+  def impersonating?
+    session[:user_doing_the_impersonating].present?
+  end
+
   def current_user_can_manage?(production = nil)
     return false unless Current.user
 
