@@ -4,7 +4,22 @@ class MoveCastsToCallToAudition < ActiveRecord::Migration[8.1]
     add_column :casts, :call_to_audition_id, :integer
     add_index :casts, :call_to_audition_id
 
-    # Backfill call_to_audition_id for existing casts
+    # First, create call_to_auditions for any productions that don't have one
+    execute <<-SQL
+      INSERT INTO call_to_auditions (production_id, opens_at, closes_at, created_at, updated_at)
+      SELECT
+        p.id,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP + INTERVAL '7 days',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+      FROM productions p
+      WHERE NOT EXISTS (
+        SELECT 1 FROM call_to_auditions cta WHERE cta.production_id = p.id
+      )
+    SQL
+
+    # Now backfill call_to_audition_id for existing casts
     execute <<-SQL
       UPDATE casts
       SET call_to_audition_id = (
