@@ -13,14 +13,30 @@ class RenameCallToAuditionToAuditionCycle < ActiveRecord::Migration[8.1]
     rename_column :cast_assignment_stages, :call_to_audition_id, :audition_cycle_id
     rename_column :email_groups, :call_to_audition_id, :audition_cycle_id
 
-    # Rename other indexes
-    rename_index :audition_cycles, 'index_call_to_auditions_on_production_id', 'index_audition_cycles_on_production_id'
+    # Rename other indexes (with if_exists check)
+    if index_exists?(:audition_cycles, :production_id, name: 'index_call_to_auditions_on_production_id')
+      rename_index :audition_cycles, 'index_call_to_auditions_on_production_id', 'index_audition_cycles_on_production_id'
+    end
 
-    rename_index :audition_requests, 'index_audition_requests_on_call_to_audition_id', 'index_audition_requests_on_audition_cycle_id'
-    rename_index :audition_sessions, 'index_audition_sessions_on_call_to_audition_id', 'index_audition_sessions_on_audition_cycle_id'
-    rename_index :audition_email_assignments, 'index_audition_email_assignments_on_call_to_audition_id', 'index_audition_email_assignments_on_audition_cycle_id'
-    rename_index :cast_assignment_stages, 'index_cast_assignment_stages_on_call_to_audition_id', 'index_cast_assignment_stages_on_audition_cycle_id'
-    rename_index :email_groups, 'index_email_groups_on_call_to_audition_id', 'index_email_groups_on_audition_cycle_id'
+    if index_exists?(:audition_requests, :call_to_audition_id, name: 'index_audition_requests_on_call_to_audition_id')
+      rename_index :audition_requests, 'index_audition_requests_on_call_to_audition_id', 'index_audition_requests_on_audition_cycle_id'
+    end
+
+    if index_exists?(:audition_sessions, :call_to_audition_id, name: 'index_audition_sessions_on_call_to_audition_id')
+      rename_index :audition_sessions, 'index_audition_sessions_on_call_to_audition_id', 'index_audition_sessions_on_audition_cycle_id'
+    end
+
+    if index_exists?(:audition_email_assignments, :call_to_audition_id, name: 'index_audition_email_assignments_on_call_to_audition_id')
+      rename_index :audition_email_assignments, 'index_audition_email_assignments_on_call_to_audition_id', 'index_audition_email_assignments_on_audition_cycle_id'
+    end
+
+    if index_exists?(:cast_assignment_stages, :call_to_audition_id, name: 'index_cast_assignment_stages_on_call_to_audition_id')
+      rename_index :cast_assignment_stages, 'index_cast_assignment_stages_on_call_to_audition_id', 'index_cast_assignment_stages_on_audition_cycle_id'
+    end
+
+    if index_exists?(:email_groups, :call_to_audition_id, name: 'index_email_groups_on_call_to_audition_id')
+      rename_index :email_groups, 'index_email_groups_on_call_to_audition_id', 'index_email_groups_on_audition_cycle_id'
+    end
 
     # Re-add the unique constraint with new name
     add_index :audition_cycles, [ :production_id, :active ], unique: true, where: "active = true", name: "index_audition_cycles_on_production_id_and_active"
