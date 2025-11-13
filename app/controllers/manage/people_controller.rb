@@ -128,8 +128,6 @@ class Manage::PeopleController < Manage::ManageController
 
         # Send invitation email
         Manage::PersonMailer.person_invitation(person_invitation).deliver_later
-
-        redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
       else
         render :new, status: :unprocessable_entity
       end
