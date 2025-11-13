@@ -114,6 +114,24 @@ class GodModeController < ApplicationController
     redirect_to god_mode_path, alert: "Failed to change email: #{e.message}"
   end
 
+  def email_logs
+    @email_logs = EmailLog.includes(:user).order(sent_at: :desc).limit(100)
+
+    # Filter by user if requested
+    if params[:user_id].present?
+      @email_logs = @email_logs.where(user_id: params[:user_id])
+    end
+
+    # Filter by recipient if requested
+    if params[:recipient].present?
+      @email_logs = @email_logs.where("recipient LIKE ?", "%#{params[:recipient]}%")
+    end
+  end
+
+  def email_log
+    @email_log = EmailLog.find(params[:id])
+  end
+
   private
 
   def require_god_mode

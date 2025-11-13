@@ -1,0 +1,152 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Email Log Details</h1>
+    <%= link_to "← Back to Email Logs", email_logs_path, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="bg-white shadow rounded-lg overflow-hidden">
+    <!-- Email Metadata -->
+    <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Email Information</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">From User</label>
+          <div class="mt-1">
+            <%= link_to @email_log.user.email_address, email_logs_path(user_id: @email_log.user.id), class: "text-blue-600 hover:text-blue-800" %>
+            <span class="text-sm text-gray-500">(ID: <%= @email_log.user.id %>)</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">To</label>
+          <div class="mt-1 text-gray-900"><%= @email_log.recipient %></div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Subject</label>
+          <div class="mt-1 text-gray-900"><%= @email_log.subject || "(no subject)" %></div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Status</label>
+          <div class="mt-1">
+            <% case @email_log.delivery_status %>
+            <% when "sent" %>
+              <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Sent</span>
+            <% when "delivered" %>
+              <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Delivered</span>
+            <% when "failed" %>
+              <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Failed</span>
+            <% else %>
+              <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800"><%= @email_log.delivery_status %></span>
+            <% end %>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mailer</label>
+          <div class="mt-1 text-gray-900">
+            <%= @email_log.mailer_class %><% if @email_log.mailer_action.present? %>#<%= @email_log.mailer_action %><% end %>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Sent At</label>
+          <div class="mt-1 text-gray-900">
+            <%= @email_log.sent_at&.strftime("%B %d, %Y at %I:%M %p") || "Not sent" %>
+          </div>
+        </div>
+
+        <% if @email_log.delivered_at.present? %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Delivered At</label>
+          <div class="mt-1 text-gray-900">
+            <%= @email_log.delivered_at.strftime("%B %d, %Y at %I:%M %p") %>
+          </div>
+        </div>
+        <% end %>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Message ID</label>
+          <div class="mt-1 text-gray-900 text-sm font-mono"><%= @email_log.message_id || "N/A" %></div>
+        </div>
+      </div>
+
+      <% if @email_log.error_message.present? %>
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-red-700">Error Message</label>
+        <div class="mt-1 text-red-900 bg-red-50 p-3 rounded border border-red-200">
+          <%= @email_log.error_message %>
+        </div>
+      </div>
+      <% end %>
+    </div>
+
+    <!-- Email Body -->
+    <div class="px-6 py-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Email Body</h2>
+        <div class="flex gap-2">
+          <button onclick="document.getElementById('raw-view').classList.add('hidden'); document.getElementById('rendered-view').classList.remove('hidden'); this.classList.add('bg-blue-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); document.getElementById('raw-btn').classList.remove('bg-blue-600', 'text-white'); document.getElementById('raw-btn').classList.add('bg-gray-200', 'text-gray-700');" 
+                  class="px-3 py-1 text-sm rounded bg-blue-600 text-white">
+            Rendered
+          </button>
+          <button id="raw-btn" onclick="document.getElementById('rendered-view').classList.add('hidden'); document.getElementById('raw-view').classList.remove('hidden'); this.classList.add('bg-blue-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); this.previousElementSibling.classList.remove('bg-blue-600', 'text-white'); this.previousElementSibling.classList.add('bg-gray-200', 'text-gray-700');" 
+                  class="px-3 py-1 text-sm rounded bg-gray-200 text-gray-700">
+            Raw
+          </button>
+        </div>
+      </div>
+
+      <!-- Rendered View -->
+      <div id="rendered-view" class="border border-gray-200 rounded bg-white min-h-[300px]">
+        <iframe 
+          id="email-iframe"
+          class="w-full min-h-[600px] border-0"
+          sandbox="allow-same-origin"
+          srcdoc="<%= ERB::Util.html_escape(@email_log.body) %>"
+        ></iframe>
+      </div>
+
+      <!-- Raw View -->
+      <div id="raw-view" class="hidden border border-gray-200 rounded p-4 bg-gray-50 min-h-[300px]">
+        <pre class="text-sm text-gray-800 whitespace-pre-wrap font-mono"><%= @email_log.body %></pre>
+      </div>
+
+      <% if @email_log.body.blank? %>
+        <div class="text-center py-8 text-gray-500">
+          No email body available
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Footer -->
+    <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 text-sm text-gray-600">
+      <div class="flex justify-between items-center">
+        <div>
+          Email Log ID: <%= @email_log.id %>
+        </div>
+        <div>
+          Created: <%= @email_log.created_at.strftime("%B %d, %Y at %I:%M %p") %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto-resize iframe to fit content
+  const iframe = document.getElementById('email-iframe');
+  if (iframe) {
+    iframe.onload = function() {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const height = iframeDoc.body.scrollHeight;
+        iframe.style.height = Math.max(height, 600) + 'px';
+      } catch (e) {
+        console.log('Could not resize iframe:', e);
+      }
+    };
+  }
+</script>

@@ -32,6 +32,8 @@ Rails.application.routes.draw do
     post "/impersonate",        to: "god_mode#impersonate",         as: "impersonate_user"
     post "/stop_impersonating", to: "god_mode#stop_impersonating",  as: "stop_impersonating_user"
     post "/change_email",       to: "god_mode#change_email",        as: "change_email_user"
+    get  "/email_logs",         to: "god_mode#email_logs",          as: "email_logs"
+    get  "/email_logs/:id",     to: "god_mode#email_log",           as: "email_log"
   end
 
   # Respond to an audition request

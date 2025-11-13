@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_12_221518) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_13_141301) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -163,6 +163,26 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_221518) do
     t.string "name"
     t.datetime "updated_at", null: false
     t.index ["audition_cycle_id"], name: "index_email_groups_on_audition_cycle_id"
+  end
+
+  create_table "email_logs", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.string "delivery_status", default: "pending"
+    t.text "error_message"
+    t.string "mailer_action"
+    t.string "mailer_class"
+    t.string "message_id"
+    t.string "recipient", null: false
+    t.datetime "sent_at"
+    t.string "subject"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["message_id"], name: "index_email_logs_on_message_id"
+    t.index ["recipient"], name: "index_email_logs_on_recipient"
+    t.index ["sent_at"], name: "index_email_logs_on_sent_at"
+    t.index ["user_id"], name: "index_email_logs_on_user_id"
   end
 
   create_table "invitations", force: :cascade do |t|
@@ -411,6 +431,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_221518) do
   add_foreign_key "cast_assignment_stages", "people"
   add_foreign_key "casts", "productions"
   add_foreign_key "email_groups", "audition_cycles"
+  add_foreign_key "email_logs", "users"
   add_foreign_key "invitations", "organizations"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "organizations"

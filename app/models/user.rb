@@ -6,6 +6,7 @@
     has_many :user_roles, dependent: :destroy
     has_many :organizations, through: :user_roles
     has_many :production_permissions, dependent: :destroy
+    has_many :email_logs, dependent: :destroy
 
     normalizes :email_address, with: ->(e) { e.strip.downcase }
     validates :email_address, presence: true, uniqueness: { case_sensitive: false }
