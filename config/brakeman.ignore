@@ -1,4 +1,28 @@
 {
-  "ignored_warnings": [],
+  "ignored_warnings": [
+    {
+      "warning_type": "Remote Code Execution",
+      "warning_code": 24,
+      "fingerprint": "b8eb88c010f0550baf1d0b989ab623e7b1aa4019197016f3b5ec72d0a7edc5ba",
+      "check_name": "UnsafeReflection",
+      "message": "Unsafe reflection method `constantize` called on parameter value",
+      "file": "app/controllers/god_mode_controller.rb",
+      "line": 182,
+      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
+      "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "GodModeController",
+        "method": "queue_retry"
+      },
+      "user_input": "params[:id]",
+      "confidence": "Medium",
+      "cwe_id": [
+        470
+      ],
+      "note": ""
+    }
+  ],
   "brakeman_version": "7.1.1"
 }
