@@ -1,7 +1,7 @@
 class My::DashboardController < ApplicationController
   def index
-    # Check if user needs to see welcome page
-    if Current.user.welcomed_at.nil?
+    # Check if user needs to see welcome page (but not when impersonating)
+    if Current.user.welcomed_at.nil? && !impersonating?
       @show_my_sidebar = false
       render "welcome" and return
     end
@@ -30,6 +30,12 @@ class My::DashboardController < ApplicationController
   end
 
   def dismiss_welcome
+    # Prevent dismissing welcome screen when impersonating
+    if impersonating?
+      redirect_to my_dashboard_path, alert: "Cannot dismiss welcome screen while impersonating"
+      return
+    end
+
     Current.user.update(welcomed_at: Time.current)
     redirect_to my_dashboard_path
   end
