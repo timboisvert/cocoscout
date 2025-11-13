@@ -43,16 +43,16 @@ class EmailLogInterceptor
     if message.attachments.any?
       message.attachments.each do |attachment|
         next unless attachment.inline?
-        
+
         # Get the Content-ID (without < >)
         cid = attachment.cid
         next unless cid
-        
+
         # Convert attachment to base64 data URL
         content_type = attachment.content_type
         base64_data = Base64.strict_encode64(attachment.body.decoded)
         data_url = "data:#{content_type};base64,#{base64_data}"
-        
+
         # Replace cid: references with data URLs
         html_body = html_body.gsub(/cid:#{Regexp.escape(cid)}/, data_url)
       end

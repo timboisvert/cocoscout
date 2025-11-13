@@ -13,6 +13,21 @@
   <div class="flex flex-col md:flex-row gap-2 mt-4">
 
     <div class="flex-1">
+      <!-- Queue Monitor Link Card -->
+      <%= link_to queue_monitor_path, class: "block mb-2" do %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-green-500 transition-all bg-gradient-to-r from-green-50 to-green-100">
+          <div class="p-6 flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 coustard-regular">⚙️ Queue Monitor</h3>
+              <p class="text-sm text-gray-600 mt-1">View job queue status and failed jobs</p>
+            </div>
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      <% end %>
+
       <!-- Email Logs Link Card -->
       <%= link_to email_logs_path, class: "block mb-2" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 transition-all bg-gradient-to-r from-blue-50 to-blue-100">

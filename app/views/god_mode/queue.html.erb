@@ -1,0 +1,136 @@
+<% content_for :title, "Queue Monitor - God Mode" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "God Mode", link: god_mode_path }
+    ],
+    text: "Queue Monitor",
+    links: []
+  } %>
+
+  <div class="mt-4 space-y-4">
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <!-- Total Jobs -->
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-sm text-gray-600 font-medium">Total Jobs</div>
+        <div class="text-3xl font-bold text-gray-900 mt-1"><%= number_with_delimiter(@total_jobs) %></div>
+      </div>
+
+      <!-- Pending Jobs -->
+      <div class="bg-white border <%= @pending_jobs > 100 ? 'border-yellow-400' : 'border-gray-200' %> rounded-lg p-4">
+        <div class="text-sm text-gray-600 font-medium">Pending</div>
+        <div class="text-3xl font-bold <%= @pending_jobs > 100 ? 'text-yellow-600' : 'text-blue-600' %> mt-1">
+          <%= number_with_delimiter(@pending_jobs) %>
+        </div>
+      </div>
+
+      <!-- Finished Today -->
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="text-sm text-gray-600 font-medium">Finished Today</div>
+        <div class="text-3xl font-bold text-green-600 mt-1"><%= number_with_delimiter(@finished_today) %></div>
+      </div>
+
+      <!-- Failed Jobs -->
+      <div class="bg-white border <%= @failed_jobs > 0 ? 'border-red-400' : 'border-gray-200' %> rounded-lg p-4">
+        <div class="text-sm text-gray-600 font-medium">
+          <%= link_to "Failed", queue_failed_path, class: "hover:underline" %>
+        </div>
+        <div class="text-3xl font-bold <%= @failed_jobs > 0 ? 'text-red-600' : 'text-gray-900' %> mt-1">
+          <%= number_with_delimiter(@failed_jobs) %>
+        </div>
+      </div>
+
+      <!-- Active Workers -->
+      <div class="bg-white border <%= @active_workers == 0 ? 'border-red-400' : 'border-gray-200' %> rounded-lg p-4">
+        <div class="text-sm text-gray-600 font-medium">Active Workers</div>
+        <div class="text-3xl font-bold <%= @active_workers == 0 ? 'text-red-600' : 'text-green-600' %> mt-1">
+          <%= @active_workers %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Queue Breakdown -->
+    <% if @queue_stats.any? %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Pending Jobs by Queue</h3>
+        </div>
+        <div class="p-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <% @queue_stats.each do |queue_name, count| %>
+              <div class="border border-gray-200 rounded p-3">
+                <div class="text-sm text-gray-600 font-mono"><%= queue_name %></div>
+                <div class="text-2xl font-bold text-gray-900 mt-1"><%= number_with_delimiter(count) %></div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Recent Jobs -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Recent Jobs (Last 50)</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queue</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Class</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @recent_jobs.each do |job| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-mono"><%= job.id %></td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 font-mono"><%= job.queue_name %></td>
+                <td class="px-4 py-3 text-sm text-gray-900">
+                  <div class="max-w-md truncate"><%= job.class_name %></div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  <%= time_ago_in_words(job.created_at) %> ago
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm">
+                  <% if job.finished_at %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      ✓ Finished
+                    </span>
+                  <% elsif job.scheduled_at && job.scheduled_at > Time.current %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      ⏰ Scheduled
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      ⏳ Pending
+                    </span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  <% if job.finished_at %>
+                    <%= distance_of_time_in_words(job.created_at, job.finished_at) %>
+                  <% elsif job.scheduled_at && job.scheduled_at > Time.current %>
+                    in <%= distance_of_time_in_words(Time.current, job.scheduled_at) %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,84 @@
+<% content_for :title, "Failed Jobs - God Mode" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "God Mode", link: god_mode_path },
+      { text: "Queue Monitor", link: queue_monitor_path }
+    ],
+    text: "Failed Jobs",
+    links: []
+  } %>
+
+  <div class="mt-4">
+
+    <% if @failed_executions.empty? %>
+      <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+        <div class="text-4xl mb-2">✅</div>
+        <h3 class="text-lg font-semibold text-gray-900 coustard-regular mb-1">No Failed Jobs</h3>
+        <p class="text-sm text-gray-600">All jobs are processing successfully!</p>
+      </div>
+    <% else %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+          <h3 class="text-md font-semibold text-red-900 coustard-regular">
+            Failed Jobs (<%= @failed_executions.count %>)
+          </h3>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+          <% @failed_executions.each do |failed_execution| %>
+            <% job = failed_execution.job %>
+            <div class="p-4 hover:bg-gray-50">
+              <!-- Job Info Header -->
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                      Failed
+                    </span>
+                    <span class="text-sm text-gray-600">
+                      <%= time_ago_in_words(failed_execution.created_at) %> ago
+                    </span>
+                  </div>
+                  <div class="text-sm font-semibold text-gray-900 mb-1">
+                    <%= job.class_name %>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    Job ID: <span class="font-mono"><%= job.id %></span> •
+                    Queue: <span class="font-mono"><%= job.queue_name %></span> •
+                    Created: <%= job.created_at.strftime("%b %d, %Y %I:%M %p") %>
+                  </div>
+                </div>
+
+                <%= button_to "Retry", queue_retry_path(failed_execution.id),
+                    method: :post,
+                    class: "ml-4 px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded font-medium cursor-pointer",
+                    data: { confirm: "Retry this job?" } %>
+              </div>
+
+              <!-- Arguments -->
+              <% if job.arguments.present? %>
+                <div class="mb-3">
+                  <div class="text-xs font-medium text-gray-700 mb-1">Arguments:</div>
+                  <pre class="text-xs bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto"><%= JSON.pretty_generate(JSON.parse(job.arguments)) rescue job.arguments %></pre>
+                </div>
+              <% end %>
+
+              <!-- Error Message -->
+              <div>
+                <div class="text-xs font-medium text-red-700 mb-1">Error:</div>
+                <div class="text-sm bg-red-50 border border-red-200 rounded p-3">
+                  <pre class="whitespace-pre-wrap text-red-900 font-mono text-xs"><%= failed_execution.error %></pre>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+</div>

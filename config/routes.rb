@@ -34,6 +34,9 @@ Rails.application.routes.draw do
     post "/change_email",       to: "god_mode#change_email",        as: "change_email_user"
     get  "/email_logs",         to: "god_mode#email_logs",          as: "email_logs"
     get  "/email_logs/:id",     to: "god_mode#email_log",           as: "email_log"
+    get  "/queue",              to: "god_mode#queue",               as: "queue_monitor"
+    get  "/queue/failed",       to: "god_mode#queue_failed",        as: "queue_failed"
+    post "/queue/retry/:id",    to: "god_mode#queue_retry",         as: "queue_retry"
   end
 
   # Respond to an audition request

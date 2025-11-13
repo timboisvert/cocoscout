@@ -1,5 +1,5 @@
 class GodModeController < ApplicationController
-  before_action :require_god_mode, only: [ :index, :impersonate, :change_email ]
+  before_action :require_god_mode, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry ]
 
   def index
     @users = User.order(:email_address)
@@ -130,6 +130,61 @@ class GodModeController < ApplicationController
 
   def email_log
     @email_log = EmailLog.find(params[:id])
+  end
+
+  def queue
+    # Get overall stats
+    @total_jobs = SolidQueue::Job.count
+    @pending_jobs = SolidQueue::Job.where(finished_at: nil).count
+    @finished_today = SolidQueue::Job.where(finished_at: Time.current.beginning_of_day..Time.current).count
+    @failed_jobs = SolidQueue::FailedExecution.count
+    @active_workers = SolidQueue::Process.where("last_heartbeat_at > ?", 5.minutes.ago).count
+
+    # Recent jobs (last 50)
+    @recent_jobs = SolidQueue::Job
+      .order(created_at: :desc)
+      .limit(50)
+      .select(:id, :queue_name, :class_name, :created_at, :finished_at, :scheduled_at)
+
+    # Queue breakdown
+    @queue_stats = SolidQueue::Job
+      .where(finished_at: nil)
+      .group(:queue_name)
+      .count
+      .sort_by { |_, count| -count }
+  rescue ActiveRecord::StatementInvalid
+    # Queue database not accessible
+    @total_jobs = 0
+    @pending_jobs = 0
+    @finished_today = 0
+    @failed_jobs = 0
+    @active_workers = 0
+    @recent_jobs = []
+    @queue_stats = {}
+    flash.now[:alert] = "Queue database not accessible. This is normal in development."
+  end
+
+  def queue_failed
+    @failed_executions = SolidQueue::FailedExecution
+      .joins(:job)
+      .includes(:job)
+      .order("solid_queue_failed_executions.created_at DESC")
+      .limit(100)
+      .select("solid_queue_failed_executions.*, solid_queue_jobs.*")
+  end
+
+  def queue_retry
+    failed_execution = SolidQueue::FailedExecution.find(params[:id])
+    job = failed_execution.job
+
+    # Create a new job with the same parameters
+    ActiveJob::Base.queue_adapter.enqueue(
+      job.class_name.constantize.new(*JSON.parse(job.arguments))
+    )
+
+    redirect_to queue_failed_path, notice: "Job queued for retry"
+  rescue => e
+    redirect_to queue_failed_path, alert: "Failed to retry job: #{e.message}"
   end
 
   private
