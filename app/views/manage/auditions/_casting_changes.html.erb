@@ -1,0 +1,41 @@
+<!-- Casting Changes Summary -->
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Changes</h3>
+  </div>
+  <div class="p-6">
+    <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your cast(s).</p>
+
+    <% has_any_changes = @cast_assignment_stages.where(status: :pending).any? %>
+    <% if has_any_changes %>
+      <div class="space-y-4 mb-6">
+        <!-- People being added to casts -->
+        <% @casts.each do |cast| %>
+          <% cast_stages = @cast_assignment_stages.where(status: :pending).select { |stage| stage.cast_id == cast.id } %>
+          <% if cast_stages.any? %>
+            <div class="border-l-4 border-pink-500 pl-4">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to <%= cast.name %></h4>
+              <div class="flex flex-wrap gap-2">
+                <% cast_stages.each do |stage| %>
+                  <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                    <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: stage.person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                        <%= stage.person.initials %>
+                      </div>
+                    <% end %>
+                    <%= stage.person.name %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= render partial: "shared/link_button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle) } %>
+  </div>
+</div>

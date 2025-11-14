@@ -27,87 +27,45 @@
 
     <%# Show summary if notifications have been sent %>
     <% if has_sent_notifications %>
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Casting and Notify</h3>
-        </div>
-        <div class="p-6">
-          <%# Finalized state - show notice and require button click to edit %>
-          <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div class="flex items-start gap-3">
-              <div class="flex-shrink-0">
-                <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-              <div class="flex-1">
-                <h4 class="text-sm font-semibold text-green-900 mb-1">Casting Notifications Finalized</h4>
-                <p class="text-sm text-green-800 mb-3">
-                  Notification emails have been sent to <%= notified_stages.count %> <%= 'person'.pluralize(notified_stages.count) %>. To add more cast members and send additional notifications, click the button below.
-                </p>
-                <button
-                  type="button"
-                  data-controller="show-toggle"
-                  data-action="click->show-toggle#toggle"
-                  class="font-medium rounded-lg text-sm px-4 py-2 text-center text-white bg-green-600 hover:bg-green-700 transition"
-                >
-                  Add More Cast Members
-                </button>
-              </div>
-            </div>
+      <div data-controller="show-toggle">
+        <div data-show-toggle-target="finalizedBox" class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Casting and Notify</h3>
           </div>
-
-          <%# Group notified people by cast %>
-          <div class="space-y-3">
-            <% notified_by_cast = notified_stages.group_by(&:cast_id) %>
-            <% notified_by_cast.each do |cast_id, stages| %>
-              <% cast = @casts.find { |c| c.id == cast_id } %>
-              <div class="border-l-4 border-green-500 pl-4">
-                <h4 class="text-sm font-semibold text-gray-900 mb-2">Added to <%= cast.name %></h4>
-                <div class="flex flex-wrap gap-2">
-                  <% stages.each do |stage| %>
-                    <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
-                      <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: stage.person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                      <% else %>
-                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                          <%= stage.person.initials %>
-                        </div>
-                      <% end %>
-                      <%= stage.person.name %>
-                    <% end %>
-                  <% end %>
+          <div class="p-6">
+            <%# Finalized state - show notice and require button click to edit %>
+            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                  <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h4 class="text-sm font-semibold text-green-900 mb-1">Casting Notifications Finalized</h4>
+                  <p class="text-sm text-green-800 mb-3">
+                    Notification emails have been sent to <%= notified_stages.count %> <%= 'person'.pluralize(notified_stages.count) %>. To add more cast members and send additional notifications, click the button below.
+                  </p>
+                  <button
+                    type="button"
+                    data-action="click->show-toggle#toggle"
+                    class="font-medium rounded-lg text-sm px-4 py-2 text-center text-white bg-green-600 hover:bg-green-700 transition cursor-pointer"
+                  >
+                    Edit Invitations & Add More Cast Members
+                  </button>
                 </div>
               </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
+            </div>
 
-      <div data-show-toggle-target="content" class="hidden">
-        <!-- Casting Changes and Finalize sections will be shown here when button clicked -->
-    <% end %>
-
-    <!-- Casting Changes Summary -->
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Changes</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your cast(s).</p>
-
-        <% has_any_changes = @cast_assignment_stages.where(status: :pending).any? %>
-        <% if has_any_changes %>
-          <div class="space-y-4 mb-6">
-            <!-- People being added to casts -->
-            <% @casts.each do |cast| %>
-              <% cast_stages = @cast_assignment_stages.where(status: :pending).select { |stage| stage.cast_id == cast.id } %>
-              <% if cast_stages.any? %>
-                <div class="border-l-4 border-pink-500 pl-4">
-                  <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to <%= cast.name %></h4>
+            <%# Group notified people by cast %>
+            <div class="space-y-3">
+              <% notified_by_cast = notified_stages.group_by(&:cast_id) %>
+              <% notified_by_cast.each do |cast_id, stages| %>
+                <% cast = @casts.find { |c| c.id == cast_id } %>
+                <div class="border-l-4 border-green-500 pl-4">
+                  <h4 class="text-sm font-semibold text-gray-900 mb-2">Added to <%= cast.name %></h4>
                   <div class="flex flex-wrap gap-2">
-                    <% cast_stages.each do |stage| %>
+                    <% stages.each do |stage| %>
                       <%= link_to manage_person_path(stage.person), class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
                         <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
                         <% if headshot_variant %>
@@ -123,352 +81,19 @@
                   </div>
                 </div>
               <% end %>
-            <% end %>
-          </div>
-        <% end %>
-
-        <%= render partial: "shared/link_button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle) } %>
-      </div>
-    </div>
-
-    <!-- Finalize and Notify -->
-    <% pending_stages = @cast_assignment_stages.where(status: :pending) %>
-    <% staged_casts = @casts.select { |cast| pending_stages.any? { |stage| stage.cast_id == cast.id } } %>
-    <% # Calculate unassigned people - those who auditioned but aren't in any cast %>
-    <% assigned_person_ids = pending_stages.pluck(:person_id).uniq %>
-    <% unassigned_people = @auditioned_people.reject { |person| assigned_person_ids.include?(person.id) } %>
-    <% if staged_casts.any? || unassigned_people.any? %>
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6"
-           data-<%= has_sent_notifications ? 'show-toggle-target="content"' : '' %>>
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Casting and Notify</h3>
-        </div>
-        <div class="p-6">
-          <% # Load email assignments for all auditioned people %>
-          <% email_assignments = audition_cycle.audition_email_assignments.where(person_id: @auditioned_people.map(&:id)).index_by(&:person_id) %>
-          <% # Load custom email groups %>
-          <% custom_groups = audition_cycle.email_groups.where(group_type: 'casting').order(:created_at) %>
-          <% if staged_casts.any? || unassigned_people.any? %>
-            <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= audition_cycle.id %>" data-email-groups-group-type-value="casting">
-
-              <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
-                <% # Helper method to get email group ID for a person %>
-                <% get_email_group_id = lambda do |person|
-                  assignment = email_assignments[person.id]
-                  if assignment&.email_group_id.present?
-                    assignment.email_group_id
-                  else
-                    # Default group based on whether they're in a cast
-                    stage = pending_stages.find { |s| s.person_id == person.id }
-                    stage ? "default_#{stage.cast_id}" : "unassigned"
-                  end
-                end %>
-                <% # Group all auditioned people by their email group %>
-                <% people_by_group = @auditioned_people.group_by(&get_email_group_id) %>
-                <% # Get the first cast ID for use as default when creating new stages %>
-                <% default_cast_id = staged_casts.first&.id %>
-
-                <%# Tabs for each cast's default email (people with no custom email assignment) %>
-                <% staged_casts.each_with_index do |cast, cast_idx| %>
-                  <% group_key = "default_#{cast.id}" %>
-                  <% cast_people = people_by_group[group_key] || [] %>
-                  <% next unless cast_people.any? %>
-                  <button
-                    type="button"
-                    data-tabs-target="tab"
-                    data-index="<%= cast_idx %>"
-                    data-group-tab
-                    data-group-id="<%= group_key %>"
-                    data-cast-id="<%= cast.id %>"
-                    data-action="tabs#select email-groups#selectGroup"
-                    class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 <%= cast_idx == 0 ? 'text-pink-600 border-pink-600' : 'text-gray-500 bg-gray-50 border-transparent' %> cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
-                  >
-                    <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="<%= group_key %>" fill="currentColor" viewBox="0 0 24 24">
-                      <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                    </svg>
-                    <span>Added to <%= cast.name %> (<%= cast_people.size %>)</span>
-                  </button>
-                <% end %>
-
-                <% # Add "Not Being Added" tab %>
-                <% next_index = staged_casts.size %>
-                <% unassigned_group_people = people_by_group["unassigned"] || [] %>
-                <% if unassigned_group_people.any? %>
-                  <button
-                    type="button"
-                    data-tabs-target="tab"
-                    data-index="<%= next_index %>"
-                    data-group-tab
-                    data-group-id="unassigned"
-                    data-cast-id="<%= default_cast_id %>"
-                    data-action="tabs#select email-groups#selectGroup"
-                    class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
-                  >
-                    <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="unassigned" fill="currentColor" viewBox="0 0 24 24">
-                      <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                    </svg>
-                    <span>Not Being Added (<%= unassigned_group_people.size %>)</span>
-                  </button>
-                  <% next_index += 1 %>
-                <% end %>
-
-                <%# Custom email group tabs (appear just before "+ New Email Group") %>
-                <% custom_groups.each_with_index do |custom_group, idx| %>
-                  <% group_people = people_by_group[custom_group.group_id] || [] %>
-                  <button
-                    type="button"
-                    data-tabs-target="tab"
-                    data-index="<%= next_index + idx %>"
-                    data-group-tab
-                    data-group-id="<%= custom_group.group_id %>"
-                    data-cast-id="<%= default_cast_id %>"
-                    data-action="tabs#select email-groups#selectGroup"
-                    class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
-                  >
-                    <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="<%= custom_group.group_id %>" fill="currentColor" viewBox="0 0 24 24">
-                      <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                    </svg>
-                    <span><%= custom_group.name %> (<%= group_people.size %>)</span>
-                  </button>
-                <% end %>
-
-                <%# Add button for creating new email group (always at the end) %>
-                <button
-                  type="button"
-                  data-action="click->email-groups#createNewGroup"
-                  class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 border-transparent text-gray-400 hover:text-pink-600 cursor-pointer whitespace-nowrap"
-                >
-                  + New Email Group
-                </button>
-              </nav>
-
-                            <div class="space-y-4">
-                <%# Default panels for each cast %>
-                <% staged_casts.each_with_index do |cast, cast_idx| %>
-                  <% group_key = "default_#{cast.id}" %>
-                  <% cast_people = people_by_group[group_key] || [] %>
-                  <% next unless cast_people.any? %>
-                  <div data-tabs-target="panel" data-group-panel data-group-id="<%= group_key %>" class="<%= 'hidden' unless cast_idx == 0 %>">
-                    <div class="mb-4">
-                      <h5 class="text-sm font-semibold text-gray-900 mb-3">People being added to <%= cast.name %>:</h5>
-                      <div class="flex flex-wrap gap-2">
-                        <% cast_people.each do |person| %>
-                          <% assignment = email_assignments[person.id] %>
-                          <div
-                            class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                            data-person-id="<%= person.id %>"
-                            data-email-assignment-id="<%= assignment&.id || '' %>"
-                            data-cast-id="<%= cast.id %>"
-                            data-action="click->email-groups#showPopup"
-                          >
-                            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                            <% if headshot_variant %>
-                              <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                            <% else %>
-                              <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                                <%= person.initials %>
-                              </div>
-                            <% end %>
-                            <span><%= person.name %></span>
-                          </div>
-                        <% end %>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
-                      <textarea
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                        rows="6"
-                      >Dear [Name],
-
-Congratulations! We're excited to invite you to join the <%= cast.name %> for <%= @production.name %>.
-
-Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
-
-Please confirm your acceptance by [date].
-
-Best regards,
-The <%= @production.name %> Team</textarea>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-gray-200">
-                      <label class="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          data-email-groups-target="reviewCheckbox"
-                          data-checkbox-group-id="<%= group_key %>"
-                          data-action="change->email-groups#checkAllReviewed"
-                          class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-                        >
-                        <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
-                      </label>
-                    </div>
-                  </div>
-                <% end %>
-
-                <% # Panel for unassigned people (must match tab order) %>
-                <% if unassigned_group_people.any? %>
-                  <div data-tabs-target="panel" data-group-panel data-group-id="unassigned" class="hidden">
-                    <div class="mb-4">
-                      <h5 class="text-sm font-semibold text-gray-900 mb-3">People not being added to the cast:</h5>
-                      <div class="flex flex-wrap gap-2">
-                        <% unassigned_group_people.each do |person| %>
-                          <% assignment = email_assignments[person.id] %>
-                          <div
-                            class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                            data-person-id="<%= person.id %>"
-                            data-email-assignment-id="<%= assignment&.id || '' %>"
-                            data-cast-id=""
-                            data-action="click->email-groups#showPopup"
-                          >
-                            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                            <% if headshot_variant %>
-                              <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                            <% else %>
-                              <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                                <%= person.initials %>
-                              </div>
-                            <% end %>
-                            <%= person.name %>
-                          </div>
-                        <% end %>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
-                      <textarea
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                        rows="6"
-                      >Dear [Name],
-
-Thank you so much for auditioning for <%= @production.name %>. We truly appreciate the time and effort you put into your audition.
-
-Unfortunately, we won't be able to offer you a role in this production at this time. We were impressed by your talent and encourage you to audition for future productions.
-
-We hope to work with you in the future.
-
-Best regards,
-The <%= @production.name %> Team</textarea>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-gray-200">
-                      <label class="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          data-email-groups-target="reviewCheckbox"
-                          data-checkbox-group-id="unassigned"
-                          data-action="change->email-groups#checkAllReviewed"
-                          class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-                        >
-                        <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
-                      </label>
-                    </div>
-                  </div>
-                <% end %>
-
-                <%# Custom email group panels %>
-                <% custom_groups.each_with_index do |custom_group, idx| %>
-                  <% group_people = people_by_group[custom_group.group_id] || [] %>
-                  <div data-tabs-target="panel" data-group-panel data-group-id="<%= custom_group.group_id %>" class="hidden">
-                    <div class="mb-4">
-                      <h5 class="text-sm font-semibold text-gray-900 mb-3">People in this email group:</h5>
-                      <div class="flex flex-wrap gap-2">
-                        <% if group_people.any? %>
-                          <% group_people.each do |person| %>
-                            <% assignment = email_assignments[person.id] %>
-                            <% stage = pending_stages.find { |s| s.person_id == person.id } %>
-                            <div
-                              class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                              data-person-id="<%= person.id %>"
-                              data-email-assignment-id="<%= assignment&.id || '' %>"
-                              data-cast-id="<%= stage&.cast_id || '' %>"
-                              data-action="click->email-groups#showPopup"
-                            >
-                              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                              <% if headshot_variant %>
-                                <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                              <% else %>
-                                <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                                  <%= person.initials %>
-                                </div>
-                              <% end %>
-                              <span><%= person.name %></span>
-                              <% if staged_casts.size > 1 && stage %>
-                                <span class="text-gray-400 text-xs">(<%= stage.cast.name %>)</span>
-                              <% end %>
-                            </div>
-                          <% end %>
-                        <% else %>
-                          <p class="text-sm text-gray-500 italic">No people in this group yet. Click on people in other groups to move them here.</p>
-                        <% end %>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
-                      <textarea
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                        rows="6"
-                        placeholder="Type your custom email message here..."
-                      ><%= custom_group.email_template %></textarea>
-                    </div>
-
-                    <% if group_people.empty? %>
-                      <div class="mt-4 pt-4 border-t border-gray-200">
-                        <button
-                          type="button"
-                          data-action="click->email-groups#deleteGroup"
-                          data-group-id="<%= custom_group.id %>"
-                          class="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
-                        >
-                          Delete this empty email group
-                        </button>
-                      </div>
-                    <% else %>
-                      <div class="mt-4 pt-4 border-t border-gray-200">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            data-email-groups-target="reviewCheckbox"
-                            data-checkbox-group-id="<%= custom_group.group_id %>"
-                            data-action="change->email-groups#checkAllReviewed"
-                            class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500"
-                          >
-                          <span class="text-sm text-gray-700">I have reviewed the recipient list and email text for this group</span>
-                        </label>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-              </div>
-
-              <%# Send notifications section (shown when all groups are reviewed) %>
-              <div
-                data-email-groups-target="sendSection"
-                class="hidden mt-6 p-4 bg-pink-50 border border-pink-200 rounded-lg"
-              >
-                <h4 class="text-sm font-semibold text-gray-900 mb-2">Ready to Send Notifications and Reveal Decisions</h4>
-                <p class="text-sm text-gray-700 mb-4">
-                  All email groups have been reviewed. Click the button below to finalize cast changes and send notification emails to all auditionees.
-                </p>
-                <button
-                  type="button"
-                  data-action="click->email-groups#sendNotifications"
-                  class="font-medium rounded-lg text-sm px-5 py-2.5 text-center text-white bg-pink-500 hover:bg-pink-600 inline-block cursor-pointer transition"
-                >
-                  Finalize Cast Changes & Send Notifications
-                </button>
-              </div>
             </div>
-          <% end %>
+          </div>
         </div>
-      </div>
-    <% end %>
 
-    <% if has_sent_notifications %>
-      </div><%# Close the show-toggle content div %>
+        <div data-show-toggle-target="content" class="hidden">
+          <%= render "casting_changes" %>
+          <%= render "finalize_notify", audition_cycle: audition_cycle %>
+        </div><%# Close the show-toggle content div %>
+      </div><%# Close the show-toggle controller div %>
+    <% else %>
+      <%# When notifications haven't been sent, show Casting Changes and Finalize boxes directly %>
+      <%= render "casting_changes" %>
+      <%= render "finalize_notify", audition_cycle: @audition_cycle %>
     <% end %>
 
   <% end %>

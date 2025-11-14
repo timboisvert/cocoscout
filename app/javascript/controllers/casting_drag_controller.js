@@ -150,6 +150,11 @@ export default class extends Controller {
 
     removePerson(event) {
         event.preventDefault()
+
+        if (!confirm('Are you sure you want to remove this person from this cast?')) {
+            return
+        }
+
         const button = event.currentTarget
         const castId = button.dataset.castId
         const personId = button.dataset.personId

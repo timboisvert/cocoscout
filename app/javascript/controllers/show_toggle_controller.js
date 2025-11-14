@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 //         data-action="click->show-toggle#toggle"
 
 export default class extends Controller {
-    static targets = ["content", "icon"];
+    static targets = ["content", "icon", "finalizedBox"];
     static values = { initialOpen: Boolean };
 
     connect() {
@@ -34,8 +34,15 @@ export default class extends Controller {
     }
 
     update() {
+        // Toggle finalizedBox (opposite of content)
+        if (this.hasFinalizedBoxTarget) {
+            this.finalizedBoxTarget.classList.toggle("hidden", this.open);
+        }
+        // Toggle content sections
         if (this.hasContentTarget) {
-            this.contentTarget.classList.toggle("hidden", !this.open);
+            this.contentTargets.forEach(target => {
+                target.classList.toggle("hidden", !this.open);
+            });
         }
         if (this.hasIconTarget) {
             this.iconTarget.innerHTML = this.open

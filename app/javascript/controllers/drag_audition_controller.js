@@ -31,6 +31,11 @@ export default class extends Controller {
   removeAudition(event) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!confirm('Are you sure you want to remove this person from this audition session?')) {
+      return;
+    }
+
     const auditionId = event.currentTarget.dataset.auditionId;
     const sessionId = event.currentTarget.dataset.sessionId;
 
