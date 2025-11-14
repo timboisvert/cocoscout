@@ -110,14 +110,18 @@
               </div>
 
               <div data-controller="password-visibility">
-                <label for="user_password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <% if @user&.errors&.[](:password)&.any? %>
+                  <label for="user_password" class="block text-sm font-medium text-pink-600 mb-1">Password must be at least 8 characters</label>
+                <% else %>
+                  <label for="user_password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <% end %>
                 <div class="relative">
                   <%= form.password_field :password,
                       required: true,
                       autocomplete: "new-password",
                       placeholder: "Create a password",
                       maxlength: 72,
-                      class: "block shadow-sm rounded-md border border-gray-300 px-3 py-2.5 w-full pr-10 focus:border-pink-500 focus:ring-pink-500",
+                      class: "block shadow-sm rounded-md border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-gray-300' } px-3 py-2.5 w-full pr-10 focus:border-pink-500 focus:ring-pink-500",
                       data: { password_visibility_target: "input" } %>
                   <button type="button"
                           data-action="password-visibility#toggle"
@@ -130,7 +134,6 @@
                     </span>
                   </button>
                 </div>
-                <p class="mt-1.5 text-xs text-slate-500">Use at least 8 characters</p>
               </div>
 
               <div class="pt-2">

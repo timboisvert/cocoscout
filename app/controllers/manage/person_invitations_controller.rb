@@ -23,16 +23,18 @@ class Manage::PersonInvitationsController < Manage::ManageController
     else
       # Set the password on the existing user or validate the new user
       if user
-        unless user.update(password: params[:password])
-          flash.now[:alert] = user.errors.full_messages.to_sentence
+        user.password = params[:password]
+        unless user.valid?
+          @user = user
           render :accept, status: :unprocessable_entity and return
         end
+        user.save!
       else
         # This shouldn't happen - user should exist when person invitation is created
         # But handle it gracefully
         user = User.new(email_address: @person_invitation.email.downcase, password: params[:password])
         unless user.save
-          flash.now[:alert] = user.errors.full_messages.to_sentence
+          @user = user
           render :accept, status: :unprocessable_entity and return
         end
       end
@@ -58,11 +60,6 @@ class Manage::PersonInvitationsController < Manage::ManageController
     # Ensure the person is in the organization
     unless person.organizations.include?(@person_invitation.organization)
       person.organizations << @person_invitation.organization
-    end
-
-    # Create a user role for this organization (default to "none" role)
-    unless UserRole.exists?(user: user, organization: @person_invitation.organization)
-      UserRole.create!(user: user, organization: @person_invitation.organization, company_role: "none")
     end
 
     # Mark the invitation as accepted
