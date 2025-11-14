@@ -2,12 +2,20 @@ module Manage
   class EmailGroupsController < ManageController
     before_action :set_production
     before_action :set_audition_cycle
-    before_action :set_email_group, only: [ :destroy ]
+    before_action :set_email_group, only: [ :update, :destroy ]
 
     def create
       @email_group = @audition_cycle.email_groups.new(email_group_params)
 
       if @email_group.save
+        render json: { id: @email_group.id }
+      else
+        render json: { errors: @email_group.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    def update
+      if @email_group.update(email_group_params)
         head :ok
       else
         render json: { errors: @email_group.errors.full_messages }, status: :unprocessable_entity

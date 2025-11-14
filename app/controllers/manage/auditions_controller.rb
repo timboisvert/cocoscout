@@ -24,6 +24,10 @@ class Manage::AuditionsController < Manage::ManageController
   # GET /auditions/review
   def review
     redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
+
+    # Load existing email templates for default groups
+    @invitation_accepted_group = @audition_cycle&.email_groups&.find_by(group_id: "invitation_accepted")
+    @invitation_not_accepted_group = @audition_cycle&.email_groups&.find_by(group_id: "invitation_not_accepted")
   end
 
   # GET /auditions/run
@@ -378,11 +382,8 @@ class Manage::AuditionsController < Manage::ManageController
     # Mark the audition cycle as having finalized casting
     audition_cycle.update(casting_finalized_at: Time.current)
 
-    render json: {
-      success: true,
-      emails_sent: emails_sent,
-      people_added_to_casts: people_added_to_casts
-    }
+    redirect_to casting_manage_production_audition_cycle_path(@production, audition_cycle),
+                notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{people_added_to_casts} people added to casts."
   end
 
   # POST /auditions/finalize_and_notify_invitations
@@ -437,10 +438,8 @@ class Manage::AuditionsController < Manage::ManageController
     # Set finalize_audition_invitations to true so applicants can see results
     audition_cycle.update(finalize_audition_invitations: true)
 
-    render json: {
-      success: true,
-      emails_sent: emails_sent
-    }
+    redirect_to review_manage_production_audition_cycle_path(@production, audition_cycle),
+                notice: "#{emails_sent} invitation email#{emails_sent != 1 ? 's' : ''} sent successfully."
   end
 
   private

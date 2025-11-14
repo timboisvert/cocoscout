@@ -232,7 +232,7 @@ Rails.application.routes.draw do
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
 
       resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
-      resources :email_groups, only: [ :create, :destroy ]
+      resources :email_groups, only: [ :create, :update, :destroy ]
       resources :audition_email_assignments, only: [ :create, :update, :destroy ]
       resources :auditions
     end

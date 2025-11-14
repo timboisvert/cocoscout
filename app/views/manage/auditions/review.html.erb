@@ -299,9 +299,12 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
                     <textarea
+                      data-email-groups-target="emailTemplate"
+                      data-group-id="invitation_accepted"
+                      <% if @invitation_accepted_group %>data-email-group-id="<%= @invitation_accepted_group.id %>"<% end %>
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                       rows="6"
-                    >Dear [Name],
+                    ><% if @invitation_accepted_group&.email_template.present? %><%= @invitation_accepted_group.email_template %><% else %>Dear [Name],
 
 Congratulations! You've been invited to audition for <%= @production.name %>.
 
@@ -312,7 +315,7 @@ You can view your full audition details on your Auditions page.<% end %>
 We look forward to seeing you!
 
 Best regards,
-The <%= @production.name %> Team</textarea>
+The <%= @production.name %> Team<% end %></textarea>
                   </div>
 
                   <% if accepted_group_people.any? %>
@@ -368,9 +371,12 @@ The <%= @production.name %> Team</textarea>
                   <div>
                     <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
                     <textarea
+                      data-email-groups-target="emailTemplate"
+                      data-group-id="invitation_not_accepted"
+                      <% if @invitation_not_accepted_group %>data-email-group-id="<%= @invitation_not_accepted_group.id %>"<% end %>
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                       rows="6"
-                    >Dear [Name],
+                    ><% if @invitation_not_accepted_group&.email_template.present? %><%= @invitation_not_accepted_group.email_template %><% else %>Dear [Name],
 
 Thank you so much for your interest in <%= @production.name %>. We truly appreciate you taking the time to apply.
 
@@ -379,7 +385,7 @@ Unfortunately, we won't be able to offer you an audition for this production at 
 We encourage you to apply for future productions and wish you all the best in your performing arts journey.
 
 Best regards,
-The <%= @production.name %> Team</textarea>
+The <%= @production.name %> Team<% end %></textarea>
                   </div>
 
                   <% if not_accepted_group_people.any? %>
@@ -437,6 +443,9 @@ The <%= @production.name %> Team</textarea>
                   <div>
                     <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
                     <textarea
+                      data-email-groups-target="emailTemplate"
+                      data-group-id="<%= custom_group.group_id %>"
+                      data-email-group-id="<%= custom_group.id %>"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                       rows="6"
                       placeholder="Type your custom email message here..."

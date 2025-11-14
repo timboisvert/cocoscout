@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["tabContainer", "panelContainer", "personBadge", "popup", "menu", "modal", "nameInput", "reviewCheckbox", "sendSection", "tabIndicator"]
+    static targets = ["tabContainer", "panelContainer", "personBadge", "popup", "menu", "modal", "nameInput", "reviewCheckbox", "sendSection", "tabIndicator", "emailTemplate"]
     static values = {
         productionId: Number,
         auditionCycleId: Number,
@@ -495,6 +495,9 @@ export default class extends Controller {
             if (indicator) {
                 if (checkbox.checked) {
                     indicator.classList.remove("hidden")
+
+                    // Save the email template when checkbox is checked
+                    this.saveEmailTemplate(groupId)
                 } else {
                     indicator.classList.add("hidden")
                 }
@@ -535,34 +538,20 @@ export default class extends Controller {
             ? `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify_invitations`
             : `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify`
 
-        fetch(endpoint, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (isInvitation) {
-                        alert(`Success! ${data.emails_sent} invitation emails sent.`)
-                    } else {
-                        alert(`Success! ${data.emails_sent} notification emails sent and ${data.people_added_to_casts} people added to casts.`)
-                    }
-                    window.location.reload()
-                } else {
-                    alert(`Error: ${data.error || "Failed to send notifications"}`)
-                    button.disabled = false
-                    button.textContent = isInvitation ? "Send Audition Invitation Notifications" : "Finalize Cast & Send Notifications"
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error)
-                alert("An error occurred while sending notifications")
-                button.disabled = false
-                button.textContent = isInvitation ? "Send Audition Invitation Notifications" : "Finalize Cast & Send Notifications"
-            })
+        // Create a form and submit it to trigger proper redirect with flash notice
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = endpoint
+
+        // Add CSRF token
+        const csrfInput = document.createElement('input')
+        csrfInput.type = 'hidden'
+        csrfInput.name = 'authenticity_token'
+        csrfInput.value = document.querySelector('meta[name="csrf-token"]').content
+        form.appendChild(csrfInput)
+
+        document.body.appendChild(form)
+        form.submit()
     }
 
     deleteGroup(event) {
@@ -594,5 +583,63 @@ export default class extends Controller {
                 console.error("Error:", error)
                 alert("An error occurred while deleting the group")
             })
+    }
+
+    saveEmailTemplate(groupId) {
+        // Find the textarea for this group
+        const textarea = this.emailTemplateTargets.find(ta => ta.dataset.groupId === groupId)
+        if (!textarea) {
+            return
+        }
+
+        const emailTemplate = textarea.value
+        const emailGroupId = textarea.dataset.emailGroupId
+
+        // If there's no existing EmailGroup record, create one first
+        if (!emailGroupId) {
+            // Create a new EmailGroup with this group_id and email_template
+            fetch(`/manage/productions/${this.productionIdValue}/email_groups`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    email_group: {
+                        group_id: groupId,
+                        group_type: this.groupTypeValue,
+                        name: groupId === 'invitation_accepted' ? 'Invited to Audition' : 'Not Invited',
+                        email_template: emailTemplate
+                    }
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        // Store the new email_group_id on the textarea
+                        textarea.dataset.emailGroupId = data.id
+                    }
+                })
+                .catch(error => {
+                    console.error("Error creating email group:", error)
+                })
+        } else {
+            // Update existing EmailGroup
+            fetch(`/manage/productions/${this.productionIdValue}/email_groups/${emailGroupId}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    email_group: {
+                        email_template: emailTemplate
+                    }
+                })
+            })
+                .catch(error => {
+                    console.error("Error updating email template:", error)
+                })
+        }
     }
 }
