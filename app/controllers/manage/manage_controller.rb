@@ -16,8 +16,14 @@ class Manage::ManageController < ActionController::Base
 
   def index
     # Explicitly ensure cookie is set before any redirect
-    cookies.encrypted[:last_dashboard] = { value: "manage", expires: 1.year.from_now }
-    Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage'"
+    if Current.user.present?
+      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+      # Reset if it's an old string value instead of a hash
+      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+      last_dashboard_prefs[Current.user.id.to_s] = "manage"
+      cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
+      Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage' for user #{Current.user.id}"
+    end
 
     if (production = Current.production)
       redirect_to manage_production_path(production)
@@ -53,7 +59,12 @@ class Manage::ManageController < ActionController::Base
   end
 
   def track_last_dashboard
-    cookies.encrypted[:last_dashboard] = { value: "manage", expires: 1.year.from_now }
+    return unless Current.user.present?
+    last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+    # Reset if it's an old string value instead of a hash
+    last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+    last_dashboard_prefs[Current.user.id.to_s] = "manage"
+    cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
   end
 
   def ensure_user_has_access_to_company

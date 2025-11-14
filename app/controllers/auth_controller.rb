@@ -45,7 +45,11 @@ class AuthController < ApplicationController
         AuthMailer.signup(@user).deliver_later
 
         # Redirect to the last dashboard they were on (defaults to my_dashboard for new signups)
-        default_path = case cookies.encrypted[:last_dashboard]
+        last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+        # Reset if it's an old string value instead of a hash
+        last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+        user_preference = last_dashboard_prefs[@user.id.to_s]
+        default_path = case user_preference
         when "manage"
                          manage_path
         else
@@ -103,7 +107,11 @@ class AuthController < ApplicationController
       start_new_session_for user
 
       # Redirect to the last dashboard they were on
-      default_path = case cookies.encrypted[:last_dashboard]
+      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+      # Reset if it's an old string value instead of a hash
+      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+      user_preference = last_dashboard_prefs[user.id.to_s]
+      default_path = case user_preference
       when "manage"
                        manage_path
       else
