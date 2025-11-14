@@ -8,7 +8,7 @@ class Manage::ManageController < ActionController::Base
   before_action :set_current_organization, if: -> { Current.user.present? }
   before_action :set_current_production, if: -> { Current.user.present? }
   before_action :require_current_organization, if: -> { Current.user.present? }
-  before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.organization.present? }
+  before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.organization.present? }, except: [ :index ]
   before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? }
 
   before_action :track_last_dashboard

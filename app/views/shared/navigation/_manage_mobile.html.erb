@@ -86,13 +86,17 @@
         <div class="mb-6 pb-6 border-b border-gray-200">
           <div class="flex items-center justify-between mb-3">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</div>
-            <%= link_to "Switch", select_organization_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+            <% if Current.user.organizations.count > 1 %>
+              <%= link_to "Switch", select_organization_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+            <% end %>
           </div>
           <div class="rounded-lg border border-pink-200 bg-pink-50 p-4">
             <div class="text-sm font-semibold text-gray-900 mb-3"><%= Current.organization.name %></div>
             <div class="flex flex-col gap-2">
-              <%= link_to "Manage Organization", manage_organization_path(Current.organization), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
-              <%= link_to "All Organizations", manage_organizations_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+              <% if current_user_is_global_manager? %>
+                <%= link_to "Manage Organization", manage_organization_path(Current.organization), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+              <% end %>
+              <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
             </div>
           </div>
         </div>

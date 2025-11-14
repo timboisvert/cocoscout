@@ -22,14 +22,20 @@ class Manage::TeamInvitationsController < Manage::ManageController
         # User has entered the correct password
       else
         @authentication_error = true
+        @user = user
         render :accept, status: :unprocessable_entity and return
       end
     else
-      user = User.new(email_address: @team_invitation.email.downcase, password: params[:password], person: person)
-      unless user.save
-        flash.now[:alert] = user.errors.full_messages.to_sentence
+      user = User.new(email_address: @team_invitation.email.downcase)
+      user.password = params[:password]
+      user.person = person
+
+      unless user.valid?
+        @user = user
         render :accept, status: :unprocessable_entity and return
       end
+
+      user.save!
     end
 
     # Now link the person and user if they aren't already linked. Create the

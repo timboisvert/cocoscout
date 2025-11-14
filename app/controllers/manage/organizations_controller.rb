@@ -2,7 +2,7 @@ class Manage::OrganizationsController < Manage::ManageController
   before_action :set_organization, only: %i[ show edit update destroy transfer_ownership remove_logo ]
   skip_before_action :show_manage_sidebar, only: %i[ new create index show edit ]
   before_action :ensure_user_is_owner, only: %i[ destroy transfer_ownership ]
-  before_action :ensure_user_can_manage, only: %i[ edit update remove_logo ]
+  before_action :ensure_user_can_manage, only: %i[ show edit update remove_logo ]
 
   def index
     # Management screen - list all organizations with management options

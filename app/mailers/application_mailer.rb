@@ -33,9 +33,10 @@ class ApplicationMailer < ActionMailer::Base
   def find_user_from_params
     # Check common instance variables for user object (recipient, not sender)
     # Use &. safe navigation to avoid NoMethodError
+    # Note: For invitations, the user might not exist yet, which is fine
     @user ||
       @person&.user ||
-      @team_invitation&.user ||
+      (@team_invitation && User.find_by(email_address: @team_invitation.email)) ||
       (@person_invitation && Person.find_by(email: @person_invitation.email)&.user) ||
       @sender
   end
