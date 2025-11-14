@@ -10,77 +10,68 @@
     links: []
   } %>
 
-  <div class="flex flex-col md:flex-row gap-2 mt-4">
+  <!-- First Row: Queue Monitor and Email Logs -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <!-- Queue Monitor Link Card -->
+    <%= link_to queue_monitor_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Queue Monitor</h3>
+          <p class="text-sm text-gray-600 mt-1">View job queue status and failed jobs</p>
+        </div>
+      </div>
+    <% end %>
 
-    <div class="flex-1">
-      <!-- Queue Monitor Link Card -->
-      <%= link_to queue_monitor_path, class: "block mb-2" do %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-green-500 transition-all bg-gradient-to-r from-green-50 to-green-100">
-          <div class="p-6 flex items-center justify-between">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 coustard-regular">⚙️ Queue Monitor</h3>
-              <p class="text-sm text-gray-600 mt-1">View job queue status and failed jobs</p>
-            </div>
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+    <!-- Email Logs Link Card -->
+    <%= link_to email_logs_path, class: "block" do %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Email Logs</h3>
+          <p class="text-sm text-gray-600 mt-1">View all sent emails and delivery status</p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Second Row: Impersonate and Change Email Address -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <!-- Impersonate -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Impersonate</h3>
+      </div>
+      <div class="p-4">
+        <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2" do |f| %>
+          <%= f.email_field :email, required: true, autocapitalize: "none", class: "inline-block shadow-sm rounded-lg border px-3 py-2 flex-1 border-gray-400" %>
+          <%= f.submit "Impersonate", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+        <% end %>
+
+        <% if @recent_impersonations.any? %>
+          <h1 class="text-sm font-medium mt-4 mb-1">Recent Impersonations:</h1>
+          <div class="grid grid-cols-1 gap-2">
+            <% @recent_impersonations.each do |recent| %>
+              <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
+                <%= button_to impersonate_user_path, method: :post, params: { email: recent["email"] }, class: "w-full text-left cursor-pointer" do %>
+                  <div class="font-bold text-pink-500"><%= recent["name"] %></div>
+                  <div class="text-sm text-gray-500"><%= recent["email"] %></div>
+                <% end %>
+              </div>
+            <% end %>
           </div>
-        </div>
-      <% end %>
+        <% end %>
 
-      <!-- Email Logs Link Card -->
-      <%= link_to email_logs_path, class: "block mb-2" do %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 transition-all bg-gradient-to-r from-blue-50 to-blue-100">
-          <div class="p-6 flex items-center justify-between">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 coustard-regular">📧 Email Logs</h3>
-              <p class="text-sm text-gray-600 mt-1">View all sent emails and delivery status</p>
-            </div>
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+        <% if session[:impersonate_user_id] %>
+          <div class="my-4">
+            <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>
           </div>
-        </div>
-      <% end %>
-
-      <div class="sticky top-4 border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Impersonate</h3>
-        </div>
-        <div class="p-4">
-
-          <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2" do |f| %>
-            <%= f.email_field :email, required: true, autocapitalize: "none", class: "inline-block shadow-sm rounded-lg border px-3 py-2 w-96 border-gray-400" %>
-            <%= f.submit "Impersonate", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-          <% end %>
-
-          <% if @recent_impersonations.any? %>
-            <h1 class="text-sm font-medium mt-4 mb-1">Recent Impersonations:</h1>
-            <div class="grid grid-cols-1 gap-2">
-              <% @recent_impersonations.each do |recent| %>
-                <div class="p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all items-top">
-                  <%= button_to impersonate_user_path, method: :post, params: { email: recent["email"] }, class: "w-full text-left cursor-pointer" do %>
-                    <div class="font-bold text-pink-500"><%= recent["name"] %></div>
-                    <div class="text-sm text-gray-500"><%= recent["email"] %></div>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-
-          <% if session[:impersonate_user_id] %>
-            <div class="my-4">
-              <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>
-            </div>
-          <% end %>
-
-        </div>
+        <% end %>
       </div>
     </div>
 
-    <div class="flex-1 sticky top-4 border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Change Email Address</h3>
+    <!-- Change Email Address -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Change Email Address</h3>
       </div>
       <div class="p-4">
         <p class="text-xs text-gray-500">This will update the user's email_address and their person's email to the new address.</p>
@@ -97,6 +88,7 @@
         <% end %>
       </div>
     </div>
+  </div>
 
 
 </div>

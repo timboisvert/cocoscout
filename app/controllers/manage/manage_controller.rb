@@ -17,7 +17,8 @@ class Manage::ManageController < ActionController::Base
     if (production = Current.production)
       redirect_to manage_production_path(production)
     else
-      redirect_to manage_productions_path
+      # Redirect to production selection
+      redirect_to select_production_path
     end
   end
 
@@ -94,8 +95,8 @@ class Manage::ManageController < ActionController::Base
 
   def set_current_production
     user_id = Current.user&.id
-    if user_id && Current.organization && session[:current_production_id_for_company].is_a?(Hash)
-      prod_id = session[:current_production_id_for_company]["#{user_id}_#{Current.organization.id}"]
+    if user_id && Current.organization && session[:current_production_id_for_organization].is_a?(Hash)
+      prod_id = session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"]
       if prod_id
         Current.production = Current.organization.productions.find_by(id: prod_id)
       else
@@ -104,12 +105,24 @@ class Manage::ManageController < ActionController::Base
     else
       Current.production = nil
     end
+
+    # Auto-select if user has exactly one accessible production
+    if Current.production.nil? && Current.user && Current.organization
+      accessible_productions = Current.user.accessible_productions.where(organization: Current.organization)
+      if accessible_productions.count == 1
+        production = accessible_productions.first
+        session[:current_production_id_for_organization] ||= {}
+        session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"] = production.id
+        Current.production = production
+      end
+    end
   end
 
   def require_current_organization
-    return if controller_name == "organizations" && %w[new create select set_current].include?(action_name)
+    return if controller_name == "organizations" && %w[new create index show].include?(action_name)
+    return if controller_name == "select"
     unless Current.organization
-      redirect_to select_manage_organizations_path
+      redirect_to select_organization_path
     end
   end
 end

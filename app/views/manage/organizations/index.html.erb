@@ -1,0 +1,89 @@
+<% content_for :title, "Organizations" %>
+
+<div class="min-h-screen bg-gray-50">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2 coustard-regular">CocoScout</h1>
+      <p class="text-gray-600">Manage your organizations</p>
+    </div>
+
+    <!-- Organizations Section -->
+    <% if @organizations.any? %>
+      <div class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-6 coustard-regular">Organizations</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <% @organizations.each do |org| %>
+            <% role = @organization_roles[org.id] %>
+            <% is_owner = org.owned_by?(Current.user) %>
+            <div class="bg-white <%= is_owner ? 'border-2 border-pink-200' : 'border border-gray-300' %> rounded-lg p-6 hover:shadow-lg transition-shadow">
+              <div class="mb-4">
+                <h3 class="text-xl font-bold text-gray-900 mb-2"><%= org.name %></h3>
+                <% if is_owner %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">
+                    Owner
+                  </span>
+                <% elsif role == 'manager' %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-blue-600 text-white">
+                    Manager
+                  </span>
+                <% elsif role == 'viewer' %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-gray-600 text-white">
+                    Viewer
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-gray-500 text-white">
+                    <%= role.titleize %>
+                  </span>
+                <% end %>
+              </div>
+
+              <div class="space-y-2 text-sm text-gray-600 mb-4">
+                <div class="flex justify-between">
+                  <span class="font-medium">Productions:</span>
+                  <span><%= org.productions.count %></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="font-medium">Team members:</span>
+                  <span><%= org.team_size %></span>
+                </div>
+              </div>
+
+              <% unless is_owner %>
+                <div class="mb-4 pb-4 border-b border-gray-200 text-xs text-gray-500">
+                  Owner: <%= org.owner.person&.name || org.owner.email_address %>
+                </div>
+              <% end %>
+
+              <% if is_owner %>
+                <%= link_to "Manage", manage_organization_path(org), class: "block w-full text-center px-4 py-2.5 text-sm bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-semibold transition-colors" %>
+              <% else %>
+                <%= link_to "View Details", manage_organization_path(org), class: "block w-full text-center px-4 py-2.5 text-sm bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors" %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Create Organization Button -->
+    <div class="text-center">
+      <%= link_to "Create Organization", new_manage_organization_path, class: "inline-flex items-center px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg transition-colors" %>
+    </div>
+
+    <!-- Empty State -->
+    <% if @organizations.empty? %>
+      <div class="text-center py-12">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2 coustard-regular">No Organizations Yet</h3>
+        <p class="text-gray-600 mb-6 max-w-md mx-auto">
+          Create your first organization to start managing productions, casting calls, and your team.
+        </p>
+        <%= link_to "Create Your First Organization", new_manage_organization_path,
+          class: "inline-flex items-center px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg transition-colors" %>
+      </div>
+    <% end %>
+
+  </div>
+</div>

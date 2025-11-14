@@ -37,10 +37,21 @@ Rails.application.routes.draw do
     get  "/queue",              to: "god_mode#queue",               as: "queue_monitor"
     get  "/queue/failed",       to: "god_mode#queue_failed",        as: "queue_failed"
     post "/queue/retry/:id",    to: "god_mode#queue_retry",         as: "queue_retry"
+    delete "/queue/job/:id",    to: "god_mode#queue_delete_job",    as: "queue_delete_job"
+    delete "/queue/clear_failed", to: "god_mode#queue_clear_failed", as: "queue_clear_failed"
+    delete "/queue/clear_pending", to: "god_mode#queue_clear_pending", as: "queue_clear_pending"
   end
 
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
+
+  # Selection interface (under manage namespace)
+  scope "/select" do
+    get  "/organization",        to: "manage/select#organization",     as: "select_organization"
+    post "/organization",        to: "manage/select#set_organization", as: "set_organization"
+    get  "/production",          to: "manage/select#production",       as: "select_production"
+    post "/production",          to: "manage/select#set_production",   as: "set_production"
+  end
 
   # Talent-facing interface
   namespace :my do
@@ -74,8 +85,11 @@ Rails.application.routes.draw do
 
     resources :organizations do
       collection do
-        get :select
-        post :set_current
+        get :setup_guide
+      end
+      member do
+        post :transfer_ownership
+        delete :remove_logo
       end
     end
 

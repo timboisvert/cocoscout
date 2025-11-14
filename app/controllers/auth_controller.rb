@@ -1,6 +1,8 @@
 class AuthController < ApplicationController
   allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset set_password handle_set_password]
   rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later" }
+  rate_limit to: 5, within: 10.minutes, only: :handle_password, with: -> { redirect_to password_path, alert: "Too many requests. Please try again later." }
+  rate_limit to: 10, within: 10.minutes, only: :handle_signup, with: -> { redirect_to signup_path, alert: "Too many signup attempts. Please try again later." }
 
   skip_before_action :show_my_sidebar
 
@@ -109,14 +111,21 @@ class AuthController < ApplicationController
   end
 
   def handle_password
-    # Remove null bytes to prevent database errors
-    sanitized_email = params[:email_address].to_s.delete("\0")
+    # Remove null bytes and validate email format
+    sanitized_email = params[:email_address].to_s.delete("\0").strip.downcase
 
-    if user = User.find_by(email_address: sanitized_email)
-      token = SecureRandom.urlsafe_base64(32)
-      user.update(password_reset_token: token, password_reset_sent_at: Time.current)
-      AuthMailer.password(user, token).deliver_later
+    # Always show success message to prevent account enumeration
+    # Only send email if user actually exists
+    if sanitized_email.match?(URI::MailTo::EMAIL_REGEXP)
+      user = User.find_by(email_address: sanitized_email)
+      if user
+        token = SecureRandom.urlsafe_base64(32)
+        user.update(password_reset_token: token, password_reset_sent_at: Time.current)
+        AuthMailer.password(user, token).deliver_later
+      end
     end
+
+    # Always redirect with success message (even if user doesn't exist)
     session[:password_reset_instructions_sent] = true
     redirect_to signin_path and return
   end

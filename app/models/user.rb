@@ -9,7 +9,21 @@
     has_many :email_logs, dependent: :destroy
 
     normalizes :email_address, with: ->(e) { e.strip.downcase }
-    validates :email_address, presence: true, uniqueness: { case_sensitive: false }
+    validates :email_address, presence: true, uniqueness: { case_sensitive: false },
+              format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
+    validate :email_not_malicious
+
+    def email_not_malicious
+      return if email_address.blank?
+      # Reject emails with special characters commonly used in injection attacks
+      if email_address.match?(/[\x00-\x1f\x7f<>"'`\\;|&$(){}\[\]]/)
+        errors.add(:email_address, "contains invalid characters")
+      end
+      # Reject emails that look like command injection attempts
+      if email_address.match?(/(bin|cat|etc|passwd|wget|curl|bash|sh|exec|eval)/i)
+        errors.add(:email_address, "is not valid")
+      end
+    end
 
     GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 

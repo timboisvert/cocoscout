@@ -6,8 +6,8 @@ class Manage::ProductionsController < Manage::ManageController
   skip_before_action :show_manage_sidebar, only: %i[ index new create ]
 
   def index
-    @productions = Current.user.accessible_productions
-    @production = Production.new
+    # Redirect to production selection
+    redirect_to select_production_path
   end
 
   def show
@@ -43,7 +43,7 @@ class Manage::ProductionsController < Manage::ManageController
 
   def destroy
     if Current.organization && Current.user
-      session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.organization&.id}"] = nil
+      session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = nil
       @production.destroy!
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
     end
@@ -62,13 +62,13 @@ class Manage::ProductionsController < Manage::ManageController
       if Current.organization && Current.user
 
         # Make sure we have the sessions hash set for production IDs
-        session[:current_production_id_for_company] ||= {}
+        session[:current_production_id_for_organization] ||= {}
 
         # Store the current one
-        previous_production_id = session[:current_production_id_for_company]&.dig("#{Current.user&.id}_#{Current.organization&.id}")
+        previous_production_id = session[:current_production_id_for_organization]&.dig("#{Current.user&.id}_#{Current.organization&.id}")
 
         # Set the new one
-        session[:current_production_id_for_company]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
+        session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
 
         # If the production changed, redirect to the manage home so the left nav resets
         if previous_production_id != @production.id

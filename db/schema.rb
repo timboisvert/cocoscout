@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_13_141301) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_14_155616) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -222,7 +222,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_13_141301) do
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
+    t.integer "owner_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["owner_id"], name: "index_organizations_on_owner_id"
   end
 
   create_table "organizations_people", id: false, force: :cascade do |t|
@@ -435,6 +437,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_13_141301) do
   add_foreign_key "invitations", "organizations"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "people", "users"
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "posters", "productions"

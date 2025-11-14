@@ -1,5 +1,5 @@
 class GodModeController < ApplicationController
-  before_action :require_god_mode, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry ]
+  before_action :require_god_mode, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending ]
 
   def index
     @users = User.order(:email_address)
@@ -185,6 +185,30 @@ class GodModeController < ApplicationController
     redirect_to queue_failed_path, notice: "Job queued for retry"
   rescue => e
     redirect_to queue_failed_path, alert: "Failed to retry job: #{e.message}"
+  end
+
+  def queue_delete_job
+    job = SolidQueue::Job.find(params[:id])
+    job.destroy
+    redirect_to queue_monitor_path, notice: "Job deleted"
+  rescue => e
+    redirect_to queue_monitor_path, alert: "Failed to delete job: #{e.message}"
+  end
+
+  def queue_clear_failed
+    count = SolidQueue::FailedExecution.count
+    SolidQueue::FailedExecution.destroy_all
+    redirect_to queue_monitor_path, notice: "Cleared #{count} failed jobs"
+  rescue => e
+    redirect_to queue_monitor_path, alert: "Failed to clear failed jobs: #{e.message}"
+  end
+
+  def queue_clear_pending
+    count = SolidQueue::Job.where(finished_at: nil).count
+    SolidQueue::Job.where(finished_at: nil).destroy_all
+    redirect_to queue_monitor_path, notice: "Cleared #{count} pending jobs"
+  rescue => e
+    redirect_to queue_monitor_path, alert: "Failed to clear pending jobs: #{e.message}"
   end
 
   private

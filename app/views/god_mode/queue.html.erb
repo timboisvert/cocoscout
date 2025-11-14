@@ -11,6 +11,23 @@
     links: []
   } %>
 
+  <!-- Bulk Actions -->
+  <div class="mt-4 flex gap-3">
+    <% if @failed_jobs > 0 %>
+      <%= button_to "Clear All Failed Jobs (#{@failed_jobs})", queue_clear_failed_path,
+          method: :delete,
+          class: "px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm",
+          data: { confirm: "Are you sure you want to delete all #{@failed_jobs} failed jobs? This cannot be undone." } %>
+    <% end %>
+    
+    <% if @pending_jobs > 0 %>
+      <%= button_to "Clear All Pending Jobs (#{@pending_jobs})", queue_clear_pending_path,
+          method: :delete,
+          class: "px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium text-sm",
+          data: { confirm: "Are you sure you want to delete all #{@pending_jobs} pending jobs? This cannot be undone." } %>
+    <% end %>
+  </div>
+
   <div class="mt-4 space-y-4">
 
     <!-- Stats Overview -->
@@ -88,6 +105,7 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -123,6 +141,14 @@
                     in <%= distance_of_time_in_words(Time.current, job.scheduled_at) %>
                   <% else %>
                     -
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm">
+                  <% unless job.finished_at %>
+                    <%= button_to "Delete", queue_delete_job_path(job.id),
+                        method: :delete,
+                        class: "text-red-600 hover:text-red-800 font-medium",
+                        data: { confirm: "Delete this job?" } %>
                   <% end %>
                 </td>
               </tr>

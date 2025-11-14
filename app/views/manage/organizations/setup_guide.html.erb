@@ -1,0 +1,255 @@
+<% content_for :title, "Setup Guide - CocoScout" %>
+
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4 border-b border-slate-200">
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-16 sm:w-20 object-contain select-none pointer-events-none" />
+    <h1 class="mt-3 text-2xl sm:text-3xl coustard-regular text-pink-500">CocoScout Setup Guide</h1>
+    <p class="mt-2 text-sm text-slate-600">Get your organization up and running in minutes</p>
+  </div>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Quick Start -->
+    <section class="mb-12">
+      <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8">
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">Quick Start Checklist</h2>
+        <p class="text-slate-600 mb-6">Follow these steps to get your organization ready for production management.</p>
+        
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-bold text-pink-700">1</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 mb-1">Create your organization</h3>
+              <p class="text-sm text-slate-600">Give your theater company or production organization a name.</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-bold text-pink-700">2</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 mb-1">Invite your team</h3>
+              <p class="text-sm text-slate-600">Add directors, stage managers, and other collaborators to help manage productions.</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-bold text-pink-700">3</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 mb-1">Create your first production</h3>
+              <p class="text-sm text-slate-600">Set up a production for your upcoming show or project.</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-bold text-pink-700">4</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 mb-1">Add your talent</h3>
+              <p class="text-sm text-slate-600">Import your existing performers or invite new ones to join.</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-bold text-pink-700">5</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 mb-1">Schedule shows & auditions</h3>
+              <p class="text-sm text-slate-600">Start organizing your calendar and opening audition sign-ups.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed Guides -->
+    <section class="space-y-8">
+      <h2 class="text-2xl font-bold text-slate-900 mb-6">Detailed Guides</h2>
+
+      <!-- Managing Your Organization -->
+      <div class="border border-slate-200 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Managing Your Organization</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Inviting Team Members</h4>
+            <p class="text-sm text-slate-600 mb-2">
+              Navigate to your organization settings and use the "Invite Team Member" feature. You can assign different roles:
+            </p>
+            <ul class="text-sm text-slate-600 space-y-1 ml-6 list-disc">
+              <li><strong>Manager:</strong> Full access to create and manage productions</li>
+              <li><strong>Viewer:</strong> Read-only access to view productions and schedules</li>
+              <li><strong>Member:</strong> Basic access to participate in productions</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Transferring Ownership</h4>
+            <p class="text-sm text-slate-600">
+              As the owner, you can transfer ownership to another manager from the organization settings page. This is useful if leadership changes or you want to hand off administrative duties.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Creating Productions -->
+      <div class="border border-slate-200 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Creating Productions</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Production Basics</h4>
+            <p class="text-sm text-slate-600">
+              A production represents a show or project. Each production can have multiple casts, shows, and audition cycles. Start by giving your production a name and description.
+            </p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Adding Cast Members</h4>
+            <p class="text-sm text-slate-600">
+              Create casts within your production (e.g., "Red Cast", "Blue Cast", "Saturday Matinee"). Then add performers to each cast. Performers can be in multiple casts for the same production.
+            </p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Scheduling Shows</h4>
+            <p class="text-sm text-slate-600">
+              Add individual shows with specific dates and times, or create recurring shows (every Saturday at 7pm, etc.). Your cast members will automatically see these in their calendars.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Managing Auditions -->
+      <div class="border border-slate-200 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Managing Auditions</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Creating an Audition Cycle</h4>
+            <p class="text-sm text-slate-600 mb-2">
+              Create an audition cycle for your production with:
+            </p>
+            <ul class="text-sm text-slate-600 space-y-1 ml-6 list-disc">
+              <li>Sign-up window (when people can register)</li>
+              <li>Audition time slots</li>
+              <li>Custom questions for auditioners</li>
+              <li>Audition format (in-person, video submission, etc.)</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Sharing Your Audition Link</h4>
+            <p class="text-sm text-slate-600">
+              Once your audition cycle is active, share the unique link with potential performers. They can sign up without needing a CocoScout account first.
+            </p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Reviewing Submissions</h4>
+            <p class="text-sm text-slate-600">
+              View all audition sign-ups in one place, with their responses to your custom questions, preferred time slots, and contact information.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adding Talent -->
+      <div class="border border-slate-200 rounded-lg p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Building Your Talent Database</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Adding Individual Performers</h4>
+            <p class="text-sm text-slate-600">
+              From the People page, add performers one at a time with their name and email. They'll receive an invitation to create a CocoScout account where they can manage their profile, headshots, and resume.
+            </p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Batch Importing</h4>
+            <p class="text-sm text-slate-600">
+              Have a list of email addresses? Use the batch invite feature to send invitations to multiple people at once. Perfect for when you're migrating from spreadsheets or another system.
+            </p>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-2">Organizing Your Talent</h4>
+            <p class="text-sm text-slate-600">
+              View and filter your talent roster, see their availability for shows, and contact them directly through the platform.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Tips & Best Practices -->
+    <section class="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Tips & Best Practices</h2>
+      
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-sm text-slate-700">
+            <strong>Start small:</strong> Begin with one production and gradually add more as your team gets comfortable with the platform.
+          </p>
+        </div>
+        
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-sm text-slate-700">
+            <strong>Keep profiles updated:</strong> Encourage your performers to maintain their profiles with current headshots and contact info.
+          </p>
+        </div>
+        
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-sm text-slate-700">
+            <strong>Use recurring shows:</strong> Save time by creating recurring show schedules instead of entering each date manually.
+          </p>
+        </div>
+        
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-sm text-slate-700">
+            <strong>Communicate clearly:</strong> Use the contact features to keep your cast informed about schedule changes and updates.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Need More Help -->
+    <section class="mt-12 text-center">
+      <div class="inline-block bg-white border border-slate-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">Need More Help?</h3>
+        <p class="text-sm text-slate-600 mb-4">
+          Have questions about using CocoScout? We're here to help!
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= link_to "Back to Organizations", manage_organizations_path, 
+            class: "px-5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded-lg transition" %>
+          <%= link_to "Contact Support", "mailto:support@cocoscout.com", 
+            class: "px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg border border-slate-300 transition" %>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>

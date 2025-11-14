@@ -27,7 +27,7 @@ class EmailLogInterceptor
       mailer_action: message.header["X-Mailer-Action"]&.value,
       message_id: message.message_id,
       sent_at: Time.current,
-      delivery_status: "sent"
+      delivery_status: "queued"  # Changed from "sent" - will be updated when actually delivered
     )
   rescue StandardError => e
     # Log the error but don't prevent email delivery

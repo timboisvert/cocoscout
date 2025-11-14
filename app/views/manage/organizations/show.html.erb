@@ -1,0 +1,181 @@
+<% content_for :title, @organization.name %>
+
+<div class="min-h-screen bg-gray-50">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="mb-8">
+      <div class="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <%= link_to "Organizations", manage_organizations_path, class: "hover:text-pink-600" %>
+        <span>/</span>
+        <span class="text-gray-900"><%= @organization.name %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <h1 class="text-3xl font-bold text-gray-900 coustard-regular"><%= @organization.name %></h1>
+        <% if @is_owner || @role == "manager" %>
+          <%= link_to "Edit", edit_manage_organization_path(@organization), class: "px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg transition-colors" %>
+        <% end %>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Organization Details Card -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-6 coustard-regular">Details</h2>
+
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-gray-500 mb-1">Organization Name</dt>
+              <dd class="text-sm text-gray-900"><%= @organization.name %></dd>
+            </div>
+
+            <div>
+              <dt class="text-sm font-medium text-gray-500 mb-1">Owner</dt>
+              <dd class="text-sm text-gray-900">
+                <%= @organization.owner.person&.name || @organization.owner.email_address %>
+                <% if @is_owner %>
+                  <span class="ml-2 text-xs text-pink-600 font-semibold">(You)</span>
+                <% end %>
+              </dd>
+            </div>
+
+            <div>
+              <dt class="text-sm font-medium text-gray-500 mb-1">Your Role</dt>
+              <dd>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold <%= @role == 'owner' ? 'bg-pink-500 text-white' : @role == 'manager' ? 'bg-blue-600 text-white' : @role == 'viewer' ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white' %>">
+                  <%= @role.titleize %>
+                </span>
+              </dd>
+            </div>
+
+            <div>
+              <dt class="text-sm font-medium text-gray-500 mb-1">Created</dt>
+              <dd class="text-sm text-gray-900">
+                <%= @organization.created_at.strftime("%B %d, %Y") %>
+                <span class="text-gray-500">(<%= time_ago_in_words(@organization.created_at) %> ago)</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Team Members Card -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-6 coustard-regular">Team Members</h2>
+
+          <div class="space-y-3">
+            <% @team_members.each do |user| %>
+              <% role = user.user_roles.find_by(organization: @organization)&.company_role || "member" %>
+              <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-semibold text-gray-600">
+                      <%= (user.person&.name || user.email_address).first.upcase %>
+                    </span>
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">
+                      <%= user.person&.name || user.email_address %>
+                    </div>
+                    <div class="text-xs text-gray-500"><%= user.email_address %></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold <%= role == 'manager' ? 'bg-blue-600 text-white' : role == 'viewer' ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white' %>">
+                    <%= role.titleize %>
+                  </span>
+                  <% if user.id == @organization.owner_id %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">
+                      Owner
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Owner Actions -->
+        <% if @is_owner %>
+          <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-red-900 mb-2 coustard-regular">Danger Zone</h2>
+            <p class="text-sm text-red-700 mb-4">
+              These actions are permanent and cannot be undone.
+            </p>
+
+            <%= button_to "Delete Organization",
+                manage_organization_path(@organization),
+                method: :delete,
+                data: { turbo_confirm: "Are you sure you want to delete #{@organization.name}? This will permanently delete all productions, shows, and data. This action cannot be undone." },
+                class: "px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition-colors" %>
+          </div>
+        <% end %>
+
+      </div>
+
+      <!-- Stats Sidebar -->
+      <div class="lg:col-span-1 space-y-6">
+
+        <!-- Quick Stats Card -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 class="text-base font-semibold text-gray-900 mb-4 coustard-regular">Quick Stats</h3>
+
+          <div class="space-y-4">
+            <div>
+              <div class="text-3xl font-bold text-gray-900"><%= @organization.active_productions_count %></div>
+              <div class="text-sm text-gray-600 mt-1">Active Productions</div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100">
+              <div class="text-3xl font-bold text-gray-900"><%= @organization.productions.count %></div>
+              <div class="text-sm text-gray-600 mt-1">Total Productions</div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100">
+              <div class="text-3xl font-bold text-gray-900"><%= @organization.team_size %></div>
+              <div class="text-sm text-gray-600 mt-1">Team Members</div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100">
+              <div class="text-3xl font-bold text-gray-900"><%= @organization.member_count %></div>
+              <div class="text-sm text-gray-600 mt-1">Talent Members</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transfer Ownership (Owner Only) -->
+        <% if @is_owner && @team_members.count > 1 %>
+          <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <h3 class="text-base font-semibold text-gray-900 mb-3 coustard-regular">Transfer Ownership</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              Transfer ownership to another manager. You will remain a manager but lose owner privileges.
+            </p>
+
+            <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post do |f| %>
+              <%= f.select :new_owner_id,
+                  options_from_collection_for_select(
+                    @team_members.select { |u| u.user_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
+                    :id,
+                    ->(u) { u.person&.name || u.email_address }
+                  ),
+                  { prompt: "Select new owner..." },
+                  { class: "block w-full rounded-lg border-gray-300 text-sm mb-3" } %>
+
+              <%= f.submit "Transfer Ownership",
+                  class: "w-full px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg cursor-pointer transition-colors",
+                  data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
+            <% end %>
+          </div>
+        <% end %>
+
+      </div>
+
+    </div>
+  </div>
+</div>

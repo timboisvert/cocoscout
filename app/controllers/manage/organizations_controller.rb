@@ -1,7 +1,25 @@
 class Manage::OrganizationsController < Manage::ManageController
-  before_action :set_organization, only: %i[ edit update destroy ]
-  skip_before_action :show_manage_sidebar
-  before_action :ensure_user_is_global_manager, except: %i[select set_current]
+  before_action :set_organization, only: %i[ show edit update destroy transfer_ownership remove_logo ]
+  skip_before_action :show_manage_sidebar, only: %i[ new create index show edit ]
+  before_action :ensure_user_is_owner, only: %i[ destroy transfer_ownership ]
+  before_action :ensure_user_can_manage, only: %i[ edit update remove_logo ]
+
+  def index
+    # Management screen - list all organizations with management options
+    @organizations = Current.user.organizations.includes(:owner, :productions, :users).order(:name)
+
+    # Add role information for each organization
+    @organization_roles = {}
+    @organizations.each do |org|
+      @organization_roles[org.id] = org.role_for(Current.user)
+    end
+  end
+
+  def show
+    @role = @organization.role_for(Current.user)
+    @is_owner = @organization.owned_by?(Current.user)
+    @team_members = @organization.users.includes(:person, :user_roles)
+  end
 
   def new
     @organization = Organization.new
@@ -12,13 +30,17 @@ class Manage::OrganizationsController < Manage::ManageController
 
   def create
     @organization = Organization.new(organization_params)
+    @organization.owner = Current.user
 
     if @organization.save
-      # Assign creator as manager
-      UserRole.create!(user: Current.user, organization: @organization, role: "manager")
+      # Assign creator as manager via user role
+      UserRole.create!(user: Current.user, organization: @organization, company_role: "manager")
+
+      # Set as current organization
       session[:current_organization_id] ||= {}
       session[:current_organization_id]["#{Current.user&.id}"] = @organization.id
-      redirect_to manage_path, notice: "Organization was successfully created"
+
+      redirect_to select_production_path, notice: "#{@organization.name} was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -26,20 +48,27 @@ class Manage::OrganizationsController < Manage::ManageController
 
   def update
     if @organization.update(organization_params)
-      redirect_to manage_path, notice: "Organization was successfully updated", status: :see_other
+      redirect_to manage_organization_path(@organization), notice: "Organization was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
   end
 
   def destroy
+    name = @organization.name
     @organization.destroy!
-    redirect_to organizations_path, notice: "Organization was successfully deleted", status: :see_other
+
+    # Clear from session if it was current
+    if session[:current_organization_id]
+      session[:current_organization_id].delete(Current.user.id.to_s)
+    end
+
+    redirect_to manage_organizations_path, notice: "#{name} was successfully deleted", status: :see_other
   end
 
-  def select
-    @organizations = Current.user.organizations
-    @organization = Organization.new
+  def remove_logo
+    @organization.logo.purge
+    redirect_to edit_manage_organization_path(@organization), notice: "Logo removed successfully"
   end
 
   def set_current
@@ -59,15 +88,40 @@ class Manage::OrganizationsController < Manage::ManageController
     redirect_to manage_path
   end
 
+  def transfer_ownership
+    new_owner = User.find(params[:new_owner_id])
 
-  private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_organization
-      @organization = Organization.find(params.expect(:id))
+    # Ensure new owner has manager role
+    unless @organization.user_roles.exists?(user: new_owner, company_role: "manager")
+      redirect_to manage_organization_path(@organization), alert: "New owner must be a manager first"
+      return
     end
 
-    # Only allow a list of trusted parameters through.
+    @organization.update!(owner: new_owner)
+    redirect_to manage_organization_path(@organization), notice: "Ownership transferred to #{new_owner.person&.name || new_owner.email_address}"
+  end
+
+  def setup_guide
+  end
+
+  private
+    def set_organization
+      @organization = Organization.find(params[:id])
+    end
+
     def organization_params
-      params.expect(organization: [ :name ])
+      params.expect(organization: [ :name, :logo ])
+    end
+
+    def ensure_user_is_owner
+      unless @organization.owned_by?(Current.user)
+        redirect_to manage_organizations_path, alert: "Only the owner can perform this action"
+      end
+    end
+
+    def ensure_user_can_manage
+      unless @organization.manageable_by?(Current.user)
+        redirect_to manage_organizations_path, alert: "You don't have permission to manage this organization"
+      end
     end
 end
