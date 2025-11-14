@@ -60,4 +60,3 @@ class Manage::SelectController < Manage::ManageController
     redirect_to manage_path
   end
 end
-

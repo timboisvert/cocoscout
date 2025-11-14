@@ -4,6 +4,7 @@ class AuthController < ApplicationController
   rate_limit to: 5, within: 10.minutes, only: :handle_password, with: -> { redirect_to password_path, alert: "Too many requests. Please try again later." }
   rate_limit to: 10, within: 10.minutes, only: :handle_signup, with: -> { redirect_to signup_path, alert: "Too many signup attempts. Please try again later." }
 
+  skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
 
   def signup
@@ -42,7 +43,16 @@ class AuthController < ApplicationController
       if User.authenticate_by(user_params.slice(:email_address, :password))
         start_new_session_for @user
         AuthMailer.signup(@user).deliver_later
-        redirect_to(session.delete(:return_to) || my_dashboard_path) and return
+
+        # Redirect to the last dashboard they were on (defaults to my_dashboard for new signups)
+        default_path = case cookies.encrypted[:last_dashboard]
+        when "manage"
+                         manage_path
+        else
+                         my_dashboard_path
+        end
+
+        redirect_to(session.delete(:return_to) || default_path) and return
       else
         render :signup, status: :unprocessable_entity
       end
@@ -91,7 +101,16 @@ class AuthController < ApplicationController
 
       # Continue signing them in.
       start_new_session_for user
-      redirect_to(session.delete(:return_to) || my_dashboard_path) and return
+
+      # Redirect to the last dashboard they were on
+      default_path = case cookies.encrypted[:last_dashboard]
+      when "manage"
+                       manage_path
+      else
+                       my_dashboard_path
+      end
+
+      redirect_to(session.delete(:return_to) || default_path) and return
     else
       @error = true
       render :signin, status: :unprocessable_entity
@@ -99,8 +118,9 @@ class AuthController < ApplicationController
   end
 
   def signout
+    # Cookie [:last_dashboard] persists automatically across sign-outs
     terminate_session
-    redirect_to my_dashboard_path
+    redirect_to root_path
   end
 
   def password

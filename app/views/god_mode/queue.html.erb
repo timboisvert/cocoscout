@@ -19,7 +19,7 @@
           class: "px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm",
           data: { confirm: "Are you sure you want to delete all #{@failed_jobs} failed jobs? This cannot be undone." } %>
     <% end %>
-    
+
     <% if @pending_jobs > 0 %>
       <%= button_to "Clear All Pending Jobs (#{@pending_jobs})", queue_clear_pending_path,
           method: :delete,

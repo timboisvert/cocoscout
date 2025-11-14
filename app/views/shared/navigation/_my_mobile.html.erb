@@ -13,42 +13,60 @@
     </div>
     <div class="w-6"></div>
   </div>
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] pt-2 bg-white overflow-y-auto px-4 pb-4">
-    <% if session[:impersonate_user_id] %>
-      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
-      <% if impersonated %>
-        <div class="mt-4 rounded-md border border-pink-200 bg-pink-50 px-4 py-3 text-sm">
-          <div class="font-medium text-pink-500">Impersonating</div>
-          <div class="truncate text-slate-700"><%= impersonated.email_address %></div>
-          <%= button_to "Stop impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 w-full rounded-md bg-pink-500 px-3 py-2 text-sm font-semibold text-white" %>
+
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
+    <div class="px-4 py-4">
+
+      <!-- Impersonation Banner -->
+      <% if impersonating? %>
+        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
+          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
+          <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "w-full rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700" %>
         </div>
       <% end %>
-    <% end %>
 
-    <div class="mt-0 grid gap-2">
-      <%= link_to "Shows & Events", my_shows_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Availability", my_availability_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Auditions", my_auditions_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Sign-ups", my_audition_requests_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Profile", my_profile_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-    </div>
-
-    <% if current_user_has_any_manage_access? %>
-      <div class="mt-6 border-t border-pink-100 pt-4">
-        <div class="mt-3 grid gap-2">
-          <%= link_to "Manage Productions", manage_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-          <% if Current.user.god? %>
-            <%= link_to "God Mode", god_mode_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-          <% end %>
+      <!-- Talent Navigation -->
+      <div class="mb-6">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Talent Dashboard</div>
+        <div class="space-y-2">
+          <%= link_to "Shows & Events", my_shows_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Availability", my_availability_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Auditions", my_auditions_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Sign-ups", my_audition_requests_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Profile", my_profile_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
         </div>
       </div>
-    <% end %>
 
-    <% if Current.user %>
-      <div class="mt-6 flex items-center justify-between rounded-md bg-pink-500 px-4 py-3">
-        <div class="text-sm font-medium text-white"><%= Current.user.email_address %></div>
-        <%= link_to "Sign Out", signout_path, class: "text-sm font-medium text-white" %>
+      <!-- User Profile Section -->
+      <div class="mb-6 pb-6 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <% if Current.user.person&.headshot&.attached? %>
+            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
+              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
+          </div>
+        </div>
       </div>
-    <% end %>
+
+      <!-- Footer Actions -->
+      <div class="space-y-2">
+        <% if current_user_has_any_manage_access? %>
+          <%= link_to "Switch to Production Dashboard", manage_path, data: { turbo: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
+        <% end %>
+
+        <% if Current.user.god? %>
+          <%= link_to "God Mode", god_mode_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
+        <% end %>
+
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
+      </div>
+    </div>
   </div>
 </div>

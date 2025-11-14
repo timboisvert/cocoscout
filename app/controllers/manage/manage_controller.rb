@@ -11,9 +11,14 @@ class Manage::ManageController < ActionController::Base
   before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.organization.present? }
   before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? }
 
+  before_action :track_last_dashboard
   before_action :show_manage_sidebar
 
   def index
+    # Explicitly ensure cookie is set before any redirect
+    cookies.encrypted[:last_dashboard] = { value: "manage", expires: 1.year.from_now }
+    Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage'"
+
     if (production = Current.production)
       redirect_to manage_production_path(production)
     else
@@ -45,6 +50,10 @@ class Manage::ManageController < ActionController::Base
     unless Current.user&.manager?
       redirect_to manage_path, notice: "You do not have permission to access that page."
     end
+  end
+
+  def track_last_dashboard
+    cookies.encrypted[:last_dashboard] = { value: "manage", expires: 1.year.from_now }
   end
 
   def ensure_user_has_access_to_company

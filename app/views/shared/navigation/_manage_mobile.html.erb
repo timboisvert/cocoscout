@@ -13,48 +13,120 @@
     </div>
     <div class="w-6"></div>
   </div>
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] pt-2 bg-white overflow-y-auto px-4 pb-4">
-    <% if session[:impersonate_user_id] %>
-      <% impersonated = User.find_by(id: session[:impersonate_user_id]) %>
-      <% if impersonated %>
-        <div class="mt-4 rounded-md border border-pink-200 bg-pink-50 px-4 py-3 text-sm">
-          <div class="font-medium text-pink-500">Impersonating</div>
-          <div class="truncate text-slate-700"><%= impersonated.email_address %></div>
-          <%= button_to "Stop impersonating", stop_impersonating_user_path, method: :post, class: "mt-2 w-full rounded-md bg-pink-500 px-3 py-2 text-sm font-semibold text-white" %>
+
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
+    <div class="px-4 py-4">
+
+      <!-- Impersonation Banner -->
+      <% if impersonating? %>
+        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
+          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
+          <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "w-full rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700" %>
         </div>
       <% end %>
-    <% end %>
 
-    <% if Current.production.present? && !Current.production.new_record? %>
-      <div class="pb-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs uppercase tracking-wide text-slate-400">Current production</div>
-          <%= link_to "Switch", manage_productions_path, class: "text-xs font-medium text-pink-500 underline" %>
+      <!-- Production Section -->
+      <% if Current.production.present? && !Current.production.new_record? %>
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Production Dashboard</div>
+            <%= link_to "Switch", select_production_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+          </div>
+          <%= link_to manage_production_path(Current.production), class: "block rounded-lg border-2 border-pink-200 bg-gradient-to-br from-pink-50 to-white p-4 hover:border-pink-300 transition mb-3" do %>
+            <div class="flex items-center gap-3">
+              <% logo_variant = Current.production.safe_logo_variant(:small) %>
+              <% if logo_variant %>
+                <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-12 h-12 rounded object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-12 h-12 rounded bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
+                  <%= Current.production.initials %>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.production.name %></div>
+                <div class="text-xs text-pink-600 font-medium">View Dashboard</div>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Production Navigation -->
+          <div class="space-y-2">
+            <%= link_to "Shows", manage_production_shows_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Cast", manage_production_casts_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Roles", manage_production_roles_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Auditions", manage_production_auditions_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Visual Assets", manage_production_visual_assets_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          </div>
         </div>
-        <%= link_to manage_production_path(Current.production), class: "mt-2 block rounded-lg border border-pink-100 bg-pink-50 px-4 py-3 text-sm font-semibold text-pink-500" do %>
-          <div class="truncate"><%= Current.production.name %></div>
-          <span class="text-xs font-medium text-pink-400">View dashboard</span>
+      <% elsif Current.organization.present? %>
+        <div class="mb-6">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Production</div>
+          <%= link_to select_production_path, class: "block rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-pink-300 hover:bg-pink-50 transition" do %>
+            <div class="text-sm font-medium text-gray-600">Select a Production</div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Organization Resources -->
+      <% if Current.organization.present? %>
+        <div class="mb-6">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Organization Resources</div>
+          <div class="space-y-2">
+            <%= link_to "Directory", manage_people_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Team", manage_team_index_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <%= link_to "Locations", manage_locations_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Organization Section -->
+      <% if Current.organization.present? %>
+        <div class="mb-6 pb-6 border-b border-gray-200">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</div>
+            <%= link_to "Switch", select_organization_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+          </div>
+          <div class="rounded-lg border border-pink-200 bg-pink-50 p-4">
+            <div class="text-sm font-semibold text-gray-900 mb-3"><%= Current.organization.name %></div>
+            <div class="flex flex-col gap-2">
+              <%= link_to "Manage Organization", manage_organization_path(Current.organization), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+              <%= link_to "All Organizations", manage_organizations_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- User Profile Section -->
+      <div class="mb-6 pb-6 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <% if Current.user.person&.headshot&.attached? %>
+            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
+              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+            <% if Current.organization.present? %>
+              <div class="text-xs text-gray-500 truncate"><%= Current.organization.name %></div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="space-y-2">
+        <%= link_to "Switch to Talent Dashboard", my_dashboard_path, data: { turbo: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
+
+        <% if Current.user.god? %>
+          <%= link_to "God Mode", god_mode_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
         <% end %>
-      </div>
-      <div class="grid gap-2">
-        <%= link_to "Shows", manage_production_shows_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-        <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-        <%= link_to "Cast", manage_production_casts_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-        <%= link_to "Roles", manage_production_roles_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-        <%= link_to "Auditions", manage_production_auditions_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-        <%= link_to "Visual Assets", manage_production_visual_assets_path(Current.production), class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      </div>
-    <% end %>
 
-    <div class="mt-6 grid gap-2">
-      <%= link_to "Directory", manage_people_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Production Team", manage_team_index_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-      <%= link_to "Locations", manage_locations_path, class: "rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-pink-300 hover:text-pink-600" %>
-    </div>
-
-    <div class="mt-6 flex items-center justify-between rounded-md bg-pink-500 px-4 py-3">
-        <%= link_to "Exit Dashboard", my_dashboard_path, class: "text-sm font-medium text-white" %>
-        <%= link_to "Sign Out", signout_path, class: "text-sm font-medium text-white" %>
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
+      </div>
     </div>
   </div>
 </div>
