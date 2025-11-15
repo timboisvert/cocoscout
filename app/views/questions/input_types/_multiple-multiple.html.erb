@@ -1,0 +1,12 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please select at least one option</div>
+<% else %>
+  <div class="text-sm text-gray-500">Select all that apply</div>
+<% end %>
+
+<% question.question_options.each do |option| %>
+  <div class="px-2 py-1">
+    <%= check_box_tag "question[#{question.id}][#{option.text}]", option.text, answer_value&.include?(option.text), class: "accent-pink-500 mr-1" %>
+    <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+  </div>
+<% end %>

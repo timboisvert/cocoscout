@@ -1,0 +1,12 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please select Yes or No</div>
+<% end %>
+
+<div class="px-2 py-1">
+  <%= radio_button_tag "question[#{question.id}]", "yes", checked: (answer_value == "yes" || answer_value.blank?), class: "accent-pink-500 mr-1", required: required %>
+  <%= label_tag "question[#{question.id}][yes]", "Yes" %>
+</div>
+<div class="px-2 py-1">
+  <%= radio_button_tag "question[#{question.id}]", "no", checked: (answer_value == "no"), class: "accent-pink-500 mr-1", required: required %>
+  <%= label_tag "question[#{question.id}][no]", "No" %>
+</div>

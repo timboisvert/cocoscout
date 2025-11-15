@@ -64,7 +64,8 @@ class Manage::AuditionCyclesController < Manage::ManageController
       @question = @audition_cycle.questions.find(params[:question_id])
     else
       @question = @audition_cycle.questions.new
-      @question.question_options.build if [ "multiple-multiple", "multiple-single" ].include?(@question.question_type)
+      type_class = @question.question_type_class
+      @question.question_options.build if type_class&.needs_options?
     end
     @questions = @audition_cycle.questions.order(:position)
   end
@@ -207,7 +208,8 @@ class Manage::AuditionCyclesController < Manage::ManageController
       @question = @audition_cycle.questions.find(params[:question_id])
     else
       @question = @audition_cycle.questions.new
-      @question.question_options.build if [ "multiple-multiple", "multiple-single" ].include?(@question.question_type)
+      type_class = @question.question_type_class
+      @question.question_options.build if type_class&.needs_options?
     end
     @questions = @audition_cycle.questions.order(:position)
   end

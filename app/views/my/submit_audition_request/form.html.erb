@@ -179,68 +179,7 @@
               <% end %>
             </label>
 
-            <% if question.question_type == "text" %>
-
-              <% if @missing_required_questions&.include?(question) %>
-                <div class="text-sm text-pink-500">Please provide an answer to this question</div>
-              <% end %>
-
-              <%= text_field_tag "question[#{question.id}]", @answers["#{question.id}"], class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", required: question.required %>
-
-            <% elsif question.question_type == "textarea" %>
-
-              <% if @missing_required_questions&.include?(question) %>
-                <div class="text-sm text-pink-500">Please provide an answer to this question</div>
-              <% end %>
-
-              <%= text_area_tag "question[#{question.id}]", @answers["#{question.id}"], class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", required: question.required %>
-
-            <% elsif question.question_type == "yesno" %>
-
-              <% if @missing_required_questions&.include?(question) %>
-                <div class="text-sm text-pink-500">Please select Yes or No</div>
-              <% end %>
-
-              <div class="px-2 py-1">
-                <%= radio_button_tag "question[#{question.id}]", "yes", checked: (@answers["#{question.id}"] == "yes" || @answers["#{question.id}"].blank?), class: "accent-pink-500 mr-1", required: question.required %>
-                <%= label_tag "question[#{question.id}][yes]", "Yes" %>
-              </div>
-              <div class="px-2 py-1">
-                <%= radio_button_tag "question[#{question.id}]", "no", checked: (@answers["#{question.id}"] == "no"), class: "accent-pink-500 mr-1", required: question.required %>
-                <%= label_tag "question[#{question.id}][no]", "No" %>
-              </div>
-
-            <% elsif question.question_type == "multiple-multiple" %>
-
-              <% if @missing_required_questions&.include?(question) %>
-                <div class="text-sm text-pink-500">Please select at least one option</div>
-              <% else %>
-                <div class="text-sm text-gray-500">Select all that apply</div>
-              <% end %>
-
-              <% question.question_options.each do |option| %>
-                <div class="px-2 py-1">
-                  <%= check_box_tag "question[#{question.id}][#{option.text}]", option.text, @answers["#{question.id}"]&.include?(option.text),class: "accent-pink-500 mr-1" %>
-                  <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
-                </div>
-              <% end %>
-
-            <% elsif question.question_type == "multiple-single" %>
-
-              <% if @missing_required_questions&.include?(question) %>
-                <div class="text-sm text-pink-500">Please select one option</div>
-              <% else %>
-                <div class="text-sm text-gray-500">Select one option</div>
-              <% end %>
-
-              <% question.question_options.each do |option| %>
-                <div class="px-2 py-1">
-                  <%= radio_button_tag "question[#{question.id}]", option.text, @answers["#{question.id}"] == option.text, class: "accent-pink-500 mr-1" %>
-                  <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
-                </div>
-              <% end %>
-
-          <% end %>
+            <%= render_question_input(question, @answers, missing_required_questions: @missing_required_questions) %>
 
           </div>
         <% end %>
