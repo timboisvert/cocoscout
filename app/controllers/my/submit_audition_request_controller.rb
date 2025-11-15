@@ -32,7 +32,7 @@ class My::SubmitAuditionRequestController < ApplicationController
     # Load shows for availability section if enabled
     if @audition_cycle.include_availability_section
       @production = @audition_cycle.production
-      @shows = @production.shows.order(:date_and_time)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
       # Filter by event types if specified
       if @audition_cycle.availability_event_types.present?
@@ -129,8 +129,8 @@ class My::SubmitAuditionRequestController < ApplicationController
     # Validate required availability if enabled
     @missing_availability = false
     if @audition_cycle.include_availability_section && @audition_cycle.require_all_availability
-      # Load shows to check
-      @shows = @production.shows.order(:date_and_time)
+      # Load shows to check (only future dates)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
       if @audition_cycle.availability_event_types.present?
         @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
       end

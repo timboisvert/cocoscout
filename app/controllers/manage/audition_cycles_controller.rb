@@ -135,7 +135,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
 
     # Load shows for availability section if enabled
     if @audition_cycle.include_availability_section
-      @shows = @production.shows.order(:date_and_time)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
       # Filter shows by selected event types if specified
       if @audition_cycle.availability_event_types.present?

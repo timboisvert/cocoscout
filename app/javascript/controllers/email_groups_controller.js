@@ -5,7 +5,7 @@ export default class extends Controller {
     static values = {
         productionId: Number,
         auditionCycleId: Number,
-        groupType: String  // 'casting' or 'invitation'
+        groupType: String  // 'casting' or 'audition'
     }
 
     connect() {
@@ -519,7 +519,7 @@ export default class extends Controller {
 
     sendNotifications(event) {
         const groupType = this.groupTypeValue || 'casting'
-        const isInvitation = groupType === 'invitation'
+        const isInvitation = groupType === 'audition'
 
         const confirmMessage = isInvitation
             ? "Are you sure you want to send audition invitation emails to all applicants? This action cannot be undone."
@@ -597,6 +597,31 @@ export default class extends Controller {
 
         // If there's no existing EmailGroup record, create one first
         if (!emailGroupId) {
+            // Determine the name based on group type and group_id
+            let groupName
+            if (this.groupTypeValue === 'audition') {
+                groupName = groupId === 'invitation_accepted' ? 'Invited to Audition' : 'Not Invited'
+            } else if (this.groupTypeValue === 'casting') {
+                if (groupId === 'unassigned') {
+                    groupName = 'Not Being Added'
+                } else if (groupId.startsWith('default_')) {
+                    // For default cast groups, get the cast name from the DOM
+                    const castTab = this.element.querySelector(`[data-group-id="${groupId}"]`)
+                    if (castTab) {
+                        // Extract cast name from the tab text (e.g., "Added to Main Cast (1)")
+                        const tabText = castTab.textContent.trim()
+                        const match = tabText.match(/Added to (.+?) \(\d+\)/)
+                        groupName = match ? `Added to ${match[1]}` : 'Added to Cast'
+                    } else {
+                        groupName = 'Added to Cast'
+                    }
+                } else {
+                    groupName = groupId
+                }
+            } else {
+                groupName = groupId
+            }
+
             // Create a new EmailGroup with this group_id and email_template
             fetch(`/manage/productions/${this.productionIdValue}/email_groups`, {
                 method: "POST",
@@ -608,7 +633,7 @@ export default class extends Controller {
                     email_group: {
                         group_id: groupId,
                         group_type: this.groupTypeValue,
-                        name: groupId === 'invitation_accepted' ? 'Invited to Audition' : 'Not Invited',
+                        name: groupName,
                         email_template: emailTemplate
                     }
                 })

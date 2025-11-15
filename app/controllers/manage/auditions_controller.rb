@@ -313,16 +313,29 @@ class Manage::AuditionsController < Manage::ManageController
       return
     end
 
-    # Get all people who auditioned
-    audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
-    auditioned_people = Person.joins(:auditions)
-                               .where(auditions: { audition_session_id: audition_session_ids })
-                               .distinct
-
     # Get all cast assignment stages and email assignments
     cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:cast, :person)
     email_assignments = audition_cycle.audition_email_assignments.includes(:person).index_by(&:person_id)
     email_groups = audition_cycle.email_groups.index_by(&:group_id)
+
+    # Get people who need notifications:
+    # 1. People with pending stages (being added now)
+    # 2. People who auditioned but have no stages at all AND haven't been notified yet
+    pending_stage_person_ids = cast_assignment_stages.where(status: :pending).pluck(:person_id).uniq
+    finalized_stage_person_ids = cast_assignment_stages.where(status: :finalized).pluck(:person_id).uniq
+
+    audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
+    all_auditioned_people = Person.joins(:auditions)
+                               .where(auditions: { audition_session_id: audition_session_ids })
+                               .distinct
+
+    # Exclude people who:
+    # 1. Are already finalized (have been notified of acceptance), OR
+    # 2. Have been notified of rejection for this cycle
+    auditioned_people = all_auditioned_people.reject do |p|
+      finalized_stage_person_ids.include?(p.id) ||
+      (p.casting_notification_sent_at.present? && p.notified_for_audition_cycle_id == audition_cycle.id)
+    end
 
     # Get default email templates from the view (we'll need to pass these or store them)
     casts_by_id = @production.casts.index_by(&:id)
@@ -369,6 +382,12 @@ class Manage::AuditionsController < Manage::ManageController
           # Store the sent email in the stage if it exists
           if stage
             stage.update(notification_email: personalized_body, status: :finalized)
+          else
+            # For people not being added (no stage), track that they've been notified
+            person.update(
+              casting_notification_sent_at: Time.current,
+              notified_for_audition_cycle_id: audition_cycle.id
+            )
           end
         rescue => e
           Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
@@ -397,12 +416,26 @@ class Manage::AuditionsController < Manage::ManageController
 
     # Get all audition requests
     audition_requests = audition_cycle.audition_requests.includes(:person)
+
+    # Get scheduled person IDs to determine who should get invitation vs rejection
+    scheduled_person_ids = audition_cycle.audition_sessions.joins(:auditions).pluck("auditions.person_id").uniq
+
+    # Process requests that:
+    # 1. Haven't been notified yet (invitation_notification_sent_at is nil), OR
+    # 2. Have been notified but their status has changed since then, OR
+    # 3. Have been notified but their scheduling status has changed (e.g., they were added to schedule)
+    requests_to_process = audition_requests.select do |req|
+      req.invitation_notification_sent_at.nil? ||
+      req.notified_status != req.status ||
+      (scheduled_person_ids.include?(req.person_id) != req.notified_scheduled)
+    end
+
     email_assignments = audition_cycle.audition_email_assignments.includes(:person).index_by(&:person_id)
-    email_groups = audition_cycle.email_groups.where(group_type: "invitation").index_by(&:group_id)
+    email_groups = audition_cycle.email_groups.where(group_type: "audition").index_by(&:group_id)
 
     emails_sent = 0
 
-    audition_requests.each do |request|
+    requests_to_process.each do |request|
       person = request.person
       email_assignment = email_assignments[person.id]
 
@@ -413,15 +446,13 @@ class Manage::AuditionsController < Manage::ManageController
         # Custom email group
         custom_group = email_groups[email_assignment.email_group_id]
         email_body = custom_group&.email_template
-      elsif request.status == "accepted"
-        # Default "invited to audition" email
+      elsif scheduled_person_ids.include?(person.id)
+        # Person is scheduled for an audition - send invitation
         email_body = generate_default_invitation_email(person, @production, audition_cycle)
       else
-        # Default "not invited" email
+        # Person is not scheduled - send rejection
         email_body = generate_default_not_invited_email(person, @production)
-      end
-
-      # Send the email if we have a body
+      end      # Send the email if we have a body
       if email_body.present? && person.email.present?
         # Replace [Name] placeholder with actual name
         personalized_body = email_body.gsub("[Name]", person.name)
@@ -429,6 +460,14 @@ class Manage::AuditionsController < Manage::ManageController
         begin
           Manage::AuditionMailer.invitation_notification(person, @production, personalized_body).deliver_later
           emails_sent += 1
+
+          # Mark this request as notified with current status and scheduling status
+          is_scheduled = scheduled_person_ids.include?(person.id)
+          request.update(
+            invitation_notification_sent_at: Time.current,
+            notified_status: request.status,
+            notified_scheduled: is_scheduled
+          )
         rescue => e
           Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
         end

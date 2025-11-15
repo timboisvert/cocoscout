@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_14_155616) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_14_223602) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -93,6 +93,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_14_155616) do
   create_table "audition_requests", force: :cascade do |t|
     t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "invitation_notification_sent_at"
+    t.boolean "notified_scheduled"
+    t.string "notified_status"
     t.integer "person_id", null: false
     t.integer "status", default: 0
     t.datetime "updated_at", null: false
@@ -235,9 +238,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_14_155616) do
   end
 
   create_table "people", force: :cascade do |t|
+    t.datetime "casting_notification_sent_at"
     t.datetime "created_at", null: false
     t.string "email"
     t.string "name"
+    t.integer "notified_for_audition_cycle_id"
     t.string "pronouns"
     t.datetime "updated_at", null: false
     t.integer "user_id"
