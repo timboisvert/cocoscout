@@ -27,6 +27,10 @@ class Manage::ProductionsController < Manage::ManageController
 
     if @production.save
       set_production_in_session
+      # Auto-dismiss welcome screen after creating first production
+      if Current.user.welcomed_production_at.nil?
+        Current.user.update(welcomed_production_at: Time.current)
+      end
     else
       render :new, status: :unprocessable_entity
     end

@@ -11,9 +11,29 @@
     <!-- Features Grid -->
     <div class="grid md:grid-cols-2 gap-6 mb-8">
 
-      <!-- Create Organization or Production Card - First -->
+      <!-- Step 1: Organization -->
       <% if @has_organization %>
-        <%= link_to select_production_path, class: "group" do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-80 relative">
+          <div class="absolute top-4 right-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2">Create Your Organization</h3>
+              <p class="text-sm text-slate-600">Set up your theater company, production house, or performing arts organization to get started.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Production -->
+        <%= link_to new_manage_production_path, class: "group" do %>
           <div class="bg-white border-2 border-pink-300 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-400 transition-all">
             <div class="flex items-start gap-4">
               <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
@@ -22,8 +42,8 @@
                 </svg>
               </div>
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Select Your Production</h3>
-                <p class="text-sm text-slate-600">Choose which show or production you want to work on.</p>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Create Your First Production</h3>
+                <p class="text-sm text-slate-600">Set up your first show, musical, or performance to start managing auditions and casting.</p>
               </div>
             </div>
           </div>
@@ -44,24 +64,39 @@
             </div>
           </div>
         <% end %>
+
+        <!-- Step 2: Production (disabled until org created) -->
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-60">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2">Create Your First Production</h3>
+              <p class="text-sm text-slate-600">Set up your first show, musical, or performance to start managing auditions and casting.</p>
+            </div>
+          </div>
+        </div>
       <% end %>
 
-      <!-- Auditions Card - Second -->
+      <!-- Shows & Events Card -->
       <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-60">
         <div class="flex items-start gap-4">
           <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
             <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-slate-900 mb-2">Manage Auditions</h3>
-            <p class="text-sm text-slate-600">Create audition cycles, schedule sessions, and collect submissions from performers.</p>
+            <h3 class="text-lg font-semibold text-slate-900 mb-2">Set Up Your Shows & Events</h3>
+            <p class="text-sm text-slate-600">Schedule rehearsals, performances, and track cast availability.</p>
           </div>
         </div>
       </div>
 
-      <!-- Casting Card - Third -->
+      <!-- Build Your Cast Card -->
       <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-60">
         <div class="flex items-start gap-4">
           <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -71,22 +106,7 @@
           </div>
           <div class="flex-1">
             <h3 class="text-lg font-semibold text-slate-900 mb-2">Build Your Cast</h3>
-            <p class="text-sm text-slate-600">Review auditions, make casting decisions, and send personalized notifications.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Productions Card - Fourth -->
-      <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm opacity-60">
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h3 class="text-lg font-semibold text-slate-900 mb-2">Manage Productions</h3>
-            <p class="text-sm text-slate-600">Create shows, schedule rehearsals and performances, and track cast availability.</p>
+            <p class="text-sm text-slate-600">Run auditions, make casting decisions, and send notifications to performers.</p>
           </div>
         </div>
       </div>

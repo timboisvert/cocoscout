@@ -7,8 +7,8 @@ class Manage::ManageController < ActionController::Base
   # before_action :hide_sidebar
   before_action :set_current_organization, if: -> { Current.user.present? }
   before_action :set_current_production, if: -> { Current.user.present? }
-  before_action :require_current_organization, if: -> { Current.user.present? }
-  before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.organization.present? }, except: [ :index ]
+  before_action :require_current_organization, if: -> { Current.user.present? }, except: [ :index, :welcome, :dismiss_production_welcome ]
+  before_action :ensure_user_has_access_to_company, if: -> { Current.user.present? && Current.organization.present? }, except: [ :index, :welcome, :dismiss_production_welcome ]
   before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? }
 
   before_action :track_last_dashboard
@@ -18,6 +18,9 @@ class Manage::ManageController < ActionController::Base
     # Check if user needs to see welcome page (but not when impersonating)
     if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank?
       @show_manage_sidebar = false
+      @has_organization = Current.user.organizations.any?
+      @current_org = Current.organization
+      @user_orgs = Current.user.organizations.includes(:user_roles).order(:name)
       render "welcome" and return
     end
 
@@ -42,6 +45,8 @@ class Manage::ManageController < ActionController::Base
   def welcome
     @show_manage_sidebar = false
     @has_organization = Current.user.organizations.any?
+    @current_org = Current.organization
+    @user_orgs = Current.user.organizations.includes(:user_roles).order(:name)
     render "welcome"
   end
 
