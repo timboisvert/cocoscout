@@ -10,7 +10,6 @@ class Organization < ApplicationRecord
   has_one_attached :logo
 
   validates :name, presence: true
-  validates :owner_id, presence: true
 
   # Check if a user is the owner
   def owned_by?(user)

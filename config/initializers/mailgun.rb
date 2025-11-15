@@ -1,8 +1,8 @@
 # Mailgun configuration
 # https://github.com/mailgun/mailgun-ruby
 
-require "mailgun-ruby"
-
-Mailgun.configure do |config|
-  config.api_key = ENV["MAILGUN_API_KEY"]
+if defined?(Mailgun)
+  Mailgun.configure do |config|
+    config.api_key = ENV["MAILGUN_API_KEY"]
+  end
 end
