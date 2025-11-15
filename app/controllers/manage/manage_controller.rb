@@ -15,6 +15,12 @@ class Manage::ManageController < ActionController::Base
   before_action :show_manage_sidebar
 
   def index
+    # Check if user needs to see welcome page (but not when impersonating)
+    if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank?
+      @show_manage_sidebar = false
+      render "welcome" and return
+    end
+
     # Explicitly ensure cookie is set before any redirect
     if Current.user.present?
       last_dashboard_prefs = cookies.encrypted[:last_dashboard]
@@ -31,6 +37,23 @@ class Manage::ManageController < ActionController::Base
       # Redirect to production selection
       redirect_to select_production_path
     end
+  end
+
+  def welcome
+    @show_manage_sidebar = false
+    @has_organization = Current.user.organizations.any?
+    render "welcome"
+  end
+
+  def dismiss_production_welcome
+    # Prevent dismissing welcome screen when impersonating
+    if session[:user_doing_the_impersonating].present?
+      redirect_to manage_path, alert: "Cannot dismiss welcome screen while impersonating"
+      return
+    end
+
+    Current.user.update(welcomed_production_at: Time.current)
+    redirect_to manage_path
   end
 
   def ensure_user_is_manager

@@ -81,7 +81,9 @@ Rails.application.routes.draw do
 
   # Management interface
   namespace :manage do
-    get "/", to: "manage#index"
+    get  "/",                              to: "manage#index"
+    get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
+    post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
     resources :organizations do
       collection do
