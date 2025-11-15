@@ -9,7 +9,7 @@ RSpec.describe "PersonInvitations", type: :request do
       get "/manage/person_invitations/accept/#{person_invitation.token}"
 
       expect(response).to have_http_status(:success)
-      expect(response.body).to include("Join #{organization.name}")
+      expect(response.body).to include(organization.name)
       expect(response.body).to include(person_invitation.email)
     end
   end

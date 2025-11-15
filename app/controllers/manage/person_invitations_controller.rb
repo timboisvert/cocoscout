@@ -62,6 +62,15 @@ class Manage::PersonInvitationsController < Manage::ManageController
       person.organizations << @person_invitation.organization
     end
 
+    # Ensure the user has a role in the organization
+    unless user.user_roles.exists?(organization: @person_invitation.organization)
+      UserRole.create!(
+        user: user,
+        organization: @person_invitation.organization,
+        company_role: "none"
+      )
+    end
+
     # Mark the invitation as accepted
     @person_invitation.update(accepted_at: Time.current)
 
