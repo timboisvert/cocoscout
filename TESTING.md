@@ -2,6 +2,10 @@
 
 This guide provides best practices and examples for writing tests in CocoScout.
 
+## Quick Links
+- **[Test Performance Guide](TEST_PERFORMANCE.md)** - Understanding test types and optimization strategies
+- **[Generate Test Template](#generating-test-templates)** - Quick start for new model tests
+
 ## Table of Contents
 - [Running Tests](#running-tests)
 - [Test Types](#test-types)
@@ -400,6 +404,27 @@ bundle exec rspec
 bundle exec rubocop
 bundle exec brakeman
 ```
+
+## Generating Test Templates
+
+We provide a script to generate test templates for new models:
+
+```bash
+# Generate a test template for a model
+ruby script/generate_test_template.rb ModelName
+
+# Example:
+ruby script/generate_test_template.rb EmailGroup
+# Creates: spec/models/email_group_spec.rb
+```
+
+This creates a basic test structure with sections for:
+- Validations
+- Associations  
+- Instance methods
+- Class methods
+
+Then customize the template based on your model's specific needs.
 
 ## Getting Help
 

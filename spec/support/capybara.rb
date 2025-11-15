@@ -11,6 +11,8 @@ Capybara.register_driver :headless_chrome do |app|
   options.add_argument('--disable-dev-shm-usage')
   options.add_argument('--disable-gpu')
   options.add_argument('--window-size=1400,1400')
+  options.add_argument('--disable-software-rasterizer')
+  options.add_argument('--disable-extensions')
 
   Capybara::Selenium::Driver.new(app, browser: :chrome, options: options)
 end
@@ -22,4 +24,8 @@ Capybara.javascript_driver = :headless_chrome
 Capybara.default_driver = :headless_chrome
 
 # Increase wait time for elements to appear (helps with async operations)
-Capybara.default_max_wait_time = 5
+Capybara.default_max_wait_time = 10
+
+# Note: System tests are inherently slower due to browser startup.
+# Each test takes ~30-60 seconds. Consider this when writing new tests.
+# Prefer model and request tests for faster feedback during development.
