@@ -30,13 +30,13 @@ RSpec.describe ShowPersonRoleAssignment, type: :model do
       show = create(:show)
       person = create(:person)
       role = create(:role, production: show.production)
-      
-      assignment = create(:show_person_role_assignment, 
-        show: show, 
-        person: person, 
+
+      assignment = create(:show_person_role_assignment,
+        show: show,
+        person: person,
         role: role
       )
-      
+
       expect(assignment).to be_persisted
       expect(assignment.show).to eq(show)
       expect(assignment.person).to eq(person)

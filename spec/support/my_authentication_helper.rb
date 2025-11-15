@@ -5,7 +5,7 @@ module MyAuthenticationHelper
   #
   # Usage:
   #   let!(:user) { create(:user, password: "password123") }
-  #   
+  #
   #   before do
   #     sign_in_as(user)
   #   end
@@ -17,7 +17,7 @@ module MyAuthenticationHelper
     fill_in "email_address", with: user.email_address
     fill_in "password", with: "password123"
     click_button "Sign In"
-    
+
     # After clicking Sign In, the page will automatically redirect to /my dashboard
     # Wait for the redirect to complete with generous timeout for slow CI environments
     begin
@@ -29,7 +29,7 @@ module MyAuthenticationHelper
       save_screenshot("tmp/failed_login_#{Time.now.to_i}.png") if respond_to?(:save_screenshot)
       raise "Login failed: #{e.message}. Check if user credentials are correct and database is seeded properly."
     end
-    
+
     # The session is now established
     # Note: person parameter is accepted for backwards compatibility but not used
   end
