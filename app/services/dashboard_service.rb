@@ -31,7 +31,7 @@ class DashboardService
 
   def upcoming_shows
     @production.shows
-      .where("date_and_time >= ? AND date_and_time <= ?", Date.today, 6.weeks.from_now)
+      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
       .order(date_and_time: :asc)
       .limit(5)
       .map do |show|

@@ -45,7 +45,7 @@ class Manage::SelectController < Manage::ManageController
     end
 
     @productions = Current.user.accessible_productions.where(organization: Current.organization).order(:name)
-    
+
     # If user has exactly one production, auto-select it
     if @productions.count == 1
       production = @productions.first
@@ -54,7 +54,7 @@ class Manage::SelectController < Manage::ManageController
       redirect_to manage_path
       return
     end
-    
+
     @production = Production.new
   end
 

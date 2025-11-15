@@ -40,12 +40,12 @@ class Manage::OrganizationsController < Manage::ManageController
       if Current.user.person.nil?
         person = Person.create!(
           email: Current.user.email_address,
-          first_name: Current.user.email_address.split('@').first.titleize,
+          first_name: Current.user.email_address.split("@").first.titleize,
           last_name: ""
         )
         Current.user.update(person: person)
       end
-      
+
       # Associate the person with the organization if not already
       unless @organization.people.include?(Current.user.person)
         @organization.people << Current.user.person
