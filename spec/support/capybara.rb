@@ -13,6 +13,9 @@ Capybara.register_driver :headless_chrome do |app|
   options.add_argument('--window-size=1400,1400')
   options.add_argument('--disable-software-rasterizer')
   options.add_argument('--disable-extensions')
+  
+  # Use system Chrome directly without selenium-manager auto-download
+  options.binary = '/usr/bin/google-chrome' if File.exist?('/usr/bin/google-chrome')
 
   Capybara::Selenium::Driver.new(app, browser: :chrome, options: options)
 end
