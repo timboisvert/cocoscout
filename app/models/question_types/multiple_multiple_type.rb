@@ -10,6 +10,10 @@ module QuestionTypes
       "Select Multiple Options"
     end
 
+    def self.sort_order
+      4
+    end
+
     def self.needs_options?
       true
     end

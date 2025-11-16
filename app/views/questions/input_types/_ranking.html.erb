@@ -1,0 +1,86 @@
+<%# Ranking question input - allows users to rank options in order of preference %>
+<% current_answer = answer_value || [] %>
+<%
+  ranked_options = if current_answer.is_a?(Array)
+    current_answer
+  elsif current_answer.is_a?(String)
+    begin
+      JSON.parse(current_answer)
+    rescue JSON::ParserError
+      []
+    end
+  else
+    []
+  end
+%>
+<% unranked_options = question.question_options.map(&:text) - ranked_options %>
+<% all_options_ordered = ranked_options + unranked_options %>
+
+<% if missing_required %>
+  <div class="text-sm text-pink-500 mb-2">Please rank all options</div>
+<% else %>
+  <div class="text-sm text-gray-500 mb-2">
+    <span class="hidden sm:inline">Drag to reorder</span>
+    <span class="sm:hidden">Use arrows to reorder options</span>
+  </div>
+<% end %>
+
+<div class="mt-2"
+     data-controller="ranking"
+     data-ranking-question-id-value="<%= question.id %>">
+
+  <!-- Hidden input to store the ranked order -->
+  <%= hidden_field_tag "question[#{question.id}]",
+                       all_options_ordered.to_json,
+                       data: { ranking_target: "hiddenInput" } %>
+
+  <!-- Ranking list -->
+  <div class="space-y-2" data-ranking-target="list">
+    <% all_options_ordered.each_with_index do |option_text, index| %>
+      <div class="flex items-center gap-2 p-3 bg-white border border-gray-300 rounded-lg cursor-move hover:bg-gray-50 transition"
+           draggable="true"
+           data-ranking-target="item"
+           data-option-text="<%= option_text %>"
+           data-action="dragstart->ranking#dragStart dragend->ranking#dragEnd dragover->ranking#dragOver drop->ranking#drop touchstart->ranking#touchStart touchmove->ranking#touchMove touchend->ranking#touchEnd">
+
+        <!-- Rank number -->
+        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-pink-500 text-white font-semibold rounded-full text-sm"
+             data-ranking-target="rank">
+          <%= index + 1 %>
+        </div>
+
+        <!-- Option text -->
+        <div class="flex-1 font-medium text-gray-900">
+          <%= option_text %>
+        </div>
+
+        <!-- Mobile controls (arrows) -->
+        <div class="flex gap-1 sm:hidden">
+          <button type="button"
+                  class="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                  data-action="click->ranking#moveUp"
+                  <%= 'disabled' if index == 0 %>>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+            </svg>
+          </button>
+          <button type="button"
+                  class="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                  data-action="click->ranking#moveDown"
+                  <%= 'disabled' if index == all_options_ordered.length - 1 %>>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Desktop drag handle -->
+        <div class="hidden sm:block text-gray-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+          </svg>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -10,6 +10,10 @@ module QuestionTypes
       "Select Single Option"
     end
 
+    def self.sort_order
+      5
+    end
+
     def self.needs_options?
       true
     end

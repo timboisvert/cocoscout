@@ -10,6 +10,10 @@ module QuestionTypes
       "Short Text"
     end
 
+    def self.sort_order
+      1
+    end
+
     def self.needs_options?
       false
     end

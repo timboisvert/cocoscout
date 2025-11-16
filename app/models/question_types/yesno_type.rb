@@ -10,6 +10,10 @@ module QuestionTypes
       "Yes/No"
     end
 
+    def self.sort_order
+      3
+    end
+
     def self.needs_options?
       false
     end

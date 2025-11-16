@@ -10,6 +10,10 @@ module QuestionTypes
       "Long Text"
     end
 
+    def self.sort_order
+      2
+    end
+
     def self.needs_options?
       false
     end

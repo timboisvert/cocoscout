@@ -13,9 +13,9 @@ module QuestionTypes
         registry[key.to_s] = klass
       end
 
-      # Get all registered types
+      # Get all registered types in display order
       def all_types
-        registry.values.sort_by(&:key)
+        registry.values.sort_by(&:sort_order)
       end
 
       # Find a type class by key

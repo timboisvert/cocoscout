@@ -1,0 +1,16 @@
+<%# Display a ranked answer %>
+<% ranked_options = answer.question.question_type_class.parse_answer_value(answer.value) %>
+<% if ranked_options.any? %>
+  <div class="space-y-1">
+    <% ranked_options.each_with_index do |option, index| %>
+      <div class="flex items-center gap-2">
+        <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-pink-100 text-pink-700 font-semibold rounded-full text-xs">
+          <%= index + 1 %>
+        </span>
+        <span><%= option %></span>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <span class="text-gray-500 italic">No ranking provided</span>
+<% end %>
