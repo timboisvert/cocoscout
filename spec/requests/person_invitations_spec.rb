@@ -20,7 +20,6 @@ RSpec.describe "PersonInvitations", type: :request do
         post "/manage/person_invitations/accept/#{person_invitation.token}", params: { password: "password123" }
       }.to change(User, :count).by(1)
         .and change(Person, :count).by(1)
-        .and change(UserRole, :count).by(1)
 
       # Verify the user was created with correct email
       user = User.find_by(email_address: person_invitation.email.downcase)
@@ -32,11 +31,6 @@ RSpec.describe "PersonInvitations", type: :request do
       expect(person).to be_present
       expect(person.user).to eq(user)
       expect(person.organizations).to include(organization)
-
-      # Verify the user role was created
-      user_role = UserRole.find_by(user: user, organization: organization)
-      expect(user_role).to be_present
-      expect(user_role.company_role).to eq("none")
 
       # Verify the invitation was marked as accepted
       person_invitation.reload

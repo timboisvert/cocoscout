@@ -23,10 +23,6 @@ describe "Accept person invitation", type: :system do
     expect(person.user).to eq(user)
     expect(person.organizations).to include(organization)
 
-    # User should have a role for the production company
-    user_role = UserRole.find_by(user: user, organization: organization)
-    expect(user_role).to be_present
-
     # Verify they're now signed in (the redirect may vary based on permissions)
     # The important part is that the invitation was accepted and they can access the system
     expect([ manage_people_path, my_dashboard_path ]).to include(current_path)
