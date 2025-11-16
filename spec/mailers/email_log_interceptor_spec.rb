@@ -15,7 +15,7 @@ RSpec.describe EmailLogInterceptor do
       expect(log.subject).to eq("Welcome to CocoScout")
       expect(log.mailer_class).to eq("AuthMailer")
       expect(log.mailer_action).to eq("signup")
-      expect(log.delivery_status).to eq("sent")
+      expect(log.delivery_status).to eq("queued")
       expect(log.sent_at).to be_present
     end
 

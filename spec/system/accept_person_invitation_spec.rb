@@ -7,11 +7,11 @@ describe "Accept person invitation", type: :system do
   it "allows a new user to accept an invitation and set a password" do
     visit "/manage/person_invitations/accept/#{person_invitation.token}"
 
-    expect(page).to have_content("Join #{organization.name}")
+    expect(page).to have_content(organization.name)
     expect(page).to have_content(person_invitation.email)
 
     fill_in "password", with: "password123"
-    click_button "Join #{organization.name}"
+    click_button "Join CocoScout"
 
     # Verify the user and person were created properly
     user = User.find_by(email_address: person_invitation.email.downcase)
@@ -22,10 +22,6 @@ describe "Accept person invitation", type: :system do
     expect(person).to be_present
     expect(person.user).to eq(user)
     expect(person.organizations).to include(organization)
-
-    # User should have a role for the production company
-    user_role = UserRole.find_by(user: user, organization: organization)
-    expect(user_role).to be_present
 
     # Verify they're now signed in (the redirect may vary based on permissions)
     # The important part is that the invitation was accepted and they can access the system

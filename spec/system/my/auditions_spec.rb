@@ -17,7 +17,7 @@ RSpec.describe "My::Auditions", type: :system do
   end
 
   describe "when user has upcoming auditions" do
-    let!(:upcoming_session) { create(:audition_session, :upcoming, production: production) }
+    let!(:upcoming_session) { create(:audition_session, :upcoming, audition_cycle: audition_cycle) }
     let!(:upcoming_audition) { create(:audition, person: person, audition_request: audition_request, audition_session: upcoming_session) }
 
     it "displays upcoming auditions by default" do
@@ -44,7 +44,7 @@ RSpec.describe "My::Auditions", type: :system do
   end
 
   describe "when user has past auditions" do
-    let!(:past_session) { create(:audition_session, :past, production: production) }
+    let!(:past_session) { create(:audition_session, :past, audition_cycle: audition_cycle) }
     let!(:past_audition) { create(:audition, person: person, audition_request: audition_request, audition_session: past_session) }
 
     it "does not show past auditions in upcoming view" do
@@ -63,9 +63,9 @@ RSpec.describe "My::Auditions", type: :system do
   end
 
   describe "filtering auditions" do
-    let!(:upcoming_session) { create(:audition_session, :upcoming, production: production) }
+    let!(:upcoming_session) { create(:audition_session, :upcoming, audition_cycle: audition_cycle) }
     let!(:upcoming_audition) { create(:audition, person: person, audition_request: audition_request, audition_session: upcoming_session) }
-    let!(:past_session) { create(:audition_session, :past, production: production) }
+    let!(:past_session) { create(:audition_session, :past, audition_cycle: audition_cycle) }
     let!(:past_audition) { create(:audition, person: person, audition_request: audition_request, audition_session: past_session) }
 
     it "allows switching between upcoming and past" do
@@ -88,8 +88,8 @@ RSpec.describe "My::Auditions", type: :system do
   end
 
   describe "multiple auditions" do
-    let!(:session1) { create(:audition_session, :upcoming, production: production, start_at: 2.days.from_now) }
-    let!(:session2) { create(:audition_session, :upcoming, production: production, start_at: 1.week.from_now) }
+    let!(:session1) { create(:audition_session, :upcoming, audition_cycle: audition_cycle, start_at: 2.days.from_now) }
+    let!(:session2) { create(:audition_session, :upcoming, audition_cycle: audition_cycle, start_at: 1.week.from_now) }
     let!(:audition1) { create(:audition, person: person, audition_request: audition_request, audition_session: session1) }
     let!(:audition2) { create(:audition, person: person, audition_request: audition_request, audition_session: session2) }
 

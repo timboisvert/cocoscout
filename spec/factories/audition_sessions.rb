@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :audition_session do
-    association :production
+    association :audition_cycle
     association :location
     start_at { 1.week.from_now }
     end_at { 1.week.from_now + 2.hours }

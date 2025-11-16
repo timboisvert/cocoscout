@@ -7,6 +7,6 @@ describe "Forgot password", type: :system do
     visit "/password"
     fill_in "email_address", with: user.email_address
     click_button "Email reset instructions"
-    expect(page).to have_content("Sign In", wait: 5)
+    expect(page).to have_content("Password reset instructions have been sent", wait: 5)
   end
 end
