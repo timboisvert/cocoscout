@@ -74,6 +74,21 @@
         </div>
       <% end %>
 
+      <!-- Organization Info -->
+      <% if Current.organization.present? %>
+        <div class="text-center mt-8">
+          <div class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg">
+            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span class="text-sm font-medium text-slate-700">Organization: <span class="font-bold text-slate-900"><%= Current.organization.name %></span></span>
+            <% if Current.user.organizations.count > 1 %>
+              <%= link_to "Switch", select_organization_path, class: "ml-2 text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
     <% else %>
       <!-- No Productions - Empty State -->
       <div class="text-center py-12">
@@ -92,6 +107,21 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Create your first production
+          <% end %>
+
+          <!-- Organization Info -->
+          <% if Current.organization.present? %>
+            <div class="mt-8">
+              <div class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg">
+                <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span class="text-sm font-medium text-slate-700">Organization: <span class="font-bold text-slate-900"><%= Current.organization.name %></span></span>
+                <% if Current.user.organizations.count > 1 %>
+                  <%= link_to "Switch", select_organization_path, class: "ml-2 text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+                <% end %>
+              </div>
+            </div>
           <% end %>
         <% else %>
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
