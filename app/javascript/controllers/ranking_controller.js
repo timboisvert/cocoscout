@@ -37,9 +37,9 @@ export default class extends Controller {
     dragOver(event) {
         event.preventDefault()
         const afterElement = this.getDragAfterElement(event.clientY)
-        
+
         this.dropIndicator.style.display = 'block'
-        
+
         if (afterElement == null) {
             this.listTarget.appendChild(this.draggedItem)
             this.listTarget.appendChild(this.dropIndicator)
