@@ -8,7 +8,7 @@ describe "Accept team invitation", type: :system do
     visit "/manage/team_invitations/accept/#{team_invitation.token}"
     fill_in "password", with: "password123"
     click_button "Join #{organization.name}"
-    # After joining, user is redirected to add a production
-    expect(page).to have_content("Add a Production")
+    # After joining, user is redirected to getting started page
+    expect(page).to have_content("Create Your First Production")
   end
 end

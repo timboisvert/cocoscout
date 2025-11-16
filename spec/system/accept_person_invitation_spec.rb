@@ -7,11 +7,11 @@ describe "Accept person invitation", type: :system do
   it "allows a new user to accept an invitation and set a password" do
     visit "/manage/person_invitations/accept/#{person_invitation.token}"
 
-    expect(page).to have_content("Join #{organization.name}")
+    expect(page).to have_content(organization.name)
     expect(page).to have_content(person_invitation.email)
 
     fill_in "password", with: "password123"
-    click_button "Join #{organization.name}"
+    click_button "Join CocoScout"
 
     # Verify the user and person were created properly
     user = User.find_by(email_address: person_invitation.email.downcase)

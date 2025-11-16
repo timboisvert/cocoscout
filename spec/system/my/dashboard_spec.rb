@@ -45,7 +45,7 @@ RSpec.describe "My::Dashboard", type: :system do
   describe "when user has upcoming audition sessions" do
     let!(:audition_cycle) { create(:audition_cycle, production: production) }
     let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
-    let!(:audition_session) { create(:audition_session, :upcoming, production: production) }
+    let!(:audition_session) { create(:audition_session, :upcoming, audition_cycle: audition_cycle) }
     let!(:audition) { create(:audition, person: person, audition_request: audition_request, audition_session: audition_session) }
 
     it "shows the upcoming audition session" do
