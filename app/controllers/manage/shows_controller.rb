@@ -1,25 +1,14 @@
 class Manage::ShowsController < Manage::ManageController
   before_action :set_production, except: %i[ assign_person_to_role remove_person_from_role ]
   before_action :check_production_access, except: %i[ assign_person_to_role remove_person_from_role ]
-  before_action :set_show, only: %i[ cast edit update destroy cancel cancel_show delete_show uncancel assign_person_to_role remove_person_from_role ]
-  before_action :ensure_user_is_manager, except: %i[ index ]
+  before_action :set_show, only: %i[ show cast edit update destroy cancel cancel_show delete_show uncancel assign_person_to_role remove_person_from_role ]
+  before_action :ensure_user_is_manager, except: %i[ index show ]
 
   def index
     # Store the shows filter
     @filter = (params[:filter] || session[:shows_filter] || "upcoming")
 
-    # Reset the first_item_closed session variable if the filter changed
-    if session[:shows_filter] != @filter
-      session[:shows_first_item_closed] = nil
-    end
-
     session[:shows_filter] = @filter
-
-    # Check if first item should be closed (from param or session)
-    if params[:first_closed].present?
-      session[:shows_first_item_closed] = params[:first_closed] == "true"
-    end
-    @first_item_closed = session[:shows_first_item_closed] == true
 
     # Get the shows using the shows filter
     @shows = @production.shows
@@ -31,6 +20,10 @@ class Manage::ShowsController < Manage::ManageController
       @filter = "upcoming"
       @shows = @shows.where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC")
     end
+  end
+
+  def show
+    @availability = ShowAvailability.where(show: @show).index_by(&:person_id)
   end
 
   def calendar
