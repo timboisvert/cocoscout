@@ -48,4 +48,49 @@ RSpec.describe Answer, type: :model do
       expect(answer.value).to eq("This is a much longer answer with multiple sentences.")
     end
   end
+
+  describe "#value_as_array" do
+    let(:audition_request) { create(:audition_request) }
+
+    it "returns single value in array for text type" do
+      question = create(:question, question_type: "text", questionable: audition_request.audition_cycle)
+      answer = create(:answer, question: question, audition_request: audition_request, value: "Test answer")
+
+      expect(answer.value_as_array).to eq(["Test answer"])
+    end
+
+    it "returns single value in array for yesno type" do
+      question = create(:question, question_type: "yesno", questionable: audition_request.audition_cycle)
+      answer = create(:answer, question: question, audition_request: audition_request, value: "yes")
+
+      expect(answer.value_as_array).to eq(["yes"])
+    end
+
+    it "parses multiple-multiple answers correctly" do
+      audition_cycle = audition_request.audition_cycle
+      question = audition_cycle.questions.create!(
+        text: "Select options",
+        question_type: "multiple-multiple",
+        question_options_attributes: [
+          { text: "Option 1" },
+          { text: "Option 2" }
+        ]
+      )
+      answer = create(:answer, question: question, audition_request: audition_request, value: '{"Option 1":"Option 1", "Option 2":"Option 2"}')
+
+      expect(answer.value_as_array).to match_array(["Option 1", "Option 2"])
+    end
+
+    it "handles invalid JSON gracefully for multiple-multiple" do
+      audition_cycle = audition_request.audition_cycle
+      question = audition_cycle.questions.create!(
+        text: "Select option",
+        question_type: "multiple-multiple",
+        question_options_attributes: [{ text: "Option 1" }]
+      )
+      answer = create(:answer, question: question, audition_request: audition_request, value: "invalid json")
+
+      expect(answer.value_as_array).to eq([])
+    end
+  end
 end

@@ -103,4 +103,63 @@ RSpec.describe Question, type: :model do
       expect(question.questionable_type).to eq("AuditionCycle")
     end
   end
+
+  describe "#question_type_class" do
+    it "returns the correct type class for text" do
+      question = build(:question, question_type: "text")
+      expect(question.question_type_class).to eq(QuestionTypes::TextType)
+    end
+
+    it "returns the correct type class for textarea" do
+      question = build(:question, question_type: "textarea")
+      expect(question.question_type_class).to eq(QuestionTypes::TextareaType)
+    end
+
+    it "returns the correct type class for yesno" do
+      question = build(:question, question_type: "yesno")
+      expect(question.question_type_class).to eq(QuestionTypes::YesnoType)
+    end
+
+    it "returns the correct type class for multiple-multiple" do
+      question = build(:question, question_type: "multiple-multiple")
+      expect(question.question_type_class).to eq(QuestionTypes::MultipleMultipleType)
+    end
+
+    it "returns the correct type class for multiple-single" do
+      question = build(:question, question_type: "multiple-single")
+      expect(question.question_type_class).to eq(QuestionTypes::MultipleSingleType)
+    end
+
+    it "returns nil for unknown type" do
+      question = build(:question, question_type: "unknown")
+      expect(question.question_type_class).to be_nil
+    end
+  end
+
+  describe "question_options validation" do
+    it "is valid for multiple-multiple with options" do
+      audition_cycle = create(:audition_cycle)
+      question = audition_cycle.questions.build(
+        text: "Select your preferences",
+        question_type: "multiple-multiple",
+        question_options_attributes: [{ text: "Option 1" }, { text: "Option 2" }]
+      )
+      expect(question).to be_valid
+    end
+
+    it "is invalid for multiple-multiple without options" do
+      audition_cycle = create(:audition_cycle)
+      question = audition_cycle.questions.build(
+        text: "Select your preferences",
+        question_type: "multiple-multiple"
+      )
+      expect(question).not_to be_valid
+      expect(question.errors[:question_options]).to be_present
+    end
+
+    it "is valid for text type without options" do
+      question = build(:question, question_type: "text")
+      expect(question).to be_valid
+    end
+  end
 end
