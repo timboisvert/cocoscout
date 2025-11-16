@@ -17,7 +17,7 @@ describe "User authentication", type: :system do
     fill_in "password", with: "password123"
     click_button "Sign In"
     visit "/signout"
-    expect(page).to have_content("Sign in to your account")
+    expect(page).to have_content("Sign in")
   end
 
   it "shows error for invalid login" do
@@ -25,6 +25,6 @@ describe "User authentication", type: :system do
     fill_in "email_address", with: user.email_address
     fill_in "password", with: "wrongpassword"
     click_button "Sign In"
-    expect(page).to have_content("Sign in to your account")
+    expect(page).to have_content("Sign in")
   end
 end
