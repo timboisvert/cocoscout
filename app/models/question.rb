@@ -6,4 +6,22 @@ class Question < ApplicationRecord
 
   validates :text, presence: true
   validates :question_type, presence: true
+  validate :validate_question_options_presence
+
+  def question_type_class
+    QuestionTypes::Base.find(question_type)
+  end
+
+  private
+
+  def validate_question_options_presence
+    return unless question_type.present?
+
+    type_class = question_type_class
+    return unless type_class
+
+    if type_class.needs_options? && question_options.reject(&:marked_for_destruction?).blank?
+      errors.add(:question_options, "must have at least one option for this question type")
+    end
+  end
 end

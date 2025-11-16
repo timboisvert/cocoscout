@@ -1,0 +1,12 @@
+<% if missing_required %>
+  <div class="text-sm text-pink-500">Please select one option</div>
+<% else %>
+  <div class="text-sm text-gray-500">Select one option</div>
+<% end %>
+
+<% question.question_options.each do |option| %>
+  <div class="px-2 py-1">
+    <%= radio_button_tag "question[#{question.id}]", option.text, answer_value == option.text, class: "accent-pink-500 mr-1" %>
+    <%= label_tag "question[#{question.id}][#{option.text}]", option.text %>
+  </div>
+<% end %>

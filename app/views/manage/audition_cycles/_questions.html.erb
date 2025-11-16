@@ -16,18 +16,8 @@
                   <%= question.text %>
                 </p>
                 <p class="text-sm text-gray-500 mb-1">
-                  Type:
-                  <% if question.question_type == "text" %>
-                  Short Text
-                  <% elsif question.question_type == "textarea" %>
-                  Long Text
-                  <% elsif question.question_type == "yesno" %>
-                  Yes/No
-                  <% elsif question.question_type == "multiple-multiple" %>
-                  Select Multiple Options
-                  <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
-                  <% elsif question.question_type == "multiple-single" %>
-                  Select Single Option
+                  Type: <%= question.question_type_class&.label || question.question_type %>
+                  <% if question.question_type_class&.needs_options? && question.question_options.any? %>
                   <span class="ml-1 text-gray-500">(Options: <%= question.question_options.pluck(:text).join(", ") %>)</span>
                   <% end %>
                 </p>
@@ -87,7 +77,7 @@
             <div class="flex-1">
               <%= form.label :question_type, "Question Type", class: "text-sm font-medium" %>
               <%= form.select :question_type,
-                [["Short Text", "text"], ["Long Text", "textarea"], ["Yes/No", "yesno"], ["Select Multiple Options", "multiple-multiple"], ["Select Single Option", "multiple-single"]],
+                QuestionTypes::Base.all_types.map { |type| [type.label, type.key] },
                 {},
                 { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:question_type].none?, "border-pink-500": @question.errors[:question_type].any?}],
                   data: { "form-toggle-target": "select", action: "change->form-toggle#toggle"}
