@@ -74,7 +74,7 @@ namespace :question_types do
       puts "Key:           #{type_class.key}"
       puts "Label:         #{type_class.label}"
       puts "Needs Options: #{type_class.needs_options? ? 'Yes' : 'No'}"
-      
+
       count = Question.where(question_type: type_class.key).count
       puts "Usage Count:   #{count}"
     end
@@ -102,7 +102,7 @@ namespace :question_types do
       percentage = (count.to_f / total * 100).round(1)
       type_class = QuestionTypes::Base.find(type)
       label = type_class ? type_class.label : "Unknown (#{type})"
-      
+
       puts "#{label.ljust(30)} #{count.to_s.rjust(5)} (#{percentage}%)"
     end
 

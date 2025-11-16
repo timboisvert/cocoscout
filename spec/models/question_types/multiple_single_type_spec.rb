@@ -23,13 +23,13 @@ RSpec.describe QuestionTypes::MultipleSingleType do
     it 'parses JSON hash and returns keys' do
       value = '{"Selected Option"=>"Selected Option"}'
       result = QuestionTypes::MultipleSingleType.parse_answer_value(value)
-      expect(result).to eq(['Selected Option'])
+      expect(result).to eq([ 'Selected Option' ])
     end
 
     it 'handles Ruby hash syntax' do
       value = '{"Option":"Option"}'
       result = QuestionTypes::MultipleSingleType.parse_answer_value(value)
-      expect(result).to eq(['Option'])
+      expect(result).to eq([ 'Option' ])
     end
 
     it 'returns empty array for invalid JSON' do

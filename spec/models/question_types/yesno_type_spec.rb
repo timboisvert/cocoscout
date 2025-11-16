@@ -21,11 +21,11 @@ RSpec.describe QuestionTypes::YesnoType do
 
   describe '.parse_answer_value' do
     it 'returns "yes" in an array' do
-      expect(QuestionTypes::YesnoType.parse_answer_value('yes')).to eq(['yes'])
+      expect(QuestionTypes::YesnoType.parse_answer_value('yes')).to eq([ 'yes' ])
     end
 
     it 'returns "no" in an array' do
-      expect(QuestionTypes::YesnoType.parse_answer_value('no')).to eq(['no'])
+      expect(QuestionTypes::YesnoType.parse_answer_value('no')).to eq([ 'no' ])
     end
   end
 

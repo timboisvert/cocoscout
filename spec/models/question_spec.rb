@@ -142,7 +142,7 @@ RSpec.describe Question, type: :model do
       question = audition_cycle.questions.build(
         text: "Select your preferences",
         question_type: "multiple-multiple",
-        question_options_attributes: [{ text: "Option 1" }, { text: "Option 2" }]
+        question_options_attributes: [ { text: "Option 1" }, { text: "Option 2" } ]
       )
       expect(question).to be_valid
     end

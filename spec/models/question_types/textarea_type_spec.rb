@@ -22,11 +22,11 @@ RSpec.describe QuestionTypes::TextareaType do
   describe '.parse_answer_value' do
     it 'returns value in an array' do
       long_text = "This is a long answer\nwith multiple lines"
-      expect(QuestionTypes::TextareaType.parse_answer_value(long_text)).to eq([long_text])
+      expect(QuestionTypes::TextareaType.parse_answer_value(long_text)).to eq([ long_text ])
     end
 
     it 'handles empty values' do
-      expect(QuestionTypes::TextareaType.parse_answer_value('')).to eq([''])
+      expect(QuestionTypes::TextareaType.parse_answer_value('')).to eq([ '' ])
     end
   end
 

@@ -56,14 +56,14 @@ RSpec.describe Answer, type: :model do
       question = create(:question, question_type: "text", questionable: audition_request.audition_cycle)
       answer = create(:answer, question: question, audition_request: audition_request, value: "Test answer")
 
-      expect(answer.value_as_array).to eq(["Test answer"])
+      expect(answer.value_as_array).to eq([ "Test answer" ])
     end
 
     it "returns single value in array for yesno type" do
       question = create(:question, question_type: "yesno", questionable: audition_request.audition_cycle)
       answer = create(:answer, question: question, audition_request: audition_request, value: "yes")
 
-      expect(answer.value_as_array).to eq(["yes"])
+      expect(answer.value_as_array).to eq([ "yes" ])
     end
 
     it "parses multiple-multiple answers correctly" do
@@ -78,7 +78,7 @@ RSpec.describe Answer, type: :model do
       )
       answer = create(:answer, question: question, audition_request: audition_request, value: '{"Option 1":"Option 1", "Option 2":"Option 2"}')
 
-      expect(answer.value_as_array).to match_array(["Option 1", "Option 2"])
+      expect(answer.value_as_array).to match_array([ "Option 1", "Option 2" ])
     end
 
     it "handles invalid JSON gracefully for multiple-multiple" do
@@ -86,7 +86,7 @@ RSpec.describe Answer, type: :model do
       question = audition_cycle.questions.create!(
         text: "Select option",
         question_type: "multiple-multiple",
-        question_options_attributes: [{ text: "Option 1" }]
+        question_options_attributes: [ { text: "Option 1" } ]
       )
       answer = create(:answer, question: question, audition_request: audition_request, value: "invalid json")
 

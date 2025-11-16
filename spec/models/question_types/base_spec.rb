@@ -16,16 +16,16 @@ RSpec.describe QuestionTypes::Base do
     it 'adds a type to the registry' do
       # Save original registry state
       original_keys = QuestionTypes::Base.registry.keys.dup
-      
+
       test_class = Class.new(QuestionTypes::Base) do
         def self.key
           'test'
         end
       end
       QuestionTypes::Base.register('test', test_class)
-      
+
       expect(QuestionTypes::Base.registry['test']).to eq(test_class)
-      
+
       # Clean up
       QuestionTypes::Base.registry.delete('test')
     end
@@ -51,11 +51,11 @@ RSpec.describe QuestionTypes::Base do
       # Test that sorting works correctly by checking specific types
       types = QuestionTypes::Base.all_types
       keys = types.map(&:key)
-      
+
       # Find positions of our standard types
       multiple_multiple_pos = keys.index('multiple-multiple')
       text_pos = keys.index('text')
-      
+
       # multiple-multiple should come before text alphabetically
       expect(multiple_multiple_pos).to be < text_pos
     end
@@ -86,7 +86,7 @@ RSpec.describe QuestionTypes::Base do
     end
 
     it 'has default implementation for parse_answer_value' do
-      expect(QuestionTypes::Base.parse_answer_value('test')).to eq(['test'])
+      expect(QuestionTypes::Base.parse_answer_value('test')).to eq([ 'test' ])
     end
   end
 end

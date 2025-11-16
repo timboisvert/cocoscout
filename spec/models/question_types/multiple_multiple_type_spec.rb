@@ -23,13 +23,13 @@ RSpec.describe QuestionTypes::MultipleMultipleType do
     it 'parses JSON hash and returns keys' do
       value = '{"Option 1"=>"Option 1", "Option 2"=>"Option 2"}'
       result = QuestionTypes::MultipleMultipleType.parse_answer_value(value)
-      expect(result).to match_array(['Option 1', 'Option 2'])
+      expect(result).to match_array([ 'Option 1', 'Option 2' ])
     end
 
     it 'handles Ruby hash syntax' do
       value = '{"Option A":"Option A", "Option B":"Option B"}'
       result = QuestionTypes::MultipleMultipleType.parse_answer_value(value)
-      expect(result).to match_array(['Option A', 'Option B'])
+      expect(result).to match_array([ 'Option A', 'Option B' ])
     end
 
     it 'returns empty array for invalid JSON' do
