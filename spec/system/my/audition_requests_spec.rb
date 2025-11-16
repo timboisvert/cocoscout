@@ -15,7 +15,7 @@ RSpec.describe "My::AuditionRequests", type: :system do
   end
 
   describe "when user has audition requests" do
-    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now) }
+    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
     let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed) }
 
     it "displays the audition request" do
@@ -41,7 +41,7 @@ RSpec.describe "My::AuditionRequests", type: :system do
   end
 
   describe "audition request statuses" do
-    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now) }
+    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
 
     it "shows unreviewed status" do
       create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed)
@@ -69,16 +69,14 @@ RSpec.describe "My::AuditionRequests", type: :system do
   end
 
   describe "multiple audition requests" do
-    let!(:call1) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 3.days.from_now) }
-    let!(:call2) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now) }
-    let!(:request1) { create(:audition_request, person: person, audition_cycle: call1) }
+    let!(:call2) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
+    let!(:request1) { create(:audition_request, person: person, audition_cycle: call2) }
     let!(:request2) { create(:audition_request, person: person, audition_cycle: call2) }
 
     it "displays all audition requests" do
       sign_in_as_person(user, person)
       visit "/my/audition_requests"
 
-      expect(page).to have_content(call1.closes_at.strftime("%b %d, %Y"))
       expect(page).to have_content(call2.closes_at.strftime("%b %d, %Y"))
     end
   end

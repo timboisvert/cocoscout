@@ -5,7 +5,7 @@ RSpec.describe "My::Auditions", type: :system do
   let!(:person) { create(:person, user: user, email: user.email_address) }
   let(:organization) { create(:organization) }
   let(:production) { create(:production, organization: organization, name: "Les Miserables") }
-  let(:audition_cycle) { create(:audition_cycle, production: production) }
+  let(:audition_cycle) { create(:audition_cycle, production: production, form_reviewed: true, finalize_audition_invitations: true) }
   let(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
 
   describe "when user has no auditions" do

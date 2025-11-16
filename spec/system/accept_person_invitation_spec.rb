@@ -13,6 +13,9 @@ describe "Accept person invitation", type: :system do
     fill_in "password", with: "password123"
     click_button "Join CocoScout"
 
+    # Wait for redirect after form submission
+    expect(page).not_to have_content("Create your account", wait: 10)
+
     # Verify the user and person were created properly
     user = User.find_by(email_address: person_invitation.email.downcase)
     expect(user).to be_present
@@ -23,8 +26,7 @@ describe "Accept person invitation", type: :system do
     expect(person.user).to eq(user)
     expect(person.organizations).to include(organization)
 
-    # Verify they're now signed in (the redirect may vary based on permissions)
-    # The important part is that the invitation was accepted and they can access the system
+    # Verify they're signed in and redirected appropriately
     expect([ manage_people_path, my_dashboard_path ]).to include(current_path)
   end
 end
