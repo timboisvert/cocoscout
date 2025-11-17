@@ -49,6 +49,10 @@ class Production < ApplicationRecord
         shows.where("date_and_time > ?", Time.current).order(:date_and_time).first
     end
 
+    def primary_poster
+        posters.find_by(is_primary: true)
+    end
+
     def safe_logo_variant(variant_name)
         return nil unless logo.attached?
         logo.variant(variant_name)

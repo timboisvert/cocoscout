@@ -1,7 +1,7 @@
 class Manage::VisualAssetsController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_poster, only: [ :edit_poster, :update_poster, :destroy_poster ]
+  before_action :set_poster, only: [ :edit_poster, :update_poster, :destroy_poster, :set_primary_poster ]
   before_action :ensure_user_is_manager, except: [ :index ]
 
   def index
@@ -56,6 +56,11 @@ class Manage::VisualAssetsController < Manage::ManageController
   def destroy_poster
     @poster.destroy
     redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was successfully deleted"
+  end
+
+  def set_primary_poster
+    @poster.update!(is_primary: true)
+    redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was set as primary"
   end
 
   private

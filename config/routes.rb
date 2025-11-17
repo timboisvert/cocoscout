@@ -163,6 +163,7 @@ Rails.application.routes.draw do
           get :edit_poster
           patch :update_poster
           delete :destroy_poster
+          patch :set_primary_poster
           get :edit_logo
           patch :update_logo
         end

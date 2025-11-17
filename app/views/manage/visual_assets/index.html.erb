@@ -48,15 +48,27 @@
     <% if @production.posters.any? %>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
         <% @production.posters.each do |poster| %>
-          <div class="bg-white rounded shadow p-4 flex flex-col">
+          <div class="bg-white rounded shadow p-4 flex flex-col <%= 'ring-2 ring-pink-500' if poster.is_primary %>">
             <% image_variant = poster.safe_image_variant(:small) %>
             <% if image_variant %>
               <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
             <% end %>
-            <span class="font-semibold"><%= poster.name.presence || "Untitled Poster" %></span>
+            
+            <div class="flex items-center gap-2 mb-2">
+              <span class="font-semibold flex-1"><%= poster.name.presence || "Untitled Poster" %></span>
+              <% if poster.is_primary %>
+                <span class="inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/10">Primary</span>
+              <% end %>
+            </div>
 
             <% if current_user_can_manage?(@production) %>
-              <div class="flex gap-2 mt-2">
+              <div class="flex flex-wrap gap-2 mt-2">
+                <% unless poster.is_primary %>
+                  <%= link_to "Set as Primary",
+                        set_primary_poster_manage_production_visual_asset_path(@production, poster),
+                        data: { turbo_method: :patch },
+                        class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                <% end %>
                 <%= link_to "Edit", edit_poster_manage_production_visual_asset_path(@production, poster), class: "text-sm underline text-pink-500 hover:text-pink-600" %>
                 <%= link_to "Delete",
                       destroy_poster_manage_production_visual_asset_path(@production, poster),

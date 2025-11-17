@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_15_191748) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_17_155158) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -262,9 +262,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_15_191748) do
 
   create_table "posters", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.boolean "is_primary", default: false, null: false
     t.string "name"
     t.integer "production_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "is_primary = true"
     t.index ["production_id"], name: "index_posters_on_production_id"
   end
 
