@@ -53,7 +53,7 @@
             <% if image_variant %>
               <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
             <% end %>
-            
+
             <div class="flex items-center gap-2 mb-2">
               <span class="font-semibold flex-1"><%= poster.name.presence || "Untitled Poster" %></span>
               <% if poster.is_primary %>
