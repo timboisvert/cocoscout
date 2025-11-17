@@ -1,0 +1,49 @@
+<% content_for :title, "My Questionnaires" %>
+
+<div class="w-full">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Questionnaires",
+    links: []
+  } %>
+
+  <div class="pb-10">
+    <% if @questionnaires.any? %>
+      <div class="space-y-4">
+        <% @questionnaires.each do |questionnaire| %>
+          <%= link_to questionnaire_entry_path(token: questionnaire.token), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>
+                <p class="text-sm text-gray-600 mt-1"><%= questionnaire.production.name %></p>
+                <div class="flex items-center gap-3 mt-2">
+                  <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                      Responded
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
+                      Not Responded
+                    </span>
+                  <% end %>
+                  <% unless questionnaire.accepting_responses %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                      Closed
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-sm pt-2">
+        You haven't been invited to any questionnaires yet.
+      </p>
+    <% end %>
+  </div>
+</div>

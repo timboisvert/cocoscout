@@ -1,0 +1,75 @@
+<% content_for :title, "CocoScout - #{@questionnaire.title}" %>
+
+<% content_for :head do %>
+  <meta name="description" content="Respond to <%= @questionnaire.title %> for <%= @production.name %>">
+  <link rel="canonical" href="<%= questionnaire_entry_url(@questionnaire.token) %>">
+<% end %>
+
+<div class="min-h-screen bg-white">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Full-Width Header -->
+    <div class="mb-8 sm:mb-10">
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
+      <p class="text-lg text-slate-600"><%= @questionnaire.title %></p>
+    </div>
+
+    <!-- Two Column Layout: Header Text & Form -->
+    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+
+      <!-- Left Column: Header Text -->
+      <div class="space-y-6">
+        <% if @questionnaire.header_text.present? %>
+          <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+            <div class="prose prose-slate max-w-none text-slate-700">
+              <%= @questionnaire.header_text %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Right Column: Form -->
+      <div>
+        <%= form_with(model: @questionnaire_response, url: my_submit_questionnaire_form_path(@questionnaire.token), method: :post, data: { turbo: false }, class: "space-y-4") do |form| %>
+
+          <!-- Questions Section -->
+          <% if @questions.any? %>
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-5">
+              <% @questions.each do |question| %>
+                <div class="">
+                  <label>
+                    <%= question.text %>
+                    <% if question.required %>
+                      <span class="text-pink-500 text-sm">(required)</span>
+                    <% end %>
+                  </label>
+
+                  <%= render_question_input(question, @answers, missing_required_questions: @missing_required_questions) %>
+
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <!-- Submit Button -->
+          <%
+            if @questionnaire.questionnaire_responses.exists?(person: Current.user.person)
+              submit_text = "Update Response"
+            else
+              submit_text = "Submit Response"
+            end
+          %>
+          <%= form.submit submit_text, class: "w-full rounded-lg px-4 py-3 text-white bg-pink-500 hover:bg-pink-600 font-semibold cursor-pointer transition shadow-sm hover:shadow-md" %>
+        <% end %>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Coco Link -->
+  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+    <%= link_to my_dashboard_path do %>
+      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+    <% end %>
+  </div>
+</div>

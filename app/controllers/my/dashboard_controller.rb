@@ -22,6 +22,13 @@ class My::DashboardController < ApplicationController
       .where("audition_cycles.closes_at >= ?", Time.current)
       .includes(:audition_cycle)
       .order("audition_cycles.closes_at")
+
+    # My pending questionnaires
+    @pending_questionnaires = Current.user.person.invited_questionnaires
+      .where(accepting_responses: true)
+      .includes(:production, :questionnaire_responses)
+      .order(created_at: :desc)
+      .limit(5)
   end
 
   def welcome

@@ -1,5 +1,10 @@
 class My::QuestionnairesController < ApplicationController
-  before_action :set_questionnaire_and_questions
+  allow_unauthenticated_access only: [ :entry, :inactive ]
+
+  skip_before_action :show_my_sidebar, only: [ :entry, :form, :submitform, :success, :inactive ]
+
+  before_action :ensure_user_is_signed_in, only: [ :form, :submitform, :success ]
+  before_action :set_questionnaire_and_questions, except: [ :index ]
 
   def index
     @questionnaires = Current.user.person.invited_questionnaires
@@ -148,5 +153,11 @@ class My::QuestionnairesController < ApplicationController
     end
 
     @production = @questionnaire.production
+  end
+
+  def ensure_user_is_signed_in
+    unless authenticated?
+      redirect_to questionnaire_entry_path(token: params[:token]), status: :see_other
+    end
   end
 end

@@ -1,0 +1,95 @@
+<% content_for :title, "Response - #{@response.person.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Questionnaires", manage_production_questionnaires_path(@production)],
+      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)],
+      ["Responses", responses_manage_production_questionnaire_path(@production, @questionnaire)]
+    ],
+    text: @response.person.name,
+    links: []
+  } %>
+
+  <!-- Person Info -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Person</h3>
+    </div>
+    <div class="p-6">
+      <div class="flex items-center gap-4">
+        <% headshot_variant = @response.person.safe_headshot_variant(:thumb) %>
+        <% if headshot_variant %>
+          <%= image_tag headshot_variant, alt: @response.person.name, class: "w-16 h-16 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-16 h-16 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-lg">
+            <%= @response.person.initials %>
+          </div>
+        <% end %>
+        <div>
+          <p class="text-lg font-semibold text-gray-900"><%= @response.person.name %></p>
+          <p class="text-sm text-gray-600"><%= @response.person.email %></p>
+          <p class="text-xs text-gray-500 mt-1">
+            Submitted <%= @response.created_at.strftime("%B %-d, %Y at %l:%M %p") %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Responses -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Responses</h3>
+    </div>
+    <div class="p-6 space-y-6">
+      <% @questions.each do |question| %>
+        <div>
+          <p class="text-sm font-medium text-gray-900 mb-2">
+            <%= question.text %>
+            <% if question.required %>
+              <span class="text-pink-500 text-xs">(required)</span>
+            <% end %>
+          </p>
+          <% answer_value = @answers["#{question.id}"] %>
+          <% if answer_value.present? %>
+            <div class="p-3 bg-gray-50 rounded-lg">
+              <% type_class = question.question_type_class %>
+              <% if type_class && (type_class.key == "multiple" || type_class.key == "ranking") %>
+                <% if answer_value.is_a?(String) %>
+                  <% begin %>
+                    <% parsed_value = JSON.parse(answer_value) %>
+                    <% if parsed_value.is_a?(Array) %>
+                      <ul class="list-disc list-inside">
+                        <% parsed_value.each do |item| %>
+                          <li class="text-sm text-gray-700"><%= item %></li>
+                        <% end %>
+                      </ul>
+                    <% elsif parsed_value.is_a?(Hash) %>
+                      <ul class="list-disc list-inside">
+                        <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
+                          <li class="text-sm text-gray-700"><%= key %></li>
+                        <% end %>
+                      </ul>
+                    <% else %>
+                      <p class="text-sm text-gray-700"><%= answer_value %></p>
+                    <% end %>
+                  <% rescue JSON::ParserError %>
+                    <p class="text-sm text-gray-700"><%= answer_value %></p>
+                  <% end %>
+                <% else %>
+                  <p class="text-sm text-gray-700"><%= answer_value %></p>
+                <% end %>
+              <% else %>
+                <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= answer_value %></p>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500 italic">No answer provided</p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

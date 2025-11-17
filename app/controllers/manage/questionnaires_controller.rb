@@ -42,6 +42,13 @@ class Manage::QuestionnairesController < ApplicationController
 
   def form
     @questions = @questionnaire.questions.order(:position)
+    
+    # Check if we're editing a specific question
+    if params[:question_id].present?
+      @question = @questionnaire.questions.find(params[:question_id])
+    else
+      @question = @questionnaire.questions.new
+    end
   end
 
   def preview
