@@ -127,7 +127,7 @@ class Manage::QuestionnairesController < ApplicationController
   private
 
   def set_production
-    @production = Current.user.productions.find(params[:production_id])
+    @production = Current.organization.productions.find(params[:production_id])
   end
 
   def set_questionnaire
