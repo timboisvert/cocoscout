@@ -10,6 +10,10 @@ class Person < ApplicationRecord
 
   has_many :cast_assignment_stages, dependent: :destroy
 
+  has_many :questionnaire_invitations, dependent: :destroy
+  has_many :invited_questionnaires, through: :questionnaire_invitations, source: :questionnaire
+  has_many :questionnaire_responses, dependent: :destroy
+
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
