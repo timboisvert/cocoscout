@@ -190,21 +190,27 @@
           <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
           <div id="show-links-fields" data-show-links-target="list" class="mt-1">
             <%= form.fields_for :show_links do |show_link_form| %>
-              <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+              <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
                 <%= show_link_form.hidden_field :id %>
                 <%= show_link_form.hidden_field :_destroy, value: "0", class: "destroy-flag" %>
-                <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
-                <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap", data: { action: "show-links#remove" } %>
+                <div class="flex-1 flex flex-col sm:flex-row gap-2">
+                  <%= show_link_form.text_field :text, placeholder: "Link Text (e.g. Buy Tickets, Event Page)", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+                  <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+                </div>
+                <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2", data: { action: "show-links#remove" } %>
               </div>
             <% end %>
           </div>
           <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
           <template data-show-links-target="template">
-            <div class="flex items-center gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+            <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
               <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
               <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
-              <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
-              <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap" data-action="show-links#remove">Remove</a>
+              <div class="flex-1 flex flex-col sm:flex-row gap-2">
+                <input type="text" name="show[show_links_attributes][new_show_links][text]" placeholder="Link Text (e.g. Buy Tickets, Event Page)" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+                <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+              </div>
+              <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2" data-action="show-links#remove">Remove</a>
             </div>
           </template>
         </div>

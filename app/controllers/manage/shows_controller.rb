@@ -445,6 +445,6 @@ class Manage::ShowsController < Manage::ManageController
       params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
         :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
         :recurrence_edit_scope, :recurrence_group_id,
-        show_links_attributes: [ :id, :url, :_destroy ])
+        show_links_attributes: [ :id, :url, :text, :_destroy ])
     end
 end
