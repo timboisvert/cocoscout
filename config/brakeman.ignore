@@ -22,6 +22,40 @@
         470
       ],
       "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "f825902815c4bb6b95da9d8ea2b54ed2d192f6cd4705e82cafcc965ff1b92dcd",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/shows/show.html.erb",
+      "line": 88,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to((Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 rounded-md hover:bg-pink-100 transition-colors\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "show",
+          "line": 27,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/show",
+            "file": "app/views/manage/shows/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/show"
+      },
+      "user_input": "(Unresolved Model).new.url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     }
   ],
   "brakeman_version": "7.1.1"
