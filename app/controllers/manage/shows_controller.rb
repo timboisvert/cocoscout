@@ -27,8 +27,21 @@ class Manage::ShowsController < Manage::ManageController
   end
 
   def calendar
-    # Get all shows/events for the production, including canceled ones
-    @shows = @production.shows.order(:date_and_time)
+    # Store the shows filter
+    @filter = (params[:filter] || session[:shows_filter] || "upcoming")
+
+    session[:shows_filter] = @filter
+
+    # Get the shows using the shows filter
+    @shows = @production.shows
+
+    case @filter
+    when "past"
+      @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(:date_and_time)
+    else
+      @filter = "upcoming"
+      @shows = @shows.where("shows.date_and_time > ?", Time.current).order(:date_and_time)
+    end
 
     # Group shows by month for calendar display
     @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }

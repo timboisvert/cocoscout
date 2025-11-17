@@ -100,8 +100,19 @@ module ApplicationHelper
   end
 
   def safe_poster_url(show, variant = :small)
+    # Try show poster first
     variant_obj = show.safe_poster_variant(variant)
-    variant_obj ? url_for(variant_obj) : nil
+    return url_for(variant_obj) if variant_obj
+
+    # Fall back to production poster if available
+    # If multiple posters exist, use the first one
+    production_poster = show.production.posters.first
+    if production_poster
+      poster_variant = production_poster.safe_image_variant(variant)
+      return url_for(poster_variant) if poster_variant
+    end
+
+    nil
   end
 
   def safe_logo_url(production, variant = :small)

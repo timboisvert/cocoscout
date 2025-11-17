@@ -12,9 +12,33 @@
     ]
   } %>
 
+  <div class="flex w-full space-x-2 mb-4">
+    <div class="flex flex-1 space-x-1">
+      <%= link_to "Upcoming",
+              calendar_manage_production_shows_path(@production, filter: "upcoming"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "upcoming") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+      <%= link_to "Past",
+              calendar_manage_production_shows_path(@production, filter: "past"),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "past") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+      %>
+    </div>
+    <div>
+      <%= link_to manage_production_shows_path(@production, filter: @filter), class: "px-3 py-1 rounded-md border text-sm bg-pink-500 text-white border-pink-500 flex items-center space-x-2" do %>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+        <span>List</span>
+      <% end %>
+    </div>
+  </div>
+
   <% if @shows.any? %>
     <div class="space-y-8">
-      <% @shows_by_month.sort.each do |month_start, shows| %>
+      <% months = @filter == "past" ? @shows_by_month.sort.reverse : @shows_by_month.sort %>
+      <% months.each do |month_start, shows| %>
         <div class="border border-gray-200 rounded-lg p-4">
           <h2 class="text-xl font-bold mb-4"><%= month_start.strftime("%B %Y") %></h2>
 

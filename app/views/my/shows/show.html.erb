@@ -8,65 +8,109 @@
     breadcrumbs: [
       ["My Shows & Events", my_shows_path]
     ],
-    text: @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p"),
+    text: @show.event_type.titleize,
     links: []
   } %>
 
-  <div class="mt-4 space-y-4">
-    <!-- Header Card with Production Info -->
-    <div class="p-4 border border-gray-200 rounded-lg">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <% logo_variant = @production.safe_logo_variant(:small) %>
-        <% if logo_variant %>
-          <div class="flex-shrink-0">
-            <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-24 h-24 object-contain rounded" %>
-          </div>
-        <% end %>
-        <div class="flex-1">
-          <h2 class="text-lg font-bold text-gray-900"><%= @production.name %></h2>
-          <% if @show.secondary_name.present? %>
-            <div class="text-sm text-gray-600 mt-1"><%= @show.secondary_name %></div>
-          <% end %>
-          <div class="flex items-center gap-2 mt-2 flex-wrap">
-            <% event_type_badge_classes = case @show.event_type
-              when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-              when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-              else "bg-pink-50 text-pink-700 ring-pink-600/10"
-            end %>
-            <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
-              <%= @show.event_type.titleize %>
-            </span>
-            <% if @show.canceled %>
-              <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
-            <% end %>
-          </div>
-          <% if @show.event_type == "show" && @my_assignment %>
-            <div class="mt-2 text-sm text-gray-600">
-              Your Role: <strong class="text-pink-500"><%= @my_assignment.role.name %></strong>
+  <!-- Information Card -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
+    <div class="flex flex-col sm:flex-row">
+      <!-- Poster Section (only for shows) -->
+      <% if @show.event_type == "show" %>
+        <div class="flex-shrink-0 sm:w-48 bg-gray-50 flex items-center justify-center p-4">
+          <% poster_url = safe_poster_url(@show) %>
+          <% if poster_url && !@show.canceled %>
+            <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow-sm w-full max-w-[180px] border border-gray-200" %>
+          <% else %>
+            <div class="w-full max-w-[180px] aspect-[2/3] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-gray-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
             </div>
           <% end %>
         </div>
-      </div>
-    </div>
+      <% end %>
 
-    <!-- Poster and Links -->
-    <% poster_url = safe_poster_url(@show) %>
-    <% if poster_url || @show.show_links.any? %>
-      <div class="border border-gray-200 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Poster & Links</h3>
-        <div class="flex flex-col sm:flex-row gap-4">
-          <% if poster_url %>
-            <div class="flex-shrink-0">
-              <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow w-48 border border-gray-200" %>
+      <!-- Details Section -->
+      <div class="flex-1 p-6">
+        <div class="space-y-4">
+          <!-- Title and Badges -->
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">
+              <%= @show.date_and_time.strftime("%A, %B %-d, %Y") %>
+            </h2>
+            <div class="flex items-center gap-2 flex-wrap">
+              <% if @show.canceled %>
+                <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
+              <% end %>
+              <% if @show.recurring? %>
+                <span data-controller="tooltip" data-tooltip-text="This is a recurring event" class="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Recurring
+                </span>
+              <% end %>
+              <% event_type_badge_classes = case @show.event_type
+                when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                else "bg-pink-50 text-pink-700 ring-pink-600/10"
+              end %>
+              <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                <%= @show.event_type.titleize %>
+              </span>
             </div>
-          <% end %>
+          </div>
+
+          <!-- Show Details -->
+          <div class="space-y-2 text-sm">
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span class="text-gray-900 font-medium"><%= @show.date_and_time.strftime("%l:%M %p") %></span>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+              </svg>
+              <span class="text-gray-900 font-medium"><%= @production.name %></span>
+            </div>
+
+            <% if @show.secondary_name.present? %>
+              <div class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.75V16.5L12 14.25 7.5 16.5V3.75m9 0H18A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6A2.25 2.25 0 0 1 6 3.75h1.5m9 0h-9" />
+                </svg>
+                <span class="text-gray-900 font-medium"><%= @show.secondary_name %></span>
+              </div>
+            <% end %>
+
+            <% if @show.event_type == "show" && @my_assignment %>
+              <div class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+                <div>
+                  <span class="text-gray-600">My Role:</span>
+                  <span class="text-pink-600 font-semibold ml-1"><%= @my_assignment.role.name %></span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Show Links -->
           <% if @show.show_links.any? %>
-            <div class="flex-1">
-              <div class="space-y-2">
+            <div class="pt-2 border-t border-gray-200">
+              <div class="text-xs font-semibold text-gray-700 mb-2">Links</div>
+              <div class="flex flex-wrap gap-2">
                 <% @show.show_links.each do |link| %>
-                  <%= link_to link.url, target: "_blank", rel: "noopener", class: "flex items-center gap-2 text-sm text-pink-500 hover:underline" do %>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                    <span><%= link.url %></span>
+                  <%= link_to link.url, target: "_blank", rel: "noopener noreferrer", class: "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 rounded-md hover:bg-pink-100 transition-colors" do %>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                    </svg>
+                    <%= URI.parse(link.url).host || "Link" %>
                   <% end %>
                 <% end %>
               </div>
@@ -74,75 +118,111 @@
           <% end %>
         </div>
       </div>
-    <% end %>
+    </div>
+  </div>
+
+  <div class="space-y-4">
 
     <!-- Cast (for shows only) -->
     <% if @show.event_type == "show" %>
-      <div class="border border-gray-200 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Cast</h3>
-        <% if @show_person_role_assignments.any? %>
-          <div class="flex flex-wrap gap-2">
-            <% @show_person_role_assignments.each do |assignment| %>
-              <div class="flex flex-col items-center w-[100px]">
-                <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}" %>
-                <% else %>
-                  <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}">
-                    <%= assignment.person.initials %>
-                  </div>
-                <% end %>
-                <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if assignment.person == Current.user.person %>"><%= assignment.person.name %></div>
-                <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role.name %></div>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <div class="text-sm text-gray-500">No cast members assigned yet</div>
-        <% end %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Cast</h3>
+        </div>
+        <div class="p-1 py-2 sm:p-4 sm:py-4">
+          <% if @show_person_role_assignments.any? %>
+            <div class="flex flex-wrap gap-2">
+              <% @show_person_role_assignments.each do |assignment| %>
+                <div class="flex flex-col items-center w-[100px]">
+                  <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}", draggable: false %>
+                  <% else %>
+                    <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if assignment.person == Current.user.person}">
+                      <%= assignment.person.initials %>
+                    </div>
+                  <% end %>
+                  <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if assignment.person == Current.user.person %>"><%= assignment.person.name %></div>
+                  <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role.name %></div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-sm text-gray-500">No cast members assigned yet</div>
+          <% end %>
+        </div>
       </div>
     <% end %>
 
     <!-- Location -->
     <% if @show.location.present? %>
-      <div class="border border-gray-200 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Location</h3>
-        <div class="flex items-start gap-2 mb-3">
-          <svg class="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-          <div>
-            <div class="font-medium text-sm text-gray-900"><%= @show.location.name %></div>
-            <% if @show.location.address1.present? %>
-              <div class="text-sm text-gray-600 mt-1">
-                <%= @show.location.address1 %><br>
-                <% if @show.location.address2.present? %>
-                  <%= @show.location.address2 %><br>
-                <% end %>
-                <%= "#{@show.location.city}, #{@show.location.state} #{@show.location.postal_code}" %>
-              </div>
-            <% end %>
-            <% if @show.location.notes.present? %>
-              <div class="mt-2">
-                <div class="font-medium text-sm text-gray-900">Notes/Instructions:</div>
-                <div class="text-sm text-gray-600"><%= @show.location.notes %></div>
-              </div>
-            <% end %>
-          </div>
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-left">
+          <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+          <h3 class="ml-1 text-sm font-semibold text-gray-900"><%= @show.location.name %></h3>
         </div>
-        <% loc = @show.location %>
-        <% if loc.present? %>
-          <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
-          <div class="w-full">
-            <iframe
-              width="100%"
-              height="400"
-              style="border:0"
-              loading="lazy"
-              allowfullscreen
-              referrerpolicy="no-referrer-when-downgrade"
-              src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
-            </iframe>
-          </div>
-        <% end %>
+        <div class="p-4 flex flex-col lg:flex-row gap-4">
+          <% loc = @show.location %>
+          <% if loc.present? %>
+            <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+
+            <!-- Left: Location Info -->
+            <div class="lg:w-1/3 space-y-3">
+              <div>
+                <% if loc.address1.present? %>
+                  <div class="text-sm text-gray-900"><%= loc.address1 %></div>
+                <% end %>
+                <% if loc.address2.present? %>
+                  <div class="text-sm text-gray-900"><%= loc.address2 %></div>
+                <% end %>
+                <% if loc.city.present? || loc.state.present? || loc.postal_code.present? %>
+                  <div class="text-sm text-gray-900">
+                    <%= loc.city %><% if loc.city.present? && loc.state.present? %>,<% end %> <%= loc.state %> <%= loc.postal_code %>
+                  </div>
+                <% end %>
+              </div>
+
+              <% if loc.notes.present? %>
+                <div class="pt-2 border-t border-gray-200">
+                  <div class="text-xs font-semibold text-gray-700 mb-1">Notes</div>
+                  <div class="text-sm text-gray-600"><%= simple_format(loc.notes, class: "whitespace-pre-wrap") %></div>
+                </div>
+              <% end %>
+
+              <div class="flex gap-2 pt-2">
+                <a href="http://maps.apple.com/?address=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                  </svg>
+                  Open in Maps
+                </a>
+                <a href="https://www.google.com/maps/search/?api=1&query=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                  </svg>
+                  Google Maps
+                </a>
+              </div>
+            </div>
+
+            <!-- Right: Map -->
+            <div class="lg:w-2/3">
+              <div class="w-full h-[400px] lg:h-full min-h-[300px]">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style="border:0; border-radius: 0.5rem;"
+                  loading="lazy"
+                  allowfullscreen
+                  referrerpolicy="no-referrer-when-downgrade"
+                  src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                </iframe>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
     <% end %>
 
