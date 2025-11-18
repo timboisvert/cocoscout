@@ -137,7 +137,7 @@
           <div class="w-full max-w-4xl overflow-x-auto" data-controller="tabs">
       <nav class="flex space-x-2 border-b border-gray-200 mb-4">
         <% idx = 0 %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Header Text</button>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Instruction Text</button>
         <% idx += 1 %>
         <% if @audition_cycle.audition_type == "video_upload" %>
           <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Video Field Text</button>
@@ -150,7 +150,7 @@
       <div data-tabs-target="panel">
         <div class="my-5">
           <p class="text-sm text-gray-500 pb-5">At the top of the Sign-up form you can add text to describe the production, the audition process, cast expectations, etc.</p>
-          <%= form.rich_text_area :header_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:header_text].none?, "border-pink-500": @audition_cycle.errors[:header_text].any?}] %>
+          <%= form.rich_text_area :instruction_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:instruction_text].none?, "border-pink-500": @audition_cycle.errors[:instruction_text].any?}] %>
         </div>
 
         <div class="w-full border-t border-gray-200 pt-5 my-5">

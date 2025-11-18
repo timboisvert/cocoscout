@@ -23,15 +23,9 @@
         </div>
 
         <div>
-          <%= form.label :header_text, "Header Text (optional)", class: "block text-sm font-medium text-gray-700 mb-2" %>
-          <%= form.rich_text_area :header_text, class: "block w-full rounded-lg border border-gray-300" %>
+          <%= form.label :instruction_text, "Instruction Text (optional)", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.rich_text_area :instruction_text, class: "block w-full rounded-lg border border-gray-300" %>
           <p class="mt-1 text-sm text-gray-500">This text will appear at the top of the questionnaire form</p>
-        </div>
-
-        <div>
-          <%= form.label :success_text, "Success Text (optional)", class: "block text-sm font-medium text-gray-700 mb-2" %>
-          <%= form.rich_text_area :success_text, class: "block w-full rounded-lg border border-gray-300" %>
-          <p class="mt-1 text-sm text-gray-500">This text will appear after someone submits the questionnaire</p>
         </div>
 
         <div class="flex items-center">

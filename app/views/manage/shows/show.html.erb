@@ -112,18 +112,20 @@
               event_label = @show.event_type.titleize
               edit_label = "Edit #{event_label}"
               cancel_label = "Cancel #{event_label}"
+              duplicate_label = "Duplicate #{event_label}"
               delete_label = "Delete #{event_label}"
               uncancel_label = "Uncancel #{event_label}"
               is_past = @show.date_and_time <= Time.current
             %>
             <% if is_past %>
-              <%= link_to "Duplicate", new_manage_production_show_path(@production, duplicate: @show.id), class: "text-xs text-pink-500 underline" %>
+              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "text-xs text-pink-500 underline" %>
               <%= link_to delete_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
             <% elsif @show.canceled %>
               <%= link_to uncancel_label, uncancel_manage_production_show_path(@production, @show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
               <%= link_to delete_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
             <% else %>
               <%= link_to edit_label, edit_manage_production_show_path(@production, @show), class: "text-xs text-pink-500 underline" %>
+              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "text-xs text-pink-500 underline" %>
               <%= link_to cancel_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
             <% end %>
           </div>

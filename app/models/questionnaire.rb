@@ -5,8 +5,7 @@ class Questionnaire < ApplicationRecord
   has_many :invited_people, through: :questionnaire_invitations, source: :person
   has_many :questionnaire_responses, dependent: :destroy
 
-  has_rich_text :header_text
-  has_rich_text :success_text
+  has_rich_text :instruction_text
 
   validates :title, presence: true
   validates :token, presence: true, uniqueness: true

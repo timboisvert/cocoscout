@@ -135,7 +135,7 @@ class Manage::QuestionnairesController < Manage::ManageController
   end
 
   def questionnaire_params
-    params.require(:questionnaire).permit(:title, :header_text, :success_text, :accepting_responses)
+    params.require(:questionnaire).permit(:title, :instruction_text, :accepting_responses)
   end
 
   def question_params

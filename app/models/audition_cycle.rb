@@ -8,7 +8,7 @@ class AuditionCycle < ApplicationRecord
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages
 
-  has_rich_text :header_text
+  has_rich_text :instruction_text
   has_rich_text :video_field_text
   has_rich_text :success_text
 

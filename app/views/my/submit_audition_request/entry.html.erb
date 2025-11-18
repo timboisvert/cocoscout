@@ -14,13 +14,13 @@
     <!-- Two Column Layout: Header Text Box & Create Account Form -->
     <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
 
-      <!-- Left Column: Header Text & About CocoScout -->
+      <!-- Left Column: Instruction Text & About CocoScout -->
       <div class="space-y-6">
-        <!-- Custom Header Text (if present) -->
-        <% if @audition_cycle.header_text.present? %>
+        <!-- Custom Instruction Text (if present) -->
+        <% if @audition_cycle.instruction_text.present? %>
           <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <div class="prose prose-slate max-w-none text-slate-700">
-              <%= @audition_cycle.header_text %>
+              <%= @audition_cycle.instruction_text %>
             </div>
           </div>
         <% end %>
