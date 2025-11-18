@@ -5,12 +5,6 @@ class Manage::AuditionCyclesController < Manage::ManageController
   before_action :set_question, only: %i[ update_question destroy_question ]
   before_action :ensure_user_is_manager, except: %i[ preview show ]
 
-  # Skip the sidebar on the preview
-  skip_before_action :show_manage_sidebar, only: %i[ preview ]
-
-  # Use the public facing layout on the preview
-  layout "application"
-
   def new
     @audition_cycle = AuditionCycle.new
   end
