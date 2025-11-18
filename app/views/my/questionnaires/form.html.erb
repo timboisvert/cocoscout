@@ -1,8 +1,8 @@
 <% content_for :title, "CocoScout - #{@questionnaire.title}" %>
 
 <% content_for :head do %>
-  <meta name="description" content="Respond to <%= @questionnaire.title %> for <%= @production.name %>">
-  <link rel="canonical" href="<%= questionnaire_entry_url(@questionnaire.token) %>">
+  <meta name="description" content="Respond to questionnaire for <%= @production.name %>">
+  <link rel="canonical" href="<%= my_questionnaire_form_url(token: @questionnaire.token) %>">
 <% end %>
 
 <div class="min-h-screen bg-white">

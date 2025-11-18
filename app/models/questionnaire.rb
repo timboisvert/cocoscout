@@ -12,11 +12,14 @@ class Questionnaire < ApplicationRecord
 
   before_validation :generate_token, on: :create
 
+  scope :active, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
+
   def respond_url
     if Rails.env.development?
-      "http://localhost:3000/q/#{self.token}"
+      "http://localhost:3000/my/questionnaires/#{self.token}/form"
     else
-      "https://www.cocoscout.com/q/#{self.token}"
+      "https://www.cocoscout.com/my/questionnaires/#{self.token}/form"
     end
   end
 

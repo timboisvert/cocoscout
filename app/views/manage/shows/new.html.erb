@@ -49,7 +49,7 @@
 
   <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "recurring-event show-edit" }) do |form| %>
     <%= hidden_field_tag :duplicate_from_id, params[:duplicate] if params[:duplicate].present? %>
-    
+
     <% if @show.errors.any? %>
       <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
         <h2><%= pluralize(show.errors.count, "error") %> prohibited this show from being saved:</h2>

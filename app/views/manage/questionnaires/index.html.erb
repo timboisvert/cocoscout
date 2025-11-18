@@ -10,6 +10,24 @@
     ]
   } %>
 
+  <div class="flex w-full space-x-1 mb-4">
+    <%= link_to "All",
+            manage_production_questionnaires_path(@production, filter: "all"),
+            data: { turbo_prefetch: false },
+            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+    %>
+    <%= link_to "Accepting Responses",
+            manage_production_questionnaires_path(@production, filter: "accepting"),
+            data: { turbo_prefetch: false },
+            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepting") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+    %>
+    <%= link_to "Archived",
+            manage_production_questionnaires_path(@production, filter: "archived"),
+            data: { turbo_prefetch: false },
+            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "archived") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+    %>
+  </div>
+
   <% if @questionnaires.any? %>
     <div class="space-y-4">
       <% @questionnaires.each do |questionnaire| %>
@@ -24,8 +42,8 @@
                 <span>
                   <%= questionnaire.questionnaire_invitations.count %> invited
                 </span>
-                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= questionnaire.accepting_responses ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
-                  <%= questionnaire.accepting_responses ? 'Accepting Responses' : 'Closed' %>
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= questionnaire.accepting_responses ? 'bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
+                  <%= questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %>
                 </span>
               </div>
             </div>

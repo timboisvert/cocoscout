@@ -1,34 +1,29 @@
 class My::QuestionnairesController < ApplicationController
-  allow_unauthenticated_access only: [ :entry, :inactive ]
+  allow_unauthenticated_access only: [ :inactive ]
 
   skip_before_action :show_my_sidebar, only: [ :entry, :form, :submitform, :success, :inactive ]
 
-  before_action :ensure_user_is_signed_in, only: [ :form, :submitform, :success ]
   before_action :set_questionnaire_and_questions, except: [ :index ]
 
   def index
-    @questionnaires = Current.user.person.invited_questionnaires
-                                   .includes(:production)
-                                   .order(created_at: :desc)
-  end
+    @filter = params[:filter] || "awaiting"
 
-  def entry
-    # Entry point for questionnaire - will redirect to form if user is signed in
-    if authenticated?
-      redirect_to my_questionnaire_form_path(token: @questionnaire.token), status: :see_other
-      return
+    all_questionnaires = Current.user.person.invited_questionnaires
+                                      .includes(:production)
+                                      .order(created_at: :desc)
+
+    if @filter == "awaiting"
+      # Only show questionnaires that haven't been responded to yet
+      @questionnaires = all_questionnaires.select do |q|
+        !q.questionnaire_responses.exists?(person: Current.user.person)
+      end
+    else
+      # Show all questionnaires
+      @questionnaires = all_questionnaires
     end
-
-    @user = User.new
-    session[:return_to] = my_questionnaire_form_path(token: @questionnaire.token)
   end
 
   def form
-    unless authenticated?
-      redirect_to questionnaire_entry_path(token: @questionnaire.token), status: :see_other
-      return
-    end
-
     @person = Current.user.person
 
     # Check if person is invited
@@ -137,7 +132,7 @@ class My::QuestionnairesController < ApplicationController
 
   def inactive
     if @questionnaire.accepting_responses && params[:force].blank?
-      redirect_to questionnaire_entry_path(token: @questionnaire.token), status: :see_other
+      redirect_to my_questionnaire_form_path(token: @questionnaire.token), status: :see_other
     end
   end
 
@@ -157,7 +152,7 @@ class My::QuestionnairesController < ApplicationController
 
   def ensure_user_is_signed_in
     unless authenticated?
-      redirect_to questionnaire_entry_path(token: params[:token]), status: :see_other
+      redirect_to my_questionnaire_form_path(token: params[:token]), status: :see_other
     end
   end
 end

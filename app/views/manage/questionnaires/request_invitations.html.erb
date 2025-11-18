@@ -1,0 +1,148 @@
+<% content_for :title, "Invite People - #{@questionnaire.title}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Questionnaires", manage_production_questionnaires_path(@production)],
+      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
+    ],
+    text: "Invite People",
+    links: []
+  } %>
+
+  <div class="mb-5 text-gray-500 text-sm">
+    Invite people to respond to this questionnaire. They will receive an email with a link to access the form.
+  </div>
+
+  <%= form_with url: invite_people_manage_production_questionnaire_path(@production, @questionnaire), method: :post, local: true, class: "contents", data: { controller: "questionnaire-invitation" } do |form| %>
+
+    <!-- Already Invited People -->
+    <% if @invited_people.any? %>
+      <div class="mb-5 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-900">Already Invited (<%= @invited_people.count %>)</h3>
+        </div>
+        <div class="p-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <% @invited_people.each do |person| %>
+              <div class="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <div class="flex items-center gap-3">
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                      <%= person.initials %>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                    <% if @questionnaire.questionnaire_responses.exists?(person: person) %>
+                      <p class="text-xs text-green-600">✓ Responded</p>
+                    <% else %>
+                      <p class="text-xs text-gray-500">Not yet responded</p>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="mb-5">
+      <label class="block font-semibold mb-2 text-sm">
+        Invite:
+      </label>
+      <div class="space-y-2">
+        <div>
+          <label class="flex items-center cursor-pointer">
+            <%= radio_button_tag :recipient_type, "all", true, class: "mr-2 accent-pink-500 cursor-pointer" %>
+            <span class="text-sm">All cast members not yet invited (<%= @not_invited_people.count %>)</span>
+            <button type="button" onclick="document.getElementById('cast-member-status').classList.toggle('hidden')" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-questionnaire-invitation-target="viewDetailsButton">
+              Show People
+            </button>
+          </label>
+        </div>
+
+        <div id="cast-member-status" class="hidden ml-6 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs">
+          <div class="space-y-1">
+            <% if @not_invited_people.any? %>
+              <% @not_invited_people.each do |person| %>
+                <div class="text-gray-600"><%= person.name %></div>
+              <% end %>
+            <% else %>
+              <div class="text-gray-400 italic">Everyone has been invited</div>
+            <% end %>
+          </div>
+        </div>
+
+        <% if @production.casts.count > 1 %>
+          <label class="flex items-center cursor-pointer">
+            <%= radio_button_tag :recipient_type, "cast", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleCastDropdown" } %>
+            <span class="text-sm mr-3">Specific cast</span>
+            <span class="hidden" data-questionnaire-invitation-target="castDropdown">
+              <% cast_options = @production.casts.map do |cast|
+                not_invited = cast.people.select { |p| @not_invited_people.include?(p) }.count
+                ["#{cast.name} (#{not_invited} not yet invited)", cast.id]
+              end %>
+              <%= select_tag :cast_id, options_for_select(cast_options, @production.casts.first&.id), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500" %>
+            </span>
+          </label>
+        <% end %>
+
+        <label class="flex items-center cursor-pointer">
+          <%= radio_button_tag :recipient_type, "specific", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleSpecific" } %>
+          <span class="text-sm">Specific people</span>
+        </label>
+      </div>
+
+      <div class="hidden ml-6 mt-3" data-questionnaire-invitation-target="specificSection">
+        <label class="block font-semibold mb-2 text-sm">
+          Select Recipients
+        </label>
+        <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+          <% if @not_invited_people.any? %>
+            <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Not Yet Invited</div>
+            <% @not_invited_people.each do |person| %>
+              <% person_casts = @production.casts.select { |c| c.people.include?(person) } %>
+              <label class="flex items-center cursor-pointer">
+                <%= check_box_tag "person_ids[]", person.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
+                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_casts.map(&:name).join(", ") %></span></span>
+              </label>
+            <% end %>
+          <% end %>
+
+          <% if @invited_people.any? %>
+            <div class="text-xs font-semibold text-gray-700 uppercase mb-2 <%= 'mt-4' if @not_invited_people.any? %>">Already Invited</div>
+            <% @invited_people.each do |person| %>
+              <% person_casts = @production.casts.select { |c| c.people.include?(person) } %>
+              <div class="flex items-center opacity-50">
+                <%= check_box_tag "person_ids[]", person.id, false, disabled: true, class: "mr-2 cursor-not-allowed" %>
+                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_casts.map(&:name).join(", ") %></span></span>
+                <span class="ml-2 text-xs text-green-600">✓</span>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-5">
+      <%= label_tag :message, "Email Message:", class: "block font-semibold mb-2 text-sm" %>
+      <%= text_area_tag :message, @default_message, rows: 8, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+      <p class="mt-2 text-sm text-gray-500">
+        This email will be sent to each person you invite.
+      </p>
+    </div>
+
+    <div class="w-full border-t border-gray-200 pt-5 my-5">
+      <%= form.submit "Send Invitations", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", manage_production_questionnaire_path(@production, @questionnaire), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+    </div>
+
+  <% end %>
+</div>

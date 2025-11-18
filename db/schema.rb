@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_17_222219) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_18_185635) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -332,6 +332,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_17_222219) do
 
   create_table "questionnaires", force: :cascade do |t|
     t.boolean "accepting_responses", default: true, null: false
+    t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.integer "production_id", null: false
     t.string "title", null: false

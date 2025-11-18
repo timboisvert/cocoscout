@@ -1,9 +1,18 @@
 class Manage::QuestionnairesController < Manage::ManageController
   before_action :set_production
-  before_action :set_questionnaire, only: [ :show, :edit, :update, :destroy, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :show_response, :invite_people ]
+  before_action :set_questionnaire, only: [ :show, :edit, :update, :archive, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :show_response, :invite_people ]
 
   def index
-    @questionnaires = @production.questionnaires.order(created_at: :desc)
+    @filter = params[:filter] || "all"
+
+    case @filter
+    when "accepting"
+      @questionnaires = @production.questionnaires.where(archived_at: nil, accepting_responses: true).order(created_at: :desc)
+    when "archived"
+      @questionnaires = @production.questionnaires.where.not(archived_at: nil).order(archived_at: :desc)
+    else # 'all'
+      @questionnaires = @production.questionnaires.where(archived_at: nil).order(created_at: :desc)
+    end
   end
 
   def show
@@ -29,15 +38,21 @@ class Manage::QuestionnairesController < Manage::ManageController
 
   def update
     if @questionnaire.update(questionnaire_params)
-      redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire updated successfully"
+      respond_to do |format|
+        format.html { redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire updated successfully" }
+        format.json { render json: { success: true, accepting_responses: @questionnaire.accepting_responses } }
+      end
     else
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @questionnaire.errors }, status: :unprocessable_entity }
+      end
     end
   end
 
-  def destroy
-    @questionnaire.destroy
-    redirect_to manage_production_questionnaires_path(@production), notice: "Questionnaire deleted successfully"
+  def archive
+    @questionnaire.update(archived_at: Time.current)
+    redirect_to manage_production_questionnaires_path(@production), notice: "Questionnaire archived successfully"
   end
 
   def form
@@ -112,16 +127,39 @@ class Manage::QuestionnairesController < Manage::ManageController
   end
 
   def invite_people
+    recipient_type = params[:recipient_type]
+    cast_id = params[:cast_id]
     person_ids = params[:person_ids] || []
+    message_template = params[:message]
 
-    person_ids.each do |person_id|
-      QuestionnaireInvitation.find_or_create_by(
-        questionnaire: @questionnaire,
-        person_id: person_id
-      )
+    # Get all people in the production
+    all_people = @production.casts.flat_map(&:people).uniq
+
+    # Determine recipients based on recipient_type
+    recipients = if recipient_type == "all"
+      all_people
+    elsif recipient_type == "cast"
+      Cast.find(cast_id).people
+    elsif recipient_type == "specific"
+      Person.where(id: person_ids)
+    else
+      []
     end
 
-    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "People invited successfully"
+    # Create invitations
+    recipients.each do |person|
+      QuestionnaireInvitation.find_or_create_by(
+        questionnaire: @questionnaire,
+        person_id: person.id
+      )
+
+      # Send email if person has a user account
+      if person.user
+        Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, message_template).deliver_later
+      end
+    end
+
+    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Invited #{recipients.count} #{'person'.pluralize(recipients.count)}"
   end
 
   private
