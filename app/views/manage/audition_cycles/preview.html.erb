@@ -1,31 +1,34 @@
+<% content_for :title, "Preview - #{@audition_cycle.production.name}" %>
 
-  <div class="fixed top-0 left-0 h-16 w-full bg-pink-500 text-pink-500 p-3 z-10">
-    <div class="flex justify-between items-center h-full mx-auto content-center">
-      <%= render partial: "shared/link_button", locals: {text: "Close Preview", color: "white", path: "javascript:history.back()" } %>
-      <p class="text-white text-2xl font-medium">Preview</p>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
+    ],
+    text: "Preview Audition Form",
+    links: [
+      {text: (@audition_cycle.active ? "Edit Form" : "View Form"), path: form_manage_production_audition_cycle_path(@production, @audition_cycle)}
+    ]
+  } %>
 
-      <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Edit Form" : "View Form"), color: "white", path: form_manage_production_audition_cycle_path(@production, @audition_cycle)} %>
-      <% else %>
-        <div></div>
-      <% end %>
-    </div>
-  </div>
-
-  <div class="fixed bottom-0 left-0 h-16 w-full bg-pink-500 text-pink-500 p-3 z-10">
-    <div class="w-full md:w-1/2 flex items-center mx-auto" data-controller="clipboard">
-      <p class="text-nowrap text-white text-sm mr-2">Shareable Link:</p>
-      <%= text_field_tag "", @audition_cycle.respond_url, class: "block w-64 text-sm text-black bg-white shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400", disabled: true, data: { clipboard_target: "textField" }  %>
-      <p class="ml-1 font-medium rounded-lg text-sm px-2 py-1 h-9 text-center mb-0 inline-block bg-white-500 text-white hover:bg-gray-100 hover:text-pink-500 cursor-pointer" data-action="click->clipboard#copy" data-clipboard-target="button">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <!-- Shareable Link -->
+  <div class="mb-6 p-4 bg-pink-50 border border-pink-200 rounded-lg" data-controller="clipboard">
+    <div class="flex items-center gap-3">
+      <p class="text-sm font-medium text-pink-900 whitespace-nowrap">Shareable Link:</p>
+      <%= text_field_tag "", @audition_cycle.respond_url, class: "flex-1 text-sm text-black bg-white shadow-sm rounded-lg border px-3 py-2 border-gray-400", readonly: true, data: { clipboard_target: "textField" }  %>
+      <button type="button" class="px-3 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition text-sm flex items-center gap-2 cursor-pointer" data-action="click->clipboard#copy" data-clipboard-target="button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
         </svg>
-      </p>
+        Copy
+      </button>
     </div>
   </div>
 
-  <div class="min-h-screen bg-white">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 mt-16 mb-20">
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 pt-12">
+    <div class="max-w-6xl mx-auto">
 
       <!-- Full-Width Header -->
       <div class="mb-8 sm:mb-10">
@@ -37,15 +40,15 @@
         <% end %>
       </div>
 
-      <!-- Two Column Layout: Header Text & Form -->
+      <!-- Two Column Layout: Instruction Text & Form -->
       <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
 
-        <!-- Left Column: Header Text -->
+        <!-- Left Column: Instruction Text -->
         <div class="space-y-6">
-          <% if @audition_cycle.header_text.present? %>
+          <% if @audition_cycle.instruction_text.present? %>
             <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
               <div class="prose prose-slate max-w-none text-slate-700">
-                <%= @audition_cycle.header_text %>
+                <%= @audition_cycle.instruction_text %>
               </div>
             </div>
           <% end %>
@@ -212,3 +215,4 @@
       </div>
     </div>
   </div>
+</div>

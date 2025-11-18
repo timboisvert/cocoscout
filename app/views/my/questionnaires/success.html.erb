@@ -18,15 +18,6 @@
       <p class="text-lg text-slate-600">Your response has been submitted</p>
     </div>
 
-    <!-- Success Text -->
-    <% if @questionnaire.success_text.present? %>
-      <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm mb-8">
-        <div class="prose prose-slate max-w-none text-slate-700">
-          <%= @questionnaire.success_text %>
-        </div>
-      </div>
-    <% end %>
-
     <!-- Production Info -->
     <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 text-center">
       <h2 class="text-xl font-semibold text-slate-900 mb-2"><%= @production.name %></h2>

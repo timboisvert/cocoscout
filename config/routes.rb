@@ -45,9 +45,6 @@ Rails.application.routes.draw do
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
-  # Respond to a questionnaire
-  get "/q/:token", to: "my/questionnaires#entry", as: "questionnaire_entry"
-
   # Selection interface (under manage namespace)
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
@@ -83,7 +80,6 @@ Rails.application.routes.draw do
     end
 
     scope "/questionnaires/:token" do
-      get "/", to: redirect { |params, _req| "/q/#{params[:token]}" }
       get "/form", to: "questionnaires#form", as: "questionnaire_form"
       post "/form", to: "questionnaires#submitform", as: "submit_questionnaire_form"
       get "/success", to: "questionnaires#success", as: "questionnaire_success"
@@ -256,6 +252,7 @@ Rails.application.routes.draw do
           patch  "update_header_text", to: "questionnaires#update_header_text", as: "update_header_text"
           patch  "update_availability_settings", to: "questionnaires#update_availability_settings", as: "update_availability_settings"
           post   "invite_people",     to: "questionnaires#invite_people",     as: "invite_people"
+          patch  "archive",           to: "questionnaires#archive",           as: "archive"
           get    "responses",         to: "questionnaires#responses",         as: "responses"
           get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
         end

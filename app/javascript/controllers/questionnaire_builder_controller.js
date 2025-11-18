@@ -30,13 +30,13 @@ export default class extends Controller {
 
     editHeaderText(event) {
         event.preventDefault();
-        const headerTextContent = document.querySelector('#header_text_display').innerHTML;
+        const instructionTextContent = document.querySelector('#header_text_display').innerHTML;
         const modalContent = `
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Header Text</h3>
+                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Instruction Text</h3>
                 <form id="header-text-form" data-action="submit->questionnaire-builder#saveHeaderText">
-                    <trix-editor input="header_text_input" class="trix-content border border-gray-300 rounded-lg"></trix-editor>
-                    <input id="header_text_input" type="hidden" name="header_text">
+                    <trix-editor input="instruction_text_input" class="trix-content border border-gray-300 rounded-lg"></trix-editor>
+                    <input id="instruction_text_input" type="hidden" name="instruction_text">
                     <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                         <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-pink-500 text-base font-medium text-white hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 sm:col-start-2 sm:text-sm">
                             Save
@@ -56,12 +56,12 @@ export default class extends Controller {
         if (editor) {
             // Extract text content from the display div
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = headerTextContent;
+            tempDiv.innerHTML = instructionTextContent;
             const textContent = tempDiv.textContent || tempDiv.innerText || '';
             
             // Only set if there's actual content (not the placeholder text)
-            if (textContent.trim() && !textContent.includes('Click to add header text')) {
-                editor.editor.loadHTML(headerTextContent);
+            if (textContent.trim() && !textContent.includes('Click to add instruction text')) {
+                editor.editor.loadHTML(instructionTextContent);
             }
         }
     }
@@ -69,7 +69,7 @@ export default class extends Controller {
     async saveHeaderText(event) {
         event.preventDefault();
         const form = event.target;
-        const headerText = form.querySelector('#header_text_input').value;
+        const instructionText = form.querySelector('#instruction_text_input').value;
         const url = form.closest('[data-controller="questionnaire-builder"]').dataset.updateHeaderTextUrl || 
                     window.location.pathname.replace('/build', '/update_header_text');
         
@@ -81,7 +81,7 @@ export default class extends Controller {
                     'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'text/vnd.turbo-stream.html'
                 },
-                body: JSON.stringify({ header_text: headerText })
+                body: JSON.stringify({ instruction_text: instructionText })
             });
             
             if (response.ok) {

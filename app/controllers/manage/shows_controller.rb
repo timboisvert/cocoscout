@@ -58,14 +58,16 @@ class Manage::ShowsController < Manage::ManageController
     default_location = Current.organization.locations.find_by(default: true)
     @show.location = default_location if default_location
 
-    # if params[:duplicate].present?
-    #   original = @production.shows.find_by(id: params[:duplicate])
-    #   if original.present?
-    #     @show.date_and_time = original.date_and_time
-    #     @show.secondary_name = original.secondary_name
-    #     @show.location = original.location
-    #   end
-    # end
+    # Handle duplication
+    if params[:duplicate].present?
+      @original_show = @production.shows.find_by(id: params[:duplicate])
+      if @original_show.present?
+        @show.date_and_time = @original_show.date_and_time
+        @show.event_type = @original_show.event_type
+        @show.secondary_name = @original_show.secondary_name
+        @show.location = @original_show.location
+      end
+    end
   end
 
   def edit
@@ -75,6 +77,24 @@ class Manage::ShowsController < Manage::ManageController
     if params[:show][:event_frequency] == "recurring"
       create_recurring_events
     else
+      # Check if this is a duplicate with the same date
+      if params[:duplicate_from_id].present? && params[:confirm_same_date] != "true"
+        original_show = @production.shows.find_by(id: params[:duplicate_from_id])
+        if original_show.present?
+          # Parse the submitted date_and_time
+          submitted_date = DateTime.parse(params[:show][:date_and_time]) rescue nil
+          if submitted_date.present? && submitted_date.to_date == original_show.date_and_time.to_date
+            # Same date - need confirmation
+            @show = Show.new(show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope))
+            @show.production = @production
+            @original_show = original_show
+            @needs_confirmation = true
+            render :new, status: :unprocessable_entity
+            return
+          end
+        end
+      end
+
       # Filter out virtual attributes used only for recurring event logic
       filtered_params = show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope)
       @show = Show.new(filtered_params)

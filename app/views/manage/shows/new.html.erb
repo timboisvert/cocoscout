@@ -12,7 +12,44 @@
     links: []
   } %>
 
+  <% if @needs_confirmation %>
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-yellow-800">
+            Same Date Detected
+          </h3>
+          <div class="mt-2 text-sm text-yellow-700">
+            <p>You're creating a <%= @show.event_type.titleize %> with the same date (<%= @show.date_and_time.strftime("%B %-d, %Y") %>) as the one you're duplicating. Is this intentional?</p>
+          </div>
+          <div class="mt-4 flex gap-3">
+            <%= form_with(model: [:manage, @production, @show], class: "inline") do |f| %>
+              <%= f.hidden_field :event_type, value: @show.event_type %>
+              <%= f.hidden_field :secondary_name, value: @show.secondary_name %>
+              <%= f.hidden_field :date_and_time, value: @show.date_and_time %>
+              <%= f.hidden_field :location_id, value: @show.location_id %>
+              <%= f.hidden_field :event_frequency, value: "single" %>
+              <%= hidden_field_tag :duplicate_from_id, @original_show.id %>
+              <%= hidden_field_tag :confirm_same_date, "true" %>
+              <%= f.submit "Yes, Create with Same Date", class: "inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 cursor-pointer" %>
+            <% end %>
+            <button type="button" onclick="window.scrollTo(0, document.body.scrollHeight);" class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+              No, Let Me Change the Date
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "recurring-event show-edit" }) do |form| %>
+    <%= hidden_field_tag :duplicate_from_id, params[:duplicate] if params[:duplicate].present? %>
+
     <% if @show.errors.any? %>
       <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
         <h2><%= pluralize(show.errors.count, "error") %> prohibited this show from being saved:</h2>

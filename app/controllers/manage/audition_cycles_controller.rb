@@ -5,12 +5,6 @@ class Manage::AuditionCyclesController < Manage::ManageController
   before_action :set_question, only: %i[ update_question destroy_question ]
   before_action :ensure_user_is_manager, except: %i[ preview show ]
 
-  # Skip the sidebar on the preview
-  skip_before_action :show_manage_sidebar, only: %i[ preview ]
-
-  # Use the public facing layout on the preview
-  layout "application"
-
   def new
     @audition_cycle = AuditionCycle.new
   end
@@ -87,7 +81,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
       # Check if this is from the form page (availability, text sections, or form_reviewed)
       if params[:audition_cycle]&.key?(:include_availability_section) ||
          params[:audition_cycle]&.key?(:availability_event_types) ||
-         params[:audition_cycle]&.key?(:header_text) ||
+         params[:audition_cycle]&.key?(:instruction_text) ||
          params[:audition_cycle]&.key?(:video_field_text) ||
          params[:audition_cycle]&.key?(:success_text) ||
          params[:audition_cycle]&.keys == [ "form_reviewed" ]
@@ -95,7 +89,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
         # Determine the appropriate notice message
         if params[:audition_cycle]&.key?(:include_availability_section) || params[:audition_cycle]&.key?(:availability_event_types)
           notice_message = "Availability settings successfully updated"
-        elsif params[:audition_cycle]&.key?(:header_text) || params[:audition_cycle]&.key?(:video_field_text) || params[:audition_cycle]&.key?(:success_text)
+        elsif params[:audition_cycle]&.key?(:instruction_text) || params[:audition_cycle]&.key?(:video_field_text) || params[:audition_cycle]&.key?(:success_text)
           notice_message = "Text successfully updated"
         else
           notice_message = "Form review status successfully updated"
@@ -227,7 +221,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
   end
 
   def audition_cycle_params
-    params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :header_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_event_types: [])
+    params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :instruction_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_event_types: [])
   end
 
   def question_params

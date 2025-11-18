@@ -55,8 +55,8 @@ class Manage::AvailabilityController < Manage::ManageController
     @cast_members_needing_update = @cast_members.reject { |p| @up_to_date_person_ids.include?(p.id) }
     @cast_members_up_to_date = @cast_members.select { |p| @up_to_date_person_ids.include?(p.id) }
 
-    # Generate default message
-    @default_message = generate_default_message
+    # Generate default message with all shows
+    @default_message = generate_default_message(@shows)
   end
 
   def handle_request_availability
@@ -64,9 +64,14 @@ class Manage::AvailabilityController < Manage::ManageController
     cast_id = params[:cast_id]
     person_ids = params[:person_ids] || []
     message_template = params[:message]
+    selected_show_ids = params[:show_ids] || []
 
-    # Get future shows to determine who needs updates
-    shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current)
+    # Get shows - either selected ones or all future shows
+    shows = if selected_show_ids.any?
+      @production.shows.where(id: selected_show_ids, canceled: false)
+    else
+      @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current)
+    end
 
     # Determine recipients based on recipient_type
     all_recipients = if recipient_type == "all"
@@ -137,9 +142,11 @@ class Manage::AvailabilityController < Manage::ManageController
     @production = Current.organization.productions.find(params.expect(:production_id))
   end
 
-  def generate_default_message
-    shows_list = @shows.map do |show|
-      "• #{show.date_and_time.strftime('%A, %B %d, %Y at %-l:%M %p')} - #{show.event_type.titleize}"
+  def generate_default_message(shows)
+    shows_list = shows.map do |show|
+      base = "• #{show.event_type.titleize} on #{show.date_and_time.strftime('%A, %B %-d, %Y')} at #{show.date_and_time.strftime('%-l:%M %p')}"
+      base += " (#{show.secondary_name})" if show.secondary_name.present?
+      base
     end.join("\n")
 
     <<~MESSAGE

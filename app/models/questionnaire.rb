@@ -5,7 +5,7 @@ class Questionnaire < ApplicationRecord
   has_many :invited_people, through: :questionnaire_invitations, source: :person
   has_many :questionnaire_responses, dependent: :destroy
 
-  has_rich_text :header_text
+  has_rich_text :instruction_text
 
   serialize :availability_event_types, type: Array, coder: YAML
 
@@ -14,11 +14,14 @@ class Questionnaire < ApplicationRecord
 
   before_validation :generate_token, on: :create
 
+  scope :active, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
+
   def respond_url
     if Rails.env.development?
-      "http://localhost:3000/q/#{self.token}"
+      "http://localhost:3000/my/questionnaires/#{self.token}/form"
     else
-      "https://www.cocoscout.com/q/#{self.token}"
+      "https://www.cocoscout.com/my/questionnaires/#{self.token}/form"
     end
   end
 

@@ -1,7 +1,7 @@
-<% if questionnaire.header_text.present? %>
+<% if questionnaire.instruction_text.present? %>
   <div class="prose prose-sm max-w-none">
-    <%= questionnaire.header_text %>
+    <%= questionnaire.instruction_text %>
   </div>
 <% else %>
-  <p class="text-gray-400 italic">Click to add header text...</p>
+  <p class="text-gray-400 italic">Click to add instruction text...</p>
 <% end %>

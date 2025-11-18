@@ -19,6 +19,54 @@
 
     <div class="mb-5">
       <label class="block font-semibold mb-2 text-sm">
+        Request availability for:
+      </label>
+      <div class="space-y-2">
+        <div>
+          <label class="flex items-center cursor-pointer">
+            <input type="radio" name="show_selection_type" value="all" checked class="mr-2 accent-pink-500 cursor-pointer" data-action="change->availability-request#toggleShowSelection">
+            <span class="text-sm">All upcoming shows & events (<%= @shows.count %>)</span>
+          </label>
+        </div>
+
+        <div>
+          <label class="flex items-center cursor-pointer">
+            <input type="radio" name="show_selection_type" value="specific" class="mr-2 accent-pink-500 cursor-pointer" data-action="change->availability-request#toggleShowSelection">
+            <span class="text-sm">Specific shows & events</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="hidden ml-6 mt-3" data-availability-request-target="showsSection">
+        <label class="block font-semibold mb-2 text-sm">
+          Select Shows & Events
+        </label>
+        <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+          <% @shows.each do |show| %>
+            <label class="flex items-center cursor-pointer py-1">
+              <%= check_box_tag "show_ids[]", show.id, false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->availability-request#updateMessage" } %>
+              <% event_type_badge_classes = case show.event_type
+                when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                else "bg-pink-50 text-pink-700 ring-pink-600/10"
+              end %>
+              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %> mr-2">
+                <%= show.event_type.titleize %>
+              </span>
+              <span class="text-sm">
+                <%= show.date_and_time.strftime("%a, %b %-d, %Y at %-l:%M %p") %>
+                <% if show.secondary_name.present? %>
+                  <span class="text-gray-500">- <%= show.secondary_name %></span>
+                <% end %>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-5">
+      <label class="block font-semibold mb-2 text-sm">
         Send to:
       </label>
       <div class="space-y-2">
