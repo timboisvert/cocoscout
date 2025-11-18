@@ -6,7 +6,8 @@ class Questionnaire < ApplicationRecord
   has_many :questionnaire_responses, dependent: :destroy
 
   has_rich_text :header_text
-  has_rich_text :success_text
+
+  serialize :availability_event_types, type: Array, coder: YAML
 
   validates :title, presence: true
   validates :token, presence: true, uniqueness: true

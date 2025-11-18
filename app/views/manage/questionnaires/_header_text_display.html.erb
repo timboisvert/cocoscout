@@ -1,0 +1,7 @@
+<% if questionnaire.header_text.present? %>
+  <div class="prose prose-sm max-w-none">
+    <%= questionnaire.header_text %>
+  </div>
+<% else %>
+  <p class="text-gray-400 italic">Click to add header text...</p>
+<% end %>

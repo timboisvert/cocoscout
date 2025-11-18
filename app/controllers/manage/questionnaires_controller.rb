@@ -1,6 +1,6 @@
 class Manage::QuestionnairesController < Manage::ManageController
   before_action :set_production
-  before_action :set_questionnaire, only: [ :show, :edit, :update, :destroy, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :show_response, :invite_people ]
+  before_action :set_questionnaire, only: [ :show, :edit, :update, :destroy, :build, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :update_header_text, :update_availability_settings, :responses, :show_response, :invite_people ]
 
   def index
     @questionnaires = @production.questionnaires.order(created_at: :desc)
@@ -95,6 +95,43 @@ class Manage::QuestionnairesController < Manage::ManageController
     head :ok
   end
 
+  def build
+    @questions = @questionnaire.questions.order(:position)
+    @shows = @production.shows.where(canceled: false).order(:date_and_time)
+  end
+
+  def update_header_text
+    if @questionnaire.update(header_text: params[:header_text])
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.replace("header_text_display", partial: "manage/questionnaires/header_text_display", locals: { questionnaire: @questionnaire }),
+            turbo_stream.replace("notice", partial: "shared/notice", locals: { notice: "Header text updated successfully" })
+          ]
+        end
+        format.html { redirect_to build_manage_production_questionnaire_path(@production, @questionnaire), notice: "Header text updated successfully" }
+      end
+    else
+      head :unprocessable_entity
+    end
+  end
+
+  def update_availability_settings
+    if @questionnaire.update(availability_settings_params)
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.replace("availability_settings", partial: "manage/questionnaires/availability_settings", locals: { questionnaire: @questionnaire, production: @production }),
+            turbo_stream.replace("notice", partial: "shared/notice", locals: { notice: "Availability settings updated successfully" })
+          ]
+        end
+        format.html { redirect_to build_manage_production_questionnaire_path(@production, @questionnaire), notice: "Availability settings updated successfully" }
+      end
+    else
+      head :unprocessable_entity
+    end
+  end
+
   def responses
     @responses = @questionnaire.questionnaire_responses
                                .includes(:person)
@@ -140,5 +177,9 @@ class Manage::QuestionnairesController < Manage::ManageController
 
   def question_params
     params.require(:question).permit(:text, :question_type, :required, question_options_attributes: [ :id, :text, :_destroy ])
+  end
+
+  def availability_settings_params
+    params.require(:questionnaire).permit(:include_availability_section, :require_all_availability, availability_event_types: [])
   end
 end

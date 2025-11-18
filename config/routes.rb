@@ -246,12 +246,15 @@ Rails.application.routes.draw do
 
       resources :questionnaires do
         member do
+          get    "build",             to: "questionnaires#build",             as: "build"
           get    "form",              to: "questionnaires#form",              as: "form"
           get    "preview",           to: "questionnaires#preview",           as: "preview"
           post   "create_question",   to: "questionnaires#create_question",   as: "create_question"
           patch  "update_question/:question_id", to: "questionnaires#update_question", as: "update_question"
           delete "destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions"
+          patch  "update_header_text", to: "questionnaires#update_header_text", as: "update_header_text"
+          patch  "update_availability_settings", to: "questionnaires#update_availability_settings", as: "update_availability_settings"
           post   "invite_people",     to: "questionnaires#invite_people",     as: "invite_people"
           get    "responses",         to: "questionnaires#responses",         as: "responses"
           get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"

@@ -8,6 +8,7 @@
     ],
     text: @questionnaire.title,
     links: [
+      {text: "Open Builder", path: build_manage_production_questionnaire_path(@production, @questionnaire)},
       {text: "Edit", path: edit_manage_production_questionnaire_path(@production, @questionnaire)},
       {text: "Form Builder", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
       {text: "Preview", path: preview_manage_production_questionnaire_path(@production, @questionnaire)},
