@@ -282,7 +282,7 @@ GEM
     nokogiri (1.18.10-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (43.0.4)
+    pagy (43.0.6)
       json
       yaml
     parallel (1.27.0)
@@ -538,7 +538,7 @@ DEPENDENCIES
   letter_opener
   mail (~> 2.9.0)
   mailgun-ruby (~> 1.2)
-  pagy (~> 43.0.4)
+  pagy (~> 43.0.6)
   pg
   poppler
   propshaft
