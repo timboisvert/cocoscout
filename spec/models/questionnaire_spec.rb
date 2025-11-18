@@ -73,8 +73,8 @@ RSpec.describe Questionnaire, type: :model do
     end
 
     it "serializes availability_event_types as array" do
-      questionnaire = create(:questionnaire, availability_event_types: ["show", "rehearsal"])
-      expect(questionnaire.availability_event_types).to eq(["show", "rehearsal"])
+      questionnaire = create(:questionnaire, availability_event_types: [ "show", "rehearsal" ])
+      expect(questionnaire.availability_event_types).to eq([ "show", "rehearsal" ])
       expect(questionnaire.availability_event_types).to be_a(Array)
     end
 
@@ -84,9 +84,9 @@ RSpec.describe Questionnaire, type: :model do
     end
 
     it "persists availability_event_types correctly" do
-      questionnaire = create(:questionnaire, availability_event_types: ["show", "meeting"])
+      questionnaire = create(:questionnaire, availability_event_types: [ "show", "meeting" ])
       questionnaire.reload
-      expect(questionnaire.availability_event_types).to eq(["show", "meeting"])
+      expect(questionnaire.availability_event_types).to eq([ "show", "meeting" ])
     end
   end
 
