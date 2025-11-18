@@ -7,6 +7,6 @@ class CreateQuestionnaireInvitations < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :questionnaire_invitations, [:questionnaire_id, :person_id], unique: true, name: 'index_q_invitations_on_questionnaire_and_person'
+    add_index :questionnaire_invitations, [ :questionnaire_id, :person_id ], unique: true, name: 'index_q_invitations_on_questionnaire_and_person'
   end
 end

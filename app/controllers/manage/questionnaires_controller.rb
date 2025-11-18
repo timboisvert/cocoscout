@@ -1,6 +1,6 @@
-class Manage::QuestionnairesController < ApplicationController
+class Manage::QuestionnairesController < Manage::ManageController
   before_action :set_production
-  before_action :set_questionnaire, only: [:show, :edit, :update, :destroy, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :response]
+  before_action :set_questionnaire, only: [ :show, :edit, :update, :destroy, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :show_response, :invite_people ]
 
   def index
     @questionnaires = @production.questionnaires.order(created_at: :desc)
@@ -16,7 +16,7 @@ class Manage::QuestionnairesController < ApplicationController
 
   def create
     @questionnaire = @production.questionnaires.new(questionnaire_params)
-    
+
     if @questionnaire.save
       redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire created successfully"
     else
@@ -42,7 +42,7 @@ class Manage::QuestionnairesController < ApplicationController
 
   def form
     @questions = @questionnaire.questions.order(:position)
-    
+
     # Check if we're editing a specific question
     if params[:question_id].present?
       @question = @questionnaire.questions.find(params[:question_id])
@@ -57,11 +57,11 @@ class Manage::QuestionnairesController < ApplicationController
 
   def create_question
     @question = @questionnaire.questions.new(question_params)
-    
+
     # Set position as the last question
     max_position = @questionnaire.questions.maximum(:position) || 0
     @question.position = max_position + 1
-    
+
     if @question.save
       redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Question added successfully"
     else
@@ -72,7 +72,7 @@ class Manage::QuestionnairesController < ApplicationController
 
   def update_question
     @question = @questionnaire.questions.find(params[:question_id])
-    
+
     if @question.update(question_params)
       redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Question updated successfully"
     else
@@ -91,7 +91,7 @@ class Manage::QuestionnairesController < ApplicationController
     params[:question_ids].each_with_index do |id, index|
       @questionnaire.questions.find(id).update(position: index + 1)
     end
-    
+
     head :ok
   end
 
@@ -113,14 +113,14 @@ class Manage::QuestionnairesController < ApplicationController
 
   def invite_people
     person_ids = params[:person_ids] || []
-    
+
     person_ids.each do |person_id|
       QuestionnaireInvitation.find_or_create_by(
         questionnaire: @questionnaire,
         person_id: person_id
       )
     end
-    
+
     redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "People invited successfully"
   end
 
@@ -139,6 +139,6 @@ class Manage::QuestionnairesController < ApplicationController
   end
 
   def question_params
-    params.require(:question).permit(:text, :question_type, :required, question_options_attributes: [:id, :text, :_destroy])
+    params.require(:question).permit(:text, :question_type, :required, question_options_attributes: [ :id, :text, :_destroy ])
   end
 end

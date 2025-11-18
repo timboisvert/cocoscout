@@ -9,6 +9,6 @@ class CreateQuestionnaires < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :questionnaires, [:production_id, :title]
+    add_index :questionnaires, [ :production_id, :title ]
   end
 end

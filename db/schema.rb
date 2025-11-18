@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_17_200520) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_17_222219) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -299,6 +299,49 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_17_200520) do
     t.index ["question_id"], name: "index_question_options_on_question_id"
   end
 
+  create_table "questionnaire_answers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "question_id", null: false
+    t.integer "questionnaire_response_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "value"
+    t.index ["question_id"], name: "index_questionnaire_answers_on_question_id"
+    t.index ["questionnaire_response_id", "question_id"], name: "index_q_answers_on_response_and_question", unique: true
+    t.index ["questionnaire_response_id"], name: "index_questionnaire_answers_on_questionnaire_response_id"
+  end
+
+  create_table "questionnaire_invitations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.integer "questionnaire_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_questionnaire_invitations_on_person_id"
+    t.index ["questionnaire_id", "person_id"], name: "index_q_invitations_on_questionnaire_and_person", unique: true
+    t.index ["questionnaire_id"], name: "index_questionnaire_invitations_on_questionnaire_id"
+  end
+
+  create_table "questionnaire_responses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.integer "questionnaire_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_questionnaire_responses_on_person_id"
+    t.index ["questionnaire_id", "person_id"], name: "idx_on_questionnaire_id_person_id_14b49cba13", unique: true
+    t.index ["questionnaire_id"], name: "index_questionnaire_responses_on_questionnaire_id"
+  end
+
+  create_table "questionnaires", force: :cascade do |t|
+    t.boolean "accepting_responses", default: true, null: false
+    t.datetime "created_at", null: false
+    t.integer "production_id", null: false
+    t.string "title", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "title"], name: "index_questionnaires_on_production_id_and_title"
+    t.index ["production_id"], name: "index_questionnaires_on_production_id"
+    t.index ["token"], name: "index_questionnaires_on_token", unique: true
+  end
+
   create_table "questions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "position"
@@ -454,6 +497,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_17_200520) do
   add_foreign_key "production_permissions", "users"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
+  add_foreign_key "questionnaire_answers", "questionnaire_responses"
+  add_foreign_key "questionnaire_answers", "questions"
+  add_foreign_key "questionnaire_invitations", "people"
+  add_foreign_key "questionnaire_invitations", "questionnaires"
+  add_foreign_key "questionnaire_responses", "people"
+  add_foreign_key "questionnaire_responses", "questionnaires"
+  add_foreign_key "questionnaires", "productions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
   add_foreign_key "show_availabilities", "people"

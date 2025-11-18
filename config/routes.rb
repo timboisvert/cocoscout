@@ -244,7 +244,8 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :questionnaires do
+      get "questionnaires", to: "questionnaires#index", as: "questionnaires"
+      resources :questionnaires, except: [ :index ] do
         member do
           get    "form",              to: "questionnaires#form",              as: "form"
           get    "preview",           to: "questionnaires#preview",           as: "preview"
@@ -252,9 +253,9 @@ Rails.application.routes.draw do
           patch  "update_question/:question_id", to: "questionnaires#update_question", as: "update_question"
           delete "destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions"
-          get    "responses",         to: "questionnaires#responses",         as: "responses"
-          get    "responses/:response_id", to: "questionnaires#response",    as: "response"
           post   "invite_people",     to: "questionnaires#invite_people",     as: "invite_people"
+          get    "responses",         to: "questionnaires#responses",         as: "responses"
+          get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
         end
       end
 

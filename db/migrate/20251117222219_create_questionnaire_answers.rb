@@ -8,6 +8,6 @@ class CreateQuestionnaireAnswers < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :questionnaire_answers, [:questionnaire_response_id, :question_id], unique: true, name: 'index_q_answers_on_response_and_question'
+    add_index :questionnaire_answers, [ :questionnaire_response_id, :question_id ], unique: true, name: 'index_q_answers_on_response_and_question'
   end
 end
