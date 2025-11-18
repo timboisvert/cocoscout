@@ -1,0 +1,45 @@
+<% content_for :title, "Questionnaires - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Questionnaires",
+    links: [
+      {text: "New Questionnaire", path: new_manage_production_questionnaire_path(@production)}
+    ]
+  } %>
+
+  <% if @questionnaires.any? %>
+    <div class="space-y-4">
+      <% @questionnaires.each do |questionnaire| %>
+        <%= link_to manage_production_questionnaire_path(@production, questionnaire), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>
+              <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                <span>
+                  <%= questionnaire.questionnaire_responses.count %> response<%= questionnaire.questionnaire_responses.count == 1 ? '' : 's' %>
+                </span>
+                <span>
+                  <%= questionnaire.questionnaire_invitations.count %> invited
+                </span>
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= questionnaire.accepting_responses ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
+                  <%= questionnaire.accepting_responses ? 'Accepting Responses' : 'Closed' %>
+                </span>
+              </div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-12">
+      <p class="text-gray-600 mb-4">No questionnaires yet</p>
+      <%= link_to "Create your first questionnaire", new_manage_production_questionnaire_path(@production), class: "inline-block px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition" %>
+    </div>
+  <% end %>
+</div>

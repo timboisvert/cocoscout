@@ -45,6 +45,9 @@ Rails.application.routes.draw do
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
+  # Respond to a questionnaire
+  get "/q/:token", to: "my/questionnaires#entry", as: "questionnaire_entry"
+
   # Selection interface (under manage namespace)
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
@@ -69,6 +72,7 @@ Rails.application.routes.draw do
     get   "/profile",                       to: "profile#index",            as: "profile"
     get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
     patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
+    get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -76,6 +80,14 @@ Rails.application.routes.draw do
       post "/form", to: "submit_audition_request#submitform", as: "submit_submit_audition_request_form"
       get "/success", to: "submit_audition_request#success", as: "submit_audition_request_success"
       get "/inactive", to: "submit_audition_request#inactive", as: "submit_audition_request_inactive"
+    end
+
+    scope "/questionnaires/:token" do
+      get "/", to: redirect { |params, _req| "/q/#{params[:token]}" }
+      get "/form", to: "questionnaires#form", as: "questionnaire_form"
+      post "/form", to: "questionnaires#submitform", as: "submit_questionnaire_form"
+      get "/success", to: "questionnaires#success", as: "questionnaire_success"
+      get "/inactive", to: "questionnaires#inactive", as: "questionnaire_inactive"
     end
   end
 
@@ -229,6 +241,20 @@ Rails.application.routes.draw do
           post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment"
           post   "finalize_and_notify", to: "auditions#finalize_and_notify",    as: "finalize_and_notify"
           post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations"
+        end
+      end
+
+      resources :questionnaires do
+        member do
+          get    "form",              to: "questionnaires#form",              as: "form"
+          get    "preview",           to: "questionnaires#preview",           as: "preview"
+          post   "create_question",   to: "questionnaires#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "questionnaires#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions"
+          post   "invite_people",     to: "questionnaires#invite_people",     as: "invite_people"
+          get    "responses",         to: "questionnaires#responses",         as: "responses"
+          get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
         end
       end
 

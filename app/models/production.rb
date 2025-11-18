@@ -11,6 +11,7 @@ class Production < ApplicationRecord
     has_many :roles, dependent: :delete_all
     has_many :show_person_role_assignments, through: :shows
     has_many :production_permissions, dependent: :delete_all
+    has_many :questionnaires, dependent: :destroy
     belongs_to :organization
 
     has_one_attached :logo, dependent: :purge_later do |attachable|

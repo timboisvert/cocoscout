@@ -1,0 +1,54 @@
+<% content_for :title, "Thank you!" %>
+
+<% content_for :head do %>
+  <meta name="description" content="Thank you for responding to <%= @questionnaire.title %>">
+<% end %>
+
+<div class="min-h-screen bg-white">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Success Header -->
+    <div class="text-center mb-8 sm:mb-10">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular">Thank you!</h1>
+      <p class="text-lg text-slate-600">Your response has been submitted</p>
+    </div>
+
+    <!-- Success Text -->
+    <% if @questionnaire.success_text.present? %>
+      <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm mb-8">
+        <div class="prose prose-slate max-w-none text-slate-700">
+          <%= @questionnaire.success_text %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Production Info -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 text-center">
+      <h2 class="text-xl font-semibold text-slate-900 mb-2"><%= @production.name %></h2>
+      <p class="text-sm text-slate-600 mb-4"><%= @questionnaire.title %></p>
+      <% if @questionnaire.accepting_responses %>
+        <p class="text-sm text-slate-600">
+          You can update your response anytime by visiting the questionnaire link again.
+        </p>
+      <% end %>
+    </div>
+
+    <!-- Back to Dashboard -->
+    <div class="text-center mt-8">
+      <%= link_to "Go to Dashboard", my_dashboard_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
+    </div>
+
+  </div>
+
+  <!-- Coco Link -->
+  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+    <%= link_to my_dashboard_path do %>
+      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+    <% end %>
+  </div>
+</div>

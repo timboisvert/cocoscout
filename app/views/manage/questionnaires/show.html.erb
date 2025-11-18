@@ -1,0 +1,147 @@
+<% content_for :title, @questionnaire.title %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Questionnaires", manage_production_questionnaires_path(@production)]
+    ],
+    text: @questionnaire.title,
+    links: [
+      {text: "Edit", path: edit_manage_production_questionnaire_path(@production, @questionnaire)},
+      {text: "Form Builder", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
+      {text: "Preview", path: preview_manage_production_questionnaire_path(@production, @questionnaire)},
+      {text: "Responses", path: responses_manage_production_questionnaire_path(@production, @questionnaire)}
+    ]
+  } %>
+
+  <!-- Status Card -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Status</h3>
+    </div>
+    <div class="p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <p class="text-xs text-gray-600 font-medium">Status</p>
+          <p class="text-sm font-semibold text-gray-900 mt-1">
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= @questionnaire.accepting_responses ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
+              <%= @questionnaire.accepting_responses ? 'Accepting Responses' : 'Closed' %>
+            </span>
+          </p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <p class="text-xs text-gray-600 font-medium">Responses</p>
+          <p class="text-sm font-semibold text-gray-900 mt-1">
+            <%= @questionnaire.questionnaire_responses.count %>
+          </p>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <p class="text-xs text-gray-600 font-medium">People Invited</p>
+          <p class="text-sm font-semibold text-gray-900 mt-1">
+            <%= @questionnaire.questionnaire_invitations.count %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Link -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Share Link</h3>
+    </div>
+    <div class="p-6">
+      <div class="flex items-center gap-3">
+        <input type="text" readonly value="<%= @questionnaire.respond_url %>" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-gray-50" id="questionnaire-url">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('questionnaire-url').value)" class="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition text-sm">
+          Copy Link
+        </button>
+      </div>
+      <p class="mt-2 text-sm text-gray-600">Only people you've invited can access this questionnaire</p>
+    </div>
+  </div>
+
+  <!-- Questions -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+        Questions
+        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @questions.count %>)</span>
+      </h3>
+    </div>
+    <div class="p-6">
+      <% if @questions.any? %>
+        <div class="space-y-3">
+          <% @questions.each do |question| %>
+            <div class="p-3 border border-gray-200 rounded-lg">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">
+                    <%= question.text %>
+                    <% if question.required %>
+                      <span class="text-pink-500 text-xs">(required)</span>
+                    <% end %>
+                  </p>
+                  <p class="text-xs text-gray-500 mt-1"><%= question.question_type.titleize %></p>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-600">
+          No questions yet. <%= link_to "Add questions", form_manage_production_questionnaire_path(@production, @questionnaire), class: "text-pink-500 hover:text-pink-600" %>
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Invited People -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+        Invited People
+        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @questionnaire.questionnaire_invitations.count %>)</span>
+      </h3>
+      <%= link_to "Invite People", "#", class: "text-sm text-pink-500 hover:text-pink-600", data: { action: "click->modal#open" } %>
+    </div>
+    <div class="p-6">
+      <% if @questionnaire.questionnaire_invitations.any? %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <% @questionnaire.questionnaire_invitations.includes(:person).each do |invitation| %>
+            <div class="p-3 border border-gray-200 rounded-lg">
+              <div class="flex items-center gap-3">
+                <% headshot_variant = invitation.person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: invitation.person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                    <%= invitation.person.initials %>
+                  </div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate"><%= invitation.person.name %></p>
+                  <% if @questionnaire.questionnaire_responses.exists?(person: invitation.person) %>
+                    <p class="text-xs text-green-600">Responded</p>
+                  <% else %>
+                    <p class="text-xs text-gray-500">Not yet responded</p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-600">
+          No one invited yet. Invite people to allow them to respond to this questionnaire.
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Delete Button -->
+  <div class="flex justify-end">
+    <%= button_to "Delete Questionnaire", manage_production_questionnaire_path(@production, @questionnaire), method: :delete, data: { confirm: "Are you sure you want to delete this questionnaire? This will also delete all responses." }, class: "px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm" %>
+  </div>
+</div>

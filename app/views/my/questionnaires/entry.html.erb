@@ -1,0 +1,47 @@
+<% content_for :title, "#{@production.name} - #{@questionnaire.title}" %>
+
+<% content_for :head do %>
+  <meta name="description" content="Respond to questionnaire for <%= @production.name %>">
+  <link rel="canonical" href="<%= questionnaire_entry_url(@questionnaire.token) %>">
+<% end %>
+
+<div class="min-h-screen bg-white flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-slate-900 mb-2 coustard-regular"><%= @production.name %></h1>
+      <p class="text-lg text-slate-600"><%= @questionnaire.title %></p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
+      <p class="text-sm text-gray-600 mb-6">Please sign in to respond to this questionnaire.</p>
+
+      <%= form_with(url: handle_signin_path, method: :post, data: { turbo: false }, class: "space-y-4") do |form| %>
+        <div>
+          <%= form.label :email_address, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.text_field :email_address, class: "block w-full rounded-lg border border-gray-300 px-3 py-2", autofocus: true %>
+        </div>
+
+        <div>
+          <%= form.label :password, "Password", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.password_field :password, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+        </div>
+
+        <%= form.submit "Sign In", class: "w-full rounded-lg px-4 py-3 text-white bg-pink-500 hover:bg-pink-600 font-semibold cursor-pointer transition shadow-sm hover:shadow-md" %>
+      <% end %>
+
+      <div class="mt-4 text-center text-sm">
+        <p class="text-gray-600">
+          Don't have an account?
+          <%= link_to "Sign up", signup_path, class: "text-pink-500 hover:text-pink-600 font-medium" %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coco Link -->
+  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+    <%= link_to my_dashboard_path do %>
+      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,51 @@
+<% content_for :title, "Responses - #{@questionnaire.title}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Questionnaires", manage_production_questionnaires_path(@production)],
+      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
+    ],
+    text: "Responses",
+    links: []
+  } %>
+
+  <div class="mb-6">
+    <p class="text-sm text-gray-600">
+      <%= @responses.count %> <%= @responses.count == 1 ? 'response' : 'responses' %> received
+    </p>
+  </div>
+
+  <% if @responses.any? %>
+    <div class="space-y-3">
+      <% @responses.each do |response| %>
+        <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+          <div class="flex items-center gap-3">
+            <% headshot_variant = response.person.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: response.person.name, class: "w-12 h-12 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold">
+                <%= response.person.initials %>
+              </div>
+            <% end %>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900"><%= response.person.name %></p>
+              <p class="text-xs text-gray-500">
+                Submitted <%= response.created_at.strftime("%B %-d, %Y at %l:%M %p") %>
+              </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-12">
+      <p class="text-gray-600">No responses yet</p>
+    </div>
+  <% end %>
+</div>

@@ -107,4 +107,37 @@
     <% end %>
   </div>
 
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Questionnaires",
+    links: [
+      {text: "Questionnaires", path: my_questionnaires_path}
+    ]
+  } %>
+
+  <div class="pb-10">
+    <% if @pending_questionnaires.any? %>
+      <%= link_to my_questionnaires_path, class: "space-y-4" do %>
+        <% @pending_questionnaires.each do |questionnaire| %>
+
+          <% production = questionnaire.production %>
+
+          <div class="text-xs sm:text-sm">
+            <div class="font-bold"><%= production.name %></div>
+            <%= questionnaire.title %>
+            <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
+              - <span class="text-green-600">Responded</span>
+            <% else %>
+              - <span class="text-pink-500">Not yet responded</span>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    <% else %>
+      <p class="text-gray-500 text-sm pt-2">
+        You don't have any pending questionnaires.
+      </p>
+    <% end %>
+  </div>
+
 </div>
