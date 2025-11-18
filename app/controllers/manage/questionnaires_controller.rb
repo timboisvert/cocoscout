@@ -18,7 +18,7 @@ class Manage::QuestionnairesController < Manage::ManageController
     @questionnaire = @production.questionnaires.new(questionnaire_params)
 
     if @questionnaire.save
-      redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire created successfully"
+      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire created successfully"
     else
       render :new, status: :unprocessable_entity
     end
@@ -101,7 +101,7 @@ class Manage::QuestionnairesController < Manage::ManageController
                                .order(created_at: :desc)
   end
 
-  def response
+  def show_response
     @response = @questionnaire.questionnaire_responses.find(params[:response_id])
     @questions = @questionnaire.questions.order(:position)
     @answers = {}

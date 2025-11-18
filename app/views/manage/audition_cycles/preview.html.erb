@@ -24,22 +24,36 @@
     </div>
   </div>
 
-  <div class="w-full max-w-4xl mx-auto mt-15 mb-20">
-    <h1 class="font-bold text-4xl pt-4"><%= @production.name %></h1>
+  <div class="min-h-screen bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 mt-16 mb-20">
 
-    <% if @audition_cycle.audition_type == "in_person" %>
-      <h1 class="font-bold text-2xl pt-5">Sign up for an in-person audition</h1>
-    <% elsif @audition_cycle.audition_type == "video_upload" %>
-      <h1 class="font-bold text-2xl pt-5">Submit a video audition</h1>
-    <% end %>
-
-    <% if @audition_cycle.header_text.present? %>
-      <div class="pt-5">
-        <%= @audition_cycle.header_text %>
+      <!-- Full-Width Header -->
+      <div class="mb-8 sm:mb-10">
+        <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
+        <% if @audition_cycle.audition_type == "in_person" %>
+          <p class="text-lg text-slate-600">Sign up for an in-person audition</p>
+        <% elsif @audition_cycle.audition_type == "video_upload" %>
+          <p class="text-lg text-slate-600">Submit a video audition</p>
+        <% end %>
       </div>
-    <% end %>
 
-    <%= form_with(model: @audition_request, url: "", method: :get, class: "contents", data: { turbo: false }) do |form| %>
+      <!-- Two Column Layout: Header Text & Form -->
+      <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+
+        <!-- Left Column: Header Text -->
+        <div class="space-y-6">
+          <% if @audition_cycle.header_text.present? %>
+            <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+              <div class="prose prose-slate max-w-none text-slate-700">
+                <%= @audition_cycle.header_text %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Right Column: Form -->
+        <div>
+          <%= form_with(model: @audition_request, url: "", method: :get, data: { turbo: false }, class: "space-y-4") do |form| %>
 
       <%
         # Show person form if there's an error, or if profile is incomplete
@@ -49,9 +63,9 @@
                           Current.user.person.name == Current.user.email_address.split("@").first
       %>
 
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
-
-        <div class="p-5 flex items-top gap-4">
+            <!-- Profile Section -->
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
+              <div class="p-5 flex items-top gap-4">
 
           <% headshot_url = safe_headshot_url(Current.user.person) %>
           <% if headshot_url %>
@@ -83,18 +97,17 @@
 
         </div>
 
-        <div class="px-5 hidden" id="person-form-div">
-          <%= form.fields_for @person do |person_form| %>
-            <%= render "shared/person_form", person_form: person_form %>
-          <% end %>
-        </div>
+              <div class="px-5 pb-5 <%= 'hidden' unless show_person_form %>" id="person-form-div">
+                <%= form.fields_for @person do |person_form| %>
+                  <%= render "shared/person_form", person_form: person_form %>
+                <% end %>
+              </div>
+            </div>
 
-      </div>
-
-      <% if @audition_cycle.audition_type == "video_upload" %>
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm my-6">
-          <div class="p-5 flex items-top gap-4">
-            <div class="w-full">
+            <!-- Video Upload Section -->
+            <% if @audition_cycle.audition_type == "video_upload" %>
+              <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
+                <div class="p-5">
               <% if @audition_cycle.video_field_text.present? %>
                 <div class="text-sm text-gray-500 mb-4">
                   <%= @audition_cycle.video_field_text %>
@@ -108,14 +121,14 @@
                   <%= form.label :video_url, "Video URL is required", class: "text-pink-600"  %>
               <% end %>
 
-              <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_request.errors[:video_url].none?, "border-pink-500": @audition_request.errors[:video_url].any?}] %>
-            </div>
-          </div>
-        </div>
-      <% end %>
+                  <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_request.errors[:video_url].none?, "border-pink-500": @audition_request.errors[:video_url].any?}] %>
+                </div>
+              </div>
+            <% end %>
 
-      <% if @audition_cycle.include_availability_section && @shows.present? %>
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mb-6">
+            <!-- Availability Section -->
+            <% if @audition_cycle.include_availability_section && @shows.present? %>
+              <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
           <p class="text-sm text-gray-500 mb-4">
             Please indicate your availability for the following shows & events. <% if @audition_cycle.require_all_availability %><span class="text-sm text-pink-500">(required)</span><% end %>
           </p>
@@ -160,13 +173,14 @@
                   <% end %>
                 </div>
               </div>
-            <% end %>
+              <% end %>
+            </div>
           </div>
-        </div>
-      <% end %>
+        <% end %>
 
-      <% if @questions.any? %>
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mb-6 space-y-5">
+        <!-- Questions Section -->
+        <% if @questions.any? %>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-5">
           <% @questions.each do |question| %>
             <div class="">
               <label>
@@ -183,18 +197,18 @@
         </div>
       <% end %>
 
-      <div class="pb-5">
-
+        <!-- Submit Button -->
         <%
           if @audition_cycle.audition_type == "in_person"
-            submit_text = "Sign up"
+            submit_text = "Sign up (Preview Mode)"
           elsif @audition_cycle.audition_type == "video_upload"
-            submit_text = "Submit video audition"
+            submit_text = "Submit video audition (Preview Mode)"
           end
         %>
-        <%= form.submit submit_text, class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+        <%= form.submit submit_text, class: "w-full rounded-lg px-4 py-3 text-white bg-pink-300 font-semibold cursor-not-allowed", disabled: true %>
+          <% end %>
+        </div>
+
       </div>
-
-    <% end %>
-
+    </div>
   </div>

@@ -244,8 +244,7 @@ Rails.application.routes.draw do
         end
       end
 
-      get "questionnaires", to: "questionnaires#index", as: "questionnaires"
-      resources :questionnaires, except: [ :index ] do
+      resources :questionnaires do
         member do
           get    "form",              to: "questionnaires#form",              as: "form"
           get    "preview",           to: "questionnaires#preview",           as: "preview"
