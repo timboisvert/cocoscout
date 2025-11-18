@@ -45,9 +45,9 @@ RSpec.describe Questionnaire, type: :model do
   end
 
   describe "rich text" do
-    it "has rich text header_text" do
+    it "has rich text instruction_text" do
       questionnaire = create(:questionnaire)
-      expect(questionnaire).to respond_to(:header_text)
+      expect(questionnaire).to respond_to(:instruction_text)
     end
   end
 
@@ -72,21 +72,21 @@ RSpec.describe Questionnaire, type: :model do
       expect(questionnaire.require_all_availability).to be false
     end
 
-    it "serializes availability_event_types as array" do
-      questionnaire = create(:questionnaire, availability_event_types: [ "show", "rehearsal" ])
-      expect(questionnaire.availability_event_types).to eq([ "show", "rehearsal" ])
-      expect(questionnaire.availability_event_types).to be_a(Array)
+    it "serializes availability_show_ids as array" do
+      questionnaire = create(:questionnaire, availability_show_ids: [ "1", "2" ])
+      expect(questionnaire.availability_show_ids).to eq([ "1", "2" ])
+      expect(questionnaire.availability_show_ids).to be_a(Array)
     end
 
-    it "defaults availability_event_types to empty array" do
+    it "defaults availability_show_ids to empty array" do
       questionnaire = create(:questionnaire)
-      expect(questionnaire.availability_event_types).to eq([])
+      expect(questionnaire.availability_show_ids).to eq([])
     end
 
-    it "persists availability_event_types correctly" do
-      questionnaire = create(:questionnaire, availability_event_types: [ "show", "meeting" ])
+    it "persists availability_show_ids correctly" do
+      questionnaire = create(:questionnaire, availability_show_ids: [ "1", "3" ])
       questionnaire.reload
-      expect(questionnaire.availability_event_types).to eq([ "show", "meeting" ])
+      expect(questionnaire.availability_show_ids).to eq([ "1", "3" ])
     end
   end
 

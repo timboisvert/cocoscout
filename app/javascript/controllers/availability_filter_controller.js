@@ -1,10 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["checkboxes", "eventList", "checkbox", "enableCheckbox", "eventSection", "count"]
+    static targets = ["checkboxes", "showList", "showListToggle", "checkbox", "enableCheckbox", "eventSection", "count"]
 
     connect() {
-        this.updateEventList()
+        this.updateShowList()
     }
 
     toggleSection() {
@@ -18,85 +18,80 @@ export default class extends Controller {
         }
     }
 
+    toggleShowList(event) {
+        event.preventDefault()
+        if (this.hasShowListTarget) {
+            this.showListTarget.classList.toggle("hidden")
+        }
+    }
+
     updateFilter() {
-        const allSelected = document.querySelector('input[name="event_filter_mode"][value="all"]').checked
+        const allSelected = document.querySelector('input[name="show_filter_mode"][value="all"]')?.checked
 
         if (allSelected) {
             // Hide checkboxes
-            this.checkboxesTarget.classList.add("hidden")
-            // Uncheck all event type checkboxes
+            if (this.hasCheckboxesTarget) {
+                this.checkboxesTarget.classList.add("hidden")
+            }
+            // Uncheck all show checkboxes
             this.checkboxTargets.forEach(checkbox => {
                 checkbox.checked = false
             })
-            // Show all events
-            this.showAllEvents()
+            // Show the toggle button
+            if (this.hasShowListToggleTarget) {
+                this.showListToggleTarget.classList.remove("hidden")
+            }
+            // Update count to show all shows
+            this.updateCount(this.getShowListItems().length)
         } else {
             // Show checkboxes
-            this.checkboxesTarget.classList.remove("hidden")
-            // Update event list based on checked boxes
-            this.updateEventList()
+            if (this.hasCheckboxesTarget) {
+                this.checkboxesTarget.classList.remove("hidden")
+            }
+            // Hide the toggle button
+            if (this.hasShowListToggleTarget) {
+                this.showListToggleTarget.classList.add("hidden")
+            }
+            // Hide the show list
+            if (this.hasShowListTarget) {
+                this.showListTarget.classList.add("hidden")
+            }
+            // Update show list based on checked boxes
+            this.updateShowList()
         }
     }
 
-    updateEventList() {
-        const allSelected = document.querySelector('input[name="event_filter_mode"][value="all"]').checked
+    updateShowList() {
+        const allSelected = document.querySelector('input[name="show_filter_mode"][value="all"]')?.checked
 
         if (allSelected) {
-            this.showAllEvents()
+            // When all shows are selected, just update the count
+            const showItems = this.getShowListItems()
+            this.updateCount(showItems.length)
             return
         }
 
-        // Get selected event types
-        const selectedTypes = this.checkboxTargets
+        // Get selected show IDs
+        const selectedShowIds = this.checkboxTargets
             .filter(checkbox => checkbox.checked)
             .map(checkbox => checkbox.value)
 
-        // Always show all events, but style based on selection
-        if (this.hasEventListTarget) {
-            const eventItems = this.eventListTarget.querySelectorAll('[data-event-type]')
-            let selectedCount = 0
-
-            if (selectedTypes.length === 0) {
-                // If nothing selected, show all with a muted style
-                eventItems.forEach(item => {
-                    item.classList.remove("hidden")
-                    item.classList.add("opacity-40")
-                })
-                selectedCount = 0
-            } else {
-                // Show all events, but gray out unselected ones
-                eventItems.forEach(item => {
-                    const eventType = item.dataset.eventType
-                    item.classList.remove("hidden")
-                    if (selectedTypes.includes(eventType)) {
-                        item.classList.remove("opacity-40")
-                        selectedCount++
-                    } else {
-                        item.classList.add("opacity-40")
-                    }
-                })
-            }
-
-            // Update count display
-            this.updateCount(selectedCount)
-        }
+        // Update count
+        this.updateCount(selectedShowIds.length)
     }
 
-    showAllEvents() {
-        if (this.hasEventListTarget) {
-            const eventItems = this.eventListTarget.querySelectorAll('[data-event-type]')
-            eventItems.forEach(item => {
-                item.classList.remove("hidden")
-                item.classList.remove("opacity-40")
-            })
-            // When showing all events, count is the total
-            this.updateCount(eventItems.length)
+    getShowListItems() {
+        if (this.hasShowListTarget) {
+            return this.showListTarget.querySelectorAll('[data-show-id]')
         }
+        return []
     }
 
     updateCount(count) {
         if (this.hasCountTarget) {
-            this.countTarget.textContent = count
+            this.countTargets.forEach(target => {
+                target.textContent = count
+            })
         }
     }
 }

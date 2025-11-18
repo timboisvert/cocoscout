@@ -34,9 +34,9 @@ class My::SubmitAuditionRequestController < ApplicationController
       @production = @audition_cycle.production
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-      # Filter by event types if specified
-      if @audition_cycle.availability_event_types.present?
-        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
+      # Filter by show ids if specified
+      if @audition_cycle.availability_show_ids.present?
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids)
       end
 
       # Load existing availability data
@@ -131,8 +131,8 @@ class My::SubmitAuditionRequestController < ApplicationController
     if @audition_cycle.include_availability_section && @audition_cycle.require_all_availability
       # Load shows to check (only future dates)
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-      if @audition_cycle.availability_event_types.present?
-        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
+      if @audition_cycle.availability_show_ids.present?
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids)
       end
 
       # Check if all shows have a response

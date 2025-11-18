@@ -9,7 +9,7 @@
     ],
     text: "Preview Questionnaire",
     links: [
-      {text: "Edit Form", path: form_manage_production_questionnaire_path(@production, @questionnaire)}
+      {text: "Edit Questionnaire", path: form_manage_production_questionnaire_path(@production, @questionnaire)}
     ]
   } %>
 
@@ -53,6 +53,66 @@
       <!-- Right Column: Form -->
       <div>
         <%= form_with url: "#", method: :get, data: { turbo: false }, class: "space-y-4", onsubmit: "event.preventDefault(); alert('This is a preview - form submission is disabled'); return false;" do |form| %>
+
+          <!-- Availability Section -->
+          <% if @questionnaire.include_availability_section && @shows.present? %>
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
+              <p class="text-sm text-gray-500 mb-4">
+                Please indicate your availability for the following shows & events. <% if @questionnaire.require_all_availability %><span class="text-pink-500">(required)</span><% end %>
+              </p>
+
+              <div class="space-y-2">
+                <% @shows.each do |show| %>
+                  <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                    <div class="flex-1 min-w-0 mr-4">
+                      <div class="text-sm font-semibold text-gray-900">
+                        <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                        <%= show.date_and_time.strftime("%l:%M %p") %>
+                      </div>
+                      <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type
+                          when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                          when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                          else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                        end %>">
+                          <%= show.event_type.titleize %>
+                        </span>
+                        <% if show.secondary_name.present? %>
+                          <span class="text-xs text-gray-600"><%= show.secondary_name %></span>
+                        <% end %>
+                        <% if show.location.present? %>
+                          <span class="text-xs text-gray-500"><%= show.location.name %></span>
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <div class="flex-shrink-0">
+                      <div class="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                        <input type="radio" name="availability[<%= show.id %>]" value="available" id="preview_availability_<%= show.id %>_available" class="sr-only peer/available" disabled>
+                        <label for="preview_availability_<%= show.id %>_available" class="w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-default flex items-center justify-center rounded-l-lg border-r-0 bg-white text-gray-700">
+                          <span class="sm:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          </span>
+                          <span class="hidden sm:inline">Available</span>
+                        </label>
+                        <input type="radio" name="availability[<%= show.id %>]" value="unavailable" id="preview_availability_<%= show.id %>_unavailable" class="sr-only peer/unavailable" disabled>
+                        <label for="preview_availability_<%= show.id %>_unavailable" class="w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-default flex items-center justify-center rounded-r-lg bg-white text-gray-700">
+                          <span class="sm:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </span>
+                          <span class="hidden sm:inline">Unavailable</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
 
           <!-- Questions Section -->
           <% if @questions.any? %>

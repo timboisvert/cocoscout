@@ -25,8 +25,7 @@ class AuditionCycle < ApplicationRecord
     video_upload: "video_upload"
   }
 
-  # Serialize availability_event_types as an array
-  serialize :availability_event_types, coder: JSON
+  serialize :availability_show_ids, type: Array, coder: YAML
 
   def production_name
     self.production.name

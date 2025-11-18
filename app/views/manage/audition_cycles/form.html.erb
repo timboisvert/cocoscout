@@ -22,7 +22,7 @@
       <div data-show-toggle-target="icon"></div>
     </div>
     <div data-show-toggle-target="content">
-      <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
+      <%= form_with model: [:manage, @production, @audition_cycle], class: "contents" do |form| %>
         <div class="p-4" data-controller="availability-filter">
           <p class="text-sm text-gray-500 mb-4">Include a section on the sign-up form where auditionees can indicate their availability for scheduled events.</p>
 
@@ -37,69 +37,72 @@
               <%= form.label :require_all_availability, "Require auditionees to enter availability in order to submit sign-up form", class: "ml-2 text-sm text-gray-700" %>
             </div>
 
-          <div class="flex flex-col md:flex-row gap-6">
-            <!-- Left side: Event type selection -->
-            <div class="flex-1">
-              <label class="text-sm font-medium text-gray-700 block mb-2">Include:</label>
-              <div class="space-y-2">
-                <div>
-                  <%= radio_button_tag "event_filter_mode", "all", @audition_cycle.availability_event_types.blank?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
-                  <%= label_tag "event_filter_mode_all", "All Shows & Events", class: "ml-2 text-sm text-gray-700" %>
-                </div>
-                <div>
-                  <%= radio_button_tag "event_filter_mode", "specific", @audition_cycle.availability_event_types.present?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
-                  <%= label_tag "event_filter_mode_specific", "Only specific show & event types", class: "ml-2 text-sm text-gray-700" %>
-                </div>
-              </div>
-
-              <%= hidden_field_tag "audition_cycle[availability_event_types][]", "" %>
-              <div class="ml-6 mt-2 space-y-1 <%= @audition_cycle.availability_event_types.present? ? '' : 'hidden' %>" data-availability-filter-target="checkboxes">
-                <% Show.event_types.keys.each do |event_type| %>
-                  <div>
-                    <%= check_box_tag "audition_cycle[availability_event_types][]", event_type, @audition_cycle.availability_event_types&.include?(event_type), id: "audition_cycle_availability_event_types_#{event_type}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateEventList", availability_filter_target: "checkbox" } %>
-                    <%= label_tag "audition_cycle_availability_event_types_#{event_type}", event_type.titleize.pluralize, class: "ml-2 text-sm text-gray-700 cursor-pointer" %>
-                  </div>
+            <label class="text-sm font-medium text-gray-700 block mb-2">Include:</label>
+            <div class="space-y-2">
+              <div>
+                <%= radio_button_tag "show_filter_mode", "all", @audition_cycle.availability_show_ids.blank?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
+                <%= label_tag "show_filter_mode_all", "All Shows & Events", class: "ml-2 text-sm text-gray-700" %>
+                <% if @shows.any? %>
+                  <button type="button" class="ml-2 text-xs text-pink-500 underline cursor-pointer <%= @audition_cycle.availability_show_ids.present? ? 'hidden' : '' %>" data-action="click->availability-filter#toggleShowList" data-availability-filter-target="showListToggle">
+                    Show Shows & Events (<span data-availability-filter-target="count"><%= @shows.count %></span>)
+                  </button>
                 <% end %>
               </div>
 
-              <div class="mt-2">
-                <%= link_to "Manage Shows & Events", manage_production_shows_path(@production), class: "text-xs text-pink-500 underline" %>
-              </div>
-            </div>
-
-            <!-- Right side: Events list -->
-            <div class="flex-1">
-              <% if @production.shows.any? %>
-                <%
-                  selected_count = if @audition_cycle.availability_event_types.present?
-                    @production.shows.where(event_type: @audition_cycle.availability_event_types).count
-                  else
-                    @production.shows.count
-                  end
-                %>
-                <h4 class="text-sm font-medium text-gray-700 mb-2">Selected Shows & Events (<span data-availability-filter-target="count"><%= selected_count %></span>):</h4>
-                <div class="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                  <ul class="space-y-1 text-sm" data-availability-filter-target="eventList">
-                    <% @production.shows.order(:date_and_time).each do |show| %>
-                      <li class="flex justify-between" data-event-type="<%= show.event_type %>">
+              <% if @shows.any? %>
+                <div class="hidden ml-6 bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto" data-availability-filter-target="showList">
+                  <ul class="space-y-1 text-sm">
+                    <% @shows.each do |show| %>
+                      <li class="flex justify-between" data-show-id="<%= show.id %>">
                         <span class="text-gray-900">
-                          <%= show.event_type.titleize %>
+                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type
+                            when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                            when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                            else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                          end %>">
+                            <%= show.event_type.titleize %>
+                          </span>
+                          <%= show.date_and_time.strftime("%a, %b %-d at %-l:%M %p") %>
                           <% if show.secondary_name.present? %>
                             - <%= show.secondary_name %>
                           <% end %>
                         </span>
-                        <span class="text-gray-500 text-xs"><%= show.date_and_time.strftime("%b %d") %></span>
                       </li>
                     <% end %>
                   </ul>
                 </div>
-              <% else %>
-                <h4 class="text-sm font-medium text-gray-700 mb-2">Selected Shows & Events:</h4>
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p class="text-sm text-yellow-800">No shows or events have been scheduled. <%= link_to "Schedule Shows & Events", new_manage_production_show_path(@production), class: "font-medium text-yellow-600 hover:text-yellow-500" %></p>
+              <% end %>
+
+              <div>
+                <%= radio_button_tag "show_filter_mode", "specific", @audition_cycle.availability_show_ids.present?, class: "rounded-full accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateFilter" } %>
+                <%= label_tag "show_filter_mode_specific", "Only specific shows & events", class: "ml-2 text-sm text-gray-700" %>
+              </div>
+            </div>
+
+            <%= hidden_field_tag "audition_cycle[availability_show_ids][]", "" %>
+            <div class="ml-6 mt-2 space-y-1 <%= @audition_cycle.availability_show_ids.present? ? '' : 'hidden' %>" data-availability-filter-target="checkboxes">
+              <% @shows.each do |show| %>
+                <div>
+                  <%= check_box_tag "audition_cycle[availability_show_ids][]", show.id, @audition_cycle.availability_show_ids&.include?(show.id), id: "audition_cycle_availability_show_ids_#{show.id}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateShowList", availability_filter_target: "checkbox" } %>
+                  <%= label_tag "audition_cycle_availability_show_ids_#{show.id}", class: "ml-2 text-sm text-gray-700 cursor-pointer" do %>
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type
+                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                    end %>">
+                      <%= show.event_type.titleize %>
+                    </span>
+                    <%= show.date_and_time.strftime("%a, %b %-d at %-l:%M %p") %>
+                    <% if show.secondary_name.present? %>
+                      <span class="text-gray-500">- <%= show.secondary_name %></span>
+                    <% end %>
+                  <% end %>
                 </div>
               <% end %>
             </div>
+
+            <div class="mt-2">
+              <%= link_to "Manage Shows & Events", manage_production_shows_path(@production), class: "text-xs text-pink-500 underline" %>
             </div>
           </div>
 

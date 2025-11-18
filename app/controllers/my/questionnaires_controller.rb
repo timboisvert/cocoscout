@@ -38,6 +38,22 @@ class My::QuestionnairesController < ApplicationController
       return
     end
 
+    # Load shows for availability section if enabled
+    if @questionnaire.include_availability_section
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+
+      # Filter by show ids if specified
+      if @questionnaire.availability_show_ids.present?
+        @shows = @shows.where(id: @questionnaire.availability_show_ids)
+      end
+
+      # Load existing availability data
+      @availability = {}
+      ShowAvailability.where(person: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+        @availability["#{show_availability.show_id}"] = show_availability.status.to_s
+      end
+    end
+
     # Check if they've already responded
     if @questionnaire.questionnaire_responses.exists?(person: @person)
       @questionnaire_response = @questionnaire.questionnaire_responses.find_by(person: @person)
@@ -116,8 +132,40 @@ class My::QuestionnairesController < ApplicationController
       end
     end
 
+    # Validate required availability if enabled
+    @missing_availability = false
+    if @questionnaire.include_availability_section && @questionnaire.require_all_availability
+      # Load shows to check (only future dates)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+      if @questionnaire.availability_show_ids.present?
+        @shows = @shows.where(id: @questionnaire.availability_show_ids)
+      end
+
+      # Check if all shows have a response
+      @shows.each do |show|
+        if params[:availability].blank? || params[:availability]["#{show.id}"].blank?
+          @missing_availability = true
+          break
+        end
+      end
+    end
+
+    # Save availability data if provided
+    if params[:availability].present?
+      params[:availability].each do |show_id, status|
+        next if status.blank?
+
+        show_availability = ShowAvailability.find_or_initialize_by(
+          person: @person,
+          show_id: show_id
+        )
+        show_availability.status = status
+        show_availability.save!
+      end
+    end
+
     # Validate and save
-    if @missing_required_questions.any?
+    if @missing_required_questions.any? || @missing_availability
       render :form, status: :unprocessable_entity
     elsif @questionnaire_response.valid?
       @questionnaire_response.save!

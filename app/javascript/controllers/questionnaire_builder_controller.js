@@ -48,9 +48,9 @@ export default class extends Controller {
                 </form>
             </div>
         `;
-        
+
         this.showModal(modalContent);
-        
+
         // Set the initial content
         const editor = document.querySelector('trix-editor');
         if (editor) {
@@ -58,7 +58,7 @@ export default class extends Controller {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = instructionTextContent;
             const textContent = tempDiv.textContent || tempDiv.innerText || '';
-            
+
             // Only set if there's actual content (not the placeholder text)
             if (textContent.trim() && !textContent.includes('Click to add instruction text')) {
                 editor.editor.loadHTML(instructionTextContent);
@@ -70,9 +70,9 @@ export default class extends Controller {
         event.preventDefault();
         const form = event.target;
         const instructionText = form.querySelector('#instruction_text_input').value;
-        const url = form.closest('[data-controller="questionnaire-builder"]').dataset.updateHeaderTextUrl || 
-                    window.location.pathname.replace('/build', '/update_header_text');
-        
+        const url = form.closest('[data-controller="questionnaire-builder"]').dataset.updateHeaderTextUrl ||
+            window.location.pathname.replace('/build', '/update_header_text');
+
         try {
             const response = await fetch(url, {
                 method: 'PATCH',
@@ -83,7 +83,7 @@ export default class extends Controller {
                 },
                 body: JSON.stringify({ instruction_text: instructionText })
             });
-            
+
             if (response.ok) {
                 const turboStream = await response.text();
                 Turbo.renderStreamMessage(turboStream);

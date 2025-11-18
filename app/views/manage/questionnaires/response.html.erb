@@ -12,34 +12,122 @@
     links: []
   } %>
 
-  <!-- Person Info -->
-  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Person</h3>
-    </div>
-    <div class="p-6">
-      <div class="flex items-center gap-4">
+  <!-- Person Information Card -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
+    <div class="flex flex-col sm:flex-row">
+      <!-- Headshot Section -->
+      <div class="flex-shrink-0 sm:w-48 bg-gray-50 flex items-center justify-center p-4">
         <% headshot_variant = @response.person.safe_headshot_variant(:thumb) %>
         <% if headshot_variant %>
-          <%= image_tag headshot_variant, alt: @response.person.name, class: "w-16 h-16 rounded-lg object-cover" %>
+          <%= image_tag headshot_variant, alt: @response.person.name, class: "rounded-lg shadow-sm w-full max-w-[180px] aspect-square object-cover border border-gray-200" %>
         <% else %>
-          <div class="w-16 h-16 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-lg">
-            <%= @response.person.initials %>
+          <div class="w-full max-w-[180px] aspect-square rounded-lg bg-pink-100 flex items-center justify-center border border-gray-300">
+            <span class="text-pink-600 font-bold text-5xl"><%= @response.person.initials %></span>
           </div>
         <% end %>
-        <div>
-          <p class="text-lg font-semibold text-gray-900"><%= @response.person.name %></p>
-          <p class="text-sm text-gray-600"><%= @response.person.email %></p>
-          <p class="text-xs text-gray-500 mt-1">
-            Submitted <%= @response.created_at.strftime("%B %-d, %Y at %l:%M %p") %>
-          </p>
+      </div>
+
+      <!-- Details Section -->
+      <div class="flex-1 p-6">
+        <div class="space-y-4">
+          <!-- Name -->
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">
+              <%= @response.person.name %>
+            </h2>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10">
+                Response Submitted
+              </span>
+            </div>
+          </div>
+
+          <!-- Person Details -->
+          <div class="space-y-2 text-sm">
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+              <span class="text-gray-900 font-medium"><%= @response.person.email %></span>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span class="text-gray-700">
+                Submitted <%= @response.created_at.strftime("%B %-d, %Y") %> at <%= @response.created_at.strftime("%l:%M %p") %>
+              </span>
+            </div>
+
+            <% if @response.updated_at != @response.created_at %>
+              <div class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                <span class="text-gray-700">
+                  Updated <%= @response.updated_at.strftime("%B %-d, %Y") %> at <%= @response.updated_at.strftime("%l:%M %p") %>
+                </span>
+              </div>
+            <% end %>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Availability -->
+  <% if @questionnaire.include_availability_section && @shows.present? %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Availability</h3>
+      </div>
+      <div class="p-6">
+        <div class="space-y-3">
+          <% @shows.each do |show| %>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900">
+                  <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> at
+                  <%= show.date_and_time.strftime("%l:%M %p") %>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <% event_type_badge_classes = case show.event_type
+                    when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                    when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                    else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                  end %>
+                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                    <%= show.event_type.titleize %>
+                  </span>
+                  <% if show.secondary_name.present? %>
+                    <span class="text-xs text-gray-600"><%= show.secondary_name %></span>
+                  <% end %>
+                </div>
+              </div>
+              <div class="ml-4">
+                <% status = @availability["#{show.id}"] %>
+                <% if status == "available" %>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Available
+                  </span>
+                <% elsif status == "unavailable" %>
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    Unavailable
+                  </span>
+                <% else %>
+                  <span class="text-xs text-gray-500 italic">Not specified</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <!-- Responses -->
-  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden <%= @questionnaire.include_availability_section && @shows.present? ? 'mt-6' : '' %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Responses</h3>
     </div>
@@ -61,17 +149,33 @@
                   <% begin %>
                     <% parsed_value = JSON.parse(answer_value) %>
                     <% if parsed_value.is_a?(Array) %>
-                      <ul class="list-disc list-inside">
-                        <% parsed_value.each do |item| %>
-                          <li class="text-sm text-gray-700"><%= item %></li>
-                        <% end %>
-                      </ul>
+                      <% if type_class.key == "ranking" %>
+                        <ol class="list-decimal list-inside">
+                          <% parsed_value.each do |item| %>
+                            <li class="text-sm text-gray-700"><%= item %></li>
+                          <% end %>
+                        </ol>
+                      <% else %>
+                        <ul class="list-disc list-inside">
+                          <% parsed_value.each do |item| %>
+                            <li class="text-sm text-gray-700"><%= item %></li>
+                          <% end %>
+                        </ul>
+                      <% end %>
                     <% elsif parsed_value.is_a?(Hash) %>
-                      <ul class="list-disc list-inside">
-                        <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
-                          <li class="text-sm text-gray-700"><%= key %></li>
-                        <% end %>
-                      </ul>
+                      <% if type_class.key == "ranking" %>
+                        <ol class="list-decimal list-inside">
+                          <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
+                            <li class="text-sm text-gray-700"><%= key %></li>
+                          <% end %>
+                        </ol>
+                      <% else %>
+                        <ul class="list-disc list-inside">
+                          <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
+                            <li class="text-sm text-gray-700"><%= key %></li>
+                          <% end %>
+                        </ul>
+                      <% end %>
                     <% else %>
                       <p class="text-sm text-gray-700"><%= answer_value %></p>
                     <% end %>

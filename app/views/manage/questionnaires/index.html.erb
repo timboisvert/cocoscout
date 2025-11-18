@@ -42,9 +42,15 @@
                 <span>
                   <%= questionnaire.questionnaire_invitations.count %> invited
                 </span>
-                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= questionnaire.accepting_responses ? 'bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
-                  <%= questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %>
-                </span>
+                <% if questionnaire.archived_at.present? %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                    Archived
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= questionnaire.accepting_responses ? 'bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
+                    <%= questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %>
+                  </span>
+                <% end %>
               </div>
             </div>
             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

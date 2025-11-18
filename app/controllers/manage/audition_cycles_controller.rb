@@ -62,6 +62,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
       @question.question_options.build if type_class&.needs_options?
     end
     @questions = @audition_cycle.questions.order(:position)
+    @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
   end
 
   def update
@@ -72,22 +73,22 @@ class Manage::AuditionCyclesController < Manage::ManageController
       params_to_update[:form_reviewed] = params_to_update[:form_reviewed] == "1"
     end
 
-    if params_to_update[:availability_event_types].present?
-      params_to_update[:availability_event_types] = params_to_update[:availability_event_types].reject(&:blank?)
-      params_to_update[:availability_event_types] = nil if params_to_update[:availability_event_types].empty?
+    if params_to_update[:availability_show_ids].present?
+      params_to_update[:availability_show_ids] = params_to_update[:availability_show_ids].reject(&:blank?).map(&:to_i)
+      params_to_update[:availability_show_ids] = nil if params_to_update[:availability_show_ids].empty?
     end
 
     if @audition_cycle.update(params_to_update)
       # Check if this is from the form page (availability, text sections, or form_reviewed)
       if params[:audition_cycle]&.key?(:include_availability_section) ||
-         params[:audition_cycle]&.key?(:availability_event_types) ||
+         params[:audition_cycle]&.key?(:availability_show_ids) ||
          params[:audition_cycle]&.key?(:instruction_text) ||
          params[:audition_cycle]&.key?(:video_field_text) ||
          params[:audition_cycle]&.key?(:success_text) ||
          params[:audition_cycle]&.keys == [ "form_reviewed" ]
 
         # Determine the appropriate notice message
-        if params[:audition_cycle]&.key?(:include_availability_section) || params[:audition_cycle]&.key?(:availability_event_types)
+        if params[:audition_cycle]&.key?(:include_availability_section) || params[:audition_cycle]&.key?(:availability_show_ids)
           notice_message = "Availability settings successfully updated"
         elsif params[:audition_cycle]&.key?(:instruction_text) || params[:audition_cycle]&.key?(:video_field_text) || params[:audition_cycle]&.key?(:success_text)
           notice_message = "Text successfully updated"
@@ -132,9 +133,9 @@ class Manage::AuditionCyclesController < Manage::ManageController
     if @audition_cycle.include_availability_section
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-      # Filter shows by selected event types if specified
-      if @audition_cycle.availability_event_types.present?
-        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
+      # Filter shows by selected show ids if specified
+      if @audition_cycle.availability_show_ids.present?
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids)
       end
 
       # Initialize empty availability data for preview
@@ -221,7 +222,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
   end
 
   def audition_cycle_params
-    params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :instruction_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_event_types: [])
+    params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :instruction_text, :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_show_ids: [])
   end
 
   def question_params

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_18_185635) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_18_203859) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -62,7 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_185635) do
   create_table "audition_cycles", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "audition_type", default: "in_person", null: false
-    t.text "availability_event_types"
+    t.text "availability_show_ids"
     t.datetime "casting_finalized_at"
     t.datetime "closes_at"
     t.datetime "created_at", null: false
@@ -333,7 +333,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_185635) do
   create_table "questionnaires", force: :cascade do |t|
     t.boolean "accepting_responses", default: true, null: false
     t.datetime "archived_at"
-    t.text "availability_event_types"
+    t.text "availability_show_ids"
     t.datetime "created_at", null: false
     t.boolean "include_availability_section", default: false, null: false
     t.integer "production_id", null: false

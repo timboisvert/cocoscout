@@ -43,8 +43,8 @@ class Manage::AuditionRequestsController < Manage::ManageController
     # Load availability data if enabled
     if @audition_cycle.include_availability_section
       @shows = @production.shows.order(:date_and_time)
-      if @audition_cycle.availability_event_types.present?
-        @shows = @shows.where(event_type: @audition_cycle.availability_event_types)
+      if @audition_cycle.availability_show_ids.present?
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids)
       end
 
       @availability = {}

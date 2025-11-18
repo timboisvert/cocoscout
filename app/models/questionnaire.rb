@@ -7,7 +7,7 @@ class Questionnaire < ApplicationRecord
 
   has_rich_text :instruction_text
 
-  serialize :availability_event_types, type: Array, coder: YAML
+  serialize :availability_show_ids, type: Array, coder: YAML
 
   validates :title, presence: true
   validates :token, presence: true, uniqueness: true

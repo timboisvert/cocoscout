@@ -8,9 +8,7 @@
     ],
     text: @questionnaire.title,
     links: [
-      {text: "Open Builder", path: build_manage_production_questionnaire_path(@production, @questionnaire)},
-      {text: "Edit", path: edit_manage_production_questionnaire_path(@production, @questionnaire)},
-      {text: "Form Builder", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
+      {text: "Edit Questionnaire", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
       {text: "Preview", path: preview_manage_production_questionnaire_path(@production, @questionnaire)},
       {text: "Responses", path: responses_manage_production_questionnaire_path(@production, @questionnaire)}
     ]
@@ -23,12 +21,22 @@
         <div class="p-3 bg-gray-50 rounded-lg">
           <p class="text-xs text-gray-600 font-medium mb-2">Status</p>
           <div class="flex flex-col gap-2">
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" <%= 'checked' if @questionnaire.accepting_responses %> class="sr-only peer" data-questionnaire-status-target="toggle" data-action="change->questionnaire-status#toggleStatus">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-              <span class="ms-3 text-sm font-medium text-gray-900" data-questionnaire-status-target="statusLabel"><%= @questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %></span>
-            </label>
-            <%= link_to "Archive this Questionnaire", archive_manage_production_questionnaire_path(@production, @questionnaire), method: :patch, data: { confirm: "Are you sure you want to archive this questionnaire? You can't undo this action.", "questionnaire-status-target": "archiveButton", turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600 #{'hidden' if @questionnaire.accepting_responses}" %>
+            <% if @questionnaire.archived_at.present? %>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+                  Archived
+                </span>
+                <span class="text-xs text-gray-500">on <%= @questionnaire.archived_at.strftime("%b %d, %Y") %></span>
+              </div>
+              <%= link_to "Unarchive this Questionnaire", unarchive_manage_production_questionnaire_path(@production, @questionnaire), method: :patch, data: { turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600" %>
+            <% else %>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" <%= 'checked' if @questionnaire.accepting_responses %> class="sr-only peer" data-questionnaire-status-target="toggle" data-action="change->questionnaire-status#toggleStatus">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                <span class="ms-3 text-sm font-medium text-gray-900" data-questionnaire-status-target="statusLabel"><%= @questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %></span>
+              </label>
+              <%= link_to "Archive this Questionnaire", archive_manage_production_questionnaire_path(@production, @questionnaire), method: :patch, data: { confirm: "Are you sure you want to archive this questionnaire?", "questionnaire-status-target": "archiveButton", turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600 #{'hidden' if @questionnaire.accepting_responses}" %>
+            <% end %>
           </div>
         </div>
         <div class="p-3 bg-gray-50 rounded-lg">
@@ -62,11 +70,51 @@
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        Invite People
+        <% if @questionnaire.archived_at.present? %>
+          Invited People
+        <% else %>
+          Invite People
+        <% end %>
       </h3>
     </div>
     <div class="p-6">
-      <%= form_with url: invite_people_manage_production_questionnaire_path(@production, @questionnaire), method: :post, local: true, data: { controller: "questionnaire-invitation" } do |form| %>
+      <% if @questionnaire.archived_at.present? %>
+        <!-- Read-only view for archived questionnaires -->
+        <% invited_people = @questionnaire.questionnaire_invitations.includes(:person).map(&:person).sort_by(&:name) %>
+        <% if invited_people.any? %>
+          <div class="mb-5">
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Invited People (<%= invited_people.count %>)</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <% invited_people.each do |person| %>
+                <div class="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                      <% if @questionnaire.questionnaire_responses.exists?(person: person) %>
+                        <p class="text-xs text-green-600">✓ Responded</p>
+                      <% else %>
+                        <p class="text-xs text-gray-500">Not yet responded</p>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-600">No one was invited to this questionnaire.</p>
+        <% end %>
+      <% else %>
+        <!-- Active invitation form -->
+        <%= form_with url: invite_people_manage_production_questionnaire_path(@production, @questionnaire), method: :post, local: true, data: { controller: "questionnaire-invitation" } do |form| %>
 
         <!-- Already Invited People -->
         <% invited_people = @questionnaire.questionnaire_invitations.includes(:person).map(&:person).sort_by(&:name) %>
@@ -188,6 +236,7 @@
           </div>
         <% end %>
 
+        <% end %>
       <% end %>
     </div>
   </div>
