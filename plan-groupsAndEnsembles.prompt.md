@@ -44,6 +44,7 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
   - Phone (optional)
   - Website (optional)
   - Social media links (optional)
+  - Resume (optional)
 - Cannot invite members during creation - only after
 - After creation, redirects to group's edit page (`/my/groups/:id/edit`)
 - Creator automatically becomes first owner
@@ -51,8 +52,9 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 #### Group Settings/Edit Page (`/my/groups/:id/edit`)
 
 **Basic Info Section:**
-- Name, photo, bio, contact details
+- Name, photo, bio, contact details, resume
 - Same photo upload/crop flow as person headshots
+- Resume uses same attachment/upload flow as person resumes
 - Standard form with save button
 
 **Members Section:**
@@ -192,6 +194,7 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 - Similar layout to person profiles
 - Hero section: group photo, name, bio
 - Contact section: email, phone, website, social links
+- Resume section: downloadable resume if uploaded
 - Members section: grid of member photos with names
 - Each member photo links to their personal profile
 - Role levels NOT shown publicly
@@ -229,7 +232,7 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 ### Data Model Considerations (High-Level)
 
 #### New Models
-- `Group`: name, bio, email, phone, website, social_links, archived_at, key (for public URL)
+- `Group`: name, bio, email, phone, website, social_links, resume (attachment), archived_at, key (for public URL)
 - `GroupMembership`: group_id, person_id, role (owner/write/view), receives_notifications (boolean), invited_at, accepted_at
 - `GroupRole`: Similar to renamed OrganizationRole (formerly UserRole)
 
