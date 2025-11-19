@@ -250,12 +250,65 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 - Decliner notifies inviter
 - If email already exists: person added directly to group, receives "You've been added to [Group Name]" email
 
+### Public Profile URLs & Keys
+
+#### URL Structure
+- Public profiles accessible at: `cocoscout.com/<key>`
+- Single namespace shared by both people and groups
+- Keys must be unique across entire platform
+
+#### Key Generation & Management
+
+**Initial Creation:**
+- Auto-generate key when Person or Group is created
+- For people: slug from name (e.g., "Tim Boisvert" → `tim-boisvert`)
+- For groups: slug from name (e.g., "Green Day" → `green-day`)
+- If key taken: append number (e.g., `tim-boisvert-2`, `green-day-3`)
+- User sees: "Your profile will be at: cocoscout.com/tim-boisvert"
+- Immediately functional, no configuration required
+
+**Customization in Settings:**
+- Available in person profile settings and group settings (Basic Info section)
+- Section label: "Public Profile URL"
+- Input field with `cocoscout.com/` prefix
+- Real-time availability checking as user types
+- Visual feedback:
+  - Pink checkmark + "✓ timboisvert is available"
+  - Red X + "✗ timboisvert is taken. Try: timboisvert2, tim-boisvert, timb"
+- Validation rules:
+  - Length: 3-30 characters
+  - Allowed: lowercase letters, numbers, hyphens only
+  - No spaces, special characters, or underscores
+  - Auto-convert uppercase to lowercase during typing
+  - Must start with letter or number (not hyphen)
+- Save button
+- Warning when changing existing key: "Changing your URL may break links others have shared. Your old URL will redirect to the new one."
+
+**Key Changes & Redirects:**
+- Users can change key anytime from settings
+- Old keys permanently redirect to new profile
+- Store previous keys in database for redirect support
+- No limit on frequency of changes (but show warning each time)
+
+**Reserved Keywords:**
+- Block system routes: `admin`, `api`, `manage`, `my`, `about`, `help`, `contact`, `support`, `settings`, `login`, `logout`, `signup`, `privacy`, `terms`, `groups`, `people`, `search`, `directory`
+- Show message: "This URL is reserved for CocoScout system pages"
+
+**Namespace & Uniqueness:**
+- People and groups share same namespace
+- `cocoscout.com/greenday` cannot be both a person AND a group
+- Lookup checks uniqueness across both tables
+- First to claim gets the key
+
 ### Data Model Considerations (High-Level)
 
 #### New Models
-- `Group`: name, bio, email, phone, website, social_links, resume (attachment), archived_at, key (for public URL)
+- `Group`: name, bio, email, phone, website, social_links, resume (attachment), archived_at, key (unique, indexed), previous_keys (array)
 - `GroupMembership`: group_id, person_id, role (owner/write/view), receives_notifications (boolean), invited_at, accepted_at
 - `GroupRole`: Similar to renamed OrganizationRole (formerly UserRole)
+
+#### Updated Models
+- `Person`: add `previous_keys` (array) to store old keys for redirects
 
 #### Polymorphic Associations
 - `Cast`: polymorphic `castable` (Person or Group)
