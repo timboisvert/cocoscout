@@ -308,7 +308,16 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 - `GroupRole`: Similar to renamed OrganizationRole (formerly UserRole)
 
 #### Updated Models
-- `Person`: add `previous_keys` (array) to store old keys for redirects
+- `Person`: add `key` (unique, indexed), add `previous_keys` (array) to store old keys for redirects
+
+#### Migration for Existing Data
+- Add `key` column to `people` table (string, unique, indexed, not null)
+- Add `previous_keys` column to `people` table (text array, default empty array)
+- Backfill migration to generate keys for existing Person records:
+  - Generate key from person's name using same slug logic
+  - Handle collisions by appending numbers
+  - Process in batches to avoid locking table
+  - Log any issues/conflicts for manual review
 
 #### Polymorphic Associations
 - `Cast`: polymorphic `castable` (Person or Group)
