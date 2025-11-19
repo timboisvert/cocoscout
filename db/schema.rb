@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_18_203859) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -304,7 +304,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_203859) do
     t.integer "question_id", null: false
     t.integer "questionnaire_response_id", null: false
     t.datetime "updated_at", null: false
-    t.string "value"
+    t.text "value"
     t.index ["question_id"], name: "index_questionnaire_answers_on_question_id"
     t.index ["questionnaire_response_id", "question_id"], name: "index_q_answers_on_response_and_question", unique: true
     t.index ["questionnaire_response_id"], name: "index_questionnaire_answers_on_questionnaire_response_id"

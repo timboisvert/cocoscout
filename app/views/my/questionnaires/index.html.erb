@@ -24,7 +24,7 @@
                 <p class="text-sm text-gray-600 mt-1"><%= questionnaire.production.name %></p>
                 <div class="flex items-center gap-3 mt-2">
                   <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
-                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20">
                       Responded
                     </span>
                   <% else %>
@@ -48,7 +48,7 @@
       </div>
     <% else %>
       <p class="text-gray-500 text-sm pt-2">
-        You haven't been invited to any questionnaires yet.
+        You're caught up on responding to questionnaires.
       </p>
     <% end %>
   </div>

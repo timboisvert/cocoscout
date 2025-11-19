@@ -5,8 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Questionnaires", manage_production_questionnaires_path(@production)],
-      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)],
-      ["Responses", responses_manage_production_questionnaire_path(@production, @questionnaire)]
+      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
     ],
     text: @response.person.name,
     links: []
@@ -35,11 +34,6 @@
             <h2 class="text-2xl font-bold text-gray-900 mb-2">
               <%= @response.person.name %>
             </h2>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10">
-                Response Submitted
-              </span>
-            </div>
           </div>
 
           <!-- Person Details -->
@@ -108,13 +102,9 @@
               <div class="ml-4">
                 <% status = @availability["#{show.id}"] %>
                 <% if status == "available" %>
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Available
-                  </span>
+                  <span class="text-sm font-medium text-pink-500">Available</span>
                 <% elsif status == "unavailable" %>
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    Unavailable
-                  </span>
+                  <span class="text-sm font-medium text-gray-900">Unavailable</span>
                 <% else %>
                   <span class="text-xs text-gray-500 italic">Not specified</span>
                 <% end %>
@@ -144,44 +134,93 @@
           <% if answer_value.present? %>
             <div class="p-3 bg-gray-50 rounded-lg">
               <% type_class = question.question_type_class %>
-              <% if type_class && (type_class.key == "multiple" || type_class.key == "ranking") %>
-                <% if answer_value.is_a?(String) %>
+              <% if type_class && type_class.key == "ranking" %>
+                <% parsed_value = nil %>
+                <% if answer_value.is_a?(Array) %>
+                  <% parsed_value = answer_value %>
+                <% elsif answer_value.is_a?(Hash) %>
+                  <% parsed_value = answer_value %>
+                <% elsif answer_value.is_a?(String) %>
                   <% begin %>
                     <% parsed_value = JSON.parse(answer_value) %>
-                    <% if parsed_value.is_a?(Array) %>
-                      <% if type_class.key == "ranking" %>
-                        <ol class="list-decimal list-inside">
-                          <% parsed_value.each do |item| %>
-                            <li class="text-sm text-gray-700"><%= item %></li>
-                          <% end %>
-                        </ol>
-                      <% else %>
-                        <ul class="list-disc list-inside">
-                          <% parsed_value.each do |item| %>
-                            <li class="text-sm text-gray-700"><%= item %></li>
-                          <% end %>
-                        </ul>
-                      <% end %>
-                    <% elsif parsed_value.is_a?(Hash) %>
-                      <% if type_class.key == "ranking" %>
-                        <ol class="list-decimal list-inside">
-                          <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
-                            <li class="text-sm text-gray-700"><%= key %></li>
-                          <% end %>
-                        </ol>
-                      <% else %>
-                        <ul class="list-disc list-inside">
-                          <% parsed_value.select { |k, v| v.present? }.keys.each do |key| %>
-                            <li class="text-sm text-gray-700"><%= key %></li>
-                          <% end %>
-                        </ul>
-                      <% end %>
-                    <% else %>
-                      <p class="text-sm text-gray-700"><%= answer_value %></p>
-                    <% end %>
                   <% rescue JSON::ParserError %>
-                    <p class="text-sm text-gray-700"><%= answer_value %></p>
                   <% end %>
+                <% end %>
+
+                <% if parsed_value.is_a?(Array) %>
+                  <ol class="space-y-2">
+                    <% parsed_value.each_with_index do |item, index| %>
+                      <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-medium">
+                          <%= index + 1 %>
+                        </span>
+                        <span class="text-sm text-gray-700 pt-0.5"><%= item %></span>
+                      </li>
+                    <% end %>
+                  </ol>
+                <% elsif parsed_value.is_a?(Hash) %>
+                  <ol class="space-y-2">
+                    <% parsed_value.select { |k, v| v.present? }.keys.each_with_index do |key, index| %>
+                      <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-medium">
+                          <%= index + 1 %>
+                        </span>
+                        <span class="text-sm text-gray-700 pt-0.5"><%= key %></span>
+                      </li>
+                    <% end %>
+                  </ol>
+                <% else %>
+                  <p class="text-sm text-gray-700"><%= answer_value %></p>
+                <% end %>
+              <% elsif type_class && type_class.key == "multiple-multiple" %>
+                <% parsed_value = nil %>
+                <% if answer_value.is_a?(Hash) || answer_value.respond_to?(:keys) %>
+                  <% parsed_value = answer_value %>
+                <% elsif answer_value.is_a?(String) %>
+                  <% begin %>
+                    <% parsed_value = JSON.parse(answer_value) %>
+                  <% rescue JSON::ParserError %>
+                  <% end %>
+                <% end %>
+
+                <% if parsed_value.is_a?(Hash) || parsed_value.respond_to?(:keys) %>
+                  <% all_options = question.question_options.pluck(:text) %>
+                  <ul class="space-y-2">
+                    <% all_options.each do |option| %>
+                      <% is_checked = parsed_value.is_a?(Hash) ? (parsed_value[option].present? || parsed_value[option.to_sym].present?) : parsed_value[option].present? %>
+                      <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-5 h-5 rounded-full <%= is_checked ? 'bg-pink-500' : 'border-2 border-gray-300' %> flex items-center justify-center">
+                          <% if is_checked %>
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                            </svg>
+                          <% end %>
+                        </span>
+                        <span class="text-sm <%= is_checked ? 'text-gray-900 font-medium' : 'text-gray-500' %> pt-0.5"><%= option %></span>
+                      </li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <p class="text-sm text-gray-700"><%= answer_value %></p>
+                <% end %>
+              <% elsif type_class && type_class.key == "multiple-single" %>
+                <% if answer_value.is_a?(String) %>
+                  <% all_options = question.question_options.pluck(:text) %>
+                  <ul class="space-y-2">
+                    <% all_options.each do |option| %>
+                      <% is_checked = answer_value == option %>
+                      <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-5 h-5 rounded-full <%= is_checked ? 'bg-pink-500' : 'border-2 border-gray-300' %> flex items-center justify-center">
+                          <% if is_checked %>
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                            </svg>
+                          <% end %>
+                        </span>
+                        <span class="text-sm <%= is_checked ? 'text-gray-900 font-medium' : 'text-gray-500' %> pt-0.5"><%= option %></span>
+                      </li>
+                    <% end %>
+                  </ul>
                 <% else %>
                   <p class="text-sm text-gray-700"><%= answer_value %></p>
                 <% end %>

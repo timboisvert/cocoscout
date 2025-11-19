@@ -46,7 +46,7 @@ class Manage::QuestionnairesController < Manage::ManageController
       respond_to do |format|
         format.html do
           # If updating from the form page (availability settings or title), redirect back to form
-          if params[:questionnaire]&.key?(:include_availability_section) || 
+          if params[:questionnaire]&.key?(:include_availability_section) ||
              params[:questionnaire]&.key?(:availability_show_ids) ||
              params[:questionnaire]&.key?(:title) ||
              params[:questionnaire]&.key?(:require_all_availability) ||

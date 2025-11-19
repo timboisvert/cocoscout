@@ -9,8 +9,7 @@
     text: @questionnaire.title,
     links: [
       {text: "Edit Questionnaire", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
-      {text: "Preview", path: preview_manage_production_questionnaire_path(@production, @questionnaire)},
-      {text: "Responses", path: responses_manage_production_questionnaire_path(@production, @questionnaire)}
+      {text: "Preview Questionnaire", path: preview_manage_production_questionnaire_path(@production, @questionnaire), target: "_blank"}
     ]
   } %>
 
@@ -70,11 +69,7 @@
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        <% if @questionnaire.archived_at.present? %>
-          Invited People
-        <% else %>
-          Invite People
-        <% end %>
+        Invitations and Responses
       </h3>
     </div>
     <div class="p-6">
@@ -99,7 +94,7 @@
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
                       <% if @questionnaire.questionnaire_responses.exists?(person: person) %>
-                        <p class="text-xs text-green-600">✓ Responded</p>
+                        <p class="text-xs text-pink-600">✓ Responded</p>
                       <% else %>
                         <p class="text-xs text-gray-500">Not yet responded</p>
                       <% end %>
@@ -123,26 +118,42 @@
             <h4 class="text-sm font-semibold text-gray-700 mb-3">Already Invited (<%= invited_people.count %>)</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <% invited_people.each do |person| %>
-                <div class="p-3 border border-gray-200 rounded-lg bg-gray-50">
-                  <div class="flex items-center gap-3">
-                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
-                        <%= person.initials %>
-                      </div>
-                    <% end %>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
-                      <% if @questionnaire.questionnaire_responses.exists?(person: person) %>
-                        <p class="text-xs text-green-600">✓ Responded</p>
+                <% response = @questionnaire.questionnaire_responses.find_by(person: person) %>
+                <% if response %>
+                  <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
+                    <div class="flex items-center gap-3">
+                      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
                       <% else %>
-                        <p class="text-xs text-gray-500">Not yet responded</p>
+                        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                          <%= person.initials %>
+                        </div>
                       <% end %>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                        <p class="text-xs text-pink-600">✓ Responded</p>
+                      </div>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <div class="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <div class="flex items-center gap-3">
+                      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                          <%= person.initials %>
+                        </div>
+                      <% end %>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
+                        <p class="text-xs text-gray-500">Not yet responded</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                <% end %>
               <% end %>
             </div>
           </div>
@@ -154,13 +165,9 @@
 
         <% if not_invited_people.any? %>
           <div class="mb-5 <%= 'border-t border-gray-200 pt-5' if invited_people.any? %>">
-            <% if invited_people.any? %>
-              <h4 class="text-sm font-semibold text-gray-700 mb-3">Invite New People</h4>
-            <% end %>
-
             <div class="mb-4">
               <label class="block font-semibold mb-2 text-sm">
-                Select Recipients:
+                <%= invited_people.any? ? "Select More Recipients:" : "Select Recipients:" %>
               </label>
               <div class="space-y-2">
                 <div>

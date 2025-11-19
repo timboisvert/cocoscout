@@ -9,8 +9,8 @@
 
     <!-- Success Header -->
     <div class="text-center mb-8 sm:mb-10">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 mb-4">
+        <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
       </div>
@@ -31,14 +31,14 @@
 
     <!-- Back to Dashboard -->
     <div class="text-center mt-8">
-      <%= link_to "Go to Dashboard", my_dashboard_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
+      <%= link_to "Back to My Questionnaires", my_questionnaires_path, class: "inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition font-medium" %>
     </div>
 
   </div>
 
   <!-- Coco Link -->
   <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
-    <%= link_to my_dashboard_path do %>
+    <%= link_to my_questionnaires_path do %>
       <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
     <% end %>
   </div>
