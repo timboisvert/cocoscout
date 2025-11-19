@@ -8,34 +8,42 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 
 **Polymorphic Relationships**: Many existing relationships (casting, audition requests, questionnaire invitations) will become polymorphic to support both Person and Group as "auditionable" or "castable" entities.
 
-**Context Switching**: Users can switch between acting as themselves or as a group they belong to via a top-right navigation dropdown, affecting their view of auditions, questionnaires, and availability.
+**Unified View**: All `/my` section pages show both personal items and group items in a single unified list. Users don't switch contexts - they see everything they're involved in (personally or through their groups) in one place.
 
-### Navigation & Context
+### Navigation & Interface
 
-#### Top Navigation Switcher
-- Add dropdown in top-right navigation (where user name currently appears)
-- Shows current context name (either person name or group name)
-- Dropdown lists: user's person name + all groups they're members of
-- Selecting a group switches entire `/my` section to show that group's perspective
-- Visual indicator: Name in top-right changes from "Tim Boisvert" to "Green Day" when in group context
-- Quick switch back to personal context via same dropdown
+#### Top Right Navigation
+- Always shows user's personal name (never switches)
+- Dropdown menu includes:
+  - Link to "My Profile"
+  - Link to "My Groups"
+  - Standard account/logout options
+- No context switching mechanism - all views are unified
 
 #### URL Structure
 - Public profiles: `cocoscout.com/<key>` (works for both people and groups)
 - Group management: `/my/groups/:id/edit`
 - Group list: `/my/groups`
-- URLs don't change based on context - context is maintained in session/state
+- All other `/my` pages show unified views (personal + all groups)
 
-#### Page Behavior in Group Context
-- Page titles remain generic ("My Auditions", "My Questionnaires")
-- Top-right shows group name instead of person name
-- All actions (submitting forms, declaring availability) act on behalf of the group
-- No breadcrumb or page-level indicators of context beyond top-right name
+#### Unified List Views
+- All `/my` section pages (auditions, questionnaires, shows, availability, etc.) display both personal and group items together
+- Visual indicator: Group items show small group icon/photo
+- Filter dropdown at top of each list: "All", "Personal", "[Group 1 Name]", "[Group 2 Name]", etc.
+- Default view shows "All"
+- Items belonging to groups clearly distinguishable by icon
+- Group name not displayed inline - just the icon indicator
+
+#### Detail Pages
+- URL: `/my/auditions/:id`, `/my/questionnaires/:id`, etc. (same for personal and group items)
+- Page header indicates ownership: "Green Day's Audition Request" vs "My Audition Request"
+- Breadcrumb: "My Auditions > Green Day's Audition for [Production]"
+- For group items with View-only access: action buttons disabled with tooltip "You need Write access to edit this"
 
 ### Group Creation & Management
 
 #### Creating a Group
-- "Create New Group" option in top-right navigation menu
+- "Create New Group" button on `/my/groups` page
 - Full form with fields:
   - Name (required)
   - Photo/headshot (optional)
@@ -86,6 +94,7 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 #### Group List Page (`/my/groups`)
 - Shows all groups user is a member of
 - Card layout with group photo, name, member count
+- "Create New Group" button prominent at top
 - No role badges shown
 - No separation between "owned" vs "member of"
 - Empty state: "You're not part of any groups yet" with "Create Your First Group" call-to-action
@@ -115,14 +124,18 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 ### Audition & Casting Workflows
 
 #### Audition Request Submission
-- Context switcher in audition request form: "Submitting as: [Dropdown: Tim Boisvert / Green Day / The Beatles]"
-- Form clearly indicates who's submitting
+- Accessed from `/my/auditions` page
+- Form includes "Submitting as:" dropdown with options: user's name + all groups with write access
+- Form clearly indicates selected entity
 - If submitting as group: form uses group's contact info, name, bio
 - Internally tracks which individual submitted on behalf of group
-- All notification-enabled group members see request in their audition list with indicator: "Green Day (group audition)"
-- Only members with write access can submit for group
+- After submission, request appears in unified `/my/auditions` list with group icon if for a group
+- Only members with write access see groups as options in dropdown
 
 #### Audition Invitations
+- Invitations appear in unified `/my/auditions` list
+- If both user and their group are invited: two separate entries in list
+- Each entry clearly shows who was invited (personal or group icon indicator)
 - Groups appear in invitation lists alongside individuals
 - Single response per group (one person with write access responds for all)
 - No individual member confirmation needed
@@ -139,10 +152,15 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 - No hover preview or inline member display
 
 #### Availability Management
+- Availability page shows separate sections for each entity (personal + each group)
+- "Your Availability" section for personal availability
+- "[Group Name]'s Availability" section for each group with write access
 - Groups declare availability independently of member availability
-- No warnings about member conflicts
+- No warnings about member conflicts between personal and group schedules
 - Anyone with write access can manage group availability
-- Group availability shown on show/event lists
+- Calendar view shows all events (personal + groups) on same calendar
+- Events visually distinguished by small profile photo/icon of the entity
+- Both personal and group availability displayed when viewing shows/events
 - Individual member availability irrelevant when group is cast
 
 ### Questionnaires
@@ -155,8 +173,11 @@ This plan outlines the user experience for adding Groups & Ensembles functionali
 - Inviting a group counts as 1 invitee
 
 #### Questionnaire Response
-- Context switcher on form: "Responding as: [Dropdown]"
-- Can switch between personal and group responses
+- Invitations appear in unified `/my/questionnaires` list
+- If both user and their group are invited: two separate entries in list
+- Each entry clearly shows who was invited (personal or group icon indicator)
+- Response form includes "Responding as:" dropdown if user has multiple pending invitations (personal + groups)
+- Can select which invitation to respond to via dropdown
 - Only notification-enabled members receive invitation emails
 - Any member with write access can respond for group
 - Response tied to group only (not individual who submitted)
