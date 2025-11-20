@@ -105,7 +105,7 @@
               </svg>
             </div>
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :prepare ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Prepare</h4>
-            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Configure settings and customize sign-up form' : 'Configure settings, plan sessions, and customize sign-up form' %></p>
+            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Configure settings and customize audition form' : 'Configure settings, plan sessions, and customize sign-up form' %></p>
           </div>
         <% end %>
 
@@ -131,7 +131,7 @@
               </svg>
             </div>
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :review ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Review</h4>
-            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Accept or decline applications' : 'Accept or decline applications and schedule auditions' %></p>
+            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.audition_type == 'video_upload' ? 'Watch and evaluate auditions' : 'Accept or decline applications and schedule auditions' %></p>
           </div>
         <% end %>
 

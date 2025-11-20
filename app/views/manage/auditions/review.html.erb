@@ -19,47 +19,54 @@
       You aren't currently offering auditions for <%= @production.name %>
     </div>
   <% else %>
-    <% audition_cycle = @audition_cycle %>
-
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-ups</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">
+          <% if @audition_cycle.audition_type == "video_upload" %>
+            Video Auditions
+          <% elsif @audition_cycle.audition_type == "in_person" %>
+            Sign-ups
+          <% end %>
+        </h3>
       </div>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Review and decide on each auditionee's application.</p>
 
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-        <%= link_to manage_production_audition_cycle_audition_requests_path(@production, audition_cycle, filter: :unreviewed) do %>
-          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-            <p class="font-bold text-5xl text-center"><%= audition_cycle.counts[:unreviewed] %></p>
-            <p class="text-xs text-center">Unreviewed</p>
-          </div>
-        <% end %>
-        <%= link_to manage_production_audition_cycle_audition_requests_path(@production, audition_cycle, filter: :undecided) do %>
-          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-            <p class="font-bold text-5xl text-center"><%= audition_cycle.counts[:undecided] %></p>
-            <p class="text-xs text-center">Revisit</p>
-          </div>
-        <% end %>
-        <%= link_to manage_production_audition_cycle_audition_requests_path(@production, audition_cycle, filter: :accepted) do %>
-          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-            <p class="font-bold text-5xl text-center"><%= audition_cycle.counts[:accepted] %></p>
-            <p class="text-xs text-center">Yes</p>
-          </div>
-        <% end %>
-        <%= link_to manage_production_audition_cycle_audition_requests_path(@production, audition_cycle, filter: :passed) do %>
-          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-            <p class="font-bold text-5xl text-center"><%= audition_cycle.counts[:passed] %></p>
-            <p class="text-xs text-center">No</p>
-          </div>
-        <% end %>
-      </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :unreviewed) do %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:unreviewed] %></p>
+              <p class="text-xs text-center">Unreviewed</p>
+            </div>
+          <% end %>
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :undecided) do %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:undecided] %></p>
+              <p class="text-xs text-center">Revisit</p>
+            </div>
+          <% end %>
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :accepted) do %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:accepted] %></p>
+              <p class="text-xs text-center">Yes</p>
+            </div>
+          <% end %>
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :passed) do %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
+              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:passed] %></p>
+              <p class="text-xs text-center">No</p>
+            </div>
+          <% end %>
+        </div>
 
-      <%= render partial: "shared/link_button", locals: {text: "View all Sign-ups", path: manage_production_audition_cycle_audition_requests_path(@production, audition_cycle, filter: :all)} %>
+        <%
+          button_text = @audition_cycle.audition_type == "video_upload" ? "View all Video Auditions" : "View all Sign-ups"
+        %>
+        <%= render partial: "shared/link_button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :all)} %>
       </div>
     </div>
 
-    <% if audition_cycle.audition_type == "in_person" %>
+    <% if @audition_cycle.audition_type == "in_person" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule Auditions</h3>
@@ -121,26 +128,19 @@
     </div>
     <% end %>
 
+    <% if @audition_cycle.audition_type == "in_person" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <% if audition_cycle.audition_type == "video_upload" %>
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Review and Notify</h3>
-        <% else %>
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>
-        <% end %>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>
       </div>
       <div class="p-6">
-        <% if audition_cycle.audition_type == "video_upload" %>
-          <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status.</p>
-        <% else %>
-          <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
-        <% end %>
+        <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
 
         <% # Get all audition requests %>
-        <% all_audition_requests = audition_cycle.audition_requests.includes(:person) %>
+        <% all_audition_requests = @audition_cycle.audition_requests.includes(:person) %>
 
         <% # Get all scheduled person IDs for this audition cycle %>
-        <% scheduled_person_ids = audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
+        <% scheduled_person_ids = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
 
         <% # Count people who have been notified and whose status hasn't changed since %>
         <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (scheduled_person_ids.include?(req.person_id) == req.notified_scheduled) } %>
@@ -152,11 +152,11 @@
         <% not_accepted_requests = audition_requests.reject { |req| req.status == "accepted" } %>
 
         <% # Load email assignments for people who haven't been notified %>
-        <% email_assignments = audition_cycle.audition_email_assignments.where(person_id: audition_requests.map(&:person_id)).index_by(&:person_id) %>
+        <% email_assignments = @audition_cycle.audition_email_assignments.where(person_id: audition_requests.map(&:person_id)).index_by(&:person_id) %>
         <% # Load custom email groups (exclude default group_ids to avoid duplicates) %>
-        <% custom_groups = audition_cycle.email_groups.where(group_type: 'audition').where.not(group_id: ['invitation_accepted', 'invitation_not_accepted']).order(:created_at) %>
+        <% custom_groups = @audition_cycle.email_groups.where(group_type: 'audition').where.not(group_id: ['invitation_accepted', 'invitation_not_accepted']).order(:created_at) %>
 
-        <% if audition_cycle.finalize_audition_invitations %>
+        <% if @audition_cycle.finalize_audition_invitations %>
           <%# Finalized state - show notice %>
           <% if audition_requests.any? %>
             <%# There are new people to notify %>
@@ -198,7 +198,7 @@
         <% end %>
 
         <% if accepted_requests.any? || not_accepted_requests.any? %>
-          <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= audition_cycle.id %>" data-email-groups-group-type-value="audition">
+          <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= @audition_cycle.id %>" data-email-groups-group-type-value="audition">
 
             <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
               <% # Helper method to get email group ID for a person %>
@@ -329,7 +329,7 @@
 
 Congratulations! You've been invited to audition for <%= @production.name %>.
 
-<% if audition_cycle.audition_type == "video_upload" %>Your audition materials have been received and are under review. We'll notify you once decisions have been made.<% else %>Your audition is scheduled for [Date and Time] at [Location]. Please arrive 10 minutes early.
+<% if @audition_cycle.audition_type == "video_upload" %>Your audition materials have been received and are under review. We'll notify you once decisions have been made.<% else %>Your audition is scheduled for [Date and Time] at [Location]. Please arrive 10 minutes early.
 
 You can view your full audition details on your Auditions page.<% end %>
 
@@ -523,11 +523,12 @@ The <%= @production.name %> Team<% end %></textarea>
           </div>
         <% end %>
 
-        <% if audition_cycle.finalize_audition_invitations %>
+        <% if @audition_cycle.finalize_audition_invitations %>
           </div> <%# Close invitation-editing-area %>
         <% end %>
       </div>
     </div>
+    <% end %>
 
   <% end %>
 </div>

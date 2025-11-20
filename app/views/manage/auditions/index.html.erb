@@ -154,14 +154,24 @@
                   </div>
                   <div class="flex-1">
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Prepare</h4>
-                    <p class="text-gray-600 text-sm mt-1">Configure settings, plan sessions, and customize sign-up form</p>
+
+                    <p class="text-gray-600 text-sm mt-1">
+                      <% if @active_audition_cycle.audition_type == 'video_upload' %>
+                        Configure settings and customize audition form
+                      <% elsif @active_audition_cycle.audition_type == 'in_person' %>
+                        Configure settings, plan sessions, and customize sign-up form
+                      <% end %>
+                    </p>
+
                     <% if @active_audition_cycle.audition_type == 'in_person' && @active_audition_cycle.audition_sessions.any? %>
                       <% session_count = @active_audition_cycle.audition_sessions.count %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= session_count %> audition <%= 'session'.pluralize(session_count) %> scheduled</p>
                     <% end %>
+
                     <% if @active_audition_cycle.form_reviewed %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ Sign-up form finalized</p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= @active_audition_cycle.audition_type == 'video_upload' ? 'Audition form finalized' : 'Sign-up form finalized' %></p>
                     <% end %>
+
                   </div>
                 </div>
               </div>
@@ -195,7 +205,7 @@
                   </div>
                   <div class="flex-1">
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Review</h4>
-                    <p class="text-gray-600 text-sm mt-1">Accept or decline applications and schedule auditions</p>
+                    <p class="text-gray-600 text-sm mt-1"><%= @active_audition_cycle.audition_type == 'video_upload' ? 'Watch and evaluate auditions' : 'Accept or decline sign-ups and schedule auditions' %></p>
                     <%
                       total_signups = @active_audition_cycle.audition_requests.count
                       # Count people who are actually scheduled for auditions
@@ -217,26 +227,28 @@
             <% end %>
 
             <!-- Step 4: Run Auditions -->
-            <%= link_to run_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
-              <div class="relative flex flex-col items-start text-left group">
-                <div class="flex items-start gap-6">
-                  <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
-                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Run Auditions</h4>
-                    <p class="text-gray-600 text-sm mt-1">Conduct sessions and evaluate performances</p>
-                    <%
-                      completed_sessions = @active_audition_cycle.audition_sessions.where("end_at < ?", Time.current).count
-                      if completed_sessions > 0
-                    %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= completed_sessions %> audition <%= 'session'.pluralize(completed_sessions) %> completed</p>
-                    <% end %>
+            <% if @active_audition_cycle.audition_type != "video_upload" %>
+              <%= link_to run_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
+                <div class="relative flex flex-col items-start text-left group">
+                  <div class="flex items-start gap-6">
+                    <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
+                      <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Run Auditions</h4>
+                      <p class="text-gray-600 text-sm mt-1">Conduct sessions and evaluate performances</p>
+                      <%
+                        completed_sessions = @active_audition_cycle.audition_sessions.where("end_at < ?", Time.current).count
+                        if completed_sessions > 0
+                      %>
+                        <p class="text-xs text-green-600 font-medium mt-2">✓ <%= completed_sessions %> audition <%= 'session'.pluralize(completed_sessions) %> completed</p>
+                      <% end %>
+                    </div>
                   </div>
                 </div>
-              </div>
+              <% end %>
             <% end %>
 
             <!-- Step 5: Casting -->

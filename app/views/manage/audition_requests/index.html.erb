@@ -6,14 +6,8 @@
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
-    text: "Sign-ups",
+    text: (@audition_cycle.audition_type == "video_upload") ? "Video Auditions" : "Sign-ups",
     links: []
-      # [
-      #   {
-      #     text: "Create a Sign-up",
-      #     path: new_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle)
-      #   }
-      # ]
   } %>
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
