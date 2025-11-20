@@ -10,11 +10,11 @@ class MakeQuestionnaireInvitationsPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Add index
-    add_index :questionnaire_invitations, [:invitee_type, :invitee_id]
-    
+    add_index :questionnaire_invitations, [ :invitee_type, :invitee_id ]
+
     # Update unique index - use the actual index name from the schema
     remove_index :questionnaire_invitations, name: 'index_q_invitations_on_questionnaire_and_person'
-    add_index :questionnaire_invitations, [:invitee_type, :invitee_id, :questionnaire_id], unique: true, name: 'index_questionnaire_invitations_unique'
+    add_index :questionnaire_invitations, [ :invitee_type, :invitee_id, :questionnaire_id ], unique: true, name: 'index_questionnaire_invitations_unique'
 
     # Remove old person_id column
     remove_column :questionnaire_invitations, :person_id
@@ -31,10 +31,10 @@ class MakeQuestionnaireInvitationsPolymorphic < ActiveRecord::Migration[8.1]
 
     # Remove new index and add back old one
     remove_index :questionnaire_invitations, name: 'index_questionnaire_invitations_unique'
-    add_index :questionnaire_invitations, [:questionnaire_id, :person_id], unique: true, name: 'index_q_invitations_on_questionnaire_and_person'
+    add_index :questionnaire_invitations, [ :questionnaire_id, :person_id ], unique: true, name: 'index_q_invitations_on_questionnaire_and_person'
 
     # Remove polymorphic columns
-    remove_index :questionnaire_invitations, [:invitee_type, :invitee_id]
+    remove_index :questionnaire_invitations, [ :invitee_type, :invitee_id ]
     remove_column :questionnaire_invitations, :invitee_type
     remove_column :questionnaire_invitations, :invitee_id
 

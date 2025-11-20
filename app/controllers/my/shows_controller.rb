@@ -1,8 +1,8 @@
 class My::ShowsController < ApplicationController
   def index
     # Get all productions where user is a cast member
-    @productions = Production.joins(casts: [ :casts_people ])
-                             .where(casts_people: { person_id: Current.user.person.id })
+    @productions = Production.joins(talent_pools: :people)
+                             .where(people: { id: Current.user.person.id })
                              .distinct
                              .order(:name)
 
@@ -11,8 +11,8 @@ class My::ShowsController < ApplicationController
     @event_type_filter = params[:event_type]
 
     # Get all upcoming shows for user's productions
-    @shows = Show.joins(production: { casts: :casts_people })
-                .where(casts_people: { person_id: Current.user.person.id })
+    @shows = Show.joins(production: { talent_pools: :people })
+                .where(people: { id: Current.user.person.id })
                 .where("date_and_time >= ?", Time.current)
                 .select("shows.*")
                 .distinct
@@ -32,8 +32,8 @@ class My::ShowsController < ApplicationController
   end
 
   def show
-    @show = Show.joins(production: { casts: :casts_people })
-               .where(casts_people: { person_id: Current.user.person.id })
+    @show = Show.joins(production: { talent_pools: :people })
+               .where(people: { id: Current.user.person.id })
                .find(params[:id])
     @production = @show.production
     @show_person_role_assignments = @show.show_person_role_assignments.includes(:person, :role)
@@ -46,8 +46,8 @@ class My::ShowsController < ApplicationController
     @event_type_filter = params[:event_type] || "all"
 
     # Get all upcoming non-canceled shows
-    @shows = Show.joins(production: { casts: :casts_people })
-                .where(casts_people: { person_id: Current.user.person.id })
+    @shows = Show.joins(production: { talent_pools: :people })
+                .where(people: { id: Current.user.person.id })
                 .where("date_and_time >= ?", Time.current)
                 .where(canceled: false)
                 .select("shows.*")

@@ -4,5 +4,5 @@ class QuestionnaireInvitation < ApplicationRecord
 
   validates :questionnaire, presence: true
   validates :invitee, presence: true
-  validates :invitee_id, uniqueness: { scope: [:questionnaire_id, :invitee_type] }
+  validates :invitee_id, uniqueness: { scope: [ :questionnaire_id, :invitee_type ] }
 end

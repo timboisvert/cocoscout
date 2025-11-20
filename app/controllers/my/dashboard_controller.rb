@@ -6,7 +6,7 @@ class My::DashboardController < ApplicationController
       render "welcome" and return
     end
 
-    @productions = Production.joins(casts: [ :casts_people ]).where(casts_people: { person_id: Current.user.person.id }).distinct
+    @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
     # Get upcoming shows where user has a role assignment
     @upcoming_shows = Show
@@ -22,15 +22,15 @@ class My::DashboardController < ApplicationController
       .joins(:auditions)
       .where(auditions: { person_id: Current.user.person.id })
       .where("audition_sessions.start_at >= ?", Time.current)
-      .order("audition_sessions.start_at")
+      .order(Arel.sql("audition_sessions.start_at"))
       .distinct
 
     # My audition requests for audition cycles that are still open
     @open_audition_requests = Current.user.person.audition_requests
       .joins(:audition_cycle)
-      .where("audition_cycles.closes_at >= ?", Time.current)
+      .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)
       .includes(:audition_cycle)
-      .order("audition_cycles.closes_at")
+      .order(Arel.sql("audition_cycles.closes_at ASC NULLS LAST"))
 
     # My pending questionnaires
     @pending_questionnaires = Current.user.person.invited_questionnaires

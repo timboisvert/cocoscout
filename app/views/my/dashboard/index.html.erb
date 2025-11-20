@@ -81,7 +81,7 @@
           <% @open_audition_requests.each do |audition_request| %>
             <% production = audition_request.audition_cycle.production %>
             <%= link_to my_audition_requests_path(requests_filter: :open), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline gap-2" do %>
-              <div class="flex-1 min-w-0" data-controller="countdown" data-countdown-until-value="<%= audition_request.audition_cycle.closes_at.utc.iso8601 %>">
+              <div class="flex-1 min-w-0" <% if audition_request.audition_cycle.closes_at.present? %>data-controller="countdown" data-countdown-until-value="<%= audition_request.audition_cycle.closes_at.utc.iso8601 %>"<% end %>>
                 <p class="font-bold text-sm"><%= production.name %></p>
                 <div class="text-xs text-gray-600 mt-1">
                   <% if audition_request.audition_cycle.audition_type == "in_person" %>
@@ -89,11 +89,15 @@
                   <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
                     Video Auditions
                   <% end %>
-                  close
-                  <% if audition_request.audition_cycle.closes_at > 1.day.from_now %>
-                    on <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%l:%M %p') %></span>
+                  <% if audition_request.audition_cycle.closes_at.present? %>
+                    close
+                    <% if audition_request.audition_cycle.closes_at > 1.day.from_now %>
+                      on <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%l:%M %p') %></span>
+                    <% else %>
+                      in <span data-countdown-target="clock" class="text-pink-500"></span>
+                    <% end %>
                   <% else %>
-                    in <span data-countdown-target="clock" class="text-pink-500"></span>
+                    <span class="text-gray-500">(open-ended)</span>
                   <% end %>
                 </div>
               </div>
@@ -124,7 +128,7 @@
                 <p class="font-bold text-sm"><%= production.name %></p>
                 <div class="text-xs text-gray-600 mt-1">
                   <%= questionnaire.title %>
-                  <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
+                  <% if questionnaire.questionnaire_responses.exists?(respondent: Current.user.person) %>
                     - <span class="text-pink-600">Responded</span>
                   <% else %>
                     - <span class="text-pink-500">Not yet responded</span>

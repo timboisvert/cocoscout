@@ -5,7 +5,7 @@ RSpec.describe "My::Shows", type: :system do
   let!(:person) { create(:person, user: user, email: user.email_address) }
   let(:organization) { create(:organization) }
   let(:production) { create(:production, organization: organization, name: "Hamilton") }
-  let(:cast) { create(:cast, production: production) }
+  let(:talent_pool) { create(:talent_pool, production: production) }
   let(:role) { create(:role, production: production, name: "Ensemble") }
 
   describe "shows index" do

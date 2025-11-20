@@ -15,7 +15,7 @@
     <div class="flex-1 space-y-2">
 
         <% @members.each do |member| %>
-            <% user_role = member.user_roles.find_by(organization: Current.organization) %>
+            <% organization_role = member.organization_roles.find_by(organization: Current.organization) %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex" data-controller="team-remove" data-team-remove-target="row">
 
                 <div class="<%= current_user_can_manage? ? 'w-2/3' : 'w-full' %>">
@@ -37,7 +37,7 @@
 
                 <% if current_user_is_global_manager? %>
                     <div class="w-1/3 flex items-center justify-end text-sm text-gray-500">
-                        <% role_display = case user_role&.company_role
+                        <% role_display = case organization_role&.company_role
                              when 'manager' then 'Manager'
                              when 'viewer' then 'Viewer'
                              when 'none' then 'Per-production access'

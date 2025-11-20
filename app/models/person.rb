@@ -5,8 +5,8 @@ class Person < ApplicationRecord
   has_many :audition_requests, as: :requestable, dependent: :destroy
   has_many :auditions
 
-  has_many :cast_memberships, as: :castable, dependent: :destroy
-  has_many :casts, through: :cast_memberships
+  has_many :talent_pool_memberships, as: :member, dependent: :destroy
+  has_many :talent_pools, through: :talent_pool_memberships
   has_and_belongs_to_many :organizations
 
   has_many :cast_assignment_stages, dependent: :destroy
@@ -52,10 +52,10 @@ class Person < ApplicationRecord
 
   def update_public_key(new_key)
     return false if new_key == public_key
-    
+
     old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
     old_keys_array << public_key unless old_keys_array.include?(public_key)
-    
+
     self.public_key = new_key
     self.old_keys = old_keys_array.to_json
     save
@@ -113,16 +113,16 @@ class Person < ApplicationRecord
 
   def generate_public_key
     return if public_key.present?
-    
+
     base_key = name.parameterize
     key = base_key
     counter = 2
-    
+
     while Person.where(public_key: key).exists? || Group.where(public_key: key).exists?
       key = "#{base_key}-#{counter}"
       counter += 1
     end
-    
+
     self.public_key = key
   end
 
@@ -132,7 +132,7 @@ class Person < ApplicationRecord
 
   def public_key_not_reserved
     return if public_key.blank?
-    
+
     reserved = %w[admin api manage my about help contact support settings login logout signup privacy terms groups people search directory]
     if reserved.include?(public_key)
       errors.add(:public_key, "is reserved for CocoScout system pages")

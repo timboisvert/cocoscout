@@ -75,7 +75,7 @@
 
           <div class="space-y-3">
             <% @team_members.each do |user| %>
-              <% role = user.user_roles.find_by(organization: @organization)&.company_role || "member" %>
+              <% role = user.organization_roles.find_by(organization: @organization)&.company_role || "member" %>
               <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
@@ -164,7 +164,7 @@
             <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post do |f| %>
               <%= f.select :new_owner_id,
                   options_from_collection_for_select(
-                    @team_members.select { |u| u.user_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
+                    @team_members.select { |u| u.organization_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
                     :id,
                     ->(u) { u.person&.name || u.email_address }
                   ),

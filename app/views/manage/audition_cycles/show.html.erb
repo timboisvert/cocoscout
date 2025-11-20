@@ -21,7 +21,7 @@
       <div class="flex-1">
         <h4 class="text-sm font-semibold text-blue-900 mb-1">Archived Audition Cycle</h4>
         <p class="text-sm text-blue-800">
-          This audition cycle ran from <%= @audition_cycle.opens_at&.strftime("%B %-d, %Y") %> to <%= @audition_cycle.closes_at&.strftime("%B %-d, %Y") %>.
+          This audition cycle ran from <%= @audition_cycle.opens_at&.strftime("%B %-d, %Y") %><% if @audition_cycle.closes_at.present? %> to <%= @audition_cycle.closes_at.strftime("%B %-d, %Y") %><% else %> (open-ended)<% end %>.
         </p>
       </div>
     </div>
@@ -47,7 +47,7 @@
         <div class="p-3 bg-gray-50 rounded-lg">
           <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
           <p class="text-sm font-semibold text-gray-900 mt-1">
-            <%= @audition_cycle.opens_at.strftime("%b %-d, %Y") %> - <%= @audition_cycle.closes_at.strftime("%b %-d, %Y") %>
+            <%= @audition_cycle.opens_at.strftime("%b %-d, %Y") %><% if @audition_cycle.closes_at.present? %> - <%= @audition_cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>
           </p>
         </div>
       </div>

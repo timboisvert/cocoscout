@@ -18,7 +18,7 @@ class Manage::OrganizationsController < Manage::ManageController
   def show
     @role = @organization.role_for(Current.user)
     @is_owner = @organization.owned_by?(Current.user)
-    @team_members = @organization.users.includes(:person, :user_roles)
+    @team_members = @organization.users.includes(:person, :organization_roles)
   end
 
   def new
@@ -33,8 +33,8 @@ class Manage::OrganizationsController < Manage::ManageController
     @organization.owner = Current.user
 
     if @organization.save
-      # Assign creator as manager via user role
-      UserRole.create!(user: Current.user, organization: @organization, company_role: "manager")
+      # Assign creator as manager via organization role
+      OrganizationRole.create!(user: Current.user, organization: @organization, company_role: "manager")
 
       # Ensure user has a person record and it's associated with this organization
       if Current.user.person.nil?
@@ -107,7 +107,7 @@ class Manage::OrganizationsController < Manage::ManageController
     new_owner = User.find(params[:new_owner_id])
 
     # Ensure new owner has manager role
-    unless @organization.user_roles.exists?(user: new_owner, company_role: "manager")
+    unless @organization.organization_roles.exists?(user: new_owner, company_role: "manager")
       redirect_to manage_organization_path(@organization), alert: "New owner must be a manager first"
       return
     end

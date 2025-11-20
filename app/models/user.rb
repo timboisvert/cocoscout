@@ -3,8 +3,8 @@
     has_secure_password
     has_many :sessions, dependent: :destroy
 
-    has_many :user_roles, dependent: :destroy
-    has_many :organizations, through: :user_roles
+    has_many :organization_roles, dependent: :destroy
+    has_many :organizations, through: :organization_roles
     has_many :production_permissions, dependent: :destroy
     has_many :email_logs, dependent: :destroy
 
@@ -29,13 +29,13 @@
     GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
     def can_manage?
-      user_roles.any?
+      organization_roles.any?
     end
 
     # Returns the role for the current organization (default role)
     def default_role
       return nil unless Current.organization
-      user_roles.find_by(organization_id: Current.organization.id)&.company_role
+      organization_roles.find_by(organization_id: Current.organization.id)&.company_role
     end
 
     # Check if user has any access to the current organization

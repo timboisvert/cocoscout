@@ -168,7 +168,7 @@ class GodModeController < ApplicationController
     @failed_executions = SolidQueue::FailedExecution
       .joins(:job)
       .includes(:job)
-      .order("solid_queue_failed_executions.created_at DESC")
+      .order(Arel.sql("solid_queue_failed_executions.created_at DESC"))
       .limit(100)
       .select("solid_queue_failed_executions.*, solid_queue_jobs.*")
   end

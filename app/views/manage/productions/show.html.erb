@@ -19,7 +19,7 @@
           <%= link_to manage_production_auditions_path(@production, call_data[:call]), class: "flex items-center justify-between p-3 bg-pink-50 border border-pink-100 rounded-lg hover:bg-pink-100 transition-colors no-underline" do %>
             <div>
               <p class="font-bold text-sm">
-                <%= call_data[:call].opens_at.strftime("%b %d, %Y") %> - <%= call_data[:call].closes_at.strftime("%b %d, %Y") %>
+                <%= call_data[:call].opens_at.strftime("%b %d, %Y") %><% if call_data[:call].closes_at.present? %> - <%= call_data[:call].closes_at.strftime("%b %d, %Y") %><% else %> (open-ended)<% end %>
               </p>
               <div class="text-xs text-gray-600 mt-2 space-x-3">
                 <span><span class="font-semibold text-gray-900"><%= call_data[:call].counts[:unreviewed] %></span> Unreviewed</span>
@@ -53,11 +53,11 @@
         <% if @dashboard[:upcoming_shows].any? %>
           <div class="space-y-3">
             <% @dashboard[:upcoming_shows].each do |show_data| %>
-              <%= link_to cast_manage_production_show_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
+              <%= link_to manage_production_show_cast_path(@production, show_data[:show]), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors no-underline gap-2" do %>
                 <div class="flex-1 min-w-0">
                   <div class="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                     <p class="font-bold text-sm whitespace-normal">
-                      <%= show_data[:show].date_and_time&.strftime("%b %d, %Y at %l:%M %p") %>
+                      <%= show_data[:show].date_and_time&.strftime("%A, %b %d, %Y at %l:%M %p") %>
                     </p>
                     <% if show_data[:show].date_and_time %>
                       <span class="text-xs text-gray-500 sm:whitespace-nowrap">(<%= show_data[:days_until] %>)</span>
@@ -86,7 +86,7 @@
                   </div>
                   <div class="text-xs text-gray-500 mt-3">
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div class="bg-pink-500 h-2 rounded-full" style="width: <%= show_data[:cast_percentage] %>%"></div>
+                      <div class="<%= show_data[:cast_percentage] == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full" style="width: <%= show_data[:cast_percentage] %>%"></div>
                     </div>
                     <span><%= show_data[:cast_percentage] %>% cast</span>
                   </div>
@@ -210,8 +210,7 @@
         <% links = [
           { name: "Manage Shows & Events", path: manage_production_shows_path(@production) },
           { name: "Manage Availability", path: manage_production_availability_index_path(@production) },
-          { name: "Manage Cast Membership", path: manage_production_casts_path(@production) },
-          { name: "Manage Roles", path: manage_production_roles_path(@production) },
+          { name: "Manage Casting & Roles", path: manage_production_casting_path(@production) },
           { name: "Manage Auditions & Sign-ups", path: manage_production_auditions_path(@production) },
           { name: "View and Manage Visual Assets", path: manage_production_visual_assets_path(@production) },
           { name: "Production Settings", path: edit_manage_production_path(@production) }

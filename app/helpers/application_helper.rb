@@ -23,7 +23,7 @@ module ApplicationHelper
     return false unless Current.user
     # Check if user has any production company access with manager or viewer role,
     # OR has per-production permissions
-    Current.user.user_roles.exists?(company_role: [ "manager", "viewer" ]) ||
+    Current.user.organization_roles.exists?(company_role: [ "manager", "viewer" ]) ||
       Current.user.production_permissions.exists?
   end
 

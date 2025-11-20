@@ -5,9 +5,9 @@ class Group < ApplicationRecord
   accepts_nested_attributes_for :socials, allow_destroy: true
 
   has_many :audition_requests, as: :requestable, dependent: :destroy
-  has_many :cast_memberships, as: :castable, dependent: :destroy
-  has_many :casts, through: :cast_memberships
-  
+  has_many :talent_pool_memberships, as: :member, dependent: :destroy
+  has_many :talent_pools, through: :talent_pool_memberships
+
   has_many :questionnaire_invitations, as: :invitee, dependent: :destroy
   has_many :invited_questionnaires, through: :questionnaire_invitations, source: :questionnaire
   has_many :questionnaire_responses, as: :respondent, dependent: :destroy
@@ -56,10 +56,10 @@ class Group < ApplicationRecord
 
   def update_public_key(new_key)
     return false if new_key == public_key
-    
+
     old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
     old_keys_array << public_key unless old_keys_array.include?(public_key)
-    
+
     self.public_key = new_key
     self.old_keys = old_keys_array.to_json
     save
@@ -91,16 +91,16 @@ class Group < ApplicationRecord
 
   def generate_public_key
     return if public_key.present?
-    
+
     base_key = name.parameterize
     key = base_key
     counter = 2
-    
+
     while Person.where(public_key: key).exists? || Group.where(public_key: key).exists?
       key = "#{base_key}-#{counter}"
       counter += 1
     end
-    
+
     self.public_key = key
   end
 

@@ -13,10 +13,15 @@ RSpec.describe AuditionCycle, type: :model do
       expect(call.errors[:opens_at]).to include("can't be blank")
     end
 
-    it "is invalid without closes_at" do
+    it "is valid without closes_at (open-ended)" do
       call = build(:audition_cycle, closes_at: nil)
+      expect(call).to be_valid
+    end
+
+    it "validates closes_at is after opens_at when both are present" do
+      call = build(:audition_cycle, opens_at: Time.current, closes_at: 1.day.ago)
       expect(call).not_to be_valid
-      expect(call.errors[:closes_at]).to include("can't be blank")
+      expect(call.errors[:closes_at]).to include("must be after the opening date and time")
     end
   end
 
@@ -106,6 +111,11 @@ RSpec.describe AuditionCycle, type: :model do
     it "returns :closed when closes_at is in the past" do
       call = create(:audition_cycle, :closed)
       expect(call.timeline_status).to eq(:closed)
+    end
+
+    it "returns :open when closes_at is nil (open-ended) and opens_at is in the past" do
+      call = create(:audition_cycle, :open_ended)
+      expect(call.timeline_status).to eq(:open)
     end
   end
 

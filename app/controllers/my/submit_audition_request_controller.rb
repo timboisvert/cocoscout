@@ -47,9 +47,9 @@ class My::SubmitAuditionRequestController < ApplicationController
     end
 
     # First we'll check if they've already responded to this audition cycle
-    if @audition_cycle.audition_requests.exists?(person: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
 
-      @audition_request = @audition_cycle.audition_requests.find_by(person: Current.user.person)
+      @audition_request = @audition_cycle.audition_requests.find_by(requestable: Current.user.person)
       @answers = {}
       @questions.each do |question|
         answer = @audition_request.answers.find_by(question: question)
@@ -79,10 +79,10 @@ class My::SubmitAuditionRequestController < ApplicationController
     end
 
     # We may be updating an existing response, so check for that first
-    if @audition_cycle.audition_requests.exists?(person: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
 
       # Get the person and audition request
-      @audition_request = @audition_cycle.audition_requests.find_by(person: @person)
+      @audition_request = @audition_cycle.audition_requests.find_by(requestable: @person)
 
       # Update the answers
       @answers = {}
@@ -98,7 +98,7 @@ class My::SubmitAuditionRequestController < ApplicationController
     else
 
       # It's a new request, so instantiate the objects
-      @audition_request = AuditionRequest.new(person: @person)
+      @audition_request = AuditionRequest.new(requestable: @person)
       @audition_request.audition_cycle = @audition_cycle
 
       # Loop through the questions and store the answers

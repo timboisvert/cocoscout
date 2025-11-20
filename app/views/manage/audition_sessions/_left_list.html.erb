@@ -31,7 +31,7 @@
             ar = ar.where(status: [ :unreviewed, :undecided, :passed, :accepted ])
         elsif filter == "to_be_scheduled"
             audition_cycle = production.active_audition_cycle
-            ar = ar.where(status: :accepted).where.not(person_id: audition_cycle&.audition_sessions&.joins(:auditions)&.select("auditions.person_id") || [])
+            ar = ar.where(status: :accepted, requestable_type: 'Person').where.not(requestable_id: audition_cycle&.audition_sessions&.joins(:auditions)&.select("auditions.person_id") || [])
         elsif filter == "accepted"
             ar = ar.where(status: :accepted)
         end

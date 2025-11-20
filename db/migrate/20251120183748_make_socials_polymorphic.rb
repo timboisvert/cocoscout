@@ -10,7 +10,7 @@ class MakeSocialsPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Add index
-    add_index :socials, [:sociable_type, :sociable_id]
+    add_index :socials, [ :sociable_type, :sociable_id ]
 
     # Remove old person_id column
     remove_column :socials, :person_id
@@ -26,7 +26,7 @@ class MakeSocialsPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Remove polymorphic columns
-    remove_index :socials, [:sociable_type, :sociable_id]
+    remove_index :socials, [ :sociable_type, :sociable_id ]
     remove_column :socials, :sociable_type
     remove_column :socials, :sociable_id
 

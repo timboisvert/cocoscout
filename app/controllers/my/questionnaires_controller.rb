@@ -15,7 +15,7 @@ class My::QuestionnairesController < ApplicationController
     if @filter == "awaiting"
       # Only show questionnaires that haven't been responded to yet
       @questionnaires = all_questionnaires.select do |q|
-        !q.questionnaire_responses.exists?(person: Current.user.person)
+        !q.questionnaire_responses.exists?(respondent: Current.user.person)
       end
     else
       # Show all questionnaires
@@ -27,7 +27,7 @@ class My::QuestionnairesController < ApplicationController
     @person = Current.user.person
 
     # Check if person is invited
-    unless @questionnaire.questionnaire_invitations.exists?(person: @person)
+    unless @questionnaire.questionnaire_invitations.exists?(invitee: @person)
       redirect_to my_dashboard_path, alert: "You are not invited to this questionnaire"
       return
     end
@@ -49,14 +49,14 @@ class My::QuestionnairesController < ApplicationController
 
       # Load existing availability data
       @availability = {}
-      ShowAvailability.where(person: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @person, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end
 
     # Check if they've already responded
-    if @questionnaire.questionnaire_responses.exists?(person: @person)
-      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(person: @person)
+    if @questionnaire.questionnaire_responses.exists?(respondent: @person)
+      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @person)
       @answers = {}
       @questions.each do |question|
         answer = @questionnaire_response.questionnaire_answers.find_by(question: question)
@@ -75,7 +75,7 @@ class My::QuestionnairesController < ApplicationController
     @person = Current.user.person
 
     # Check if person is invited
-    unless @questionnaire.questionnaire_invitations.exists?(person: @person)
+    unless @questionnaire.questionnaire_invitations.exists?(invitee: @person)
       redirect_to my_dashboard_path, alert: "You are not invited to this questionnaire"
       return
     end
@@ -93,8 +93,8 @@ class My::QuestionnairesController < ApplicationController
     end
 
     # Check if updating existing response
-    if @questionnaire.questionnaire_responses.exists?(person: @person)
-      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(person: @person)
+    if @questionnaire.questionnaire_responses.exists?(respondent: @person)
+      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @person)
 
       # Update the answers
       @answers = {}
@@ -108,7 +108,7 @@ class My::QuestionnairesController < ApplicationController
       end
     else
       # New response
-      @questionnaire_response = QuestionnaireResponse.new(person: @person)
+      @questionnaire_response = QuestionnaireResponse.new(respondent: @person)
       @questionnaire_response.questionnaire = @questionnaire
 
       # Loop through the questions and store the answers

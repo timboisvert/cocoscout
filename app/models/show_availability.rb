@@ -8,5 +8,5 @@ class ShowAvailability < ApplicationRecord
     unavailable: 2
   }, default: :unset
 
-  validates :available_entity_id, uniqueness: { scope: [:show_id, :available_entity_type] }
+  validates :available_entity_id, uniqueness: { scope: [ :show_id, :available_entity_type ] }
 end

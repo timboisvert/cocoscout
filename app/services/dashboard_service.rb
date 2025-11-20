@@ -17,7 +17,7 @@ class DashboardService
     call = @production.audition_cycle
     return { total_open: 0, with_auditionees: [] } if call.blank?
 
-    is_open = call.opens_at <= Time.current && call.closes_at >= Time.current
+    is_open = call.opens_at <= Time.current && (call.closes_at.nil? || call.closes_at >= Time.current)
     return { total_open: 0, with_auditionees: [] } unless is_open
 
     {
@@ -64,12 +64,12 @@ class DashboardService
       .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
       .order(date_and_time: :asc)
 
-    # Get all people in the production's casts
-    all_cast_people = @production.casts.flat_map(&:people).uniq
+    # Get all people in the production's talent pools
+    all_cast_people = @production.talent_pools.flat_map(&:people).uniq
 
     shows_with_availability = upcoming_shows.map do |show|
       # For each show, check which cast people have an availability record
-      people_with_availability = show.show_availabilities.where(person_id: all_cast_people.pluck(:id)).count
+      people_with_availability = show.show_availabilities.where(available_entity_type: "Person", available_entity_id: all_cast_people.pluck(:id)).count
       people_without_availability = all_cast_people.count - people_with_availability
 
       {

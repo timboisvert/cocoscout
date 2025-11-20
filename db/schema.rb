@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_20_231606) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -130,36 +130,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
 
   create_table "cast_assignment_stages", force: :cascade do |t|
     t.integer "audition_cycle_id", null: false
-    t.integer "cast_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
     t.text "notification_email"
     t.integer "person_id", null: false
     t.integer "status", default: 0, null: false
+    t.integer "talent_pool_id", null: false
     t.datetime "updated_at", null: false
     t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
-    t.index ["cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
-    t.index ["cast_id"], name: "index_cast_assignment_stages_on_cast_id"
     t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
-  end
-
-  create_table "cast_memberships", force: :cascade do |t|
-    t.integer "cast_id", null: false
-    t.integer "castable_id", null: false
-    t.string "castable_type", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["cast_id", "castable_type", "castable_id"], name: "index_cast_memberships_unique", unique: true
-    t.index ["cast_id"], name: "index_cast_memberships_on_cast_id"
-    t.index ["castable_type", "castable_id"], name: "index_cast_memberships_on_castable_type_and_castable_id"
-  end
-
-  create_table "casts", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "name"
-    t.integer "production_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["production_id"], name: "index_casts_on_production_id"
+    t.index ["talent_pool_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
+    t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
   end
 
   create_table "email_groups", force: :cascade do |t|
@@ -252,6 +233,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
     t.datetime "created_at", null: false
     t.string "email"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "organization_roles", force: :cascade do |t|
+    t.string "company_role", null: false
+    t.datetime "created_at", null: false
+    t.integer "organization_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["organization_id"], name: "index_organization_roles_on_organization_id"
+    t.index ["user_id", "organization_id"], name: "index_organization_roles_on_user_id_and_organization_id", unique: true
+    t.index ["user_id"], name: "index_organization_roles_on_user_id"
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -470,6 +462,25 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
     t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
   end
 
+  create_table "talent_pool_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "member_id", null: false
+    t.string "member_type", null: false
+    t.integer "talent_pool_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["member_type", "member_id"], name: "index_talent_pool_memberships_on_member_type_and_member_id"
+    t.index ["talent_pool_id", "member_type", "member_id"], name: "index_talent_pool_memberships_unique", unique: true
+    t.index ["talent_pool_id"], name: "index_talent_pool_memberships_on_talent_pool_id"
+  end
+
+  create_table "talent_pools", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.integer "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_talent_pools_on_production_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -479,17 +490,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
-  end
-
-  create_table "user_roles", force: :cascade do |t|
-    t.string "company_role", null: false
-    t.datetime "created_at", null: false
-    t.integer "organization_id", null: false
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
-    t.index ["organization_id"], name: "index_user_roles_on_organization_id"
-    t.index ["user_id", "organization_id"], name: "index_user_roles_on_user_id_and_organization_id", unique: true
-    t.index ["user_id"], name: "index_user_roles_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -523,10 +523,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
-  add_foreign_key "cast_assignment_stages", "casts"
   add_foreign_key "cast_assignment_stages", "people"
-  add_foreign_key "cast_memberships", "casts"
-  add_foreign_key "casts", "productions"
+  add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
   add_foreign_key "group_memberships", "groups"
@@ -534,6 +532,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
   add_foreign_key "invitations", "organizations"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "organization_roles", "organizations"
+  add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "people", "users"
   add_foreign_key "person_invitations", "organizations"
@@ -556,8 +556,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
+  add_foreign_key "talent_pool_memberships", "talent_pools"
+  add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
-  add_foreign_key "user_roles", "organizations"
-  add_foreign_key "user_roles", "users"
   add_foreign_key "users", "people"
 end

@@ -12,6 +12,11 @@ class AuditionRequest < ApplicationRecord
 
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
+  # Helper method for backward compatibility - auditions are always for individual people
+  def person
+    requestable if requestable_type == "Person"
+  end
+
   def display_name
     requestable.name
   end

@@ -20,7 +20,7 @@ class Manage::ManageController < ActionController::Base
       @show_manage_sidebar = false
       @has_organization = Current.user.organizations.any?
       @current_org = Current.organization
-      @user_orgs = Current.user.organizations.includes(:user_roles).order(:name)
+      @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
       render "welcome" and return
     end
 
@@ -46,7 +46,7 @@ class Manage::ManageController < ActionController::Base
     @show_manage_sidebar = false
     @has_organization = Current.user.organizations.any?
     @current_org = Current.organization
-    @user_orgs = Current.user.organizations.includes(:user_roles).order(:name)
+    @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
     render "welcome"
   end
 

@@ -1,13 +1,13 @@
 class Production < ApplicationRecord
-    # Delete cast_assignment_stages first since they reference both audition_cycles and casts
+    # Delete cast_assignment_stages first since they reference both audition_cycles and talent_pools
     before_destroy :delete_cast_assignment_stages
-    before_destroy :delete_casts_people_joins
+    before_destroy :delete_people_talent_pools_joins
 
     has_many :posters, dependent: :destroy
     has_many :shows, dependent: :destroy
     has_many :audition_cycles, dependent: :destroy
     has_many :audition_requests, through: :audition_cycles
-    has_many :casts, dependent: :delete_all
+    has_many :talent_pools, dependent: :delete_all
     has_many :roles, dependent: :delete_all
     has_many :show_person_role_assignments, through: :shows
     has_many :production_permissions, dependent: :delete_all
@@ -69,10 +69,10 @@ class Production < ApplicationRecord
         CastAssignmentStage.where(audition_cycle_id: audition_cycles.pluck(:id)).delete_all
     end
 
-    def delete_casts_people_joins
-        # Delete all entries in the casts_people join table for this production's casts
+    def delete_people_talent_pools_joins
+        # Delete all entries in the people_talent_pools join table for this production's talent pools
         ActiveRecord::Base.connection.execute(
-            "DELETE FROM casts_people WHERE cast_id IN (SELECT id FROM casts WHERE production_id = #{id})"
+            "DELETE FROM people_talent_pools WHERE talent_pool_id IN (SELECT id FROM talent_pools WHERE production_id = #{id})"
         )
 
         # Delete all auditions before deleting audition_requests or audition_sessions

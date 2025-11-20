@@ -113,7 +113,7 @@
 
           <!-- Submit Button -->
           <%
-            if @questionnaire.questionnaire_responses.exists?(person: Current.user.person)
+            if @questionnaire.questionnaire_responses.exists?(respondent: Current.user.person)
               submit_text = "Update Response"
             else
               submit_text = "Submit Response"

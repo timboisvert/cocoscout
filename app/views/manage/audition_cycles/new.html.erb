@@ -24,16 +24,22 @@
       links: []
     } %>
 
-    <p class="text-sm text-gray-500">When should the Sign-up window open and close? While it&apos;s open, members of the public will be able to sign up for an in-person audition or submit a video audition, depending on how you've set up the auditions above.</p>
+    <p class="text-sm text-gray-500 mb-5">When should the Sign-up window open? You can optionally set a close date, or leave it open-ended to keep accepting sign-ups indefinitely.</p>
 
     <div class="flex">
       <div class="w-1/2 mr-5">
         <%= form.label :opens_at, "Open At:" %>
         <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:opens_at].none?, "border-pink-500": @audition_cycle.errors[:opens_at].any?}] %>
       </div>
-      <div class="w-1/2 ml-5">
-        <%= form.label :closes_at, "Close At:" %>
-        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}] %>
+      <div class="w-1/2 ml-5" data-controller="date-field-toggle">
+        <div class="flex items-center justify-between mb-2">
+          <%= form.label :closes_at, "Close At (Optional):" %>
+          <label class="flex items-center text-xs text-gray-600 cursor-pointer">
+            <input type="checkbox" <%= @audition_cycle.closes_at.nil? ? 'checked' : '' %> data-action="change->date-field-toggle#toggle" data-date-field-toggle-target="checkbox" class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500 mr-1">
+            Open-ended
+          </label>
+        </div>
+        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}], data: { date_field_toggle_target: "field" } %>
       </div>
     </div>
 

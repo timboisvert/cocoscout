@@ -168,7 +168,7 @@ class Manage::QuestionnairesController < Manage::ManageController
 
       # Load availability data for this person
       @availability = {}
-      ShowAvailability.where(person: @response.person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @response.person, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end
@@ -183,13 +183,13 @@ class Manage::QuestionnairesController < Manage::ManageController
     message_template = params[:message]
 
     # Get all people in the production
-    all_people = @production.casts.flat_map(&:people).uniq
+    all_people = @production.talent_pools.flat_map(&:people).uniq
 
     # Determine recipients based on recipient_type
     recipients = if recipient_type == "all"
       all_people
     elsif recipient_type == "cast"
-      Cast.find(cast_id).people
+      TalentPool.find(cast_id).people
     elsif recipient_type == "specific"
       Person.where(id: person_ids)
     else
@@ -200,7 +200,7 @@ class Manage::QuestionnairesController < Manage::ManageController
     recipients.each do |person|
       QuestionnaireInvitation.find_or_create_by(
         questionnaire: @questionnaire,
-        person_id: person.id
+        invitee: person
       )
 
       # Send email if person has a user account

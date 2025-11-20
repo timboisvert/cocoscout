@@ -20,12 +20,12 @@ RSpec.describe Organization, type: :model do
       expect(company).to respond_to(:productions)
     end
 
-    it "has many user_roles" do
+    it "has many organization_roles" do
       company = create(:organization)
-      expect(company).to respond_to(:user_roles)
+      expect(company).to respond_to(:organization_roles)
     end
 
-    it "has many users through user_roles" do
+    it "has many users through organization_roles" do
       company = create(:organization)
       expect(company).to respond_to(:users)
     end
@@ -74,13 +74,13 @@ RSpec.describe Organization, type: :model do
   end
 
   describe "with users and roles" do
-    it "can have multiple users through user_roles" do
+    it "can have multiple users through organization_roles" do
       company = create(:organization)
       user1 = create(:user)
       user2 = create(:user)
 
-      create(:user_role, user: user1, organization: company, company_role: "manager")
-      create(:user_role, user: user2, organization: company, company_role: "viewer")
+      create(:organization_role, user: user1, organization: company, company_role: "manager")
+      create(:organization_role, user: user2, organization: company, company_role: "viewer")
 
       expect(company.users.reload).to include(user1, user2)
       expect(company.users.count).to eq(2)

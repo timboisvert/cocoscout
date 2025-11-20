@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["input", "results"]
-    static values = { url: String, resultPartial: String, castId: String }
+    static values = { url: String, resultPartial: String, talentPoolId: String }
 
     connect() {
         this.timeout = null;
@@ -14,8 +14,8 @@ export default class extends Controller {
         this.inputTarget.focus();
     }
 
-    updateCastId(event) {
-        this.castIdValue = event.target.value;
+    updateTalentPoolId(event) {
+        this.talentPoolIdValue = event.target.value;
     }
 
     search() {
@@ -35,8 +35,8 @@ export default class extends Controller {
         if (this.hasResultPartialValue && this.resultPartialValue) {
             url += `&result_partial=${encodeURIComponent(this.resultPartialValue)}`;
         }
-        if (this.hasCastIdValue && this.castIdValue) {
-            url += `&cast_id=${encodeURIComponent(this.castIdValue)}`;
+        if (this.hasTalentPoolIdValue && this.talentPoolIdValue) {
+            url += `&talent_pool_id=${encodeURIComponent(this.talentPoolIdValue)}`;
         }
         fetch(url)
             .then(r => r.text())

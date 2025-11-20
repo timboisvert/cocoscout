@@ -4,7 +4,7 @@ class AuditionCycle < ApplicationRecord
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :email_groups, dependent: :destroy
   has_many :audition_email_assignments, dependent: :destroy
-  # Note: cast_assignment_stages are deleted via Production's before_destroy callback
+  # Note: cast_assignment_stages are deleted via Production before_destroy callback
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages
 
@@ -15,7 +15,6 @@ class AuditionCycle < ApplicationRecord
   belongs_to :production
 
   validates :opens_at, presence: true
-  validates :closes_at, presence: true
   validate :form_must_be_reviewed_before_opening
   validate :closes_at_after_opens_at
   validate :only_one_active_per_production
@@ -43,7 +42,7 @@ class AuditionCycle < ApplicationRecord
   def timeline_status
     if self.opens_at > Time.current
       :upcoming
-    elsif self.closes_at <= Time.current
+    elsif self.closes_at.present? && self.closes_at <= Time.current
       :closed
     else
       :open
@@ -54,7 +53,7 @@ class AuditionCycle < ApplicationRecord
     # Can only edit if:
     # - The cycle is active (not archived)
     # - The form has been reviewed/validated
-    # - Current time is between opens_at and closes_at
+    # - Current time is after opens_at and before closes_at (if closes_at is set)
     active && form_reviewed && timeline_status == :open
   end
 

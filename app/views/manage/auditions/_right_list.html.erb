@@ -1,7 +1,7 @@
 <div id="right_list" class="p-4 space-y-2 overflow-y-auto flex-1">
   <% if available_people.any? %>
     <% available_people.each do |request| %>
-      <% scheduled = scheduled_person_ids&.include?(request.person_id) %>
+      <% scheduled = scheduled_person_ids&.include?(request.person.id) %>
       <div class="bg-white p-3 rounded border border-gray-300 shadow-sm cursor-move hover:shadow-md transition text-sm flex items-center gap-3 <%= 'opacity-40' if scheduled %>"
            draggable="true"
            data-id="<%= request.id %>"
