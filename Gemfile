@@ -39,6 +39,8 @@ group :development do
   gem "ruby-lsp", require: false
   gem "ruby-lsp-rails", require: false
   gem "ruby-lsp-rspec", require: false
+  gem "derailed_benchmarks", require: false
+  gem "stackprof", require: false
 end
 
 group :development, :test do
