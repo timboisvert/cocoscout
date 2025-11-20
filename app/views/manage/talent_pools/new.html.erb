@@ -11,7 +11,7 @@
     links: []
   } %>
 
-  <%= form_with(model: [:manage, @production, :casting, @talent_pool], class: "contents") do |form| %>
+  <%= form_with(model: [:manage, @production, @talent_pool], class: "contents") do |form| %>
 
     <div class="my-5">
         <% if @talent_pool.errors[:name].none? %>

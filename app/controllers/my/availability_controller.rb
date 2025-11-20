@@ -3,11 +3,11 @@ class My::AvailabilityController < ApplicationController
     @filter = (params[:filter] || session[:availability_filter] || "no_response")
     session[:availability_filter] = @filter
 
-    @productions = Production.joins(casts: [ :casts_people ]).joins(:shows).where(casts_people: { person_id: Current.user.person.id }).distinct
+    @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: Current.user.person.id }).distinct
 
     # Get all upcoming non-canceled shows
-    @all_shows = Show.joins(production: { casts: [ :casts_people ] })
-      .where(casts_people: { person_id: Current.user.person.id })
+    @all_shows = Show.joins(production: { talent_pools: :people })
+      .where(people: { id: Current.user.person.id })
       .where.not(canceled: true)
       .where("date_and_time > ?", Time.current)
       .order(:date_and_time)
@@ -33,8 +33,8 @@ class My::AvailabilityController < ApplicationController
     @event_filter = params[:event_type] || "all"
 
     # Get all upcoming non-canceled shows
-    @shows = Show.joins(production: { casts: [ :casts_people ] })
-      .where(casts_people: { person_id: Current.user.person.id })
+    @shows = Show.joins(production: { talent_pools: :people })
+      .where(people: { id: Current.user.person.id })
       .where.not(canceled: true)
       .where("date_and_time > ?", Time.current)
       .order(:date_and_time)

@@ -189,23 +189,23 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :talent_pools, path: "talent-pools" do
+        collection do
+          get :search_people
+        end
+        member do
+          # These two are only used when dragging and dropping on the talent pool members list
+          post :add_person
+          post :remove_person
+        end
+      end
+
       # Unified Casting section
       get "casting", to: "casting#index", as: "casting"
 
       scope :casting do
         # Show cast assignment
         get "shows/:show_id/cast", to: "shows#cast", as: "show_cast"
-
-        resources :talent_pools, path: "talent-pools" do
-          collection do
-            get :search_people
-          end
-          member do
-            # These two are only used when dragging and dropping on the talent pool members list
-            post :add_person
-            post :remove_person
-          end
-        end
 
         resources :roles do
           collection do

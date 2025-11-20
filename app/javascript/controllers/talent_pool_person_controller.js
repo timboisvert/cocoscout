@@ -44,7 +44,7 @@ export default class extends Controller {
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const talentPoolId = this.talentPoolIdValue;
-        fetch(`/manage/productions/${productionId}/casting/talent-pools/${talentPoolId}/remove_person`, {
+        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/remove_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -146,7 +146,7 @@ export default class extends Controller {
 
     movePerson(productionId, personId, sourceTalentPoolId, targetTalentPoolId) {
         // First remove from source pool
-        fetch(`/manage/productions/${productionId}/casting/talent-pools/${sourceTalentPoolId}/remove_person`, {
+        fetch(`/manage/productions/${productionId}/talent-pools/${sourceTalentPoolId}/remove_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -161,7 +161,7 @@ export default class extends Controller {
                 if (sourcePoolList) sourcePoolList.innerHTML = html;
 
                 // Then add to target pool
-                return fetch(`/manage/productions/${productionId}/casting/talent-pools/${targetTalentPoolId}/add_person`, {
+                return fetch(`/manage/productions/${productionId}/talent-pools/${targetTalentPoolId}/add_person`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

@@ -20,7 +20,7 @@ class Manage::TalentPoolsController < Manage::ManageController
     @talent_pool.production = @production
 
     if @talent_pool.save
-      redirect_to manage_production_casting_talent_pools_path(@production), notice: "Talent pool was successfully created"
+      redirect_to manage_production_talent_pools_path(@production), notice: "Talent pool was successfully created"
     else
       render :new, status: :unprocessable_entity
     end
@@ -28,7 +28,7 @@ class Manage::TalentPoolsController < Manage::ManageController
 
   def update
     if @talent_pool.update(talent_pool_params)
-      redirect_to manage_production_casting_talent_pools_path(@production), notice: "Talent pool was successfully updated", status: :see_other
+      redirect_to manage_production_talent_pools_path(@production), notice: "Talent pool was successfully updated", status: :see_other
     else
       render :edit, status: :unprocessable_entity
     end
@@ -36,7 +36,7 @@ class Manage::TalentPoolsController < Manage::ManageController
 
   def destroy
     @talent_pool.destroy!
-    redirect_to manage_production_casting_talent_pools_path(@production), notice: "Talent pool was successfully deleted", status: :see_other
+    redirect_to manage_production_talent_pools_path(@production), notice: "Talent pool was successfully deleted", status: :see_other
   end
 
   def add_person
