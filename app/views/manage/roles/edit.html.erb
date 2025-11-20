@@ -4,6 +4,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
+      ["Casting & Roles", manage_production_casting_path(@production)],
       ["Roles", manage_production_roles_path(@production)]
     ],
     text: "Edit Role: #{@role.name}",

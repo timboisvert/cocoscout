@@ -12,7 +12,7 @@ end
 
 people = []
 Person.where(user_id: nil).each do |person|
-  productions = person.casts.includes(:production).map(&:production).uniq
+  productions = person.talent_pools.includes(:production).map(&:production).uniq
   next if productions.empty?
   people << person.email
 end

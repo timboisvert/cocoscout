@@ -1,42 +1,44 @@
-<% content_for :title, "Cast" %>
+<% content_for :title, "Talent Pools" %>
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Cast",
+    breadcrumbs: [
+      ["Casting & Roles", manage_production_casting_path(@production)]
+    ],
+    text: "Talent Pool",
     links: [
-      { text: "Create a Cast", path: new_manage_production_cast_path(@production) }
+      { text: "Create a Talent Pool", path: new_manage_production_talent_pool_path(@production) }
     ]
   } %>
 
-  <p class="text-sm text-gray-500 pb-4">You can create any number of casts, each with its own group of cast members.</p>
+  <p class="text-sm text-gray-500 pb-4">You can create any number of talent pools, each with its own group of people.</p>
 
   <div class="lg:flex gap-6" data-controller="add-person-panel" data-production-id="<%= @production.id %>">
-    <!-- Left side: Casts List (flexible width on desktop, full width on mobile) -->
-    <div id="casts-container" class="lg:flex-1" data-add-person-panel-target="castsContainer">
-      <div id="casts" class="space-y-5">
-        <% if @casts.any? %>
-          <% @casts.each do |cast| %>
+    <!-- Left side: Talent Pools List (flexible width on desktop, full width on mobile) -->
+    <div id="talent-pools-container" class="lg:flex-1" data-add-person-panel-target="talentPoolsContainer">
+      <div id="talent-pools" class="space-y-5">
+        <% if @talent_pools.any? %>
+          <% @talent_pools.each do |talent_pool| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
               <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= cast.name %></h3>
+                <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= talent_pool.name %></h3>
 
                 <% if current_user_can_manage?(Current.production) %>
                   <div class="flex gap-2">
-                    <%= link_to "Rename Cast", edit_manage_production_cast_path(@production, cast), class: "text-pink-500 text-xs underline" %>
-                    <%= link_to "Delete Cast",
-                          manage_production_cast_path(@production, cast),
-                          data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this cast?" },
+                    <%= link_to "Rename Pool", edit_manage_production_talent_pool_path(@production, talent_pool), class: "text-pink-500 text-xs underline" %>
+                    <%= link_to "Delete Pool",
+                          manage_production_talent_pool_path(@production, talent_pool),
+                          data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this pool?" },
                           class: "text-pink-500 text-xs underline" %>
                   </div>
                 <% end %>
 
               </div>
-              <div class="p-4" data-controller="cast-person" data-cast-person-production-id-value="<%= @production.id %>" data-cast-person-cast-id-value="<%= cast.id %>">
+              <div class="p-4" data-controller="talent-pool-person" data-talent-pool-person-production-id-value="<%= @production.id %>" data-talent-pool-person-talent-pool-id-value="<%= talent_pool.id %>">
 
-                <div id="cast-members-list-<%= cast.id %>">
-                  <%= render 'manage/casts/cast_members_list', cast: cast %>
+                <div id="talent-pool-members-list-<%= talent_pool.id %>">
+                  <%= render 'manage/talent_pools/talent_pool_members_list', talent_pool: talent_pool %>
                 </div>
 
               </div>
@@ -45,17 +47,17 @@
           <% end %>
         <% else %>
           <p class="text-gray-500 text-sm">
-            No casts have been created.
+            No talent pools have been created.
             <% if current_user_can_manage?(Current.production) %>
-              <%= link_to "Add a Cast", new_manage_production_cast_path(@production), class: "text-pink-500 underline" %>
+              <%= link_to "Add a Talent Pool", new_manage_production_talent_pool_path(@production), class: "text-pink-500 underline" %>
             <% end %>
           </p>
         <% end %>
       </div>
     </div>
 
-    <!-- Right side: Add Person to Cast Panel (fixed width on desktop, full width on mobile, sticky, hidden by default) -->
-    <% if current_user_can_manage?(Current.production) && @casts.any? %>
+    <!-- Right side: Add Person to Talent Pool Panel (fixed width on desktop, full width on mobile, sticky, hidden by default) -->
+    <% if current_user_can_manage?(Current.production) && @talent_pools.any? %>
       <div id="add-person-panel" class="hidden w-full lg:w-100 lg:sticky lg:top-4 lg:h-fit" data-add-person-panel-target="panel">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -69,9 +71,9 @@
           <div class="p-4 space-y-4">
             <!-- People search -->
             <div data-controller="people-search"
-                data-people-search-url-value="<%= search_people_manage_production_casts_path(@production, format: :html) %>"
+                data-people-search-url-value="<%= search_people_manage_production_talent_pools_path(@production, format: :html) %>"
                 data-people-search-result-partial-value=""
-                data-people-search-cast-id-value=""
+                data-people-search-talent-pool-id-value=""
                 data-add-person-panel-target="searchController">
               <input type="text"
                 id="person-search"

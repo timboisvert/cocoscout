@@ -31,7 +31,7 @@ namespace :seed do
         person.production_companies.clear
 
         # Remove from casts
-        person.casts.clear
+        person.talent_pools.clear
 
         # Now delete the person
         person.destroy

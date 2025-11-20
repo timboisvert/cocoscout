@@ -1,23 +1,23 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static values = { productionId: Number, castId: Number }
+    static values = { productionId: Number, talentPoolId: Number }
 
     add(event) {
         event.preventDefault();
         const button = event.currentTarget;
         const personId = button.dataset.personId;
 
-        // Try to get cast ID from button data attribute first (for search results),
+        // Try to get talent pool ID from button data attribute first (for search results),
         // then fall back to controller value
-        let castId = button.dataset.castIdValue;
-        if (!castId) {
-            castId = this.castIdValue;
+        let talentPoolId = button.dataset.talentPoolIdValue;
+        if (!talentPoolId) {
+            talentPoolId = this.talentPoolIdValue;
         }
 
         const productionId = this.productionIdValue;
 
-        fetch(`/manage/productions/${productionId}/casts/${castId}/add_person`, {
+        fetch(`/manage/productions/${productionId}/casting/talent-pools/${talentPoolId}/add_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -28,23 +28,23 @@ export default class extends Controller {
         })
             .then(r => r.text())
             .then(html => {
-                // Replace the cast members list with the new HTML
-                const castList = document.getElementById(`cast-members-list-${castId}`);
-                if (castList) castList.innerHTML = html;
+                // Replace the talent pool members list with the new HTML
+                const poolList = document.getElementById(`talent-pool-members-list-${talentPoolId}`);
+                if (poolList) poolList.innerHTML = html;
             });
     }
 
     remove(event) {
         event.preventDefault();
 
-        if (!confirm("Are you sure you want to remove this person from the cast?")) {
+        if (!confirm("Are you sure you want to remove this person from the pool?")) {
             return;
         }
 
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
-        const castId = this.castIdValue;
-        fetch(`/manage/productions/${productionId}/casts/${castId}/remove_person`, {
+        const talentPoolId = this.talentPoolIdValue;
+        fetch(`/manage/productions/${productionId}/casting/talent-pools/${talentPoolId}/remove_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -55,9 +55,9 @@ export default class extends Controller {
         })
             .then(r => r.text())
             .then(html => {
-                // Replace the cast members list with the new HTML
-                const castList = document.getElementById(`cast-members-list-${castId}`);
-                if (castList) castList.innerHTML = html;
+                // Replace the talent pool members list with the new HTML
+                const poolList = document.getElementById(`talent-pool-members-list-${talentPoolId}`);
+                if (poolList) poolList.innerHTML = html;
 
                 // If the add-person panel is open, hide the newly rendered "Add a person" button
                 const panel = document.getElementById("add-person-panel");
@@ -73,12 +73,12 @@ export default class extends Controller {
     dragStart(event) {
         const element = event.currentTarget;
         const personId = element.dataset.personId;
-        const sourceCastId = element.dataset.sourceCastId;
+        const sourceTalentPoolId = element.dataset.sourceTalentPoolId;
 
         // Store data in the drag event
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("personId", personId);
-        event.dataTransfer.setData("sourceCastId", sourceCastId);
+        event.dataTransfer.setData("sourceTalentPoolId", sourceTalentPoolId);
 
         // Add visual feedback
         element.style.opacity = "0.5";
@@ -123,11 +123,11 @@ export default class extends Controller {
         dropZone.classList.remove("ring-2", "ring-pink-400", "bg-pink-50");
 
         const personId = event.dataTransfer.getData("personId");
-        const sourceCastId = event.dataTransfer.getData("sourceCastId");
-        const targetCastId = dropZone.dataset.castId;
+        const sourceTalentPoolId = event.dataTransfer.getData("sourceTalentPoolId");
+        const targetTalentPoolId = dropZone.dataset.talentPoolId;
 
-        // Don't do anything if dropping on the same cast
-        if (sourceCastId === targetCastId) {
+        // Don't do anything if dropping on the same talent pool
+        if (sourceTalentPoolId === targetTalentPoolId) {
             return;
         }
 
@@ -140,13 +140,13 @@ export default class extends Controller {
             return;
         }
 
-        // Remove from source cast and add to target cast
-        this.movePerson(productionId, personId, sourceCastId, targetCastId);
+        // Remove from source pool and add to target pool
+        this.movePerson(productionId, personId, sourceTalentPoolId, targetTalentPoolId);
     }
 
-    movePerson(productionId, personId, sourceCastId, targetCastId) {
-        // First remove from source cast
-        fetch(`/manage/productions/${productionId}/casts/${sourceCastId}/remove_person`, {
+    movePerson(productionId, personId, sourceTalentPoolId, targetTalentPoolId) {
+        // First remove from source pool
+        fetch(`/manage/productions/${productionId}/casting/talent-pools/${sourceTalentPoolId}/remove_person`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -156,12 +156,12 @@ export default class extends Controller {
         })
             .then(r => r.text())
             .then(html => {
-                // Update source cast list
-                const sourceCastList = document.getElementById(`cast-members-list-${sourceCastId}`);
-                if (sourceCastList) sourceCastList.innerHTML = html;
+                // Update source pool list
+                const sourcePoolList = document.getElementById(`talent-pool-members-list-${sourceTalentPoolId}`);
+                if (sourcePoolList) sourcePoolList.innerHTML = html;
 
-                // Then add to target cast
-                return fetch(`/manage/productions/${productionId}/casts/${targetCastId}/add_person`, {
+                // Then add to target pool
+                return fetch(`/manage/productions/${productionId}/casting/talent-pools/${targetTalentPoolId}/add_person`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -172,9 +172,9 @@ export default class extends Controller {
             })
             .then(r => r.text())
             .then(html => {
-                // Update target cast list
-                const targetCastList = document.getElementById(`cast-members-list-${targetCastId}`);
-                if (targetCastList) targetCastList.innerHTML = html;
+                // Update target pool list
+                const targetPoolList = document.getElementById(`talent-pool-members-list-${targetTalentPoolId}`);
+                if (targetPoolList) targetPoolList.innerHTML = html;
             });
     }
 

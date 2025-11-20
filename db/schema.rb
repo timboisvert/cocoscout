@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_20_184037) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -129,32 +129,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
 
   create_table "cast_assignment_stages", force: :cascade do |t|
     t.integer "audition_cycle_id", null: false
-    t.integer "cast_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
     t.text "notification_email"
     t.integer "person_id", null: false
     t.integer "status", default: 0, null: false
+    t.integer "talent_pool_id", null: false
     t.datetime "updated_at", null: false
     t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
-    t.index ["cast_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
-    t.index ["cast_id"], name: "index_cast_assignment_stages_on_cast_id"
     t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
-  end
-
-  create_table "casts", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "name"
-    t.integer "production_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["production_id"], name: "index_casts_on_production_id"
-  end
-
-  create_table "casts_people", id: false, force: :cascade do |t|
-    t.integer "cast_id"
-    t.integer "person_id"
-    t.index ["cast_id"], name: "index_casts_people_on_cast_id"
-    t.index ["person_id"], name: "index_casts_people_on_person_id"
+    t.index ["talent_pool_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
+    t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
   end
 
   create_table "email_groups", force: :cascade do |t|
@@ -247,6 +232,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.index ["user_id"], name: "index_people_on_user_id"
+  end
+
+  create_table "people_talent_pools", id: false, force: :cascade do |t|
+    t.integer "person_id"
+    t.integer "talent_pool_id"
+    t.index ["person_id"], name: "index_people_talent_pools_on_person_id"
+    t.index ["talent_pool_id"], name: "index_people_talent_pools_on_talent_pool_id"
   end
 
   create_table "person_invitations", force: :cascade do |t|
@@ -431,6 +423,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
     t.index ["person_id"], name: "index_socials_on_person_id"
   end
 
+  create_table "talent_pools", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.integer "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_talent_pools_on_production_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -485,9 +485,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "auditions", "people"
-  add_foreign_key "cast_assignment_stages", "casts"
   add_foreign_key "cast_assignment_stages", "people"
-  add_foreign_key "casts", "productions"
+  add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
   add_foreign_key "invitations", "organizations"
@@ -519,6 +518,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "socials", "people"
+  add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "user_roles", "organizations"
   add_foreign_key "user_roles", "users"

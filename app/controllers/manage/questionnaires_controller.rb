@@ -183,13 +183,13 @@ class Manage::QuestionnairesController < Manage::ManageController
     message_template = params[:message]
 
     # Get all people in the production
-    all_people = @production.casts.flat_map(&:people).uniq
+    all_people = @production.talent_pools.flat_map(&:people).uniq
 
     # Determine recipients based on recipient_type
     recipients = if recipient_type == "all"
       all_people
     elsif recipient_type == "cast"
-      Cast.find(cast_id).people
+      TalentPool.find(cast_id).people
     elsif recipient_type == "specific"
       Person.where(id: person_ids)
     else

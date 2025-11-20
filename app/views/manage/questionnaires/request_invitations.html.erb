@@ -80,16 +80,16 @@
           </div>
         </div>
 
-        <% if @production.casts.count > 1 %>
+        <% if @production.talent_pools.count > 1 %>
           <label class="flex items-center cursor-pointer">
             <%= radio_button_tag :recipient_type, "cast", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleCastDropdown" } %>
             <span class="text-sm mr-3">Specific cast</span>
             <span class="hidden" data-questionnaire-invitation-target="castDropdown">
-              <% cast_options = @production.casts.map do |cast|
+              <% talent_pool_options = @production.talent_pools.map do |cast|
                 not_invited = cast.people.select { |p| @not_invited_people.include?(p) }.count
                 ["#{cast.name} (#{not_invited} not yet invited)", cast.id]
               end %>
-              <%= select_tag :cast_id, options_for_select(cast_options, @production.casts.first&.id), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500" %>
+              <%= select_tag :talent_pool_id, options_for_select(talent_pool_options, @production.talent_pools.first&.id), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500" %>
             </span>
           </label>
         <% end %>
@@ -108,10 +108,10 @@
           <% if @not_invited_people.any? %>
             <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Not Yet Invited</div>
             <% @not_invited_people.each do |person| %>
-              <% person_casts = @production.casts.select { |c| c.people.include?(person) } %>
+              <% person_talent_pools = @production.talent_pools.select { |c| c.people.include?(person) } %>
               <label class="flex items-center cursor-pointer">
                 <%= check_box_tag "person_ids[]", person.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_casts.map(&:name).join(", ") %></span></span>
+                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_talent_pools.map(&:name).join(", ") %></span></span>
               </label>
             <% end %>
           <% end %>
@@ -119,10 +119,10 @@
           <% if @invited_people.any? %>
             <div class="text-xs font-semibold text-gray-700 uppercase mb-2 <%= 'mt-4' if @not_invited_people.any? %>">Already Invited</div>
             <% @invited_people.each do |person| %>
-              <% person_casts = @production.casts.select { |c| c.people.include?(person) } %>
+              <% person_talent_pools = @production.talent_pools.select { |c| c.people.include?(person) } %>
               <div class="flex items-center opacity-50">
                 <%= check_box_tag "person_ids[]", person.id, false, disabled: true, class: "mr-2 cursor-not-allowed" %>
-                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_casts.map(&:name).join(", ") %></span></span>
+                <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_talent_pools.map(&:name).join(", ") %></span></span>
                 <span class="ml-2 text-xs text-green-600">✓</span>
               </div>
             <% end %>

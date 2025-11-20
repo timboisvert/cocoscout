@@ -48,7 +48,7 @@ class Manage::PeopleController < Manage::ManageController
 
   def show
     # Get all future shows for productions this person is a cast member of
-    production_ids = @person.casts.pluck(:production_id).uniq
+    production_ids = @person.talent_pools.pluck(:production_id).uniq
     @shows = Show.where(production_id: production_ids, canceled: false)
                  .where("date_and_time >= ?", Time.current)
                  .order(:date_and_time)
@@ -172,7 +172,7 @@ class Manage::PeopleController < Manage::ManageController
     @person.auditions.destroy_all
 
     # Remove from join tables
-    @person.casts.clear
+    @person.talent_pools.clear
     @person.organizations.clear
 
     # Destroy the user first (which will nullify the person association)
@@ -269,17 +269,17 @@ class Manage::PeopleController < Manage::ManageController
   end
 
   def add_to_cast
-    @cast = Cast.find(params[:cast_id])
+    @talent_pool = TalentPool.find(params[:talent_pool_id])
     @person = Current.organization.people.find(params[:person_id])
-    @cast.people << @person if !@cast.people.include?(@person)
-    render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+    @talent_pool.people << @person if !@talent_pool.people.include?(@person)
+    render partial: "manage/talent_pools/talent_pool_membership_card", locals: { person: @person, production: @talent_pool.production }
   end
 
   def remove_from_cast
-    @cast = Cast.find(params[:cast_id])
+    @talent_pool = TalentPool.find(params[:talent_pool_id])
     @person = Current.organization.people.find(params[:person_id])
-    @cast.people.delete(@person) if @cast.people.include?(@person)
-    render partial: "manage/casts/cast_membership_card", locals: { person: @person, production: @cast.production }
+    @talent_pool.people.delete(@person) if @talent_pool.people.include?(@person)
+    render partial: "manage/talent_pools/talent_pool_membership_card", locals: { person: @person, production: @talent_pool.production }
   end
 
   def remove_from_organization

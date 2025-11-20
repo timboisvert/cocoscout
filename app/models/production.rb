@@ -7,7 +7,7 @@ class Production < ApplicationRecord
     has_many :shows, dependent: :destroy
     has_many :audition_cycles, dependent: :destroy
     has_many :audition_requests, through: :audition_cycles
-    has_many :casts, dependent: :delete_all
+    has_many :talent_pools, dependent: :delete_all
     has_many :roles, dependent: :delete_all
     has_many :show_person_role_assignments, through: :shows
     has_many :production_permissions, dependent: :delete_all
@@ -70,9 +70,9 @@ class Production < ApplicationRecord
     end
 
     def delete_casts_people_joins
-        # Delete all entries in the casts_people join table for this production's casts
+        # Delete all entries in the people_talent_pools join table for this production's talent pools
         ActiveRecord::Base.connection.execute(
-            "DELETE FROM casts_people WHERE cast_id IN (SELECT id FROM casts WHERE production_id = #{id})"
+            "DELETE FROM people_talent_pools WHERE talent_pool_id IN (SELECT id FROM talent_pools WHERE production_id = #{id})"
         )
 
         # Delete all auditions before deleting audition_requests or audition_sessions

@@ -457,7 +457,8 @@ class Manage::ShowsController < Manage::ManageController
     end
 
     def set_show
-      @show = Show.find(params.expect(:id))
+      show_id = params[:show_id] || params[:id]
+      @show = Show.find(show_id)
     end
 
     # Only allow a list of trusted parameters through.
