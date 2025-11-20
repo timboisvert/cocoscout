@@ -1,5 +1,5 @@
 class Social < ApplicationRecord
-  belongs_to :person
+  belongs_to :sociable, polymorphic: true
 
   validates :platform, presence: true
   validates :handle, presence: true

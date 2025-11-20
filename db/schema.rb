@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -188,6 +188,33 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
     t.index ["user_id"], name: "index_email_logs_on_user_id"
   end
 
+  create_table "group_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "group_id", null: false
+    t.text "notification_preferences"
+    t.integer "permission_level", default: 0, null: false
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["group_id", "person_id"], name: "index_group_memberships_on_group_id_and_person_id", unique: true
+    t.index ["group_id"], name: "index_group_memberships_on_group_id"
+    t.index ["person_id"], name: "index_group_memberships_on_person_id"
+  end
+
+  create_table "groups", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.text "bio"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.string "name", null: false
+    t.text "old_keys"
+    t.string "phone"
+    t.string "public_key", null: false
+    t.datetime "updated_at", null: false
+    t.string "website"
+    t.index ["archived_at"], name: "index_groups_on_archived_at"
+    t.index ["public_key"], name: "index_groups_on_public_key", unique: true
+  end
+
   create_table "invitations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
@@ -243,9 +270,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
     t.string "email"
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
+    t.text "old_keys"
     t.string "pronouns"
+    t.string "public_key"
     t.datetime "updated_at", null: false
     t.integer "user_id"
+    t.index ["public_key"], name: "index_people_on_public_key", unique: true
     t.index ["user_id"], name: "index_people_on_user_id"
   end
 
@@ -425,10 +455,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   create_table "socials", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "handle", null: false
-    t.integer "person_id", null: false
     t.string "platform", null: false
+    t.integer "sociable_id"
+    t.string "sociable_type"
     t.datetime "updated_at", null: false
-    t.index ["person_id"], name: "index_socials_on_person_id"
+    t.index ["sociable_type", "sociable_id"], name: "index_socials_on_sociable_type_and_sociable_id"
   end
 
   create_table "team_invitations", force: :cascade do |t|
@@ -490,6 +521,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   add_foreign_key "casts", "productions"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
+  add_foreign_key "group_memberships", "groups"
+  add_foreign_key "group_memberships", "people"
   add_foreign_key "invitations", "organizations"
   add_foreign_key "invitations", "users"
   add_foreign_key "locations", "organizations"
@@ -518,7 +551,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_18_235805) do
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
-  add_foreign_key "socials", "people"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "user_roles", "organizations"
   add_foreign_key "user_roles", "users"
