@@ -290,8 +290,8 @@ class Manage::PeopleController < Manage::ManageController
 
     # If the person has a user account, clean up their roles and permissions
     if @person.user
-      # Remove user_role for this organization
-      @person.user.user_roles.where(organization: Current.organization).destroy_all
+      # Remove organization_role for this organization
+      @person.user.organization_roles.where(organization: Current.organization).destroy_all
 
       # Remove production_permissions for all productions in this production company
       production_ids = Current.organization.productions.pluck(:id)
