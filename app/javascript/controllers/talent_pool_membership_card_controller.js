@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Usage: data-controller="cast-membership-card"
+// Usage: data-controller="talent-pool-membership-card"
 export default class extends Controller {
     static targets = ["form", "card"]
     connect() { }
@@ -25,7 +25,7 @@ export default class extends Controller {
                 this.cardTarget.outerHTML = html
             })
             .catch(error => {
-                alert('There was an error updating the cast membership.')
+                alert('There was an error updating the pool membership.')
             })
     }
 
@@ -34,7 +34,7 @@ export default class extends Controller {
         const link = event.currentTarget;
         const url = link.getAttribute('href');
         const personId = link.dataset.personId;
-        const castId = link.dataset.castId;
+        const talentPoolId = link.dataset.talentPoolId;
         const card = this.cardTarget;
         const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -45,7 +45,7 @@ export default class extends Controller {
                 'X-CSRF-Token': token,
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
             },
-            body: new URLSearchParams({ person_id: personId, cast_id: castId })
+            body: new URLSearchParams({ person_id: personId, talent_pool_id: talentPoolId })
         })
             .then(response => {
                 if (!response.ok) throw new Error('Network error')

@@ -1,5 +1,5 @@
 FactoryBot.define do
-  factory :user_role do
+  factory :organization_role do
     association :user
     association :organization
     company_role { "viewer" }

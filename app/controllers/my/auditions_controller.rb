@@ -13,10 +13,10 @@ class My::AuditionsController < ApplicationController
 
     case @auditions_filter
     when "past"
-      @auditions = @auditions.where("audition_sessions.start_at <= ?", Time.current).order("audition_sessions.start_at DESC").distinct
+      @auditions = @auditions.where("audition_sessions.start_at <= ?", Time.current).order(Arel.sql("audition_sessions.start_at DESC")).distinct
     else
       @auditions_filter = "upcoming"
-      @auditions = @auditions.where("audition_sessions.start_at > ?", Time.current).order("audition_sessions.start_at ASC").distinct
+      @auditions = @auditions.where("audition_sessions.start_at > ?", Time.current).order(Arel.sql("audition_sessions.start_at ASC")).distinct
     end
   end
 end

@@ -16,32 +16,32 @@
               else
                 # Default group based on whether they're in a cast
                 stage = pending_stages.find { |s| s.person_id == person.id }
-                stage ? "default_#{stage.cast_id}" : "unassigned"
+                stage ? "default_#{stage.talent_pool_id}" : "unassigned"
               end
             end %>
             <% # Group only relevant people by their email group %>
             <% people_by_group = relevant_people.group_by(&get_email_group_id) %>
             <% # Get the first cast ID for use as default when creating new stages %>
-            <% default_cast_id = staged_casts.first&.id %>
+            <% default_talent_pool_id = staged_casts.first&.id %>
 
             <%# Tabs for each cast's default email (people with no custom email assignment) %>
-            <% staged_casts.each_with_index do |cast, cast_idx| %>
+            <% staged_casts.each_with_index do |talent_pool, talent_pool_idx| %>
               <% group_key = "default_#{cast.id}" %>
               <% cast_people = people_by_group[group_key] || [] %>
               <button
                 type="button"
                 data-tabs-target="tab"
-                data-index="<%= cast_idx %>"
+                data-index="<%= talent_pool_idx %>"
                 data-group-tab
                 data-group-id="<%= group_key %>"
-                data-cast-id="<%= cast.id %>"
+                data-talent-pool-id="<%= talent_pool.id %>"
                 data-action="tabs#select email-groups#selectGroup"
-                class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 <%= cast_idx == 0 ? 'text-pink-600 border-pink-600' : 'text-gray-500 bg-gray-50 border-transparent' %> cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
+                class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 <%= talent_pool_idx == 0 ? 'text-pink-600 border-pink-600' : 'text-gray-500 bg-gray-50 border-transparent' %> cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
               >
                 <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="<%= group_key %>" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                 </svg>
-                <span>Added to <%= cast.name %> (<%= cast_people.size %>)</span>
+                <span>Added to <%= talent_pool.name %> (<%= cast_people.size %>)</span>
               </button>
             <% end %>
 
@@ -56,7 +56,7 @@
                 data-index="<%= next_index %>"
                 data-group-tab
                 data-group-id="unassigned"
-                data-cast-id="<%= default_cast_id %>"
+                data-talent-pool-id="<%= default_talent_pool_id %>"
                 data-action="tabs#select email-groups#selectGroup"
                 class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
               >
@@ -77,7 +77,7 @@
                 data-index="<%= next_index + idx %>"
                 data-group-tab
                 data-group-id="<%= custom_group.group_id %>"
-                data-cast-id="<%= default_cast_id %>"
+                data-talent-pool-id="<%= default_talent_pool_id %>"
                 data-action="tabs#select email-groups#selectGroup"
                 class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-gray-500 bg-gray-50 border-transparent cursor-pointer whitespace-nowrap hover:text-pink-600 flex items-center gap-2"
               >
@@ -100,12 +100,12 @@
 
                         <div class="space-y-4">
             <%# Default panels for each cast %>
-            <% staged_casts.each_with_index do |cast, cast_idx| %>
+            <% staged_casts.each_with_index do |talent_pool, talent_pool_idx| %>
               <% group_key = "default_#{cast.id}" %>
               <% cast_people = people_by_group[group_key] || [] %>
-              <div data-tabs-target="panel" data-group-panel data-group-id="<%= group_key %>" class="<%= 'hidden' unless cast_idx == 0 %>">
+              <div data-tabs-target="panel" data-group-panel data-group-id="<%= group_key %>" class="<%= 'hidden' unless talent_pool_idx == 0 %>">
                 <div class="mb-4">
-                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People being added to <%= cast.name %>:</h5>
+                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People being added to <%= talent_pool.name %>:</h5>
                   <div class="flex flex-wrap gap-2">
                     <% if cast_people.any? %>
                       <% cast_people.each do |person| %>
@@ -114,7 +114,7 @@
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                           data-person-id="<%= person.id %>"
                           data-email-assignment-id="<%= assignment&.id || '' %>"
-                          data-cast-id="<%= cast.id %>"
+                          data-talent-pool-id="<%= talent_pool.id %>"
                         data-action="click->email-groups#showPopup"
                       >
                         <% headshot_variant = person.safe_headshot_variant(:thumb) %>
@@ -143,7 +143,7 @@
                     rows="6"
                   ><% if email_group&.email_template.present? %><%= email_group.email_template %><% else %>Dear [Name],
 
-Congratulations! We're excited to invite you to join the <%= cast.name %> for <%= @production.name %>.
+Congratulations! We're excited to invite you to join the <%= talent_pool.name %> for <%= @production.name %>.
 
 Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
 
@@ -180,7 +180,7 @@ The <%= @production.name %> Team<% end %></textarea>
                         class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                         data-person-id="<%= person.id %>"
                         data-email-assignment-id="<%= assignment&.id || '' %>"
-                        data-cast-id=""
+                        data-talent-pool-id=""
                         data-action="click->email-groups#showPopup"
                       >
                         <% headshot_variant = person.safe_headshot_variant(:thumb) %>
@@ -248,7 +248,7 @@ The <%= @production.name %> Team<% end %></textarea>
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                           data-person-id="<%= person.id %>"
                           data-email-assignment-id="<%= assignment&.id || '' %>"
-                          data-cast-id="<%= stage&.cast_id || '' %>"
+                          data-talent-pool-id="<%= stage&.talent_pool_id || '' %>"
                           data-action="click->email-groups#showPopup"
                         >
                           <% headshot_variant = person.safe_headshot_variant(:thumb) %>
@@ -261,7 +261,7 @@ The <%= @production.name %> Team<% end %></textarea>
                           <% end %>
                           <span><%= person.name %></span>
                           <% if staged_casts.size > 1 && stage %>
-                            <span class="text-gray-400 text-xs">(<%= stage.cast.name %>)</span>
+                            <span class="text-gray-400 text-xs">(<%= stage.talent_pool.name %>)</span>
                           <% end %>
                         </div>
                       <% end %>

@@ -17,6 +17,6 @@ class My::AuditionRequestsController < ApplicationController
       @audition_requests = Current.user.person.audition_requests.includes(audition_cycle: :production)
     end
 
-    @audition_requests = @audition_requests.order("audition_cycles.closes_at ASC NULLS LAST")
+    @audition_requests = @audition_requests.order(Arel.sql("audition_cycles.closes_at ASC NULLS LAST"))
   end
 end

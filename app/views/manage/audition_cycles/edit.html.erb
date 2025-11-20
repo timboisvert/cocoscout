@@ -40,20 +40,16 @@
         <%= form.datetime_field :opens_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:opens_at].none?, "border-pink-500": @audition_cycle.errors[:opens_at].any?}] %>
       </div>
       <div class="w-full mt-5 sm:w-1/2 sm:ml-5 sm:mt-0" data-controller="date-field-toggle">
-        <div class="flex items-center justify-between mb-2">
-          <%= form.label :closes_at, "Close At (Optional):" %>
-          <label class="flex items-center text-xs text-gray-600 cursor-pointer">
-            <input type="checkbox" <%= @audition_cycle.closes_at.nil? ? 'checked' : '' %> data-action="change->date-field-toggle#toggle" data-date-field-toggle-target="checkbox" class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500 mr-1">
-            Open-ended
-          </label>
-        </div>
-        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}], data: { date_field_toggle_target: "field" } %>
+        <%= form.label :closes_at, "Close At (Optional):" %>
+        <%= form.hidden_field :closes_at, data: { date_field_toggle_target: "hiddenField" } %>
+        <%= form.datetime_field :closes_at, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_cycle.errors[:closes_at].none?, "border-pink-500": @audition_cycle.errors[:closes_at].any?}], data: { date_field_toggle_target: "field" }, name: "" %>
+        <a href="#" class="text-sm text-pink-500 underline mt-1 ml-1 inline-block" data-action="click->date-field-toggle#toggle" data-date-field-toggle-target="link"></a>
       </div>
     </div>
 
     <div class="w-full border-t border-gray-200 pt-5 my-5">
       <%= form.submit "Update", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", prepare_manage_production_audition_cycle_path(@production, @audition_cycle), class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", "javascript:history.back()", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 

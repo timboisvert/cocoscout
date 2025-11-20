@@ -2,8 +2,8 @@ class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :productions, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
-  has_many :user_roles, dependent: :destroy
-  has_many :users, through: :user_roles
+  has_many :organization_roles, dependent: :destroy
+  has_many :users, through: :organization_roles
   has_many :locations, dependent: :destroy
   has_and_belongs_to_many :people
 
@@ -19,12 +19,12 @@ class Organization < ApplicationRecord
   # Get the user's role in this organization
   def role_for(user)
     return "owner" if owned_by?(user)
-    user_roles.find_by(user: user)&.company_role || "member"
+    organization_roles.find_by(user: user)&.company_role || "member"
   end
 
   # Check if user can manage this organization
   def manageable_by?(user)
-    owned_by?(user) || user_roles.exists?(user: user, company_role: "manager")
+    owned_by?(user) || organization_roles.exists?(user: user, company_role: "manager")
   end
 
   # Organization stats

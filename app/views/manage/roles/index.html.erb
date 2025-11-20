@@ -3,7 +3,9 @@
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
+    breadcrumbs: [
+      ["Casting & Roles", manage_production_casting_path(@production)]
+    ],
     text: "Roles",
     links: []
   } %>
@@ -60,7 +62,7 @@
 
         <div class="lg:sticky lg:top-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add Person to Main Cast</h3>
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add Role</h3>
           </div>
           <div class="p-4">
             <%= form_with(model: [:manage, @production, @role]) do |form| %>

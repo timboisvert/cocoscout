@@ -41,7 +41,7 @@
           <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
             <div class="flex-1 min-w-0">
               <div class="text-sm font-semibold <%= 'line-through text-red-400' if show.canceled %>">
-                <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                <%= show.date_and_time.strftime("%A, %b %-d, %Y") %> <span class="font-normal">at</span>
                 <%= show.date_and_time.strftime("%l:%M %p") %>
               </div>
               <div class="flex items-center gap-2 mt-1 flex-wrap">

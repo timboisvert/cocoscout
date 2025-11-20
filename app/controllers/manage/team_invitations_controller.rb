@@ -55,8 +55,8 @@ class Manage::TeamInvitationsController < Manage::ManageController
     end
 
     # Set a role and the organization
-    unless UserRole.exists?(user: user, organization: @team_invitation.organization)
-      UserRole.create!(user: user, organization: @team_invitation.organization, company_role: "none")
+    unless OrganizationRole.exists?(user: user, organization: @team_invitation.organization)
+      OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "none")
     end
 
     # Mark the invitation as accepted

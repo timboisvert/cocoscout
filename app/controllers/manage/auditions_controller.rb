@@ -39,28 +39,28 @@ class Manage::AuditionsController < Manage::ManageController
   def casting
     redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-    @casts = @production.casts
+    @talent_pools = @production.talent_pools
     # Get people who actually auditioned (have an Audition record for this audition cycle's sessions)
     audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
     @auditioned_people = Person.joins(:auditions)
                                 .where(auditions: { audition_session_id: audition_session_ids })
                                 .distinct
                                 .order(:name)
-    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :cast)
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :talent_pool)
   end
 
   # GET /auditions/casting/select
   def casting_select
     redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-    @casts = @production.casts
+    @talent_pools = @production.talent_pools
     # Get people who actually auditioned (have an Audition record for this audition cycle's sessions)
     audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
     @auditioned_people = Person.joins(:auditions)
                                 .where(auditions: { audition_session_id: audition_session_ids })
                                 .distinct
                                 .order(:name)
-    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :cast)
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :talent_pool)
   end
 
   # PATCH /auditions/finalize_invitations
@@ -280,12 +280,12 @@ class Manage::AuditionsController < Manage::ManageController
 
   # POST /auditions/add_to_cast_assignment
   def add_to_cast_assignment
-    cast = @production.casts.find(params[:cast_id])
+    talent_pool = @production.talent_pools.find(params[:talent_pool_id])
     person = Person.find(params[:person_id])
 
     CastAssignmentStage.find_or_create_by(
       audition_cycle_id: @audition_cycle.id,
-      cast_id: cast.id,
+      talent_pool_id: talent_pool.id,
       person_id: person.id
     )
 
@@ -294,10 +294,10 @@ class Manage::AuditionsController < Manage::ManageController
 
   # POST /auditions/remove_from_cast_assignment
   def remove_from_cast_assignment
-    cast = @production.casts.find(params[:cast_id])
+    talent_pool = @production.talent_pools.find(params[:talent_pool_id])
     CastAssignmentStage.where(
       audition_cycle_id: @audition_cycle.id,
-      cast_id: cast.id,
+      talent_pool_id: talent_pool.id,
       person_id: params[:person_id]
     ).destroy_all
 
@@ -338,7 +338,7 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     # Get default email templates from the view (we'll need to pass these or store them)
-    casts_by_id = @production.casts.index_by(&:id)
+    talent_pools_by_id = @production.talent_pools.index_by(&:id)
 
     emails_sent = 0
     people_added_to_casts = 0
@@ -357,12 +357,12 @@ class Manage::AuditionsController < Manage::ManageController
         email_body = custom_group&.email_template
       elsif stage
         # Default "added to cast" email
-        cast = casts_by_id[stage.cast_id]
-        email_body = generate_default_cast_email(person, cast, @production)
+        talent_pool = talent_pools_by_id[stage.talent_pool_id]
+        email_body = generate_default_cast_email(person, talent_pool, @production)
 
         # Add person to the actual cast (not just the staging area)
-        unless cast.people.include?(person)
-          cast.people << person
+        unless talent_pool.people.include?(person)
+          talent_pool.people << person
           people_added_to_casts += 1
         end
       else
@@ -483,11 +483,11 @@ class Manage::AuditionsController < Manage::ManageController
 
   private
 
-    def generate_default_cast_email(person, cast, production)
+    def generate_default_cast_email(person, talent_pool, production)
       <<~EMAIL
         Dear #{person.name},
 
-        Congratulations! We're excited to invite you to join the #{cast.name} for #{production.name}.
+        Congratulations! We're excited to invite you to join the #{talent_pool.name} for #{production.name}.
 
         Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
 

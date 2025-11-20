@@ -28,14 +28,14 @@
                     ["Viewer (read-only access to all productions)", "viewer"],
                     ["None (no default access, set per-production)", "none"]
                   ],
-                  @user_role&.company_role || "none"
+                  @organization_role&.company_role || "none"
                 ),
                 class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400",
                 data: { action: "change->auto-submit#submit" }
             %>
           <% end %>
         </div>
-        <% if @user_role&.company_role == "none" %>
+        <% if @organization_role&.company_role == "none" %>
           <p class="text-sm text-gray-500">
             This user has no default access. Grant per-production permissions below.
           </p>
@@ -54,7 +54,7 @@
           <% @productions.each do |production| %>
             <% permission = @user.production_permissions.find_by(production: production) %>
             <% effective_role = @user.role_for_production(production) %>
-            <% global_role = @user_role&.company_role %>
+            <% global_role = @organization_role&.company_role %>
             <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div class="flex-1">
                 <p class="font-medium"><%= production.name %></p>

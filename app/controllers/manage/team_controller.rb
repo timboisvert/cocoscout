@@ -2,7 +2,7 @@
   before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
-    members = Current.organization.users.joins(:user_roles).where(user_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
+    members = Current.organization.users.joins(:organization_roles).where(organization_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
     @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
     @team_invitation = Current.organization.team_invitations.new
     @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
@@ -15,7 +15,7 @@
       Manage::TeamMailer.invite(@team_invitation).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
     else
-      members = Current.organization.users.joins(:user_roles).where(user_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
+      members = Current.organization.users.joins(:organization_roles).where(organization_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
       @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
       @team_invitation = Current.organization.team_invitations.new
       @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
@@ -27,9 +27,9 @@
   def update_role
     user = Current.organization.users.find(params[:id])
     role = params[:role]
-    user_role = UserRole.find_by(user: user, organization: Current.organization)
-    if user_role && %w[manager viewer none].include?(role)
-      user_role.update(company_role: role)
+    organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
+    if organization_role && %w[manager viewer none].include?(role)
+      organization_role.update(company_role: role)
       respond_to do |format|
         format.json { render json: { success: true } }
         format.html { redirect_to manage_team_index_path, notice: "Role updated" }
@@ -55,9 +55,9 @@
   def remove_member
     user = Current.organization.users.find_by(id: params[:id])
     if user && user != Current.user
-      user_role = UserRole.find_by(user: user, organization: Current.organization)
-      if user_role
-        user_role.destroy
+      organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
+      if organization_role
+        organization_role.destroy
         respond_to do |format|
           format.json { render json: { success: true } }
           format.html { redirect_to manage_team_index_path, notice: "Team member removed" }
@@ -86,7 +86,7 @@
     end
 
     @productions = Current.organization.productions.order(:name)
-    @user_role = @user.user_roles.find_by(organization: Current.organization)
+    @organization_role = @user.organization_roles.find_by(organization: Current.organization)
   end
 
   def update_production_permission
@@ -129,10 +129,10 @@
   def update_global_role
     user = Current.organization.users.find(params[:id])
     role = params[:global_role]
-    user_role = UserRole.find_by(user: user, organization: Current.organization)
+    organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
 
-    if user_role && %w[manager viewer none].include?(role)
-      user_role.update(company_role: role)
+    if organization_role && %w[manager viewer none].include?(role)
+      organization_role.update(company_role: role)
       role_display = case role
       when "manager" then "Manager"
       when "viewer" then "Viewer"

@@ -1,17 +1,17 @@
-<%# Renders the list of people in a cast, for AJAX refresh %>
+<%# Renders the list of people in a talent pool, for AJAX refresh %>
   <div class="flex flex-wrap gap-2 w-full"
-      data-cast-id="<%= cast.id %>"
-      data-droppable-cast
-      data-action="dragover->cast-person#dragOver dragend->cast-person#dragEnd dragleave->cast-person#dragLeave drop->cast-person#drop">
-    <% if cast.people.any? %>
-      <% cast.people.each do |cast_member| %>
+      data-talent-pool-id="<%= talent_pool.id %>"
+      data-droppable-talent-pool
+      data-action="dragover->talent-pool-person#dragOver dragend->talent-pool-person#dragEnd dragleave->talent-pool-person#dragLeave drop->talent-pool-person#drop">
+    <% if talent_pool.people.any? %>
+      <% talent_pool.people.each do |cast_member| %>
 
         <%= link_to manage_person_path(cast_member) do %>
           <div class="flex flex-col bg-white items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-[120px] cursor-grab active:cursor-grabbing"
               draggable="true"
-              data-action="dragstart->cast-person#dragStart dragend->cast-person#dragEnd"
+              data-action="dragstart->talent-pool-person#dragStart dragend->talent-pool-person#dragEnd"
               data-person-id="<%= cast_member.id %>"
-              data-source-cast-id="<%= cast.id %>">
+              data-source-talent-pool-id="<%= talent_pool.id %>">
             <% headshot_variant = cast_member.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
                 <%= image_tag headshot_variant, alt: cast_member.name, class: "w-12 h-12 rounded-lg object-cover mb-1" %>
@@ -22,10 +22,10 @@
             <% end %>
             <span class="font-medium text-xs text-center"><%= cast_member.name.truncate(20, omission: '...') %></span>
 
-            <% if current_user_can_manage?(cast.production) %>
+            <% if current_user_can_manage?(talent_pool.production) %>
               <button type="button"
                   class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
-                  data-action="cast-person#remove"
+                  data-action="talent-pool-person#remove"
                   data-person-id="<%= cast_member.id %>"
                   data-remove-button>
                   Remove
@@ -37,11 +37,11 @@
       <% end %>
     <% end %>
 
-    <% if current_user_can_manage?(cast.production) %>
+    <% if current_user_can_manage?(talent_pool.production) %>
       <button type="button"
           class="flex flex-col items-center p-3 bg-gray-50 border border-dashed border-gray-200 rounded-lg justify-center cursor-pointer hover:border-pink-500 transition-all relative group w-[120px]"
-          data-cast-id="<%= cast.id %>"
-          data-cast-name="<%= cast.name %>"
+          data-talent-pool-id="<%= talent_pool.id %>"
+          data-talent-pool-name="<%= talent_pool.name %>"
           data-action="click->add-person-panel#open">
           <div class="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center mb-1 text-pink-500 font-bold text-xl">
               +

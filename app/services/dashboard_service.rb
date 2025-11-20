@@ -64,8 +64,8 @@ class DashboardService
       .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
       .order(date_and_time: :asc)
 
-    # Get all people in the production's casts
-    all_cast_people = @production.casts.flat_map(&:people).uniq
+    # Get all people in the production's talent pools
+    all_cast_people = @production.talent_pools.flat_map(&:people).uniq
 
     shows_with_availability = upcoming_shows.map do |show|
       # For each show, check which cast people have an availability record
