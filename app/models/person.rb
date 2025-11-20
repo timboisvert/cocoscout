@@ -2,23 +2,24 @@ class Person < ApplicationRecord
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
 
-  has_many :audition_requests, dependent: :destroy
+  has_many :audition_requests, as: :requestable, dependent: :destroy
   has_many :auditions
 
-  has_and_belongs_to_many :casts
+  has_many :cast_memberships, as: :castable, dependent: :destroy
+  has_many :casts, through: :cast_memberships
   has_and_belongs_to_many :organizations
 
   has_many :cast_assignment_stages, dependent: :destroy
 
-  has_many :questionnaire_invitations, dependent: :destroy
+  has_many :questionnaire_invitations, as: :invitee, dependent: :destroy
   has_many :invited_questionnaires, through: :questionnaire_invitations, source: :questionnaire
-  has_many :questionnaire_responses, dependent: :destroy
+  has_many :questionnaire_responses, as: :respondent, dependent: :destroy
 
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
-  has_many :show_availabilities, dependent: :destroy
+  has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
 
   has_many :group_memberships, dependent: :destroy

@@ -1,8 +1,8 @@
 class QuestionnaireInvitation < ApplicationRecord
   belongs_to :questionnaire
-  belongs_to :person
+  belongs_to :invitee, polymorphic: true
 
   validates :questionnaire, presence: true
-  validates :person, presence: true
-  validates :person_id, uniqueness: { scope: :questionnaire_id }
+  validates :invitee, presence: true
+  validates :invitee_id, uniqueness: { scope: [:questionnaire_id, :invitee_type] }
 end

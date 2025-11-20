@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_20_184223) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -96,12 +96,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
     t.datetime "invitation_notification_sent_at"
     t.boolean "notified_scheduled"
     t.string "notified_status"
-    t.integer "person_id", null: false
+    t.integer "requestable_id"
+    t.string "requestable_type"
     t.integer "status", default: 0
     t.datetime "updated_at", null: false
     t.string "video_url"
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
-    t.index ["person_id"], name: "index_audition_requests_on_person_id"
+    t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"
   end
 
   create_table "audition_sessions", force: :cascade do |t|
@@ -142,19 +143,23 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
     t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
   end
 
+  create_table "cast_memberships", force: :cascade do |t|
+    t.integer "cast_id", null: false
+    t.integer "castable_id", null: false
+    t.string "castable_type", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cast_id", "castable_type", "castable_id"], name: "index_cast_memberships_unique", unique: true
+    t.index ["cast_id"], name: "index_cast_memberships_on_cast_id"
+    t.index ["castable_type", "castable_id"], name: "index_cast_memberships_on_castable_type_and_castable_id"
+  end
+
   create_table "casts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
     t.integer "production_id", null: false
     t.datetime "updated_at", null: false
     t.index ["production_id"], name: "index_casts_on_production_id"
-  end
-
-  create_table "casts_people", id: false, force: :cascade do |t|
-    t.integer "cast_id"
-    t.integer "person_id"
-    t.index ["cast_id"], name: "index_casts_people_on_cast_id"
-    t.index ["person_id"], name: "index_casts_people_on_person_id"
   end
 
   create_table "email_groups", force: :cascade do |t|
@@ -342,22 +347,24 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
 
   create_table "questionnaire_invitations", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "person_id", null: false
+    t.integer "invitee_id"
+    t.string "invitee_type"
     t.integer "questionnaire_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["person_id"], name: "index_questionnaire_invitations_on_person_id"
-    t.index ["questionnaire_id", "person_id"], name: "index_q_invitations_on_questionnaire_and_person", unique: true
+    t.index ["invitee_type", "invitee_id", "questionnaire_id"], name: "index_questionnaire_invitations_unique", unique: true
+    t.index ["invitee_type", "invitee_id"], name: "index_questionnaire_invitations_on_invitee_type_and_invitee_id"
     t.index ["questionnaire_id"], name: "index_questionnaire_invitations_on_questionnaire_id"
   end
 
   create_table "questionnaire_responses", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "person_id", null: false
     t.integer "questionnaire_id", null: false
+    t.integer "respondent_id"
+    t.string "respondent_type"
     t.datetime "updated_at", null: false
-    t.index ["person_id"], name: "index_questionnaire_responses_on_person_id"
-    t.index ["questionnaire_id", "person_id"], name: "idx_on_questionnaire_id_person_id_14b49cba13", unique: true
     t.index ["questionnaire_id"], name: "index_questionnaire_responses_on_questionnaire_id"
+    t.index ["respondent_type", "respondent_id", "questionnaire_id"], name: "index_questionnaire_responses_unique", unique: true
+    t.index ["respondent_type", "respondent_id"], name: "idx_on_respondent_type_respondent_id_7f07f0f816"
   end
 
   create_table "questionnaires", force: :cascade do |t|
@@ -408,13 +415,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
   end
 
   create_table "show_availabilities", force: :cascade do |t|
+    t.integer "available_entity_id"
+    t.string "available_entity_type"
     t.datetime "created_at", null: false
-    t.integer "person_id", null: false
     t.integer "show_id", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
-    t.index ["person_id", "show_id"], name: "index_show_availabilities_on_person_id_and_show_id", unique: true
-    t.index ["person_id"], name: "index_show_availabilities_on_person_id"
+    t.index ["available_entity_type", "available_entity_id", "show_id"], name: "index_show_availabilities_unique", unique: true
+    t.index ["available_entity_type", "available_entity_id"], name: "index_show_availabilities_on_entity"
     t.index ["show_id"], name: "index_show_availabilities_on_show_id"
   end
 
@@ -510,7 +518,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
   add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_email_assignments", "people"
   add_foreign_key "audition_requests", "audition_cycles"
-  add_foreign_key "audition_requests", "people"
   add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "auditions", "audition_requests"
@@ -518,6 +525,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
   add_foreign_key "auditions", "people"
   add_foreign_key "cast_assignment_stages", "casts"
   add_foreign_key "cast_assignment_stages", "people"
+  add_foreign_key "cast_memberships", "casts"
   add_foreign_key "casts", "productions"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
@@ -536,14 +544,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_183748) do
   add_foreign_key "question_options", "questions"
   add_foreign_key "questionnaire_answers", "questionnaire_responses"
   add_foreign_key "questionnaire_answers", "questions"
-  add_foreign_key "questionnaire_invitations", "people"
   add_foreign_key "questionnaire_invitations", "questionnaires"
-  add_foreign_key "questionnaire_responses", "people"
   add_foreign_key "questionnaire_responses", "questionnaires"
   add_foreign_key "questionnaires", "productions"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
-  add_foreign_key "show_availabilities", "people"
   add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_links", "shows"
   add_foreign_key "show_person_role_assignments", "people"

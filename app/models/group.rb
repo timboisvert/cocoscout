@@ -4,6 +4,17 @@ class Group < ApplicationRecord
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
 
+  has_many :audition_requests, as: :requestable, dependent: :destroy
+  has_many :cast_memberships, as: :castable, dependent: :destroy
+  has_many :casts, through: :cast_memberships
+  
+  has_many :questionnaire_invitations, as: :invitee, dependent: :destroy
+  has_many :invited_questionnaires, through: :questionnaire_invitations, source: :questionnaire
+  has_many :questionnaire_responses, as: :respondent, dependent: :destroy
+
+  has_many :show_availabilities, as: :available_entity, dependent: :destroy
+  has_many :available_shows, through: :show_availabilities, source: :show
+
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true

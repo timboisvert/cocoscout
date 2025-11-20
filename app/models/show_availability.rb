@@ -1,5 +1,5 @@
 class ShowAvailability < ApplicationRecord
-  belongs_to :person
+  belongs_to :available_entity, polymorphic: true
   belongs_to :show
 
   enum :status, {
@@ -8,5 +8,5 @@ class ShowAvailability < ApplicationRecord
     unavailable: 2
   }, default: :unset
 
-  validates :person_id, uniqueness: { scope: :show_id }
+  validates :available_entity_id, uniqueness: { scope: [:show_id, :available_entity_type] }
 end

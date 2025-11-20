@@ -1,6 +1,6 @@
 class AuditionRequest < ApplicationRecord
   belongs_to :audition_cycle
-  belongs_to :person
+  belongs_to :requestable, polymorphic: true
   has_many :answers, dependent: :destroy
 
   enum :status, {
@@ -13,7 +13,7 @@ class AuditionRequest < ApplicationRecord
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
   def display_name
-    person.name
+    requestable.name
   end
 
   def next
