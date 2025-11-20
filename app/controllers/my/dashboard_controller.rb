@@ -13,7 +13,6 @@ class My::DashboardController < ApplicationController
       .joins(:show_person_role_assignments)
       .where(show_person_role_assignments: { person_id: Current.user.person.id })
       .where("date_and_time >= ?", Time.current)
-      .where(canceled: false)
       .includes(:production, :location, show_person_role_assignments: :role)
       .order(:date_and_time)
       .limit(5)

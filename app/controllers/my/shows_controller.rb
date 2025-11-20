@@ -14,7 +14,6 @@ class My::ShowsController < ApplicationController
     @shows = Show.joins(production: { casts: :casts_people })
                 .where(casts_people: { person_id: Current.user.person.id })
                 .where("date_and_time >= ?", Time.current)
-                .where(canceled: false)
                 .select("shows.*")
                 .distinct
 
