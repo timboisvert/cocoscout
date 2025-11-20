@@ -72,7 +72,8 @@ class Person < ApplicationRecord
     shows
       .joins(:show_person_role_assignments)
       .where(production: production, show_person_role_assignments: { person_id: id })
-      .where("date_and_time >= ?", Time.current, canceled: false)
+      .where("date_and_time >= ?", Time.current)
+      .where(canceled: false)
       .order(:date_and_time)
       .first
   end

@@ -1,143 +1,140 @@
 <div class="w-full">
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Shows & Events",
-    links: [
-      {text: "Shows & Events", path: my_shows_path}
-    ]
-  } %>
-
-  <div class="pb-10">
-    <% if @productions.any? %>
-      <%= link_to my_shows_path, class: "space-y-4" do %>
-        <% @productions.each do |production| %>
-
-          <div class="text-xs sm:text-sm">
-
-            <div class="font-bold"><%= production.name %></div>
-
-            <div class="text-xs sm:text-sm">
-              <% next_event = Current.user.person.next_event_for_production(production) %>
-              <% if next_event %>
-                  <% event_label = next_event.event_type.titleize %>
-                  Next: <%= event_label %> on <span class="text-pink-500"><%= next_event.date_and_time.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= next_event.date_and_time.strftime('%l:%M %p') %></span>
-              <% else %>
-                  No upcoming events scheduled
-              <% end %>
-            </div>
-
-          </div>
-        <% end %>
+  <!-- Upcoming Shows & Events -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows</h3>
+      <div class="flex gap-2">
+        <%= link_to "My Shows & Events", my_shows_path, class: "text-pink-500 text-xs underline" %>
+      </div>
+    </div>
+    <div class="p-4">
+      <% if @upcoming_shows.any? %>
+        <div class="space-y-3">
+          <% @upcoming_shows.each do |show| %>
+            <%= link_to my_show_path(show), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline gap-2" do %>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm"><%= show.production.name %></p>
+                <div class="text-xs text-gray-600 mt-1">
+                  <% event_label = show.event_type.titleize %>
+                  <%= event_label %> on <span class="text-pink-500"><%= show.date_and_time.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= show.date_and_time.strftime('%l:%M %p') %></span>
+                </div>
+                <% assignment = show.show_person_role_assignments.find { |a| a.person_id == Current.user.person.id } %>
+                <% if assignment %>
+                  <div class="text-xs text-gray-600 mt-1">
+                    Role: <strong class="text-pink-500"><%= assignment.role.name %></strong>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">No upcoming shows & events scheduled.</p>
       <% end %>
-    <% else %>
-      <p class="text-gray-500 text-sm pt-2">
-        No upcoming events scheduled.
-      </p>
-    <% end %>
+    </div>
   </div>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Upcoming Auditions",
-    links: [
-      {text: "Auditions", path: my_auditions_path}
-    ]
-  } %>
-
-  <div class="pb-10">
-    <% if @upcoming_audition_sessions.any? %>
-      <%= link_to my_auditions_path, class: "space-y-4" do %>
-        <% @upcoming_audition_sessions.each do |audition_session| %>
-
-          <% production = audition_session.production %>
-
-          <div class="text-xs sm:text-sm">
-            <div class="font-bold"><%= production.name %></div>
-            Your audition is scheduled for <span class="text-pink-500"><%= audition_session.start_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_session.start_at.strftime('%l:%M %p') %></span>
-          </div>
-        <% end %>
+  <!-- Upcoming Auditions -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Auditions</h3>
+      <div class="flex gap-2">
+        <%= link_to "My Auditions", my_auditions_path, class: "text-pink-500 text-xs underline" %>
+      </div>
+    </div>
+    <div class="p-4">
+      <% if @upcoming_audition_sessions.any? %>
+        <div class="space-y-3">
+          <% @upcoming_audition_sessions.each do |audition_session| %>
+            <% production = audition_session.production %>
+            <%= link_to my_auditions_path, class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline gap-2" do %>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm"><%= production.name %></p>
+                <div class="text-xs text-gray-600 mt-1">
+                  Your audition is scheduled for <span class="text-pink-500"><%= audition_session.start_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_session.start_at.strftime('%l:%M %p') %></span>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">You don't have any upcoming auditions.</p>
       <% end %>
-    <% else %>
-      <p class="text-gray-500 text-sm pt-2">
-        You don't have any upcoming auditions.
-      </p>
-    <% end %>
+    </div>
   </div>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Open Sign-ups",
-    links: [
-      {text: "Sign-ups", path: my_audition_requests_path(requests_filter: :all)}
-    ]
-  } %>
-
-  <div class="pb-10">
-    <% if @open_audition_requests.any? %>
-      <%= link_to my_audition_requests_path(requests_filter: :open), class: "space-y-4" do %>
-        <% @open_audition_requests.each do |audition_request| %>
-
-          <% production = audition_request.audition_cycle.production %>
-
-          <div class="text-xs sm:text-sm" data-controller="countdown" data-countdown-until-value="<%= audition_request.audition_cycle.closes_at.utc.iso8601 %>">
-
-            <div class="font-bold"><%= production.name %></div>
-
-            <% if audition_request.audition_cycle.audition_type == "in_person" %>
-                Audition Sign-ups
-            <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
-                Video Auditions
+  <!-- Open Sign-ups -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Open Sign-ups</h3>
+      <div class="flex gap-2">
+        <%= link_to "My Sign-ups", my_audition_requests_path(requests_filter: :all), class: "text-pink-500 text-xs underline" %>
+      </div>
+    </div>
+    <div class="p-4">
+      <% if @open_audition_requests.any? %>
+        <div class="space-y-3">
+          <% @open_audition_requests.each do |audition_request| %>
+            <% production = audition_request.audition_cycle.production %>
+            <%= link_to my_audition_requests_path(requests_filter: :open), class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline gap-2" do %>
+              <div class="flex-1 min-w-0" data-controller="countdown" data-countdown-until-value="<%= audition_request.audition_cycle.closes_at.utc.iso8601 %>">
+                <p class="font-bold text-sm"><%= production.name %></p>
+                <div class="text-xs text-gray-600 mt-1">
+                  <% if audition_request.audition_cycle.audition_type == "in_person" %>
+                    Audition Sign-ups
+                  <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
+                    Video Auditions
+                  <% end %>
+                  close
+                  <% if audition_request.audition_cycle.closes_at > 1.day.from_now %>
+                    on <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%l:%M %p') %></span>
+                  <% else %>
+                    in <span data-countdown-target="clock" class="text-pink-500"></span>
+                  <% end %>
+                </div>
+              </div>
             <% end %>
-            close
-
-            <% if audition_request.audition_cycle.closes_at > 1.day.from_now %>
-              on <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%l:%M %p') %></span>
-            <% else %>
-              in <span data-countdown-target="clock" class="text-pink-500"></span>
-            <% end %>
-
-          </div>
-        <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">None of the shows you've applied for are currently auditioning.</p>
       <% end %>
-    <% else %>
-      <p class="text-gray-500 text-sm pt-2">
-        None of the shows you've applied for are currently auditioning.
-      </p>
-    <% end %>
+    </div>
   </div>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Questionnaires",
-    links: [
-      {text: "Questionnaires", path: my_questionnaires_path}
-    ]
-  } %>
-
-  <div class="pb-10">
-    <% if @pending_questionnaires.any? %>
-      <%= link_to my_questionnaires_path, class: "space-y-4" do %>
-        <% @pending_questionnaires.each do |questionnaire| %>
-
-          <% production = questionnaire.production %>
-
-          <div class="text-xs sm:text-sm">
-            <div class="font-bold"><%= production.name %></div>
-            <%= questionnaire.title %>
-            <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
-              - <span class="text-green-600">Responded</span>
-            <% else %>
-              - <span class="text-pink-500">Not yet responded</span>
+  <!-- Open Questionnaires -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Open Questionnaires</h3>
+      <div class="flex gap-2">
+        <%= link_to "My Questionnaires", my_questionnaires_path, class: "text-pink-500 text-xs underline" %>
+      </div>
+    </div>
+    <div class="p-4">
+      <% if @pending_questionnaires.any? %>
+        <div class="space-y-3">
+          <% @pending_questionnaires.each do |questionnaire| %>
+            <% production = questionnaire.production %>
+            <%= link_to my_questionnaires_path, class: "flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline gap-2" do %>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm"><%= production.name %></p>
+                <div class="text-xs text-gray-600 mt-1">
+                  <%= questionnaire.title %>
+                  <% if questionnaire.questionnaire_responses.exists?(person: Current.user.person) %>
+                    - <span class="text-pink-600">Responded</span>
+                  <% else %>
+                    - <span class="text-pink-500">Not yet responded</span>
+                  <% end %>
+                </div>
+              </div>
             <% end %>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">You don't have any pending questionnaires.</p>
       <% end %>
-    <% else %>
-      <p class="text-gray-500 text-sm pt-2">
-        You don't have any pending questionnaires.
-      </p>
-    <% end %>
+    </div>
   </div>
 
 </div>

@@ -1,32 +1,33 @@
 <% content_for :title, "New Questionnaire - #{@production.name}" %>
 
-<div class="w-full mb-10">
+<div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Questionnaires", manage_production_questionnaires_path(@production)]
     ],
-    text: "New Questionnaire",
+    text: "Create Questionnaire",
     links: []
   } %>
 
-  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-    <%= form_with(model: @questionnaire, url: manage_production_questionnaires_path(@production), method: :post, data: { turbo: false }) do |form| %>
-      <div class="space-y-6">
-        <div>
-          <%= form.label :title, "Questionnaire Title", class: "block text-sm font-medium text-gray-700 mb-2" %>
-          <%= form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2", placeholder: "e.g., Actor Information Form", autofocus: true %>
-          <% if @questionnaire.errors[:title].any? %>
-            <p class="mt-1 text-sm text-red-600"><%= @questionnaire.errors[:title].first %></p>
-          <% end %>
-          <p class="mt-1 text-sm text-gray-500">You can add questions and customize the form after creating it</p>
-        </div>
+  <%= form_with(model: @questionnaire, url: manage_production_questionnaires_path(@production), method: :post, data: { turbo: false }, class: "contents") do |form| %>
 
-        <div class="flex justify-end gap-3">
-          <%= link_to "Cancel", manage_production_questionnaires_path(@production), class: "px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition" %>
-          <%= form.submit "Create Questionnaire", class: "px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition cursor-pointer" %>
-        </div>
-      </div>
-    <% end %>
-  </div>
+    <div class="my-5">
+      <% if @questionnaire.errors[:title].none? %>
+        <%= form.label :title, "Questionnaire Title" %>
+      <% else %>
+        <%= form.label :title, "Questionnaire Title is required", class: "text-pink-600" %>
+      <% end %>
+      <span class="text-sm text-gray-500"> (e.g., "Actor Information Form")</span>
+      <%= form.text_field :title, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @questionnaire.errors[:title].none?, "border-pink-500": @questionnaire.errors[:title].any?}], placeholder: "e.g., Actor Information Form", autofocus: true %>
+      <p class="mt-1 text-sm text-gray-500">You can add questions and customize the form after creating it</p>
+    </div>
+
+    <div class="w-full border-t border-gray-200 pt-5 my-5">
+      <%= form.submit "Create Questionnaire", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+      <%= link_to "Back", "javascript:history.back()", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+    </div>
+
+  <% end %>
+
 </div>

@@ -8,6 +8,16 @@ class My::DashboardController < ApplicationController
 
     @productions = Production.joins(casts: [ :casts_people ]).where(casts_people: { person_id: Current.user.person.id }).distinct
 
+    # Get upcoming shows where user has a role assignment
+    @upcoming_shows = Show
+      .joins(:show_person_role_assignments)
+      .where(show_person_role_assignments: { person_id: Current.user.person.id })
+      .where("date_and_time >= ?", Time.current)
+      .where(canceled: false)
+      .includes(:production, :location, show_person_role_assignments: :role)
+      .order(:date_and_time)
+      .limit(5)
+
     # 2) My next audition session
     @upcoming_audition_sessions = AuditionSession
       .joins(:auditions)

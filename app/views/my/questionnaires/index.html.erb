@@ -10,14 +10,14 @@
   <div class="pb-10">
     <!-- Filter Buttons -->
     <div class="flex gap-2 mb-5">
-      <%= link_to "Awaiting My Response", my_questionnaires_path(filter: 'awaiting'), class: "px-4 py-2 rounded-lg text-sm font-medium transition #{@filter == 'awaiting' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
-      <%= link_to "All", my_questionnaires_path(filter: 'all'), class: "px-4 py-2 rounded-lg text-sm font-medium transition #{@filter == 'all' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+      <%= link_to "Awaiting My Response", my_questionnaires_path(filter: 'awaiting'), class: "px-3 py-1 rounded-md border text-sm #{@filter == 'awaiting' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" %>
+      <%= link_to "All", my_questionnaires_path(filter: 'all'), class: "px-3 py-1 rounded-md border text-sm #{@filter == 'all' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" %>
     </div>
 
     <% if @questionnaires.any? %>
       <div class="space-y-4">
         <% @questionnaires.each do |questionnaire| %>
-          <%= link_to my_questionnaire_form_path(token: questionnaire.token), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+          <%= link_to my_questionnaire_form_path(token: questionnaire.token), class: "block p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>
@@ -48,7 +48,11 @@
       </div>
     <% else %>
       <p class="text-gray-500 text-sm pt-2">
-        You're caught up on responding to questionnaires.
+        <% if @filter == 'awaiting' %>
+          You're caught up on responding to questionnaires.
+        <% else %>
+          You haven't been assigned any questionnaires.
+        <% end %>
       </p>
     <% end %>
   </div>

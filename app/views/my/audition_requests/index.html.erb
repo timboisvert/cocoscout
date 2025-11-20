@@ -29,9 +29,9 @@
 
     <% if @audition_requests.any? %>
 
-        <div class="grid grid-cols-1 gap-2 mt-2">
+        <div class="grid grid-cols-1 gap-1 mt-2">
             <% @audition_requests.each do |audition_request| %>
-                <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+                <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
 
                     <% production = audition_request.audition_cycle.production %>
 
