@@ -6,7 +6,7 @@ class My::DashboardController < ApplicationController
       render "welcome" and return
     end
 
-    @productions = Production.joins(casts: [ :casts_people ]).where(casts_people: { person_id: Current.user.person.id }).distinct
+    @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
     # Get upcoming shows where user has a role assignment
     @upcoming_shows = Show

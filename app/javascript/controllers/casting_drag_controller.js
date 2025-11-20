@@ -30,12 +30,12 @@ export default class extends Controller {
         const item = event.currentTarget
         const personId = item.dataset.personId
         const personName = item.dataset.personName
-        const sourceCastId = item.dataset.sourceCastId
+        const sourceTalentPoolId = item.dataset.sourceTalentPoolId
 
         event.dataTransfer.effectAllowed = "move"
         event.dataTransfer.setData("personId", personId)
         event.dataTransfer.setData("personName", personName)
-        event.dataTransfer.setData("sourceCastId", sourceCastId)
+        event.dataTransfer.setData("sourceTalentPoolId", sourceTalentPoolId)
         event.dataTransfer.setData("sourceType", "assigned")
 
         item.classList.add("opacity-50")
@@ -72,36 +72,36 @@ export default class extends Controller {
             const personId = event.dataTransfer.getData("personId")
             const personName = event.dataTransfer.getData("personName")
             const sourceType = event.dataTransfer.getData("sourceType")
-            const sourceCastId = event.dataTransfer.getData("sourceCastId")
-            const targetCastId = dropZone.dataset.castId
+            const sourceTalentPoolId = event.dataTransfer.getData("sourceTalentPoolId")
+            const targetTalentPoolId = dropZone.dataset.talentPoolId
 
             // Don't allow dropping on the same cast
-            if (sourceType === "assigned" && sourceCastId === targetCastId) {
+            if (sourceType === "assigned" && sourceTalentPoolId === targetTalentPoolId) {
                 return
             }
 
-            if (targetCastId && personId) {
-                this.moveToCast(personId, personName, targetCastId, sourceCastId, sourceType)
+            if (targetTalentPoolId && personId) {
+                this.moveToCast(personId, personName, targetTalentPoolId, sourceTalentPoolId, sourceType)
             }
         }
     }
 
-    moveToCast(personId, personName, targetCastId, sourceCastId, sourceType) {
+    moveToCast(personId, personName, targetTalentPoolId, sourceTalentPoolId, sourceType) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
         const productionId = this.element.dataset.productionId
 
         // If moving from another cast, first remove from source
-        if (sourceType === "assigned" && sourceCastId) {
-            this.removeFromCast(personId, sourceCastId, () => {
-                this.addToCast(personId, personName, targetCastId, csrfToken, productionId)
+        if (sourceType === "assigned" && sourceTalentPoolId) {
+            this.removeFromCast(personId, sourceTalentPoolId, () => {
+                this.addToCast(personId, personName, targetTalentPoolId, csrfToken, productionId)
             })
         } else {
             // Adding from auditionee list
-            this.addToCast(personId, personName, targetCastId, csrfToken, productionId)
+            this.addToCast(personId, personName, targetTalentPoolId, csrfToken, productionId)
         }
     }
 
-    addToCast(personId, personName, castId, csrfToken, productionId) {
+    addToCast(personId, personName, talentPoolId, csrfToken, productionId) {
         fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
@@ -109,7 +109,7 @@ export default class extends Controller {
                 "X-CSRF-Token": csrfToken
             },
             body: JSON.stringify({
-                cast_id: castId,
+                talent_pool_id: talentPoolId,
                 person_id: personId
             })
         })
@@ -124,7 +124,7 @@ export default class extends Controller {
             .catch(error => console.error('Error:', error))
     }
 
-    removeFromCast(personId, castId, callback) {
+    removeFromCast(personId, talentPoolId, callback) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
         fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
@@ -134,7 +134,7 @@ export default class extends Controller {
                 "X-CSRF-Token": csrfToken
             },
             body: JSON.stringify({
-                cast_id: castId,
+                talent_pool_id: talentPoolId,
                 person_id: personId
             })
         })
@@ -156,7 +156,7 @@ export default class extends Controller {
         }
 
         const button = event.currentTarget
-        const castId = button.dataset.castId
+        const talentPoolId = button.dataset.talentPoolId
         const personId = button.dataset.personId
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
@@ -167,7 +167,7 @@ export default class extends Controller {
                 "X-CSRF-Token": csrfToken
             },
             body: JSON.stringify({
-                cast_id: castId,
+                talent_pool_id: talentPoolId,
                 person_id: personId
             })
         })

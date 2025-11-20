@@ -6,7 +6,7 @@ class Manage::AvailabilityController < Manage::ManageController
     @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
 
     # Get all cast members for this production
-    @cast_members = @production.casts.flat_map(&:people).uniq.sort_by(&:name)
+    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
 
     # Build a hash of availabilities: { person_id => { show_id => show_availability } }
     @availabilities = {}
@@ -23,7 +23,7 @@ class Manage::AvailabilityController < Manage::ManageController
     @show = @production.shows.find(params[:id])
 
     # Get all cast members for this production
-    @cast_members = @production.casts.flat_map(&:people).uniq.sort_by(&:name)
+    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
 
     # Build a hash of availabilities for this show
     @availabilities = {}
@@ -39,11 +39,11 @@ class Manage::AvailabilityController < Manage::ManageController
     # Get all future shows for this production
     @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-    # Get all casts for this production
-    @casts = @production.casts.order(:name)
+    # Get all talent pools for this production
+    @talent_pools = @production.talent_pools.order(:name)
 
     # Get all cast members
-    @cast_members = @production.casts.flat_map(&:people).uniq.sort_by(&:name)
+    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
 
     # Determine which cast members are up to date (have submitted availability for all future shows)
     @up_to_date_person_ids = @cast_members.select do |person|
@@ -75,9 +75,9 @@ class Manage::AvailabilityController < Manage::ManageController
 
     # Determine recipients based on recipient_type
     all_recipients = if recipient_type == "all"
-      @production.casts.flat_map(&:people).uniq
+      @production.talent_pools.flat_map(&:people).uniq
     elsif recipient_type == "cast"
-      Cast.find(cast_id).people
+      TalentPool.find(cast_id).people
     elsif recipient_type == "specific"
       Person.where(id: person_ids)
     else

@@ -5,7 +5,7 @@ RSpec.describe "My::Availability", type: :system do
   let!(:person) { create(:person, user: user, email: user.email_address) }
   let(:organization) { create(:organization) }
   let(:production) { create(:production, organization: organization, name: "Wicked") }
-  let(:cast) { create(:cast, production: production) }
+  let(:talent_pool) { create(:talent_pool, production: production) }
 
   describe "availability index" do
     let!(:show1) { create(:show, production: production, date_and_time: 1.week.from_now, canceled: false) }

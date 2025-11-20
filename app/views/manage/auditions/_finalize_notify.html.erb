@@ -1,5 +1,5 @@
 <% pending_stages_local = @cast_assignment_stages.where(status: :pending) %>
-<% staged_casts = @casts.select { |cast| pending_stages_local.any? { |stage| stage.cast_id == cast.id } } %>
+<% staged_casts = @talent_pools.select { |talent_pool| pending_stages_local.any? { |stage| stage.talent_pool_id == talent_pool.id } } %>
 <% # Get person IDs to exclude: pending, finalized stages, and people already notified for rejections %>
 <% assigned_person_ids = pending_stages_local.pluck(:person_id).uniq %>
 <% notified_person_ids = notified_stages.map(&:person_id).uniq %>

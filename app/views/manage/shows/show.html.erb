@@ -137,7 +137,7 @@
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-md font-semibold text-gray-900 coustard-regular">Cast</h3>
             <% if current_user_can_manage?(@show.production) %>
-              <%= link_to "Edit Cast", cast_manage_production_show_path(@production, @show), class: "text-xs text-pink-500 underline" %>
+              <%= link_to "Edit Cast", manage_production_show_cast_path(@production, @show), class: "text-xs text-pink-500 underline" %>
             <% end %>
           </div>
           <div class="p-1 py-2 sm:p-4 sm:py-4">
@@ -165,7 +165,7 @@
                   <% end %>
                 <% else %>
                   <% # Show uncast role %>
-                  <%= link_to cast_manage_production_show_path(@production, @show) do %>
+                  <%= link_to manage_production_show_cast_path(@production, @show) do %>
                     <div class="flex flex-col items-center w-[100px] transition-all">
                       <div class="w-20 h-20 rounded-lg bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-pink-400 hover:bg-pink-50 transition-all">
                         <span class="text-2xl">+</span>

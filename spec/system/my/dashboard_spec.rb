@@ -24,7 +24,7 @@ RSpec.describe "My::Dashboard", type: :system do
   end
 
   describe "when user is in a cast" do
-    let!(:cast) { create(:cast, production: production) }
+    let!(:talent_pool) { create(:talent_pool, production: production) }
     let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now, event_type: :show) }
 
     before do

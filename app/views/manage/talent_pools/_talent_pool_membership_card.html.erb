@@ -1,9 +1,9 @@
 <div data-controller="cast-membership-card">
     <div class="" data-cast-membership-card-target="card">
 
-        <% casts = person.casts.where(production: production) %>
-        <% all_casts = production.casts.to_a %>
-        <% available_casts = all_casts - casts.to_a %>
+        <% casts = person.talent_pools.where(production: production) %>
+        <% all_talent_pools = production.talent_pools.to_a %>
+        <% available_talent_pools = all_talent_pools - casts.to_a %>
         <% if casts.any? %>
             <div class="grid grid-cols-4 gap-1 w-full">
                 <% casts.each do |cast| %>
@@ -13,10 +13,10 @@
 
                         <% if current_user_can_manage?(production) %>
                             <div class="flex justify-center space-x-2 mt-4">
-                                <a href="<%= remove_from_cast_manage_person_path(person, cast_id: cast.id) %>"
+                                <a href="<%= remove_from_cast_manage_person_path(person, talent_pool_id: talent_pool.id) %>"
                                     data-action="cast-membership-card#remove"
                                     data-person-id="<%= person.id %>"
-                                    data-cast-id="<%= cast.id %>"
+                                    data-cast-id="<%= talent_pool.id %>"
                                     data-turbo-prefetch="false"
                                     class="inline-block px-2 py-1 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm transition cursor-pointer"
                                 >
@@ -34,7 +34,7 @@
         <% end %>
 
         <% if current_user_can_manage?(production) %>
-            <% if available_casts.any? %>
+            <% if available_talent_pools.any? %>
                 <div class="w-full mt-1">
                     <a
                         href="#"
@@ -48,9 +48,9 @@
             <% end %>
 
             <div id="add-to-cast-form" class="hidden w-96 mt-2">
-                <% if available_casts.any? %>
+                <% if available_talent_pools.any? %>
                     <%= form_with url: add_to_cast_manage_person_path(production, person), method: :post, html: { class: "flex gap-2 items-center", data: { action: "cast-membership-card#add", cast_membership_card_target: "form" } } do |f| %>
-                        <%= select_tag :cast_id, options_from_collection_for_select(available_casts, :id, :name), class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
+                        <%= select_tag :talent_pool_id, options_from_collection_for_select(available_talent_pools, :id, :name), class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
                         <%= hidden_field_tag :person_id, person.id %>
                         <%= submit_tag "Add", class: "px-3 py-1 rounded bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                     <% end %>

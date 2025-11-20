@@ -4,10 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-       ["Shows & Events", manage_production_shows_path(@production)],
-       [@show.date_and_time.strftime("%A, %B %-d, %Y"), manage_production_show_path(@production, @show)]
+       ["Casting & Roles", manage_production_casting_path(@production)]
     ],
-    text: "Edit Cast",
+    text: @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p"),
     links: []
   } %>
 
