@@ -47,7 +47,7 @@
           # Determine status
           if @active_audition_cycle.opens_at > Time.current
             status = :upcoming
-          elsif @active_audition_cycle.closes_at <= Time.current
+          elsif @active_audition_cycle.closes_at.present? && @active_audition_cycle.closes_at <= Time.current
             status = :closed
           else
             status = :open
@@ -68,7 +68,7 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= @active_audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <%= @active_audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %><% if @active_audition_cycle.closes_at.present? %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %><% else %> (open-ended)<% end %>
               <% if status == :upcoming %>
                 <% seconds_until = (@active_audition_cycle.opens_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
@@ -78,7 +78,7 @@
                 <% elsif seconds_until > 0 %>
                   <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, @active_audition_cycle.opens_at) %></span>
                 <% end %>
-              <% elsif status == :open %>
+              <% elsif status == :open && @active_audition_cycle.closes_at.present? %>
                 <% seconds_until = (@active_audition_cycle.closes_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
                   <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_audition_cycle.closes_at.utc.iso8601 %>">
@@ -324,7 +324,7 @@
                   <%= audition_cycle.audition_type.titleize %> Auditions
                 </h4>
                 <p class="text-sm text-gray-600 mt-1">
-                  <%= audition_cycle.opens_at&.strftime("%b %d, %Y") %> - <%= audition_cycle.closes_at&.strftime("%b %d, %Y") %>
+                  <%= audition_cycle.opens_at&.strftime("%b %d, %Y") %><% if audition_cycle.closes_at.present? %> - <%= audition_cycle.closes_at.strftime("%b %d, %Y") %><% else %> (open-ended)<% end %>
                 </p>
               </div>
               <div class="text-sm text-gray-500">

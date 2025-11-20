@@ -57,7 +57,7 @@
           # Determine status
           if audition_cycle.opens_at > Time.current
             status = :upcoming
-          elsif audition_cycle.closes_at <= Time.current
+          elsif audition_cycle.closes_at.present? && audition_cycle.closes_at <= Time.current
             status = :closed
           else
             status = :open
@@ -78,7 +78,7 @@
           <div class="p-3 bg-gray-50 rounded-lg">
             <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
             <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %> - <%= audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %>
+              <%= audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %><% if audition_cycle.closes_at.present? %> - <%= audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %><% else %> (open-ended)<% end %>
               <% if status == :upcoming %>
                 <% seconds_until = (audition_cycle.opens_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
@@ -88,7 +88,7 @@
                 <% elsif seconds_until > 0 %>
                   <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, audition_cycle.opens_at) %></span>
                 <% end %>
-              <% elsif status == :open %>
+              <% elsif status == :open && audition_cycle.closes_at.present? %>
                 <% seconds_until = (audition_cycle.closes_at - Time.current).to_i %>
                 <% if seconds_until > 0 && seconds_until < 172800 %>
                   <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>">

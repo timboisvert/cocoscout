@@ -28,9 +28,9 @@ class My::DashboardController < ApplicationController
     # My audition requests for audition cycles that are still open
     @open_audition_requests = Current.user.person.audition_requests
       .joins(:audition_cycle)
-      .where("audition_cycles.closes_at >= ?", Time.current)
+      .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)
       .includes(:audition_cycle)
-      .order("audition_cycles.closes_at")
+      .order("audition_cycles.closes_at ASC NULLS LAST")
 
     # My pending questionnaires
     @pending_questionnaires = Current.user.person.invited_questionnaires

@@ -19,5 +19,10 @@ FactoryBot.define do
       opens_at { 2.weeks.ago }
       closes_at { 1.week.ago }
     end
+
+    trait :open_ended do
+      opens_at { 1.day.ago }
+      closes_at { nil }
+    end
   end
 end

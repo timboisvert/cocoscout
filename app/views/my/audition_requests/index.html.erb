@@ -52,7 +52,7 @@
 
                                     <% if cycle.editable_by_talent? %>
 
-                                        <% if cycle.closes_at > 1.day.from_now %>
+                                        <% if cycle.closes_at.present? && cycle.closes_at > 1.day.from_now %>
                                             <div class="text-xs text-gray-500 mt-1">
 
                                                 <% if cycle.audition_type == "in_person" %>
@@ -62,7 +62,7 @@
                                                 <% end %>
                                                 close on <%= cycle.closes_at.strftime('%b %d, %Y') %> at <%= cycle.closes_at.strftime('%l:%M %p') %>
                                             </div>
-                                        <% else %>
+                                        <% elsif cycle.closes_at.present? %>
                                             <div class="text-xs <%= cycle.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= cycle.closes_at.utc.iso8601 %>">
                                                 <% if cycle.audition_type == "in_person" %>
                                                     Sign-ups
@@ -71,12 +71,14 @@
                                                 <% end %>
                                                 close in <span data-countdown-target="clock" class="text-pink-500"></span>
                                             </div>
+                                        <% else %>
+                                            <div class="text-xs text-gray-500 mt-1">(open-ended)</div>
                                         <% end %>
 
                                         <%= link_to "Edit my Sign-up", my_submit_audition_request_form_path(cycle.token), class: "text-xs text-pink-500 underline", target: "_blank" %>
 
                                     <% elsif cycle.timeline_status == :closed || !cycle.active %>
-                                        <div class="text-xs text-gray-500 mt-1">Sign-up window closed on <%= cycle.closes_at.strftime('%b %d, %Y') %></div>
+                                        <div class="text-xs text-gray-500 mt-1">Sign-up window closed<% if cycle.closes_at.present? %> on <%= cycle.closes_at.strftime('%b %d, %Y') %><% end %></div>
                                     <% elsif cycle.timeline_status == :upcoming %>
                                         <div class="text-xs text-gray-500 mt-1">Sign-ups open on <%= cycle.opens_at.strftime('%b %d, %Y') %></div>
                                     <% end %>

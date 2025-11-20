@@ -17,7 +17,7 @@ class DashboardService
     call = @production.audition_cycle
     return { total_open: 0, with_auditionees: [] } if call.blank?
 
-    is_open = call.opens_at <= Time.current && call.closes_at >= Time.current
+    is_open = call.opens_at <= Time.current && (call.closes_at.nil? || call.closes_at >= Time.current)
     return { total_open: 0, with_auditionees: [] } unless is_open
 
     {
