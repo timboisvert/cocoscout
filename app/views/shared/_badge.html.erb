@@ -1,0 +1,35 @@
+<%
+  # Shared badge/pill component for consistent tag/label styling
+  #
+  # Usage:
+  #   <%= render "shared/badge", text: "Active", color: "pink" %>
+  #   <%= render "shared/badge", text: "Pending", color: "yellow" %>
+  #   <%= render "shared/badge", text: "Skills", color: "gray" %>
+  #
+  # Parameters:
+  #   text (required): Badge text
+  #   color: "pink" (default), "blue", "green", "red", "yellow", "gray"
+
+  color ||= "gray"
+
+  color_classes = case color
+    when "pink"
+      "bg-pink-50 text-pink-700 ring-pink-600/10"
+    when "blue"
+      "bg-blue-50 text-blue-700 ring-blue-600/10"
+    when "green"
+      "bg-green-50 text-green-700 ring-green-600/10"
+    when "red"
+      "bg-red-50 text-red-700 ring-red-600/10"
+    when "yellow"
+      "bg-yellow-50 text-yellow-700 ring-yellow-600/20"
+    when "gray"
+      "bg-gray-50 text-gray-700 ring-gray-600/10"
+    else
+      "bg-gray-50 text-gray-700 ring-gray-600/10"
+  end
+%>
+
+<span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= color_classes %>">
+  <%= text %>
+</span>

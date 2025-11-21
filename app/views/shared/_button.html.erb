@@ -1,0 +1,59 @@
+<%
+  # Shared button component for consistent styling across the app
+  #
+  # Usage:
+  #   <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium" %>
+  #   <%= render "shared/button", text: "Cancel", variant: "secondary", path: root_path %>
+  #   <%= render "shared/button", text: "Delete", variant: "danger", size: "small", type: :button %>
+  #
+  # Parameters:
+  #   text (required): Button text
+  #   variant: "primary" (default), "secondary", "danger", "ghost"
+  #   size: "small", "medium" (default), "large"
+  #   type: :submit (default), :button
+  #   path: If provided, renders as link_to instead of button
+  #   classes: Additional custom classes
+
+  variant ||= "primary"
+  size ||= "medium"
+  type ||= :submit
+  classes ||= ""
+
+  base_classes = "font-medium rounded-md transition-colors inline-flex items-center justify-center"
+
+  variant_classes = case variant
+    when "primary"
+      "bg-pink-600 text-white hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+    when "secondary"
+      "border border-pink-600 text-pink-600 hover:bg-pink-50 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+    when "danger"
+      "bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+    when "ghost"
+      "text-pink-600 hover:bg-pink-50 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+    else
+      "bg-pink-600 text-white hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+  end
+
+  size_classes = case size
+    when "small"
+      "px-3 py-1.5 text-xs"
+    when "medium"
+      "px-4 py-2 text-sm"
+    when "large"
+      "px-5 py-2.5 text-base"
+    else
+      "px-4 py-2 text-sm"
+  end
+
+  all_classes = "#{base_classes} #{variant_classes} #{size_classes} #{classes}".strip
+%>
+
+<% if defined?(path) && path.present? %>
+  <%= link_to text, path, class: all_classes %>
+<% elsif type == :submit %>
+  <%= submit_tag text, class: all_classes %>
+<% else %>
+  <button type="<%= type %>" class="<%= all_classes %>">
+    <%= text %>
+  </button>
+<% end %>
