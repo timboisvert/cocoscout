@@ -17,9 +17,6 @@
 
         questionnaires_active = controller_name == "questionnaires"
         questionnaires_classes = questionnaires_active ? "bg-pink-500 text-white" : "text-gray-700"
-
-        groups_active = controller_name == "groups"
-        groups_classes = groups_active ? "bg-pink-500 text-white" : "text-gray-700"
       %>
 
       <%= link_to "My Shows & Events", my_shows_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{shows_classes}" %>
@@ -27,7 +24,6 @@
       <%= link_to "My Auditions", my_auditions_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{auditions_classes}" %>
       <%= link_to "My Sign-ups", my_audition_requests_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{audition_requests_classes}" %>
       <%= link_to "My Questionnaires", my_questionnaires_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{questionnaires_classes}" %>
-      <%= link_to "My Groups", my_groups_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{groups_classes}" %>
     </div>
 
   </div>

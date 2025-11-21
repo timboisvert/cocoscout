@@ -67,4 +67,44 @@
         </div>
     </div>
 
+    <!-- Groups Section -->
+    <div class="p-4">
+        <%= render partial: "shared/top_menu", locals: {
+            breadcrumbs: [],
+            text: "My Groups & Ensembles",
+            links: [
+              {
+                text: "Manage Groups",
+                path: my_groups_path
+              }
+            ]
+        } %>
+        <% user_groups = Current.user.person.groups.where(archived_at: nil).order(:name) %>
+        <% if user_groups.any? %>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                <% user_groups.each do |group| %>
+                    <%= link_to public_profile_path(group.public_key), class: "block" do %>
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-pink-500 transition-all">
+                            <div class="flex items-center gap-3">
+                                <% if group.headshot.attached? %>
+                                    <%= image_tag group.safe_headshot_variant(:thumb), class: "w-12 h-12 rounded-lg object-cover" %>
+                                <% else %>
+                                    <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                                        <%= group.name.split.map(&:first).join.upcase %>
+                                    </div>
+                                <% end %>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-semibold text-gray-900 truncate"><%= group.name %></div>
+                                    <div class="text-xs text-gray-500"><%= pluralize(group.members.count, 'member') %></div>
+                                </div>
+                            </div>
+                        </div>
+                    <% end %>
+                <% end %>
+            </div>
+        <% else %>
+            <p class="text-gray-500 text-sm mt-4">You're not part of any groups yet. <%= link_to "Create a group", my_new_group_path, class: "text-pink-500 hover:underline" %></p>
+        <% end %>
+    </div>
+
 </div>
