@@ -150,20 +150,6 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :groups do
-      collection do
-        get :search
-      end
-      member do
-        post :add_member
-        delete :remove_member
-        patch :update_member_role
-        patch :update_member_notifications
-        patch :archive
-        patch :unarchive
-      end
-    end
-
     resources :locations do
       member do
         get :cannot_delete
