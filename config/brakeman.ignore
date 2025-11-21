@@ -1,6 +1,40 @@
 {
   "ignored_warnings": [
     {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "a4177f99fea1a9a8a881b364c83ab47cb8a929de18f2e35dba38a03b39fc3527",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/manage/groups/show.html.erb",
+      "line": 62,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(Current.organization.groups.find(params[:id]).website, Current.organization.groups.find(params[:id]).website, :target => \"_blank\", :rel => \"noopener\", :class => \"text-pink-600 hover:text-pink-700\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::GroupsController",
+          "method": "show",
+          "line": 9,
+          "file": "app/controllers/manage/groups_controller.rb",
+          "rendered": {
+            "name": "manage/groups/show",
+            "file": "app/views/manage/groups/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/groups/show"
+      },
+      "user_input": "Current.organization.groups.find(params[:id]).website",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Remote Code Execution",
       "warning_code": 24,
       "fingerprint": "b8eb88c010f0550baf1d0b989ab623e7b1aa4019197016f3b5ec72d0a7edc5ba",
@@ -20,40 +54,6 @@
       "confidence": "Medium",
       "cwe_id": [
         470
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "f825902815c4bb6b95da9d8ea2b54ed2d192f6cd4705e82cafcc965ff1b92dcd",
-      "check_name": "LinkToHref",
-      "message": "Potentially unsafe model attribute in `link_to` href",
-      "file": "app/views/manage/shows/show.html.erb",
-      "line": 88,
-      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to((Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 rounded-md hover:bg-pink-100 transition-colors\")",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::ShowsController",
-          "method": "show",
-          "line": 27,
-          "file": "app/controllers/manage/shows_controller.rb",
-          "rendered": {
-            "name": "manage/shows/show",
-            "file": "app/views/manage/shows/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/shows/show"
-      },
-      "user_input": "(Unresolved Model).new.url",
-      "confidence": "Weak",
-      "cwe_id": [
-        79
       ],
       "note": ""
     }
