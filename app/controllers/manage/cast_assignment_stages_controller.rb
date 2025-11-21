@@ -51,7 +51,7 @@ module Manage
     end
 
     def create_stage_params
-      params.require(:cast_assignment_stage).permit(:person_id, :cast_id, :email_group_id, :status)
+      params.require(:cast_assignment_stage).permit(:person_id, :talent_pool_id, :email_group_id, :status)
     end
   end
 end

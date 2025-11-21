@@ -21,7 +21,7 @@ class Manage::PeopleController < Manage::ManageController
 
     case @filter
     when "cast-members"
-      @people = @people.joins(:casts).distinct
+      @people = @people.joins(:talent_pools).distinct
     when "everyone"
       @people = @people.all
     else
