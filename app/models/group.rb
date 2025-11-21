@@ -4,6 +4,8 @@ class Group < ApplicationRecord
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
 
+  has_and_belongs_to_many :organizations
+
   has_many :audition_requests, as: :requestable, dependent: :destroy
   has_many :talent_pool_memberships, as: :member, dependent: :destroy
   has_many :talent_pools, through: :talent_pool_memberships

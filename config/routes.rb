@@ -70,6 +70,13 @@ Rails.application.routes.draw do
     get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
     patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
+    get   "/groups",                        to: "groups#index",             as: "groups"
+    get   "/groups/new",                    to: "groups#new",               as: "new_group"
+    post  "/groups",                        to: "groups#create",            as: "create_group"
+    get   "/groups/:id/edit",               to: "groups#edit",              as: "edit_group"
+    patch "/groups/:id",                    to: "groups#update",            as: "update_group"
+    patch "/groups/:id/archive",            to: "groups#archive",           as: "archive_group"
+    patch "/groups/:id/unarchive",          to: "groups#unarchive",         as: "unarchive_group"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -143,6 +150,20 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :groups do
+      collection do
+        get :search
+      end
+      member do
+        post :add_member
+        delete :remove_member
+        patch :update_member_role
+        patch :update_member_notifications
+        patch :archive
+        patch :unarchive
+      end
+    end
+
     resources :locations do
       member do
         get :cannot_delete
@@ -200,19 +221,21 @@ Rails.application.routes.draw do
         end
       end
 
-      # Unified Casting section
+      # Casting routes - manage roles and cast assignments
       get "casting", to: "casting#index", as: "casting"
 
-      scope :casting do
-        # Show cast assignment
-        get "shows/:show_id/cast", to: "shows#cast", as: "show_cast"
-
-        resources :roles do
-          collection do
-            post :reorder
-          end
+      resources :roles do
+        collection do
+          post :reorder
         end
       end
+
+      # Show cast assignment
+      get "casting/shows/:show_id/cast", to: "casting#show_cast", as: "show_cast"
+      get "casting/shows/:show_id/contact", to: "casting#contact_cast", as: "show_contact_cast"
+      post "casting/shows/:show_id/contact", to: "casting#send_cast_email", as: "send_cast_email"
+      post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
+      post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
 
       resources :audition_cycles do
         resources :audition_requests do
@@ -276,14 +299,13 @@ Rails.application.routes.draw do
     post "/auditions/add_to_session",       to: "auditions#add_to_session"
     post "/auditions/remove_from_session",  to: "auditions#remove_from_session"
     post "/auditions/move_to_session",      to: "auditions#move_to_session"
-
-    # Used for adding people and removing them from a cast
-    post "/shows/:id/assign_person_to_role",    to: "shows#assign_person_to_role"
-    post "/shows/:id/remove_person_from_role",  to: "shows#remove_person_from_role"
   end
 
   # Junkers
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
+
+  # Public profiles (must be last to catch any remaining paths)
+  get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
 end

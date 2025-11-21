@@ -8,24 +8,61 @@
 
         <%
         links = [
-          {"Shows & Events" => manage_production_shows_path(Current.production)},
-          {"Availability" => manage_production_availability_index_path(Current.production)},
-          {"Casting & Roles" => manage_production_casting_path(Current.production)},
-          {"Auditions" => manage_production_auditions_path(Current.production)},
-          {"Questionnaires" => manage_production_questionnaires_path(Current.production)},
-          {"Visual Assets" => manage_production_visual_assets_path(Current.production)}
+          {
+            label: "Shows & Events",
+            path: manage_production_shows_path(Current.production),
+            active: controller_name == "shows"
+          },
+          {
+            label: "Availability",
+            path: manage_production_availability_index_path(Current.production),
+            active: controller_name == "availability"
+          },
+          {
+            label: "Casting & Roles",
+            path: manage_production_casting_path(Current.production),
+            active: ["casting", "roles", "talent_pools"].include?(controller_name)
+          },
+          {
+            label: "Auditions",
+            path: manage_production_auditions_path(Current.production),
+            active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+          },
+          {
+            label: "Questionnaires",
+            path: manage_production_questionnaires_path(Current.production),
+            active: controller_name == "questionnaires"
+          },
+          {
+            label: "Visual Assets",
+            path: manage_production_visual_assets_path(Current.production),
+            active: controller_name == "visual_assets"
+          }
         ]
         %>
 
         <% links.each do |item| %>
-          <%= link_to item.keys.first, item.values.first, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+          <% active_classes = item[:active] ? "bg-pink-500 text-white" : "text-gray-700" %>
+          <%= link_to item[:label], item[:path], class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{active_classes}" %>
         <% end %>
 
       <% end %>
 
-      <%= link_to "Directory", manage_people_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <%= link_to "Production Team", manage_team_index_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
-      <%= link_to "Locations", manage_locations_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%
+        directory_active = controller_name == "people" || controller_name == "groups"
+        directory_classes = directory_active ? "bg-pink-500 text-white" : "text-gray-700"
+
+        team_active = controller_name == "team"
+        team_classes = team_active ? "bg-pink-500 text-white" : "text-gray-700"
+
+        locations_active = controller_name == "locations"
+        locations_classes = locations_active ? "bg-pink-500 text-white" : "text-gray-700"
+      %>
+
+      <%= link_to "Directory", manage_people_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{directory_classes}" %>
+      <%#= link_to "Groups", manage_groups_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium" %>
+      <%= link_to "Production Team", manage_team_index_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{team_classes}" %>
+      <%= link_to "Locations", manage_locations_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{locations_classes}" %>
     </div>
 
   </div>

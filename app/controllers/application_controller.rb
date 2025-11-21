@@ -17,6 +17,6 @@ class ApplicationController < ActionController::Base
   end
 
   def show_my_sidebar
-    @show_my_sidebar = true
+    @show_my_sidebar = true if Current.user.present?
   end
 end

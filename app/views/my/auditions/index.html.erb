@@ -10,20 +10,34 @@
     links: []
   } %>
 
-   <div class="flex w-full space-x-2">
-        <div class="flex flex-1 space-x-2 mb-2">
-            <!-- Left: Sorting links -->
+   <div class="flex w-full space-x-4 mb-4">
+        <!-- Time Filter -->
+        <div class="flex space-x-2">
             <%= link_to "Upcoming",
-                    my_auditions_path(auditions_filter: "upcoming"),
+                    my_auditions_path(auditions_filter: "upcoming", entity_filter: @entity_filter),
                     data: { turbo_prefetch: false },
                     class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "upcoming") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
             %>
             <%= link_to "Past",
-                    my_auditions_path(auditions_filter: "past"),
+                    my_auditions_path(auditions_filter: "past", entity_filter: @entity_filter),
                     data: { turbo_prefetch: false },
                     class: "px-3 py-1 rounded-md border text-sm #{(@auditions_filter == "past") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
             %>
         </div>
+
+        <!-- Entity Filter -->
+        <% if @user_groups.any? %>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Show:</span>
+            <select onchange="window.location.href=this.value" class="px-3 py-1 border border-gray-200 rounded-md text-sm">
+              <option value="<%= my_auditions_path(auditions_filter: @auditions_filter, entity_filter: "all") %>" <%= "selected" if @entity_filter == "all" %>>All</option>
+              <option value="<%= my_auditions_path(auditions_filter: @auditions_filter, entity_filter: "personal") %>" <%= "selected" if @entity_filter == "personal" %>>Personal</option>
+              <% @user_groups.each do |group| %>
+                <option value="<%= my_auditions_path(auditions_filter: @auditions_filter, entity_filter: "group_#{group.id}") %>" <%= "selected" if @entity_filter == "group_#{group.id}" %>>🎭 <%= group.name %></option>
+              <% end %>
+            </select>
+          </div>
+        <% end %>
     </div>
 
     <% if @auditions.any? %>

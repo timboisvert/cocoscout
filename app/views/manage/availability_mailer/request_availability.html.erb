@@ -1,7 +1,7 @@
 <h1 style="border-bottom: 2px solid #ec4899; padding-bottom: 15px;">Availability Request</h1>
 
 <div>
-  <%= simple_format(@message, {}, sanitize: false) %>
+  <%= simple_format(auto_link(@message, html: { target: '_blank' }), {}, sanitize: false) %>
 </div>
 
 <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 25px; font-size: 14px; color: #6b7280;">

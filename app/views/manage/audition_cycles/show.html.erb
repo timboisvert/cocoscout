@@ -68,16 +68,27 @@
           <% @audition_requests.each do |request| %>
             <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
               <div class="flex items-center gap-3">
-                <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: request.person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                <% if request.requestable.respond_to?(:safe_headshot_variant) %>
+                  <% headshot_variant = request.requestable.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: request.requestable.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                      <%= request.requestable.initials %>
+                    </div>
+                  <% end %>
                 <% else %>
                   <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
-                    <%= request.person.initials %>
+                    <%= request.requestable.respond_to?(:initials) ? request.requestable.initials : request.requestable.name[0].upcase %>
                   </div>
                 <% end %>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate"><%= request.person.name %></p>
+                  <div class="flex items-center gap-1">
+                    <% if request.requestable_type == "Group" %>
+                      <span class="text-sm">🎭</span>
+                    <% end %>
+                    <p class="text-sm font-medium text-gray-900 truncate"><%= request.requestable.name %></p>
+                  </div>
                   <p class="text-xs text-gray-500">
                     <%= request.created_at.strftime("%b %-d, %Y") %>
                   </p>

@@ -1,0 +1,59 @@
+<% content_for :title, "Create New Group" %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "My Groups", path: my_groups_path }
+    ],
+    text: "Create New Group",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-6">
+    <%= form_with model: @group, url: my_create_group_path, class: "space-y-6" do |f| %>
+
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+
+        <div class="space-y-4">
+          <div>
+            <%= f.label :name, "Group Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.text_field :name, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+
+          <div>
+            <%= f.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.email_field :email, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">This will be the primary contact email for the group</p>
+          </div>
+
+          <div>
+            <%= f.label :phone, "Phone Number", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.telephone_field :phone, class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+
+          <div>
+            <%= f.label :bio, "About", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.text_area :bio, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">Tell people about your group</p>
+          </div>
+
+          <div>
+            <%= f.label :website, "Website", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.url_field :website, class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <%= link_to "Cancel", my_groups_path, class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" %>
+        <%= f.submit "Create Group", class: "px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500" %>
+      </div>
+
+    <% end %>
+  </div>
+
+</div>

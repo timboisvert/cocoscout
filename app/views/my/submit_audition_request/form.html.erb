@@ -189,13 +189,13 @@
     <!-- Submit Button -->
     <%
       if @audition_cycle.audition_type == "in_person"
-        if @audition_cycle.audition_requests.exists?(person: Current.user.person)
+        if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
           submit_text = "Update Sign-up"
         else
           submit_text = "Sign up"
         end
       elsif @audition_cycle.audition_type == "video_upload"
-        if @audition_cycle.audition_requests.exists?(person: Current.user.person)
+        if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
           submit_text = "Update video audition"
         else
           submit_text = "Submit video audition"

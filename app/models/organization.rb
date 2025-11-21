@@ -6,6 +6,7 @@ class Organization < ApplicationRecord
   has_many :users, through: :organization_roles
   has_many :locations, dependent: :destroy
   has_and_belongs_to_many :people
+  has_and_belongs_to_many :groups
 
   has_one_attached :logo
 

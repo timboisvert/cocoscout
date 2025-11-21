@@ -137,22 +137,22 @@
         <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
 
         <% # Get all audition requests %>
-        <% all_audition_requests = @audition_cycle.audition_requests.includes(:person) %>
+        <% all_audition_requests = @audition_cycle.audition_requests.includes(:requestable) %>
 
         <% # Get all scheduled person IDs for this audition cycle %>
         <% scheduled_person_ids = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
 
         <% # Count people who have been notified and whose status hasn't changed since %>
-        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (scheduled_person_ids.include?(req.person.id) == req.notified_scheduled) } %>
+        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (req.person.present? ? (scheduled_person_ids.include?(req.person.id) == req.notified_scheduled) : req.notified_scheduled == false) } %>
         <% notified_people_count = notified_requests.count %>
 
         <% # Show requests that haven't been notified yet OR whose status has changed OR whose scheduling status has changed %>
-        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || req.notified_status != req.status || (scheduled_person_ids.include?(req.person.id) != req.notified_scheduled) } %>
+        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || req.notified_status != req.status || (req.person.present? ? (scheduled_person_ids.include?(req.person.id) != req.notified_scheduled) : false) } %>
         <% accepted_requests = audition_requests.select { |req| req.status == "accepted" } %>
         <% not_accepted_requests = audition_requests.reject { |req| req.status == "accepted" } %>
 
         <% # Load email assignments for people who haven't been notified %>
-        <% email_assignments = @audition_cycle.audition_email_assignments.where(person_id: audition_requests.map { |r| r.person.id }).index_by(&:person_id) %>
+        <% email_assignments = @audition_cycle.audition_email_assignments.where(person_id: audition_requests.map { |r| r.person&.id }.compact).index_by(&:person_id) %>
         <% # Load custom email groups (exclude default group_ids to avoid duplicates) %>
         <% custom_groups = @audition_cycle.email_groups.where(group_type: 'audition').where.not(group_id: ['invitation_accepted', 'invitation_not_accepted']).order(:created_at) %>
 

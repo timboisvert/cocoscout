@@ -7,7 +7,7 @@
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
       [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
     ],
-    text: @audition_request.person.name.truncate(40, omission: "..."),
+    text: @audition_request.requestable.name.truncate(40, omission: "..."),
     links: []
   } %>
 
@@ -26,9 +26,6 @@
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
       <% idx += 1 %>
-      <% if @audition_cycle.audition_type == "video_upload" %>
-        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Cast Membership</button>
-      <% end %>
 
     </nav>
 
@@ -128,14 +125,6 @@
         <p class="text-center mt-10">No sign-up questions answered</p>
       <% end %>
     </div>
-
-    <% if @audition_cycle.audition_type == "video_upload" %>
-      <div data-tabs-target="panel" class="hidden">
-        <div class="mt-2">
-          <%= render "manage/casts/cast_membership_card", production: @production, person: @person %>
-        </div>
-      </div>
-    <% end %>
 
   </div>
 </div>

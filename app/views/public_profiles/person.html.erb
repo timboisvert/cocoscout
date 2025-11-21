@@ -1,0 +1,104 @@
+<% content_for :title, @entity.name %>
+
+<div class="w-full max-w-6xl mx-auto px-4 py-8">
+
+  <%# Hero Section %>
+  <div class="bg-white border border-gray-200 rounded-lg p-8 mb-6">
+    <div class="flex items-start gap-6">
+      <% if @entity.headshot.attached? %>
+        <%= image_tag @entity.headshot.variant(:thumb), class: "w-32 h-32 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-32 h-32 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-3xl">
+          <%= @entity.initials %>
+        </div>
+      <% end %>
+
+      <div class="flex-1">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-4xl font-bold text-gray-900"><%= @entity.name %></h1>
+            <% if @entity.pronouns.present? %>
+              <p class="text-gray-500 mt-1"><%= @entity.pronouns %></p>
+            <% end %>
+          </div>
+          <% if Current.user && @entity == Current.user.person %>
+            <%= link_to "Edit Profile", my_edit_profile_path, class: "px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Contact Section %>
+  <% if @entity.email.present? || @entity.socials.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Contact</h2>
+
+      <div class="space-y-3">
+        <% if @entity.email.present? %>
+          <div class="flex items-center gap-2">
+            <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+              <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
+            </svg>
+            <%= mail_to @entity.email, @entity.email, class: "text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% end %>
+
+        <% @entity.socials.each do |social| %>
+          <div class="flex items-center gap-2">
+            <%= social.icon(20) %>
+            <%= link_to social.handle, social.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Resume Section %>
+  <% if @entity.resume.attached? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Resume</h2>
+        <%= link_to "Download", rails_blob_path(@entity.resume, disposition: "attachment"), class: "px-4 py-2 text-sm font-medium text-pink-600 border border-pink-600 rounded-md hover:bg-pink-50" %>
+      </div>
+
+      <% resume_preview = @entity.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+      <% if resume_preview %>
+        <div class="w-full">
+          <%= image_tag resume_preview, class: "w-full object-contain border border-gray-200 rounded" %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Groups & Ensembles Section %>
+  <% groups = @entity.groups.where(archived_at: nil) %>
+  <% if groups.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">
+        Groups & Ensembles
+        <span class="text-lg font-normal text-gray-500">(<%= groups.count %>)</span>
+      </h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <% groups.each do |group| %>
+          <%= link_to public_profile_path(group.public_key), class: "group" do %>
+            <div class="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-pink-400 hover:shadow-md transition-all">
+              <% if group.headshot.attached? %>
+                <%= image_tag group.headshot.variant(:thumb), class: "w-20 h-20 rounded-lg object-cover mb-2" %>
+              <% else %>
+                <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold mb-2">
+                  <%= group.initials %>
+                </div>
+              <% end %>
+              <span class="text-sm font-medium text-gray-900 text-center group-hover:text-pink-600">
+                <%= group.name %>
+              </span>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+</div>

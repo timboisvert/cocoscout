@@ -1,0 +1,89 @@
+<%
+  # Parameters:
+  # - show: the Show object
+  # - title: optional string to override the date/time in the title bar (e.g., "Cast")
+  # - production: the Production object
+
+  cast_count = show.show_person_role_assignments.count
+  total_roles = show.production.roles.count
+  percentage = total_roles > 0 ? (cast_count.to_f / total_roles * 100).round : 0
+%>
+
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <!-- Title Bar -->
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-sm font-semibold text-gray-900">
+      <%= title.present? ? title : show.date_and_time&.strftime("%A, %b %d, %Y at %l:%M %p") %>
+    </h3>
+    <div class="flex-shrink-0 text-right">
+      <span class="text-sm font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
+        <%= cast_count %>/<%= total_roles %> roles cast
+      </span>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="p-4">
+    <!-- Event Type Badge and Secondary Name -->
+    <div class="flex items-center gap-2 mb-3 flex-wrap">
+      <% event_type_badge_classes = case show.event_type
+        when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+        when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+        else "bg-pink-50 text-pink-700 ring-pink-600/10"
+      end %>
+      <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+        <%= show.event_type.titleize %>
+      </span>
+      <% if show.secondary_name.present? %>
+        <span class="text-xs text-gray-600"><%= show.secondary_name %></span>
+      <% end %>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-gray-200 rounded-full h-2 mb-3">
+      <div class="<%= percentage == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
+    </div>
+
+    <!-- Cast Members by Role -->
+    <% if show.production.roles.any? %>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <% show.production.roles.each do |role| %>
+          <% assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
+          <% if assignment %>
+            <%= link_to [:manage, assignment.person], class: "block" do %>
+              <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant,
+                    alt: assignment.person.name,
+                    class: "w-12 h-12 rounded-lg object-cover shadow-sm hover:ring-2 hover:ring-pink-500 transition-all",
+                    data: { controller: "tooltip", tooltip_text: "#{assignment.person.name} - #{role.name}" } %>
+              <% else %>
+                <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm hover:ring-2 hover:ring-pink-500 transition-all"
+                     data-controller="tooltip"
+                     data-tooltip-text="<%= "#{assignment.person.name} - #{role.name}" %>">
+                  <%= assignment.person.initials %>
+                </div>
+              <% end %>
+            <% end %>
+          <% else %>
+            <%= link_to manage_production_show_cast_path(production, show), class: "block" do %>
+              <div class="w-12 h-12 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 text-xs shadow-sm hover:border-pink-400 hover:bg-pink-50 transition-all"
+                   data-controller="tooltip"
+                   data-tooltip-text="<%= "#{role.name} - Not Cast" %>">
+                +
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-xs text-gray-400 italic mb-3">No roles defined yet</p>
+    <% end %>
+  </div>
+
+  <!-- Footer Links -->
+  <div class="bg-gray-50 px-4 py-2 border-t border-gray-200 flex gap-2 text-xs">
+    <%= link_to "Manage Cast", manage_production_show_cast_path(production, show), class: "text-pink-500 underline" %>
+    <%= link_to "Contact Cast", manage_production_show_contact_cast_path(production, show), class: "text-pink-500 underline" %>
+  </div>
+</div>

@@ -14,78 +14,9 @@
   <!-- Show Cast Assignments Section -->
   <div>
     <% if @upcoming_shows.any? %>
-      <div class="space-y-2">
+      <div class="space-y-4">
         <% @upcoming_shows.each do |show| %>
-          <% cast_count = show.show_person_role_assignments.count %>
-          <% total_roles = show.production.roles.count %>
-          <% percentage = total_roles > 0 ? (cast_count.to_f / total_roles * 100).round : 0 %>
-
-          <%= link_to manage_production_show_cast_path(@production, show), class: "block bg-white border border-gray-200 rounded-lg hover:border-gray-400 overflow-hidden no-underline" do %>
-            <div class="p-3">
-              <div class="flex items-start justify-between gap-3 mb-2">
-                <div class="flex-1 min-w-0">
-                  <p class="font-bold text-sm text-gray-900 truncate"><%= show.date_and_time&.strftime("%A, %b %d, %Y at %l:%M %p") %></p>
-                  <div class="flex items-center gap-2 mt-1 flex-wrap">
-                    <% event_type_badge_classes = case show.event_type
-                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                    end %>
-                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
-                      <%= show.event_type.titleize %>
-                    </span>
-                    <% if show.secondary_name.present? %>
-                      <span class="text-xs text-gray-600"><%= show.secondary_name %></span>
-                    <% end %>
-                  </div>
-                </div>
-
-                <div class="flex-shrink-0 text-right">
-                  <span class="text-lg font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
-                    <%= percentage %>%
-                  </span>
-                  <p class="text-xs text-gray-500"><%= cast_count %>/<%= total_roles %> roles</p>
-                </div>
-              </div>
-
-              <!-- Progress Bar -->
-              <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div class="<%= percentage == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
-              </div>
-
-              <!-- Cast Members by Role -->
-              <% if show.production.roles.any? %>
-                <div class="flex flex-wrap gap-1.5">
-                  <% show.production.roles.each do |role| %>
-                    <% assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
-                    <% if assignment %>
-                      <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant,
-                            alt: assignment.person.name,
-                            class: "w-10 h-10 rounded-lg object-cover shadow-sm",
-                            data: { controller: "tooltip", tooltip_text: "#{assignment.person.name} - #{role.name}" } %>
-                      <% else %>
-                        <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm"
-                             data-controller="tooltip"
-                             data-tooltip-text="<%= "#{assignment.person.name} - #{role.name}" %>">
-                          <%= assignment.person.initials %>
-                        </div>
-                      <% end %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 text-xs shadow-sm"
-                           data-controller="tooltip"
-                           data-tooltip-text="<%= "#{role.name} - Not Cast" %>">
-                        +
-                      </div>
-                    <% end %>
-                  <% end %>
-                </div>
-              <% else %>
-                <p class="text-xs text-gray-400 italic">No roles defined yet</p>
-              <% end %>
-            </div>
-          <% end %>
+          <%= render "manage/casting/cast_card", show: show, production: @production, title: nil %>
         <% end %>
       </div>
     <% else %>

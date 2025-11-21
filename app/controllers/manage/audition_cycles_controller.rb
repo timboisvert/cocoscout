@@ -12,7 +12,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
   def show
     # Summary view for archived auditions
     @custom_questions = @audition_cycle.questions.order(:position)
-    @audition_requests = @audition_cycle.audition_requests.includes(:person).order(created_at: :desc)
+    @audition_requests = @audition_cycle.audition_requests.includes(:requestable).order(created_at: :desc)
     @accepted_requests = @audition_requests.where(status: :accepted)
 
     # Get people added to casts during this audition cycle via cast_assignment_stages

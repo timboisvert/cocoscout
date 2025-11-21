@@ -94,11 +94,11 @@
                 <div class="flex-shrink-0 sm:ml-2">
                   <% if show_data[:uncast_count] > 0 %>
                     <span class="inline-block bg-orange-100 text-orange-800 text-xs font-semibold px-3 py-1 rounded-full w-full sm:w-auto text-center">
-                      <%= show_data[:uncast_count] %> uncast
+                      <%= show_data[:uncast_count] %> roles uncast
                     </span>
                   <% else %>
                     <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full w-full sm:w-auto text-center">
-                      Fully Cast
+                      100% Cast
                     </span>
                   <% end %>
                 </div>
@@ -136,15 +136,15 @@
                 </div>
                 <div class="flex-shrink-0 sm:ml-2">
                   <% if show_data[:percentage_responded] == 100 %>
-                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800 w-full sm:w-auto text-center">
+                    <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800 w-full sm:w-auto text-center">
                       <%= show_data[:percentage_responded] %>% responded
                     </span>
                   <% elsif show_data[:percentage_responded] >= 75 %>
-                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto text-center">
+                    <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto text-center">
                       <%= show_data[:percentage_responded] %>% responded
                     </span>
                   <% else %>
-                    <span class="inline-block text-sm font-semibold px-3 py-1 rounded-full bg-red-100 text-red-800 w-full sm:w-auto text-center">
+                    <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-red-100 text-red-800 w-full sm:w-auto text-center">
                       <%= show_data[:percentage_responded] %>% responded
                     </span>
                   <% end %>

@@ -41,7 +41,7 @@ class My::SubmitAuditionRequestController < ApplicationController
 
       # Load existing availability data
       @availability = {}
-      ShowAvailability.where(person: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @person, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end

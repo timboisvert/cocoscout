@@ -47,15 +47,16 @@ export default class extends Controller {
         }
 
         const showId = this.element.dataset.showId;
+        const productionId = this.element.dataset.productionId;
 
         // If dragging from an assignment (role-to-role), sourceRoleId will be set
         if (sourceRoleId && sourceRoleId !== roleId) {
             // Remove from source role first, then add to target role
-            this.moveAssignment(showId, personId, sourceRoleId, roleId);
+            this.moveAssignment(productionId, showId, personId, sourceRoleId, roleId);
         } else {
             // Dragging from cast members list (cast-person drag)
             // First, remove anyone from the target role
-            fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+            fetch(`/manage/casting/productions/${productionId}/shows/${showId}/remove_person_from_role`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -77,7 +78,7 @@ export default class extends Controller {
                     }
 
                     // Now assign the person to the target role
-                    return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
+                    return fetch(`/manage/casting/productions/${productionId}/shows/${showId}/assign_person_to_role`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -102,9 +103,9 @@ export default class extends Controller {
         }
     }
 
-    moveAssignment(showId, personId, sourceRoleId, targetRoleId) {
+    moveAssignment(productionId, showId, personId, sourceRoleId, targetRoleId) {
         // First, remove the person from the source role
-        fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+        fetch(`/manage/casting/productions/${productionId}/shows/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -115,7 +116,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 // Now check if target role has an assignment and remove it
-                return fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+                return fetch(`/manage/casting/productions/${productionId}/shows/${showId}/remove_person_from_role`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -138,7 +139,7 @@ export default class extends Controller {
                 }
 
                 // Now assign the person to the target role
-                return fetch(`/manage/shows/${showId}/assign_person_to_role`, {
+                return fetch(`/manage/casting/productions/${productionId}/shows/${showId}/assign_person_to_role`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -161,8 +162,9 @@ export default class extends Controller {
         const assignmentId = event.currentTarget.dataset.assignmentId;
         const personId = event.currentTarget.dataset.personId;
         const showId = this.element.dataset.showId;
+        const productionId = this.element.dataset.productionId;
 
-        fetch(`/manage/shows/${showId}/remove_person_from_role`, {
+        fetch(`/manage/casting/productions/${productionId}/shows/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
