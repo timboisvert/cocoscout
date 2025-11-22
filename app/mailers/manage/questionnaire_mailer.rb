@@ -1,5 +1,5 @@
 class Manage::QuestionnaireMailer < ApplicationMailer
-  def invitation(person, questionnaire, production, message)
+  def invitation(person, questionnaire, production, subject, message)
     @person = person
     @questionnaire = questionnaire
     @production = production
@@ -7,7 +7,7 @@ class Manage::QuestionnaireMailer < ApplicationMailer
 
     mail(
       to: person.user.email_address,
-      subject: "You're invited: #{questionnaire.title} - #{production.name}"
+      subject: subject
     )
   end
 end

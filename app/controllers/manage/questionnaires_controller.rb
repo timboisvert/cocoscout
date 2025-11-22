@@ -180,6 +180,7 @@ class Manage::QuestionnairesController < Manage::ManageController
     recipient_type = params[:recipient_type]
     cast_id = params[:cast_id]
     person_ids = params[:person_ids] || []
+    subject_template = params[:subject]
     message_template = params[:message]
 
     # Get all people in the production
@@ -205,7 +206,7 @@ class Manage::QuestionnairesController < Manage::ManageController
 
       # Send email if person has a user account
       if person.user
-        Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, message_template).deliver_later
+        Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template, message_template).deliver_later
       end
     end
 

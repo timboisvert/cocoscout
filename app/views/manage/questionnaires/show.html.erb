@@ -163,7 +163,12 @@
         <% invited_person_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Person').pluck(:invitee_id) %>
         <% not_invited_people = all_people.reject { |p| invited_person_ids.include?(p.id) } %>
 
-        <% if not_invited_people.any? %>
+        <% if all_people.empty? %>
+          <div class="text-sm text-gray-600 border-t border-gray-200 pt-5">
+            <p class="mb-2">No cast members yet.</p>
+            <p class="text-xs">Add people to your production's talent pool to send questionnaire invitations.</p>
+          </div>
+        <% elsif not_invited_people.any? %>
           <div class="mb-5 <%= 'border-t border-gray-200 pt-5' if invited_people.any? %>">
             <div class="mb-4">
               <label class="block font-semibold mb-2 text-sm">
@@ -222,6 +227,12 @@
                   <% end %>
                 </div>
               </div>
+            </div>
+
+            <div class="mb-4">
+              <%= label_tag :subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>
+              <% default_subject = "#{@production.name} - #{@questionnaire.title}" %>
+              <%= text_field_tag :subject, default_subject, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
             </div>
 
             <div class="mb-4">

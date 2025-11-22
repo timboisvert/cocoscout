@@ -169,7 +169,7 @@ class My::SubmitAuditionRequestController < ApplicationController
           next if status.blank?
 
           show_availability = ShowAvailability.find_or_initialize_by(
-            person: @person,
+            available_entity: @person,
             show_id: show_id
           )
 

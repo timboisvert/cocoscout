@@ -37,7 +37,7 @@
               <%= link_to delete_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
             <% else %>
               <%= link_to edit_label, edit_manage_production_show_path(@production, @show), class: "text-xs text-pink-500 underline" %>
-              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "text-xs text-pink-500 underline" %>
+              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "ml-1 text-xs text-pink-500 underline" %>
               <%= link_to cancel_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
             <% end %>
           </div>
