@@ -104,7 +104,9 @@ class Manage::PeopleController < Manage::ManageController
       )
 
       # Send invitation email
-      Manage::PersonMailer.person_invitation(person_invitation).deliver_later
+      invitation_subject = params[:person][:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
+      invitation_message = params[:person][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
+      Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
       redirect_to [ :manage, existing_person ], notice: "User account created and invitation sent to #{existing_person.name}"
     else
@@ -127,7 +129,9 @@ class Manage::PeopleController < Manage::ManageController
         )
 
         # Send invitation email
-        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
+        invitation_subject = params[:person][:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
+        invitation_message = params[:person][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
+        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
         redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
       else
@@ -187,6 +191,9 @@ class Manage::PeopleController < Manage::ManageController
   def batch_invite
     emails_text = params[:emails].to_s
     email_lines = emails_text.split(/\r?\n/).map(&:strip).reject(&:blank?)
+
+    invitation_subject = params[:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
+    invitation_message = params[:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
 
     invited_count = 0
     skipped_count = 0
@@ -248,7 +255,7 @@ class Manage::PeopleController < Manage::ManageController
         )
 
         # Send invitation email
-        Manage::PersonMailer.person_invitation(person_invitation).deliver_later
+        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
         invited_count += 1
       else

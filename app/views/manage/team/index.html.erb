@@ -10,6 +10,16 @@
     links: []
   } %>
 
+<%= render "shared/help_section",
+  title: "About Production Team Members",
+  initial_state: "open",
+  storage_key: "team_help_collapsed",
+  steps: [
+    { text: "This page is for inviting <strong>production team members</strong> (co-producers, production assistants, etc.) who need access to manage productions in CocoScout." },
+    { text: "This is <strong>not</strong> for adding talent/performers to your cast. Use the <strong>Directory</strong> for inviting performers." },
+    { text: "After inviting someone, you can click <strong>Manage Permissions</strong> to control what they can view and manage." }
+  ] %>
+
 <div class="flex flex-col md:flex-row gap-2 mt-4">
 
     <div class="flex-1 space-y-2">
@@ -82,10 +92,27 @@
                     <% end %>
 
                     <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post) do |f| %>
-                        <div class="flex gap-2 items-center">
-                            <%= f.email_field :email, placeholder: "Email address", autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 border-gray-400 flex-1 w-full" %>
-                            <%= f.submit "Send Invite", class: "px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
+                        <div class="mb-4">
+                            <%= f.label :email, "Email Address:", class: "block font-semibold mb-2 text-sm" %>
+                            <%= f.email_field :email, placeholder: "Email address", autocapitalize: "none", class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
                         </div>
+
+                        <div class="mb-4">
+                            <%= f.label :invitation_subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>
+                            <% default_subject = "You've been invited to join #{Current.organization.name}'s team on CocoScout" %>
+                            <%= f.text_field :invitation_subject, value: default_subject, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+                        </div>
+
+                        <div class="mb-4">
+                            <%= f.label :invitation_message, "Email Message:", class: "block font-semibold mb-2 text-sm" %>
+                            <% default_message = "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account." %>
+                            <%= f.text_area :invitation_message, value: default_message, rows: 6, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+                            <p class="mt-2 text-xs text-gray-500">
+                                The invitation link will be automatically included in the email.
+                            </p>
+                        </div>
+
+                        <%= f.submit "Send Invite", class: "w-full px-3 py-2 rounded-lg bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
                     <% end %>
                 </div>
             </div>

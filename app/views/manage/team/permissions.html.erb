@@ -12,6 +12,16 @@
     links: []
   } %>
 
+  <%= render "shared/help_section",
+    title: "How Permissions Work",
+    initial_state: "open",
+    storage_key: "team_permissions_help_collapsed",
+    steps: [
+      { text: "<strong>Global Role:</strong> Sets the default access level across all productions. Choose 'Manager' for full access, 'Viewer' for read-only, or 'None' for per-production access only." },
+      { text: "<strong>Per-Production Permissions:</strong> Override the global role for specific productions. Useful when someone needs manager access to some productions but viewer access to others." },
+      { text: "<strong>Use Global Role:</strong> Select this option in the per-production dropdown to inherit the global role setting instead of using a custom override." }
+    ] %>
+
   <div class="mt-4">
     <div class="p-4 border border-gray-200 rounded-lg mb-4">
       <h2 class="text-lg font-semibold mb-2">Global Role</h2>

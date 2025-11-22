@@ -1,9 +1,12 @@
 class Manage::PersonMailer < ApplicationMailer
-  def person_invitation(person_invitation)
+  def person_invitation(person_invitation, subject = nil, message = nil)
     @person_invitation = person_invitation
     @token = person_invitation.token
     @organization = person_invitation.organization
-    mail(to: @person_invitation.email, subject: "You've been invited to join #{@organization.name} on CocoScout")
+    @custom_message = message
+
+    subject ||= "You've been invited to join #{@organization.name} on CocoScout"
+    mail(to: @person_invitation.email, subject: subject)
   end
 
   def contact_email(person, subject, message, sender)

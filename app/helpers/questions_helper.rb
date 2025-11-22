@@ -6,7 +6,7 @@ module QuestionsHelper
     missing_required = options[:missing_required_questions]&.include?(question)
 
     render(
-      partial: "questions/input_types/#{question.question_type}",
+      partial: "shared/questions/input_types/#{question.question_type}",
       locals: {
         question: question,
         answer_value: answer_value,
@@ -18,7 +18,7 @@ module QuestionsHelper
 
   def render_question_answer(answer)
     render(
-      partial: "questions/answer_types/#{answer.question.question_type}",
+      partial: "shared/questions/answer_types/#{answer.question.question_type}",
       locals: { answer: answer }
     )
   end

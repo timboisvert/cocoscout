@@ -1,7 +1,14 @@
-<h1>Welcome to CocoScout</h1>
-<p>
-    <%= @team_invitation.organization.name%> is using CocoScout to manage its productions.
-    You've been invited to join the team.
-    <%= link_to "Click here", accept_manage_team_invitations_url(@team_invitation.token), target: "_blank", class: "text-pink-500" %>
-    to accept the invitation and sign in or create an account.
-</p>
+<% if @custom_message.present? %>
+  <%= simple_format(@custom_message) %>
+  <p style="margin-top: 20px;">
+    <%= link_to "Accept Invitation", accept_manage_team_invitations_url(@team_invitation.token), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %>
+  </p>
+<% else %>
+  <h1>Welcome to CocoScout</h1>
+  <p>
+      <%= @team_invitation.organization.name%> is using CocoScout to manage its productions.
+      You've been invited to join the team.
+      <%= link_to "Click here", accept_manage_team_invitations_url(@team_invitation.token), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %>
+      to accept the invitation and sign in or create an account.
+  </p>
+<% end %>

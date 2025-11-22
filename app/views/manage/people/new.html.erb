@@ -14,9 +14,16 @@
 
   <div class="w-full" data-controller="tabs">
 
-    <div class="mb-5 text-gray-500 text-sm">
-      You can invite people to join <%= Current.organization.name %> on CocoScout. They will receive an email with a link to create a password and update their profile.
-    </div>
+    <%= render "shared/help_section",
+      title: "Inviting People to CocoScout",
+      initial_state: "open",
+      storage_key: "invite_people_help_collapsed",
+      steps: [
+        { text: "Use this page to invite people (talent, performers, cast members) to join " + Current.organization.name + " on CocoScout." },
+        { text: "They will receive an email with a link to create a password and set up their profile." },
+        { text: "If someone already has a CocoScout account, they'll just need to sign in and will be automatically added to your organization." },
+        { text: "Once they accept the invitation, you can add them to your production casts in the Directory." }
+      ] %>
 
     <nav class="flex space-x-2 border-b border-gray-200 mb-4">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Invite One Person</button>
@@ -50,7 +57,29 @@
 
         </div>
 
-        <div class="w-full border-t border-gray-200 pt-5 my-5">
+        <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Invitation Email</h3>
+          </div>
+          <div class="p-4">
+            <div class="mb-4">
+              <%= person_form.label :invitation_subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>
+              <% default_subject = "You've been invited to join #{Current.organization.name} on CocoScout" %>
+              <%= person_form.text_field :invitation_subject, value: default_subject, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+            </div>
+
+            <div class="">
+              <%= person_form.label :invitation_message, "Email Message:", class: "block font-semibold mb-2 text-sm" %>
+              <% default_message = "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account." %>
+              <%= person_form.text_area :invitation_message, value: default_message, rows: 6, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              <p class="mt-2 text-xs text-gray-500">
+                The invitation link will be automatically included in the email.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-full my-5">
           <%= person_form.submit "Invite Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
           <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
         </div>
@@ -73,7 +102,29 @@
               class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full font-mono text-sm" %>
         </div>
 
-        <div class="w-full border-t border-gray-200 pt-5 my-5">
+        <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Invitation Email</h3>
+          </div>
+          <div class="p-4">
+            <div class="mb-4">
+              <%= form.label :invitation_subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>
+              <% default_subject = "You've been invited to join #{Current.organization.name} on CocoScout" %>
+              <%= form.text_field :invitation_subject, value: default_subject, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+            </div>
+
+            <div class="">
+              <%= form.label :invitation_message, "Email Message:", class: "block font-semibold mb-2 text-sm" %>
+              <% default_message = "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account." %>
+              <%= form.text_area :invitation_message, value: default_message, rows: 6, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              <p class="mt-2 text-xs text-gray-500">
+                The invitation link will be automatically included in the email.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-full my-5">
           <%= form.submit "Invite Everyone", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
           <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
         </div>

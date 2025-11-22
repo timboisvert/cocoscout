@@ -88,7 +88,7 @@ class Manage::AuditionsController < Manage::ManageController
       audition_requests = audition_requests.where.not(id: Audition.where(audition_session: @audition_sessions).select(:audition_request_id))
     end
 
-    @available_people = audition_requests.includes(:person).order(created_at: :asc)
+    @available_people = audition_requests.includes(:requestable).order(created_at: :asc)
     @scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(:person_id).uniq.to_set
     @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: @audition_cycle.id }).pluck(:audition_request_id).uniq
   end
