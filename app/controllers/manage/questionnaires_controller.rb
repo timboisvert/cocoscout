@@ -144,7 +144,7 @@ class Manage::QuestionnairesController < Manage::ManageController
 
   def responses
     @responses = @questionnaire.questionnaire_responses
-                               .includes(:person)
+                               .includes(:respondent)
                                .order(created_at: :desc)
   end
 

@@ -169,7 +169,7 @@ class Manage::AuditionsController < Manage::ManageController
       available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
     end
 
-    available_people = available_people.includes(:person).order(created_at: :asc)
+    available_people = available_people.includes(:requestable).order(created_at: :asc)
 
     # Get list of already scheduled person IDs for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -212,7 +212,7 @@ class Manage::AuditionsController < Manage::ManageController
       available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
     end
 
-    available_people = available_people.includes(:person).order(created_at: :asc)
+    available_people = available_people.includes(:requestable).order(created_at: :asc)
 
     # Get list of already scheduled person IDs and audition request IDs for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -263,7 +263,7 @@ class Manage::AuditionsController < Manage::ManageController
       available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
     end
 
-    available_people = available_people.includes(:person).order(created_at: :asc)
+    available_people = available_people.includes(:requestable).order(created_at: :asc)
 
     # Get list of already scheduled person IDs and audition request IDs for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -415,7 +415,7 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     # Get all audition requests
-    audition_requests = audition_cycle.audition_requests.includes(:person)
+    audition_requests = audition_cycle.audition_requests.includes(:requestable)
 
     # Get scheduled person IDs to determine who should get invitation vs rejection
     scheduled_person_ids = audition_cycle.audition_sessions.joins(:auditions).pluck("auditions.person_id").uniq

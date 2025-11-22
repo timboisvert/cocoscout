@@ -10,6 +10,16 @@
     links: []
   } %>
 
+  <%= render "shared/help_section",
+    title: "Editing Shows & Events",
+    initial_state: "closed",
+    storage_key: "shows_edit_help_collapsed",
+    steps: [
+      { text: "<strong>Event Type:</strong> You can change the event type (show, rehearsal, meeting, etc.) after creation." },
+      { text: "<strong>Recurring Events:</strong> If this event was part of a recurring series, editing it will only affect this specific occurrence." },
+      { text: "<strong>Optional Settings:</strong> Update the secondary name, change the poster image, or modify notes as needed." }
+    ] %>
+
 <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit" }) do |form| %>
 
   <div class="w-full sm:flex sm:space-x-5">
@@ -21,9 +31,9 @@
           {
             class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
             data: {
-              show_edit_target: "eventTypeSelect",
               recurring_edit_target: "eventTypeSelect",
-              action: "change->show-edit#updateUI change->recurring-edit#updateButtonText"
+              show_edit_target: "eventTypeSelect",
+              action: "change->recurring-edit#updateButtonText change->show-edit#updateTitle"
             }
           }
       %>
@@ -156,9 +166,9 @@
     </div>
   </div>
 
-  <div data-show-edit-target="showOnlyFields" data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden <%= 'hidden' unless @show.event_type == 'show' %>">
+  <div data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Other Show Settings</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular" data-show-edit-target="sectionTitle">Optional <%= @show.event_type.titleize %> Settings</h3>
         <div data-show-toggle-target="icon"></div>
     </div>
     <div data-show-toggle-target="content" class="p-4">
@@ -170,7 +180,7 @@
 
       <% if @show.poster.attached? %>
         <div class="text-md mt-5 flex items-center">
-          <span>Show Poster</span>
+          <span>Show/Event Poster</span>
           <button type="button" class="remove-poster-btn ml-3 px-3 py-1 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded-md transition-colors" data-action="click->show-edit#removePoster">
             Remove Poster
           </button>
@@ -183,7 +193,7 @@
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <%= form.label :image, "Update Show Poster:", class: "text-sm" %>
+                  <%= form.label :image, "Update Show/Event Poster:", class: "text-sm" %>
                   <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
                 </div>
 
@@ -196,7 +206,7 @@
             </div>
         </div>
       <% else %>
-        <div class="text-md mt-5">Show Poster</div>
+        <div class="text-md mt-5">Show/Event Poster</div>
         <div class="mr-5 inline-block">
 
             <div class="flex items-center justify-between">
@@ -211,7 +221,7 @@
       <% end %>
 
       <div class="mt-5" data-controller="show-links">
-        <label>Show Links</label>
+        <label>Show/Event Links</label>
         <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
         <div id="show-links-fields" data-show-links-target="list" class="mt-1">
           <%= form.fields_for :show_links do |show_link_form| %>
@@ -226,7 +236,7 @@
             </div>
           <% end %>
         </div>
-        <%= link_to "Add Show Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
+        <%= link_to "Add Show/Event Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
         <template data-show-links-target="template">
           <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
             <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />

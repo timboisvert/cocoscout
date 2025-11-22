@@ -155,7 +155,7 @@ class Manage::AvailabilityController < Manage::ManageController
       #{shows_list}
 
       You can update your availability by visiting:
-      <a href="#{my_availability_url(host: request.host_with_port, protocol: request.protocol.chomp('://'))}">#{my_availability_url(host: request.host_with_port, protocol: request.protocol.chomp('://'))}</a>
+      #{my_availability_url(host: request.host_with_port, protocol: request.protocol.chomp('://'))}
     MESSAGE
   end
 

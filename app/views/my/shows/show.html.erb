@@ -20,7 +20,7 @@
         <div class="flex-shrink-0 sm:w-48 bg-gray-50 flex items-center justify-center p-4">
           <% poster_url = safe_poster_url(@show) %>
           <% if poster_url && !@show.canceled %>
-            <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow-sm w-full max-w-[180px] border border-gray-200" %>
+            <%= image_tag poster_url, alt: "Show/Event Poster", class: "rounded shadow-sm w-full max-w-[180px] border border-gray-200" %>
           <% else %>
             <div class="w-full max-w-[180px] aspect-[2/3] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-gray-400">

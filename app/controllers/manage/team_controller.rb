@@ -11,10 +11,10 @@
   def invite
     @team_invitation = TeamInvitation.new(team_invitation_params)
     @team_invitation.organization = Current.organization
-    
+
     invitation_subject = params[:team_invitation][:invitation_subject] || "You've been invited to join #{Current.organization.name}'s team on CocoScout"
     invitation_message = params[:team_invitation][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account."
-    
+
     if @team_invitation.save
       Manage::TeamMailer.invite(@team_invitation, invitation_subject, invitation_message).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
