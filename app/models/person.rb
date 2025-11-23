@@ -32,6 +32,13 @@ class Person < ApplicationRecord
   has_many :training_credits, dependent: :destroy
   has_many :profile_skills, as: :profileable, dependent: :destroy
 
+  # Accept nested attributes for profile system
+  accepts_nested_attributes_for :profile_headshots, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_videos, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :performance_credits, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :training_credits, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
+
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true

@@ -5,7 +5,10 @@
   <%# Hero Section %>
   <div class="bg-white border border-gray-200 rounded-lg p-8 mb-6">
     <div class="flex items-start gap-6">
-      <% if @entity.headshot.attached? %>
+      <% primary_hs = @entity.primary_headshot %>
+      <% if primary_hs&.image&.attached? %>
+        <%= image_tag primary_hs.image, class: "w-32 h-32 rounded-lg object-cover" %>
+      <% elsif @entity.headshot.attached? %>
         <%= image_tag @entity.headshot.variant(:thumb), class: "w-32 h-32 rounded-lg object-cover" %>
       <% else %>
         <div class="w-32 h-32 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-3xl">
@@ -29,28 +32,147 @@
     </div>
   </div>
 
-  <%# Contact Section %>
-  <% if @entity.email.present? || @entity.socials.any? %>
+  <%# Additional Headshots Section %>
+  <% additional_headshots = @entity.profile_headshots.where(is_primary: false) %>
+  <% if additional_headshots.any? %>
     <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">Contact</h2>
-
-      <div class="space-y-3">
-        <% if @entity.email.present? %>
-          <div class="flex items-center gap-2">
-            <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-              <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
-            </svg>
-            <%= mail_to @entity.email, @entity.email, class: "text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-
-        <% @entity.socials.each do |social| %>
-          <div class="flex items-center gap-2">
-            <%= social.icon(20) %>
-            <%= link_to social.handle, social.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Headshots</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <% additional_headshots.each do |headshot| %>
+          <div class="group relative">
+            <%= image_tag headshot.image, class: "w-full h-64 object-cover rounded-lg border border-gray-200" %>
+            <% if headshot.category.present? %>
+              <div class="absolute bottom-2 left-2 right-2">
+                <%= render "shared/badge", text: headshot.category, color: "pink" %>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>
+    </div>
+  <% end %>
+
+  <%# Videos Section %>
+  <% if @entity.videos_visible? && @entity.profile_videos.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Videos & Reels</h2>
+      <div class="space-y-4">
+        <% @entity.profile_videos.each do |video| %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <h3 class="font-semibold text-gray-900 mb-2"><%= video.title %></h3>
+            <%= link_to video.url, video.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 text-sm break-all" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Contact Section %>
+  <% unless @entity.hide_contact_info %>
+    <% if @entity.email.present? || @entity.socials.any? %>
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Contact</h2>
+
+        <div class="space-y-3">
+          <% if @entity.email.present? %>
+            <div class="flex items-center gap-2">
+              <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
+              </svg>
+              <%= mail_to @entity.email, @entity.email, class: "text-pink-600 hover:text-pink-700" %>
+            </div>
+          <% end %>
+
+          <% @entity.socials.each do |social| %>
+            <div class="flex items-center gap-2">
+              <%= social.icon(20) %>
+              <%= link_to social.handle, social.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Performance History Section %>
+  <% if @entity.performance_credits_visible? && @entity.performance_credits.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Performance History</h2>
+      
+      <% sections = @entity.performance_credits.group_by(&:section_name) %>
+      <% sections.each do |section_name, credits| %>
+        <% section_label = section_name.presence || "Other" %>
+        <h3 class="text-lg font-semibold text-gray-900 mb-3 mt-6 first:mt-0"><%= section_label %></h3>
+        <div class="space-y-3">
+          <% credits.each do |credit| %>
+            <div class="border-l-4 border-pink-600 pl-4">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h4 class="font-semibold text-gray-900"><%= credit.title %></h4>
+                  <% if credit.role.present? %>
+                    <p class="text-gray-700 text-sm">Role: <%= credit.role %></p>
+                  <% end %>
+                  <% if credit.venue.present? %>
+                    <p class="text-gray-600 text-sm"><%= credit.venue %></p>
+                  <% end %>
+                  <% if credit.location.present? %>
+                    <p class="text-gray-500 text-sm"><%= credit.location %></p>
+                  <% end %>
+                  <% if credit.notes.present? %>
+                    <p class="text-gray-600 text-sm mt-1"><%= credit.notes %></p>
+                  <% end %>
+                </div>
+                <span class="text-gray-500 text-sm whitespace-nowrap ml-4"><%= credit.display_year_range_with_present %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Training & Education Section %>
+  <% if @entity.training_credits_visible? && @entity.training_credits.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Training & Education</h2>
+      <div class="space-y-4">
+        <% @entity.training_credits.each do |training| %>
+          <div class="border-l-4 border-pink-600 pl-4">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-semibold text-gray-900"><%= training.institution %></h4>
+                <p class="text-gray-700 text-sm"><%= training.program %></p>
+                <% if training.location.present? %>
+                  <p class="text-gray-600 text-sm"><%= training.location %></p>
+                <% end %>
+                <% if training.notes.present? %>
+                  <p class="text-gray-600 text-sm mt-1"><%= training.notes %></p>
+                <% end %>
+              </div>
+              <span class="text-gray-500 text-sm whitespace-nowrap ml-4"><%= training.display_year_range_with_present %></span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Skills & Talents Section %>
+  <% if @entity.profile_skills_visible? && @entity.profile_skills.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Skills & Talents</h2>
+      
+      <% skills_by_category = @entity.profile_skills.group_by(&:category) %>
+      <% skills_by_category.each do |category, skills| %>
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2"><%= ProfileSkillsService.category_display_name(category) %></h3>
+          <div class="flex flex-wrap gap-2">
+            <% skills.each do |skill| %>
+              <%= render "shared/badge", text: skill.skill_name, color: "gray" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     </div>
   <% end %>
 
