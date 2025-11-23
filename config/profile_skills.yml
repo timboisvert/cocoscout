@@ -1,0 +1,217 @@
+# Profile Skills Configuration
+# Used by ProfileSkillsService to provide skill options for performer profiles
+
+languages:
+  - English
+  - Spanish
+  - French
+  - Mandarin
+  - German
+  - Italian
+  - Japanese
+  - ASL (American Sign Language)
+  - BSL (British Sign Language)
+  - Russian
+  - Portuguese
+  - Arabic
+  - Korean
+  - Hindi
+
+accents_dialects:
+  - British RP
+  - Cockney
+  - Irish
+  - Scottish
+  - Southern American
+  - New York
+  - Boston
+  - Chicago
+  - Texas
+  - California Valley
+  - Australian
+  - New Zealand
+  - South African
+  - Russian
+  - French
+  - German
+  - Italian
+  - Spanish (Spain)
+  - Spanish (Latin America)
+  - Indian
+
+dance_styles:
+  - Ballet
+  - Tap
+  - Jazz
+  - Hip-Hop
+  - Contemporary
+  - Modern
+  - Ballroom
+  - Latin
+  - Swing
+  - Salsa
+  - Tango
+  - Waltz
+  - Aerial Silks
+  - Pole Dancing
+  - Belly Dance
+  - Irish Step Dance
+  - Flamenco
+  - Breakdancing
+  - Pointe
+  - Lyrical
+
+musical_instruments:
+  - Piano
+  - Guitar (Acoustic)
+  - Guitar (Electric)
+  - Bass Guitar
+  - Drums
+  - Violin
+  - Viola
+  - Cello
+  - Double Bass
+  - Trumpet
+  - Trombone
+  - Saxophone
+  - Clarinet
+  - Flute
+  - Oboe
+  - French Horn
+  - Tuba
+  - Harmonica
+  - Accordion
+  - Banjo
+  - Ukulele
+  - Harp
+  - Keyboard/Synth
+
+voice_types:
+  - Soprano
+  - Mezzo-Soprano
+  - Alto
+  - Tenor
+  - Baritone
+  - Bass
+  - Countertenor
+  - Beatbox
+  - Voice Acting
+  - Voice-Over
+  - Narration
+  - Character Voices
+  - Singing (Pop)
+  - Singing (Rock)
+  - Singing (Jazz)
+  - Singing (Classical)
+  - Singing (Musical Theatre)
+  - Rapping/MC
+
+comedy_styles:
+  - Stand-Up Comedy
+  - Improv (Short-form)
+  - Improv (Long-form)
+  - Sketch Comedy
+  - Musical Comedy
+  - Character Work
+  - Physical Comedy
+  - One-Person Show
+  - Clowning
+  - Satire
+  - Dark Comedy
+  - Observational
+  - Storytelling
+
+magic_illusion:
+  - Close-Up Magic
+  - Stage Magic
+  - Mentalism
+  - Sleight of Hand
+  - Card Magic
+  - Coin Magic
+  - Escapology
+  - Grand Illusions
+  - Street Magic
+  - Pickpocketing
+
+circus_physical:
+  - Juggling
+  - Acrobatics
+  - Aerial Silks
+  - Aerial Hoop/Lyra
+  - Trapeze (Static)
+  - Trapeze (Flying)
+  - Tightrope Walking
+  - Stilt Walking
+  - Fire Performance
+  - Fire Eating
+  - Fire Breathing
+  - Sword Swallowing
+  - Contortion
+  - Hand Balancing
+  - Partner Acrobatics
+  - Tumbling
+  - Unicycling
+
+combat_movement:
+  - Stage Combat (Unarmed)
+  - Stage Combat (Rapier & Dagger)
+  - Stage Combat (Broadsword)
+  - Stage Combat (Quarterstaff)
+  - Stage Combat (Knife)
+  - Stage Combat (Smallsword)
+  - Stunt Work
+  - Parkour
+  - Martial Arts (General)
+  - Martial Arts (Karate)
+  - Martial Arts (Kung Fu)
+  - Martial Arts (Taekwondo)
+  - Martial Arts (Judo)
+  - Martial Arts (Brazilian Jiu-Jitsu)
+  - Boxing
+  - Fencing
+  - Historical Combat
+  - Wrestling
+
+technical_skills:
+  - Puppetry
+  - Hand Puppets
+  - Rod Puppets
+  - Shadow Puppets
+  - Marionettes
+  - Bunraku
+  - Mime
+  - Clowning
+  - Mask Work
+  - Commedia dell'arte
+  - Physical Theatre
+  - Devised Theatre
+  - Ventriloquism
+  - Storytelling
+  - Object Manipulation
+
+special_skills:
+  - Driving (Manual)
+  - Driving (Automatic)
+  - Motorcycle
+  - Bicycle Tricks
+  - Horseback Riding
+  - Swimming
+  - Scuba Diving
+  - Roller Skating
+  - Ice Skating
+  - Skiing
+  - Snowboarding
+  - Rock Climbing
+  - Archery
+  - Shooting (Firearms)
+  - Yoga
+  - Pilates
+  - Sign Language Interpretation
+  - Whistling
+  - Sewing/Costume Making
+  - Makeup Artistry
+  - Hair Styling
+  - Barbering
+  - Bartending
+  - Cooking
+  - Baking

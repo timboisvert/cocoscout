@@ -17,6 +17,12 @@ class Group < ApplicationRecord
   has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
 
+  # Profile system associations
+  has_many :profile_headshots, as: :profileable, dependent: :destroy
+  has_many :profile_videos, as: :profileable, dependent: :destroy
+  has_many :performance_credits, as: :profileable, dependent: :destroy
+  has_many :profile_skills, as: :profileable, dependent: :destroy
+
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
@@ -89,6 +95,45 @@ class Group < ApplicationRecord
     nil
   end
 
+  # Profile system helper methods
+  def primary_headshot
+    profile_headshots.find_by(is_primary: true) || profile_headshots.first
+  end
+
+  def display_headshots
+    if profile_headshots.any?
+      profile_headshots
+    elsif headshot.attached?
+      [OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0)]
+    else
+      []
+    end
+  end
+
+  def display_resume
+    resume # Existing ActiveStorage attachment
+  end
+
+  def visibility_settings
+    @visibility_settings ||= begin
+      settings = profile_visibility_settings.presence || "{}"
+      settings = JSON.parse(settings) if settings.is_a?(String)
+      settings.with_indifferent_access
+    end
+  end
+
+  def performance_credits_visible?
+    visibility_settings["performance_history_visible"] != false
+  end
+
+  def profile_skills_visible?
+    visibility_settings["skills_visible"] != false
+  end
+
+  def videos_visible?
+    visibility_settings["videos_visible"] != false
+  end
+
   private
 
   def generate_public_key
@@ -111,7 +156,7 @@ class Group < ApplicationRecord
   end
 
   def public_key_not_reserved
-    reserved = %w[admin api manage my about help contact support settings login logout signup privacy terms groups people search directory]
+    reserved = YAML.load_file(Rails.root.join("config", "reserved_public_keys.yml"))
     if reserved.include?(public_key)
       errors.add(:public_key, "is reserved for CocoScout system pages")
     end

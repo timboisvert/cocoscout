@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -191,9 +191,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
     t.text "bio"
     t.datetime "created_at", null: false
     t.string "email", null: false
+    t.boolean "hide_contact_info", default: false, null: false
     t.string "name", null: false
     t.text "old_keys"
     t.string "phone"
+    t.text "profile_visibility_settings", default: "{}"
     t.string "public_key", null: false
     t.datetime "updated_at", null: false
     t.string "website"
@@ -273,15 +275,36 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
     t.datetime "casting_notification_sent_at"
     t.datetime "created_at", null: false
     t.string "email"
+    t.boolean "hide_contact_info", default: false, null: false
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
+    t.text "profile_visibility_settings", default: "{}"
     t.string "pronouns"
     t.string "public_key"
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
     t.index ["user_id"], name: "index_people_on_user_id"
+  end
+
+  create_table "performance_credits", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "link_url"
+    t.string "location", limit: 100
+    t.text "notes", limit: 1000
+    t.integer "position", default: 0, null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.string "role", limit: 100
+    t.string "section_name", limit: 50
+    t.string "title", limit: 200, null: false
+    t.datetime "updated_at", null: false
+    t.string "venue", limit: 200
+    t.integer "year_end"
+    t.integer "year_start", null: false
+    t.index ["profileable_type", "profileable_id", "section_name", "position"], name: "index_performance_credits_on_profileable_and_section"
+    t.index ["profileable_type", "profileable_id"], name: "index_performance_credits_on_profileable"
   end
 
   create_table "person_invitations", force: :cascade do |t|
@@ -324,6 +347,42 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
     t.integer "organization_id", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_productions_on_organization_id"
+  end
+
+  create_table "profile_headshots", force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.boolean "is_primary", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_66776b16f6"
+    t.index ["profileable_type", "profileable_id"], name: "index_profile_headshots_on_profileable"
+  end
+
+  create_table "profile_skills", force: :cascade do |t|
+    t.string "category", limit: 50, null: false
+    t.datetime "created_at", null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.string "skill_name", limit: 50, null: false
+    t.datetime "updated_at", null: false
+    t.index ["profileable_type", "profileable_id", "category", "skill_name"], name: "index_profile_skills_unique", unique: true
+    t.index ["profileable_type", "profileable_id"], name: "index_profile_skills_on_profileable"
+  end
+
+  create_table "profile_videos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.string "title", limit: 100
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.integer "video_type", default: 2, null: false
+    t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_7b4c262cd5"
+    t.index ["profileable_type", "profileable_id"], name: "index_profile_videos_on_profileable"
   end
 
   create_table "question_options", force: :cascade do |t|
@@ -501,6 +560,21 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
+  create_table "training_credits", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "institution", limit: 200, null: false
+    t.string "location", limit: 100
+    t.text "notes", limit: 1000
+    t.integer "person_id", null: false
+    t.integer "position", default: 0, null: false
+    t.string "program", limit: 200, null: false
+    t.datetime "updated_at", null: false
+    t.integer "year_end"
+    t.integer "year_start", null: false
+    t.index ["person_id", "position"], name: "index_training_credits_on_person_id_and_position"
+    t.index ["person_id"], name: "index_training_credits_on_person_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email_address", null: false
@@ -568,5 +642,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
+  add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
 end
