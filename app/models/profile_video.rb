@@ -2,7 +2,7 @@ class ProfileVideo < ApplicationRecord
   belongs_to :profileable, polymorphic: true
 
   # Enums
-  enum video_type: { youtube: 0, vimeo: 1, other: 2 }, _default: :other
+  enum :video_type, { youtube: 0, vimeo: 1, other: 2 }, default: :other
 
   # Validations
   validates :url, presence: true, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: "must be a valid URL" }
