@@ -18,9 +18,9 @@
   #   visibility_field_name: Name attribute for visibility checkbox
   #   visibility_checked: true (default), false
 
-  collapsible ||= false
-  visibility_toggle ||= false
-  visibility_field_name ||= nil
+  collapsible = local_assigns.fetch(:collapsible, false)
+  visibility_toggle = local_assigns.fetch(:visibility_toggle, false)
+  visibility_field_name = local_assigns.fetch(:visibility_field_name, nil)
   visibility_checked = local_assigns.fetch(:visibility_checked, true)
 %>
 
