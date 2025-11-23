@@ -2,8 +2,23 @@ class ProfileHeadshot < ApplicationRecord
   belongs_to :profileable, polymorphic: true
   has_one_attached :image
 
+  # Categories for headshot types
+  CATEGORIES = %w[
+    theatrical
+    commercial
+    character
+    comedy
+    dramatic
+    period
+    contemporary
+    outdoor
+    studio
+    lifestyle
+  ].freeze
+
   # Validations
   validates :position, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validate :max_headshots_per_profileable
   validate :only_one_primary_per_profileable
   validate :image_content_type

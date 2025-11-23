@@ -13,12 +13,90 @@
   } %>
 
   <div class="w-full sm:max-w-4xl" >
-  <%= form_with(model: @person, url: my_update_profile_path, method: :patch, class: "contents") do |person_form| %>
+    <%= form_with(model: @person, url: my_update_profile_path, method: :patch, class: "contents") do |person_form| %>
+
+      <!-- Basic Information Section -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= person_form.label :name, "Name", class: "block text-sm font-medium text-gray-700 #{@person.errors[:name].any? ? 'text-pink-600' : ''}" %>
+            <span class="text-sm text-gray-500">(Your stage name or performing name)</span>
+            <%= person_form.text_field :name, class: "mt-1 block w-full rounded-lg border #{@person.errors[:name].any? ? 'border-pink-500' : 'border-gray-300'} px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+
+          <div>
+            <%= person_form.label :pronouns, class: "block text-sm font-medium text-gray-700" %>
+            <span class="text-sm text-gray-500">(optional)</span>
+            <%= person_form.text_field :pronouns, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+
+          <div>
+            <%= person_form.label :email, "Email", class: "block text-sm font-medium text-gray-700" %>
+            <%= person_form.email_field :email, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+
+          <div data-controller="socials">
+            <label class="block text-sm font-medium text-gray-700">Social Media <span class="text-sm text-gray-500">(optional)</span></label>
+            <div id="socials-fields" data-socials-target="list" class="mt-2 space-y-2">
+              <%= person_form.fields_for :socials do |social_form| %>
+                <div class="flex items-center gap-2" data-socials-target="row"<% if social_form.object.persisted? %> data-socials-persisted="true"<% end %>>
+                  <%= social_form.hidden_field :id %>
+                  <%= social_form.hidden_field :_destroy, value: "0", data: { socials_target: "destroy" } %>
+                  <%= social_form.select :platform, Social.platforms.keys.map { |k| [k.titleize, k] }, {}, class: "rounded-lg border border-gray-300 px-3 py-2" %>
+                  <%= social_form.text_field :handle, placeholder: "Username/Handle", class: "flex-1 rounded-lg border border-gray-300 px-3 py-2" %>
+                  <%= link_to "Remove", '#', class: "text-pink-500 underline text-sm", data: { action: "socials#remove" } %>
+                </div>
+              <% end %>
+            </div>
+            <%= link_to "Add Social", '#', class: "inline-block mt-2 text-pink-500 underline text-sm", data: { action: "socials#add" } %>
+            <template id="socials-template">
+              <div class="flex items-center gap-2" data-socials-target="row">
+                <select name="" class="rounded-lg border border-gray-300 px-3 py-2">
+                  <% Social.platforms.keys.each do |platform| %>
+                    <option value="<%= platform %>"><%= platform.titleize %></option>
+                  <% end %>
+                </select>
+                <input type="text" name="" class="flex-1 rounded-lg border border-gray-300 px-3 py-2" placeholder="Username/Handle" />
+                <a href="#" class="text-pink-500 underline text-sm" data-action="socials#remove">Remove</a>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legacy Headshot & Resume (for backward compatibility) -->
       <%= render "shared/person_form", person_form: person_form %>
+
+      <!-- New Profile Sections -->
+      <%= render "shared/profile_headshots_form", person_form: person_form %>
+      <%= render "shared/profile_videos_form", person_form: person_form %>
+      <%= render "my/profile/performance_credits_form", person_form: person_form %>
+      <%= render "my/profile/training_credits_form", person_form: person_form %>
+      <%= render "my/profile/skills_form", person_form: person_form %>
+
+      <!-- Privacy Settings -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Privacy Settings</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <%= person_form.check_box :hide_contact_info,
+                class: "rounded border-gray-300 text-pink-600 focus:ring-pink-500" %>
+            <%= person_form.label :hide_contact_info, "Hide contact information from public profile", class: "text-sm text-gray-700" %>
+          </div>
+          <p class="text-xs text-gray-500 ml-7">
+            When enabled, your email and social media links will not be visible on your public profile.
+          </p>
+        </div>
+      </div>
 
       <div class="w-full border-t border-gray-200 pt-5 my-5">
         <%= person_form.submit "Update Profile", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-        <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+        <%= link_to "Back", my_profile_path, class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
       </div>
 
     <% end %>

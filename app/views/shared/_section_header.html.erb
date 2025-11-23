@@ -1,32 +1,6 @@
-<%
-  # Shared section header component with optional collapse and visibility toggle
-  #
-  # Usage:
-  #   <%= render "shared/section_header", title: "Basic Information" %>
-  #   <%= render "shared/section_header", title: "Headshots", collapsible: true %>
-  #   <%= render "shared/section_header",
-  #       title: "Performance History",
-  #       collapsible: true,
-  #       visibility_toggle: true,
-  #       visibility_field_name: "person[profile_visibility_settings][performance_history_visible]",
-  #       visibility_checked: true %>
-  #
-  # Parameters:
-  #   title (required): Section title text
-  #   collapsible: false (default), true
-  #   visibility_toggle: false (default), true
-  #   visibility_field_name: Name attribute for visibility checkbox
-  #   visibility_checked: true (default), false
-
-  collapsible = local_assigns.fetch(:collapsible, false)
-  visibility_toggle = local_assigns.fetch(:visibility_toggle, false)
-  visibility_field_name = local_assigns.fetch(:visibility_field_name, nil)
-  visibility_checked = local_assigns.fetch(:visibility_checked, true)
-%>
-
 <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
   <div class="flex items-center gap-3">
-    <% if collapsible %>
+    <% if local_assigns[:collapsible] %>
       <button type="button"
               data-action="click->profile-section#toggle"
               class="text-gray-600 hover:text-gray-900 focus:outline-none">
@@ -45,13 +19,13 @@
     </h3>
   </div>
 
-  <% if visibility_toggle && visibility_field_name.present? %>
+  <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field_name].present? %>
     <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-      <input type="hidden" name="<%= visibility_field_name %>" value="0">
+      <input type="hidden" name="<%= local_assigns[:visibility_field_name] %>" value="0">
       <input type="checkbox"
-             name="<%= visibility_field_name %>"
+             name="<%= local_assigns[:visibility_field_name] %>"
              value="1"
-             <%= "checked" if visibility_checked %>
+             <%= "checked" if local_assigns.fetch(:visibility_checked, true) %>
              class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
       <span>Show on profile</span>
     </label>
