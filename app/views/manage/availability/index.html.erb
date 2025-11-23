@@ -6,32 +6,35 @@
   }
 </style>
 
-<div class="w-full">
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
+<%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Availability",
-    links: [
-      { text: "Request Availability", path: request_availability_manage_production_availability_index_path(@production) }
-    ]
-  } %>
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [],
+  text: "Availability",
+  links: [
+    { text: "Request Availability", path: request_availability_manage_production_availability_index_path(@production) }
+  ]
+} %>
 
-  <% if @cast_members.empty? %>
+<% if @cast_members.empty? %>
+  <div class="w-full">
     <div class="text-gray-500 text-sm mt-4">
       No cast members found. Add people to casts to see their availability.
     </div>
-  <% elsif @shows.empty? %>
+  </div>
+<% elsif @shows.empty? %>
+  <div class="w-full">
     <div class="text-gray-500 text-sm mt-4">
       No shows scheduled yet. Create shows to track availability.
     </div>
-  <% else %>
-    <div class="mt-4 overflow-x-auto max-w-full" data-controller="availability-grid">
-      <table class="border-collapse">
-        <thead>
-          <tr>
-            <th class="sticky left-0 bg-white z-20 border-b-2 border-r-2 border-gray-300 px-4 py-3 text-left w-[250px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-              <div class="font-semibold text-sm">Cast Member</div>
+  </div>
+<% else %>
+  <div class="mt-4 overflow-x-auto border border-gray-200 rounded-lg" data-controller="availability-grid">
+    <table class="border-collapse">
+      <thead>
+        <tr>
+          <th class="sticky left-0 bg-white z-20 border-b-2 border-r-2 border-gray-300 px-4 py-3 text-left w-[250px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+            <div class="font-semibold text-sm">Cast Member</div>
             </th>
             <% @shows.each_with_index do |show, col_index| %>
               <th class="border-b-2 border-gray-300 px-4 py-3 text-center w-[140px] bg-white cursor-pointer hover:bg-gray-50" data-col="<%= col_index %>">
@@ -114,6 +117,4 @@
         </tbody>
       </table>
     </div>
-  <% end %>
-
-</div>
+<% end %>
