@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["eventTypeSelect", "sectionTitle"]
+    static targets = ["eventTypeSelect", "sectionTitle", "castingEnabledCheckbox"]
 
     connect() {
         this.updateTitle()
+        // Don't update casting default on connect for edit forms - the value is already set from the database
     }
 
     updateTitle() {
@@ -14,6 +15,25 @@ export default class extends Controller {
         const eventTypeLabel = this.eventTypeSelectTarget.options[this.eventTypeSelectTarget.selectedIndex].text
 
         this.sectionTitleTarget.textContent = `Optional ${eventTypeLabel} Settings`
+    }
+
+    updateCastingDefault() {
+        if (!this.hasEventTypeSelectTarget || !this.hasCastingEnabledCheckboxTarget) return
+
+        const eventType = this.eventTypeSelectTarget.value
+
+        // Only update if the checkbox hasn't been manually changed
+        if (this.castingEnabledCheckboxTarget.dataset.manuallyChanged !== 'true') {
+            this.castingEnabledCheckboxTarget.checked = (eventType === 'show')
+        }
+    } eventTypeChanged() {
+        this.updateTitle()
+        this.updateCastingDefault()
+    }
+
+    castingCheckboxChanged() {
+        // Mark that the checkbox has been manually changed
+        this.castingEnabledCheckboxTarget.dataset.manuallyChanged = 'true'
     }
 
     removePoster() {

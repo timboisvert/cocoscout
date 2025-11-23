@@ -166,6 +166,27 @@
     </div>
   </div>
 
+  <!-- Casting Settings -->
+  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Settings</h3>
+    </div>
+    <div class="p-4">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <%= form.check_box :casting_enabled,
+          class: "mt-1 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500",
+          data: {
+            show_edit_target: "castingEnabledCheckbox",
+            action: "change->show-edit#castingCheckboxChanged"
+          } %>
+        <div>
+          <div class="font-medium text-gray-900">Enable casting for this event</div>
+          <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows default to enabled, while rehearsals and meetings default to disabled.</div>
+        </div>
+      </label>
+    </div>
+  </div>
+
   <div data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular" data-show-edit-target="sectionTitle">Optional <%= @show.event_type.titleize %> Settings</h3>

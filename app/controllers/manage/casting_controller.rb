@@ -6,6 +6,7 @@ class Manage::CastingController < Manage::ManageController
   def index
     @upcoming_shows = @production.shows
       .where("date_and_time >= ?", Time.current)
+      .where(casting_enabled: true)
       .includes(show_person_role_assignments: [ :person, :role ])
       .order(:date_and_time)
       .limit(10)

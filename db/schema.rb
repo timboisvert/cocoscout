@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_20_233600) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_23_003841) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -448,6 +448,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_20_233600) do
 
   create_table "shows", force: :cascade do |t|
     t.boolean "canceled", default: false, null: false
+    t.boolean "casting_enabled", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
     t.string "event_type"

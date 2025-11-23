@@ -101,7 +101,7 @@
           data: {
           recurring_event_target: "eventTypeSelect",
           show_edit_target: "eventTypeSelect",
-          action: "change->recurring-event#updateButtonText change->show-edit#updateTitle"
+          action: "change->recurring-event#updateButtonText change->show-edit#eventTypeChanged"
           }
         }
       %>
@@ -197,6 +197,27 @@
             <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Casting Settings -->
+    <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Settings</h3>
+      </div>
+      <div class="p-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <%= form.check_box :casting_enabled,
+            class: "mt-1 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500",
+            data: {
+              show_edit_target: "castingEnabledCheckbox",
+              action: "change->show-edit#castingCheckboxChanged"
+            } %>
+          <div>
+            <div class="font-medium text-gray-900">Enable casting for this event</div>
+            <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows default to enabled, while rehearsals and meetings default to disabled.</div>
+          </div>
+        </label>
       </div>
     </div>
 

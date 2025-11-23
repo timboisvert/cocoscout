@@ -44,7 +44,7 @@
         </div>
       <% end %>
 
-      <% if @show.event_type == "show" %>
+      <% if @show.casting_enabled %>
         <%= render "manage/casting/cast_card", show: @show, production: @production, title: "Cast" %>
       <% end %>
 

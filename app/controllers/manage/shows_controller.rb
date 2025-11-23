@@ -49,6 +49,9 @@ class Manage::ShowsController < Manage::ManageController
   def new
     @show = @production.shows.new
 
+    # Set default casting_enabled based on event_type
+    @show.casting_enabled = true
+
     # Set default location if available
     default_location = Current.organization.locations.find_by(default: true)
     @show.location = default_location if default_location
@@ -61,6 +64,7 @@ class Manage::ShowsController < Manage::ManageController
         @show.event_type = @original_show.event_type
         @show.secondary_name = @original_show.secondary_name
         @show.location = @original_show.location
+        @show.casting_enabled = @original_show.casting_enabled
       end
     end
   end
@@ -417,7 +421,7 @@ class Manage::ShowsController < Manage::ManageController
     def show_params
       params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
         :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
-        :recurrence_edit_scope, :recurrence_group_id,
+        :recurrence_edit_scope, :recurrence_group_id, :casting_enabled,
         show_links_attributes: [ :id, :url, :text, :_destroy ])
     end
 end
