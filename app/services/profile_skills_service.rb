@@ -47,7 +47,12 @@ class ProfileSkillsService
     private
 
     def skills_config
-      @skills_config ||= YAML.load_file(Rails.root.join("config", "profile_skills.yml")).deep_symbolize_keys
+      @skills_config ||= YAML.safe_load_file(
+        Rails.root.join("config", "profile_skills.yml"),
+        permitted_classes: [],
+        permitted_symbols: [],
+        aliases: true
+      ).deep_symbolize_keys
     end
   end
 end

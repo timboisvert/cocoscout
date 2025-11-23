@@ -162,7 +162,12 @@ class Group < ApplicationRecord
   end
 
   def public_key_not_reserved
-    reserved = YAML.load_file(Rails.root.join("config", "reserved_public_keys.yml"))
+    reserved = YAML.safe_load_file(
+      Rails.root.join("config", "reserved_public_keys.yml"),
+      permitted_classes: [],
+      permitted_symbols: [],
+      aliases: true
+    )
     if reserved.include?(public_key)
       errors.add(:public_key, "is reserved for CocoScout system pages")
     end

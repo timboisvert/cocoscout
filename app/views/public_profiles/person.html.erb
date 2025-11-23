@@ -59,7 +59,7 @@
       <div class="space-y-4">
         <% @entity.profile_videos.each do |video| %>
           <div class="border border-gray-200 rounded-lg p-4">
-            <h3 class="font-semibold text-gray-900 mb-2"><%= video.title %></h3>
+            <h3 class="font-semibold text-gray-900 mb-2"><%= h video.title %></h3>
             <%= link_to video.url, video.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 text-sm break-all" %>
           </div>
         <% end %>

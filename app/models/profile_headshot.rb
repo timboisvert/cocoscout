@@ -41,7 +41,7 @@ class ProfileHeadshot < ApplicationRecord
 
   def image_content_type
     return unless image.attached?
-    unless image.content_type.in?(%w[image/jpeg image/jpg image/png image/webp])
+    unless image.content_type.in?(%w[image/jpeg image/png image/webp])
       errors.add(:image, "must be a JPEG, PNG, or WebP file")
     end
   end
