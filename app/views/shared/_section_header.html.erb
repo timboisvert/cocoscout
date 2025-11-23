@@ -21,7 +21,7 @@
   collapsible ||= false
   visibility_toggle ||= false
   visibility_field_name ||= nil
-  visibility_checked = true unless local_assigns.key?(:visibility_checked) && !visibility_checked.nil?
+  visibility_checked = local_assigns.fetch(:visibility_checked, true)
 %>
 
 <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
