@@ -1,5 +1,6 @@
 class PerformanceCredit < ApplicationRecord
   belongs_to :profileable, polymorphic: true
+  belongs_to :performance_section, optional: true
 
   # Validations
   validates :title, presence: true, length: { maximum: 200 }
@@ -8,14 +9,14 @@ class PerformanceCredit < ApplicationRecord
   validates :location, length: { maximum: 100 }
   validates :role, length: { maximum: 100 }
   validates :notes, length: { maximum: 1000 }
-  validates :year_start, presence: true, numericality: { 
-    only_integer: true, 
-    greater_than_or_equal_to: 1900, 
+  validates :year_start, presence: true, numericality: {
+    only_integer: true,
+    greater_than_or_equal_to: 1900,
     less_than_or_equal_to: -> { Time.current.year + 5 }
   }
-  validates :year_end, numericality: { 
-    only_integer: true, 
-    greater_than_or_equal_to: 1900, 
+  validates :year_end, numericality: {
+    only_integer: true,
+    greater_than_or_equal_to: 1900,
     less_than_or_equal_to: -> { Time.current.year + 5 },
     allow_nil: true
   }
@@ -23,7 +24,8 @@ class PerformanceCredit < ApplicationRecord
   validates :position, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   # Scopes
-  default_scope { order(:section_name, :position) }
+  default_scope { order(:position) }
+  scope :by_section, ->(section_id) { where(performance_section_id: section_id) }
 
   # Callbacks
   before_validation :set_default_position, on: :create

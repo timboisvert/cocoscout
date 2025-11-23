@@ -25,7 +25,7 @@
             <% end %>
           </div>
           <% if Current.user && @entity == Current.user.person %>
-            <%= link_to "Edit Profile", my_edit_profile_path, class: "px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md" %>
+            <%= link_to "Edit Profile", profile_path, class: "px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md" %>
           <% end %>
         </div>
       </div>
@@ -98,7 +98,7 @@
   <% if @entity.performance_credits_visible? && @entity.performance_credits.any? %>
     <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <h2 class="text-2xl font-bold text-gray-900 mb-4">Performance History</h2>
-      
+
       <% sections = @entity.performance_credits.group_by(&:section_name) %>
       <% sections.each do |section_name, credits| %>
         <% section_label = section_name.presence || "Other" %>
@@ -161,7 +161,7 @@
   <% if @entity.profile_skills_visible? && @entity.profile_skills.any? %>
     <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <h2 class="text-2xl font-bold text-gray-900 mb-4">Skills & Talents</h2>
-      
+
       <% skills_by_category = @entity.profile_skills.group_by(&:category) %>
       <% skills_by_category.each do |category, skills| %>
         <div class="mb-4">

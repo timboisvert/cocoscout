@@ -11,6 +11,7 @@ class Social < ApplicationRecord
     facebook: "Facebook",
     youtube: "YouTube",
     linkedin: "LinkedIn",
+    website: "Website",
     other: "Other"
   }
 
@@ -32,6 +33,8 @@ class Social < ApplicationRecord
       "https://youtube.com/#{handle.sub(/^@/, '')}"
     when "linkedin"
       "https://linkedin.com/in/#{handle.sub(/^@/, '')}"
+    when "website"
+      handle =~ /^https?:\/\// ? handle : "https://#{handle}"
     when "other"
       handle =~ /^https?:\/\// ? handle : "https://#{handle}"
     else

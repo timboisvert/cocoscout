@@ -66,9 +66,6 @@ Rails.application.routes.draw do
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
-    get   "/profile",                       to: "profile#index",            as: "profile"
-    get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
-    patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
     get   "/groups",                        to: "groups#index",             as: "groups"
     get   "/groups/new",                    to: "groups#new",               as: "new_group"
@@ -291,6 +288,12 @@ Rails.application.routes.draw do
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
+
+  # Profile routes (top-level)
+  get    "/profile",         to: "profile#index",   as: "profile"
+  patch  "/profile",         to: "profile#update",  as: "update_profile"
+  get    "/profile/preview", to: "profile#preview", as: "profile_preview"
+  get    "/profile/public",  to: "profile#public",  as: "profile_public"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }

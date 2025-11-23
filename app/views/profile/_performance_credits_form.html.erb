@@ -4,7 +4,7 @@
   # - person_form: the form builder
 %>
 
-<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
+<div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
   <%= render "shared/section_header",
     title: "Performance History",
     collapsible: true,
@@ -14,7 +14,7 @@
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">
-      Add your performance credits organized by section (Improv, TV, Dance, Sketch, etc.). You can create custom section names.
+      Add your performance credits organized by section (Theatre, Film, TV, Comedy, etc.). You can create custom section names.
     </p>
 
     <div id="performance-credits-container" class="space-y-4">
@@ -28,7 +28,7 @@
             <div>
               <%= credit_form.label :section_name, "Section", class: "block text-sm font-medium text-gray-700" %>
               <%= credit_form.text_field :section_name,
-                  placeholder: "e.g., Improv, TV, Dance, Sketch",
+                  placeholder: "e.g., Theatre, Film, TV, Comedy",
                   list: "section-suggestions",
                   class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
             </div>
@@ -139,7 +139,7 @@
                   <label class="block text-sm font-medium text-gray-700">Section</label>
                   <input type="text"
                          name="person[performance_credits_attributes][${timestamp}][section_name]"
-                         placeholder="e.g., Improv, TV, Dance, Sketch"
+                         placeholder="e.g., Theatre, Film, TV, Comedy"
                          list="section-suggestions"
                          class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500">
                 </div>

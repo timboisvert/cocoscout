@@ -27,14 +27,18 @@ class Person < ApplicationRecord
 
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
+  has_many :profile_resumes, as: :profileable, dependent: :destroy
   has_many :profile_videos, as: :profileable, dependent: :destroy
+  has_many :performance_sections, as: :profileable, dependent: :destroy
   has_many :performance_credits, as: :profileable, dependent: :destroy
   has_many :training_credits, dependent: :destroy
   has_many :profile_skills, as: :profileable, dependent: :destroy
 
   # Accept nested attributes for profile system
   accepts_nested_attributes_for :profile_headshots, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_videos, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :performance_sections, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :performance_credits, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :training_credits, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
@@ -54,10 +58,14 @@ class Person < ApplicationRecord
   validate :public_key_not_reserved
   validate :resume_content_type
   validate :headshot_content_type
+  validate :email_change_frequency
+  validate :public_key_change_frequency
 
   # Callbacks
   before_validation :generate_public_key, on: :create
   before_validation :downcase_public_key
+  before_save :track_email_change
+  before_save :track_public_key_change
 
   def initials
     return "" if name.blank?
@@ -132,7 +140,7 @@ class Person < ApplicationRecord
     if profile_headshots.any?
       profile_headshots
     elsif headshot.attached?
-      [OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0)]
+      [ OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0) ]
     else
       []
     end
@@ -210,6 +218,40 @@ class Person < ApplicationRecord
   def headshot_content_type
     if headshot.attached? && !headshot.content_type.in?(%w[image/jpeg image/jpg image/png])
       errors.add(:headshot, "Headshot must be a JPEG, JPG, or PNG file")
+    end
+  end
+
+  def email_change_frequency
+    return if email_was.nil? || email == email_was # No change or new record
+    return if last_email_changed_at.nil? # First time changing
+
+    days_since_last_change = (Time.current - last_email_changed_at) / 1.day
+    if days_since_last_change < 30
+      days_remaining = (30 - days_since_last_change).ceil
+      errors.add(:email, "can only be changed once every 30 days. Please wait #{days_remaining} more day#{'s' if days_remaining != 1}.")
+    end
+  end
+
+  def public_key_change_frequency
+    return if public_key_was.nil? || public_key == public_key_was # No change or new record
+    return if last_public_key_changed_at.nil? # First time changing
+
+    days_since_last_change = (Time.current - last_public_key_changed_at) / 1.day
+    if days_since_last_change < 90
+      days_remaining = (90 - days_since_last_change).ceil
+      errors.add(:public_key, "can only be changed once every 90 days. Please wait #{days_remaining} more day#{'s' if days_remaining != 1}.")
+    end
+  end
+
+  def track_email_change
+    if email_changed? && !new_record?
+      self.last_email_changed_at = Time.current
+    end
+  end
+
+  def track_public_key_change
+    if public_key_changed? && !new_record?
+      self.last_public_key_changed_at = Time.current
     end
   end
 end

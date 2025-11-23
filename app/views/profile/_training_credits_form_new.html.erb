@@ -1,0 +1,169 @@
+<%
+  # Training credits form section
+  # Parameters:
+  # - person_form: the form builder
+%>
+
+<div id="training" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-training profile-section">
+  <%= render "shared/section_header",
+    title: "Training & Education",
+    collapsible: true,
+    visibility_toggle: true,
+    visibility_field_name: "person[profile_visibility_settings][training_visible]",
+    visibility_checked: @person.training_credits_visible? %>
+
+  <div class="p-6 space-y-4" data-profile-section-target="content">
+    <p class="text-sm text-gray-600 mb-4">
+      Add your training, education, and professional development.
+    </p>
+
+    <div id="training-credits-container" class="space-y-3" data-profile-training-target="list">
+      <%= person_form.fields_for :training_credits do |training_form| %>
+        <div class="border border-gray-200 rounded-lg p-4"
+             data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>"
+             data-institution="<%= training_form.object.institution %>"
+             data-program="<%= training_form.object.program %>"
+             data-location="<%= training_form.object.location %>"
+             data-year-start="<%= training_form.object.year_start %>"
+             data-year-end="<%= training_form.object.year_end %>"
+             data-notes="<%= training_form.object.notes %>">
+          <%= training_form.hidden_field :id %>
+          <%= training_form.hidden_field :institution %>
+          <%= training_form.hidden_field :program %>
+          <%= training_form.hidden_field :location %>
+          <%= training_form.hidden_field :year_start %>
+          <%= training_form.hidden_field :year_end %>
+          <%= training_form.hidden_field :notes %>
+          <%= training_form.hidden_field :position %>
+          <%= training_form.hidden_field :_destroy, value: "0", class: "destroy-field" %>
+
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">
+                <%= [training_form.object.program, training_form.object.institution].compact.join(' • ') || training_form.object.institution %>
+              </div>
+              <% if training_form.object.location.present? %>
+                <div class="text-sm text-gray-600"><%= training_form.object.location %></div>
+              <% end %>
+              <% if training_form.object.year_start.present? %>
+                <div class="text-xs text-gray-500">
+                  <%= training_form.object.year_end.present? ? "#{training_form.object.year_start}-#{training_form.object.year_end}" : training_form.object.year_start %>
+                </div>
+              <% end %>
+            </div>
+            <div class="flex gap-2 ml-4">
+              <button type="button"
+                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                      data-action="click->profile-training#edit"
+                      data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+                Edit
+              </button>
+              <button type="button"
+                      class="text-xs text-pink-500 hover:text-pink-700 cursor-pointer"
+                      data-action="click->profile-training#remove"
+                      data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <button type="button"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            data-action="click->profile-training#openModal">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Add Training/Education
+    </button>
+  </div>
+
+  <!-- Training Modal -->
+  <div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-profile-training-target="modal"
+       data-action="click->profile-training#closeModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+         data-action="click->profile-training#stopPropagation">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4 coustard-regular">Add/Edit Training</h3>
+
+      <form data-profile-training-target="form" data-action="submit->profile-training#save">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Institution *</label>
+            <input type="text"
+                   name="institution"
+                   data-field="institution"
+                   placeholder="e.g., Juilliard School, Second City, Acting Studio"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Program/Degree</label>
+              <input type="text"
+                     name="program"
+                     data-field="program"
+                     placeholder="e.g., BFA Acting, Improv Workshop"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <input type="text"
+                     name="location"
+                     data-field="location"
+                     placeholder="e.g., New York, NY"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year Start</label>
+              <input type="number"
+                     name="year_start"
+                     data-field="year_start"
+                     placeholder="2019"
+                     min="1900"
+                     max="2100"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year End</label>
+              <input type="number"
+                     name="year_end"
+                     data-field="year_end"
+                     placeholder="2023"
+                     min="1900"
+                     max="2100"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+            <textarea name="notes"
+                      data-field="notes"
+                      rows="2"
+                      placeholder="Additional details..."
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"></textarea>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button type="button"
+                  class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium cursor-pointer"
+                  data-action="click->profile-training#closeModal">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium cursor-pointer">
+            Save Training
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

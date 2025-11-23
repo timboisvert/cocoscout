@@ -21,13 +21,16 @@
 
   <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field_name].present? %>
     <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+      <span class="mr-2">Show on profile</span>
       <input type="hidden" name="<%= local_assigns[:visibility_field_name] %>" value="0">
-      <input type="checkbox"
-             name="<%= local_assigns[:visibility_field_name] %>"
-             value="1"
-             <%= "checked" if local_assigns.fetch(:visibility_checked, true) %>
-             class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
-      <span>Show on profile</span>
+      <div class="relative inline-flex items-center">
+        <input type="checkbox"
+               name="<%= local_assigns[:visibility_field_name] %>"
+               value="1"
+               <%= "checked" if local_assigns.fetch(:visibility_checked, true) %>
+               class="sr-only peer">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+      </div>
     </label>
   <% end %>
 </div>

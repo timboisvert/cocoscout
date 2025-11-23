@@ -1,0 +1,109 @@
+<%
+  # Skills form section with category sidebar
+  # Parameters:
+  # - person_form: the form builder
+
+  # Group existing skills by category
+  skills_by_category = @person.profile_skills.group_by(&:category)
+  all_categories = ProfileSkillsService.all_categories
+%>
+
+<div id="skills" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-skills profile-section">
+  <%= render "shared/section_header",
+    title: "Skills & Talents",
+    collapsible: true,
+    visibility_toggle: true,
+    visibility_field_name: "person[profile_visibility_settings][skills_visible]",
+    visibility_checked: @person.profile_skills_visible? %>
+
+  <div class="p-6" data-profile-section-target="content">
+    <p class="text-sm text-gray-600 mb-4">
+      Select skills from the categories below. Click a category to view and select skills.
+    </p>
+
+    <div class="flex gap-6">
+      <!-- Category Sidebar -->
+      <div class="w-56 flex-shrink-0 space-y-1">
+        <% all_categories.each_with_index do |category, index| %>
+          <%
+            selected_count = skills_by_category[category]&.reject { |s| s.marked_for_destruction? }&.count || 0
+            is_first = index == 0
+          %>
+          <button type="button"
+                  class="w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between group cursor-pointer <%= is_first ? 'bg-pink-50 text-pink-700' : 'text-gray-700 hover:bg-gray-50' %>"
+                  data-action="click->profile-skills#selectCategory"
+                  data-category="<%= category %>"
+                  data-profile-skills-target="categoryButton">
+            <span class="text-sm font-medium"><%= ProfileSkillsService.category_display_name(category) %></span>
+            <% if selected_count > 0 %>
+              <span class="px-2 py-0.5 text-xs font-medium bg-pink-500 text-white rounded-full">
+                <%= selected_count %>
+              </span>
+            <% end %>
+          </button>
+        <% end %>
+      </div>
+
+      <!-- Skills Grid -->
+      <div class="flex-1">
+        <% all_categories.each_with_index do |category, index| %>
+          <div class="<%= index == 0 ? '' : 'hidden' %>"
+               data-category="<%= category %>"
+               data-profile-skills-target="categoryPanel">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">
+              <%= ProfileSkillsService.category_display_name(category) %>
+            </h4>
+
+            <div class="flex flex-wrap gap-2">
+              <% available_skills = ProfileSkillsService.skills_for_category(category) %>
+              <% available_skills.each do |skill_name| %>
+                <%
+                  existing_skill = @person.profile_skills.find { |s| s.category == category && s.skill_name == skill_name }
+                  is_checked = existing_skill.present?
+                %>
+
+                <label class="inline-flex items-center px-3 py-1.5 rounded-full border cursor-pointer transition-all <%= is_checked ? 'bg-pink-50 border-pink-500 text-pink-700' : 'bg-gray-50 border-gray-300 text-gray-700 hover:border-gray-400' %>">
+                  <% if existing_skill %>
+                    <%= person_form.fields_for :profile_skills, existing_skill do |skill_form| %>
+                      <%= skill_form.hidden_field :id %>
+                      <%= skill_form.hidden_field :category %>
+                      <%= skill_form.hidden_field :skill_name %>
+                      <%= skill_form.check_box :_destroy,
+                          { checked: false, class: "sr-only skill-checkbox", data: { action: "change->profile-skills#updateBadge", skill_category: category, skill_name: skill_name } },
+                          "0", "1" %>
+                    <% end %>
+                  <% else %>
+                    <input type="checkbox"
+                           name="person[profile_skills_attributes][<%= category %>_<%= skill_name.parameterize.underscore %>][category]"
+                           value="<%= category %>"
+                           class="sr-only skill-checkbox"
+                           data-skill-category="<%= category %>"
+                           data-skill-name="<%= skill_name %>"
+                           data-action="change->profile-skills#updateBadge"
+                           onchange="this.checked ? this.nextElementSibling.value = '<%= skill_name %>' : this.nextElementSibling.value = ''">
+                    <input type="hidden"
+                           name="person[profile_skills_attributes][<%= category %>_<%= skill_name.parameterize.underscore %>][skill_name]"
+                           value="">
+                  <% end %>
+                  <span class="text-sm"><%= skill_name %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .skill-checkbox:checked + span,
+  .skill-checkbox:checked ~ span {
+    font-weight: 500;
+  }
+  label:has(.skill-checkbox:checked) {
+    background-color: rgb(253 242 248);
+    border-color: rgb(236 72 153);
+    color: rgb(190 24 93);
+  }
+</style>

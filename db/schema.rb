@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_23_194555) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -276,6 +276,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
     t.datetime "created_at", null: false
     t.string "email"
     t.boolean "hide_contact_info", default: false, null: false
+    t.datetime "last_email_changed_at"
+    t.datetime "last_public_key_changed_at"
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
@@ -293,6 +295,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
     t.string "link_url"
     t.string "location", limit: 100
     t.text "notes", limit: 1000
+    t.integer "performance_section_id"
     t.integer "position", default: 0, null: false
     t.integer "profileable_id", null: false
     t.string "profileable_type", null: false
@@ -303,8 +306,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
     t.string "venue", limit: 200
     t.integer "year_end"
     t.integer "year_start", null: false
+    t.index ["performance_section_id"], name: "index_performance_credits_on_performance_section_id"
     t.index ["profileable_type", "profileable_id", "section_name", "position"], name: "index_performance_credits_on_profileable_and_section"
     t.index ["profileable_type", "profileable_id"], name: "index_performance_credits_on_profileable"
+  end
+
+  create_table "performance_sections", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_59d6099064"
+    t.index ["profileable_type", "profileable_id"], name: "index_performance_sections_on_profileable"
   end
 
   create_table "person_invitations", force: :cascade do |t|
@@ -359,6 +374,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
     t.datetime "updated_at", null: false
     t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_66776b16f6"
     t.index ["profileable_type", "profileable_id"], name: "index_profile_headshots_on_profileable"
+  end
+
+  create_table "profile_resumes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "is_primary", default: false, null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "profileable_id", null: false
+    t.string "profileable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["profileable_type", "profileable_id", "position"], name: "idx_on_profileable_type_profileable_id_position_656777844d"
+    t.index ["profileable_type", "profileable_id"], name: "index_profile_resumes_on_profileable"
   end
 
   create_table "profile_skills", force: :cascade do |t|
@@ -619,6 +646,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_014632) do
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "people", "users"
+  add_foreign_key "performance_credits", "performance_sections"
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "posters", "productions"
   add_foreign_key "production_permissions", "productions"
