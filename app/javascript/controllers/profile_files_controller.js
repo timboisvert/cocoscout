@@ -8,61 +8,29 @@ export default class extends Controller {
             return
         }
 
-        const container = document.getElementById('headshots-container')
+        const clickedItem = event.target.closest('.headshot-item')
+        const headshotId = clickedItem.querySelector('input[name*="[id]"]')?.value
 
-        // Remove all primary badges and set all is_primary fields to false
-        container.querySelectorAll('.headshot-item').forEach(item => {
-            const badge = item.querySelector('.primary-badge')
-            if (badge) badge.remove()
+        if (!headshotId) {
+            console.error('Could not find headshot ID')
+            return
+        }
 
-            const primaryField = item.querySelector('.is-primary-field')
-            if (primaryField) primaryField.value = '0'
-
-            // Show the "Set as Primary" button for all headshots
-            const primaryBtn = item.querySelector('.set-primary-btn')
-            if (primaryBtn) {
-                primaryBtn.classList.remove('hidden')
-                primaryBtn.replaceWith(primaryBtn.cloneNode(true))
-            } else {
-                // If button doesn't exist (was primary), recreate it
-                const btnContainer = item.querySelector('.mt-2')
-                if (btnContainer) {
-                    const existingText = btnContainer.querySelector('.text-gray-500')
-                    if (existingText) {
-                        const newBtn = document.createElement('button')
-                        newBtn.type = 'button'
-                        newBtn.className = 'text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer set-primary-btn'
-                        newBtn.setAttribute('data-action', 'click->profile-files#setPrimaryHeadshot')
-                        newBtn.textContent = 'Set as Primary'
-                        existingText.replaceWith(newBtn)
-                    }
-                }
+        // Call the set_primary endpoint
+        fetch(`/profile/headshots/${headshotId}/set_primary`, {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'text/vnd.turbo-stream.html',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
             }
         })
-
-        // Set this headshot as primary
-        const clickedItem = event.target.closest('.headshot-item')
-        if (clickedItem) {
-            const primaryField = clickedItem.querySelector('.is-primary-field')
-            if (primaryField) primaryField.value = '1'
-
-            // Add primary badge
-            const imageContainer = clickedItem.querySelector('.aspect-\\[3\\/4\\]')
-            if (imageContainer && !imageContainer.querySelector('.primary-badge')) {
-                const badge = document.createElement('span')
-                badge.className = 'primary-badge absolute top-2 right-2 bg-pink-500 text-white text-xs font-medium px-2 py-1 rounded'
-                badge.textContent = 'Primary'
-                imageContainer.appendChild(badge)
-            }
-
-            // Replace button with text
-            event.target.replaceWith(
-                Object.assign(document.createElement('span'), {
-                    className: 'text-xs text-gray-500 italic',
-                    textContent: 'Primary'
-                })
-            )
-        }
+            .then(response => response.text())
+            .then(html => {
+                Turbo.renderStreamMessage(html)
+            })
+            .catch(error => {
+                console.error('Error setting primary:', error)
+            })
     }
 
     addHeadshot(event) {
@@ -84,43 +52,86 @@ export default class extends Controller {
             }
         })
 
-        // Set up file input for the new item
-        const fileInput = document.createElement('input')
-        fileInput.type = 'file'
-        fileInput.name = `person[profile_headshots_attributes][${timestamp}][image]`
-        fileInput.style.display = 'none'
-        const dataTransfer = new DataTransfer()
-        dataTransfer.items.add(file)
-        fileInput.files = dataTransfer.files
-        newItem.querySelector('.headshot-item').appendChild(fileInput)
-
-        // Show preview
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            newItem.querySelector('.new-headshot-preview').src = e.target.result
-            // Show the preview div once image is loaded
-            const previewDiv = newItem.querySelector('.aspect-\\[3\\/4\\]')
-            if (previewDiv) {
-                previewDiv.classList.remove('bg-gray-50')
-            }
-        }
-        reader.readAsDataURL(file)
-
-        // Insert before the "Add" button
-        const addButton = container.querySelector('.border-dashed')?.parentElement
+        // Insert before the "Add" button (the border-dashed div itself)
+        const addButton = container.querySelector('.border-dashed')
         if (addButton) {
             container.insertBefore(newItem, addButton)
         } else {
             container.appendChild(newItem)
         }
 
-        // Clear the input so the same file can be selected again
-        input.value = ''
+        // Get reference to the newly inserted item (now in the DOM)
+        const insertedItem = addButton ? addButton.previousElementSibling : container.lastElementChild
 
-        // Submit the form immediately
-        const form = input.closest('form')
-        if (form) {
-            form.requestSubmit()
+        // Show preview
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const preview = insertedItem.querySelector('img')
+            if (preview) {
+                preview.src = e.target.result
+            }
+        }
+        reader.readAsDataURL(file)
+
+        // Build FormData manually to include the file
+        const form = document.getElementById('headshots-form')
+        if (!form) {
+            console.error('Could not find headshots-form')
+            return
+        }
+
+        const formData = new FormData(form)
+
+        // Add the file to the FormData with the correct name
+        formData.append(`person[profile_headshots_attributes][${timestamp}][image]`, file)
+
+        // Submit using fetch instead of form.requestSubmit()
+        fetch(form.action, {
+            method: form.method,
+            body: formData,
+            headers: {
+                'Accept': 'text/vnd.turbo-stream.html',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+            .then(response => response.text())
+            .then(html => {
+                // Let Turbo handle the response
+                Turbo.renderStreamMessage(html)
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error)
+            })
+
+        // Clear the original input so the same file can be selected again
+        input.value = ''
+    }
+
+    removeHeadshot(event) {
+        event.preventDefault()
+
+        if (!confirm('Remove this headshot?')) {
+            return
+        }
+
+        const item = event.target.closest('.headshot-item')
+        const destroyField = item.querySelector('.destroy-field')
+        const idField = item.querySelector('input[name*="[id]"]')
+
+        // If the headshot has an ID, it exists in the database - mark for destruction
+        // If no ID, it's a new upload - remove from DOM completely
+        if (idField && idField.value) {
+            destroyField.value = '1'
+            item.style.display = 'none'
+
+            // Submit the form to persist the removal
+            const form = document.getElementById('headshots-form')
+            if (form) {
+                form.requestSubmit()
+            }
+        } else {
+            // New upload, just remove it
+            item.remove()
         }
     }
 

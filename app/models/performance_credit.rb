@@ -4,11 +4,10 @@ class PerformanceCredit < ApplicationRecord
 
   # Validations
   validates :title, presence: true, length: { maximum: 200 }
-  validates :section_name, length: { maximum: 50 }
-  validates :venue, length: { maximum: 200 }
-  validates :location, length: { maximum: 100 }
-  validates :role, length: { maximum: 100 }
-  validates :notes, length: { maximum: 1000 }
+  validates :section_name, length: { maximum: 50 }, allow_blank: true
+  validates :location, length: { maximum: 100 }, allow_blank: true
+  validates :role, length: { maximum: 100 }, allow_blank: true
+  validates :notes, length: { maximum: 1000 }, allow_blank: true
   validates :year_start, presence: true, numericality: {
     only_integer: true,
     greater_than_or_equal_to: 1900,
@@ -37,8 +36,8 @@ class PerformanceCredit < ApplicationRecord
   end
 
   def display_year_range_with_present
-    return year_start.to_s if year_end.present? && year_start == year_end
-    return "#{year_start}-Present" if year_end.blank?
+    return year_start.to_s if year_end.blank?
+    return year_start.to_s if year_start == year_end
     "#{year_start}-#{year_end}"
   end
 
@@ -53,7 +52,13 @@ class PerformanceCredit < ApplicationRecord
 
   def set_default_position
     return if position.present?
-    max_position = profileable&.performance_credits&.where(section_name: section_name)&.maximum(:position) || -1
+
+    if performance_section_id.present?
+      max_position = performance_section&.performance_credits&.maximum(:position) || -1
+    else
+      max_position = profileable&.performance_credits&.where(section_name: section_name)&.maximum(:position) || -1
+    end
+
     self.position = max_position + 1
   end
 end

@@ -4,6 +4,9 @@
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+  <!-- Flash Messages for Auto-Save -->
+  <div id="flash-messages"></div>
+
   <!-- Public Profile Card -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -48,9 +51,8 @@
     </div>
   </div>
 
-  <%= form_with(model: @person, url: update_profile_path, method: :patch, class: "contents") do |person_form| %>
-
     <!-- Basic Information Section -->
+    <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
     <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
@@ -80,7 +82,7 @@
           </div>
           <p class="mt-1 text-xs text-gray-500">
             Email is linked to your account.
-            <%= link_to "Change email address", "#", class: "text-pink-500 hover:text-pink-600 underline" %>
+            <span class="text-pink-500 hover:text-pink-600 underline cursor-pointer" onclick="alert('Email change feature coming soon')">Change email address</span>
             (can only be changed once every 30 days)
           </p>
           <% if @person.errors[:email].any? %>
@@ -106,8 +108,10 @@
         </div>
       </div>
     </div>
+    <% end %>
 
     <!-- Social Media & Links Section -->
+    <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "social-media-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
     <div id="social-media" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Social Media & Links</h3>
@@ -125,7 +129,7 @@
               </div>
             <% end %>
           </div>
-          <%= link_to "Add Social", '#', class: "inline-block mt-2 text-pink-500 underline text-sm", data: { action: "socials#add" } %>
+          <a href="javascript:void(0)" class="inline-block mt-2 text-pink-500 underline text-sm" data-action="socials#add">Add Social</a>
           <template id="socials-template">
             <div class="flex items-center gap-2 socials-fields-row" data-socials-target="row">
               <select name="" class="rounded-lg border border-gray-300 px-3 py-2">
@@ -140,51 +144,28 @@
         </div>
       </div>
     </div>
+    <% end %>
 
     <!-- Legacy Headshot & Resume (for backward compatibility) -->
     <div id="legacy-files" class="hidden">
-      <%= render "shared/person_form", person_form: person_form %>
+      <%= form_with(model: @person, url: update_profile_path, method: :patch) do |person_form| %>
+        <%= render "shared/person_form", person_form: person_form %>
+      <% end %>
+    </div>
     </div>
 
     <!-- Headshots Section -->
-    <%= render "profile/headshots_form", person_form: person_form %>
+    <%= render "profile/headshots_form" %>
 
     <!-- Resumes Section -->
-    <%= render "profile/resumes_form_new", person_form: person_form %>
+    <%= render "profile/resumes_form_new" %>
 
     <!-- New Profile Sections -->
-      <%= render "shared/profile_videos_form_new", person_form: person_form %>
-        <%= render "profile/performance_credits_form_new", person_form: person_form %>
-        <%= render "profile/training_credits_form_new", person_form: person_form %>
-        <%= render "profile/skills_form_new", person_form: person_form %>
+      <%= render "shared/profile_videos_form_new" %>
+        <%= render "profile/performance_credits_form_new" %>
+        <%= render "profile/training_credits_form_new" %>
+        <%= render "profile/skills_form_new" %>
 
-      <!-- Privacy Settings -->
-      <div id="privacy" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Privacy Settings</h3>
-        </div>
-        <div class="p-6">
-          <div class="flex items-center justify-between">
-            <div class="flex-1">
-              <%= person_form.label :hide_contact_info, "Hide contact information from public profile", class: "text-sm font-medium text-gray-700" %>
-              <p class="text-xs text-gray-500 mt-1">
-                When enabled, your email and social media links will not be visible on your public profile.
-              </p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer ml-4">
-              <%= person_form.check_box :hide_contact_info, class: "sr-only peer" %>
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-  <!-- Save Button -->
-  <div class="sticky bottom-0 bg-white border-t border-gray-200 py-4">
-    <%= person_form.submit "Save Changes", class: "w-full sm:w-auto rounded-lg px-6 py-2.5 text-white bg-pink-500 hover:bg-pink-600 font-medium cursor-pointer transition-colors" %>
-  </div>
-
-  <% end %>
 </div>
 
 <!-- Image Modal -->

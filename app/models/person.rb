@@ -35,10 +35,10 @@ class Person < ApplicationRecord
   has_many :profile_skills, as: :profileable, dependent: :destroy
 
   # Accept nested attributes for profile system
-  accepts_nested_attributes_for :profile_headshots, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_headshots, allow_destroy: true
   accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_videos, allow_destroy: true, reject_if: :all_blank
-  accepts_nested_attributes_for :performance_sections, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :performance_sections, allow_destroy: true
   accepts_nested_attributes_for :performance_credits, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :training_credits, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
@@ -155,6 +155,8 @@ class Person < ApplicationRecord
       settings = profile_visibility_settings.presence || "{}"
       settings = JSON.parse(settings) if settings.is_a?(String)
       settings.with_indifferent_access
+    rescue JSON::ParserError
+      {}
     end
   end
 

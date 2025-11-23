@@ -1,12 +1,12 @@
-<!-- Headshots Section -->
-<div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Headshots</h3>
-  </div>
-  <div class="p-6">
-    <p class="text-sm text-gray-600 mb-4">Upload multiple headshots for different looks and styles.</p>
+<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "headshots-form", data: { turbo: true }) do |person_form| %>
+  <div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Headshots</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">Upload multiple headshots for different looks and styles.</p>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="headshots-container" data-controller="profile-files">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="headshots-container" data-controller="profile-files">
       <%= person_form.fields_for :profile_headshots do |headshot_form| %>
         <div class="headshot-item">
           <%= headshot_form.hidden_field :id %>
@@ -22,29 +22,30 @@
                 <%= image_tag headshot_form.object.image.variant(resize_to_limit: [300, 400]),
                     class: "w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-75",
                     data: { action: "click->modal#open", modal_image_param: url_for(headshot_form.object.image) } %>
-                <div class="absolute inset-0 bg-gradient-to-t from-pink-500/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                 <% if headshot_form.object.is_primary %>
                   <span class="primary-badge absolute top-2 right-2 bg-pink-500 text-white text-xs font-medium px-2 py-1 rounded">Primary</span>
                 <% end %>
               <% end %>
-            </div>
 
-            <div class="mt-2 flex items-center justify-between gap-2">
-              <% unless headshot_form.object.is_primary %>
+              <!-- Floating controls at bottom -->
+              <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <% unless headshot_form.object.is_primary %>
+                  <button type="button"
+                          class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded cursor-pointer set-primary-btn"
+                          data-action="click->profile-files#setPrimaryHeadshot"
+                          data-headshot-id="<%= headshot_form.object.id || 'new' %>">
+                    Set as Primary
+                  </button>
+                <% else %>
+                  <span></span>
+                <% end %>
                 <button type="button"
-                        class="text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer set-primary-btn"
-                        data-action="click->profile-files#setPrimaryHeadshot"
-                        data-headshot-id="<%= headshot_form.object.id || 'new' %>">
-                  Set as Primary
+                        class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded font-medium cursor-pointer"
+                        data-action="click->profile-files#removeHeadshot">
+                  Remove
                 </button>
-              <% else %>
-                <span class="text-xs text-gray-500 italic">Primary</span>
-              <% end %>
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 font-medium cursor-pointer"
-                      onclick="if(confirm('Remove this headshot?')) { this.closest('.headshot-item').querySelector('.destroy-field').value = '1'; this.closest('.headshot-item').style.display = 'none'; }">
-                Remove
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -57,13 +58,13 @@
         </svg>
         <p class="text-xs font-medium text-gray-600">Add Headshot</p>
       </div>
-    </div>
 
-    <input type="file"
-           id="headshot-file-input"
-           class="hidden"
-           accept="image/*"
-           data-action="change->profile-files#addHeadshot">
+      <input type="file"
+             id="headshot-file-input"
+             class="hidden"
+             accept="image/*"
+             data-action="change->profile-files#addHeadshot">
+    </div>
 
     <template id="headshot-template">
       <div class="headshot-item">
@@ -71,27 +72,31 @@
         <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][category]" value="theatrical">
         <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][_destroy]" value="0" class="destroy-field">
         <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][is_primary]" value="0" class="is-primary-field">
+        <input type="file" name="person[profile_headshots_attributes][NEW_RECORD][image]" style="display: none;" class="headshot-file-input">
 
         <div class="relative group">
-          <div class="aspect-[3/4] rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
-            <img src="" class="w-full h-full object-cover new-headshot-preview">
-          </div>
+          <div class="aspect-[3/4] rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50 relative">
+            <img src="" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
 
-          <div class="mt-2 flex items-center justify-between gap-2">
-            <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer set-primary-btn"
-                    data-action="click->profile-files#setPrimaryHeadshot"
-                    data-headshot-id="new">
-              Set as Primary
-            </button>
-            <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-700 font-medium cursor-pointer"
-                    onclick="if(confirm('Remove this headshot?')) { this.closest('.headshot-item').remove(); }">
-              Remove
-            </button>
+            <!-- Floating controls at bottom -->
+            <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button type="button"
+                      class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded cursor-pointer set-primary-btn"
+                      data-action="click->profile-files#setPrimaryHeadshot"
+                      data-headspot-id="new">
+                Set as Primary
+              </button>
+              <button type="button"
+                      class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded font-medium cursor-pointer"
+                      data-action="click->profile-files#removeHeadshot">
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </template>
+    </div>
   </div>
-</div>
+<% end %>

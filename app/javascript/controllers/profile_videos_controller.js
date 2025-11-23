@@ -15,6 +15,10 @@ export default class extends Controller {
         if (event.key === 'Escape' && this.hasModalTarget && !this.modalTarget.classList.contains('hidden')) {
             this.closeModal()
         }
+        if (event.key === 'Enter' && this.hasModalTarget && !this.modalTarget.classList.contains('hidden')) {
+            event.preventDefault()
+            this.save(event)
+        }
     }
     static values = {
         editingId: String
@@ -23,15 +27,33 @@ export default class extends Controller {
     openModal(event) {
         event.preventDefault()
         this.editingIdValue = null
-        this.formTarget.reset()
+
+        // Manually clear fields since formTarget is now a div
+        this.formTarget.querySelector('[data-field="title"]').value = ''
+        this.formTarget.querySelector('[data-field="url"]').value = ''
+
+        // Update modal title
+        const modalTitle = this.modalTarget.querySelector('h3')
+        if (modalTitle) modalTitle.textContent = 'Add Video'
+
         this.modalTarget.classList.remove("hidden")
         document.addEventListener('keydown', this.keyHandler)
+
+        // Focus the first field (title)
+        const firstField = this.formTarget.querySelector('[data-field="title"]')
+        if (firstField) {
+            setTimeout(() => firstField.focus(), 100)
+        }
     }
 
     closeModal() {
         this.modalTarget.classList.add("hidden")
         this.editingIdValue = null
-        this.formTarget.reset()
+
+        // Manually clear fields since formTarget is now a div
+        this.formTarget.querySelector('[data-field="title"]').value = ''
+        this.formTarget.querySelector('[data-field="url"]').value = ''
+
         document.removeEventListener('keydown', this.keyHandler)
     }
 
@@ -43,6 +65,11 @@ export default class extends Controller {
         if (!videoEl) return
 
         this.editingIdValue = videoId
+
+        // Update modal title
+        const modalTitle = this.modalTarget.querySelector('h3')
+        if (modalTitle) modalTitle.textContent = 'Edit Video'
+
         this.formTarget.querySelector('[data-field="title"]').value = videoEl.dataset.title || ''
         this.formTarget.querySelector('[data-field="url"]').value = videoEl.dataset.url || ''
         this.modalTarget.classList.remove("hidden")
@@ -50,9 +77,8 @@ export default class extends Controller {
 
     save(event) {
         event.preventDefault()
-        const formData = new FormData(this.formTarget)
-        const title = formData.get('title')
-        const url = formData.get('url')
+        const title = this.formTarget.querySelector('[data-field="title"]').value
+        const url = this.formTarget.querySelector('[data-field="url"]').value
 
         if (!title || !url) {
             alert('Please enter both title and URL')
@@ -66,6 +92,14 @@ export default class extends Controller {
         }
 
         this.closeModal()
+
+        // Submit the form to save changes
+        const form = document.getElementById('videos-form')
+        if (form) {
+            form.requestSubmit()
+        } else {
+            console.error('Could not find form to submit for video')
+        }
     }
 
     remove(event) {
@@ -81,6 +115,14 @@ export default class extends Controller {
                 destroyInput.value = '1'
             }
             videoEl.style.display = 'none'
+
+            // Submit the form to save the deletion
+            const form = document.getElementById('videos-form')
+            if (form) {
+                form.requestSubmit()
+            } else {
+                console.error('Could not find form to submit for video removal')
+            }
         }
     }
 

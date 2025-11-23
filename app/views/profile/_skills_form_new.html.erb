@@ -1,13 +1,11 @@
 <%
   # Skills form section with category sidebar
-  # Parameters:
-  # - person_form: the form builder
-
   # Group existing skills by category
   skills_by_category = @person.profile_skills.group_by(&:category)
   all_categories = ProfileSkillsService.all_categories
 %>
 
+<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "skills-form", data: { turbo: true }) do |person_form| %>
 <div id="skills" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-skills profile-section">
   <%= render "shared/section_header",
     title: "Skills & Talents",
@@ -107,3 +105,4 @@
     color: rgb(190 24 93);
   }
 </style>
+<% end %>

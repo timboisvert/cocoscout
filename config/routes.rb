@@ -292,6 +292,7 @@ Rails.application.routes.draw do
   # Profile routes (top-level)
   get    "/profile",         to: "profile#index",   as: "profile"
   patch  "/profile",         to: "profile#update",  as: "update_profile"
+  patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
   get    "/profile/preview", to: "profile#preview", as: "profile_preview"
   get    "/profile/public",  to: "profile#public",  as: "profile_public"
 

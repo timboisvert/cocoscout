@@ -15,14 +15,46 @@ export default class extends Controller {
     handleKeydown(event) {
         if (event.key === 'Escape' && this.hasModalTarget) {
             this.closeModal()
+        } else if (event.key === 'Enter' && event.target.tagName === 'INPUT') {
+            event.preventDefault()
+            this.save(event)
         }
     }
 
-    openModal() {
+    stopPropagation(event) {
+        event.stopPropagation()
+    }
+
+    openModal(event) {
+        if (event) event.preventDefault()
+
         if (this.hasModalTarget) {
             this.modalTarget.classList.remove('hidden')
-            this.clearForm()
+
+            if (!this.hasFormTarget) {
+                console.error('Form target not found in openModal method')
+                return
+            }
+
+            // Update modal title if not already set by edit()
+            const modalTitle = this.modalTarget.querySelector('h3')
+            if (modalTitle && !this.formTarget.dataset.resumeId) {
+                modalTitle.textContent = 'Add Resume'
+            }
+
+            // Show file field for new resumes
+            const fileField = this.modalTarget.querySelector('[data-profile-resumes-target="fileField"]')
+            if (fileField && !this.formTarget.dataset.resumeId) {
+                const fileContainer = fileField.parentElement.parentElement
+                if (fileContainer) fileContainer.style.display = 'block'
+            }
+
             document.addEventListener('keydown', this.keyHandler)
+
+            // Focus name field
+            if (this.hasNameFieldTarget) {
+                setTimeout(() => this.nameFieldTarget.focus(), 100)
+            }
         }
     }
 
@@ -36,24 +68,48 @@ export default class extends Controller {
 
     clearForm() {
         if (this.hasFormTarget) {
-            this.formTarget.reset()
+            this.nameFieldTarget.value = ''
+            this.fileFieldTarget.value = ''
             this.formTarget.dataset.resumeId = ""
+
+            // Clear file name display
+            const fileNameDisplay = this.modalTarget.querySelector('.file-name')
+            if (fileNameDisplay) fileNameDisplay.innerHTML = ''
+
+            // Show file container for next use
+            const fileField = this.modalTarget.querySelector('[data-profile-resumes-target="fileField"]')
+            if (fileField) {
+                const fileContainer = fileField.parentElement.parentElement
+                if (fileContainer) fileContainer.style.display = 'block'
+            }
         }
     }
 
     selectFile(event) {
         const file = event.target.files[0]
         if (file) {
-            // Show file name in the form
-            const fileNameDisplay = this.fileFieldTarget.parentElement.querySelector('.file-name')
+            // Show file name with icon
+            const fileNameDisplay = this.modalTarget.querySelector('.file-name')
             if (fileNameDisplay) {
-                fileNameDisplay.textContent = file.name
+                fileNameDisplay.innerHTML = `
+                    <span class="inline-flex items-center gap-2 text-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-pink-500">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span class="font-medium">${file.name}</span>
+                    </span>
+                `
             }
         }
     }
 
     save(event) {
         event.preventDefault()
+
+        if (!this.hasFormTarget) {
+            console.error('Form target not found in save method')
+            return
+        }
 
         const name = this.nameFieldTarget.value.trim()
         const file = this.fileFieldTarget.files[0]
@@ -76,17 +132,92 @@ export default class extends Controller {
     }
 
     createResume(name, file) {
-        // Create a temporary ID for the new resume
-        const tempId = `new_${Date.now()}`
+        // Get the count of existing resumes to determine the index
+        const existingCount = this.listTarget.querySelectorAll('.resume-item').length
+        const timestamp = new Date().getTime()
 
-        // Add to DOM immediately for instant feedback
+        // Create a container for the new resume
+        const resumeDiv = document.createElement('div')
+        resumeDiv.className = 'resume-item flex items-start gap-4 border border-gray-200 rounded-lg p-4'
+        resumeDiv.dataset.resumeId = `new_${timestamp}`
+
+        // Create preview thumbnail
+        const previewDiv = document.createElement('div')
+        previewDiv.className = 'flex-shrink-0 w-24 aspect-[8.5/11] rounded border border-gray-200 bg-gray-50 overflow-hidden'
+
+        // Create content div
+        const contentDiv = document.createElement('div')
+        contentDiv.className = 'flex-1'
+        contentDiv.innerHTML = `
+          <h4 class="font-medium text-gray-900 mb-1">${this.escapeHtml(name)}</h4>
+          <p class="text-sm text-gray-600">${this.escapeHtml(file.name)}</p>
+          <div class="flex items-center gap-3 mt-2">
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-600 cursor-pointer"
+                    data-action="click->profile-resumes#edit"
+                    data-resume-id="new_${timestamp}"
+                    data-resume-name="${this.escapeHtml(name)}">
+              Edit
+            </button>
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-600 cursor-pointer"
+                    data-action="click->profile-resumes#remove"
+                    data-resume-id="new_${timestamp}">
+              Remove
+            </button>
+          </div>
+        `
+
+        // Add hidden fields for Rails nested attributes
+        const hiddenFields = `
+          <input type="hidden" name="person[profile_resumes_attributes][${timestamp}][name]" value="${this.escapeHtml(name)}">
+          <input type="hidden" name="person[profile_resumes_attributes][${timestamp}][position]" value="${existingCount}">
+        `
+        resumeDiv.innerHTML = hiddenFields
+        resumeDiv.appendChild(previewDiv)
+        resumeDiv.appendChild(contentDiv)
+
+        // Create and attach the file input with the actual file
+        const fileInput = document.createElement('input')
+        fileInput.type = 'file'
+        fileInput.name = `person[profile_resumes_attributes][${timestamp}][file]`
+        fileInput.style.display = 'none'
+        const dataTransfer = new DataTransfer()
+        dataTransfer.items.add(file)
+        fileInput.files = dataTransfer.files
+        resumeDiv.appendChild(fileInput)
+
+        // Show preview
         const reader = new FileReader()
         reader.onload = (e) => {
-            this.addResumeToDOM(tempId, name, file.name, e.target.result)
+            if (file.type === 'application/pdf') {
+                previewDiv.innerHTML = `
+                  <div class="w-full h-full flex flex-col items-center justify-center p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-red-500">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <p class="text-xs text-center text-gray-600 mt-1">PDF</p>
+                  </div>
+                `
+            } else {
+                previewDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`
+            }
         }
         reader.readAsDataURL(file)
 
+        // Add to the list
+        this.listTarget.appendChild(resumeDiv)
+
+        // Close modal
         this.closeModal()
+
+        // Submit the form immediately
+        const form = document.getElementById('resumes-form')
+        if (form) {
+            form.requestSubmit()
+        } else {
+            console.error('Could not find form to submit for resume creation')
+        }
     }
 
     addResumeToDOM(id, name, fileName, dataUrl) {
@@ -156,16 +287,28 @@ export default class extends Controller {
     }
 
     edit(event) {
+        event.preventDefault()
         const button = event.currentTarget
         const resumeId = button.dataset.resumeId
         const resumeName = button.dataset.resumeName
 
+        if (!this.hasFormTarget) {
+            console.error('Form target not found in edit method')
+            return
+        }
+
         this.nameFieldTarget.value = resumeName
         this.formTarget.dataset.resumeId = resumeId
 
+        // Update modal title
+        const modalTitle = this.modalTarget.querySelector('h3')
+        if (modalTitle) modalTitle.textContent = 'Edit Resume'
+
         // Hide file field for editing (we only change the name)
-        if (this.hasFileFieldTarget) {
-            this.fileFieldTarget.closest('.mb-4').style.display = 'none'
+        const fileField = this.modalTarget.querySelector('[data-profile-resumes-target="fileField"]')
+        if (fileField) {
+            const fileContainer = fileField.parentElement.parentElement
+            if (fileContainer) fileContainer.style.display = 'none'
         }
 
         this.openModal()
@@ -194,6 +337,15 @@ export default class extends Controller {
         }
 
         this.closeModal()
+
+        // Submit the form to save changes
+        const form = document.getElementById('resumes-form')
+        if (form) {
+            console.log('Submitting form for resume update:', form)
+            form.requestSubmit()
+        } else {
+            console.error('Could not find form to submit for resume update')
+        }
     }
 
     remove(event) {
@@ -207,7 +359,7 @@ export default class extends Controller {
         const resumeItem = this.listTarget.querySelector(`[data-resume-id="${resumeId}"]`)
         if (!resumeItem) return
 
-        // If this is a new resume, just remove it from the DOM
+        // If this is a new resume (not yet saved), just remove it from the DOM
         if (resumeId.startsWith('new_')) {
             resumeItem.remove()
             return
@@ -226,7 +378,17 @@ export default class extends Controller {
             }
         }
 
-        resumeItem.remove()
+        // Hide the item
+        resumeItem.style.display = 'none'
+
+        // Submit the form to save the deletion
+        const form = document.getElementById('resumes-form')
+        if (form) {
+            console.log('Submitting form for resume removal:', form)
+            form.requestSubmit()
+        } else {
+            console.error('Could not find form to submit for resume removal')
+        }
     }
 
     escapeHtml(text) {

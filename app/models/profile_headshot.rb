@@ -29,6 +29,7 @@ class ProfileHeadshot < ApplicationRecord
 
   # Callbacks
   before_validation :set_default_position, on: :create
+  before_validation :clear_other_primaries, if: -> { is_primary == true }
 
   private
 
@@ -52,6 +53,13 @@ class ProfileHeadshot < ApplicationRecord
     if existing_primary.exists?
       errors.add(:is_primary, "There can only be one primary headshot per profile")
     end
+  end
+
+  def clear_other_primaries
+    return unless profileable
+    Rails.logger.info "Clearing other primaries for headshot #{id}, is_primary: #{is_primary}"
+    result = profileable.profile_headshots.where.not(id: id).update_all(is_primary: false)
+    Rails.logger.info "Cleared #{result} other primaries"
   end
 
   def image_content_type

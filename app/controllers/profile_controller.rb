@@ -8,9 +8,35 @@ class ProfileController < ApplicationController
 
   def update
     if @person.update(person_params)
-      redirect_to profile_path, notice: "Profile was successfully updated"
+      respond_to do |format|
+        format.turbo_stream do
+          # Reload the headshots section to show the newly saved headshot
+          render turbo_stream: [
+            turbo_stream.replace(
+              "headshots",
+              partial: "profile/headshots_form"
+            ),
+            turbo_stream.update(
+              "flash-messages",
+              partial: "shared/flash",
+              locals: { type: "success", message: "Saved" }
+            )
+          ]
+        end
+        format.html { redirect_to profile_path, notice: "Profile was successfully updated" }
+      end
     else
-      render :index, status: :unprocessable_entity
+      respond_to do |format|
+        format.turbo_stream do
+          error_message = @person.errors.full_messages.join(", ")
+          render turbo_stream: turbo_stream.replace(
+            "flash-messages",
+            partial: "shared/flash",
+            locals: { type: "error", message: error_message }
+          )
+        end
+        format.html { render :index, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -22,6 +48,30 @@ class ProfileController < ApplicationController
   def public
     # Share page with copyable link and QR code
     @public_url = public_profile_url(@person.public_key)
+  end
+
+  def set_primary_headshot
+    headshot = @person.profile_headshots.find(params[:id])
+    Rails.logger.info "Setting headshot #{headshot.id} as primary. Current is_primary: #{headshot.is_primary}"
+    result = headshot.update(is_primary: true)
+    Rails.logger.info "Update result: #{result}, is_primary after: #{headshot.is_primary}"
+
+    if !result
+      Rails.logger.error "Validation errors: #{headshot.errors.full_messages.join(', ')}"
+    end
+
+    # Reload to get fresh data
+    @person.reload
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "headshots",
+          partial: "profile/headshots_form"
+        )
+      end
+      format.json { head :ok }
+    end
   end
 
   private
@@ -36,10 +86,14 @@ class ProfileController < ApplicationController
       profile_visibility_settings: {},
       socials_attributes: [ :id, :platform, :handle, :_destroy ],
       profile_headshots_attributes: [ :id, :category, :is_primary, :position, :image, :_destroy ],
+      profile_resumes_attributes: [ :id, :name, :position, :file, :_destroy ],
       profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],
-      performance_credits_attributes: [
-        :id, :section_name, :title, :venue, :location, :role,
-        :year_start, :year_end, :notes, :link_url, :position, :_destroy
+      performance_sections_attributes: [
+        :id, :name, :position, :_destroy,
+        performance_credits_attributes: [
+          :id, :section_name, :title, :location, :role,
+          :year_start, :year_end, :notes, :link_url, :position, :_destroy
+        ]
       ],
       training_credits_attributes: [
         :id, :institution, :program, :location,

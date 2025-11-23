@@ -15,6 +15,10 @@ export default class extends Controller {
         if (event.key === 'Escape' && this.hasModalTarget && !this.modalTarget.classList.contains('hidden')) {
             this.closeModal()
         }
+        if (event.key === 'Enter' && this.hasModalTarget && !this.modalTarget.classList.contains('hidden')) {
+            event.preventDefault()
+            this.save(event)
+        }
     }
     static values = {
         editingId: String
@@ -23,15 +27,41 @@ export default class extends Controller {
     openModal(event) {
         event.preventDefault()
         this.editingIdValue = null
-        this.formTarget.reset()
+
+        // Manually clear fields since formTarget is now a div
+        this.formTarget.querySelector('[data-field="institution"]').value = ''
+        this.formTarget.querySelector('[data-field="program"]').value = ''
+        this.formTarget.querySelector('[data-field="location"]').value = ''
+        this.formTarget.querySelector('[data-field="year_start"]').value = ''
+        this.formTarget.querySelector('[data-field="year_end"]').value = ''
+        this.formTarget.querySelector('[data-field="notes"]').value = ''
+
+        // Update modal title
+        const modalTitle = this.modalTarget.querySelector('h3')
+        if (modalTitle) modalTitle.textContent = 'Add Training/Education'
+
         this.modalTarget.classList.remove("hidden")
         document.addEventListener('keydown', this.keyHandler)
+
+        // Focus the first field
+        const firstField = this.formTarget.querySelector('[data-field="institution"]')
+        if (firstField) {
+            setTimeout(() => firstField.focus(), 100)
+        }
     }
 
     closeModal() {
         this.modalTarget.classList.add("hidden")
         this.editingIdValue = null
-        this.formTarget.reset()
+
+        // Manually clear fields since formTarget is now a div
+        this.formTarget.querySelector('[data-field="institution"]').value = ''
+        this.formTarget.querySelector('[data-field="program"]').value = ''
+        this.formTarget.querySelector('[data-field="location"]').value = ''
+        this.formTarget.querySelector('[data-field="year_start"]').value = ''
+        this.formTarget.querySelector('[data-field="year_end"]').value = ''
+        this.formTarget.querySelector('[data-field="notes"]').value = ''
+
         document.removeEventListener('keydown', this.keyHandler)
     }
 
@@ -43,6 +73,11 @@ export default class extends Controller {
         if (!trainingEl) return
 
         this.editingIdValue = trainingId
+
+        // Update modal title
+        const modalTitle = this.modalTarget.querySelector('h3')
+        if (modalTitle) modalTitle.textContent = 'Edit Training/Education'
+
         this.formTarget.querySelector('[data-field="institution"]').value = trainingEl.dataset.institution || ''
         this.formTarget.querySelector('[data-field="program"]').value = trainingEl.dataset.program || ''
         this.formTarget.querySelector('[data-field="location"]').value = trainingEl.dataset.location || ''
@@ -54,13 +89,12 @@ export default class extends Controller {
 
     save(event) {
         event.preventDefault()
-        const formData = new FormData(this.formTarget)
-        const institution = formData.get('institution')
-        const program = formData.get('program')
-        const location = formData.get('location')
-        const yearStart = formData.get('year_start')
-        const yearEnd = formData.get('year_end')
-        const notes = formData.get('notes')
+        const institution = this.formTarget.querySelector('[data-field="institution"]').value
+        const program = this.formTarget.querySelector('[data-field="program"]').value
+        const location = this.formTarget.querySelector('[data-field="location"]').value
+        const yearStart = this.formTarget.querySelector('[data-field="year_start"]').value
+        const yearEnd = this.formTarget.querySelector('[data-field="year_end"]').value
+        const notes = this.formTarget.querySelector('[data-field="notes"]').value
 
         if (!institution) {
             alert('Please enter an institution')
@@ -74,6 +108,14 @@ export default class extends Controller {
         }
 
         this.closeModal()
+
+        // Submit the main profile form to save changes
+        const form = document.getElementById('training-form')
+        if (form) {
+            form.requestSubmit()
+        } else {
+            console.error('Could not find form to submit for training')
+        }
     }
 
     remove(event) {
@@ -89,6 +131,15 @@ export default class extends Controller {
                 destroyInput.value = '1'
             }
             trainingEl.style.display = 'none'
+
+            // Submit the main profile form to save changes
+            const form = document.getElementById('training-form')
+            if (form) {
+                console.log('Submitting form for training removal:', form)
+                form.requestSubmit()
+            } else {
+                console.error('Could not find form to submit for training removal')
+            }
         }
     }
 

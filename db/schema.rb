@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_23_194555) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_23_215115) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -303,7 +303,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_194555) do
     t.string "section_name", limit: 50
     t.string "title", limit: 200, null: false
     t.datetime "updated_at", null: false
-    t.string "venue", limit: 200
     t.integer "year_end"
     t.integer "year_start", null: false
     t.index ["performance_section_id"], name: "index_performance_credits_on_performance_section_id"

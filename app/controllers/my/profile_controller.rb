@@ -23,13 +23,13 @@ class My::ProfileController < ApplicationController
         socials_attributes: [ :id, :platform, :handle, :_destroy ],
         profile_headshots_attributes: [ :id, :category, :is_primary, :position, :image, :_destroy ],
         profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],
-        performance_credits_attributes: [ 
-          :id, :section_name, :title, :venue, :location, :role, 
-          :year_start, :year_end, :notes, :link_url, :position, :_destroy 
+        performance_credits_attributes: [
+          :id, :section_name, :title, :location, :role,
+          :year_start, :year_end, :notes, :link_url, :position, :_destroy
         ],
-        training_credits_attributes: [ 
-          :id, :institution, :program, :location, 
-          :year_start, :year_end, :notes, :position, :_destroy 
+        training_credits_attributes: [
+          :id, :institution, :program, :location,
+          :year_start, :year_end, :notes, :position, :_destroy
         ],
         profile_skills_attributes: [ :id, :category, :skill_name, :_destroy ]
       )
