@@ -16,9 +16,9 @@
       Add links to your demo reels, performance videos, or other video content.
     </p>
 
-    <div id="videos-container" class="space-y-3" data-profile-videos-target="list">
+    <div id="videos-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-profile-videos-target="list">
       <%= person_form.fields_for :profile_videos do |video_form| %>
-        <div class="border border-gray-200 rounded-lg p-4"
+        <div class="border border-gray-200 rounded-lg overflow-hidden"
              data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>"
              data-title="<%= video_form.object.title %>"
              data-url="<%= video_form.object.url %>">
@@ -28,24 +28,67 @@
           <%= video_form.hidden_field :position %>
           <%= video_form.hidden_field :_destroy, value: "0", class: "destroy-field" %>
 
-          <div class="flex items-center justify-between">
-            <div class="flex-1">
-              <div class="font-medium text-gray-900"><%= video_form.object.title %></div>
-              <div class="text-sm text-gray-600 truncate"><%= video_form.object.url %></div>
-            </div>
-            <div class="flex gap-2 ml-4">
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                      data-action="click->profile-videos#edit"
-                      data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>">
-                Edit
-              </button>
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 cursor-pointer"
-                      data-action="click->profile-videos#remove"
-                      data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>">
-                Remove
-              </button>
+          <!-- Video Embed -->
+          <% if video_form.object.url.present? %>
+            <% if video_form.object.url =~ /youtube\.com|youtu\.be/ %>
+              <% youtube_id = video_form.object.url[/(?:v=|\/)([0-9A-Za-z_-]{11})/, 1] %>
+              <% if youtube_id %>
+                <div class="w-full" style="aspect-ratio: 16/9;">
+                  <iframe class="w-full h-full"
+                          src="https://www.youtube.com/embed/<%= youtube_id %>"
+                          frameborder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowfullscreen>
+                  </iframe>
+                </div>
+              <% end %>
+            <% elsif video_form.object.url =~ /vimeo\.com/ %>
+              <% vimeo_id = video_form.object.url[/vimeo\.com\/(\d+)/, 1] %>
+              <% if vimeo_id %>
+                <div class="w-full" style="aspect-ratio: 16/9;">
+                  <iframe class="w-full h-full"
+                          src="https://player.vimeo.com/video/<%= vimeo_id %>"
+                          frameborder="0"
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowfullscreen>
+                  </iframe>
+                </div>
+              <% end %>
+            <% elsif video_form.object.url =~ /drive\.google\.com/ %>
+              <% google_drive_id = video_form.object.url[/\/file\/d\/([^\/\?]+)/, 1] || video_form.object.url[/[?&]id=([^&]+)/, 1] %>
+              <% if google_drive_id %>
+                <div class="w-full" style="aspect-ratio: 16/9;">
+                  <iframe class="w-full h-full"
+                          src="https://drive.google.com/file/d/<%= google_drive_id %>/preview"
+                          frameborder="0"
+                          allow="autoplay"
+                          allowfullscreen>
+                  </iframe>
+                </div>
+              <% end %>
+            <% end %>
+          <% end %>
+
+          <!-- Video Info and Actions -->
+          <div class="p-4">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= video_form.object.title %></div>
+              </div>
+              <div class="flex gap-2 ml-4">
+                <button type="button"
+                        class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                        data-action="click->profile-videos#edit"
+                        data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>">
+                  Edit
+                </button>
+                <button type="button"
+                        class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                        data-action="click->profile-videos#remove"
+                        data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>">
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>

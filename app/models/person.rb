@@ -227,21 +227,22 @@ class Person < ApplicationRecord
     return if email_was.nil? || email == email_was # No change or new record
     return if last_email_changed_at.nil? # First time changing
 
+    cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["email_change_cooldown_days"]
     days_since_last_change = (Time.current - last_email_changed_at) / 1.day
-    if days_since_last_change < 30
-      days_remaining = (30 - days_since_last_change).ceil
-      errors.add(:email, "can only be changed once every 30 days. Please wait #{days_remaining} more day#{'s' if days_remaining != 1}.")
+    if days_since_last_change < cooldown_days
+      days_remaining = (cooldown_days - days_since_last_change).ceil
+      errors.add(:email, "was changed too recently. Please wait #{days_remaining} more day#{'s' if days_remaining != 1} before changing it again.")
     end
   end
 
   def public_key_change_frequency
     return if public_key_was.nil? || public_key == public_key_was # No change or new record
-    return if last_public_key_changed_at.nil? # First time changing
+    return if public_key_changed_at.nil? # First time changing
 
-    days_since_last_change = (Time.current - last_public_key_changed_at) / 1.day
-    if days_since_last_change < 90
-      days_remaining = (90 - days_since_last_change).ceil
-      errors.add(:public_key, "can only be changed once every 90 days. Please wait #{days_remaining} more day#{'s' if days_remaining != 1}.")
+    cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["url_change_cooldown_days"]
+    days_since_last_change = (Time.current - public_key_changed_at) / 1.day
+    if days_since_last_change < cooldown_days
+      errors.add(:public_key, "was changed too recently.")
     end
   end
 
@@ -253,7 +254,18 @@ class Person < ApplicationRecord
 
   def track_public_key_change
     if public_key_changed? && !new_record?
-      self.last_public_key_changed_at = Time.current
+      # Store the old key
+      old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+      old_key = public_key_was
+
+      # Add the old key to the array if it's not already there and not nil
+      if old_key.present? && !old_keys_array.include?(old_key)
+        old_keys_array << old_key
+        self.old_keys = old_keys_array.to_json
+      end
+
+      # Update the timestamp
+      self.public_key_changed_at = Time.current
     end
   end
 end

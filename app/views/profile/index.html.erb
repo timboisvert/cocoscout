@@ -1,51 +1,55 @@
 <% content_for :title, "Edit Profile" %>
 
 <!-- Main Content -->
-<div class="w-full">
+<div class="w-full" data-controller="profile-modals">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <!-- Flash Messages for Auto-Save -->
   <div id="flash-messages"></div>
 
   <!-- Public Profile Card -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile</h3>
     </div>
-    <div class="p-4">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-          <label class="block text-xs font-medium text-gray-500 uppercase mb-2">Your Profile URL</label>
+    <div class="p-6">
+      <div class="space-y-4">
+        <!-- URL Box -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Your Profile URL</label>
           <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div class="flex-1 overflow-hidden">
-              <div class="text-sm font-mono text-gray-600 truncate">
-                <%= public_profile_url(@person.public_key) %>
+              <div class="text-sm font-mono text-gray-700 truncate">
+                <%= public_profile_url(@person.public_key) if @person.public_key.present? %>
               </div>
             </div>
-            <button onclick="navigator.clipboard.writeText('<%= public_profile_url(@person.public_key) %>')" class="text-pink-500 hover:text-pink-600 flex-shrink-0" title="Copy URL">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <button data-action="click->profile-modals#copyUrl" data-url="<%= public_profile_url(@person.public_key) if @person.public_key.present? %>" class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors" title="Copy URL">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
               </svg>
+              <span class="copy-text font-medium">Copy</span>
             </button>
           </div>
+          <p class="mt-2 text-xs text-gray-500">
+            <a href="javascript:void(0)" data-action="click->profile-modals#openChangeUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
+          </p>
         </div>
-        <div class="flex sm:flex-col gap-2">
-          <%= link_to profile_preview_path, class: "flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors" do %>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3">
+          <%= link_to profile_preview_path, class: "flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 rounded-lg text-sm font-medium transition-all" do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>Preview</span>
+            <span>Preview Profile</span>
           <% end %>
-          <%= link_to profile_public_path, class: "flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors" do %>
+          <a href="javascript:void(0)" data-action="click->profile-modals#openShare" class="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
             </svg>
-            <span>Share</span>
-          <% end %>
-          <button class="text-sm text-pink-500 hover:text-pink-600 font-medium px-4 py-2">
-            Change URL
-          </button>
+            <span>Share Profile</span>
+          </a>
         </div>
       </div>
     </div>
@@ -60,8 +64,7 @@
       <div class="p-6 space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
-            <%= person_form.label :name, "Name", class: "block text-sm font-medium text-gray-700 #{@person.errors[:name].any? ? 'text-pink-600' : ''}" %>
-            <span class="text-sm text-gray-500">(Your stage name or performing name)</span>
+            <%= person_form.label :name, "Name (Your stage name or performing name)", class: "block text-sm font-medium text-gray-700 #{@person.errors[:name].any? ? 'text-pink-600' : ''}" %>
             <%= person_form.text_field :name, class: "mt-1 block w-full rounded-lg border #{@person.errors[:name].any? ? 'border-pink-500' : 'border-gray-300'} px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
             <% if @person.errors[:name].any? %>
               <p class="mt-1 text-sm text-pink-600"><%= @person.errors[:name].first %></p>
@@ -69,25 +72,29 @@
           </div>
 
           <div>
-            <%= person_form.label :pronouns, "Pronouns", class: "block text-sm font-medium text-gray-700" %>
-            <span class="text-sm text-gray-500">(optional)</span>
+            <%= person_form.label :pronouns, "Pronouns (optional)", class: "block text-sm font-medium text-gray-700" %>
             <%= person_form.text_field :pronouns, placeholder: "e.g., she/her, he/him, they/them", class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
           </div>
         </div>
 
-        <div>
-          <%= person_form.label :email, "Email", class: "block text-sm font-medium text-gray-700" %>
-          <div class="mt-1 relative">
-            <%= person_form.email_field :email, disabled: true, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed" %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <%= person_form.label :email, "Email", class: "block text-sm font-medium text-gray-700" %>
+            <div class="mt-1 relative">
+              <%= person_form.email_field :email, disabled: true, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed" %>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              <a href="javascript:void(0)" data-action="click->profile-modals#openChangeEmail" class="text-pink-500 hover:text-pink-600 underline">Change email address</a>
+            </p>
+            <% if @person.errors[:email].any? %>
+              <p class="mt-1 text-sm text-pink-600"><%= @person.errors[:email].first %></p>
+            <% end %>
           </div>
-          <p class="mt-1 text-xs text-gray-500">
-            Email is linked to your account.
-            <span class="text-pink-500 hover:text-pink-600 underline cursor-pointer" onclick="alert('Email change feature coming soon')">Change email address</span>
-            (can only be changed once every 30 days)
-          </p>
-          <% if @person.errors[:email].any? %>
-            <p class="mt-1 text-sm text-pink-600"><%= @person.errors[:email].first %></p>
-          <% end %>
+
+          <div>
+            <%= person_form.label :phone, "Phone (optional)", class: "block text-sm font-medium text-gray-700" %>
+            <%= person_form.telephone_field :phone, placeholder: "(555) 555-5555", class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+          </div>
         </div>
 
         <!-- Privacy Settings moved here -->
@@ -152,7 +159,6 @@
         <%= render "shared/person_form", person_form: person_form %>
       <% end %>
     </div>
-    </div>
 
     <!-- Headshots Section -->
     <%= render "profile/headshots_form" %>
@@ -166,8 +172,6 @@
         <%= render "profile/training_credits_form_new" %>
         <%= render "profile/skills_form_new" %>
 
-</div>
-
 <!-- Image Modal -->
 <div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">
   <div class="relative max-w-6xl max-h-full" data-action="click->modal#stopPropagation">
@@ -178,4 +182,127 @@
     </button>
     <img id="modalImage" src="" alt="Full size" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
   </div>
+</div>
+
+<!-- Profile Modals -->
+  <!-- Change URL Modal -->
+  <div data-profile-modals-target="changeUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_profile_path %>">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Profile URL</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with(model: @person, url: update_url_profile_path, method: :patch, data: { url_checker_target: "form" }) do |f| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Current URL</label>
+              <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="text-sm font-mono text-gray-600"><%= public_profile_url(@person.public_key) %></div>
+              </div>
+            </div>
+            <div>
+              <%= f.label :public_key, "New URL", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-500"><%= request.base_url %>/</span>
+                <%= f.text_field :public_key, value: "", placeholder: "your-new-url", pattern: "[a-z0-9][a-z0-9\\-]{2,29}", class: "flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { url_checker_target: "input", action: "input->url-checker#inputChanged" } %>
+              </div>
+              <p class="mt-2 text-xs text-gray-500">3-30 characters: lowercase letters, numbers, hyphens only</p>
+            </div>
+
+            <!-- Status Message -->
+            <div data-url-checker-target="message" class="rounded-lg border p-3 text-sm hidden"></div>
+          </div>
+          <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button type="button" data-action="click->profile-modals#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
+            <button type="button" data-action="click->url-checker#checkAvailability" data-url-checker-target="checkButton" class="px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer">Check Availability</button>
+            <%= f.submit "Update URL", data: { url_checker_target: "updateButton" }, class: "hidden px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Email Modal -->
+  <div data-profile-modals-target="changeEmailModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Email Address</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with(model: @person, url: update_email_profile_path, method: :patch) do |f| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Current Email</label>
+              <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="text-sm text-gray-600"><%= @person.email %></div>
+              </div>
+            </div>
+
+            <% settings = YAML.load_file(Rails.root.join('config', 'profile_settings.yml')) %>
+            <% email_cooldown_days = settings['email_change_cooldown_days'] %>
+            <% email_is_blocked = @person.last_email_changed_at && @person.last_email_changed_at > email_cooldown_days.days.ago %>
+
+            <% if email_is_blocked %>
+              <div class="bg-pink-50 border border-pink-200 rounded-lg p-3">
+                <p class="text-sm text-pink-800">You changed your email too recently.</p>
+              </div>
+            <% else %>
+              <div>
+                <%= f.label :email, "New Email", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= f.email_field :email, value: @person.email, placeholder: "your.email@example.com", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                <p class="mt-2 text-xs text-gray-500">This will also update your login email address.</p>
+              </div>
+            <% end %>
+          </div>
+          <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button type="button" data-action="click->profile-modals#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
+            <% unless email_is_blocked %>
+              <%= f.submit "Update Email", class: "px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div data-profile-modals-target="shareModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Share Your Profile</h2>
+      </div>
+      <div class="p-6">
+        <div class="space-y-6">
+          <!-- URL -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Profile URL</label>
+            <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div class="flex-1 overflow-hidden">
+                <div class="text-sm font-mono text-gray-700 truncate"><%= public_profile_url(@person.public_key) if @person.public_key.present? %></div>
+              </div>
+              <button data-action="click->profile-modals#copyUrl" data-url="<%= public_profile_url(@person.public_key) if @person.public_key.present? %>" class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                </svg>
+                <span class="copy-text font-medium">Copy</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">QR Code</label>
+            <div class="flex justify-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+              <%= image_tag "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=#{CGI.escape(public_profile_url(@person.public_key))}", alt: "QR Code", class: "w-48 h-48" %>
+            </div>
+            <p class="mt-2 text-xs text-center text-gray-500">Scan with a mobile device to view your profile</p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
+          <button type="button" data-action="click->profile-modals#closeModal" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </div>

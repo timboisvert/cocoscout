@@ -6,6 +6,8 @@ export default class extends Controller {
     connect() {
         // Set up keyboard handler for ESC key
         this.keyHandler = this.handleKeydown.bind(this)
+        // Track pending submissions
+        this.pendingSubmissions = new Map()
     }
 
     disconnect() {
@@ -208,13 +210,52 @@ export default class extends Controller {
         // Add to the list
         this.listTarget.appendChild(resumeDiv)
 
-        // Close modal
+        // Close modal first
         this.closeModal()
 
-        // Submit the form immediately
+        // Submit the form immediately using FormData to ensure file is uploaded
         const form = document.getElementById('resumes-form')
         if (form) {
-            form.requestSubmit()
+            const formData = new FormData(form)
+
+            // The file input is already in the form with DataTransfer, but we need to ensure it's included
+            // Remove any existing file field for this timestamp to avoid duplicates
+            const existingFileKey = `person[profile_resumes_attributes][${timestamp}][file]`
+            if (formData.has(existingFileKey)) {
+                formData.delete(existingFileKey)
+            }
+
+            // Add the file to FormData with the correct name
+            formData.append(existingFileKey, file)
+
+            // Create abort controller for this submission
+            const abortController = new AbortController()
+            const resumeId = `new_${timestamp}`
+            this.pendingSubmissions.set(resumeId, abortController)
+
+            // Submit using fetch
+            fetch(form.action, {
+                method: form.method,
+                body: formData,
+                headers: {
+                    'Accept': 'text/vnd.turbo-stream.html',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+                },
+                signal: abortController.signal
+            })
+                .then(response => response.text())
+                .then(html => {
+                    this.pendingSubmissions.delete(resumeId)
+                    Turbo.renderStreamMessage(html)
+                    // Note: The Turbo stream will replace the entire list, including our temporary resume
+                    // with the real server-rendered version that has the actual database ID
+                })
+                .catch(error => {
+                    this.pendingSubmissions.delete(resumeId)
+                    if (error.name !== 'AbortError') {
+                        console.error('Error submitting form:', error)
+                    }
+                })
         } else {
             console.error('Could not find form to submit for resume creation')
         }
@@ -359,8 +400,14 @@ export default class extends Controller {
         const resumeItem = this.listTarget.querySelector(`[data-resume-id="${resumeId}"]`)
         if (!resumeItem) return
 
-        // If this is a new resume (not yet saved), just remove it from the DOM
+        // If this is a new resume (not yet saved), cancel the submission and remove from DOM
         if (resumeId.startsWith('new_')) {
+            // Cancel pending submission if exists
+            const abortController = this.pendingSubmissions.get(resumeId)
+            if (abortController) {
+                abortController.abort()
+                this.pendingSubmissions.delete(resumeId)
+            }
             resumeItem.remove()
             return
         }

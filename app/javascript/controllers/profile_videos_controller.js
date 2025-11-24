@@ -80,14 +80,19 @@ export default class extends Controller {
         const title = this.formTarget.querySelector('[data-field="title"]').value
         const url = this.formTarget.querySelector('[data-field="url"]').value
 
+        console.log('Save called with title:', title, 'url:', url)
+        console.log('editingIdValue:', this.editingIdValue, 'type:', typeof this.editingIdValue)
+
         if (!title || !url) {
             alert('Please enter both title and URL')
             return
         }
 
-        if (this.editingIdValue) {
+        if (this.editingIdValue && this.editingIdValue !== 'null') {
+            console.log('Editing existing video:', this.editingIdValue)
             this.updateVideoInDOM(this.editingIdValue, title, url)
         } else {
+            console.log('Adding new video')
             this.addVideoToDOM(title, url)
         }
 
@@ -95,7 +100,9 @@ export default class extends Controller {
 
         // Submit the form to save changes
         const form = document.getElementById('videos-form')
+        console.log('Found form:', form)
         if (form) {
+            console.log('Submitting form...')
             form.requestSubmit()
         } else {
             console.error('Could not find form to submit for video')
@@ -130,30 +137,31 @@ export default class extends Controller {
         const timestamp = new Date().getTime()
 
         const html = `
-      <div class="border border-gray-200 rounded-lg p-4" data-video-id="new-${timestamp}" data-title="${this.escapeHtml(title)}" data-url="${this.escapeHtml(url)}">
+      <div class="border border-gray-200 rounded-lg overflow-hidden" data-video-id="new-${timestamp}" data-title="${this.escapeHtml(title)}" data-url="${this.escapeHtml(url)}">
         <input type="hidden" name="person[profile_videos_attributes][${timestamp}][title]" value="${this.escapeHtml(title)}">
         <input type="hidden" name="person[profile_videos_attributes][${timestamp}][url]" value="${this.escapeHtml(url)}">
         <input type="hidden" name="person[profile_videos_attributes][${timestamp}][position]" value="0">
         <input type="hidden" name="person[profile_videos_attributes][${timestamp}][_destroy]" value="0" class="destroy-field">
 
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <div class="font-medium text-gray-900">${this.escapeHtml(title)}</div>
-            <div class="text-sm text-gray-600 truncate">${this.escapeHtml(url)}</div>
-          </div>
-          <div class="flex gap-2 ml-4">
-            <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-700 underline"
-                    data-action="click->profile-videos#edit"
-                    data-video-id="new-${timestamp}">
-              Edit
-            </button>
-            <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-700"
-                    data-action="click->profile-videos#remove"
-                    data-video-id="new-${timestamp}">
-              Remove
-            </button>
+        <div class="p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="font-medium text-gray-900">${this.escapeHtml(title)}</div>
+            </div>
+            <div class="flex gap-2 ml-4">
+              <button type="button"
+                      class="text-sm text-pink-500 hover:text-pink-700 underline"
+                      data-action="click->profile-videos#edit"
+                      data-video-id="new-${timestamp}">
+                Edit
+              </button>
+              <button type="button"
+                      class="text-sm text-pink-500 hover:text-pink-700 underline"
+                      data-action="click->profile-videos#remove"
+                      data-video-id="new-${timestamp}">
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -295,6 +295,11 @@ Rails.application.routes.draw do
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
   get    "/profile/preview", to: "profile#preview", as: "profile_preview"
   get    "/profile/public",  to: "profile#public",  as: "profile_public"
+  get    "/profile/change-url", to: "profile#change_url", as: "change_url_profile"
+  post   "/profile/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile"
+  patch  "/profile/change-url", to: "profile#update_url", as: "update_url_profile"
+  get    "/profile/change-email", to: "profile#change_email", as: "change_email_profile"
+  patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_23_215115) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_24_003214) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -281,9 +281,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_23_215115) do
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
+    t.string "phone"
     t.text "profile_visibility_settings", default: "{}"
     t.string "pronouns"
     t.string "public_key"
+    t.datetime "public_key_changed_at"
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
