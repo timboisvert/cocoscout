@@ -20,7 +20,6 @@ namespace :profile do
 
           unless existing
             profile_headshot = person.profile_headshots.build(
-              category: "theatrical",
               is_primary: true,
               position: 0
             )

@@ -119,11 +119,15 @@
 
     <!-- Social Media & Links Section -->
     <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "social-media-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
-    <div id="social-media" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Social Media & Links</h3>
-      </div>
-      <div class="p-6">
+    <div id="social-media" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
+      <%= render "shared/section_header",
+        title: "Social Media & Links",
+        collapsible: true,
+        visibility_toggle: true,
+        visibility_field: "social_media_visible",
+        visibility_checked: @person.social_media_visible? %>
+
+      <div class="p-6" data-profile-section-target="content">
         <div data-controller="socials">
           <div id="socials-fields" data-socials-target="list" class="space-y-2">
             <%= person_form.fields_for :socials do |social_form| %>
@@ -163,14 +167,14 @@
     <!-- Headshots Section -->
     <%= render "profile/headshots_form" %>
 
-    <!-- Resumes Section -->
-    <%= render "profile/resumes_form_new" %>
-
     <!-- New Profile Sections -->
       <%= render "shared/profile_videos_form_new" %>
         <%= render "profile/performance_credits_form_new" %>
         <%= render "profile/training_credits_form_new" %>
         <%= render "profile/skills_form_new" %>
+    
+    <!-- Resumes Section -->
+    <%= render "profile/resumes_form_new" %>
 
 <!-- Image Modal -->
 <div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">

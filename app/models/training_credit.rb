@@ -4,16 +4,15 @@ class TrainingCredit < ApplicationRecord
   # Validations
   validates :institution, presence: true, length: { maximum: 200 }
   validates :program, presence: true, length: { maximum: 200 }
-  validates :location, length: { maximum: 100 }
   validates :notes, length: { maximum: 1000 }
-  validates :year_start, presence: true, numericality: { 
-    only_integer: true, 
-    greater_than_or_equal_to: 1900, 
+  validates :year_start, presence: true, numericality: {
+    only_integer: true,
+    greater_than_or_equal_to: 1900,
     less_than_or_equal_to: -> { Time.current.year + 5 }
   }
-  validates :year_end, numericality: { 
-    only_integer: true, 
-    greater_than_or_equal_to: 1900, 
+  validates :year_end, numericality: {
+    only_integer: true,
+    greater_than_or_equal_to: 1900,
     less_than_or_equal_to: -> { Time.current.year + 5 },
     allow_nil: true
   }

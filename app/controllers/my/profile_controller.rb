@@ -28,7 +28,7 @@ class My::ProfileController < ApplicationController
           :year_start, :year_end, :notes, :link_url, :position, :_destroy
         ],
         training_credits_attributes: [
-          :id, :institution, :program, :location,
+          :id, :institution, :program,
           :year_start, :year_end, :notes, :position, :_destroy
         ],
         profile_skills_attributes: [ :id, :category, :skill_name, :_destroy ]

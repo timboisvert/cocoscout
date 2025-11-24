@@ -1,6 +1,8 @@
 class ProfileHeadshot < ApplicationRecord
   belongs_to :profileable, polymorphic: true
-  has_one_attached :image
+  has_one_attached :image do |attachable|
+    attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
+  end
 
   # Categories for headshot types
   CATEGORIES = %w[

@@ -4,7 +4,9 @@
   <%= render "shared/section_header",
     title: "Resumes",
     collapsible: true,
-    visibility_toggle: false %>
+    visibility_toggle: true,
+    visibility_field: "resumes_visible",
+    visibility_checked: @person.resumes_visible? %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">

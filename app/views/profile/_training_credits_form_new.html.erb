@@ -2,13 +2,13 @@
   # Training credits form section
 %>
 
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "training-form", data: { turbo: true }) do |person_form| %>
+<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "training-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
 <div id="training" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-training profile-section">
   <%= render "shared/section_header",
     title: "Training & Education",
     collapsible: true,
     visibility_toggle: true,
-    visibility_field_name: "person[profile_visibility_settings][training_visible]",
+    visibility_field: "training_visible",
     visibility_checked: @person.training_credits_visible? %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
@@ -18,52 +18,41 @@
 
     <div id="training-credits-container" class="space-y-3" data-profile-training-target="list">
       <%= person_form.fields_for :training_credits do |training_form| %>
-        <div class="border border-gray-200 rounded-lg p-4"
+        <div class="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
              data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>"
              data-institution="<%= training_form.object.institution %>"
              data-program="<%= training_form.object.program %>"
-             data-location="<%= training_form.object.location %>"
              data-year-start="<%= training_form.object.year_start %>"
              data-year-end="<%= training_form.object.year_end %>"
              data-notes="<%= training_form.object.notes %>">
           <%= training_form.hidden_field :id %>
           <%= training_form.hidden_field :institution %>
           <%= training_form.hidden_field :program %>
-          <%= training_form.hidden_field :location %>
           <%= training_form.hidden_field :year_start %>
           <%= training_form.hidden_field :year_end %>
           <%= training_form.hidden_field :notes %>
           <%= training_form.hidden_field :position %>
           <%= training_form.hidden_field :_destroy, value: "0", class: "destroy-field" %>
 
-          <div class="flex items-center justify-between">
-            <div class="flex-1">
-              <div class="font-medium text-gray-900">
-                <%= [training_form.object.program, training_form.object.institution].compact.join(' • ') || training_form.object.institution %>
-              </div>
-              <% if training_form.object.location.present? %>
-                <div class="text-sm text-gray-600"><%= training_form.object.location %></div>
-              <% end %>
-              <% if training_form.object.year_start.present? %>
-                <div class="text-xs text-gray-500">
-                  <%= training_form.object.year_end.present? ? "#{training_form.object.year_start}-#{training_form.object.year_end}" : training_form.object.year_start %>
-                </div>
-              <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-900">
+              <%= [training_form.object.program, training_form.object.institution, training_form.object.year_start.present? ? (training_form.object.year_end.present? ? "#{training_form.object.year_start}-#{training_form.object.year_end}" : training_form.object.year_start) : nil].compact.reject(&:blank?).join(' • ') %>
             </div>
-            <div class="flex gap-2 ml-4">
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                      data-action="click->profile-training#edit"
-                      data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
-                Edit
-              </button>
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 cursor-pointer"
-                      data-action="click->profile-training#remove"
-                      data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
-                Remove
-              </button>
-            </div>
+          </div>
+
+          <div class="flex gap-3 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                    data-action="click->profile-training#edit"
+                    data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+              Edit
+            </button>
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                    data-action="click->profile-training#remove"
+                    data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+              Remove
+            </button>
           </div>
         </div>
       <% end %>
@@ -92,38 +81,24 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Institution *</label>
             <input type="text"
-                   name="institution"
                    data-field="institution"
                    data-action="keydown->profile-training#handleKeydown"
                    placeholder="e.g., Juilliard School, Second City, Acting Studio"
                    class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Program/Degree</label>
-              <input type="text"
-                     name="program"
-                     data-field="program"
-                     placeholder="e.g., BFA Acting, Improv Workshop"
-                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <input type="text"
-                     name="location"
-                     data-field="location"
-                     placeholder="e.g., New York, NY"
-                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Program/Degree *</label>
+            <input type="text"
+                   data-field="program"
+                   placeholder="e.g., BFA Acting, Improv Workshop"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Year Start</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year Start *</label>
               <input type="number"
-                     name="year_start"
                      data-field="year_start"
                      placeholder="2019"
                      min="1900"
@@ -131,11 +106,10 @@
                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Year End</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year End (optional)</label>
               <input type="number"
-                     name="year_end"
                      data-field="year_end"
-                     placeholder="2023"
+                     placeholder="2023 or leave blank"
                      min="1900"
                      max="2100"
                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
@@ -144,8 +118,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-            <textarea name="notes"
-                      data-field="notes"
+            <textarea data-field="notes"
                       rows="2"
                       placeholder="Additional details..."
                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"></textarea>

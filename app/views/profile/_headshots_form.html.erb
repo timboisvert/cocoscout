@@ -1,9 +1,13 @@
 <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "headshots-form", data: { turbo: true }) do |person_form| %>
-  <div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Headshots</h3>
-    </div>
-    <div class="p-6">
+  <div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
+    <%= render "shared/section_header",
+      title: "Headshots",
+      collapsible: true,
+      visibility_toggle: true,
+      visibility_field: "headshots_visible",
+      visibility_checked: @person.headshots_visible? %>
+
+    <div class="p-6" data-profile-section-target="content">
       <p class="text-sm text-gray-600 mb-4">Upload multiple headshots for different looks and styles.</p>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="headshots-container" data-controller="profile-files">

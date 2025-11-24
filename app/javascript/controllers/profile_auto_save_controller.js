@@ -27,9 +27,15 @@ export default class extends Controller {
             clearTimeout(this.saveTimeout)
         }
 
-        // For checkboxes and selects, save immediately
+        // Store the target element for later use
+        this.lastTarget = event.target
+
+        // For checkboxes and selects, save immediately but with a tiny delay
+        // to ensure any onchange handlers complete first
         if (event.target.type === 'checkbox' || event.target.type === 'select-one') {
-            this.performSave()
+            this.saveTimeout = setTimeout(() => {
+                this.performSave()
+            }, 100)
         } else {
             // For text inputs, debounce the save
             this.saveTimeout = setTimeout(() => {
@@ -42,7 +48,18 @@ export default class extends Controller {
         this.isSaving = true
 
         // Submit the form
-        this.element.requestSubmit()
+        // Check if the element that triggered the save has a form attribute
+        if (this.lastTarget && this.lastTarget.hasAttribute('form')) {
+            const formId = this.lastTarget.getAttribute('form')
+            const targetForm = document.getElementById(formId)
+            if (targetForm) {
+                targetForm.requestSubmit()
+            } else {
+                this.element.requestSubmit()
+            }
+        } else {
+            this.element.requestSubmit()
+        }
 
         // Reset the saving flag after a short delay
         setTimeout(() => {

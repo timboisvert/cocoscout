@@ -94,8 +94,9 @@ class Group < ApplicationRecord
   end
 
   def safe_headshot_variant(variant_name)
-    return nil unless headshot.attached?
-    headshot.variant(variant_name)
+    hs = headshot
+    return nil unless hs&.attached?
+    hs.variant(variant_name)
   rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
     Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
     nil
@@ -104,6 +105,15 @@ class Group < ApplicationRecord
   # Profile system helper methods
   def primary_headshot
     profile_headshots.find_by(is_primary: true) || profile_headshots.first
+  end
+
+  # Override headshot to return the primary headshot's image when profile_headshots exist
+  def headshot
+    if profile_headshots.any?
+      primary_headshot&.image
+    else
+      super
+    end
   end
 
   def display_headshots

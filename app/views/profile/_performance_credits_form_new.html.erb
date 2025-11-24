@@ -2,13 +2,13 @@
   # Performance credits form section with modal-based management
 %>
 
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "performance-history-form", data: { turbo: true }) do |person_form| %>
+<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "performance-history-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
   <div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section">
     <%= render "shared/section_header",
       title: "Performance History",
       collapsible: true,
       visibility_toggle: true,
-      visibility_field_name: "person[profile_visibility_settings][performance_history_visible]",
+      visibility_field: "performance_history_visible",
       visibility_checked: @person.performance_credits_visible? %>
 
     <div class="p-6 space-y-4" data-profile-section-target="content">

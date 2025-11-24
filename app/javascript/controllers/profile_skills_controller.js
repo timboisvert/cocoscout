@@ -3,9 +3,24 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["categoryButton", "categoryPanel"]
 
+    connect() {
+        // Restore the previously selected category if stored
+        const savedCategory = sessionStorage.getItem('selectedSkillCategory')
+        if (savedCategory) {
+            // Restore immediately without delay to prevent flicker
+            this.selectCategoryByName(savedCategory)
+        }
+    }
+
     selectCategory(event) {
         const button = event.currentTarget
         const category = button.dataset.category
+        this.selectCategoryByName(category)
+    }
+
+    selectCategoryByName(category) {
+        // Store the selected category
+        sessionStorage.setItem('selectedSkillCategory', category)
 
         // Update button states
         this.categoryButtonTargets.forEach(btn => {

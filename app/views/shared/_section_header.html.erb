@@ -19,18 +19,20 @@
     </h3>
   </div>
 
-  <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field_name].present? %>
-    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-      <span class="mr-2">Show on profile</span>
-      <input type="hidden" name="<%= local_assigns[:visibility_field_name] %>" value="0">
-      <div class="relative inline-flex items-center">
-        <input type="checkbox"
-               name="<%= local_assigns[:visibility_field_name] %>"
-               value="1"
-               <%= "checked" if local_assigns.fetch(:visibility_checked, true) %>
-               class="sr-only peer">
-        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-      </div>
-    </label>
+  <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field].present? %>
+    <div data-controller="visibility-toggle"
+         data-visibility-toggle-url-value="<%= update_profile_visibility_path %>"
+         data-visibility-toggle-field-value="<%= local_assigns[:visibility_field] %>">
+      <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <span class="mr-2">Show on profile</span>
+        <div class="relative inline-flex items-center">
+          <input type="checkbox"
+                 <%= "checked" if local_assigns.fetch(:visibility_checked, true) %>
+                 class="sr-only peer"
+                 data-action="change->visibility-toggle#toggle">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </div>
+      </label>
+    </div>
   <% end %>
 </div>

@@ -10,26 +10,44 @@ class ProfileController < ApplicationController
     if @person.update(person_params)
       respond_to do |format|
         format.turbo_stream do
-          # Reload the headshots, resumes, and videos sections to show the newly saved items
-          render turbo_stream: [
-            turbo_stream.replace(
-              "headshots",
-              partial: "profile/headshots_form"
-            ),
-            turbo_stream.replace(
-              "resumes",
-              partial: "profile/resumes_form_new"
-            ),
-            turbo_stream.replace(
-              "videos",
-              partial: "shared/profile_videos_form_new"
-            ),
-            turbo_stream.update(
-              "flash-messages",
-              partial: "shared/flash",
-              locals: { type: "success", message: "Saved" }
-            )
-          ]
+          # Reload associations to ensure newly saved items are included
+          @person.reload
+
+          # Only reload sections that were actually updated
+          streams = []
+
+          if person_params[:profile_headshots_attributes].present?
+            streams << turbo_stream.replace("headshots", partial: "profile/headshots_form")
+          end
+
+          if person_params[:profile_resumes_attributes].present?
+            streams << turbo_stream.replace("resumes", partial: "profile/resumes_form_new")
+          end
+
+          if person_params[:profile_videos_attributes].present?
+            streams << turbo_stream.replace("videos", partial: "shared/profile_videos_form_new")
+          end
+
+          if person_params[:training_credits_attributes].present?
+            streams << turbo_stream.replace("training", partial: "profile/training_credits_form_new")
+          end
+
+          if person_params[:profile_skills_attributes].present?
+            streams << turbo_stream.replace("skills", partial: "profile/skills_form_new")
+          end
+
+          if person_params[:performance_sections_attributes].present?
+            streams << turbo_stream.replace("performance-history", partial: "profile/performance_credits_form_new")
+          end
+
+          # Always show success message
+          streams << turbo_stream.update(
+            "flash-messages",
+            partial: "shared/flash",
+            locals: { type: "success", message: "Saved" }
+          )
+
+          render turbo_stream: streams
         end
         format.html { redirect_to profile_path, notice: "Profile was successfully updated" }
       end
@@ -45,6 +63,21 @@ class ProfileController < ApplicationController
         end
         format.html { render :index, status: :unprocessable_entity }
       end
+    end
+  end
+
+  def update_visibility
+    field = params[:field]
+    value = params[:value] == "1"
+
+    # Get current settings and merge the new value
+    current_settings = @person.visibility_settings
+    updated_settings = current_settings.merge(field => value)
+
+    if @person.update(profile_visibility_settings: updated_settings.to_json)
+      head :ok
+    else
+      head :unprocessable_entity
     end
   end
 
@@ -203,7 +236,7 @@ class ProfileController < ApplicationController
   end
 
   def person_params
-    params.require(:person).permit(
+    permitted_params = params.require(:person).permit(
       :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info,
       profile_visibility_settings: {},
       socials_attributes: [ :id, :platform, :handle, :_destroy ],
@@ -218,10 +251,30 @@ class ProfileController < ApplicationController
         ]
       ],
       training_credits_attributes: [
-        :id, :institution, :program, :location,
+        :id, :institution, :program,
         :year_start, :year_end, :notes, :position, :_destroy
       ],
-      profile_skills_attributes: [ :id, :category, :skill_name, :_destroy ]
+      profile_skills_attributes: {}
     )
+
+    # Manually permit the nested profile_skills_attributes hash
+    if params[:person][:profile_skills_attributes].present?
+      permitted_params[:profile_skills_attributes] = params[:person][:profile_skills_attributes].permit!
+    end
+
+    # Filter out profile_skills with blank skill_name (unchecked skills)
+    # BUT keep skills with an ID (existing skills being updated/deleted)
+    if permitted_params[:profile_skills_attributes].present?
+      permitted_params[:profile_skills_attributes] = permitted_params[:profile_skills_attributes].select do |_key, attrs|
+        # Keep if it has an ID (existing skill)
+        has_id = attrs[:id].present? || attrs["id"].present?
+        # OR if it has a skill_name (new skill being added)
+        has_skill_name = (attrs[:skill_name] || attrs["skill_name"]).present?
+
+        has_id || has_skill_name
+      end
+    end
+
+    permitted_params
   end
 end
