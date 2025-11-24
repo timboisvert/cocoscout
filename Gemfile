@@ -21,7 +21,7 @@ gem "aws-sdk-s3", require: false
 gem "honeybadger"
 gem "rails_autolink"
 # gem "rails_semantic_logger" Check soon if you can put this back, and also uncomment the config in application.rb
-gem "pagy", "~> 43.1.1"
+gem "pagy", "~> 43.1.3"
 gem "mail", "~> 2.9.0" # Pin to 2.8.x to avoid breaking changes in 2.9.0
 
 group :production do
