@@ -1,19 +1,22 @@
 <%
   # Skills form section with category sidebar
+  # Parameters:
+  # - entity: Person or Group instance (defaults to @person for backward compatibility)
+  entity ||= @person
   # Group existing skills by category
-  skills_by_category = @person.profile_skills.group_by(&:category)
+  skills_by_category = entity.profile_skills.group_by(&:category)
   all_categories = ProfileSkillsService.all_categories
 %>
 
 <div id="skills">
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "skills-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
+<%= form_with(model: entity, url: entity.is_a?(Person) ? update_profile_path : update_group_path(entity), method: :patch, id: "skills-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-skills profile-section">
   <%= render "shared/section_header",
     title: "Skills & Talents",
     collapsible: true,
     visibility_toggle: true,
     visibility_field: "skills_visible",
-    visibility_checked: @person.profile_skills_visible? %>
+    visibility_checked: entity.profile_skills_visible? %>
 
   <div class="p-6" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">
@@ -57,7 +60,7 @@
               <% available_skills = ProfileSkillsService.skills_for_category(category) %>
               <% available_skills.each do |skill_name| %>
                 <%
-                  existing_skill = @person.profile_skills.find { |s| s.category == category && s.skill_name == skill_name }
+                  existing_skill = entity.profile_skills.find { |s| s.category == category && s.skill_name == skill_name }
                   is_checked = existing_skill.present?
                 %>
 

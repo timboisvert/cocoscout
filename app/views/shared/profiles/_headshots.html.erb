@@ -1,17 +1,27 @@
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "headshots-form", data: { turbo: true }) do |person_form| %>
-  <div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
-    <%= render "shared/section_header",
+<%
+  # Profile headshots form section
+  # Parameters:
+  # - entity: the person or group object
+
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+  form_id = entity.is_a?(Person) ? 'headshots-form' : 'group-headshots-form'
+%>
+
+<div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: form_id, data: { turbo: true }) do |entity_form| %>
+  <%= render "shared/section_header",
       title: "Headshots",
       collapsible: true,
-      visibility_toggle: true,
+      visibility_toggle: entity.is_a?(Person),
       visibility_field: "headshots_visible",
-      visibility_checked: @person.headshots_visible? %>
+      visibility_checked: entity.is_a?(Person) ? entity.headshots_visible? : true %>
 
     <div class="p-6" data-profile-section-target="content">
       <p class="text-sm text-gray-600 mb-4">Upload multiple headshots for different looks and styles.</p>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="headshots-container" data-controller="profile-files">
-      <%= person_form.fields_for :profile_headshots do |headshot_form| %>
+      <%= entity_form.fields_for :profile_headshots do |headshot_form| %>
         <div class="headshot-item">
           <%= headshot_form.hidden_field :id %>
           <%= headshot_form.hidden_field :position %>
@@ -68,15 +78,16 @@
              class="hidden"
              accept="image/*"
              data-action="change->profile-files#addHeadshot">
+      </div>
     </div>
 
     <template id="headshot-template">
       <div class="headshot-item">
-        <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][position]" value="">
-        <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][category]" value="theatrical">
-        <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][_destroy]" value="0" class="destroy-field">
-        <input type="hidden" name="person[profile_headshots_attributes][NEW_RECORD][is_primary]" value="0" class="is-primary-field">
-        <input type="file" name="person[profile_headshots_attributes][NEW_RECORD][image]" style="display: none;" class="headshot-file-input">
+        <input type="hidden" name="<%= entity_name %>[profile_headshots_attributes][NEW_RECORD][position]" value="">
+        <input type="hidden" name="<%= entity_name %>[profile_headshots_attributes][NEW_RECORD][category]" value="theatrical">
+        <input type="hidden" name="<%= entity_name %>[profile_headshots_attributes][NEW_RECORD][_destroy]" value="0" class="destroy-field">
+        <input type="hidden" name="<%= entity_name %>[profile_headshots_attributes][NEW_RECORD][is_primary]" value="0" class="is-primary-field">
+        <input type="file" name="<%= entity_name %>[profile_headshots_attributes][NEW_RECORD][image]" style="display: none;" class="headshot-file-input">
 
         <div class="relative group">
           <div class="aspect-[3/4] rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50 relative">
@@ -88,7 +99,7 @@
               <button type="button"
                       class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded cursor-pointer set-primary-btn"
                       data-action="click->profile-files#setPrimaryHeadshot"
-                      data-headspot-id="new">
+                      data-headshot-id="new">
                 Set as Primary
               </button>
               <button type="button"
@@ -101,6 +112,5 @@
         </div>
       </div>
     </template>
-    </div>
-  </div>
 <% end %>
+</div>

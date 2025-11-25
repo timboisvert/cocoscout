@@ -1,23 +1,27 @@
 <%
   # Profile videos form section
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
 %>
 
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "videos-form", data: { turbo: true }) do |person_form| %>
 <div id="videos" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-videos profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "videos-form", data: { turbo: true }) do |entity_form| %>
   <%= render "shared/section_header",
     title: "Videos & Reels",
     collapsible: true,
-    visibility_toggle: true,
+    visibility_toggle: entity.is_a?(Person),
     visibility_field: "videos_visible",
-    visibility_checked: @person.videos_visible? %>
+    visibility_checked: entity.is_a?(Person) ? entity.videos_visible? : true %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
-    <p class="text-sm text-gray-600 mb-4">
+    <p class="text-sm text-gray-600">
       Add links to your demo reels, performance videos, or other video content.
     </p>
 
     <div id="videos-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-profile-videos-target="list">
-      <%= person_form.fields_for :profile_videos do |video_form| %>
+      <%= entity_form.fields_for :profile_videos do |video_form| %>
         <div class="border border-gray-200 rounded-lg overflow-hidden"
              data-video-id="<%= video_form.object.id || "new-#{video_form.object.object_id}" %>"
              data-title="<%= video_form.object.title %>"
@@ -96,9 +100,9 @@
     </div>
 
     <button type="button"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-pink-500 hover:text-white text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer"
             data-action="click->profile-videos#openModal">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
       Add Video
@@ -151,5 +155,5 @@
       </div>
     </div>
   </div>
-</div>
 <% end %>
+</div>

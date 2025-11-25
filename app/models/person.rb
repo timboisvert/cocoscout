@@ -198,12 +198,25 @@ class Person < ApplicationRecord
     visibility_settings["social_media_visible"] != false
   end
 
+  def bio_visible?
+    visibility_settings["bio_visible"] != false && read_attribute(:bio_visible)
+  end
+
+  # Virtual attribute for inverted contact info visibility logic
+  def show_contact_info
+    !hide_contact_info
+  end
+
+  def show_contact_info=(value)
+    self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
+  end
+
   private
 
   def generate_public_key
     return if public_key.present?
 
-    base_key = name.parameterize
+    base_key = name.parameterize(separator: "")
     key = base_key
     counter = 2
 

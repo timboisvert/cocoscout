@@ -1,12 +1,18 @@
 <!-- Resumes Section -->
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "resumes-form", data: { turbo: true }) do |person_form| %>
+<%
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+%>
 <div id="resumes" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-resumes profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "resumes-form", data: { turbo: true }) do |entity_form| %>
   <%= render "shared/section_header",
     title: "Resumes",
     collapsible: true,
-    visibility_toggle: true,
+    visibility_toggle: entity.is_a?(Person),
     visibility_field: "resumes_visible",
-    visibility_checked: @person.resumes_visible? %>
+    visibility_checked: entity.is_a?(Person) ? entity.resumes_visible? : true %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">
@@ -16,8 +22,8 @@
     <div class="space-y-4">
       <!-- Existing resumes list -->
       <div data-profile-resumes-target="list" class="space-y-3">
-        <% if @person.profile_resumes.any? %>
-          <% @person.profile_resumes.each do |resume| %>
+        <% if entity.profile_resumes.any? %>
+          <% entity.profile_resumes.each do |resume| %>
             <div class="resume-item flex items-start gap-4 border border-gray-200 rounded-lg p-4" data-resume-id="<%= resume.id %>">
               <% if resume.file.attached? %>
                 <div class="flex-shrink-0 w-24 aspect-[8.5/11] rounded border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer hover:opacity-75 transition-opacity"
@@ -76,9 +82,9 @@
 
       <!-- Add Resume Button -->
       <button type="button"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-pink-500 hover:text-white text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer"
               data-action="click->profile-resumes#openModal">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
         Add Resume
@@ -144,5 +150,5 @@
       </div>
     </div>
   </div>
-</div>
 <% end %>
+</div>

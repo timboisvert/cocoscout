@@ -19,6 +19,19 @@ export default class extends Controller {
         this.checkButtonTarget.disabled = false
     }
 
+    preventEnterSubmit(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault()
+            // If update button is visible, submit the form
+            if (!this.updateButtonTarget.classList.contains('hidden')) {
+                this.formTarget.requestSubmit()
+            } else {
+                // Otherwise, trigger check availability
+                this.checkAvailability(event)
+            }
+        }
+    }
+
     async checkAvailability(event) {
         event.preventDefault()
 

@@ -20,14 +20,18 @@ class Group < ApplicationRecord
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_videos, as: :profileable, dependent: :destroy
+  has_many :performance_sections, as: :profileable, dependent: :destroy
   has_many :performance_credits, as: :profileable, dependent: :destroy
   has_many :profile_skills, as: :profileable, dependent: :destroy
+  has_many :profile_resumes, as: :profileable, dependent: :destroy
 
   # Accept nested attributes for profile system
   accepts_nested_attributes_for :profile_headshots, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_videos, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :performance_sections, allow_destroy: true
   accepts_nested_attributes_for :performance_credits, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
 
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
@@ -46,6 +50,7 @@ class Group < ApplicationRecord
   # Callbacks
   before_validation :generate_public_key, on: :create
   before_validation :downcase_public_key
+  before_save :track_public_key_change
 
   # Scopes
   scope :active, -> { where(archived_at: nil) }
@@ -120,7 +125,7 @@ class Group < ApplicationRecord
     if profile_headshots.any?
       profile_headshots
     elsif headshot.attached?
-      [OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0)]
+      [ OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0) ]
     else
       []
     end
@@ -150,12 +155,24 @@ class Group < ApplicationRecord
     visibility_settings["videos_visible"] != false
   end
 
+  def headshots_visible?
+    visibility_settings["headshots_visible"] != false && read_attribute(:headshots_visible)
+  end
+
+  def resumes_visible?
+    visibility_settings["resumes_visible"] != false && read_attribute(:resumes_visible)
+  end
+
+  def social_media_visible?
+    visibility_settings["social_media_visible"] != false && read_attribute(:social_media_visible)
+  end
+
   private
 
   def generate_public_key
     return if public_key.present?
 
-    base_key = name.parameterize
+    base_key = name.parameterize(separator: "")
     key = base_key
     counter = 2
 
@@ -169,6 +186,23 @@ class Group < ApplicationRecord
 
   def downcase_public_key
     self.public_key = public_key.downcase if public_key.present?
+  end
+
+  def track_public_key_change
+    if public_key_changed? && !new_record?
+      # Store the old key
+      old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+      old_key = public_key_was
+
+      # Add the old key to the array if it's not already there and not nil
+      if old_key.present? && !old_keys_array.include?(old_key)
+        old_keys_array << old_key
+        self.old_keys = old_keys_array.to_json
+      end
+
+      # Update the timestamp
+      self.public_key_changed_at = Time.current
+    end
   end
 
   def public_key_not_reserved

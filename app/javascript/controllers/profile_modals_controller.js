@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["changeUrlModal", "changeEmailModal", "shareModal"]
+    static targets = ["changeUrlModal", "changeGroupUrlModal", "changeEmailModal", "shareModal"]
 
     connect() {
         this.keyHandler = this.handleKeydown.bind(this)
@@ -23,6 +23,12 @@ export default class extends Controller {
         document.addEventListener('keydown', this.keyHandler)
     }
 
+    openChangeGroupUrl(event) {
+        event.preventDefault()
+        this.changeGroupUrlModalTarget.classList.remove('hidden')
+        document.addEventListener('keydown', this.keyHandler)
+    }
+
     openChangeEmail(event) {
         event.preventDefault()
         this.changeEmailModalTarget.classList.remove('hidden')
@@ -41,6 +47,9 @@ export default class extends Controller {
         }
         if (this.hasChangeUrlModalTarget) {
             this.changeUrlModalTarget.classList.add('hidden')
+        }
+        if (this.hasChangeGroupUrlModalTarget) {
+            this.changeGroupUrlModalTarget.classList.add('hidden')
         }
         if (this.hasChangeEmailModalTarget) {
             this.changeEmailModalTarget.classList.add('hidden')

@@ -1,0 +1,75 @@
+<!-- Profile Edit Sidebar Navigation -->
+<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between">
+  <div class="flex-1 overflow-y-auto">
+    <div class="mt-2">
+      <a href="#basic-info" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Basic Information</span>
+      </a>
+
+      <a href="#bio" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Bio</span>
+      </a>
+
+      <a href="#social-media" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Social Media & Links</span>
+      </a>
+
+      <a href="#headshots" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Headshots</span>
+      </a>
+
+      <a href="#resumes" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Resumes</span>
+      </a>
+
+      <a href="#videos" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Videos & Reels</span>
+      </a>
+
+      <a href="#performance-history" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Performance History</span>
+      </a>
+
+      <a href="#training" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Training & Education</span>
+      </a>
+
+      <a href="#skills" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Skills & Talents</span>
+      </a>
+
+      <a href="#groups" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+        <span>Groups</span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Bottom section -->
+  <div class="flex justify-center">
+    <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-32" %>
+  </div>
+</nav>
+
+<script>
+  // Smooth scroll to sections with offset for fixed header
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const target = document.querySelector(targetId);
+        if (target) {
+          const headerOffset = 80;
+          const elementPosition = target.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  });
+</script>

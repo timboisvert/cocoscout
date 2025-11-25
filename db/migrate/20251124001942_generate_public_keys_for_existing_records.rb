@@ -2,7 +2,7 @@ class GeneratePublicKeysForExistingRecords < ActiveRecord::Migration[8.1]
   def up
     # Generate public keys for people without them
     Person.where(public_key: nil).find_each do |person|
-      base_key = person.name.present? ? person.name.parameterize : "person"
+      base_key = person.name.present? ? person.name.parameterize(separator: '') : "person"
       key = base_key
       counter = 1
 
@@ -17,7 +17,7 @@ class GeneratePublicKeysForExistingRecords < ActiveRecord::Migration[8.1]
 
     # Generate public keys for groups without them
     Group.where(public_key: nil).find_each do |group|
-      base_key = group.name.present? ? group.name.parameterize : "group"
+      base_key = group.name.present? ? group.name.parameterize(separator: '') : "group"
       key = base_key
       counter = 1
 

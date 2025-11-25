@@ -28,11 +28,12 @@ export default class extends Controller {
         }
 
         // Store the target element for later use
-        this.lastTarget = event.target
+        this.lastTarget = event?.target || this.element
 
         // For checkboxes and selects, save immediately but with a tiny delay
         // to ensure any onchange handlers complete first
-        if (event.target.type === 'checkbox' || event.target.type === 'select-one') {
+        const targetType = event?.target?.type;
+        if (targetType === 'checkbox' || targetType === 'select-one' || targetType === 'hidden') {
             this.saveTimeout = setTimeout(() => {
                 this.performSave()
             }, 100)

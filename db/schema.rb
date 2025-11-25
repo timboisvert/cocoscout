@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_24_003214) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -191,12 +191,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_24_003214) do
     t.text "bio"
     t.datetime "created_at", null: false
     t.string "email", null: false
+    t.boolean "headshots_visible", default: true, null: false
     t.boolean "hide_contact_info", default: false, null: false
     t.string "name", null: false
     t.text "old_keys"
     t.string "phone"
     t.text "profile_visibility_settings", default: "{}"
     t.string "public_key", null: false
+    t.datetime "public_key_changed_at"
+    t.boolean "resumes_visible", default: true, null: false
+    t.boolean "social_media_visible", default: true, null: false
     t.datetime "updated_at", null: false
     t.string "website"
     t.index ["archived_at"], name: "index_groups_on_archived_at"
@@ -272,6 +276,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_24_003214) do
   end
 
   create_table "people", force: :cascade do |t|
+    t.text "bio"
+    t.boolean "bio_visible", default: true, null: false
     t.datetime "casting_notification_sent_at"
     t.datetime "created_at", null: false
     t.string "email"

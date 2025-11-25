@@ -26,8 +26,15 @@
 
     <div class="flex min-h-screen">
 
-        <%= render "shared/navigation/profile_header" %>
-        <%= render "shared/navigation/profile_sidebar" %>
+        <% if @show_group_sidebar %>
+          <%= render "shared/navigation/profile_group_mobile" %>
+          <%= render "shared/navigation/profile_group_header" %>
+          <%= render "shared/navigation/profile_group" %>
+        <% else %>
+          <%= render "shared/navigation/profile_person_mobile" %>
+          <%= render "shared/navigation/profile_person_header" %>
+          <%= render "shared/navigation/profile_person" %>
+        <% end %>
         <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56 overflow-x-hidden">
             <%= yield %>
         </main>

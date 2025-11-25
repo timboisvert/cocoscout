@@ -1,15 +1,19 @@
 <%
   # Performance credits form section with modal-based management
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
 %>
 
-<%= form_with(model: @person, url: update_profile_path, method: :patch, id: "performance-history-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
-  <div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section">
+<div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "performance-history-form", data: { turbo: true, controller: "profile-auto-save" }) do |entity_form| %>
     <%= render "shared/section_header",
       title: "Performance History",
       collapsible: true,
-      visibility_toggle: true,
+      visibility_toggle: entity.is_a?(Person),
       visibility_field: "performance_history_visible",
-      visibility_checked: @person.performance_credits_visible? %>
+      visibility_checked: entity.is_a?(Person) ? entity.performance_credits_visible? : true %>
 
     <div class="p-6 space-y-4" data-profile-section-target="content">
       <p class="text-sm text-gray-600 mb-4">
@@ -17,7 +21,7 @@
       </p>
 
       <div id="performance-sections-container" data-performance-credits-target="sectionsList">
-      <%= person_form.fields_for :performance_sections do |section_form| %>
+      <%= entity_form.fields_for :performance_sections do |section_form| %>
         <div class="border border-gray-200 rounded-lg p-5 mb-4 bg-white shadow-sm" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
           <%= section_form.hidden_field :id %>
           <%= section_form.hidden_field :name %>
@@ -102,7 +106,7 @@
     </div>
 
     <button type="button"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer shadow-sm"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer"
             data-action="click->performance-credits#openSectionModal">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -220,10 +224,15 @@
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
               </div>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+              <div data-controller="character-counter" data-character-counter-max-value="200">
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                  <span data-character-counter-target="counter" class="text-xs text-gray-500"></span>
+                </div>
                 <textarea name="notes"
                           data-field="notes"
+                          data-character-counter-target="input"
+                          data-action="input->character-counter#updateCounter"
                           rows="2"
                           placeholder="Additional details..."
                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"></textarea>
@@ -247,5 +256,5 @@
       </div>
     </div>
   </div>
-  </div>
 <% end %>
+</div>

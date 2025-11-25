@@ -32,6 +32,8 @@ class ProfileHeadshot < ApplicationRecord
   # Callbacks
   before_validation :set_default_position, on: :create
   before_validation :clear_other_primaries, if: -> { is_primary == true }
+  after_create :set_as_primary_if_first
+  after_destroy :set_new_primary_if_needed
 
   private
 
@@ -39,6 +41,23 @@ class ProfileHeadshot < ApplicationRecord
     return if position.present?
     max_position = profileable&.profile_headshots&.maximum(:position) || -1
     self.position = max_position + 1
+  end
+
+  def set_as_primary_if_first
+    # If this is the first headshot and no primary is set, make it primary
+    if profileable && profileable.profile_headshots.count == 1 && !is_primary
+      update_column(:is_primary, true)
+    end
+  end
+
+  def set_new_primary_if_needed
+    # If the destroyed headshot was primary, set the first remaining headshot as primary
+    return unless is_primary && profileable
+
+    first_remaining = profileable.profile_headshots.first
+    if first_remaining
+      first_remaining.update_column(:is_primary, true)
+    end
   end
 
   def max_headshots_per_profileable

@@ -9,15 +9,37 @@ export default class extends Controller {
         }
 
         const clickedItem = event.target.closest('.headshot-item')
-        const headshotId = clickedItem.querySelector('input[name*="[id]"]')?.value
 
+        // Try to get headshot ID from hidden input first, then from data attribute
+        let headshotId = clickedItem.querySelector('input[name*="[id]"]')?.value
         if (!headshotId) {
-            console.error('Could not find headshot ID')
+            headshotId = event.target.dataset.headshotId
+        }
+
+        if (!headshotId || headshotId === 'new') {
+            alert('Cannot set a newly added headshot as primary. Please save first.')
             return
         }
 
+        // Determine if this is a person or group form based on the form ID
+        const form = document.getElementById('headshots-form') || document.getElementById('group-headshots-form')
+        const isGroup = form && form.id === 'group-headshots-form'
+
+        // Get group ID from the form action URL if it's a group
+        let endpoint
+        if (isGroup) {
+            const groupId = form.action.match(/\/groups\/(\d+)/)?.[1]
+            if (!groupId) {
+                console.error('Could not extract group ID from form action:', form.action)
+                return
+            }
+            endpoint = `/groups/${groupId}/headshots/${headshotId}/set_primary`
+        } else {
+            endpoint = `/profile/headshots/${headshotId}/set_primary`
+        }
+
         // Call the set_primary endpoint
-        fetch(`/profile/headshots/${headshotId}/set_primary`, {
+        fetch(endpoint, {
             method: 'PATCH',
             headers: {
                 'Accept': 'text/vnd.turbo-stream.html',
@@ -30,6 +52,7 @@ export default class extends Controller {
             })
             .catch(error => {
                 console.error('Error setting primary:', error)
+                alert('Failed to set primary headshot. Check console for details.')
             })
     }
 
@@ -74,16 +97,19 @@ export default class extends Controller {
         reader.readAsDataURL(file)
 
         // Build FormData manually to include the file
-        const form = document.getElementById('headshots-form')
+        const form = document.getElementById('headshots-form') || document.getElementById('group-headshots-form')
         if (!form) {
-            console.error('Could not find headshots-form')
+            console.error('Could not find headshots form')
             return
         }
 
         const formData = new FormData(form)
 
+        // Determine entity type from form
+        const entityType = form.id === 'group-headshots-form' ? 'group' : 'person'
+
         // Add the file to the FormData with the correct name
-        formData.append(`person[profile_headshots_attributes][${timestamp}][image]`, file)
+        formData.append(`${entityType}[profile_headshots_attributes][${timestamp}][image]`, file)
 
         // Submit using fetch instead of form.requestSubmit()
         fetch(form.action, {
@@ -125,7 +151,7 @@ export default class extends Controller {
             item.style.display = 'none'
 
             // Submit the form to persist the removal
-            const form = document.getElementById('headshots-form')
+            const form = document.getElementById('headshots-form') || document.getElementById('group-headshots-form')
             if (form) {
                 form.requestSubmit()
             }

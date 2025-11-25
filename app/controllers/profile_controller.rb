@@ -17,34 +17,38 @@ class ProfileController < ApplicationController
           streams = []
 
           if person_params[:profile_headshots_attributes].present?
-            streams << turbo_stream.replace("headshots", partial: "profile/headshots_form")
+            streams << turbo_stream.replace("headshots", partial: "shared/profiles/headshots", locals: { entity: @person })
           end
 
           if person_params[:profile_resumes_attributes].present?
-            streams << turbo_stream.replace("resumes", partial: "profile/resumes_form_new")
+            streams << turbo_stream.replace("resumes", partial: "shared/profiles/resumes", locals: { entity: @person })
           end
 
           if person_params[:profile_videos_attributes].present?
-            streams << turbo_stream.replace("videos", partial: "shared/profile_videos_form_new")
+            streams << turbo_stream.replace("videos", partial: "shared/profiles/videos", locals: { entity: @person })
           end
 
           if person_params[:training_credits_attributes].present?
-            streams << turbo_stream.replace("training", partial: "profile/training_credits_form_new")
+            streams << turbo_stream.replace("training", partial: "shared/profiles/training_credits", locals: { entity: @person })
           end
 
           if person_params[:profile_skills_attributes].present?
-            streams << turbo_stream.replace("skills", partial: "profile/skills_form_new")
+            streams << turbo_stream.replace("skills", partial: "shared/profiles/skills", locals: { entity: @person })
           end
 
           if person_params[:performance_sections_attributes].present?
-            streams << turbo_stream.replace("performance-history", partial: "profile/performance_credits_form_new")
+            streams << turbo_stream.replace("performance-history", partial: "shared/profiles/performance_credits", locals: { entity: @person })
           end
 
-          # Always show success message
+          if person_params[:socials_attributes].present?
+            streams << turbo_stream.replace("social-media", partial: "shared/profiles/social_media", locals: { entity: @person })
+          end
+
+          # Always show success message using standard notice
           streams << turbo_stream.update(
-            "flash-messages",
-            partial: "shared/flash",
-            locals: { type: "success", message: "Saved" }
+            "notice-container",
+            partial: "shared/notice",
+            locals: { notice: "Profile saved" }
           )
 
           render turbo_stream: streams
@@ -55,10 +59,10 @@ class ProfileController < ApplicationController
       respond_to do |format|
         format.turbo_stream do
           error_message = @person.errors.full_messages.join(", ")
-          render turbo_stream: turbo_stream.replace(
-            "flash-messages",
-            partial: "shared/flash",
-            locals: { type: "error", message: error_message }
+          render turbo_stream: turbo_stream.update(
+            "notice-container",
+            partial: "shared/notice",
+            locals: { notice: error_message }
           )
         end
         format.html { render :index, status: :unprocessable_entity }
@@ -81,17 +85,6 @@ class ProfileController < ApplicationController
     end
   end
 
-  def preview
-    # Show profile as others see it (public view)
-    @entity = @person
-    render "public_profiles/person", layout: "application", locals: { entity: @person }
-  end
-
-  def public
-    # Share page with copyable link and QR code
-    @public_url = public_profile_url(@person.public_key)
-  end
-
   def set_primary_headshot
     headshot = @person.profile_headshots.find(params[:id])
     Rails.logger.info "Setting headshot #{headshot.id} as primary. Current is_primary: #{headshot.is_primary}"
@@ -109,7 +102,8 @@ class ProfileController < ApplicationController
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
           "headshots",
-          partial: "profile/headshots_form"
+          partial: "shared/profiles/headshots",
+          locals: { entity: @person }
         )
       end
       format.json { head :ok }
@@ -193,16 +187,14 @@ class ProfileController < ApplicationController
     cooldown_days = settings["url_change_cooldown_days"]
 
     if @person.public_key_changed_at && @person.public_key_changed_at > cooldown_days.days.ago
-      flash[:error] = "You changed your public URL too recently."
-      redirect_to profile_path
+      redirect_to profile_path, notice: "You changed your public URL too recently."
       return
     end
 
     if @person.update(public_key: new_key)
       redirect_to profile_path, notice: "Your profile URL has been updated successfully."
     else
-      flash[:error] = @person.errors.full_messages.join(", ")
-      redirect_to profile_path
+      redirect_to profile_path, notice: @person.errors.full_messages.join(", ")
     end
   end
 
@@ -216,16 +208,14 @@ class ProfileController < ApplicationController
     # Check if 30 days have passed since last change
     if @person.last_email_changed_at && @person.last_email_changed_at > 30.days.ago
       days_remaining = (30 - (Time.current - @person.last_email_changed_at).to_i / 1.day).ceil
-      flash[:error] = "You can only change your email once every 30 days. #{days_remaining} days remaining."
-      render :change_email, status: :unprocessable_entity
+      redirect_to profile_path, notice: "You can only change your email once every 30 days. #{days_remaining} days remaining."
       return
     end
 
     if @person.update(email: new_email, last_email_changed_at: Time.current)
       redirect_to profile_path, notice: "Your email has been updated successfully."
     else
-      flash.now[:error] = @person.errors.full_messages.join(", ")
-      render :change_email, status: :unprocessable_entity
+      redirect_to profile_path, notice: @person.errors.full_messages.join(", ")
     end
   end
 
@@ -237,7 +227,7 @@ class ProfileController < ApplicationController
 
   def person_params
     permitted_params = params.require(:person).permit(
-      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info,
+      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio,
       profile_visibility_settings: {},
       socials_attributes: [ :id, :platform, :handle, :_destroy ],
       profile_headshots_attributes: [ :id, :category, :is_primary, :position, :image, :_destroy ],
@@ -276,5 +266,74 @@ class ProfileController < ApplicationController
     end
 
     permitted_params
+  end
+
+  def search_groups
+    query = params[:q]&.strip
+
+    if query.blank? || query.length < 2
+      render json: { groups: [] }
+      return
+    end
+
+    # Search for groups, excluding ones the person is already a member of
+    groups = Group.active
+                  .where("LOWER(name) LIKE ?", "%#{query.downcase}%")
+                  .where.not(id: @person.group_memberships.pluck(:group_id))
+                  .limit(10)
+
+    groups_data = groups.map do |group|
+      {
+        id: group.id,
+        name: group.name,
+        initials: group.initials,
+        member_count: group.members.count,
+        headshot_url: group.headshot.attached? ? url_for(group.headshot.variant(:thumb)) : nil
+      }
+    end
+
+    render json: { groups: groups_data }
+  end
+
+  def join_group
+    group = Group.find(params[:group_id])
+
+    # Check if already a member
+    if @person.group_memberships.exists?(group: group)
+      render json: { error: "You're already a member of this group" }, status: :unprocessable_entity
+      return
+    end
+
+    # Create membership with default view permission
+    membership = @person.group_memberships.create!(
+      group: group,
+      permission_level: :view
+    )
+
+    render json: {
+      success: true,
+      membership_id: membership.id,
+      message: "Successfully joined #{group.name}"
+    }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def leave_group
+    membership = @person.group_memberships.find(params[:id])
+
+    # Don't allow leaving if you're the only owner
+    if membership.owner?
+      owner_count = membership.group.group_memberships.where(permission_level: :owner).count
+      if owner_count <= 1
+        render json: { error: "You're the only owner. Transfer ownership before leaving." }, status: :unprocessable_entity
+        return
+      end
+    end
+
+    membership.destroy!
+    render json: { success: true, message: "Successfully left group" }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Membership not found" }, status: :not_found
   end
 end

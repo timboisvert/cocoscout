@@ -1,121 +1,288 @@
 <% content_for :title, @entity.name %>
 
-<div class="w-full max-w-6xl mx-auto px-4 py-8">
+<div class="w-full bg-gradient-to-b from-gray-50 to-white min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
-  <%# Hero Section %>
-  <div class="bg-white border border-gray-200 rounded-lg p-8 mb-6">
-    <div class="flex items-start gap-6">
-      <% if @entity.headshot.attached? %>
-        <%= image_tag @entity.headshot.variant(:thumb), class: "w-32 h-32 rounded-lg object-cover" %>
-      <% else %>
-        <div class="w-32 h-32 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-3xl">
-          <%= @entity.initials %>
+    <%# Hero Section with Primary Headshot %>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+      <div class="relative">
+        <%# Background Pattern %>
+        <div class="absolute inset-0 bg-gradient-to-br from-pink-50 via-white to-purple-50 opacity-50"></div>
+
+        <div class="relative p-4 sm:p-5">
+          <div class="flex flex-col sm:flex-row items-start gap-3">
+            <%# Primary Headshot %>
+            <div class="flex-shrink-0">
+              <% if @entity.headshot.attached? %>
+                <%= image_tag @entity.headshot.variant(:thumb), class: "w-24 h-36 sm:w-32 sm:h-44 rounded object-cover shadow-sm ring-1 ring-white" %>
+              <% else %>
+                <div class="w-24 h-36 sm:w-32 sm:h-44 rounded bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-sm ring-1 ring-white">
+                  <%= @entity.initials %>
+                </div>
+              <% end %>
+            </div>
+
+            <%# Name and Info %>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                <div>
+                  <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 inter-bold mb-0.5"><%= @entity.name %></h1>
+                  <p class="text-sm text-gray-600"><%= pluralize(@entity.members.count, 'member') %></p>
+                </div>
+                <% if Current.user %>
+                  <% membership = @entity.group_memberships.find_by(person: Current.user.person) %>
+                  <% if membership && (membership.owner? || membership.write?) %>
+                    <%= link_to edit_group_path(@entity), class: "inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg shadow-sm transition-colors" do %>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                      </svg>
+                      Edit Group
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </div>
+
+              <% if @entity.bio.present? %>
+                <div class="text-sm text-gray-600 whitespace-pre-wrap"><%= h(@entity.bio) %></div>
+              <% end %>
+
+              <%# Contact Info %>
+              <% if (@entity.email.present? && !@entity.hide_contact_info) || (@entity.social_media_visible? && @entity.socials.any?) %>
+                <div class="flex flex-wrap items-center gap-1.5 mt-3">
+                  <% if @entity.email.present? && !@entity.hide_contact_info %>
+                    <%= mail_to @entity.email, class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-sm font-medium text-gray-700 hover:text-pink-700" do %>
+                      <svg width="18" height="18" class="fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
+                      </svg>
+                      Email
+                    <% end %>
+                  <% end %>
+
+                  <% if @entity.social_media_visible? %>
+                    <% @entity.socials.each do |social| %>
+                      <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-sm font-medium text-gray-700 hover:text-pink-700" do %>
+                        <%= social.icon(18) %>
+                        <%= social.handle %>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Headshots Gallery %>
+    <% if @entity.headshots_visible? && @entity.profile_headshots.any? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Photos</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+          <% @entity.profile_headshots.each do |headshot| %>
+            <div class="group relative aspect-[3/4] rounded overflow-hidden border border-gray-200 hover:border-pink-300 transition-all cursor-pointer" onclick="openHeadshotModal('<%= url_for(headshot.image.variant(resize_to_limit: [1200, 1800])) %>')">
+              <%= image_tag headshot.image.variant(resize_to_limit: [200, 300]), class: "w-full h-full object-cover transition-transform group-hover:scale-105" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Headshot Modal %>
+      <div id="headshot-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center p-4" onclick="closeHeadshotModal()">
+        <button onclick="closeHeadshotModal()" class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <img id="modal-image" src="" class="max-w-full max-h-full object-contain" onclick="event.stopPropagation()" />
+      </div>
+
+      <script>
+        function openHeadshotModal(imageUrl) {
+          document.getElementById('modal-image').src = imageUrl;
+          document.getElementById('headshot-modal').classList.remove('hidden');
+        }
+
+        function closeHeadshotModal() {
+          document.getElementById('headshot-modal').classList.add('hidden');
+        }
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            closeHeadshotModal();
+          }
+        });
+      </script>
+    <% end %>
+
+    <%# Videos & Reels Grid %>
+    <% if @entity.videos_visible? && @entity.profile_videos.any? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Videos & Reels</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <% @entity.profile_videos.each do |video| %>
+            <a href="<%= video.url %>" target="_blank" rel="noopener" class="group relative bg-gray-50 rounded-lg overflow-hidden border border-gray-200 group-hover:border-pink-300 group-hover:shadow-md transition-all flex flex-col">
+              <% if video.embed_html.present? %>
+                <div class="aspect-video w-full">
+                  <%= video.embed_html.html_safe %>
+                </div>
+              <% end %>
+              <div class="p-3 flex-1 flex flex-col">
+                <h3 class="font-medium text-gray-900 text-xs mb-2 line-clamp-2 group-hover:text-pink-600 transition-colors"><%= video.title %></h3>
+                <div class="mt-auto flex items-center gap-1 text-xs text-pink-600 group-hover:text-pink-700 font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                  <span>View on <%= video.platform || "Platform" %></span>
+                </div>
+              </div>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Performance History with Sections %>
+    <% if @entity.performance_credits_visible? %>
+      <% sections_with_credits = @entity.performance_sections.includes(:performance_credits).where.not(performance_credits: { id: nil }).order(position: :asc) %>
+      <% if sections_with_credits.any? %>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+          <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Performance History</h2>
+
+          <% sections_with_credits.each do |section| %>
+            <div class="mb-4 last:mb-0">
+              <h3 class="text-sm font-bold text-gray-800 mb-1.5 pb-1 border-b border-gray-200"><%= section.name %></h3>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <tbody class="divide-y divide-gray-100">
+                    <% section.performance_credits.order(year_start: :desc, created_at: :desc).each do |credit| %>
+                      <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="py-1.5 pr-4 text-sm w-1/3 text-gray-900"><%= credit.title %></td>
+                        <td class="py-1.5 px-4 text-sm w-1/3 text-gray-700"><%= credit.role %></td>
+                        <td class="py-1.5 pl-4 text-sm w-1/3 text-right text-gray-600 whitespace-nowrap"><%= credit.display_year_range_with_present %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          <% end %>
         </div>
       <% end %>
+    <% end %>
 
-      <div class="flex-1">
-        <div class="flex items-center justify-between">
-          <h1 class="text-4xl font-bold text-gray-900"><%= @entity.name %></h1>
-          <% if Current.user %>
-            <% membership = @entity.group_memberships.find_by(person: Current.user.person) %>
-            <% if membership && (membership.owner? || membership.write?) %>
-              <%= link_to "Edit Group", my_edit_group_path(@entity), class: "px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md" %>
+    <%# Skills & Talents - Organized by Category %>
+    <% if @entity.profile_skills_visible? && @entity.profile_skills.any? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Skills & Talents</h2>
+
+        <% skills_by_category = @entity.profile_skills.group_by(&:category) %>
+        <div class="space-y-3">
+          <% skills_by_category.each do |category, skills| %>
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm">
+              <div class="font-bold text-gray-700 sm:w-40 flex-shrink-0">
+                <%= ProfileSkillsService.category_display_name(category) %>:
+              </div>
+              <div class="text-gray-600">
+                <%= skills.map(&:skill_name).join(", ") %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Resumes Section - Compact %>
+    <% if @entity.resumes_visible? && @entity.profile_resumes.any? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Resumes / EPK</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+          <% @entity.profile_resumes.each do |resume| %>
+            <% if resume.file.attached? %>
+              <% content_type = resume.file.content_type.to_s %>
+              <% is_pdf = content_type.include?("pdf") %>
+              <% is_image = content_type.start_with?("image/") %>
+              <a href="<%= rails_blob_path(resume.file, disposition: "attachment") %>" class="group flex flex-col">
+                <!-- Preview/Thumbnail Area -->
+                <div class="bg-white aspect-[3/4] flex items-center justify-center overflow-hidden rounded border-2 border-gray-300 group-hover:border-pink-400 group-hover:shadow-md transition-all mb-1.5 flex-shrink-0">
+                  <% if is_image %>
+                    <%= image_tag resume.file.variant(resize_to_limit: [100, 150]), class: "w-full h-full object-cover" %>
+                  <% elsif is_pdf || content_type.include?("pdf") %>
+                    <% if resume.file.representable? %>
+                      <%= image_tag resume.file.representation(resize_to_limit: [300, 450]), class: "w-full h-full object-cover" %>
+                    <% else %>
+                      <div class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-red-50 to-red-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-red-600 mb-1">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <span class="text-xs font-bold text-red-700">PDF</span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-600 mb-1">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span class="text-xs font-medium text-gray-600">File</span>
+                    </div>
+                  <% end %>
+                </div>
+                <!-- Info Area -->
+                <h3 class="font-medium text-gray-900 text-xs line-clamp-2 group-hover:text-pink-600 transition-colors leading-tight mb-0.5"><%= resume.name.presence || "Resume" %></h3>
+                <div class="flex items-center gap-1 text-xs text-pink-600 group-hover:text-pink-700 font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  <span>Download</span>
+                </div>
+              </a>
             <% end %>
           <% end %>
         </div>
-
-        <% if @entity.bio.present? %>
-          <p class="text-gray-700 mt-4 whitespace-pre-line"><%= @entity.bio %></p>
-        <% end %>
       </div>
-    </div>
-  </div>
+    <% end %>
 
-  <%# Contact Section %>
-  <% if @entity.email.present? || @entity.phone.present? || @entity.website.present? || @entity.socials.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">Contact</h2>
-
-      <div class="space-y-3">
-        <% if @entity.email.present? %>
-          <div class="flex items-center gap-2">
-            <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-              <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
+    <%# Legacy Resume (if present and no new resumes) %>
+    <% if @entity.resumes_visible? && @entity.resume.attached? && @entity.profile_resumes.empty? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Resume / EPK</h2>
+          <%= link_to rails_blob_path(@entity.resume, disposition: "attachment"), class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg shadow-sm transition-colors" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
-            <%= mail_to @entity.email, @entity.email, class: "text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-
-        <% if @entity.phone.present? %>
-          <div class="flex items-center gap-2">
-            <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-              <path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/>
-            </svg>
-            <%= link_to @entity.phone, "tel:#{@entity.phone}", class: "text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-
-        <% if @entity.website.present? %>
-          <div class="flex items-center gap-2">
-            <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-              <path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z"/>
-            </svg>
-            <%= link_to @entity.website, @entity.website, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-
-        <% @entity.socials.each do |social| %>
-          <div class="flex items-center gap-2">
-            <%= social.icon(20) %>
-            <%= link_to social.handle, social.url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-
-  <%# Resume Section %>
-  <% if @entity.resume.attached? %>
-    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl font-bold text-gray-900">Resume / EPK</h2>
-        <%= link_to "Download", rails_blob_path(@entity.resume, disposition: "attachment"), class: "px-4 py-2 text-sm font-medium text-pink-600 border border-pink-600 rounded-md hover:bg-pink-50" %>
-      </div>
-
-      <% resume_preview = @entity.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
-      <% if resume_preview %>
-        <div class="w-full">
-          <%= image_tag resume_preview, class: "w-full object-contain border border-gray-200 rounded" %>
+            Download
+          <% end %>
         </div>
-      <% end %>
-    </div>
-  <% end %>
+      </div>
+    <% end %>
 
-  <%# Members Section %>
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
-    <h2 class="text-2xl font-bold text-gray-900 mb-4">
-      Members
-      <span class="text-lg font-normal text-gray-500">(<%= @entity.group_memberships.count %>)</span>
-    </h2>
+    <%# Members Section %>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5">
+      <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">
+        Members
+        <span class="text-sm font-normal text-gray-500">(<%= @entity.group_memberships.count %>)</span>
+      </h2>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      <% @entity.group_memberships.includes(:person).each do |membership| %>
-        <%= link_to public_profile_path(membership.person.public_key), class: "group" do %>
-          <div class="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-pink-400 hover:shadow-md transition-all">
-            <% if membership.person.headshot.attached? %>
-              <%= image_tag membership.person.headshot.variant(:thumb), class: "w-20 h-20 rounded-lg object-cover mb-2" %>
-            <% else %>
-              <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold mb-2">
-                <%= membership.person.initials %>
-              </div>
-            <% end %>
-            <span class="text-sm font-medium text-gray-900 text-center group-hover:text-pink-600">
-              <%= membership.person.name %>
-            </span>
-          </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <% @entity.group_memberships.includes(:person).each do |membership| %>
+          <%= link_to public_profile_path(membership.person.public_key), class: "group" do %>
+            <div class="flex flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl hover:border-pink-300 hover:shadow-lg transition-all">
+              <% if membership.person.headshot.attached? %>
+                <%= image_tag membership.person.headshot.variant(:thumb), class: "w-20 h-20 rounded-xl object-cover mb-3 ring-2 ring-gray-100 group-hover:ring-pink-200 transition-all" %>
+              <% else %>
+                <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl mb-3 ring-2 ring-gray-100 group-hover:ring-pink-200 transition-all">
+                  <%= membership.person.initials %>
+                </div>
+              <% end %>
+              <span class="text-sm font-semibold text-gray-900 text-center group-hover:text-pink-600 transition-colors line-clamp-2">
+                <%= membership.person.name %>
+              </span>
+            </div>
+          <% end %>
         <% end %>
-      <% end %>
+      </div>
     </div>
-  </div>
 
+  </div>
 </div>

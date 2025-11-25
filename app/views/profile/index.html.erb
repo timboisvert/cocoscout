@@ -2,10 +2,9 @@
 
 <!-- Main Content -->
 <div class="w-full" data-controller="profile-modals">
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
-
-  <!-- Flash Messages for Auto-Save -->
-  <div id="flash-messages"></div>
+  <div id="notice-container">
+    <%= render partial: "shared/notice", locals: { notice: notice } %>
+  </div>
 
   <!-- Public Profile Card -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -23,7 +22,7 @@
                 <%= public_profile_url(@person.public_key) if @person.public_key.present? %>
               </div>
             </div>
-            <button data-action="click->profile-modals#copyUrl" data-url="<%= public_profile_url(@person.public_key) if @person.public_key.present? %>" class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors" title="Copy URL">
+            <button data-action="click->profile-modals#copyUrl" data-url="<%= public_profile_url(@person.public_key) if @person.public_key.present? %>" class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors cursor-pointer" title="Copy URL">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
               </svg>
@@ -37,14 +36,14 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-3">
-          <%= link_to profile_preview_path, class: "flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 rounded-lg text-sm font-medium transition-all" do %>
+          <%= link_to public_profile_url(@person.public_key), class: "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors" do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>Preview Profile</span>
+            <span>View Public Profile</span>
           <% end %>
-          <a href="javascript:void(0)" data-action="click->profile-modals#openShare" class="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors">
+          <a href="javascript:void(0)" data-action="click->profile-modals#openShare" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 rounded-lg text-sm font-medium transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
             </svg>
@@ -102,13 +101,13 @@
           <h4 class="text-sm font-semibold text-gray-900 mb-3">Privacy Settings</h4>
           <div class="flex items-center justify-between">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-700">Hide Contact Information</p>
+              <p class="text-sm font-medium text-gray-700">Show Contact Information</p>
               <p class="text-xs text-gray-500 mt-1">
-                When enabled, your email and phone will not be visible on your public profile
+                When enabled, your email and phone will be visible on your public profile
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-4">
-              <%= person_form.check_box :hide_contact_info, class: "sr-only peer", data: { action: "change->profile-auto-save#save" } %>
+              <%= person_form.check_box :show_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } } %>
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
@@ -117,45 +116,11 @@
     </div>
     <% end %>
 
-    <!-- Social Media & Links Section -->
-    <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "social-media-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
-    <div id="social-media" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
-      <%= render "shared/section_header",
-        title: "Social Media & Links",
-        collapsible: true,
-        visibility_toggle: true,
-        visibility_field: "social_media_visible",
-        visibility_checked: @person.social_media_visible? %>
+    <!-- About/Bio Section -->
+    <%= render "shared/profiles/bio", entity: @person %>
 
-      <div class="p-6" data-profile-section-target="content">
-        <div data-controller="socials">
-          <div id="socials-fields" data-socials-target="list" class="space-y-2">
-            <%= person_form.fields_for :socials do |social_form| %>
-              <div class="flex items-center gap-2" data-socials-target="row"<% if social_form.object.persisted? %> data-socials-persisted="true"<% end %>>
-                <%= social_form.hidden_field :id %>
-                <%= social_form.hidden_field :_destroy, value: "0", data: { socials_target: "destroy" } %>
-                <%= social_form.select :platform, Social.platforms.keys.map { |k| [k.titleize, k] }, {}, class: "rounded-lg border border-gray-300 px-3 py-2", data: { action: "change->profile-auto-save#save" } %>
-                <%= social_form.text_field :handle, placeholder: "Username/Handle", class: "flex-1 rounded-lg border border-gray-300 px-3 py-2", data: { action: "blur->profile-auto-save#save" } %>
-                <%= link_to "Remove", '#', class: "text-pink-500 underline text-sm", data: { action: "socials#remove" } %>
-              </div>
-            <% end %>
-          </div>
-          <a href="javascript:void(0)" class="inline-block mt-2 text-pink-500 underline text-sm" data-action="socials#add">Add Social</a>
-          <template id="socials-template">
-            <div class="flex items-center gap-2 socials-fields-row" data-socials-target="row">
-              <select name="" class="rounded-lg border border-gray-300 px-3 py-2">
-                <% Social.platforms.keys.each do |platform| %>
-                  <option value="<%= platform %>"><%= platform.titleize %></option>
-                <% end %>
-              </select>
-              <input type="text" name="" class="flex-1 rounded-lg border border-gray-300 px-3 py-2" placeholder="Username/Handle" />
-              <a href="#" class="text-pink-500 underline text-sm" data-action="click->socials#remove">Remove</a>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-    <% end %>
+    <!-- Social Media & Links Section -->
+    <%= render "shared/profiles/social_media", entity: @person %>
 
     <!-- Legacy Headshot & Resume (for backward compatibility) -->
     <div id="legacy-files" class="hidden">
@@ -165,16 +130,19 @@
     </div>
 
     <!-- Headshots Section -->
-    <%= render "profile/headshots_form" %>
+    <%= render "shared/profiles/headshots", entity: @person %>
 
     <!-- New Profile Sections -->
-      <%= render "shared/profile_videos_form_new" %>
-        <%= render "profile/performance_credits_form_new" %>
-        <%= render "profile/training_credits_form_new" %>
-        <%= render "profile/skills_form_new" %>
-    
+      <%= render "shared/profiles/videos", entity: @person %>
+        <%= render "shared/profiles/performance_credits", entity: @person %>
+        <%= render "shared/profiles/training_credits", entity: @person %>
+        <%= render "shared/profiles/skills", entity: @person %>
+
     <!-- Resumes Section -->
-    <%= render "profile/resumes_form_new" %>
+    <%= render "shared/profiles/resumes", entity: @person %>
+
+    <!-- Groups & Ensembles Section -->
+    <%= render "shared/profiles/groups", entity: @person %>
 
 <!-- Image Modal -->
 <div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">

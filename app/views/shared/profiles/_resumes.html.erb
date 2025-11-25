@@ -1,0 +1,154 @@
+<!-- Resumes Section -->
+<%
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+%>
+<div id="resumes" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-resumes profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "resumes-form", data: { turbo: true }) do |entity_form| %>
+  <%= render "shared/section_header",
+    title: "Resumes",
+    collapsible: true,
+    visibility_toggle: entity.is_a?(Person),
+    visibility_field: "resumes_visible",
+    visibility_checked: entity.is_a?(Person) ? entity.resumes_visible? : true %>
+
+  <div class="p-6 space-y-4" data-profile-section-target="content">
+    <p class="text-sm text-gray-600 mb-4">
+      Upload your performance resumes. Click a resume to preview it.
+    </p>
+
+    <div class="space-y-4">
+      <!-- Existing resumes list -->
+      <div data-profile-resumes-target="list" class="space-y-3">
+        <% if entity.profile_resumes.any? %>
+          <% entity.profile_resumes.each do |resume| %>
+            <div class="resume-item flex items-start gap-4 border border-gray-200 rounded-lg p-4" data-resume-id="<%= resume.id %>">
+              <% if resume.file.attached? %>
+                <div class="flex-shrink-0 w-24 aspect-[8.5/11] rounded border border-gray-200 bg-gray-50 overflow-hidden cursor-pointer hover:opacity-75 transition-opacity"
+                     data-controller="modal"
+                     data-action="click->modal#open"
+                     data-modal-image-param="<%= resume.file.content_type == 'application/pdf' ? url_for(resume.file.representation(resize_to_limit: [1224, 1584])) : url_for(resume.file) %>">
+                  <% if resume.file.content_type == "application/pdf" %>
+                    <% if resume.file.representable? %>
+                      <%= image_tag resume.file.representation(resize_to_limit: [200, 259]), class: "w-full h-full object-cover" %>
+                    <% else %>
+                      <div class="w-full h-full flex flex-col items-center justify-center p-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-red-500">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <p class="text-xs text-center text-gray-600 mt-1">PDF</p>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <%= image_tag resume.file.variant(resize_to_limit: [200, 259]), class: "w-full h-full object-cover" %>
+                  <% end %>
+                </div>
+              <% end %>
+              <div class="flex-1">
+                <h4 class="font-medium text-gray-900 mb-1"><%= resume.name %></h4>
+                <% if resume.file.attached? %>
+                  <p class="text-sm text-gray-600"><%= resume.file.filename %></p>
+                <% end %>
+                <div class="flex items-center gap-3 mt-2">
+                  <button type="button"
+                          class="text-xs text-pink-500 hover:text-pink-600 cursor-pointer"
+                          data-action="click->profile-resumes#edit"
+                          data-resume-id="<%= resume.id %>"
+                          data-resume-name="<%= resume.name %>">
+                    Edit
+                  </button>
+                  <button type="button"
+                          class="text-xs text-pink-500 hover:text-pink-600 cursor-pointer"
+                          data-action="click->profile-resumes#remove"
+                          data-resume-id="<%= resume.id %>">
+                    Remove
+                  </button>
+                </div>
+              </div>
+
+              <!-- Hidden fields for form submission -->
+              <%= hidden_field_tag "person[profile_resumes_attributes][#{resume.position}][id]", resume.id %>
+              <%= hidden_field_tag "person[profile_resumes_attributes][#{resume.position}][name]", resume.name %>
+              <%= hidden_field_tag "person[profile_resumes_attributes][#{resume.position}][position]", resume.position %>
+              <%= hidden_field_tag "person[profile_resumes_attributes][#{resume.position}][_destroy]", "0" %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-gray-500 italic">No resumes uploaded yet</p>
+        <% end %>
+      </div>
+
+      <!-- Add Resume Button -->
+      <button type="button"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer"
+              data-action="click->profile-resumes#openModal">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Add Resume
+      </button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Resume Modal (inside controller scope) -->
+  <div data-profile-resumes-target="modal"
+       data-action="click->profile-resumes#closeModal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->profile-resumes#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Add Resume</h3>
+      </div>
+
+      <div data-profile-resumes-target="form" data-action="keydown->profile-resumes#handleKeydown" class="p-6">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Resume Name *</label>
+            <input type="text"
+                   data-profile-resumes-target="nameField"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                   placeholder="e.g., Performance Resume, Film & TV Resume">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">File *</label>
+            <div class="relative">
+              <input type="file"
+                     data-profile-resumes-target="fileField"
+                     data-action="change->profile-resumes#selectFile"
+                     accept=".pdf,.doc,.docx"
+                     class="hidden"
+                     id="resume-file-input">
+              <button type="button"
+                      onclick="document.getElementById('resume-file-input').click()"
+                      class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-pink-400 hover:bg-pink-50 transition-all cursor-pointer text-center">
+                <div class="flex items-center justify-center gap-2 text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <span class="text-sm font-medium">Choose File</span>
+                </div>
+              </button>
+              <p class="file-name text-sm text-gray-600 mt-2 text-center"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button type="button"
+                  data-action="click->profile-resumes#closeModal"
+                  class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+            Cancel
+          </button>
+          <button type="button"
+                  data-action="click->profile-resumes#save"
+                  class="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 cursor-pointer transition-colors">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+</div>

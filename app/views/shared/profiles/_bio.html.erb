@@ -1,0 +1,38 @@
+<%
+  # Bio section
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+
+  # Customize label and placeholder based on entity type
+  if entity.is_a?(Person)
+    label_text = "Who are you as a performer?"
+    placeholder_text = "Share your background, training, specialties, what makes you unique as a performer..."
+    help_text = "This will appear at the top of your public profile. Be concise but memorable!"
+  else
+    label_text = "About Your Group"
+    placeholder_text = "Tell casting directors about your group, what makes you unique, your performance style..."
+    help_text = "This will appear at the top of your group's public profile. Be concise but memorable!"
+  end
+%>
+
+<div id="bio" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "bio-form", data: { controller: "profile-auto-save character-counter", "character-counter-max-value": 1000, turbo: true }) do |entity_form| %>
+  <%= render "shared/section_header",
+    title: "Bio",
+    collapsible: true,
+    visibility_toggle: entity.is_a?(Person),
+    visibility_field: "bio_visible",
+    visibility_checked: entity.is_a?(Person) ? entity.bio_visible? : true %>
+
+  <div class="p-6" data-profile-section-target="content">
+    <div class="flex items-center justify-between mb-2">
+      <%= entity_form.label :bio, label_text, class: "block text-sm font-medium text-gray-700" %>
+      <span data-character-counter-target="counter" class="text-xs text-gray-500"></span>
+    </div>
+    <%= entity_form.text_area :bio, rows: 6, placeholder: placeholder_text, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save input->character-counter#updateCounter", "character-counter-target": "input" } %>
+    <p class="mt-2 text-xs text-gray-500"><%= help_text %></p>
+  </div>
+<% end %>
+</div>

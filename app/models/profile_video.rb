@@ -69,7 +69,7 @@ class ProfileVideo < ApplicationRecord
 
   def extract_youtube_id
     return nil if url.blank?
-    
+
     # Handle various YouTube URL formats
     if url.include?("youtube.com/watch")
       uri = URI.parse(url)
@@ -85,7 +85,7 @@ class ProfileVideo < ApplicationRecord
 
   def extract_vimeo_id
     return nil if url.blank?
-    
+
     # Extract Vimeo video ID from various formats
     match = url.match(%r{vimeo\.com/(?:video/)?(\d+)})
     match&.[](1)
@@ -95,7 +95,7 @@ class ProfileVideo < ApplicationRecord
 
   def extract_google_drive_id
     return nil if url.blank?
-    
+
     # Extract Google Drive file ID from various formats
     if url.include?("/file/d/")
       url.split("/file/d/").last.split("/").first

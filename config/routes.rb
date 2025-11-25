@@ -67,13 +67,6 @@ Rails.application.routes.draw do
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
-    get   "/groups",                        to: "groups#index",             as: "groups"
-    get   "/groups/new",                    to: "groups#new",               as: "new_group"
-    post  "/groups",                        to: "groups#create",            as: "create_group"
-    get   "/groups/:id/edit",               to: "groups#edit",              as: "edit_group"
-    patch "/groups/:id",                    to: "groups#update",            as: "update_group"
-    patch "/groups/:id/archive",            to: "groups#archive",           as: "archive_group"
-    patch "/groups/:id/unarchive",          to: "groups#unarchive",         as: "unarchive_group"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -294,13 +287,27 @@ Rails.application.routes.draw do
   patch  "/profile",         to: "profile#update",  as: "update_profile"
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
-  get    "/profile/preview", to: "profile#preview", as: "profile_preview"
   get    "/profile/public",  to: "profile#public",  as: "profile_public"
   get    "/profile/change-url", to: "profile#change_url", as: "change_url_profile"
   post   "/profile/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile"
-  patch  "/profile/change-url", to: "profile#update_url", as: "update_url_profile"
+  patch  "/profile/update-url", to: "profile#update_url", as: "update_url_profile"
+  get    "/profile/search_groups", to: "profile#search_groups", as: "search_groups_profile"
+  post   "/profile/join_group", to: "profile#join_group", as: "join_group_profile"
+  delete "/profile/leave_group/:id", to: "profile#leave_group", as: "leave_group_profile"
   get    "/profile/change-email", to: "profile#change_email", as: "change_email_profile"
   patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
+
+  # Groups routes (top-level, use profile layout)
+  get    "/groups",                   to: "groups#index",      as: "groups"
+  get    "/groups/new",               to: "groups#new",        as: "new_group"
+  post   "/groups",                   to: "groups#create",     as: "create_group"
+  patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"
+  post   "/groups/:id/check-url-availability", to: "groups#check_url_availability", as: "check_url_availability_group"
+  patch  "/groups/:id/update-url", to: "groups#update_url", as: "update_url_group"
+  get    "/groups/:id",               to: "groups#edit",       as: "edit_group"
+  patch  "/groups/:id",               to: "groups#update",     as: "update_group"
+  patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
+  patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
