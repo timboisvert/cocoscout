@@ -298,7 +298,7 @@ Rails.application.routes.draw do
   patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
 
   # Groups routes (top-level, use profile layout)
-  get    "/groups",                   to: "groups#index",      as: "groups"
+  # get    "/groups",                   to: "groups#index",      as: "groups"
   get    "/groups/new",               to: "groups#new",        as: "new_group"
   post   "/groups",                   to: "groups#create",     as: "create_group"
   patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"
@@ -308,13 +308,17 @@ Rails.application.routes.draw do
   get    "/groups/:id",               to: "groups#edit",       as: "edit_group"
   get    "/groups/:id/settings",      to: "groups#settings",   as: "settings_group"
   patch  "/groups/:id",               to: "groups#update",     as: "update_group"
+  patch  "/groups/:id/update_member_role", to: "groups#update_member_role", as: "update_member_role_group"
+  delete "/groups/:id/remove_member", to: "groups#remove_member", as: "remove_member_group"
+  patch  "/groups/:id/update_member_notifications", to: "groups#update_member_notifications", as: "update_member_notifications_group"
   patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
   patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
 
   # Group invitations
-  post   "/groups/:group_id/invitations", to: "group_invitations#create", as: "group_invitations"
-  get    "/group_invitations/:token/accept", to: "group_invitations#accept", as: "accept_group_invitation"
-  post   "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
+  post "/groups/:group_id/invitations", to: "group_invitations#create", as: "group_invitations"
+  delete "/groups/:group_id/invitations/:id", to: "group_invitations#revoke", as: "revoke_group_invitation"
+  get "/group_invitations/:token/accept", to: "group_invitations#accept", as: "accept_group_invitation"
+  post "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }

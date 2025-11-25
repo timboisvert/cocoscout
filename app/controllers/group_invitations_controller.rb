@@ -1,7 +1,7 @@
 class GroupInvitationsController < ApplicationController
   allow_unauthenticated_access only: [ :accept, :do_accept ]
-  before_action :set_group, only: [ :create ]
-  before_action :check_group_access, only: [ :create ]
+  before_action :set_group, only: [ :create, :revoke ]
+  before_action :check_group_access, only: [ :create, :revoke ]
 
   def create
     # Check if person already exists with this email
@@ -117,22 +117,55 @@ class GroupInvitationsController < ApplicationController
       return
     end
 
-    user = Current.user
-    person = user&.person
+    # Try to find existing user
+    user = User.find_by(email_address: @invitation.email.downcase)
+    person = Person.find_by(email: @invitation.email.downcase)
 
-    # If no existing person, create one
-    unless person
-      # Check if person exists with this email
-      person = Person.find_by(email: @invitation.email)
+    # If not signed in, handle password
+    unless Current.user
+      if user && params[:password].present?
+        # Existing user setting/updating password
+        user.password = params[:password]
+        unless user.valid?
+          @user = user
+          render :accept, status: :unprocessable_entity and return
+        end
+        user.save!
+      elsif params[:password].present?
+        # New user - create account
+        user = User.new(email_address: @invitation.email.downcase, password: params[:password])
+        unless user.save
+          @user = user
+          render :accept, status: :unprocessable_entity and return
+        end
+      else
+        # No password provided
+        @user = User.new(email_address: @invitation.email.downcase)
+        @user.errors.add(:password, "can't be blank")
+        render :accept, status: :unprocessable_entity and return
+      end
 
+      # Ensure person exists and is linked to user
       unless person
-        # Create new person
         person = Person.create!(
-          email: @invitation.email,
+          email: @invitation.email.downcase,
           name: @invitation.name,
           user: user
         )
+      else
+        # Link existing person to user if not already linked
+        unless person.user
+          person.user = user
+          person.save!
+        end
       end
+
+      # Sign the user in
+      start_new_session_for user
+    else
+      # Already signed in
+      user = Current.user
+      person = user.person
     end
 
     # Create group membership
@@ -145,6 +178,24 @@ class GroupInvitationsController < ApplicationController
     @invitation.update!(accepted_at: Time.current)
 
     redirect_to edit_group_path(@invitation.group), notice: "You've joined #{@invitation.group.name}"
+  end
+
+  def revoke
+    invitation = @group.group_invitations.pending.find(params[:id])
+    invitation.destroy
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update(
+            "notice-container",
+            partial: "shared/notice",
+            locals: { notice: "Invitation to #{invitation.email} has been revoked" }
+          ),
+          turbo_stream.replace("members", partial: "groups/members_section", locals: { group: @group, membership: @membership })
+        ]
+      end
+    end
   end
 
   private

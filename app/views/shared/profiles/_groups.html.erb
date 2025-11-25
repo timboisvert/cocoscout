@@ -15,8 +15,9 @@
 
     <!-- Current Groups Grid -->
     <div id="groups-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" data-profile-groups-target="list">
-      <% if @person.group_memberships.any? %>
-        <% @person.group_memberships.includes(:group).each do |membership| %>
+      <% active_memberships = @person.group_memberships.includes(:group).select { |m| m.group.archived_at.nil? } %>
+      <% if active_memberships.any? %>
+        <% active_memberships.each do |membership| %>
           <%= link_to edit_group_path(membership.group),
                       class: "group flex flex-col items-center p-4 border-2 border-gray-200 hover:border-pink-300 rounded-lg hover:shadow-md transition-all",
                       data: { membership_id: membership.id, group_id: membership.group.id } do %>

@@ -1,5 +1,6 @@
 class PublicProfilesController < ApplicationController
   skip_before_action :require_authentication
+  before_action :resume_session_if_present
 
   def show
     key = params[:public_key]
@@ -51,5 +52,11 @@ class PublicProfilesController < ApplicationController
     else
       render "public_profiles/group"
     end
+  end
+
+  private
+
+  def resume_session_if_present
+    resume_session
   end
 end

@@ -3,81 +3,185 @@
 <div class="w-full bg-gradient-to-b from-gray-50 to-white min-h-screen">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
-    <%# Hero Section with Primary Headshot %>
-    <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
-      <div class="relative">
-        <%# Background Pattern %>
-        <div class="absolute inset-0 bg-gradient-to-br from-pink-50 via-white to-purple-50 opacity-50"></div>
+    <%# Check if profile has rich content (not just basic info) %>
+    <% primary_hs = @entity.primary_headshot %>
+    <% has_headshot = primary_hs&.image&.attached? || @entity.headshot.attached? %>
+    <% is_person = @entity.is_a?(Person) %>
+    <%
+      has_performance_credits = begin
+        @entity.performance_sections.joins(:performance_credits).any?
+      rescue
+        false
+      end
 
-        <div class="relative p-4 sm:p-5">
-          <div class="flex flex-col sm:flex-row items-start gap-3">
-            <%# Primary Headshot %>
-            <div class="flex-shrink-0">
-              <% if @entity.headshot.attached? %>
-                <%= image_tag @entity.headshot.variant(:thumb), class: "w-24 h-36 sm:w-32 sm:h-44 rounded object-cover shadow-sm ring-1 ring-white" %>
-              <% else %>
-                <div class="w-24 h-36 sm:w-32 sm:h-44 rounded bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-sm ring-1 ring-white">
-                  <%= @entity.initials %>
-                </div>
+      profile_has_content = has_headshot ||
+                             @entity.profile_headshots.any? ||
+                             @entity.profile_videos.any? ||
+                             has_performance_credits ||
+                             (is_person && @entity.training_credits.any?) ||
+                             @entity.profile_skills.any? ||
+                             @entity.profile_resumes.any? ||
+                             @entity.resume.attached? ||
+                             (is_person && @entity.groups.where(archived_at: nil).any?)
+    %>
+
+    <%# Hero Section with Primary Headshot %>
+    <% if has_headshot %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+        <div class="relative">
+          <%# Background Pattern %>
+          <div class="absolute inset-0 bg-gradient-to-br from-pink-50 via-white to-purple-50 opacity-50"></div>
+
+          <div class="relative flex items-stretch">
+            <%# Primary Headshot - Left Side %>
+            <div class="flex-shrink-0 w-48 sm:w-64">
+              <% if primary_hs&.image&.attached? %>
+                <%= image_tag primary_hs.image.variant(resize_to_limit: [600, 1200]), class: "w-full h-full object-cover" %>
+              <% elsif @entity.headshot.attached? %>
+                <%= image_tag @entity.headshot, class: "w-full h-full object-cover" %>
               <% end %>
             </div>
 
-            <%# Name and Info %>
-            <div class="flex-1 min-w-0">
-              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-                <div>
-                  <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 inter-bold mb-0.5"><%= @entity.name %></h1>
-                  <p class="text-sm text-gray-600"><%= pluralize(@entity.members.count, 'member') %></p>
+            <%# Name and Info - Right Side %>
+            <div class="flex-1 p-6 sm:p-8 flex flex-col justify-center">
+              <%# Name %>
+              <div class="mb-4">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 inter-bold leading-none"><%= @entity.name %></h1>
                 </div>
-                <% if Current.user %>
-                  <% membership = @entity.group_memberships.find_by(person: Current.user.person) %>
-                  <% if membership && (membership.owner? || membership.write?) %>
-                    <%= link_to edit_group_path(@entity), class: "inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg shadow-sm transition-colors" do %>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                      </svg>
-                      Edit Group
-                    <% end %>
-                  <% end %>
-                <% end %>
               </div>
 
-              <% if @entity.bio.present? %>
-                <div class="text-sm text-gray-600 whitespace-pre-wrap"><%= h(@entity.bio) %></div>
-              <% end %>
-
               <%# Contact Info %>
-              <% if (@entity.email.present? && !@entity.hide_contact_info) || (@entity.social_media_visible? && @entity.socials.any?) %>
-                <div class="flex flex-wrap items-center gap-1.5 mt-3">
-                  <% if @entity.email.present? && !@entity.hide_contact_info %>
-                    <%= mail_to @entity.email, class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-sm font-medium text-gray-700 hover:text-pink-700" do %>
-                      <svg width="18" height="18" class="fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+              <% if @entity.email.present? && !@entity.hide_contact_info %>
+                <div class="mb-3">
+                  <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contact</div>
+                  <div class="flex flex-col gap-2">
+                    <%= mail_to @entity.email, class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
+                      <svg width="16" height="16" class="fill-current flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
                         <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
                       </svg>
-                      Email
+                      <span><%= @entity.email %></span>
                     <% end %>
-                  <% end %>
+                  </div>
+                </div>
+              <% end %>
 
-                  <% if @entity.social_media_visible? %>
+              <%# Social Media & Links %>
+              <% if @entity.social_media_visible? && @entity.socials.any? %>
+                <div>
+                  <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Links</div>
+                  <div class="flex flex-col gap-2">
                     <% @entity.socials.each do |social| %>
-                      <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-sm font-medium text-gray-700 hover:text-pink-700" do %>
-                        <%= social.icon(18) %>
-                        <%= social.handle %>
+                      <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
+                        <%= social.icon(16) %>
+                        <span><%= social.handle %></span>
                       <% end %>
                     <% end %>
-                  <% end %>
+                  </div>
                 </div>
+              <% end %>
+
+              <%# Empty state prompt for group members with edit access %>
+              <% if Current.user %>
+                <% membership = @entity.group_memberships.find_by(person: Current.user.person) %>
+                <% if membership && (membership.owner? || membership.write?) && !profile_has_content %>
+                  <div class="mt-6 pt-6 border-t border-gray-200">
+                    <div class="flex items-start gap-3 p-4 bg-pink-50 rounded-lg">
+                      <div class="flex-shrink-0">
+                        <%= image_tag "cocoscoutsmall.png", alt: "CocoScout", class: "w-8 h-8" %>
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-900 mb-1">Complete your group profile</p>
+                        <p class="text-sm text-gray-600">Add headshots, videos, performance credits, and more to showcase your group.</p>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
               <% end %>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    <% else %>
+      <%# Without Headshot: Simple Card %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+        <div class="relative">
+          <%# Background Pattern %>
+          <div class="absolute inset-0 bg-gradient-to-br from-pink-50 via-white to-purple-50 opacity-30 rounded-lg"></div>
+          
+          <div class="relative">
+            <%# Name %>
+              <div class="mb-4">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 inter-bold leading-none"><%= @entity.name %></h1>
+                </div>
+              </div>
+
+              <%# Contact Info %>
+              <% if @entity.email.present? && !@entity.hide_contact_info %>
+                <div class="mb-4">
+                  <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contact</div>
+                  <div class="flex flex-col gap-2">
+                    <%= mail_to @entity.email, class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
+                      <svg width="16" height="16" class="fill-current flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/>
+                      </svg>
+                      <span><%= @entity.email %></span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+
+              <%# Social Media & Links %>
+              <% if @entity.social_media_visible? && @entity.socials.any? %>
+                <div class="mb-4">
+                  <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Links</div>
+                  <div class="flex flex-col gap-2">
+                    <% @entity.socials.each do |social| %>
+                      <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
+                        <%= social.icon(16) %>
+                        <span><%= social.handle %></span>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+
+              <%# Empty state prompt for group members with edit access %>
+              <% if Current.user %>
+                <% membership = @entity.group_memberships.find_by(person: Current.user.person) %>
+                <% if membership && (membership.owner? || membership.write?) && !profile_has_content %>
+                  <div class="mt-6 pt-6 border-t border-gray-200">
+                    <div class="flex items-start gap-3 p-4 bg-pink-50 rounded-lg">
+                      <div class="flex-shrink-0">
+                        <%= image_tag "cocoscoutsmall.png", alt: "CocoScout", class: "w-8 h-8" %>
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-900 mb-1">Complete your group profile</p>
+                        <p class="text-sm text-gray-600">Add headshots, videos, performance credits, and more to showcase your group.</p>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# About/Bio Section %>
+    <% if @entity.bio_visible? && @entity.bio.present? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Bio</h2>
+        <div class="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap"><%= h(@entity.bio) %></div>
+      </div>
+    <% end %>
 
     <%# Headshots Gallery %>
     <% if @entity.headshots_visible? && @entity.profile_headshots.any? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
-        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Photos</h2>
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Headshots</h2>
         <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
           <% @entity.profile_headshots.each do |headshot| %>
             <div class="group relative aspect-[3/4] rounded overflow-hidden border border-gray-200 hover:border-pink-300 transition-all cursor-pointer" onclick="openHeadshotModal('<%= url_for(headshot.image.variant(resize_to_limit: [1200, 1800])) %>')">
@@ -171,31 +275,10 @@
       <% end %>
     <% end %>
 
-    <%# Skills & Talents - Organized by Category %>
-    <% if @entity.profile_skills_visible? && @entity.profile_skills.any? %>
-      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
-        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Skills & Talents</h2>
-
-        <% skills_by_category = @entity.profile_skills.group_by(&:category) %>
-        <div class="space-y-3">
-          <% skills_by_category.each do |category, skills| %>
-            <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm">
-              <div class="font-bold text-gray-700 sm:w-40 flex-shrink-0">
-                <%= ProfileSkillsService.category_display_name(category) %>:
-              </div>
-              <div class="text-gray-600">
-                <%= skills.map(&:skill_name).join(", ") %>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-
-    <%# Resumes Section - Compact %>
+    <%# Resume %>
     <% if @entity.resumes_visible? && @entity.profile_resumes.any? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
-        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Resumes / EPK</h2>
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Resume</h2>
         <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
           <% @entity.profile_resumes.each do |resume| %>
             <% if resume.file.attached? %>
@@ -203,7 +286,6 @@
               <% is_pdf = content_type.include?("pdf") %>
               <% is_image = content_type.start_with?("image/") %>
               <a href="<%= rails_blob_path(resume.file, disposition: "attachment") %>" class="group flex flex-col">
-                <!-- Preview/Thumbnail Area -->
                 <div class="bg-white aspect-[3/4] flex items-center justify-center overflow-hidden rounded border-2 border-gray-300 group-hover:border-pink-400 group-hover:shadow-md transition-all mb-1.5 flex-shrink-0">
                   <% if is_image %>
                     <%= image_tag resume.file.variant(resize_to_limit: [100, 150]), class: "w-full h-full object-cover" %>
@@ -227,7 +309,6 @@
                     </div>
                   <% end %>
                 </div>
-                <!-- Info Area -->
                 <h3 class="font-medium text-gray-900 text-xs line-clamp-2 group-hover:text-pink-600 transition-colors leading-tight mb-0.5"><%= resume.name.presence || "Resume" %></h3>
                 <div class="flex items-center gap-1 text-xs text-pink-600 group-hover:text-pink-700 font-medium">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
@@ -246,7 +327,7 @@
     <% if @entity.resumes_visible? && @entity.resume.attached? && @entity.profile_resumes.empty? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Resume / EPK</h2>
+          <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Resume</h2>
           <%= link_to rails_blob_path(@entity.resume, disposition: "attachment"), class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg shadow-sm transition-colors" do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -259,11 +340,7 @@
 
     <%# Members Section %>
     <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5">
-      <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">
-        Members
-        <span class="text-sm font-normal text-gray-500">(<%= @entity.group_memberships.count %>)</span>
-      </h2>
-
+      <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold mb-3">Members</h2>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <% @entity.group_memberships.includes(:person).each do |membership| %>
           <%= link_to public_profile_path(membership.person.public_key), class: "group" do %>
@@ -280,6 +357,18 @@
               </span>
             </div>
           <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# CocoScout Footer %>
+    <div class="mt-16 pt-4 border-t border-gray-100">
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-5 h-5 object-contain opacity-50" />
+        <span class="coustard-regular">CocoScout</span>
+        <% unless Current.user %>
+          <span class="text-gray-300 mx-1">·</span>
+          <%= link_to "Create your profile", signup_path, class: "hover:text-pink-500 transition-colors" %>
         <% end %>
       </div>
     </div>

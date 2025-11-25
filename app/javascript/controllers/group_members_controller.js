@@ -2,9 +2,18 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["inviteModal", "inviteForm"]
+    static values = { groupId: String }
 
     connect() {
-        this.groupId = window.location.pathname.split('/').filter(Boolean).pop()
+        // Fallback to extracting from URL if not provided via data attribute
+        if (!this.hasGroupIdValue) {
+            const pathSegments = window.location.pathname.split('/').filter(Boolean)
+            // URL is /groups/:id or /groups/:id/settings
+            const groupsIndex = pathSegments.indexOf('groups')
+            if (groupsIndex !== -1 && pathSegments.length > groupsIndex + 1) {
+                this.groupIdValue = pathSegments[groupsIndex + 1]
+            }
+        }
         this.keyHandler = this.handleKeydown.bind(this)
     }
 
@@ -54,16 +63,22 @@ export default class extends Controller {
         const membershipId = select.dataset.membershipId
         const newRole = select.value
 
-        fetch(`/manage/groups/${this.groupId}/update_member_role`, {
+        fetch(`/groups/${this.groupIdValue}/update_member_role`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
             },
-            body: JSON.stringify({ person_id: membershipId, role: newRole })
+            body: JSON.stringify({ membership_id: membershipId, role: newRole })
         }).then(response => {
-            if (!response.ok) {
+            if (response.ok) {
+                return response.json()
+            } else {
                 alert('Could not update role')
+            }
+        }).then(data => {
+            if (data && data.notice) {
+                this.showNotice(data.notice)
             }
         })
     }
@@ -74,18 +89,23 @@ export default class extends Controller {
 
         if (!confirm('Remove this member from the group?')) return
 
-        fetch(`/manage/groups/${this.groupId}/remove_member`, {
+        fetch(`/groups/${this.groupIdValue}/remove_member`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
             },
-            body: JSON.stringify({ person_id: membershipId })
+            body: JSON.stringify({ membership_id: membershipId })
         }).then(response => {
             if (response.ok) {
-                button.closest('.flex.items-center.gap-3.p-3').remove()
+                return response.json()
             } else {
                 alert('Could not remove member')
+            }
+        }).then(data => {
+            if (data && data.notice) {
+                button.closest('.flex.items-center.gap-3.p-3').remove()
+                this.showNotice(data.notice)
             }
         })
     }
@@ -94,21 +114,38 @@ export default class extends Controller {
         const checkbox = event.currentTarget
         const membershipId = checkbox.dataset.membershipId
 
-        fetch(`/manage/groups/${this.groupId}/update_member_notifications`, {
+        fetch(`/groups/${this.groupIdValue}/update_member_notifications`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
             },
             body: JSON.stringify({
-                person_id: membershipId,
+                membership_id: membershipId,
                 receives_notifications: checkbox.checked
             })
         }).then(response => {
-            if (!response.ok) {
+            if (response.ok) {
+                return response.json()
+            } else {
                 checkbox.checked = !checkbox.checked
                 alert('Could not update notification settings')
             }
+        }).then(data => {
+            if (data && data.notice) {
+                this.showNotice(data.notice)
+            }
         })
+    }
+
+    showNotice(message) {
+        const container = document.getElementById('notice-container')
+        if (!container) return
+
+        container.innerHTML = `
+            <div data-controller="notice" data-notice-timeout-value="2000" class="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-pink-500 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg" data-notice-target="container">
+                <span class="font-medium">${message}</span>
+            </div>
+        `
     }
 }

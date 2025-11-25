@@ -1,9 +1,9 @@
 class GroupsController < ApplicationController
   layout "profile", except: [ :new ]
 
-  before_action :set_group, only: [ :edit, :settings, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url, :update_visibility ]
+  before_action :set_group, only: [ :edit, :settings, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url, :update_visibility, :update_member_role, :remove_member, :update_member_notifications ]
   before_action :check_group_access, only: [ :edit, :settings, :update, :check_url_availability, :update_url, :update_visibility ]
-  before_action :check_owner_access, only: [ :archive, :unarchive ]
+  before_action :check_owner_access, only: [ :archive, :unarchive, :update_member_role, :remove_member, :update_member_notifications ]
 
   skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
@@ -107,7 +107,7 @@ class GroupsController < ApplicationController
 
   def archive
     if @group.update(archived_at: Time.current)
-      redirect_to groups_path, notice: "Group archived successfully."
+      redirect_to profile_path, notice: "Group archived successfully."
     else
       redirect_to edit_group_path(@group), alert: "Could not archive group."
     end
@@ -246,10 +246,49 @@ class GroupsController < ApplicationController
     end
   end
 
+  def update_member_role
+    membership = @group.group_memberships.find(params[:membership_id])
+
+    if membership.update(permission_level: params[:role])
+      render json: { notice: "Member role updated successfully" }
+    else
+      head :unprocessable_entity
+    end
+  end
+
+  def remove_member
+    membership = @group.group_memberships.find(params[:membership_id])
+
+    # Prevent removing the last owner
+    if membership.owner? && @group.group_memberships.where(permission_level: :owner).count == 1
+      head :unprocessable_entity
+      return
+    end
+
+    membership.destroy
+    render json: { notice: "Member removed successfully" }
+  end
+
+  def update_member_notifications
+    membership = @group.group_memberships.find(params[:membership_id])
+
+    if params[:receives_notifications]
+      membership.enable_notifications!
+    else
+      membership.disable_notifications!
+    end
+
+    render json: { notice: "Notification settings updated" }
+  end
+
   private
 
   def set_group
-    @group = Current.user.person.groups.find(params[:group_id] || params[:id])
+    @group = Group.find(params[:group_id] || params[:id])
+    # Check if user is a member of this group
+    unless @group.group_memberships.exists?(person: Current.user.person)
+      redirect_to root_path, alert: "You don't have access to this group."
+    end
   end
 
   def check_group_access
