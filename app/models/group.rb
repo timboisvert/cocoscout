@@ -1,5 +1,6 @@
 class Group < ApplicationRecord
   has_many :group_memberships, dependent: :destroy
+  has_many :group_invitations, dependent: :destroy
   has_many :members, through: :group_memberships, source: :person
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
@@ -144,27 +145,40 @@ class Group < ApplicationRecord
   end
 
   def performance_credits_visible?
-    visibility_settings["performance_history_visible"] != false
+    read_attribute(:performance_credits_visible)
   end
 
   def profile_skills_visible?
-    visibility_settings["skills_visible"] != false
+    read_attribute(:profile_skills_visible)
   end
 
   def videos_visible?
-    visibility_settings["videos_visible"] != false
+    read_attribute(:videos_visible)
   end
 
   def headshots_visible?
-    visibility_settings["headshots_visible"] != false && read_attribute(:headshots_visible)
+    read_attribute(:headshots_visible)
   end
 
   def resumes_visible?
-    visibility_settings["resumes_visible"] != false && read_attribute(:resumes_visible)
+    read_attribute(:resumes_visible)
   end
 
   def social_media_visible?
-    visibility_settings["social_media_visible"] != false && read_attribute(:social_media_visible)
+    read_attribute(:social_media_visible)
+  end
+
+  def bio_visible?
+    read_attribute(:bio_visible)
+  end
+
+  # Virtual attribute for inverted contact info visibility logic
+  def show_contact_info
+    !hide_contact_info
+  end
+
+  def show_contact_info=(value)
+    self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
   private

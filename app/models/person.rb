@@ -171,35 +171,35 @@ class Person < ApplicationRecord
   end
 
   def performance_credits_visible?
-    visibility_settings["performance_history_visible"] != false
+    read_attribute(:performance_credits_visible)
   end
 
   def training_credits_visible?
-    visibility_settings["training_visible"] != false
+    read_attribute(:training_credits_visible)
   end
 
   def profile_skills_visible?
-    visibility_settings["skills_visible"] != false
+    read_attribute(:profile_skills_visible)
   end
 
   def videos_visible?
-    visibility_settings["videos_visible"] != false
+    read_attribute(:videos_visible)
   end
 
   def headshots_visible?
-    visibility_settings["headshots_visible"] != false
+    read_attribute(:headshots_visible)
   end
 
   def resumes_visible?
-    visibility_settings["resumes_visible"] != false
+    read_attribute(:resumes_visible)
   end
 
   def social_media_visible?
-    visibility_settings["social_media_visible"] != false
+    read_attribute(:social_media_visible)
   end
 
   def bio_visible?
-    visibility_settings["bio_visible"] != false && read_attribute(:bio_visible)
+    read_attribute(:bio_visible)
   end
 
   # Virtual attribute for inverted contact info visibility logic

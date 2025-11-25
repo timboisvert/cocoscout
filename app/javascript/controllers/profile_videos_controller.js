@@ -80,19 +80,14 @@ export default class extends Controller {
         const title = this.formTarget.querySelector('[data-field="title"]').value
         const url = this.formTarget.querySelector('[data-field="url"]').value
 
-        console.log('Save called with title:', title, 'url:', url)
-        console.log('editingIdValue:', this.editingIdValue, 'type:', typeof this.editingIdValue)
-
         if (!title || !url) {
             alert('Please enter both title and URL')
             return
         }
 
         if (this.editingIdValue && this.editingIdValue !== 'null') {
-            console.log('Editing existing video:', this.editingIdValue)
             this.updateVideoInDOM(this.editingIdValue, title, url)
         } else {
-            console.log('Adding new video')
             this.addVideoToDOM(title, url)
         }
 
@@ -100,12 +95,8 @@ export default class extends Controller {
 
         // Submit the form to save changes
         const form = document.getElementById('videos-form')
-        console.log('Found form:', form)
         if (form) {
-            console.log('Submitting form...')
             form.requestSubmit()
-        } else {
-            console.error('Could not find form to submit for video')
         }
     }
 
@@ -127,8 +118,6 @@ export default class extends Controller {
             const form = document.getElementById('videos-form')
             if (form) {
                 form.requestSubmit()
-            } else {
-                console.error('Could not find form to submit for video removal')
             }
         }
     }
@@ -136,12 +125,16 @@ export default class extends Controller {
     addVideoToDOM(title, url) {
         const timestamp = new Date().getTime()
 
+        // Detect entity scope from the form
+        const form = document.getElementById('videos-form')
+        const entityScope = form ? this.getEntityScope(form) : 'person'
+
         const html = `
       <div class="border border-gray-200 rounded-lg overflow-hidden" data-video-id="new-${timestamp}" data-title="${this.escapeHtml(title)}" data-url="${this.escapeHtml(url)}">
-        <input type="hidden" name="person[profile_videos_attributes][${timestamp}][title]" value="${this.escapeHtml(title)}">
-        <input type="hidden" name="person[profile_videos_attributes][${timestamp}][url]" value="${this.escapeHtml(url)}">
-        <input type="hidden" name="person[profile_videos_attributes][${timestamp}][position]" value="0">
-        <input type="hidden" name="person[profile_videos_attributes][${timestamp}][_destroy]" value="0" class="destroy-field">
+        <input type="hidden" name="${entityScope}[profile_videos_attributes][${timestamp}][title]" value="${this.escapeHtml(title)}">
+        <input type="hidden" name="${entityScope}[profile_videos_attributes][${timestamp}][url]" value="${this.escapeHtml(url)}">
+        <input type="hidden" name="${entityScope}[profile_videos_attributes][${timestamp}][position]" value="0">
+        <input type="hidden" name="${entityScope}[profile_videos_attributes][${timestamp}][_destroy]" value="0" class="destroy-field">
 
         <div class="p-4">
           <div class="flex items-center justify-between">
@@ -180,8 +173,10 @@ export default class extends Controller {
         videoEl.querySelector('input[name*="[title]"]').value = title
         videoEl.querySelector('input[name*="[url]"]').value = url
 
-        videoEl.querySelector('.font-medium').textContent = title
-        videoEl.querySelector('.text-sm').textContent = url
+        const titleElement = videoEl.querySelector('.font-medium')
+        if (titleElement) {
+            titleElement.textContent = title
+        }
     }
 
     escapeHtml(text) {
@@ -193,6 +188,21 @@ export default class extends Controller {
             "'": '&#039;'
         }
         return String(text).replace(/[&<>"']/g, m => map[m])
+    }
+
+    getEntityScope(form) {
+        // Check the form's action or existing input names to determine if it's person or group
+        const existingInput = form.querySelector('input[name*="[profile_videos_attributes]"]')
+        if (existingInput) {
+            const match = existingInput.name.match(/^(person|group)\[/)
+            if (match) return match[1]
+        }
+
+        // Fallback: check form action URL
+        const action = form.action
+        if (action.includes('/groups/')) return 'group'
+
+        return 'person'
     }
 
     stopPropagation(event) {

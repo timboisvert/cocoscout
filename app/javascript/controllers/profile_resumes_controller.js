@@ -14,6 +14,20 @@ export default class extends Controller {
         document.removeEventListener('keydown', this.keyHandler)
     }
 
+    getEntityScope() {
+        const form = this.element.querySelector('form') || document.getElementById('resumes-form')
+        if (!form) return 'person'
+
+        const actionUrl = form.action
+        if (actionUrl.includes('/groups/')) {
+            return 'group'
+        } else if (actionUrl.includes('/profile')) {
+            return 'person'
+        }
+
+        return 'person'
+    }
+
     handleKeydown(event) {
         if (event.key === 'Escape' && this.hasModalTarget) {
             this.closeModal()
@@ -34,7 +48,6 @@ export default class extends Controller {
             this.modalTarget.classList.remove('hidden')
 
             if (!this.hasFormTarget) {
-                console.error('Form target not found in openModal method')
                 return
             }
 
@@ -109,7 +122,6 @@ export default class extends Controller {
         event.preventDefault()
 
         if (!this.hasFormTarget) {
-            console.error('Form target not found in save method')
             return
         }
 
@@ -137,6 +149,7 @@ export default class extends Controller {
         // Get the count of existing resumes to determine the index
         const existingCount = this.listTarget.querySelectorAll('.resume-item').length
         const timestamp = new Date().getTime()
+        const entityScope = this.getEntityScope()
 
         // Create a container for the new resume
         const resumeDiv = document.createElement('div')
@@ -172,8 +185,8 @@ export default class extends Controller {
 
         // Add hidden fields for Rails nested attributes
         const hiddenFields = `
-          <input type="hidden" name="person[profile_resumes_attributes][${timestamp}][name]" value="${this.escapeHtml(name)}">
-          <input type="hidden" name="person[profile_resumes_attributes][${timestamp}][position]" value="${existingCount}">
+          <input type="hidden" name="${entityScope}[profile_resumes_attributes][${timestamp}][name]" value="${this.escapeHtml(name)}">
+          <input type="hidden" name="${entityScope}[profile_resumes_attributes][${timestamp}][position]" value="${existingCount}">
         `
         resumeDiv.innerHTML = hiddenFields
         resumeDiv.appendChild(previewDiv)
@@ -182,7 +195,7 @@ export default class extends Controller {
         // Create and attach the file input with the actual file
         const fileInput = document.createElement('input')
         fileInput.type = 'file'
-        fileInput.name = `person[profile_resumes_attributes][${timestamp}][file]`
+        fileInput.name = `${entityScope}[profile_resumes_attributes][${timestamp}][file]`
         fileInput.style.display = 'none'
         const dataTransfer = new DataTransfer()
         dataTransfer.items.add(file)
@@ -220,7 +233,7 @@ export default class extends Controller {
 
             // The file input is already in the form with DataTransfer, but we need to ensure it's included
             // Remove any existing file field for this timestamp to avoid duplicates
-            const existingFileKey = `person[profile_resumes_attributes][${timestamp}][file]`
+            const existingFileKey = `${entityScope}[profile_resumes_attributes][${timestamp}][file]`
             if (formData.has(existingFileKey)) {
                 formData.delete(existingFileKey)
             }
@@ -252,12 +265,7 @@ export default class extends Controller {
                 })
                 .catch(error => {
                     this.pendingSubmissions.delete(resumeId)
-                    if (error.name !== 'AbortError') {
-                        console.error('Error submitting form:', error)
-                    }
                 })
-        } else {
-            console.error('Could not find form to submit for resume creation')
         }
     }
 
@@ -265,6 +273,7 @@ export default class extends Controller {
         if (!this.hasListTarget) return
 
         const position = this.listTarget.querySelectorAll('.resume-item').length
+        const entityScope = this.getEntityScope()
 
         const resumeHTML = `
       <div class="resume-item border border-gray-200 rounded-lg p-4" data-resume-id="${this.escapeHtml(id)}">
@@ -299,12 +308,12 @@ export default class extends Controller {
         </div>
 
         <!-- Hidden fields for form submission -->
-        <input type="hidden" name="person[profile_resumes_attributes][${position}][id]" value="${this.escapeHtml(id)}">
-        <input type="hidden" name="person[profile_resumes_attributes][${position}][name]" value="${this.escapeHtml(name)}">
-        <input type="hidden" name="person[profile_resumes_attributes][${position}][position]" value="${position}">
-        <input type="hidden" name="person[profile_resumes_attributes][${position}][is_primary]" value="false">
+        <input type="hidden" name="${entityScope}[profile_resumes_attributes][${position}][id]" value="${this.escapeHtml(id)}">
+        <input type="hidden" name="${entityScope}[profile_resumes_attributes][${position}][name]" value="${this.escapeHtml(name)}">
+        <input type="hidden" name="${entityScope}[profile_resumes_attributes][${position}][position]" value="${position}">
+        <input type="hidden" name="${entityScope}[profile_resumes_attributes][${position}][is_primary]" value="false">
         <input type="file"
-               name="person[profile_resumes_attributes][${position}][file]"
+               name="${entityScope}[profile_resumes_attributes][${position}][file]"
                class="hidden"
                data-resume-file="${this.escapeHtml(id)}">
       </div>
@@ -334,7 +343,6 @@ export default class extends Controller {
         const resumeName = button.dataset.resumeName
 
         if (!this.hasFormTarget) {
-            console.error('Form target not found in edit method')
             return
         }
 
@@ -382,10 +390,7 @@ export default class extends Controller {
         // Submit the form to save changes
         const form = document.getElementById('resumes-form')
         if (form) {
-            console.log('Submitting form for resume update:', form)
             form.requestSubmit()
-        } else {
-            console.error('Could not find form to submit for resume update')
         }
     }
 
@@ -431,10 +436,7 @@ export default class extends Controller {
         // Submit the form to save the deletion
         const form = document.getElementById('resumes-form')
         if (form) {
-            console.log('Submitting form for resume removal:', form)
             form.requestSubmit()
-        } else {
-            console.error('Could not find form to submit for resume removal')
         }
     }
 

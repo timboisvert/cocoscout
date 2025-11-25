@@ -20,8 +20,16 @@
   </div>
 
   <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field].present? %>
+    <%
+      # Determine the correct visibility update path based on entity
+      visibility_path = if local_assigns[:entity].present?
+        local_assigns[:entity].is_a?(Person) ? update_profile_visibility_path : update_group_visibility_path(local_assigns[:entity])
+      else
+        update_profile_visibility_path
+      end
+    %>
     <div data-controller="visibility-toggle"
-         data-visibility-toggle-url-value="<%= update_profile_visibility_path %>"
+         data-visibility-toggle-url-value="<%= visibility_path %>"
          data-visibility-toggle-field-value="<%= local_assigns[:visibility_field] %>">
       <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
         <span class="mr-2">Show on profile</span>

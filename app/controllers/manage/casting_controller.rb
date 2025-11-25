@@ -103,7 +103,7 @@ class Manage::CastingController < Manage::ManageController
     def build_availability_hash(show)
       availability = {}
       ShowAvailability.where(show_id: show.id, available_entity_type: "Person").each do |show_availability|
-        availability["#{show_availability.available_entity_id}"] = show_availability.status.to_s
+        availability[show_availability.available_entity_id] = show_availability
       end
       availability
     end

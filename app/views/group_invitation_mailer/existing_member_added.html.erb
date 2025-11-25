@@ -1,0 +1,17 @@
+<% if @custom_message.present? %>
+  <%= simple_format(auto_link(@custom_message, html: { target: '_blank' }), {}, sanitize: false) %>
+<% else %>
+  <h1>You've been added to <%= @group.name %></h1>
+
+  <% if @invited_by %>
+    <p><%= @invited_by.name %> has added you to <strong><%= @group.name %></strong> on CocoScout.</p>
+  <% else %>
+    <p>You've been added to <strong><%= @group.name %></strong> on CocoScout.</p>
+  <% end %>
+
+  <p>You can now access the group's profile and collaborate with other members.</p>
+
+  <p style="margin-top: 20px;">
+    <%= link_to "View Group", edit_group_url(@group), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %>
+  </p>
+<% end %>

@@ -8,11 +8,12 @@
 <div id="resumes" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-resumes profile-section">
 <%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "resumes-form", data: { turbo: true }) do |entity_form| %>
   <%= render "shared/section_header",
+    entity: entity,
     title: "Resumes",
     collapsible: true,
-    visibility_toggle: entity.is_a?(Person),
+    visibility_toggle: true,
     visibility_field: "resumes_visible",
-    visibility_checked: entity.is_a?(Person) ? entity.resumes_visible? : true %>
+    visibility_checked: entity.resumes_visible? %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">

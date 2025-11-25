@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -174,6 +174,21 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
     t.index ["user_id"], name: "index_email_logs_on_user_id"
   end
 
+  create_table "group_invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.integer "group_id", null: false
+    t.integer "invited_by_person_id"
+    t.string "name", null: false
+    t.integer "permission_level", default: 2, null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_group_invitations_on_email"
+    t.index ["group_id"], name: "index_group_invitations_on_group_id"
+    t.index ["token"], name: "index_group_invitations_on_token", unique: true
+  end
+
   create_table "group_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "group_id", null: false
@@ -189,12 +204,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
   create_table "groups", force: :cascade do |t|
     t.datetime "archived_at"
     t.text "bio"
+    t.boolean "bio_visible", default: true, null: false
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.boolean "headshots_visible", default: true, null: false
     t.boolean "hide_contact_info", default: false, null: false
     t.string "name", null: false
     t.text "old_keys"
+    t.boolean "performance_credits_visible", default: true, null: false
     t.string "phone"
     t.text "profile_visibility_settings", default: "{}"
     t.string "public_key", null: false
@@ -202,6 +219,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
     t.datetime "updated_at", null: false
+    t.boolean "videos_visible", default: true, null: false
     t.string "website"
     t.index ["archived_at"], name: "index_groups_on_archived_at"
     t.index ["public_key"], name: "index_groups_on_public_key", unique: true
@@ -281,19 +299,26 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
     t.datetime "casting_notification_sent_at"
     t.datetime "created_at", null: false
     t.string "email"
+    t.boolean "headshots_visible", default: true, null: false
     t.boolean "hide_contact_info", default: false, null: false
     t.datetime "last_email_changed_at"
     t.datetime "last_public_key_changed_at"
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
+    t.boolean "performance_credits_visible", default: true, null: false
     t.string "phone"
+    t.boolean "profile_skills_visible", default: true, null: false
     t.text "profile_visibility_settings", default: "{}"
     t.string "pronouns"
     t.string "public_key"
     t.datetime "public_key_changed_at"
+    t.boolean "resumes_visible", default: true, null: false
+    t.boolean "social_media_visible", default: true, null: false
+    t.boolean "training_credits_visible", default: true, null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
+    t.boolean "videos_visible", default: true, null: false
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
     t.index ["user_id"], name: "index_people_on_user_id"
   end
@@ -644,6 +669,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_003211) do
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
+  add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
   add_foreign_key "invitations", "organizations"

@@ -1,8 +1,8 @@
 class GroupsController < ApplicationController
   layout "profile", except: [ :new ]
 
-  before_action :set_group, only: [ :edit, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url ]
-  before_action :check_group_access, only: [ :edit, :update, :check_url_availability, :update_url ]
+  before_action :set_group, only: [ :edit, :settings, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url, :update_visibility ]
+  before_action :check_group_access, only: [ :edit, :settings, :update, :check_url_availability, :update_url, :update_visibility ]
   before_action :check_owner_access, only: [ :archive, :unarchive ]
 
   skip_before_action :track_my_dashboard
@@ -38,8 +38,19 @@ class GroupsController < ApplicationController
     @entity = @group  # For profile partials compatibility
   end
 
+  def settings
+    @show_group_sidebar = true
+    @membership = @group.group_memberships.find_by(person: Current.user.person)
+    @entity = @group  # For profile partials compatibility
+  end
+
   def update
-    if @group.update(group_params)
+    # Handle virtual attribute conversion
+    if group_params[:show_contact_info].present?
+      @group.show_contact_info = group_params[:show_contact_info]
+    end
+
+    if @group.update(group_params.except(:show_contact_info))
       respond_to do |format|
         format.turbo_stream do
           # Reload associations to ensure newly saved items are included
@@ -107,6 +118,29 @@ class GroupsController < ApplicationController
       redirect_to edit_group_path(@group), notice: "Group unarchived successfully."
     else
       redirect_to edit_group_path(@group), alert: "Could not unarchive group."
+    end
+  end
+
+  def update_visibility
+    field = params[:field]
+    value = params[:value] == "1"
+
+    # Whitelist of allowed visibility fields
+    allowed_fields = %w[
+      bio_visible headshots_visible resumes_visible social_media_visible
+      videos_visible performance_credits_visible profile_skills_visible
+    ]
+
+    unless allowed_fields.include?(field)
+      head :unprocessable_entity
+      return
+    end
+
+    # Update the specific visibility field
+    if @group.update(field => value)
+      head :ok
+    else
+      head :unprocessable_entity
     end
   end
 
@@ -235,7 +269,7 @@ class GroupsController < ApplicationController
   def group_params
     params.require(:group).permit(
       :name, :bio, :email, :phone, :public_key, :headshot, :resume,
-      :hide_contact_info, :headshots_visible, :resumes_visible, :social_media_visible,
+      :hide_contact_info, :show_contact_info, :headshots_visible, :resumes_visible, :social_media_visible,
       socials_attributes: [ :id, :platform, :handle, :_destroy ],
       profile_headshots_attributes: [ :id, :image, :category, :is_primary, :position, :_destroy ],
       profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],

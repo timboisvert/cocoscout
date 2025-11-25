@@ -78,16 +78,21 @@
           </div>
         </div>
 
-        <!-- Privacy Toggle -->
-        <div class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-          <div>
-            <label class="text-sm font-medium text-gray-700">Show Contact Information</label>
-            <p class="text-xs text-gray-500 mt-0.5">When enabled, email and phone will be shown on your public profile</p>
+        <!-- Privacy Settings moved here -->
+        <div class="pt-4 border-t border-gray-200">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Privacy Settings</h4>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">Show Contact Information</p>
+              <p class="text-xs text-gray-500 mt-1">
+                When enabled, your email and phone will be visible on your public profile
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <%= form.check_box :show_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <%= form.check_box :hide_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } }, "false", "true" %>
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-          </label>
         </div>
       </div>
     </div>
@@ -110,134 +115,6 @@
 
   <!-- Resumes Section -->
   <%= render "shared/profiles/resumes", entity: @group %>
-
-  <!-- Members Management Section -->
-  <div id="members" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="group-members">
-    <%= render "shared/section_header",
-      title: "Members",
-      collapsible: true,
-      visibility_toggle: false %>
-
-    <div class="p-6">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-600">Members of this group</p>
-        <% if @membership&.owner? || @membership&.write? %>
-          <button type="button" data-action="click->group-members#openInviteModal" class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Invite Member
-          </button>
-        <% end %>
-      </div>
-
-      <div class="space-y-2">
-        <% @group.group_memberships.includes(:person).each do |membership| %>
-          <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition">
-            <% if membership.person.headshot.attached? %>
-              <%= image_tag membership.person.headshot.variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
-            <% else %>
-              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
-                <%= membership.person.initials %>
-              </div>
-            <% end %>
-
-            <div class="flex-1 min-w-0">
-              <%= link_to membership.person.name, public_profile_path(membership.person.public_key), target: "_blank", class: "text-sm font-medium text-gray-900 hover:text-pink-600 truncate block" %>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <% if @membership&.owner? %>
-                <%= select_tag "role_#{membership.id}",
-                    options_for_select([['Owner', 'owner'], ['Editor', 'write'], ['Viewer', 'view']], membership.permission_level),
-                    data: { action: "change->group-members#updateRole", membership_id: membership.id },
-                    class: "text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:border-pink-500 focus:ring-pink-500" %>
-              <% else %>
-                <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium <%= membership.owner? ? 'bg-pink-100 text-pink-700' : membership.write? ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700' %>">
-                  <%= membership.owner? ? 'Owner' : membership.write? ? 'Editor' : 'Viewer' %>
-                </span>
-              <% end %>
-
-              <% if @membership&.owner? && !(membership.person == Current.user.person && @group.group_memberships.where(permission_level: :owner).count == 1) %>
-                <button type="button"
-                        data-action="click->group-members#removeMember"
-                        data-membership-id="<%= membership.id %>"
-                        class="text-sm text-red-600 hover:text-red-700 font-medium cursor-pointer">
-                  Remove
-                </button>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="mt-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
-        <div class="flex gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-          </svg>
-          <div class="text-xs text-pink-800">
-            <p class="font-medium mb-1">Permission Levels</p>
-            <p><strong>Owner:</strong> Full control - can edit everything and manage members</p>
-            <p><strong>Editor:</strong> Can edit profile content but not manage members</p>
-            <p><strong>Viewer:</strong> Can view the edit page but cannot make changes</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notification Settings Section -->
-  <div id="notifications" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/section_header",
-      title: "Notification Settings",
-      collapsible: true,
-      visibility_toggle: false %>
-
-    <div class="p-6">
-      <p class="text-sm text-gray-600 mb-4">Choose which members receive email notifications for auditions, questionnaires, and other group activities.</p>
-
-      <div class="space-y-2">
-        <% @group.group_memberships.includes(:person).each do |membership| %>
-          <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-            <input type="checkbox"
-                   <%= 'checked' if membership.notifications_enabled? %>
-                   <%= 'disabled' if membership.owner? %>
-                   data-membership-id="<%= membership.id %>"
-                   data-action="change->group-members#updateNotifications"
-                   class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer">
-            <span class="text-sm text-gray-900"><%= membership.person.name %></span>
-            <% if membership.owner? %>
-              <span class="text-xs text-gray-500">(Owners always receive notifications)</span>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <!-- Archive Section - Only for owners -->
-  <% if @membership&.owner? %>
-    <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
-      <div class="bg-red-50 px-4 py-3 border-b border-red-200">
-        <h3 class="text-md font-semibold text-red-900 coustard-regular">Danger Zone</h3>
-      </div>
-      <div class="p-6">
-        <h4 class="text-lg font-semibold text-red-900 mb-2">Archive Group</h4>
-        <p class="text-sm text-gray-600 mb-4">
-          Archiving will hide this group from all searches and directories. Historical data will be preserved.
-          <% if @group.group_memberships.count == 1 %>
-            You are the last member, so leaving will automatically archive this group.
-          <% end %>
-        </p>
-        <%= button_to "Archive Group",
-            archive_group_path(@group),
-            method: :patch,
-            data: { turbo_confirm: "Are you sure you want to archive #{@group.name}? It will no longer appear in searches or directories." },
-            class: "px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer" %>
-      </div>
-    </div>
-  <% end %>
 
   <!-- Change URL Modal -->
   <div data-profile-modals-target="changeGroupUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

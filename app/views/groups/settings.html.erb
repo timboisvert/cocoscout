@@ -1,0 +1,131 @@
+<% content_for :title, "#{@group.name} - Group Settings" %>
+
+<!-- Main Content -->
+<div class="w-full" data-controller="profile-modals">
+  <div id="notice-container">
+    <%= render partial: "shared/notice", locals: { notice: notice } %>
+  </div>
+
+  <!-- Members Management Section -->
+  <div id="members" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6 scroll-mt-20" data-controller="group-members">
+    <%= render "shared/section_header",
+      title: "Members",
+      collapsible: true,
+      visibility_toggle: false %>
+
+    <%= render "groups/members_section", group: @group, membership: @membership %>
+
+    <!-- Invite Member Modal -->
+    <div data-group-members-target="inviteModal" data-action="click->group-members#closeInviteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" data-action="click->group-members#stopPropagation">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite Member to <%= @group.name %></h2>
+        </div>
+
+        <%= form_with(url: group_invitations_path(@group), method: :post, data: { group_members_target: "inviteForm" }) do |form| %>
+          <div class="p-6 space-y-5">
+            <!-- Name and Email on same line -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <%= form.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= form.text_field :name, required: true, class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "Enter member's name" %>
+              </div>
+
+              <div>
+                <%= form.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= form.email_field :email, required: true, class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "member@example.com" %>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 -mt-3">If they already have a CocoScout account, they'll be added immediately</p>
+
+            <!-- Permission Level - narrower -->
+            <div class="max-w-xs">
+              <%= form.label :permission_level, "Permission Level", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= form.select :permission_level,
+                  options_for_select([['Viewer', 'view'], ['Editor', 'write'], ['Owner', 'owner']], 'write'),
+                  {},
+                  class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+
+            <!-- Email Notification Box -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <h3 class="text-sm font-semibold text-gray-900 mb-3">Email Notification</h3>
+
+              <div class="space-y-4">
+                <div>
+                  <%= form.label :invitation_subject, "Subject", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <% default_subject = "You've been invited to join #{@group.name} on CocoScout" %>
+                  <%= form.text_field :invitation_subject, value: default_subject, class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 bg-white" %>
+                </div>
+
+                <div>
+                  <%= form.label :invitation_message, "Body", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <% default_message = "I've added you to our #{@group.name} group profile on CocoScout. You can now edit our shared profile and add your credits and materials." %>
+                  <%= form.text_area :invitation_message, value: default_message, rows: 3, class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 bg-white" %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <button type="button" data-action="click->group-members#closeInviteModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
+            <%= form.submit "Send Invitation", class: "px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Settings Section -->
+  <div id="notifications" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6 scroll-mt-20">
+    <%= render "shared/section_header",
+      title: "Notification Settings",
+      collapsible: true,
+      visibility_toggle: false %>
+
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">Choose which members receive email notifications for auditions, questionnaires, and other group activities.</p>
+
+      <div class="space-y-2">
+        <% @group.group_memberships.includes(:person).each do |membership| %>
+          <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+            <input type="checkbox"
+                   <%= 'checked' if membership.notifications_enabled? %>
+                   <%= 'disabled' if membership.owner? %>
+                   data-membership-id="<%= membership.id %>"
+                   data-action="change->group-members#updateNotifications"
+                   class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer">
+            <span class="text-sm text-gray-900"><%= membership.person.name %></span>
+            <% if membership.owner? %>
+              <span class="text-xs text-gray-500">(Owners always receive notifications)</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archive Section - Only for owners -->
+  <% if @membership&.owner? %>
+    <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
+      <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+        <h3 class="text-md font-semibold text-red-900 coustard-regular">Danger Zone</h3>
+      </div>
+      <div class="p-6">
+        <h4 class="text-lg font-semibold text-red-900 mb-2">Archive Group</h4>
+        <p class="text-sm text-gray-600 mb-4">
+          Archiving will hide this group from all searches and directories. Historical data will be preserved.
+          <% if @group.group_memberships.count == 1 %>
+            You are the last member, so leaving will automatically archive this group.
+          <% end %>
+        </p>
+        <%= button_to "Archive Group",
+            archive_group_path(@group),
+            method: :patch,
+            data: { turbo_confirm: "Are you sure you want to archive #{@group.name}? It will no longer appear in searches or directories." },
+            class: "px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer" %>
+      </div>
+    </div>
+  <% end %>
+
+</div>

@@ -1,14 +1,52 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
+    static targets = ["inviteModal", "inviteForm"]
+
     connect() {
         this.groupId = window.location.pathname.split('/').filter(Boolean).pop()
+        this.keyHandler = this.handleKeydown.bind(this)
+    }
+
+    disconnect() {
+        document.removeEventListener('keydown', this.keyHandler)
+    }
+
+    handleKeydown(event) {
+        if (event.key === 'Escape' && this.hasInviteModalTarget && !this.inviteModalTarget.classList.contains('hidden')) {
+            this.closeInviteModal()
+        }
+    }
+
+    stopPropagation(event) {
+        event.stopPropagation()
     }
 
     openInviteModal(event) {
         event.preventDefault()
-        // TODO: Implement invite modal if needed
-        alert('Invite member functionality - to be implemented')
+        if (this.hasInviteModalTarget) {
+            this.inviteModalTarget.classList.remove('hidden')
+            document.addEventListener('keydown', this.keyHandler)
+
+            // Focus first input
+            const firstInput = this.inviteModalTarget.querySelector('input[type="text"]')
+            if (firstInput) {
+                setTimeout(() => firstInput.focus(), 100)
+            }
+        }
+    }
+
+    closeInviteModal(event) {
+        if (event) event.preventDefault()
+        if (this.hasInviteModalTarget) {
+            this.inviteModalTarget.classList.add('hidden')
+            document.removeEventListener('keydown', this.keyHandler)
+
+            // Clear form
+            if (this.hasInviteFormTarget) {
+                this.inviteFormTarget.reset()
+            }
+        }
     }
 
     updateRole(event) {

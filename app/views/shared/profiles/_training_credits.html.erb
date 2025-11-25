@@ -8,10 +8,11 @@
 <%= form_with(model: entity, url: entity.is_a?(Person) ? update_profile_path : update_group_path(entity), method: :patch, id: "training-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
 <div id="training" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-training profile-section">
   <%= render "shared/section_header",
+    entity: entity,
     title: "Training & Education",
     collapsible: true,
     visibility_toggle: true,
-    visibility_field: "training_visible",
+    visibility_field: "training_credits_visible",
     visibility_checked: entity.training_credits_visible? %>
 
   <div class="p-6 space-y-4" data-profile-section-target="content">

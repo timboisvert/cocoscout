@@ -11,6 +11,20 @@ export default class extends Controller {
         document.removeEventListener('keydown', this.keyHandler)
     }
 
+    getEntityScope() {
+        const form = this.element.querySelector('form') || document.getElementById('performance-history-form')
+        if (!form) return 'person'
+
+        const actionUrl = form.action
+        if (actionUrl.includes('/groups/')) {
+            return 'group'
+        } else if (actionUrl.includes('/profile')) {
+            return 'person'
+        }
+
+        return 'person'
+    }
+
     handleKeydown(event) {
         if (event.key === 'Escape') {
             if (this.hasSectionModalTarget && !this.sectionModalTarget.classList.contains('hidden')) {
@@ -107,14 +121,6 @@ export default class extends Controller {
         }
 
         this.closeSectionModal()
-
-        // Submit the performance history form
-        const form = document.getElementById('performance-history-form')
-        if (form) {
-            form.requestSubmit()
-        } else {
-            console.error('Could not find performance-history-form')
-        }
     }
 
     removeSection(event) {
@@ -132,13 +138,10 @@ export default class extends Controller {
             }
             sectionEl.style.display = 'none'
 
-            // Submit the form to save the deletion
+            // Trigger auto-save
             const form = document.getElementById('performance-history-form')
             if (form) {
-                console.log('Submitting form for section removal:', form)
                 form.requestSubmit()
-            } else {
-                console.error('Could not find form to submit for section removal')
             }
         }
     }
@@ -234,14 +237,6 @@ export default class extends Controller {
         }
 
         this.closeCreditModal()
-
-        // Submit the form to save changes
-        const form = document.getElementById('performance-history-form')
-        if (form) {
-            form.requestSubmit()
-        } else {
-            console.error('Could not find performance-history-form')
-        }
     }
 
     removeCredit(event) {
@@ -259,13 +254,10 @@ export default class extends Controller {
             }
             creditEl.style.display = 'none'
 
-            // Submit the form to save the deletion
+            // Trigger auto-save
             const form = document.getElementById('performance-history-form')
             if (form) {
-                console.log('Submitting form for credit removal:', form)
                 form.requestSubmit()
-            } else {
-                console.error('Could not find form to submit for credit removal')
             }
         }
     }
@@ -274,29 +266,26 @@ export default class extends Controller {
     addSectionToDOM(name) {
         const timestamp = new Date().getTime()
         const container = this.sectionsListTarget
-
-        console.log('Adding section to container:', container)
-        console.log('Container parent:', container.parentElement)
-        console.log('Container is inside form:', container.closest('form'))
+        const entityScope = this.getEntityScope()
 
         const html = `
-      <div class="border border-gray-200 rounded-lg p-4 mb-4" data-section-id="new-${timestamp}">
-        <input type="hidden" name="person[performance_sections_attributes][${timestamp}][name]" value="${this.escapeHtml(name)}">
-        <input type="hidden" name="person[performance_sections_attributes][${timestamp}][position]" value="0">
-        <input type="hidden" name="person[performance_sections_attributes][${timestamp}][_destroy]" value="0" class="section-destroy-field">
+      <div class="border border-gray-200 rounded-lg p-5 mb-4 bg-white shadow-sm" data-section-id="new-${timestamp}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${timestamp}][name]" value="${this.escapeHtml(name)}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${timestamp}][position]" value="0">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${timestamp}][_destroy]" value="0" class="section-destroy-field">
 
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
           <h4 class="text-lg font-semibold text-gray-900 coustard-regular">${this.escapeHtml(name)}</h4>
-          <div class="flex gap-2">
+          <div class="flex gap-3">
             <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-700 underline"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
                     data-action="click->performance-credits#editSection"
                     data-section-id="new-${timestamp}"
                     data-section-name="${this.escapeHtml(name)}">
-              Edit Section
+              Edit
             </button>
             <button type="button"
-                    class="text-xs text-pink-500 hover:text-pink-700"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
                     data-action="click->performance-credits#removeSection"
                     data-section-id="new-${timestamp}">
               Remove
@@ -304,12 +293,12 @@ export default class extends Controller {
           </div>
         </div>
 
-        <div class="space-y-2 credits-list" data-section-id="new-${timestamp}">
+        <div class="space-y-3 credits-list mb-4" data-section-id="new-${timestamp}">
           <!-- Credits will be added here -->
         </div>
 
         <button type="button"
-                class="mt-2 text-sm text-pink-500 hover:text-pink-700 underline font-medium"
+                class="text-sm text-pink-500 hover:text-pink-700 underline font-medium cursor-pointer"
                 data-action="click->performance-credits#openCreditModal"
                 data-section-id="new-${timestamp}">
           + Add Credit
@@ -319,10 +308,11 @@ export default class extends Controller {
 
         container.insertAdjacentHTML('beforeend', html)
 
-        console.log('Section added, checking if fields are in form...')
+        // Trigger auto-save
         const form = document.getElementById('performance-history-form')
-        const addedFields = form.querySelectorAll(`input[name*="[${timestamp}]"]`)
-        console.log(`Found ${addedFields.length} fields in form for timestamp ${timestamp}`, addedFields)
+        if (form) {
+            form.requestSubmit()
+        }
     }
 
     updateSectionInDOM(sectionId, name) {
@@ -332,11 +322,18 @@ export default class extends Controller {
             const nameInput = sectionEl.querySelector('input[name*="[name]"]')
             if (nameInput) nameInput.value = name
         }
+
+        // Trigger auto-save
+        const form = document.getElementById('performance-history-form')
+        if (form) {
+            form.requestSubmit()
+        }
     }
 
     addCreditToDOM(sectionId, formData) {
         const timestamp = new Date().getTime()
         const creditsList = document.querySelector(`.credits-list[data-section-id="${sectionId}"]`)
+        const entityScope = this.getEntityScope()
 
         if (!creditsList) return
 
@@ -370,14 +367,14 @@ export default class extends Controller {
            data-year-end="${yearEnd}"
            data-link-url="${this.escapeHtml(linkUrl)}"
            data-notes="${this.escapeHtml(notes)}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][title]" value="${this.escapeHtml(title)}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][role]" value="${this.escapeHtml(role)}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][year_start]" value="${yearStart}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][year_end]" value="${yearEnd}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][link_url]" value="${this.escapeHtml(linkUrl)}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][notes]" value="${this.escapeHtml(notes)}">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][position]" value="0">
-        <input type="hidden" name="person[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][_destroy]" value="0" class="credit-destroy-field">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][title]" value="${this.escapeHtml(title)}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][role]" value="${this.escapeHtml(role)}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][year_start]" value="${yearStart}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][year_end]" value="${yearEnd}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][link_url]" value="${this.escapeHtml(linkUrl)}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][notes]" value="${this.escapeHtml(notes)}">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][position]" value="0">
+        <input type="hidden" name="${entityScope}[performance_sections_attributes][${sectionIndex}][performance_credits_attributes][${timestamp}][_destroy]" value="0" class="credit-destroy-field">
 
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-gray-900">${displayText || 'Untitled'}</div>
@@ -402,6 +399,12 @@ export default class extends Controller {
     `
 
         creditsList.insertAdjacentHTML('beforeend', html)
+
+        // Trigger auto-save
+        const form = document.getElementById('performance-history-form')
+        if (form) {
+            form.requestSubmit()
+        }
     }
 
     updateCreditInDOM(creditId, formData) {
@@ -436,6 +439,12 @@ export default class extends Controller {
         const displayText = [title, role, yearDisplay].filter(v => v).join(' • ')
 
         creditEl.querySelector('.text-sm').textContent = displayText || 'Untitled'
+
+        // Trigger auto-save
+        const form = document.getElementById('performance-history-form')
+        if (form) {
+            form.requestSubmit()
+        }
     }
 
     escapeHtml(text) {

@@ -7,7 +7,12 @@ class ProfileController < ApplicationController
   end
 
   def update
-    if @person.update(person_params)
+    # Handle virtual attribute conversion
+    if person_params[:show_contact_info].present?
+      @person.show_contact_info = person_params[:show_contact_info]
+    end
+
+    if @person.update(person_params.except(:show_contact_info))
       respond_to do |format|
         format.turbo_stream do
           # Reload associations to ensure newly saved items are included
@@ -74,11 +79,19 @@ class ProfileController < ApplicationController
     field = params[:field]
     value = params[:value] == "1"
 
-    # Get current settings and merge the new value
-    current_settings = @person.visibility_settings
-    updated_settings = current_settings.merge(field => value)
+    # Whitelist of allowed visibility fields
+    allowed_fields = %w[
+      bio_visible headshots_visible resumes_visible social_media_visible
+      videos_visible performance_credits_visible training_credits_visible profile_skills_visible
+    ]
 
-    if @person.update(profile_visibility_settings: updated_settings.to_json)
+    unless allowed_fields.include?(field)
+      head :unprocessable_entity
+      return
+    end
+
+    # Update the specific visibility field
+    if @person.update(field => value)
       head :ok
     else
       head :unprocessable_entity

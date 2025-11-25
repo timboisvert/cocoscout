@@ -11,11 +11,12 @@
 <div id="headshots" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-section">
 <%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: form_id, data: { turbo: true }) do |entity_form| %>
   <%= render "shared/section_header",
+      entity: entity,
       title: "Headshots",
       collapsible: true,
-      visibility_toggle: entity.is_a?(Person),
+      visibility_toggle: true,
       visibility_field: "headshots_visible",
-      visibility_checked: entity.is_a?(Person) ? entity.headshots_visible? : true %>
+      visibility_checked: entity.headshots_visible? %>
 
     <div class="p-6" data-profile-section-target="content">
       <p class="text-sm text-gray-600 mb-4">Upload multiple headshots for different looks and styles.</p>

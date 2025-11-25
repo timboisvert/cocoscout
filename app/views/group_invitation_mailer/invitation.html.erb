@@ -1,0 +1,26 @@
+<% if @custom_message.present? %>
+  <%= simple_format(auto_link(@custom_message, html: { target: '_blank' }), {}, sanitize: false) %>
+  <p style="margin-top: 20px;">
+    <%= link_to "Accept Invitation", accept_group_invitation_url(token: @token), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %>
+  </p>
+<% else %>
+  <h1>You've been invited to join <%= @group.name %></h1>
+
+  <% if @invited_by %>
+    <p><%= @invited_by.name %> has invited you to join <strong><%= @group.name %></strong> on CocoScout.</p>
+  <% else %>
+    <p>You've been invited to join <strong><%= @group.name %></strong> on CocoScout.</p>
+  <% end %>
+
+  <p>CocoScout helps groups and ensembles manage their collective profile, members, and opportunities.</p>
+
+  <p>Click the button below to accept the invitation and create your account:</p>
+
+  <p style="margin-top: 20px;">
+    <%= link_to "Accept Invitation", accept_group_invitation_url(token: @token), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %>
+  </p>
+
+  <p style="margin-top: 20px; color: #666; font-size: 14px;">
+    If you have any questions, please contact the group organizer.
+  </p>
+<% end %>

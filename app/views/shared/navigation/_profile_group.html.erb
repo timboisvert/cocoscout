@@ -2,42 +2,43 @@
 <nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between">
   <div class="flex-1 overflow-y-auto">
     <div class="mt-2">
-      <a href="#basic-info" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Basic Information</span>
-      </a>
+      <% if controller_name == 'groups' && action_name == 'settings' %>
+        <a href="#members" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Members</span>
+        </a>
 
-      <a href="#bio" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Bio</span>
-      </a>
+        <a href="#notifications" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Notification Settings</span>
+        </a>
+      <% else %>
+        <a href="#basic-info" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Basic Information</span>
+        </a>
 
-      <a href="#social-media" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Social Media & Links</span>
-      </a>
+        <a href="#bio" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Bio</span>
+        </a>
 
-      <a href="#headshots" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Headshots</span>
-      </a>
+        <a href="#social-media" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Social Media & Links</span>
+        </a>
 
-      <a href="#resumes" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Resumes</span>
-      </a>
+        <a href="#headshots" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Headshots</span>
+        </a>
 
-      <a href="#videos" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Videos & Reels</span>
-      </a>
+        <a href="#videos" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Videos & Reels</span>
+        </a>
 
-      <a href="#performance-history" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Performance History</span>
-      </a>
+        <a href="#performance-history" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Performance History</span>
+        </a>
 
-      <a href="#members" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Members</span>
-      </a>
-
-      <a href="#notifications" class="coustard-regular flex items-center px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
-        <span>Notifications</span>
-      </a>
-
+        <a href="#resumes" class="coustard-regular flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all font-medium text-gray-700">
+          <span>Resumes</span>
+        </a>
+      <% end %>
     </div>
   </div>
 

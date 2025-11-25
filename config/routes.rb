@@ -304,10 +304,17 @@ Rails.application.routes.draw do
   patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"
   post   "/groups/:id/check-url-availability", to: "groups#check_url_availability", as: "check_url_availability_group"
   patch  "/groups/:id/update-url", to: "groups#update_url", as: "update_url_group"
+  patch  "/groups/:id/visibility", to: "groups#update_visibility", as: "update_group_visibility"
   get    "/groups/:id",               to: "groups#edit",       as: "edit_group"
+  get    "/groups/:id/settings",      to: "groups#settings",   as: "settings_group"
   patch  "/groups/:id",               to: "groups#update",     as: "update_group"
   patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
   patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
+
+  # Group invitations
+  post   "/groups/:group_id/invitations", to: "group_invitations#create", as: "group_invitations"
+  get    "/group_invitations/:token/accept", to: "group_invitations#accept", as: "accept_group_invitation"
+  post   "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }

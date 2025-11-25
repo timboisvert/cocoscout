@@ -1,0 +1,19 @@
+You've been invited to join <%= @group.name %>
+
+<% if @invited_by %>
+<%= @invited_by.name %> has invited you to join <%= @group.name %> on CocoScout.
+<% else %>
+You've been invited to join <%= @group.name %> on CocoScout.
+<% end %>
+
+CocoScout helps groups and ensembles manage their collective profile, members, and opportunities.
+
+Click the link below to accept the invitation and create your account:
+
+<%= accept_group_invitation_url(token: @token) %>
+
+<% if @custom_message.present? %>
+
+---
+<%= @custom_message %>
+<% end %>
