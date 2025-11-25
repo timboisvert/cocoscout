@@ -8,8 +8,8 @@ class CreateProfileSkills < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :profile_skills, [:profileable_type, :profileable_id, :category, :skill_name], 
-              unique: true, 
+    add_index :profile_skills, [ :profileable_type, :profileable_id, :category, :skill_name ],
+              unique: true,
               name: 'index_profile_skills_unique'
   end
 end

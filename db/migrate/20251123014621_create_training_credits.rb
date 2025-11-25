@@ -13,6 +13,6 @@ class CreateTrainingCredits < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :training_credits, [:person_id, :position]
+    add_index :training_credits, [ :person_id, :position ]
   end
 end

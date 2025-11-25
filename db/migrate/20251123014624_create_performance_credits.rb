@@ -16,6 +16,6 @@ class CreatePerformanceCredits < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :performance_credits, [:profileable_type, :profileable_id, :section_name, :position], name: 'index_performance_credits_on_profileable_and_section'
+    add_index :performance_credits, [ :profileable_type, :profileable_id, :section_name, :position ], name: 'index_performance_credits_on_profileable_and_section'
   end
 end

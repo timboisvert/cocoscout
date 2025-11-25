@@ -1,6 +1,29 @@
 {
   "ignored_warnings": [
     {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "1616c50d5933bfe7e9f9e69eeba85527ba5c31e60ab84ef440dcf845ff83288e",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/profile_controller.rb",
+      "line": 252,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params[:person][:profile_skills_attributes].permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ProfileController",
+        "method": "person_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
       "fingerprint": "a4177f99fea1a9a8a881b364c83ab47cb8a929de18f2e35dba38a03b39fc3527",

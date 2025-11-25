@@ -10,6 +10,6 @@ class CreateProfileVideos < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :profile_videos, [:profileable_type, :profileable_id, :position]
+    add_index :profile_videos, [ :profileable_type, :profileable_id, :position ]
   end
 end

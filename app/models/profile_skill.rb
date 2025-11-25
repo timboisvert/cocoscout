@@ -4,8 +4,8 @@ class ProfileSkill < ApplicationRecord
   # Validations
   validates :category, presence: true, length: { maximum: 50 }
   validates :skill_name, presence: true, length: { maximum: 50 }
-  validates :skill_name, uniqueness: { 
-    scope: [:profileable_type, :profileable_id, :category],
+  validates :skill_name, uniqueness: {
+    scope: [ :profileable_type, :profileable_id, :category ],
     message: "has already been added to this category"
   }
 
