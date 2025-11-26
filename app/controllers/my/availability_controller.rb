@@ -215,13 +215,13 @@ class My::AvailabilityController < ApplicationController
     @availabilities = {}
     if @entity_filter.include?("person")
       ShowAvailability.where(available_entity: @person).each do |availability|
-        @availabilities[[availability.show_id, "person"]] = availability
+        @availabilities[[ availability.show_id, "person" ]] = availability
       end
     end
     @groups.each do |group|
       if @entity_filter.include?("group_#{group.id}")
         ShowAvailability.where(available_entity: group).each do |availability|
-          @availabilities[[availability.show_id, "group_#{group.id}"]] = availability
+          @availabilities[[ availability.show_id, "group_#{group.id}" ]] = availability
         end
       end
     end
