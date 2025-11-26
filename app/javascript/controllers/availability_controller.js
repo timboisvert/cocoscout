@@ -19,15 +19,16 @@ export default class extends Controller {
         const showRow = event.target.closest('[data-availability-show-id-value]');
         if (showRow) {
             const showId = showRow.dataset.availabilityShowIdValue;
-            this.updateStatusForShow(showId, status, showRow);
+            const entityKey = showRow.dataset.availabilityEntityKey;
+            this.updateStatusForShow(showId, status, showRow, entityKey);
         }
     }
 
-    updateStatusForShow(showId, status, showRow) {
+    updateStatusForShow(showId, status, showRow, entityKey) {
         fetch(`/my/availability/${showId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status, entity_key: entityKey })
         })
             .then(r => r.json())
             .then(data => {

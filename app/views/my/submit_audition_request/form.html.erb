@@ -42,6 +42,8 @@
 
           eligible_groups = Current.user.person.group_memberships
             .where(permission_level: [:write, :owner])
+            .joins(:group)
+            .where(groups: { archived_at: nil })
             .includes(group: [:profile_headshots, :profile_resumes])
 
           is_group = @requestable.is_a?(Group)

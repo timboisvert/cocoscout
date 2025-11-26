@@ -147,17 +147,43 @@ class Manage::DirectoryController < Manage::ManageController
 
   def update_group_availability
     @group = Group.find(params[:id])
-    show = Show.find(params[:show_id])
-    availability = @group.show_availabilities.find_or_initialize_by(show: show)
+    updated_count = 0
 
-    if params[:status] == "available"
-      availability.available!
-    elsif params[:status] == "unavailable"
-      availability.unavailable!
+    # Loop through all parameters looking for availability_Group_* keys
+    params.each do |key, value|
+      if key.start_with?("availability_Group_")
+        show_id = key.split("_").last.to_i
+        show = Show.find(show_id)
+        availability = @group.show_availabilities.find_or_initialize_by(show: show)
+
+        # Only update if the status has changed
+        new_status = value
+        current_status = if availability.available?
+          "available"
+        elsif availability.unavailable?
+          "unavailable"
+        else
+          nil
+        end
+
+        if new_status != current_status
+          case new_status
+          when "available"
+            availability.available!
+          when "unavailable"
+            availability.unavailable!
+          end
+
+          availability.save
+          updated_count += 1
+        end
+      end
     end
 
-    availability.save
-
-    redirect_to params[:redirect_to] || manage_directory_group_path(@group, tab: 2, edit: "true")
+    if updated_count > 0
+      redirect_to manage_directory_group_path(@group, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+    else
+      redirect_to manage_directory_group_path(@group, tab: 2), alert: "No availability changes were made"
+    end
   end
 end

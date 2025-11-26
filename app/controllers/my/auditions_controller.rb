@@ -1,57 +1,71 @@
 class My::AuditionsController < ApplicationController
   def index
-    # Store the auditions filter (upcoming/past) and entity filter (all/personal/group)
+    @person = Current.user.person
+    @groups = @person.groups.active.order(:name)
+
+    # Store the auditions filter (upcoming/past)
     @auditions_filter = (params[:auditions_filter] || session[:auditions_filter] || "upcoming")
-    @entity_filter = (params[:entity_filter] || session[:entity_filter] || "all")
     session[:auditions_filter] = @auditions_filter
-    session[:entity_filter] = @entity_filter
 
-    # Base query for person's auditions
-    person_auditions = Current.user.person.auditions
-      .includes(:audition_session, :audition_request)
-      .joins(audition_request: :audition_cycle)
-      .where(audition_cycles: { finalize_audition_invitations: true })
+    # Handle entity filter - comma-separated like availability
+    @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
-    # Get group auditions if needed
-    if @entity_filter == "all"
-      # Include both personal and all group auditions
-      group_ids = Current.user.person.groups.pluck(:id)
+    # Collect auditions from selected entities
+    all_auditions = []
 
-      @auditions = Audition
+    # Add person auditions if selected
+    if @entity_filter.include?("person")
+      person_auditions = Audition
         .includes(:audition_session, :audition_request)
         .joins(audition_request: :audition_cycle)
         .where(audition_cycles: { finalize_audition_invitations: true })
-        .where(
-          "(auditions.auditionable_type = ? AND auditions.auditionable_id = ?) OR (auditions.auditionable_type = ? AND auditions.auditionable_id IN (?))",
-          "Person",
-          Current.user.person.id,
-          "Group",
-          group_ids
-        )
-    elsif @entity_filter == "personal"
-      @auditions = person_auditions
-    elsif @entity_filter.start_with?("group_")
-      # Filter by specific group
-      group_id = @entity_filter.sub("group_", "").to_i
-      @auditions = Audition
-        .includes(:audition_session, :audition_request)
-        .joins(audition_request: :audition_cycle)
-        .where(audition_cycles: { finalize_audition_invitations: true })
-        .where(audition_requests: { requestable_type: "Group", requestable_id: group_id })
-    else
-      @auditions = person_auditions
+        .where(auditionable: @person)
+      all_auditions += person_auditions.to_a
     end
+
+    # Add group auditions if selected
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        group_auditions = Audition
+          .includes(:audition_session, :audition_request)
+          .joins(audition_request: :audition_cycle)
+          .where(audition_cycles: { finalize_audition_invitations: true })
+          .where(auditionable: group)
+        all_auditions += group_auditions.to_a
+      end
+    end
+
+    @auditions = all_auditions.uniq
+
+    @auditions = all_auditions.uniq
 
     # Apply time filter
     case @auditions_filter
     when "past"
-      @auditions = @auditions.where("audition_sessions.start_at <= ?", Time.current).order(Arel.sql("audition_sessions.start_at DESC")).distinct
+      @auditions = @auditions.select { |a| a.audition_session.start_at <= Time.current }.sort_by { |a| a.audition_session.start_at }.reverse
     else
       @auditions_filter = "upcoming"
-      @auditions = @auditions.where("audition_sessions.start_at > ?", Time.current).order(Arel.sql("audition_sessions.start_at ASC")).distinct
+      @auditions = @auditions.select { |a| a.audition_session.start_at > Time.current }.sort_by { |a| a.audition_session.start_at }
     end
 
-    # Get user's groups for the filter dropdown
-    @user_groups = Current.user.person.groups.where(archived_at: nil).order(:name)
+    # Build audition entities mapping for headshot display
+    @audition_entities = {}
+    @auditions.each do |audition|
+      entities = []
+
+      # Check if person has this audition and is in entity filter
+      if @entity_filter.include?("person") && audition.auditionable_type == "Person" && audition.auditionable_id == @person.id
+        entities << { type: "person", entity: @person }
+      end
+
+      # Check groups
+      @groups.each do |group|
+        if @entity_filter.include?("group_#{group.id}") && audition.auditionable_type == "Group" && audition.auditionable_id == group.id
+          entities << { type: "group", entity: group }
+        end
+      end
+
+      @audition_entities[audition.id] = entities if entities.any?
+    end
   end
 end

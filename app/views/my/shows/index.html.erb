@@ -20,50 +20,76 @@
 
   <div data-controller="show-toggle" class="mb-4">
     <!-- Mobile filter button -->
-    <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-md border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
-      <span class="text-sm font-medium">Filters</span>
+    <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
+      <span class="text-sm font-medium">Filters & View Options</span>
       <span data-show-toggle-target="icon">
         <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </span>
     </button>
 
-    <!-- Filter sections -->
-    <div data-show-toggle-target="content" class="hidden lg:flex flex-col lg:flex-row w-full space-y-2 lg:space-y-0 lg:space-x-2">
-      <div class="flex flex-1 space-x-1">
-        <%= link_to "All",
-                my_shows_path(filter: 'all', event_type: @event_type_filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == 'all') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "By Production",
-                my_shows_path(filter: 'by_production', event_type: @event_type_filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == 'by_production') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-      </div>
-      <div class="flex space-x-1">
-        <%= link_to "All Types",
-                my_shows_path(filter: @filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter.blank? ? 'bg-gray-500 text-white border-gray-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "Shows",
-                my_shows_path(filter: @filter, event_type: 'show'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'show' ? 'bg-pink-500 text-white border-pink-500' : 'bg-pink-50 text-pink-700 border-pink-300'}"
-        %>
-        <%= link_to "Rehearsals",
-                my_shows_path(filter: @filter, event_type: 'rehearsal'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'rehearsal' ? 'bg-blue-500 text-white border-blue-500' : 'bg-blue-50 text-blue-700 border-blue-300'}"
-        %>
-        <%= link_to "Meetings",
-                my_shows_path(filter: @filter, event_type: 'meeting'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'meeting' ? 'bg-green-500 text-white border-green-500' : 'bg-green-50 text-green-700 border-green-300'}"
-        %>
-      </div>
+  <!-- Filters -->
+  <div data-show-toggle-target="content" class="hidden lg:flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+    <!-- Left: View Filter -->
+    <div class="flex flex-wrap gap-1">
+      <%= link_to "My Assignments",
+              my_shows_path(filter: 'my_assignments', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-lg border text-sm font-normal transition-all #{(@filter == 'my_assignments') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}"
+      %>
+      <%= link_to "All Shows",
+              my_shows_path(filter: 'all', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-lg border text-sm font-normal transition-all #{(@filter == 'all') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}"
+      %>
+      <%= link_to "By Production",
+              my_shows_path(filter: 'by_production', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')),
+              data: { turbo_prefetch: false },
+              class: "px-3 py-1 rounded-lg border text-sm font-normal transition-all #{(@filter == 'by_production') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}"
+      %>
     </div>
+
+    <% if @groups.any? %>
+    <!-- Right: Entity Filter -->
+    <div class="flex flex-wrap gap-1 justify-end">
+      <%
+        # Build the toggle URL for person
+        current_entities = @entity_filter.dup
+        person_url_entities = if current_entities.include?('person')
+          current_entities - ['person']
+        else
+          current_entities + ['person']
+        end
+        person_url_entities = ['person'] if person_url_entities.empty? # Keep at least one
+      %>
+      <%= link_to my_shows_path(filter: @filter, event_type: @event_type_filter.join(","), entity: person_url_entities.join(",")),
+              data: { turbo_prefetch: false },
+              class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?("person") ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
+        <svg class="w-3.5 h-3.5 <%= @entity_filter.include?("person") ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        <%= @person.name %>
+      <% end %>
+
+      <% @groups.each do |group| %>
+        <%
+          # Build the toggle URL for this group
+          group_key = "group_#{group.id}"
+          current_entities = @entity_filter.dup
+          group_url_entities = if current_entities.include?(group_key)
+            current_entities - [group_key]
+          else
+            current_entities + [group_key]
+          end
+          group_url_entities = ['person'] if group_url_entities.empty? # Keep at least one
+        %>
+        <%= link_to my_shows_path(filter: @filter, event_type: @event_type_filter.join(","), entity: group_url_entities.join(",")),
+                data: { turbo_prefetch: false },
+                class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?(group_key) ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
+          <svg class="w-3.5 h-3.5 <%= @entity_filter.include?(group_key) ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+          <%= group.name %>
+        <% end %>
+      <% end %>
+    </div>
+    <% end %>
+  </div>
   </div>
 
   <% if @filter == 'by_production' %>
@@ -76,7 +102,7 @@
           <div class="space-y-1">
             <% production_shows.each do |show| %>
               <%= link_to my_show_path(show), class: "block" do %>
-                <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                <div class="flex bg-white items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-semibold <%= 'line-through text-red-400' if show.canceled %>">
                       <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
@@ -103,14 +129,22 @@
                           <%= show.location.name %>
                         </span>
                       <% end %>
-                      <% if show.event_type == "show" %>
-                        <% assignment = @assignments_by_show[show.id] %>
-                        <% if assignment %>
-                          <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
-                        <% end %>
+                      <% if @entity_type == "group" %>
+                        <span class="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Group: <%= @selected_group.name %></span>
+                      <% end %>
+                      <% assignment = @assignments_by_show[show.id] %>
+                      <% if assignment %>
+                        <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
                       <% end %>
                     </div>
                   </div>
+                  <% if @groups.any? && @show_assignments[show.id].present? %>
+                  <div class="flex-shrink-0 flex gap-1">
+                    <% @show_assignments[show.id].each do |entity_info| %>
+                      <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                    <% end %>
+                  </div>
+                  <% end %>
                 </div>
               <% end %>
             <% end %>
@@ -124,7 +158,7 @@
       <div class="space-y-1">
         <% @shows.each do |show| %>
           <%= link_to my_show_path(show), class: "block" do %>
-            <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="flex bg-white items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-semibold <%= 'line-through text-red-400' if show.canceled %>">
                   <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
@@ -152,14 +186,22 @@
                       <%= show.location.name %>
                     </span>
                   <% end %>
-                  <% if show.event_type == "show" %>
-                    <% assignment = @assignments_by_show[show.id] %>
-                    <% if assignment %>
-                      <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
-                    <% end %>
+                  <% if @entity_type == "group" %>
+                    <span class="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Group: <%= @selected_group.name %></span>
+                  <% end %>
+                  <% assignment = @assignments_by_show[show.id] %>
+                  <% if assignment %>
+                    <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
                   <% end %>
                 </div>
               </div>
+              <% if @groups.any? && @show_assignments[show.id].present? %>
+                <div class="flex-shrink-0 flex gap-1">
+                  <% @show_assignments[show.id].each do |entity_info| %>
+                    <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           <% end %>
         <% end %>

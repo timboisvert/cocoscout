@@ -6,21 +6,70 @@ class My::QuestionnairesController < ApplicationController
   before_action :set_questionnaire_and_questions, except: [ :index ]
 
   def index
+    @person = Current.user.person
+    @groups = @person.groups.active.order(:name)
+
     @filter = params[:filter] || "awaiting"
 
-    all_questionnaires = Current.user.person.all_invited_questionnaires
-                                      .includes(:production)
-                                      .order(created_at: :desc)
+    # Handle entity filter - comma-separated like availability
+    @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
-    if @filter == "awaiting"
-      # Only show questionnaires that haven't been responded to yet
-      @questionnaires = all_questionnaires.select do |q|
-        !q.questionnaire_responses.exists?(respondent: Current.user.person)
-      end
-    else
-      # Show all questionnaires
-      @questionnaires = all_questionnaires
+    # Build questionnaire-entity pairs
+    @questionnaire_entity_pairs = []
+
+    # Get all unique questionnaires from selected entities
+    questionnaire_ids = []
+
+    if @entity_filter.include?("person")
+      person_q_ids = QuestionnaireInvitation.where(invitee: @person).pluck(:questionnaire_id)
+      questionnaire_ids += person_q_ids
     end
+
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        group_q_ids = QuestionnaireInvitation.where(invitee: group).pluck(:questionnaire_id)
+        questionnaire_ids += group_q_ids
+      end
+    end
+
+    questionnaires = Questionnaire.where(id: questionnaire_ids.uniq).includes(:production, :questionnaire_invitations, :questionnaire_responses)
+
+    # Build pairs for each questionnaire-entity combination
+    questionnaires.each do |questionnaire|
+      if @entity_filter.include?("person") && questionnaire.questionnaire_invitations.exists?(invitee: @person)
+        @questionnaire_entity_pairs << {
+          questionnaire: questionnaire,
+          entity_type: "person",
+          entity: @person,
+          entity_key: "person"
+        }
+      end
+
+      @groups.each do |group|
+        if @entity_filter.include?("group_#{group.id}") && questionnaire.questionnaire_invitations.exists?(invitee: group)
+          @questionnaire_entity_pairs << {
+            questionnaire: questionnaire,
+            entity_type: "group",
+            entity: group,
+            entity_key: "group_#{group.id}"
+          }
+        end
+      end
+    end
+
+    # Apply filter
+    if @filter == "awaiting"
+      @questionnaire_entity_pairs = @questionnaire_entity_pairs.select do |pair|
+        questionnaire = pair[:questionnaire]
+        # Only show if: not responded, not archived, and accepting responses
+        !questionnaire.questionnaire_responses.exists?(respondent: pair[:entity]) &&
+        questionnaire.archived_at.nil? &&
+        questionnaire.accepting_responses
+      end
+    end
+
+    # Sort by questionnaire created_at
+    @questionnaire_entity_pairs.sort_by! { |pair| pair[:questionnaire].created_at }.reverse!
   end
 
   def form

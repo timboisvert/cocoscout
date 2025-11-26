@@ -80,10 +80,8 @@ class My::SubmitAuditionRequestController < ApplicationController
     organization = @audition_cycle.production.organization
     if @requestable.is_a?(Person) && !@requestable.organizations.include?(organization)
       @requestable.organizations << organization
-    elsif @requestable.is_a?(Group) && !@requestable.talent_pools.exists?(production_id: @audition_cycle.production_id)
-      # Add group to talent pool if not already there
-      talent_pool = @audition_cycle.production.talent_pools.first_or_create
-      talent_pool.talent_pool_memberships.find_or_create_by(member: @requestable)
+    elsif @requestable.is_a?(Group) && !@requestable.organizations.include?(organization)
+      @requestable.organizations << organization
     end
 
     # We may be updating an existing response, so check for that first

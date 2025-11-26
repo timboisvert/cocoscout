@@ -1,72 +1,186 @@
 class My::ShowsController < ApplicationController
   def index
-    # Get all productions where user is a cast member
-    @productions = Production.joins(talent_pools: :people)
-                             .where(people: { id: Current.user.person.id })
-                             .distinct
-                             .order(:name)
+    @person = Current.user.person
+
+    # Get groups the person is a member of
+    @groups = @person.groups.active.order(:name)
 
     # Handle filter parameters
-    @filter = params[:filter] || "all"
-    @event_type_filter = params[:event_type]
+    @filter = params[:filter] || "my_assignments"
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
-    # Get all upcoming shows for user's productions
-    @shows = Show.joins(production: { talent_pools: :people })
-                .where(people: { id: Current.user.person.id })
-                .where("date_and_time >= ?", Time.current)
-                .select("shows.*")
-                .distinct
+    # Get all shows from selected entities
+    all_shows = []
 
-    # Apply event type filter if specified
-    if @event_type_filter.present?
-      @shows = @shows.where(event_type: @event_type_filter)
+    # Add person shows if selected
+    if @entity_filter.include?("person")
+      person_shows = Show.joins(production: { talent_pools: :people })
+                        .where(people: { id: @person.id })
+                        .where("date_and_time >= ?", Time.current)
+                        .select("shows.*")
+                        .distinct
+      all_shows += person_shows.to_a
     end
 
-    # Order and load shows to avoid pluck with distinct/order issue
-    @shows = @shows.order(:date_and_time).to_a
+    # Add group shows if selected
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        group_shows = Show.joins(production: { talent_pools: :groups })
+                         .where(groups: { id: group.id })
+                         .where("date_and_time >= ?", Time.current)
+                         .select("shows.*")
+                         .distinct
+        all_shows += group_shows.to_a
+      end
+    end
 
-    # Get assignments for these shows
+    # Remove duplicates and filter by event type
+    @shows = all_shows.uniq.select { |show| @event_type_filter.include?(show.event_type) }
+
+    # Get productions from shows
+    production_ids = @shows.map(&:production_id).uniq
+    @productions = Production.where(id: production_ids).order(:name)
+
+    # Order shows
+    @shows = @shows.sort_by(&:date_and_time)
+
+    # Get assignments for these shows (both person and group assignments)
     show_ids = @shows.map(&:id)
-    assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
+    assignments = ShowPersonRoleAssignment.where(show_id: show_ids)
+                                         .where("(assignable_type = ? AND assignable_id = ?) OR (assignable_type = ? AND assignable_id IN (?))",
+                                                "Person", @person.id, "Group", @groups.pluck(:id))
     @assignments_by_show = assignments.index_by(&:show_id)
+
+    # Build mapping of which entities have assignments for each show
+    @show_assignments = {}
+    assignments.each do |assignment|
+      @show_assignments[assignment.show_id] ||= []
+      if assignment.assignable_type == "Person" && assignment.assignable_id == @person.id
+        @show_assignments[assignment.show_id] << { type: "person", entity: @person }
+      elsif assignment.assignable_type == "Group"
+        group = @groups.find { |g| g.id == assignment.assignable_id }
+        @show_assignments[assignment.show_id] << { type: "group", entity: group } if group
+      end
+    end
+
+    # Filter to only shows with assignments if my_assignments filter is active
+    if @filter == "my_assignments"
+      @shows = @shows.select { |show| @show_assignments[show.id].present? }
+      production_ids = @shows.map(&:production_id).uniq
+      @productions = Production.where(id: production_ids).order(:name)
+    end
+
+    # Build a mapping of shows to their entities (for showing headshots)
+    @show_entities = {}
+    @shows.each do |show|
+      # Check if person is assigned
+      if @entity_filter.include?("person")
+        person_show = Show.joins(production: { talent_pools: :people })
+                         .where(people: { id: @person.id })
+                         .where(id: show.id)
+                         .exists?
+        if person_show
+          @show_entities[show.id] ||= []
+          @show_entities[show.id] << { type: "person", entity: @person }
+        end
+      end
+
+      # Check if any selected group is assigned
+      @groups.each do |group|
+        if @entity_filter.include?("group_#{group.id}")
+          group_show = Show.joins(production: { talent_pools: :groups })
+                          .where(groups: { id: group.id })
+                          .where(id: show.id)
+                          .exists?
+          if group_show
+            @show_entities[show.id] ||= []
+            @show_entities[show.id] << { type: "group", entity: group }
+          end
+        end
+      end
+    end
   end
 
   def show
+    @person = Current.user.person
+    @groups = @person.groups.active
+
     @show = Show.joins(production: { talent_pools: :people })
-               .where(people: { id: Current.user.person.id })
+               .where(people: { id: @person.id })
                .find(params[:id])
     @production = @show.production
-    @show_person_role_assignments = @show.show_person_role_assignments.includes(:assignable, :role)
+    @show_person_role_assignments = @show.show_person_role_assignments.includes(:role)
 
-    # Get my assignment for this show (direct person assignment)
-    @my_assignment = @show_person_role_assignments.find { |a| a.assignable_type == "Person" && a.assignable_id == Current.user.person.id }
+    # Get my assignment for this show (check both person and group assignments)
+    @my_assignment = @show_person_role_assignments.find do |a|
+      (a.assignable_type == "Person" && a.assignable_id == @person.id) ||
+      (a.assignable_type == "Group" && @groups.pluck(:id).include?(a.assignable_id))
+    end
   end
 
   def calendar
-    @event_type_filter = params[:event_type] || "all"
+    @person = Current.user.person
 
-    # Get all upcoming non-canceled shows
-    @shows = Show.joins(production: { talent_pools: :people })
-                .where(people: { id: Current.user.person.id })
-                .where("date_and_time >= ?", Time.current)
-                .where(canceled: false)
-                .select("shows.*")
-                .distinct
+    # Get groups the person is a member of
+    @groups = @person.groups.active.order(:name)
 
-    # Apply event type filter
-    unless @event_type_filter == "all"
-      @shows = @shows.where(event_type: @event_type_filter)
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+
+    # Get all shows from selected entities
+    all_shows = []
+
+    # Add person shows if selected
+    if @entity_filter.include?("person")
+      person_shows = Show.joins(production: { talent_pools: :people })
+                        .where(people: { id: @person.id })
+                        .where("date_and_time >= ?", Time.current)
+                        .where(canceled: false)
+                        .select("shows.*")
+                        .distinct
+      all_shows += person_shows.to_a
     end
 
-    # Order and load shows to avoid pluck with distinct/order issue
-    @shows = @shows.order(:date_and_time).to_a
+    # Add group shows if selected
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        group_shows = Show.joins(production: { talent_pools: :groups })
+                         .where(groups: { id: group.id })
+                         .where("date_and_time >= ?", Time.current)
+                         .where(canceled: false)
+                         .select("shows.*")
+                         .distinct
+        all_shows += group_shows.to_a
+      end
+    end
+
+    # Remove duplicates and filter by event type
+    @shows = all_shows.uniq.select { |show| @event_type_filter.include?(show.event_type) }
+
+    # Order shows
+    @shows = @shows.sort_by(&:date_and_time)
 
     # Group shows by month
     @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
 
     # Get assignments for these shows
     show_ids = @shows.map(&:id)
-    assignments = ShowPersonRoleAssignment.where(show_id: show_ids, person_id: Current.user.person.id)
+    assignments = ShowPersonRoleAssignment.where(show_id: show_ids)
+                                         .where("(assignable_type = ? AND assignable_id = ?) OR (assignable_type = ? AND assignable_id IN (?))",
+                                                "Person", @person.id, "Group", @groups.pluck(:id))
     @assignments_by_show = assignments.index_by(&:show_id)
+
+    # Build mapping of which entities have assignments for each show
+    @show_assignments = {}
+    assignments.each do |assignment|
+      @show_assignments[assignment.show_id] ||= []
+      if assignment.assignable_type == "Person" && assignment.assignable_id == @person.id
+        @show_assignments[assignment.show_id] << { type: "person", entity: @person }
+      elsif assignment.assignable_type == "Group"
+        group = @groups.find { |g| g.id == assignment.assignable_id }
+        @show_assignments[assignment.show_id] << { type: "group", entity: group } if group
+      end
+    end
   end
 end

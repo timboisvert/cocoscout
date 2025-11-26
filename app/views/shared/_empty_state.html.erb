@@ -2,17 +2,17 @@
   # Shared empty state component for consistent empty state styling
   #
   # Usage:
-  #   <%= render "shared/empty_state", message: "No headshots yet" %>
-  #   <%= render "shared/empty_state", 
+  #   render "shared/empty_state", message: "No headshots yet"
+  #   render "shared/empty_state",
   #       message: "No performance history yet",
   #       link_text: "Add your first credit",
-  #       link_path: "#" %>
+  #       link_path: "#"
   #
   # Parameters:
   #   message (required): Empty state message text
   #   link_text: Optional link text
   #   link_path: Optional link path (required if link_text is provided)
-  
+
   link_text ||= nil
   link_path ||= nil
 %>

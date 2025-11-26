@@ -83,37 +83,3 @@
     </div>
   </div>
 </div>
-              <%= f.text_field :public_key,
-                value: @person.public_key,
-                placeholder: "your-custom-url",
-                pattern: "[a-z0-9][a-z0-9-]{1,28}[a-z0-9]",
-                required: true,
-                class: "flex-1 rounded-lg border #{@person.errors[:public_key].any? ? 'border-pink-500' : 'border-gray-300'} px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 font-mono text-sm" %>
-            </div>
-            <% if @person.errors[:public_key].any? %>
-              <p class="mt-2 text-sm text-pink-600"><%= @person.errors[:public_key].first %></p>
-            <% end %>
-            <p class="mt-2 text-xs text-gray-500">
-              Example: jane-smith, john-doe-123
-            </p>
-          </div>
-
-          <!-- Last Changed Info -->
-          <% if @person.last_public_key_changed_at %>
-            <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p class="text-sm text-gray-600">
-                Last changed: <%= @person.last_public_key_changed_at.strftime("%B %d, %Y") %>
-              </p>
-            </div>
-          <% end %>
-
-          <!-- Actions -->
-          <div class="flex items-center gap-3 pt-4">
-            <%= f.submit "Update URL", class: "px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
-            <%= link_to "Cancel", profile_path, class: "px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors" %>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </div>
-</div>

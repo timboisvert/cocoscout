@@ -106,23 +106,42 @@ class Manage::PeopleController < Manage::ManageController
 
   def update_availability
     # Update availabilities for each show
+    updated_count = 0
     params.each do |key, value|
-      if key.match?(/^availability_/)
-        show_id = key.match(/availability_(\d+)/)[1].to_i
+      if key.start_with?("availability_Person_")
+        show_id = key.split("_").last.to_i
         show = Show.find(show_id)
         availability = @person.show_availabilities.find_or_initialize_by(show: show)
 
-        if value == "available"
-          availability.available!
-        elsif value == "unavailable"
-          availability.unavailable!
+        # Only update if the status has changed
+        new_status = value
+        current_status = if availability.available?
+          "available"
+        elsif availability.unavailable?
+          "unavailable"
+        else
+          nil
         end
 
-        availability.save
+        if new_status != current_status
+          case new_status
+          when "available"
+            availability.available!
+          when "unavailable"
+            availability.unavailable!
+          end
+
+          availability.save
+          updated_count += 1
+        end
       end
     end
 
-    redirect_to manage_person_path(@person, tab: 2, edit: "true"), notice: "Availability updated"
+    if updated_count > 0
+      redirect_to manage_directory_person_path(@person, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+    else
+      redirect_to manage_directory_person_path(@person, tab: 2), alert: "No availability changes were made"
+    end
   end
 
   def destroy
