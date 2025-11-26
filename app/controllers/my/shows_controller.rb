@@ -128,18 +128,26 @@ class My::ShowsController < ApplicationController
     @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
     @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
-    # Get all shows from selected entities
-    all_shows = []
+    # Determine date range for loading shows
+    # Load from 6 months ago to 12 months in the future to support navigation
+    start_date = 6.months.ago.beginning_of_month
+    end_date = 12.months.from_now.end_of_month
+
+    # Get all shows from selected entities with entity tracking
+    shows_with_entities = {}
 
     # Add person shows if selected
     if @entity_filter.include?("person")
       person_shows = Show.joins(production: { talent_pools: :people })
                         .where(people: { id: @person.id })
-                        .where("date_and_time >= ?", Time.current)
+                        .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                         .where(canceled: false)
                         .select("shows.*")
                         .distinct
-      all_shows += person_shows.to_a
+      person_shows.each do |show|
+        shows_with_entities[show.id] ||= { show: show, entities: [] }
+        shows_with_entities[show.id][:entities] << "person"
+      end
     end
 
     # Add group shows if selected
@@ -147,16 +155,19 @@ class My::ShowsController < ApplicationController
       if @entity_filter.include?("group_#{group.id}")
         group_shows = Show.joins(production: { talent_pools: :groups })
                          .where(groups: { id: group.id })
-                         .where("date_and_time >= ?", Time.current)
+                         .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                          .where(canceled: false)
                          .select("shows.*")
                          .distinct
-        all_shows += group_shows.to_a
+        group_shows.each do |show|
+          shows_with_entities[show.id] ||= { show: show, entities: [] }
+          shows_with_entities[show.id][:entities] << "group_#{group.id}"
+        end
       end
     end
 
-    # Remove duplicates and filter by event type
-    @shows = all_shows.uniq.select { |show| @event_type_filter.include?(show.event_type) }
+    # Extract just the shows and filter by event type
+    @shows = shows_with_entities.values.map { |h| h[:show] }.select { |show| @event_type_filter.include?(show.event_type) }
 
     # Order shows
     @shows = @shows.sort_by(&:date_and_time)

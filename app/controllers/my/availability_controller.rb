@@ -146,25 +146,85 @@ class My::AvailabilityController < ApplicationController
   end
 
   def calendar
-    @event_filter = params[:event_type] || "all"
+    @person = Current.user.person
+    @groups = @person.groups.active.order(:name)
 
-    # Get all upcoming non-canceled shows
-    @shows = Show.joins(production: { talent_pools: :people })
-      .where(people: { id: Current.user.person.id })
-      .where.not(canceled: true)
-      .where("date_and_time > ?", Time.current)
-      .order(:date_and_time)
-      .distinct
+    # Handle event type filter (show, rehearsal, meeting) - checkboxes
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
 
-    # Apply event type filter
-    unless @event_filter == "all"
-      @shows = @shows.where(event_type: @event_filter)
+    # Handle entity filter (person, group_N)
+    @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+
+    # Date range for calendar navigation (wider range to support month navigation)
+    start_date = 6.months.ago.beginning_of_month
+    end_date = 12.months.from_now.end_of_month
+
+    # Build show_entity_pairs - array of { show:, entity_key:, entity: } hashes
+    # This creates SEPARATE entries for each show/entity combination
+    @show_entity_pairs = []
+
+    # Add person shows if selected
+    if @entity_filter.include?("person")
+      person_shows = Show.joins(production: { talent_pools: :people })
+        .where(people: { id: @person.id })
+        .where.not(canceled: true)
+        .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+        .order(:date_and_time)
+        .distinct
+
+      person_shows.each do |show|
+        if @event_type_filter.include?(show.event_type)
+          @show_entity_pairs << {
+            show: show,
+            entity_key: "person",
+            entity: @person
+          }
+        end
+      end
     end
 
-    # Group shows by month
-    @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+    # Add group shows if selected
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        group_shows = Show.joins(production: { talent_pools: :groups })
+          .where(groups: { id: group.id })
+          .where.not(canceled: true)
+          .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+          .order(:date_and_time)
+          .distinct
 
-    @availabilities = ShowAvailability.where(available_entity: Current.user.person).index_by(&:show_id)
+        group_shows.each do |show|
+          if @event_type_filter.include?(show.event_type)
+            @show_entity_pairs << {
+              show: show,
+              entity_key: "group_#{group.id}",
+              entity: group
+            }
+          end
+        end
+      end
+    end
+
+    # Sort by show date
+    @show_entity_pairs.sort_by! { |pair| pair[:show].date_and_time }
+
+    # Group by month using TimeWithZone (important for hash key matching)
+    @pairs_by_month = @show_entity_pairs.group_by { |pair| pair[:show].date_and_time.beginning_of_month }
+
+    # Get availabilities for all entities - indexed by [show_id, entity_key]
+    @availabilities = {}
+    if @entity_filter.include?("person")
+      ShowAvailability.where(available_entity: @person).each do |availability|
+        @availabilities[[availability.show_id, "person"]] = availability
+      end
+    end
+    @groups.each do |group|
+      if @entity_filter.include?("group_#{group.id}")
+        ShowAvailability.where(available_entity: group).each do |availability|
+          @availabilities[[availability.show_id, "group_#{group.id}"]] = availability
+        end
+      end
+    end
   end
 
   def update
