@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_26_145909) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -103,6 +103,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
     t.datetime "updated_at", null: false
     t.string "video_url"
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
+    t.index ["requestable_type", "requestable_id", "created_at"], name: "index_ar_on_requestable_and_created"
     t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"
   end
 
@@ -225,6 +226,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
     t.boolean "videos_visible", default: true, null: false
     t.string "website"
     t.index ["archived_at"], name: "index_groups_on_archived_at"
+    t.index ["created_at"], name: "index_groups_on_created_at"
+    t.index ["name"], name: "index_groups_on_name"
     t.index ["public_key"], name: "index_groups_on_public_key", unique: true
   end
 
@@ -323,6 +326,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.boolean "videos_visible", default: true, null: false
+    t.index ["created_at"], name: "index_people_on_created_at"
+    t.index ["email"], name: "index_people_on_email"
+    t.index ["name"], name: "index_people_on_name"
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
     t.index ["user_id"], name: "index_people_on_user_id"
   end
@@ -602,6 +608,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
     t.string "member_type", null: false
     t.integer "talent_pool_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["member_type", "member_id", "talent_pool_id"], name: "index_tpm_on_member_and_pool"
     t.index ["member_type", "member_id"], name: "index_talent_pool_memberships_on_member_type_and_member_id"
     t.index ["talent_pool_id", "member_type", "member_id"], name: "index_talent_pool_memberships_unique", unique: true
     t.index ["talent_pool_id"], name: "index_talent_pool_memberships_on_talent_pool_id"

@@ -2,147 +2,156 @@ require "ostruct"
 
 class Manage::DirectoryController < Manage::ManageController
   def index
-    # Use params if provided, otherwise use defaults (ignore session for now to debug)
-    @order = params[:order] || "alphabetical"
-    @show = params[:show] || "tiles"
-    @filter = params[:filter] || "everyone"
-    @type = params[:type] || "all"
+    # Get filter params (prioritize params, fall back to session, then defaults)
+    @sort = params[:sort] || session[:directory_sort] || "name_asc"
+    @show = params[:show] || session[:directory_show] || "tiles"
+    @filter = params[:filter] || session[:directory_filter] || (Current.production ? "current_production" : "everyone")
+    @type = params[:type] || session[:directory_type] || "all"
+    @search = params[:q] || ""
 
     # Validate values
     @show = "tiles" unless %w[tiles list].include?(@show)
-    @filter = "everyone" unless %w[cast-members everyone].include?(@filter)
+    @filter = "everyone" unless %w[current_production org_talent_pools everyone].include?(@filter)
     @type = "all" unless %w[people groups all].include?(@type)
+    @sort = "name_asc" unless %w[name_asc name_desc date_asc date_desc].include?(@sort)
 
-    # Save to session
-    session[:directory_order] = @order
+    # Save to session (except search - that's transient)
+    session[:directory_sort] = @sort
     session[:directory_show] = @show
     session[:directory_filter] = @filter
     session[:directory_type] = @type
 
-    # Process the filter - scope to current production company
-    if Current.organization
-      people = Current.organization.people
-      groups = Current.organization.groups
-    else
-      people = Person.all
-      groups = Group.all
+    # Use service to build queries
+    query_service = DirectoryQueryService.new(
+      {
+        sort: @sort,
+        filter: @filter,
+        type: @type,
+        q: @search
+      },
+      Current.organization,
+      Current.production
+    )
+
+    people, groups = query_service.call
+
+    # ID-based pagination for heterogeneous collections
+    # Step 1: Get IDs and sort fields only (lightweight query)
+    people_data = people.pluck(:id, :name, :created_at)
+                        .map { |id, name, created_at| { id: id, type: "Person", name: name, created_at: created_at } }
+    groups_data = groups.pluck(:id, :name, :created_at)
+                        .map { |id, name, created_at| { id: id, type: "Group", name: name, created_at: created_at } }
+
+    all_entries_data = (people_data + groups_data)
+
+    # Step 2: Sort in memory
+    all_entries_data.sort_by! do |entry|
+      case @sort
+      when "name_asc"
+        entry[:name].downcase
+      when "name_desc"
+        [ -1, entry[:name].downcase ]
+      when "date_asc"
+        entry[:created_at].to_i
+      when "date_desc"
+        -entry[:created_at].to_i
+      end
     end
 
-    case @filter
-    when "cast-members"
-      people = people.joins(:talent_pools).distinct
-      groups = groups.joins(:talent_pool_memberships).distinct
-    when "everyone"
-      people = people.all
-      groups = groups.all
-    else
-      @filter = "everyone"
-      people = people.all
-      groups = groups.all
-    end
+    # Reverse for descending name sort
+    all_entries_data.reverse! if @sort == "name_desc"
 
-    # Apply type filter
-    case @type
-    when "people"
-      groups = Group.none
-    when "groups"
-      people = Person.none
-    when "all"
-      # Include both
-    else
-      @type = "all"
-    end
-
-    # Process the order and combine results
-    people_query = people
-    groups_query = groups
-
-    case @order
-    when "alphabetical"
-      people_query = people_query.order(:name)
-      groups_query = groups_query.order(:name)
-    when "newest"
-      people_query = people_query.order(created_at: :desc)
-      groups_query = groups_query.order(created_at: :desc)
-    when "oldest"
-      people_query = people_query.order(created_at: :asc)
-      groups_query = groups_query.order(created_at: :asc)
-    else
-      @order = "alphabetical"
-      people_query = people_query.order(:name)
-      groups_query = groups_query.order(:name)
-    end
-
-    # Combine and sort in memory since we can't paginate heterogeneous collections
-    all_entries = (people_query.to_a + groups_query.to_a)
-
-    case @order
-    when "alphabetical"
-      all_entries.sort_by!(&:name)
-    when "newest"
-      all_entries.sort_by! { |e| e.created_at }
-      all_entries.reverse!
-    when "oldest"
-      all_entries.sort_by!(&:created_at)
-    end
-
-    limit_per_page = @show == "list" ? 12 : 24
-
-    # Manual pagination
+    # Step 3: Paginate
+    limit_per_page = 30
     page = (params[:page] || 1).to_i
-    total_count = all_entries.length
+    total_count = all_entries_data.length
     offset = (page - 1) * limit_per_page
 
-    @entries = all_entries[offset, limit_per_page] || []
+    paginated_data = all_entries_data[offset, limit_per_page] || []
 
-    # Create a simple pagy-like object for the view
+    # Step 4: Load full records with eager loading for just the paginated IDs
+    person_ids = paginated_data.select { |e| e[:type] == "Person" }.map { |e| e[:id] }
+    group_ids = paginated_data.select { |e| e[:type] == "Group" }.map { |e| e[:id] }
+
+    loaded_people = Person.includes(:profile_headshots, :profile_resumes, :talent_pools)
+                          .where(id: person_ids)
+                          .index_by(&:id)
+    loaded_groups = Group.includes(:profile_headshots, :profile_resumes, :talent_pools, :members)
+                         .where(id: group_ids)
+                         .index_by(&:id)
+
+    # Step 5: Reconstruct entries in sorted order
+    @entries = paginated_data.map do |entry_data|
+      if entry_data[:type] == "Person"
+        loaded_people[entry_data[:id]]
+      else
+        loaded_groups[entry_data[:id]]
+      end
+    end.compact
+
+    # Create pagy-like object for pagination UI
     @pagy = OpenStruct.new(
       page: page,
       pages: (total_count.to_f / limit_per_page).ceil,
       count: total_count,
       limit: limit_per_page
     )
+
+    # Calculate proper entity counts
+    @people_count = people_data.count
+    @groups_count = groups_data.count
+
+    # Handle pagination with Turbo Streams for infinite scroll
+    respond_to do |format|
+      format.html # Normal page load
+      format.turbo_stream # Infinite scroll requests
+    end
+  end
+
+  def contact_directory
+    person_ids = params[:person_ids]&.select { |id| id.present? } || []
+    subject = params[:subject]
+    message = params[:message]
+
+    if person_ids.empty?
+      redirect_to manage_directory_path, alert: "Please select at least one person or group."
+      return
+    end
+
+    # Load people and groups from the IDs (scoped to current organization via HABTM)
+    people = Current.organization.people.where(id: person_ids)
+    groups = Current.organization.groups.where(id: person_ids)
+
+    # Collect all people to email (direct people + group members with notifications enabled)
+    people_to_email = []
+
+    # Add directly selected people
+    people_to_email.concat(people.to_a)
+
+    # Add group members who have notifications enabled
+    groups.each do |group|
+      members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
+      people_to_email.concat(members_with_notifications)
+    end
+
+    # Remove duplicates
+    people_to_email.uniq!
+
+    # Send emails
+    people_to_email.each do |person|
+      Manage::ContactMailer.send_message(person, subject, message, Current.user).deliver_later
+    end
+
+    redirect_to manage_directory_path, notice: "Email sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
   end
 
   def show
-    # Determine type from route and load the appropriate record
+    # Redirect to the actual person or group pages
     if params[:type] == "person"
-      @entry = Person.find(params[:id])
-
-      # Get all future shows for productions this person is a cast member of
-      production_ids = @entry.talent_pools.pluck(:production_id).uniq
-      @shows = Show.where(production_id: production_ids, canceled: false)
-                   .where("date_and_time >= ?", Time.current)
-                   .order(:date_and_time)
-
-      # Build a hash of availabilities: { show_id => show_availability }
-      @availabilities = {}
-      @entry.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[availability.show_id] = availability
-      end
-
-      # Track edit mode
-      @edit_mode = params[:edit] == "true"
+      redirect_to manage_person_path(params[:id]), status: :moved_permanently
     else
-      @entry = Group.find(params[:id])
-
-      # Get all future shows for productions this group is in a talent pool for
-      production_ids = @entry.talent_pools.pluck(:production_id).uniq
-      @shows = Show.where(production_id: production_ids, canceled: false)
-                   .where("date_and_time >= ?", Time.current)
-                   .order(:date_and_time)
-
-      # Build a hash of availabilities: { show_id => show_availability }
-      @availabilities = {}
-      @entry.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[availability.show_id] = availability
-      end
-
-      # Track edit mode
-      @edit_mode = params[:edit] == "true"
+      redirect_to manage_group_path(params[:id]), status: :moved_permanently
     end
-
-    render "show"
   end
 
   def update_group_availability

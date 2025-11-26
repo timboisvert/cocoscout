@@ -1,0 +1,37 @@
+<%# Append the new entries to the grid/list %>
+<% @entries.each do |entry| %>
+  <%= turbo_stream.append "directory_content" do %>
+    <% if @show == "tiles" %>
+      <% cache ["directory_tile_v2", entry, entry.updated_at, Current.production&.id] do %>
+        <%= render "directory_tile", entry: entry %>
+      <% end %>
+    <% else %>
+      <% cache ["directory_list_v2", entry, entry.updated_at, Current.production&.id] do %>
+        <%= render "directory_list_item", entry: entry %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<%# Replace the pagination frame with the next page's frame %>
+<%= turbo_stream.replace "pagination" do %>
+  <%= turbo_frame_tag "pagination" do %>
+    <% if @pagy.page < @pagy.pages %>
+      <div data-controller="infinite-scroll"
+           data-infinite-scroll-url-value="<%= manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream) %>"
+           data-infinite-scroll-page-value="<%= @pagy.page %>"
+           data-infinite-scroll-pages-value="<%= @pagy.pages %>">
+        <%= link_to "Load More",
+                manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream),
+                data: {
+                  infinite_scroll_target: "nextLink"
+                },
+                class: "hidden" %>
+
+        <div data-infinite-scroll-target="sentinel" class="h-20 flex items-center justify-center">
+          <div class="text-sm text-gray-400">Loading more...</div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

@@ -92,6 +92,7 @@ Rails.application.routes.draw do
 
     # Directory - unified people and groups listing
     get  "/directory",          to: "directory#index",        as: "directory"
+    post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
     get  "/directory/:type/:id", to: "directory#show", as: "directory_entry", constraints: { type: /person|group/ }
     patch "/directory/group/:id/update_availability", to: "directory#update_group_availability", as: "update_group_availability"
 
