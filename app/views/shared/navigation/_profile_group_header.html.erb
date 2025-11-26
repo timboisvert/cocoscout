@@ -43,11 +43,12 @@
       </button>
 
       <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-        <% if controller_name == 'groups' && action_name == 'settings' %>
-          <%= link_to "Group Profile", edit_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-        <% else %>
-          <%= link_to "Group Settings", settings_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-        <% end %>
+        <%= link_to "Group Profile", edit_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <%= link_to "Group Settings", settings_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+
+        <div class="border-t border-slate-200 my-1"></div>
+
+        <%= link_to "My Groups", groups_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
 
         <div class="border-t border-slate-200 my-1"></div>
 

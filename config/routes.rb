@@ -313,7 +313,7 @@ Rails.application.routes.draw do
   patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
 
   # Groups routes (top-level, use profile layout)
-  # get    "/groups",                   to: "groups#index",      as: "groups"
+  get    "/groups",                   to: "groups#index",      as: "groups"
   get    "/groups/new",               to: "groups#new",        as: "new_group"
   post   "/groups",                   to: "groups#create",     as: "create_group"
   patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"

@@ -1,14 +1,14 @@
 class GroupsController < ApplicationController
-  layout "profile", except: [ :new ]
+  layout "profile", except: [ :new, :index ]
 
   before_action :set_group, only: [ :edit, :settings, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url, :update_visibility, :update_member_role, :remove_member, :update_member_notifications ]
   before_action :check_group_access, only: [ :edit, :settings, :update, :check_url_availability, :update_url, :update_visibility ]
   before_action :check_owner_access, only: [ :archive, :unarchive, :update_member_role, :remove_member, :update_member_notifications ]
-
   skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
 
   def index
+    @show_my_sidebar = false
     @groups = Current.user.person.groups.where(archived_at: nil).order(:name)
   end
 
