@@ -26,7 +26,7 @@
                 <b>Names:</b>
                 <% len = audition_session.auditions.length %>
                 <% audition_session.auditions.each_with_index do |audition, i| %>
-                  <%= audition.person.name %><%= i == len - 1 ? "" : ", " %>
+                  <%= audition.auditionable.name %><%= i == len - 1 ? "" : ", " %>
                 <% end %>
               </div>
 
@@ -34,7 +34,7 @@
                 <b>Emails:</b>
                 <% len = audition_session.auditions.length %>
                 <% audition_session.auditions.each_with_index do |audition, i| %>
-                  <%= audition.person.email %><%= i == len - 1 ? "" : ", " %>
+                  <%= audition.auditionable.is_a?(Person) ? audition.auditionable.email : "(Group)" %><%= i == len - 1 ? "" : ", " %>
                 <% end %>
               </div>
 

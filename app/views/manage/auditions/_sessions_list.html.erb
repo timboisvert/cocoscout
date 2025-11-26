@@ -33,19 +33,26 @@
           <% if session.auditions.any? %>
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-2 w-full">
               <% session.auditions.each do |audition| %>
+                <% auditionable = audition.auditionable %>
                 <div class="flex flex-col items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-move"
                      draggable="true"
                      data-audition-id="<%= audition.id %>"
                      data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
-                  <% headshot_variant = audition.audition_request.person.safe_headshot_variant(:thumb) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: audition.audition_request.person.name, class: "w-10 h-10 rounded-lg object-cover mb-1 pointer-events-none" %>
+                  <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
+                  <% if headshot_url %>
+                    <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 rounded-lg object-cover mb-1 pointer-events-none" %>
+                  <% elsif auditionable.is_a?(Person) %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-xs pointer-events-none">
+                      <%= auditionable.initials %>
+                    </div>
                   <% else %>
                     <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-xs pointer-events-none">
-                      <%= audition.audition_request.person.initials %>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                      </svg>
                     </div>
                   <% end %>
-                  <span class="font-medium text-xs text-center pointer-events-none"><%= audition.audition_request.person.name.truncate(20, omission: '...') %></span>
+                  <span class="font-medium text-xs text-center pointer-events-none"><%= auditionable.name.truncate(20, omission: '...') %></span>
                   <button type="button"
                     class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                     data-action="click->drag-audition#removeAudition"

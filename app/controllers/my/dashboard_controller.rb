@@ -8,10 +8,10 @@ class My::DashboardController < ApplicationController
 
     @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
-    # Get upcoming shows where user has a role assignment
+    # Get upcoming shows where user has a role assignment (either directly or through a group)
     @upcoming_shows = Show
       .joins(:show_person_role_assignments)
-      .where(show_person_role_assignments: { person_id: Current.user.person.id })
+      .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: Current.user.person.id })
       .where("date_and_time >= ?", Time.current)
       .includes(:production, :location, show_person_role_assignments: :role)
       .order(:date_and_time)
@@ -20,7 +20,7 @@ class My::DashboardController < ApplicationController
     # 2) My next audition session
     @upcoming_audition_sessions = AuditionSession
       .joins(:auditions)
-      .where(auditions: { person_id: Current.user.person.id })
+      .where(auditions: { auditionable_type: "Person", auditionable_id: Current.user.person.id })
       .where("audition_sessions.start_at >= ?", Time.current)
       .order(Arel.sql("audition_sessions.start_at"))
       .distinct
@@ -33,7 +33,7 @@ class My::DashboardController < ApplicationController
       .order(Arel.sql("audition_cycles.closes_at ASC NULLS LAST"))
 
     # My pending questionnaires
-    @pending_questionnaires = Current.user.person.invited_questionnaires
+    @pending_questionnaires = Current.user.person.all_invited_questionnaires
       .where(accepting_responses: true)
       .includes(:production, :questionnaire_responses)
       .order(created_at: :desc)
@@ -53,6 +53,12 @@ class My::DashboardController < ApplicationController
     end
 
     Current.user.update(welcomed_at: Time.current)
-    redirect_to my_dashboard_path
+
+    # If this is an AJAX request, just return success
+    if request.xhr?
+      head :ok
+    else
+      redirect_to my_dashboard_path
+    end
   end
 end

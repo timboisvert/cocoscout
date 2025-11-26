@@ -90,6 +90,15 @@ Rails.application.routes.draw do
     get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
+    # Directory - unified people and groups listing
+    get  "/directory",          to: "directory#index",        as: "directory"
+    get  "/directory/:type/:id", to: "directory#show", as: "directory_entry", constraints: { type: /person|group/ }
+    patch "/directory/group/:id/update_availability", to: "directory#update_group_availability", as: "update_group_availability"
+
+    # Keep these for backwards compatibility
+    get  "/directory/person/:id", to: "directory#show", defaults: { type: "person" }, as: "directory_person"
+    get  "/directory/group/:id",  to: "directory#show", defaults: { type: "group" }, as: "directory_group"
+
     resources :organizations do
       collection do
         get :setup_guide
@@ -191,9 +200,11 @@ Rails.application.routes.draw do
           get :search_people
         end
         member do
-          # These two are only used when dragging and dropping on the talent pool members list
+          # These are used when dragging and dropping on the talent pool members list or adding from search
           post :add_person
           post :remove_person
+          post :add_group
+          post :remove_group
         end
       end
 
@@ -284,6 +295,9 @@ Rails.application.routes.draw do
 
   # Profile routes (top-level)
   get    "/profile",         to: "profile#index",   as: "profile"
+  get    "/profile/welcome", to: "profile#welcome", as: "profile_welcome"
+  post   "/profile/dismiss_welcome", to: "profile#dismiss_welcome", as: "dismiss_profile_welcome"
+  post   "/profile/mark_welcomed", to: "profile#mark_welcomed", as: "mark_profile_welcomed"
   patch  "/profile",         to: "profile#update",  as: "update_profile"
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"

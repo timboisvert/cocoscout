@@ -36,10 +36,10 @@ class My::ShowsController < ApplicationController
                .where(people: { id: Current.user.person.id })
                .find(params[:id])
     @production = @show.production
-    @show_person_role_assignments = @show.show_person_role_assignments.includes(:person, :role)
+    @show_person_role_assignments = @show.show_person_role_assignments.includes(:assignable, :role)
 
-    # Get my assignment for this show
-    @my_assignment = @show_person_role_assignments.find { |a| a.person_id == Current.user.person.id }
+    # Get my assignment for this show (direct person assignment)
+    @my_assignment = @show_person_role_assignments.find { |a| a.assignable_type == "Person" && a.assignable_id == Current.user.person.id }
   end
 
   def calendar

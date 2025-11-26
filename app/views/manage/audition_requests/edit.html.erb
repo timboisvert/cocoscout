@@ -6,7 +6,7 @@
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
       [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
-      [@audition_request.person.name, manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
+      [@audition_request.requestable.name, manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
     ],
     text: "Edit Answers",
     links: []

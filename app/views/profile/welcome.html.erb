@@ -1,0 +1,157 @@
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-slate-50">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Header with Logo -->
+    <div class="text-center mb-8 sm:mb-12">
+      <%= image_tag "cocoscout.png", alt: "CocoScout", class: "w-20 sm:w-24 mx-auto object-contain mb-4" %>
+      <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 mb-3 coustard-regular">Build Your Profile</h1>
+      <p class="text-lg sm:text-xl text-slate-600">Showcase your talent and connect with opportunities</p>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid md:grid-cols-2 gap-6 mb-8" data-controller="profile-welcome">
+
+      <!-- Profile Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Headshots & Photos</h3>
+              <p class="text-sm text-slate-600">Upload professional headshots to showcase your look. Make one your primary photo.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Videos Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Videos & Reels</h3>
+              <p class="text-sm text-slate-600">Add performance videos, reels, and clips. Link to YouTube or Vimeo content.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Resume Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Resume & Documents</h3>
+              <p class="text-sm text-slate-600">Upload your resume and other important documents for casting directors.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Performance History Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Performance History</h3>
+              <p class="text-sm text-slate-600">Add your past roles and productions. Organize by sections like Film, TV, Theater, and more.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Training Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Training & Education</h3>
+              <p class="text-sm text-slate-600">List your formal training, workshops, and education in the performing arts.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Skills Card -->
+      <%= link_to profile_path, class: "group", data: { action: "click->profile-welcome#markWelcomed" } do %>
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+              <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-600 transition-colors">Special Skills</h3>
+              <p class="text-sm text-slate-600">Highlight your unique abilities like accents, instruments, dance styles, and more.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+    </div>
+
+    <!-- Quick Tips -->
+    <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm mb-8">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Quick Tips</h3>
+      <ul class="space-y-3">
+        <li class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-slate-700">You don't need to complete everything at once—add what you have and come back later</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-slate-700">Control what's visible on your public profile—you choose what to share</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-slate-700">Your profile is your calling card—update it regularly as your career grows</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-slate-700">Share your unique profile URL with casting directors, agents, and collaborators</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Get Started Button -->
+    <div class="text-center">
+      <%= button_to "Get Started", dismiss_profile_welcome_path, method: :post, class: "inline-block rounded-lg px-8 py-4 bg-pink-500 hover:bg-pink-600 text-white text-lg font-semibold cursor-pointer transition shadow-md hover:shadow-lg" %>
+      <p class="mt-4 text-sm text-slate-500">You can access your profile anytime from your dashboard</p>
+    </div>
+
+  </div>
+</div>

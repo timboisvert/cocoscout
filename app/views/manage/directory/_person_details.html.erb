@@ -1,0 +1,100 @@
+<div class="w-full" data-controller="tabs">
+  <nav class="flex space-x-2 border-b border-gray-200 mb-4">
+    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
+  </nav>
+
+  <div data-tabs-target="panel">
+    <%= render "shared/person_card", person: person %>
+  </div>
+
+  <div data-tabs-target="panel" class="hidden">
+    <% first_resume = person.profile_resumes.first %>
+    <% if first_resume&.file&.attached? %>
+      <div class="w-full">
+        <% if first_resume.file.content_type == "application/pdf" %>
+          <% if first_resume.file.representable? %>
+            <%= image_tag first_resume.file.representation(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+          <% else %>
+            <div class="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-red-500 mb-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              <p class="text-gray-600"><%= first_resume.name %></p>
+              <%= link_to "Download PDF", rails_blob_path(first_resume.file, disposition: "attachment"), class: "mt-2 text-pink-500 hover:underline text-sm" %>
+            </div>
+          <% end %>
+        <% else %>
+          <%= image_tag first_resume.file.variant(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-left text-gray-500 text-sm">No resume found</p>
+    <% end %>
+  </div>
+
+  <div data-tabs-target="panel" class="hidden">
+    <% if shows.empty? %>
+      <p class="text-left text-gray-500 text-sm">No upcoming shows found for this person's productions.</p>
+    <% else %>
+      <div class="space-y-4">
+        <% shows.group_by(&:production).each do |production, production_shows| %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
+              <% if current_user_can_manage?(production) %>
+                <% if edit_mode %>
+                  <%= link_to "Done", manage_directory_person_path(person, tab: 2), class: "text-pink-500 text-xs underline" %>
+                <% else %>
+                  <%= link_to "Edit Availability", manage_directory_person_path(person, edit: 'true', tab: 2), class: "text-pink-500 text-xs underline" %>
+                <% end %>
+              <% end %>
+            </div>
+            <div class="p-4">
+              <div class="space-y-3">
+                <% production_shows.each do |show| %>
+                  <% availability = availabilities[show.id] %>
+                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1">
+                      <div class="font-medium text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %d, %Y at %I:%M %p") %></div>
+                    </div>
+                    <% if edit_mode && current_user_can_manage?(production) %>
+                      <%= form_with url: update_availability_manage_person_path(person),
+                                    method: :patch,
+                                    data: { turbo_frame: "_top" },
+                                    class: "flex items-center gap-0 flex-shrink-0" do |f| %>
+                        <%= f.hidden_field :show_id, value: show.id %>
+                        <%= f.hidden_field :redirect_to, value: manage_directory_person_path(person, tab: 2, edit: 'true') %>
+
+                        <%= f.radio_button :status, "available", class: "sr-only peer/available", id: "available_#{show.id}", checked: availability&.available?, onchange: "this.form.requestSubmit()" %>
+                        <%= f.label :status, "Available", value: "available", for: "available_#{show.id}",
+                                  class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l-lg border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500 #{availability&.available? ? 'bg-pink-500 text-white' : ''}" %>
+
+                        <%= f.radio_button :status, "unavailable", class: "sr-only peer/unavailable", id: "unavailable_#{show.id}", checked: availability&.unavailable?, onchange: "this.form.requestSubmit()" %>
+                        <%= f.label :status, "Unavailable", value: "unavailable", for: "unavailable_#{show.id}",
+                                  class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r-lg bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500 #{availability&.unavailable? ? 'bg-pink-500 text-white' : ''}" %>
+                      <% end %>
+                    <% else %>
+                      <% if availability %>
+                        <% if availability.available? %>
+                          <span class="text-sm font-medium text-pink-500">Available</span>
+                        <% elsif availability.unavailable? %>
+                          <span class="text-sm font-medium text-gray-900">Unavailable</span>
+                        <% elsif availability.maybe? %>
+                          <span class="text-sm font-medium text-gray-500">Maybe</span>
+                        <% end %>
+                      <% else %>
+                        <span class="text-gray-400 text-sm">-</span>
+                      <% end %>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

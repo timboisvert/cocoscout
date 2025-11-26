@@ -107,13 +107,19 @@
               auditions_not_yet_happened = last_session.nil? || last_session.start_at.nil? || last_session.start_at > Time.current
 
               if auditions_not_yet_happened
-                scheduled_person_ids = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.person_id')
-                accepted_people_count = @active_audition_cycle.audition_requests.where(status: :accepted).count
-                to_be_scheduled_count = @active_audition_cycle.audition_requests.where(status: :accepted, requestable_type: 'Person').where.not(requestable_id: scheduled_person_ids).count
+                # Get scheduled auditionable IDs (both Person and Group)
+                scheduled_auditionables = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.auditionable_type', 'auditions.auditionable_id')
+                scheduled_count = scheduled_auditionables.count
+
+                # Count accepted requests that haven't been scheduled yet
+                accepted_requests = @active_audition_cycle.audition_requests.where(status: :accepted)
+                to_be_scheduled_count = accepted_requests.reject do |req|
+                  scheduled_auditionables.include?([req.requestable_type, req.requestable_id])
+                end.count
             %>
               <div class="p-3 bg-gray-50 rounded-lg">
                 <p class="text-xs text-gray-600 font-medium">Auditions Scheduled</p>
-                <p class="text-sm font-semibold text-gray-900 mt-1"><%= scheduled_person_ids.count %></p>
+                <p class="text-sm font-semibold text-gray-900 mt-1"><%= scheduled_count %></p>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg">
                 <p class="text-xs text-gray-600 font-medium">Auditions To Be Scheduled</p>
@@ -208,18 +214,18 @@
                     <p class="text-gray-600 text-sm mt-1"><%= @active_audition_cycle.audition_type == 'video_upload' ? 'Watch and evaluate auditions' : 'Accept or decline sign-ups and schedule auditions' %></p>
                     <%
                       total_signups = @active_audition_cycle.audition_requests.count
-                      # Count people who are actually scheduled for auditions
-                      scheduled_count = @active_audition_cycle.audition_sessions.joins(:auditions).select('auditions.person_id').distinct.count
+                      # Count auditionables (people/groups) who are actually scheduled for auditions
+                      scheduled_count = @active_audition_cycle.audition_sessions.joins(:auditions).select('auditions.auditionable_type', 'auditions.auditionable_id').distinct.count
                     %>
                     <% if total_signups > 0 %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= total_signups %> <%= 'sign-up'.pluralize(total_signups) %> received</p>
                     <% end %>
                     <% if scheduled_count > 0 %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= scheduled_count %> <%= 'person'.pluralize(scheduled_count) %> offered <%= 'an audition'.pluralize(scheduled_count) %></p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= scheduled_count %> <%= 'auditionee'.pluralize(scheduled_count) %> offered <%= 'an audition'.pluralize(scheduled_count) %></p>
                     <% end %>
                     <% if @active_audition_cycle.finalize_audition_invitations %>
                       <% notified_count = @active_audition_cycle.audition_requests.count %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ Audition decision notifications sent to <%= notified_count %> <%= 'person'.pluralize(notified_count) %></p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ Audition decision notifications sent to <%= notified_count %> <%= 'auditionee'.pluralize(notified_count) %></p>
                     <% end %>
                   </div>
                 </div>
@@ -264,19 +270,19 @@
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Casting</h4>
                     <p class="text-gray-600 text-sm mt-1">Send decisions and add people to casts</p>
                     <%
-                      # Count unique people added to casts during THIS audition cycle
-                      cast_people_count = @active_audition_cycle.cast_assignment_stages.select(:person_id).distinct.count
-                      if cast_people_count > 0
+                      # Count unique auditionees added to casts during THIS audition cycle
+                      cast_count = @active_audition_cycle.cast_assignment_stages.select(:assignable_type, :assignable_id).distinct.count
+                      if cast_count > 0
                     %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= cast_people_count %> <%= 'person'.pluralize(cast_people_count) %> added to <%= cast_people_count == 1 ? 'a cast' : 'casts' %></p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= cast_count %> <%= 'auditionee'.pluralize(cast_count) %> added to <%= cast_count == 1 ? 'a cast' : 'casts' %></p>
                     <% end %>
                     <%
                       # Check if casting was finalized
                       if @active_audition_cycle.casting_finalized_at.present?
                         finalized_stages = @active_audition_cycle.cast_assignment_stages.where(status: :finalized)
-                        # Count total people who auditioned to show how many were notified
+                        # Count total people/groups who auditioned to show how many were notified
                         audition_session_ids = @active_audition_cycle.audition_sessions.pluck(:id)
-                        total_auditioned = Person.joins(:auditions).where(auditions: { audition_session_id: audition_session_ids }).distinct.count
+                        total_auditioned = Audition.where(audition_session_id: audition_session_ids).select(:auditionable_type, :auditionable_id).distinct.count
 
                         if finalized_stages.any?
                     %>

@@ -43,7 +43,7 @@
             %>
           </div>
         </div>
-        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, filter: params[:filter], scheduled_request_ids: @scheduled_request_ids, scheduled_person_ids: @scheduled_person_ids } %>
+        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, filter: params[:filter], scheduled_request_ids: @scheduled_request_ids, scheduled_auditionables: @scheduled_auditionables } %>
       </div>
     </div>
   </div>

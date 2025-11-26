@@ -1,12 +1,12 @@
 <% pending_stages_local = @cast_assignment_stages.where(status: :pending) %>
 <% staged_casts = @talent_pools.select { |talent_pool| pending_stages_local.any? { |stage| stage.talent_pool_id == talent_pool.id } } %>
-<% # Get person IDs to exclude: pending, finalized stages, and people already notified for rejections %>
-<% assigned_person_ids = pending_stages_local.pluck(:person_id).uniq %>
-<% notified_person_ids = notified_stages.map(&:person_id).uniq %>
-<% # Also exclude people who were notified of rejection for this cycle %>
-<% rejection_notified_person_ids = @auditioned_people.select { |p| p.casting_notification_sent_at.present? && p.notified_for_audition_cycle_id == @audition_cycle.id }.map(&:id) %>
-<% excluded_person_ids = (assigned_person_ids + notified_person_ids + rejection_notified_person_ids).uniq %>
-<% unassigned_people = @auditioned_people.reject { |person| excluded_person_ids.include?(person.id) } %>
+<% # Get assignable [type, id] tuples to exclude: pending, finalized stages, and people already notified for rejections %>
+<% assigned_assignable_ids = pending_stages_local.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
+<% notified_assignable_ids = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
+<% # Also exclude people who were notified of rejection for this cycle (only applies to Person, not Group) %>
+<% rejection_notified_person_ids = @auditioned_people.select { |p| p.is_a?(Person) && p.casting_notification_sent_at.present? && p.notified_for_audition_cycle_id == @audition_cycle.id }.map { |p| ['Person', p.id] } %>
+<% excluded_assignable_ids = (assigned_assignable_ids + notified_assignable_ids + rejection_notified_person_ids).uniq %>
+<% unassigned_people = @auditioned_people.reject { |auditionee| excluded_assignable_ids.include?([auditionee.class.name, auditionee.id]) } %>
 
 <%# Show the box if: notifications not sent yet OR there are new pending stages to notify %>
 <% show_notify_box = !has_sent_notifications || pending_stages_local.any? %>
@@ -30,11 +30,11 @@
               </div>
               <div class="flex-1">
                 <h4 class="text-sm font-semibold text-yellow-900 mb-1">New Casting Changes Need Notification</h4>
-                <% notified_people_count = notified_stages.map(&:person_id).uniq.count %>
-                <% pending_people_count = pending_stages_local.map(&:person_id).uniq.count %>
+                <% notified_count = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
+                <% pending_count = pending_stages_local.map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
                 <p class="text-sm text-yellow-800 mb-0">
-                  <%= notified_people_count %> <%= 'person'.pluralize(notified_people_count) %> <%= notified_people_count == 1 ? 'has' : 'have' %> already been notified.
-                  <%= pending_people_count %> <%= 'person'.pluralize(pending_people_count) %> still need<%= pending_people_count == 1 ? 's' : '' %> to be notified.
+                  <%= notified_count %> <%= 'auditionee'.pluralize(notified_count) %> <%= notified_count == 1 ? 'has' : 'have' %> already been notified.
+                  <%= pending_count %> <%= 'auditionee'.pluralize(pending_count) %> still need<%= pending_count == 1 ? 's' : '' %> to be notified.
                 </p>
               </div>
             </div>
@@ -53,9 +53,9 @@
               </div>
               <div class="flex-1">
                 <h4 class="text-sm font-semibold text-green-900 mb-1">Casting Notifications Finalized</h4>
-                <% notified_people_count = notified_stages.map(&:person_id).uniq.count %>
+                <% notified_count = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq.count %>
                 <p class="text-sm text-green-800 mb-3">
-                  Notification emails have been sent to <%= notified_people_count %> <%= 'person'.pluralize(notified_people_count) %>. To make changes and send additional notifications, click the button below.
+                  Notification emails have been sent to <%= notified_count %> <%= 'auditionee'.pluralize(notified_count) %>. To make changes and send additional notifications, click the button below.
                 </p>
                 <button
                   type="button"

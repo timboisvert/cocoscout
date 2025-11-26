@@ -22,10 +22,12 @@
   <% if local_assigns[:visibility_toggle] && local_assigns[:visibility_field].present? %>
     <%
       # Determine the correct visibility update path based on entity
-      visibility_path = if local_assigns[:entity].present?
-        local_assigns[:entity].is_a?(Person) ? update_profile_visibility_path : update_group_visibility_path(local_assigns[:entity])
+      if local_assigns[:entity].present? && local_assigns[:entity].is_a?(Person)
+        visibility_path = update_profile_visibility_path
+      elsif local_assigns[:entity].present?
+        visibility_path = update_group_visibility_path(local_assigns[:entity])
       else
-        update_profile_visibility_path
+        visibility_path = update_profile_visibility_path
       end
     %>
     <div data-controller="visibility-toggle"

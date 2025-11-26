@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_25_231349) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -81,13 +81,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
   end
 
   create_table "audition_email_assignments", force: :cascade do |t|
+    t.integer "assignable_id"
+    t.string "assignable_type"
     t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
-    t.integer "person_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["assignable_type", "assignable_id", "audition_cycle_id"], name: "index_audition_email_assignments_on_assignable_and_cycle", unique: true
     t.index ["audition_cycle_id"], name: "index_audition_email_assignments_on_audition_cycle_id"
-    t.index ["person_id"], name: "index_audition_email_assignments_on_person_id"
   end
 
   create_table "audition_requests", force: :cascade do |t|
@@ -120,26 +121,28 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
   create_table "auditions", force: :cascade do |t|
     t.integer "audition_request_id", null: false
     t.integer "audition_session_id"
+    t.integer "auditionable_id"
+    t.string "auditionable_type"
     t.datetime "created_at", null: false
-    t.integer "person_id", null: false
     t.datetime "updated_at", null: false
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
     t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
-    t.index ["person_id"], name: "index_auditions_on_person_id"
+    t.index ["auditionable_type", "auditionable_id"], name: "index_auditions_on_auditionable"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
+    t.integer "assignable_id"
+    t.string "assignable_type"
     t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
     t.string "email_group_id"
     t.text "notification_email"
-    t.integer "person_id", null: false
     t.integer "status", default: 0, null: false
     t.integer "talent_pool_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["assignable_type", "assignable_id"], name: "idx_on_assignable_type_assignable_id_366d98058e"
+    t.index ["audition_cycle_id", "talent_pool_id", "assignable_type", "assignable_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
-    t.index ["person_id"], name: "index_cast_assignment_stages_on_person_id"
-    t.index ["talent_pool_id", "person_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
   end
 
@@ -310,6 +313,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
     t.string "phone"
     t.boolean "profile_skills_visible", default: true, null: false
     t.text "profile_visibility_settings", default: "{}"
+    t.datetime "profile_welcomed_at"
     t.string "pronouns"
     t.string "public_key"
     t.datetime "public_key_changed_at"
@@ -554,11 +558,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
   end
 
   create_table "show_person_role_assignments", force: :cascade do |t|
+    t.bigint "assignable_id"
+    t.string "assignable_type"
     t.datetime "created_at", null: false
-    t.integer "person_id", null: false
+    t.integer "person_id"
     t.integer "role_id", null: false
     t.integer "show_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["assignable_type", "assignable_id"], name: "index_show_role_assignments_on_assignable"
     t.index ["person_id"], name: "index_show_person_role_assignments_on_person_id"
     t.index ["role_id"], name: "index_show_person_role_assignments_on_role_id"
     t.index ["show_id"], name: "index_show_person_role_assignments_on_show_id"
@@ -658,14 +665,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_022834) do
   add_foreign_key "answers", "questions"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
-  add_foreign_key "audition_email_assignments", "people"
   add_foreign_key "audition_requests", "audition_cycles"
   add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
-  add_foreign_key "auditions", "people"
-  add_foreign_key "cast_assignment_stages", "people"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"

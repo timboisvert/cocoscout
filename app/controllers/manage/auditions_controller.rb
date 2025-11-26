@@ -40,13 +40,13 @@ class Manage::AuditionsController < Manage::ManageController
     redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
     @talent_pools = @production.talent_pools
-    # Get people who actually auditioned (have an Audition record for this audition cycle's sessions)
+    # Get all auditionees (people and groups) who actually auditioned
     audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
-    @auditioned_people = Person.joins(:auditions)
-                                .where(auditions: { audition_session_id: audition_session_ids })
-                                .distinct
-                                .order(:name)
-    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :talent_pool)
+    auditions = Audition.where(audition_session_id: audition_session_ids)
+                        .select(:auditionable_type, :auditionable_id)
+                        .distinct
+    @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
   end
 
   # GET /auditions/casting/select
@@ -54,13 +54,13 @@ class Manage::AuditionsController < Manage::ManageController
     redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
     @talent_pools = @production.talent_pools
-    # Get people who actually auditioned (have an Audition record for this audition cycle's sessions)
+    # Get all auditionees (people and groups) who actually auditioned
     audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
-    @auditioned_people = Person.joins(:auditions)
-                                .where(auditions: { audition_session_id: audition_session_ids })
-                                .distinct
-                                .order(:name)
-    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:person, :talent_pool)
+    auditions = Audition.where(audition_session_id: audition_session_ids)
+                        .select(:auditionable_type, :auditionable_id)
+                        .distinct
+    @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
+    @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
   end
 
   # PATCH /auditions/finalize_invitations
@@ -89,7 +89,7 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     @available_people = audition_requests.includes(:requestable).order(created_at: :asc)
-    @scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(:person_id).uniq.to_set
+    @scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(:auditionable_type, :auditionable_id).to_set
     @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: @audition_cycle.id }).pluck(:audition_request_id).uniq
   end
 
@@ -139,14 +139,14 @@ class Manage::AuditionsController < Manage::ManageController
     audition_request = AuditionRequest.find(params[:audition_request_id])
     audition_session = AuditionSession.find(params[:audition_session_id])
 
-    # Check if this person is already in this session
+    # Check if this requestable is already in this session
     existing = Audition.joins(:audition_request).where(
       audition_session: audition_session,
-      audition_requests: { requestable_type: "Person", requestable_id: audition_request.person.id }
+      audition_requests: { requestable_type: audition_request.requestable_type, requestable_id: audition_request.requestable_id }
     ).exists?
 
     unless existing
-      Audition.create!(audition_request: audition_request, audition_session: audition_session, person: audition_request.person)
+      Audition.create!(audition_request: audition_request, audition_session: audition_session, auditionable: audition_request.requestable)
     end
 
     # Get the production and audition_cycle
@@ -171,13 +171,13 @@ class Manage::AuditionsController < Manage::ManageController
 
     available_people = available_people.includes(:requestable).order(created_at: :asc)
 
-    # Get list of already scheduled person IDs for this audition cycle
+    # Get list of already scheduled auditionables for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
-    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:auditionable_type, :auditionable_id)
     scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: audition_cycle.id }).pluck(:audition_request_id).uniq
 
     # Re-render the right list and the dropzone
-    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
 
     # Also re-render the sessions list to update all dropzones
@@ -214,12 +214,12 @@ class Manage::AuditionsController < Manage::ManageController
 
     available_people = available_people.includes(:requestable).order(created_at: :asc)
 
-    # Get list of already scheduled person IDs and audition request IDs for this audition cycle
+    # Get list of already scheduled auditionables and audition request IDs for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
-    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:auditionable_type, :auditionable_id)
     scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: audition_cycle.id }).pluck(:audition_request_id).uniq
 
-    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
     dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone", locals: { audition_session: audition_session })
 
     # Also re-render the sessions list to update all dropzones
@@ -232,10 +232,11 @@ class Manage::AuditionsController < Manage::ManageController
     audition = Audition.find(params[:audition_id])
     new_audition_session = AuditionSession.find(params[:audition_session_id])
 
-    # Check if person is already in the new session
-    existing = Audition.joins(:audition_request).where(
+    # Check if auditionable (person/group) is already in the new session
+    existing = Audition.where(
       audition_session: new_audition_session,
-      audition_requests: { requestable_type: "Person", requestable_id: audition.person_id }
+      auditionable_type: audition.auditionable_type,
+      auditionable_id: audition.auditionable_id
     ).where.not(id: audition.id).exists?
 
     unless existing
@@ -265,12 +266,12 @@ class Manage::AuditionsController < Manage::ManageController
 
     available_people = available_people.includes(:requestable).order(created_at: :asc)
 
-    # Get list of already scheduled person IDs and audition request IDs for this audition cycle
+    # Get list of already scheduled auditionables and audition request IDs for this audition cycle
     audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
-    scheduled_person_ids = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:person_id).uniq
+    scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: audition_sessions).pluck(:auditionable_type, :auditionable_id)
     scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: audition_cycle.id }).pluck(:audition_request_id).uniq
 
-    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_person_ids: scheduled_person_ids })
+    right_list_html = render_to_string(partial: "manage/auditions/right_list", locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter, scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
 
     # Also re-render the sessions list to update all dropzones
     sessions_list_html = render_to_string(partial: "manage/auditions/sessions_list", locals: { audition_sessions: audition_sessions })
@@ -281,12 +282,14 @@ class Manage::AuditionsController < Manage::ManageController
   # POST /auditions/add_to_cast_assignment
   def add_to_cast_assignment
     talent_pool = @production.talent_pools.find(params[:talent_pool_id])
-    person = Person.find(params[:person_id])
+    auditionee_type = params[:auditionee_type]
+    auditionee_id = params[:auditionee_id]
 
     CastAssignmentStage.find_or_create_by(
       audition_cycle_id: @audition_cycle.id,
       talent_pool_id: talent_pool.id,
-      person_id: person.id
+      assignable_type: auditionee_type,
+      assignable_id: auditionee_id
     )
 
     head :ok
@@ -298,7 +301,8 @@ class Manage::AuditionsController < Manage::ManageController
     CastAssignmentStage.where(
       audition_cycle_id: @audition_cycle.id,
       talent_pool_id: talent_pool.id,
-      person_id: params[:person_id]
+      assignable_type: params[:auditionee_type] || "Person",
+      assignable_id: params[:auditionee_id] || params[:person_id]
     ).destroy_all
 
     head :ok
@@ -314,39 +318,51 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     # Get all cast assignment stages and email assignments
-    cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:cast, :person)
-    email_assignments = audition_cycle.audition_email_assignments.includes(:person).index_by(&:person_id)
+    cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:talent_pool)
+    email_assignments = audition_cycle.audition_email_assignments.group_by { |a| [ a.assignable_type, a.assignable_id ] }.transform_values(&:first)
     email_groups = audition_cycle.email_groups.index_by(&:group_id)
 
-    # Get people who need notifications:
-    # 1. People with pending stages (being added now)
-    # 2. People who auditioned but have no stages at all AND haven't been notified yet
-    pending_stage_person_ids = cast_assignment_stages.where(status: :pending).pluck(:person_id).uniq
-    finalized_stage_person_ids = cast_assignment_stages.where(status: :finalized).pluck(:person_id).uniq
+    # Get auditionees who need notifications:
+    # 1. Auditionees with pending stages (being added now)
+    # 2. Auditionees who auditioned but have no stages at all AND haven't been notified yet
+    pending_stage_tuples = cast_assignment_stages.where(status: :pending).pluck(:assignable_type, :assignable_id).uniq
+    finalized_stage_tuples = cast_assignment_stages.where(status: :finalized).pluck(:assignable_type, :assignable_id).uniq
 
     audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
-    all_auditioned_people = Person.joins(:auditions)
-                               .where(auditions: { audition_session_id: audition_session_ids })
-                               .distinct
+    audition_tuples = Audition.where(audition_session_id: audition_session_ids)
+                              .select(:auditionable_type, :auditionable_id)
+                              .distinct
+                              .pluck(:auditionable_type, :auditionable_id)
 
-    # Exclude people who:
+    # Load all auditioned assignables efficiently
+    person_ids = audition_tuples.select { |type, _| type == "Person" }.map(&:last)
+    group_ids = audition_tuples.select { |type, _| type == "Group" }.map(&:last)
+
+    people = Person.where(id: person_ids).index_by(&:id)
+    groups = Group.where(id: group_ids).includes(:group_memberships).index_by(&:id)
+
+    all_auditioned_assignables = audition_tuples.map do |type, id|
+      type == "Person" ? people[id] : groups[id]
+    end.compact
+
+    # Exclude auditionees who:
     # 1. Are already finalized (have been notified of acceptance), OR
-    # 2. Have been notified of rejection for this cycle
-    auditioned_people = all_auditioned_people.reject do |p|
-      finalized_stage_person_ids.include?(p.id) ||
-      (p.casting_notification_sent_at.present? && p.notified_for_audition_cycle_id == audition_cycle.id)
+    # 2. Have been notified of rejection for this cycle (only applies to Person)
+    auditioned_assignables = all_auditioned_assignables.reject do |assignable|
+      finalized_stage_tuples.include?([ assignable.class.name, assignable.id ]) ||
+      (assignable.is_a?(Person) && assignable.casting_notification_sent_at.present? && assignable.notified_for_audition_cycle_id == audition_cycle.id)
     end
 
     # Get default email templates from the view (we'll need to pass these or store them)
     talent_pools_by_id = @production.talent_pools.index_by(&:id)
 
     emails_sent = 0
-    people_added_to_casts = 0
+    auditionees_added_to_casts = 0
 
-    auditioned_people.each do |person|
-      # Check if person has a cast assignment stage (they're being added to a cast)
-      stage = cast_assignment_stages.find { |s| s.person_id == person.id }
-      email_assignment = email_assignments[person.id]
+    auditioned_assignables.each do |assignable|
+      # Check if assignable has a cast assignment stage (they're being added to a cast)
+      stage = cast_assignment_stages.find { |s| s.assignable_type == assignable.class.name && s.assignable_id == assignable.id }
+      email_assignment = email_assignments[[ assignable.class.name, assignable.id ]]
 
       # Determine which email template to use
       email_body = nil
@@ -358,40 +374,54 @@ class Manage::AuditionsController < Manage::ManageController
       elsif stage
         # Default "added to cast" email
         talent_pool = talent_pools_by_id[stage.talent_pool_id]
-        email_body = generate_default_cast_email(person, talent_pool, @production)
+        email_body = generate_default_cast_email(assignable, talent_pool, @production)
 
-        # Add person to the actual cast (not just the staging area)
-        unless talent_pool.people.include?(person)
-          talent_pool.people << person
-          people_added_to_casts += 1
+        # Add assignable to the actual talent pool (not just the staging area)
+        membership_exists = TalentPoolMembership.exists?(
+          talent_pool_id: talent_pool.id,
+          member_type: assignable.class.name,
+          member_id: assignable.id
+        )
+        unless membership_exists
+          TalentPoolMembership.create!(
+            talent_pool_id: talent_pool.id,
+            member_type: assignable.class.name,
+            member_id: assignable.id
+          )
+          auditionees_added_to_casts += 1
         end
       else
         # Default "not being added" email
-        email_body = generate_default_rejection_email(person, @production)
+        email_body = generate_default_rejection_email(assignable, @production)
       end
 
-      # Send the email if we have a body
-      if email_body.present? && person.email.present?
+      # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
+      recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
+
+      # Send the email to each recipient
+      recipients.each do |person|
+        next unless email_body.present? && person.email.present?
+
         # Replace [Name] placeholder with actual name
         personalized_body = email_body.gsub("[Name]", person.name)
 
         begin
           Manage::AuditionMailer.casting_notification(person, @production, personalized_body).deliver_later
           emails_sent += 1
-
-          # Store the sent email in the stage if it exists
-          if stage
-            stage.update(notification_email: personalized_body, status: :finalized)
-          else
-            # For people not being added (no stage), track that they've been notified
-            person.update(
-              casting_notification_sent_at: Time.current,
-              notified_for_audition_cycle_id: audition_cycle.id
-            )
-          end
         rescue => e
           Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
         end
+      end
+
+      # Update stage or person notification tracking
+      if stage
+        stage.update(notification_email: email_body, status: :finalized)
+      elsif assignable.is_a?(Person)
+        # For people not being added (no stage), track that they've been notified
+        assignable.update(
+          casting_notification_sent_at: Time.current,
+          notified_for_audition_cycle_id: audition_cycle.id
+        )
       end
     end
 
@@ -402,7 +432,7 @@ class Manage::AuditionsController < Manage::ManageController
     audition_cycle.update(casting_finalized_at: Time.current)
 
     redirect_to casting_manage_production_audition_cycle_path(@production, audition_cycle),
-                notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{people_added_to_casts} people added to casts."
+                notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{auditionees_added_to_casts} auditionee#{auditionees_added_to_casts != 1 ? 's' : ''} added to casts."
   end
 
   # POST /auditions/finalize_and_notify_invitations
@@ -417,8 +447,11 @@ class Manage::AuditionsController < Manage::ManageController
     # Get all audition requests
     audition_requests = audition_cycle.audition_requests.includes(:requestable)
 
-    # Get scheduled person IDs to determine who should get invitation vs rejection
-    scheduled_person_ids = audition_cycle.audition_sessions.joins(:auditions).pluck("auditions.person_id").uniq
+    # Get scheduled auditionables to determine who should get invitation vs rejection
+    scheduled_auditionables = audition_cycle.audition_sessions.joins(:auditions)
+      .pluck("auditions.auditionable_type", "auditions.auditionable_id")
+      .map { |type, id| [ type, id ] }
+      .to_set
 
     # Process requests that:
     # 1. Haven't been notified yet (invitation_notification_sent_at is nil), OR
@@ -427,51 +460,68 @@ class Manage::AuditionsController < Manage::ManageController
     requests_to_process = audition_requests.select do |req|
       req.invitation_notification_sent_at.nil? ||
       req.notified_status != req.status ||
-      (scheduled_person_ids.include?(req.person_id) != req.notified_scheduled)
+      (scheduled_auditionables.include?([ req.requestable_type, req.requestable_id ]) != req.notified_scheduled)
     end
 
-    email_assignments = audition_cycle.audition_email_assignments.includes(:person).index_by(&:person_id)
+    email_assignments = audition_cycle.audition_email_assignments.includes(:assignable)
+      .index_by { |a| [ a.assignable_type, a.assignable_id ] }
     email_groups = audition_cycle.email_groups.where(group_type: "audition").index_by(&:group_id)
 
     emails_sent = 0
 
     requests_to_process.each do |request|
-      person = request.person
-      email_assignment = email_assignments[person.id]
+      requestable = request.requestable
+      next unless requestable # Skip if requestable was deleted
+
+      email_assignment = email_assignments[[ requestable.class.name, requestable.id ]]
 
       # Determine which email template to use
       email_body = nil
+      is_scheduled = scheduled_auditionables.include?([ requestable.class.name, requestable.id ])
 
       if email_assignment&.email_group_id.present?
         # Custom email group
         custom_group = email_groups[email_assignment.email_group_id]
         email_body = custom_group&.email_template
-      elsif scheduled_person_ids.include?(person.id)
-        # Person is scheduled for an audition - send invitation
-        email_body = generate_default_invitation_email(person, @production, audition_cycle)
+      elsif is_scheduled
+        # Requestable is scheduled for an audition - send invitation
+        email_body = generate_default_invitation_email(requestable, @production, audition_cycle)
       else
-        # Person is not scheduled - send rejection
-        email_body = generate_default_not_invited_email(person, @production)
-      end      # Send the email if we have a body
-      if email_body.present? && person.email.present?
+        # Requestable is not scheduled - send rejection
+        email_body = generate_default_not_invited_email(requestable, @production)
+      end
+
+      # Get recipients (single person for Person, multiple members for Group)
+      recipients = if requestable.is_a?(Person)
+        [ requestable ]
+      elsif requestable.is_a?(Group)
+        # Get all group members who have notifications enabled
+        requestable.group_memberships.includes(:person).select(&:notifications_enabled?).map(&:person)
+      else
+        []
+      end
+
+      # Send the email to each recipient
+      recipients.each do |recipient|
+        next unless email_body.present? && recipient.email.present?
+
         # Replace [Name] placeholder with actual name
-        personalized_body = email_body.gsub("[Name]", person.name)
+        personalized_body = email_body.gsub("[Name]", recipient.name)
 
         begin
-          Manage::AuditionMailer.invitation_notification(person, @production, personalized_body).deliver_later
+          Manage::AuditionMailer.invitation_notification(recipient, @production, personalized_body).deliver_later
           emails_sent += 1
-
-          # Mark this request as notified with current status and scheduling status
-          is_scheduled = scheduled_person_ids.include?(person.id)
-          request.update(
-            invitation_notification_sent_at: Time.current,
-            notified_status: request.status,
-            notified_scheduled: is_scheduled
-          )
         rescue => e
-          Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
+          Rails.logger.error "Failed to send email to #{recipient.email}: #{e.message}"
         end
       end
+
+      # Mark this request as notified with current status and scheduling status
+      request.update(
+        invitation_notification_sent_at: Time.current,
+        notified_status: request.status,
+        notified_scheduled: is_scheduled
+      )
     end
 
     # Set finalize_audition_invitations to true so applicants can see results

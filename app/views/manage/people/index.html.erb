@@ -12,7 +12,7 @@
     ]
   } %>
 
-  <% if @people.any? %>
+  <% if @entries.any? %>
 
     <div data-controller="show-toggle" class="mb-4">
       <!-- Mobile filter button -->
@@ -64,7 +64,24 @@
       </div>
 
       <div class="flex space-x-1 lg:flex-1 lg:justify-end">
-        <!-- Right: Include links -->
+        <!-- Right: Type filter -->
+        <div class="flex items-center text-sm text-gray-500">Show:</div>
+        <%= link_to "All",
+                manage_people_path(type: "all"),
+                class: "px-3 py-1 rounded-md border text-sm #{@type == 'all' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+        %>
+        <%= link_to "People",
+                manage_people_path(type: "people"),
+                class: "px-3 py-1 rounded-md border text-sm #{@type == 'people' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+        %>
+        <%= link_to "Groups",
+                manage_people_path(type: "groups"),
+                class: "px-3 py-1 rounded-md border text-sm #{@type == 'groups' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
+        %>
+      </div>
+
+      <div class="flex space-x-1 lg:flex-1">
+        <!-- Include filter -->
         <div class="flex items-center text-sm text-gray-500">Include:</div>
         <%= link_to "Cast Members",
                 manage_people_path(filter: "cast-members"),
@@ -81,36 +98,44 @@
 
     <% if @show == "tiles" %>
       <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 w-full mt-4">
-        <% @people.each do |person| %>
+        <% @entries.each do |entry| %>
 
-          <%= link_to manage_person_path(person) do %>
+          <%= link_to entry.is_a?(Person) ? manage_person_path(entry) : edit_group_path(entry) do %>
             <div class="flex flex-col items-center p-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-pointer" >
-              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% headshot_variant = entry.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: person.name, class: "w-14 h-14 rounded-lg object-cover mb-1.5" %>
-              <% else %>
+                  <%= image_tag headshot_variant, alt: entry.name, class: "w-14 h-14 rounded-lg object-cover mb-1.5" %>
+              <% elsif entry.is_a?(Person) %>
                   <div class="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center mb-1.5 text-black font-bold text-sm">
-                      <%= person.initials %>
+                      <%= entry.initials %>
+                  </div>
+              <% else %>
+                  <div class="w-14 h-14 rounded-lg bg-blue-100 flex items-center justify-center mb-1.5 text-blue-600">
+                      <i class="fa-solid fa-users text-xl"></i>
                   </div>
               <% end %>
-              <span class="font-medium text-xs text-center leading-tight h-8 flex items-center overflow-hidden"><%= person.name.truncate(18, omission: '...') %></span>
+              <span class="font-medium text-xs text-center leading-tight h-8 flex items-center overflow-hidden"><%= entry.name.truncate(18, omission: '...') %></span>
             </div>
           <% end %>
         <% end %>
       </div>
     <% elsif @show == "list" %>
       <div class="flex flex-col w-full mt-4 space-y-2">
-        <% @people.each do |person| %>
-          <%= link_to manage_person_path(person), class: "flex bg-white items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group cursor-pointer" do %>
-            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+        <% @entries.each do |entry| %>
+          <%= link_to entry.is_a?(Person) ? manage_person_path(entry) : edit_group_path(entry), class: "flex bg-white items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group cursor-pointer" do %>
+            <% headshot_variant = entry.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
-              <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover mr-3" %>
-            <% else %>
+              <%= image_tag headshot_variant, alt: entry.name, class: "w-8 h-8 rounded-lg object-cover mr-3" %>
+            <% elsif entry.is_a?(Person) %>
               <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mr-3 text-black font-bold">
-                <%= person.initials %>
+                <%= entry.initials %>
+              </div>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center mr-3 text-blue-600">
+                <i class="fa-solid fa-users text-sm"></i>
               </div>
             <% end %>
-            <span class="font-medium text-base"><%= person.name %></span>
+            <span class="font-medium text-base"><%= entry.name %></span>
           <% end %>
         <% end %>
       </div>
@@ -120,7 +145,7 @@
       <div class="my-6">
         <nav class="flex items-center gap-2">
           <% if @pagy.page > 1 %>
-            <%= link_to "Previous", manage_people_path(page: @pagy.page - 1, order: params[:order], show: params[:show], filter: params[:filter]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
+            <%= link_to "Previous", manage_people_path(page: @pagy.page - 1, order: params[:order], show: params[:show], filter: params[:filter], type: params[:type]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
           <% else %>
             <span class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed">Previous</span>
           <% end %>
@@ -128,7 +153,7 @@
           <span class="text-sm text-slate-600">Page <%= @pagy.page %> of <%= @pagy.pages %></span>
 
           <% if @pagy.page < @pagy.pages %>
-            <%= link_to "Next", manage_people_path(page: @pagy.page + 1, order: params[:order], show: params[:show], filter: params[:filter]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
+            <%= link_to "Next", manage_people_path(page: @pagy.page + 1, order: params[:order], show: params[:show], filter: params[:filter], type: params[:type]), class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600" %>
           <% else %>
             <span class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed">Next</span>
           <% end %>
@@ -137,7 +162,7 @@
     <% end %>
 
   <% else %>
-    <div class="text-left text-gray-500 text-sm">No people found.</div>
+    <div class="text-left text-gray-500 text-sm">No entries found.</div>
   <% end %>
 
 </div>

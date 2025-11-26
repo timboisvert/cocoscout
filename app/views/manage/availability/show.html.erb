@@ -53,14 +53,16 @@
                       </div>
                     </div>
                     <div class="flex gap-0 flex-shrink-0">
-                      <% availability = @availabilities[person.id] %>
-                      <%= f.radio_button "availability_#{person.id}", 'available', { checked: availability&.available?, class: "sr-only peer/available", id: "availability_#{person.id}_available" } %>
-                      <%= label_tag "availability_#{person.id}_available", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l-lg border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500" do %>
+                      <% availability_key = "#{person.class.name}_#{person.id}" %>
+                      <% availability = @availabilities[availability_key] %>
+                      <% field_name = "availability_#{person.class.name}_#{person.id}" %>
+                      <%= f.radio_button field_name, 'available', { checked: availability&.available?, class: "sr-only peer/available", id: "#{field_name}_available" } %>
+                      <%= label_tag "#{field_name}_available", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l-lg border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500" do %>
                         Available
                       <% end %>
 
-                      <%= f.radio_button "availability_#{person.id}", 'unavailable', { checked: availability&.unavailable?, class: "sr-only peer/unavailable", id: "availability_#{person.id}_unavailable" } %>
-                      <%= label_tag "availability_#{person.id}_unavailable", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r-lg bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500" do %>
+                      <%= f.radio_button field_name, 'unavailable', { checked: availability&.unavailable?, class: "sr-only peer/unavailable", id: "#{field_name}_unavailable" } %>
+                      <%= label_tag "#{field_name}_unavailable", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r-lg bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500" do %>
                         Unavailable
                       <% end %>
                     </div>
@@ -88,7 +90,8 @@
                       <div class="font-medium text-sm text-gray-900"><%= person.name %></div>
                     </div>
                   </div>
-                  <% availability = @availabilities[person.id] %>
+                  <% availability_key = "#{person.class.name}_#{person.id}" %>
+                  <% availability = @availabilities[availability_key] %>
                   <% if availability %>
                     <% if availability.available? %>
                       <span class="text-sm font-medium text-pink-500">Available</span>

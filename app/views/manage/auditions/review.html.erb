@@ -96,16 +96,23 @@
                   <% if session.auditions.any? %>
                     <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-10 gap-2">
                       <% session.auditions.each do |audition| %>
+                        <% auditionable = audition.auditionable %>
                         <div class="flex flex-col items-center text-center">
-                          <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: audition.person.name, class: "w-10 h-10 rounded-lg object-cover mb-1" %>
+                          <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
+                          <% if headshot_url %>
+                            <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 rounded-lg object-cover mb-1" %>
+                          <% elsif auditionable.is_a?(Person) %>
+                            <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center mb-1 text-pink-600 font-bold text-xs">
+                              <%= auditionable.initials %>
+                            </div>
                           <% else %>
                             <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center mb-1 text-pink-600 font-bold text-xs">
-                              <%= audition.person.initials %>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                              </svg>
                             </div>
                           <% end %>
-                          <span class="text-xs text-gray-700 font-medium text-center"><%= audition.person.name.truncate(10, omission: '...') %></span>
+                          <span class="text-xs text-gray-700 font-medium text-center"><%= auditionable.name.truncate(10, omission: '...') %></span>
                         </div>
                       <% end %>
                     </div>
@@ -139,20 +146,23 @@
         <% # Get all audition requests %>
         <% all_audition_requests = @audition_cycle.audition_requests.includes(:requestable) %>
 
-        <% # Get all scheduled person IDs for this audition cycle %>
-        <% scheduled_person_ids = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.person_id').uniq %>
+        <% # Get all scheduled auditionables (people and groups) for this audition cycle %>
+        <% scheduled_auditionables = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.auditionable_type', 'auditions.auditionable_id').map { |type, id| [type, id] }.to_set %>
 
         <% # Count people who have been notified and whose status hasn't changed since %>
-        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (req.person.present? ? (scheduled_person_ids.include?(req.person.id) == req.notified_scheduled) : req.notified_scheduled == false) } %>
+        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) == req.notified_scheduled) } %>
         <% notified_people_count = notified_requests.count %>
 
         <% # Show requests that haven't been notified yet OR whose status has changed OR whose scheduling status has changed %>
-        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || req.notified_status != req.status || (req.person.present? ? (scheduled_person_ids.include?(req.person.id) != req.notified_scheduled) : false) } %>
+        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || req.notified_status != req.status || (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) != req.notified_scheduled) } %>
         <% accepted_requests = audition_requests.select { |req| req.status == "accepted" } %>
         <% not_accepted_requests = audition_requests.reject { |req| req.status == "accepted" } %>
 
-        <% # Load email assignments for people who haven't been notified %>
-        <% email_assignments = @audition_cycle.audition_email_assignments.where(person_id: audition_requests.map { |r| r.person&.id }.compact).index_by(&:person_id) %>
+        <% # Load email assignments for requestables (people and groups) who haven't been notified %>
+        <% requestable_tuples = audition_requests.map { |r| [r.requestable_type, r.requestable_id] } %>
+        <% email_assignments = @audition_cycle.audition_email_assignments
+             .where(assignable_type: requestable_tuples.map(&:first).uniq, assignable_id: requestable_tuples.map(&:last))
+             .index_by { |a| [a.assignable_type, a.assignable_id] } %>
         <% # Load custom email groups (exclude default group_ids to avoid duplicates) %>
         <% custom_groups = @audition_cycle.email_groups.where(group_type: 'audition').where.not(group_id: ['invitation_accepted', 'invitation_not_accepted']).order(:created_at) %>
 
@@ -170,8 +180,8 @@
                 <div class="flex-1">
                   <h4 class="text-sm font-semibold text-yellow-900 mb-1">New Auditions have been scheduled</h4>
                   <p class="text-sm text-yellow-800 mb-0">
-                    <%= notified_people_count %> <%= 'person'.pluralize(notified_people_count) %> <%= notified_people_count == 1 ? 'has' : 'have' %> already been notified.
-                    <%= audition_requests.count %> <%= 'person'.pluralize(audition_requests.count) %> still need<%= audition_requests.count == 1 ? 's' : '' %> to be notified.
+                    <%= notified_people_count %> <%= 'auditionee'.pluralize(notified_people_count) %> <%= notified_people_count == 1 ? 'has' : 'have' %> already been notified.
+                    <%= audition_requests.count %> <%= 'auditionee'.pluralize(audition_requests.count) %> still need<%= audition_requests.count == 1 ? 's' : '' %> to be notified.
                   </p>
                 </div>
               </div>
@@ -201,26 +211,26 @@
           <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= @audition_cycle.id %>" data-email-groups-group-type-value="audition">
 
             <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
-              <% # Helper method to get email group ID for a person %>
-              <% get_email_group_id = lambda do |person|
-                assignment = email_assignments[person.id]
+              <% # Helper method to get email group ID for a requestable (person or group) %>
+              <% get_email_group_id = lambda do |requestable|
+                assignment = email_assignments[[requestable.class.name, requestable.id]]
                 if assignment&.email_group_id.present?
                   assignment.email_group_id
                 else
-                  # Default group: people are in "Invited to Audition" ONLY if they're currently scheduled
+                  # Default group: requestables are in "Invited to Audition" ONLY if they're currently scheduled
                   # Otherwise they go to "Not Invited" even if their request status is "accepted"
-                  if scheduled_person_ids.include?(person.id)
+                  if scheduled_auditionables.include?([requestable.class.name, requestable.id])
                     "invitation_accepted"
                   else
                     "invitation_not_accepted"
                   end
                 end
               end %>
-              <% # Group all applicants by their email group %>
-              <% people_by_group = audition_requests.map(&:person).group_by(&get_email_group_id) %>
+              <% # Group all requestables by their email group %>
+              <% requestables_by_group = audition_requests.map(&:requestable).compact.group_by(&get_email_group_id) %>
 
               <%# Tab for accepted invitations %>
-              <% accepted_group_people = people_by_group["invitation_accepted"] || [] %>
+              <% accepted_group_requestables = requestables_by_group["invitation_accepted"] || [] %>
               <button
                 type="button"
                 data-tabs-target="tab"
@@ -233,11 +243,11 @@
                 <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="invitation_accepted" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                 </svg>
-                <span>Invited to Audition (<%= accepted_group_people.size %>)</span>
+                <span>Invited to Audition (<%= accepted_group_requestables.size %>)</span>
               </button>
 
               <%# Tab for not accepted %>
-              <% not_accepted_group_people = people_by_group["invitation_not_accepted"] || [] %>
+              <% not_accepted_group_requestables = requestables_by_group["invitation_not_accepted"] || [] %>
               <button
                 type="button"
                 data-tabs-target="tab"
@@ -250,12 +260,12 @@
                 <svg class="hidden w-5 h-5 text-pink-600" data-email-groups-target="tabIndicator" data-tab-group-id="invitation_not_accepted" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                 </svg>
-                <span>Not Invited (<%= not_accepted_group_people.size %>)</span>
+                <span>Not Invited (<%= not_accepted_group_requestables.size %>)</span>
               </button>
 
               <%# Custom email group tabs %>
               <% custom_groups.each_with_index do |custom_group, idx| %>
-                <% group_people = people_by_group[custom_group.group_id] || [] %>
+                <% group_requestables = requestables_by_group[custom_group.group_id] || [] %>
                 <button
                   type="button"
                   data-tabs-target="tab"
@@ -286,33 +296,40 @@
               <%# Panel for accepted invitations %>
               <div data-tabs-target="panel" data-group-panel data-group-id="invitation_accepted">
                 <div class="mb-4">
-                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People being invited to audition:</h5>
+                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People/Groups being invited to audition:</h5>
                   <div class="flex flex-wrap gap-2">
-                    <% if accepted_group_people.any? %>
-                      <% accepted_group_people.each do |person| %>
-                        <% assignment = email_assignments[person.id] %>
-                        <% request = audition_requests.find { |r| r.person.id == person.id } %>
+                    <% if accepted_group_requestables.any? %>
+                      <% accepted_group_requestables.each do |requestable| %>
+                        <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
+                        <% request = audition_requests.find { |r| r.requestable == requestable } %>
                         <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
                         <div
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                          data-person-id="<%= person.id %>"
+                          data-requestable-type="<%= requestable.class.name %>"
+                          data-requestable-id="<%= requestable.id %>"
                           data-email-assignment-id="<%= assignment&.id || '' %>"
                           data-original-group="<%= original_group %>"
                           data-action="click->email-groups#showPopup"
                         >
-                          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% headshot_url = safe_headshot_url(requestable, variant: :thumb) %>
+                          <% if headshot_url %>
+                            <%= image_tag headshot_url, alt: requestable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% elsif requestable.is_a?(Person) %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= requestable.initials %>
+                            </div>
                           <% else %>
                             <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                              <%= person.initials %>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-3 h-3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                              </svg>
                             </div>
                           <% end %>
-                          <span><%= person.name %></span>
+                          <span><%= requestable.name %></span>
                         </div>
                       <% end %>
                     <% else %>
-                      <p class="text-sm text-gray-500 italic">No people in this group yet.</p>
+                      <p class="text-sm text-gray-500 italic">No people or groups in this category yet.</p>
                     <% end %>
                   </div>
                 </div>
@@ -339,7 +356,7 @@ Best regards,
 The <%= @production.name %> Team<% end %></textarea>
                   </div>
 
-                  <% if accepted_group_people.any? %>
+                  <% if accepted_group_requestables.any? %>
                     <div class="mt-4 pt-4 border-t border-gray-200">
                       <label class="flex items-center gap-3 cursor-pointer">
                         <input
@@ -358,33 +375,40 @@ The <%= @production.name %> Team<% end %></textarea>
               <%# Panel for not accepted %>
               <div data-tabs-target="panel" data-group-panel data-group-id="invitation_not_accepted" class="hidden">
                 <div class="mb-4">
-                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People not being invited to audition:</h5>
+                  <h5 class="text-sm font-semibold text-gray-900 mb-3">People/Groups not being invited to audition:</h5>
                   <div class="flex flex-wrap gap-2">
-                    <% if not_accepted_group_people.any? %>
-                      <% not_accepted_group_people.each do |person| %>
-                        <% assignment = email_assignments[person.id] %>
-                        <% request = audition_requests.find { |r| r.person.id == person.id } %>
+                    <% if not_accepted_group_requestables.any? %>
+                      <% not_accepted_group_requestables.each do |requestable| %>
+                        <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
+                        <% request = audition_requests.find { |r| r.requestable == requestable } %>
                         <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
                         <div
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                          data-person-id="<%= person.id %>"
+                          data-requestable-type="<%= requestable.class.name %>"
+                          data-requestable-id="<%= requestable.id %>"
                           data-email-assignment-id="<%= assignment&.id || '' %>"
                           data-original-group="<%= original_group %>"
                           data-action="click->email-groups#showPopup"
                         >
-                          <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% headshot_url = safe_headshot_url(requestable, variant: :thumb) %>
+                          <% if headshot_url %>
+                            <%= image_tag headshot_url, alt: requestable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                          <% elsif requestable.is_a?(Person) %>
+                            <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                              <%= requestable.initials %>
+                            </div>
                           <% else %>
                             <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                              <%= person.initials %>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-3 h-3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                              </svg>
                             </div>
                           <% end %>
-                          <%= person.name %>
+                          <%= requestable.name %>
                         </div>
                       <% end %>
                     <% else %>
-                      <p class="text-sm text-gray-500 italic">No people in this group yet.</p>
+                      <p class="text-sm text-gray-500 italic">No people or groups in this category yet.</p>
                     <% end %>
                   </div>
                 </div>
@@ -409,7 +433,7 @@ Best regards,
 The <%= @production.name %> Team<% end %></textarea>
                   </div>
 
-                  <% if not_accepted_group_people.any? %>
+                  <% if not_accepted_group_requestables.any? %>
                     <div class="mt-4 pt-4 border-t border-gray-200">
                       <label class="flex items-center gap-3 cursor-pointer">
                         <input
@@ -427,36 +451,43 @@ The <%= @production.name %> Team<% end %></textarea>
 
               <%# Custom email group panels %>
               <% custom_groups.each do |custom_group| %>
-                <% group_people = people_by_group[custom_group.group_id] || [] %>
+                <% group_requestables = requestables_by_group[custom_group.group_id] || [] %>
                 <div data-tabs-target="panel" data-group-panel data-group-id="<%= custom_group.group_id %>" class="hidden">
                   <div class="mb-4">
-                    <h5 class="text-sm font-semibold text-gray-900 mb-3">People in this email group:</h5>
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3">People/Groups in this email group:</h5>
                     <div class="flex flex-wrap gap-2">
-                      <% if group_people.any? %>
-                        <% custom_group_people.each do |person| %>
-                          <% assignment = email_assignments[person.id] %>
-                          <% request = audition_requests.find { |r| r.person.id == person.id } %>
+                      <% if group_requestables.any? %>
+                        <% group_requestables.each do |requestable| %>
+                          <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
+                          <% request = audition_requests.find { |r| r.requestable == requestable } %>
                           <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
                           <div
                             class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
-                            data-person-id="<%= person.id %>"
+                            data-requestable-type="<%= requestable.class.name %>"
+                            data-requestable-id="<%= requestable.id %>"
                             data-email-assignment-id="<%= assignment&.id || '' %>"
                             data-original-group="<%= original_group %>"
                             data-action="click->email-groups#showPopup"
                           >
-                            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                            <% if headshot_variant %>
-                              <%= image_tag headshot_variant, alt: person.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                            <% headshot_url = safe_headshot_url(requestable, variant: :thumb) %>
+                            <% if headshot_url %>
+                              <%= image_tag headshot_url, alt: requestable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                            <% elsif requestable.is_a?(Person) %>
+                              <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                                <%= requestable.initials %>
+                              </div>
                             <% else %>
                               <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                                <%= person.initials %>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-3 h-3">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                                </svg>
                               </div>
                             <% end %>
-                            <span><%= person.name %></span>
+                            <span><%= requestable.name %></span>
                           </div>
                         <% end %>
                       <% else %>
-                        <p class="text-sm text-gray-500 italic">No people in this group yet. Click on people in other groups to move them here.</p>
+                        <p class="text-sm text-gray-500 italic">No people or groups in this category yet. Click on people/groups in other categories to move them here.</p>
                       <% end %>
                     </div>
                   </div>

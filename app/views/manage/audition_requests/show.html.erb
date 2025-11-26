@@ -30,15 +30,28 @@
     </nav>
 
     <div data-tabs-target="panel">
-      <%= render "shared/person_card", person: @person, show_delete_signup: true %>
+      <% if @requestable.is_a?(Person) %>
+        <%= render "shared/person_card", person: @requestable, show_delete_signup: true %>
+      <% else %>
+        <%= render "shared/group_card", group: @requestable %>
+      <% end %>
     </div>
 
     <div data-tabs-target="panel" class="hidden">
-      <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
-      <% if resume_preview %>
-        <div class="w-full">
-          <%= image_tag resume_preview, class: "object-contain" %>
-        </div>
+      <%# Use ProfileResume for both Person and Group %>
+      <% resume = @requestable.profile_resumes.first %>
+      <% if resume&.file&.attached? %>
+        <% if resume.file.content_type == 'application/pdf' && resume.file.representable? %>
+          <div class="w-full">
+            <%= image_tag resume.file.representation(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+          </div>
+        <% elsif resume.file.content_type.start_with?('image/') %>
+          <div class="w-full">
+            <%= image_tag resume.file, class: "object-contain" %>
+          </div>
+        <% else %>
+          <p class="text-left text-gray-500 text-sm">Resume preview not available</p>
+        <% end %>
       <% else %>
         <p class="text-left text-gray-500 text-sm">No resume found</p>
       <% end %>

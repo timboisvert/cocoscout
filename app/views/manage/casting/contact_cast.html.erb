@@ -18,12 +18,12 @@
       <div class="flex items-center gap-2 mb-3">
         <span class="text-sm font-medium text-gray-700">Sending to</span>
         <span class="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-800">
-          <%= @cast_members.count %> <%= 'person'.pluralize(@cast_members.count) %>
+          <%= @cast_people.count + @cast_groups.count %> cast <%= 'member'.pluralize(@cast_people.count + @cast_groups.count) %>
         </span>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        <% @cast_members.each do |person| %>
+        <% @cast_people.each do |person| %>
           <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
             <% headshot_variant = person.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
@@ -34,6 +34,20 @@
               </div>
             <% end %>
             <span class="text-xs font-medium text-gray-700 truncate"><%= person.name %></span>
+          </div>
+        <% end %>
+
+        <% @cast_groups.each do |group| %>
+          <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+            <% headshot_variant = group.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: group.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
+                <%= group.initials %>
+              </div>
+            <% end %>
+            <span class="text-xs font-medium text-gray-700 truncate"><%= group.name %></span>
           </div>
         <% end %>
       </div>

@@ -18,6 +18,7 @@ class GroupMembership < ApplicationRecord
 
   def notifications_enabled?
     return true if owner? # Owners always receive notifications
+    # Default to true if not explicitly set
     notification_preferences&.dig("enabled") != false
   end
 
@@ -27,7 +28,7 @@ class GroupMembership < ApplicationRecord
   end
 
   def disable_notifications!
-    return false if owner? # Cannot disable for owners
+    return false if owner? # Cannot disable for owners - return false without saving
     self.notification_preferences = { "enabled" => false }
     save
   end

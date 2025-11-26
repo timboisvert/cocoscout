@@ -21,8 +21,6 @@ class ProfileHeadshot < ApplicationRecord
   # Validations
   validates :position, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
-  validate :max_headshots_per_profileable
-  validate :only_one_primary_per_profileable
   validate :image_content_type
 
   # Scopes
@@ -53,8 +51,9 @@ class ProfileHeadshot < ApplicationRecord
   def set_new_primary_if_needed
     # If the destroyed headshot was primary, set the first remaining headshot as primary
     return unless is_primary && profileable
+    return if destroyed? # Don't try to update if already destroyed
 
-    first_remaining = profileable.profile_headshots.first
+    first_remaining = profileable.profile_headshots.where.not(id: id).first
     if first_remaining
       first_remaining.update_column(:is_primary, true)
     end
@@ -85,8 +84,8 @@ class ProfileHeadshot < ApplicationRecord
 
   def image_content_type
     return unless image.attached?
-    unless image.content_type.in?(%w[image/jpeg image/png image/webp])
-      errors.add(:image, "must be a JPEG, PNG, or WebP file")
+    unless image.content_type.in?(%w[image/jpeg image/jpg image/png])
+      errors.add(:image, "must be a JPG, JPEG, or PNG file")
     end
   end
 end

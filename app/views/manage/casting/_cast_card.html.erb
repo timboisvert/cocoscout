@@ -52,18 +52,27 @@
         <% show.production.roles.each do |role| %>
           <% assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
           <% if assignment %>
-            <%= link_to [:manage, assignment.person], class: "block" do %>
-              <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+            <% assignable = assignment.assignable %>
+            <%
+              # Build link path based on type
+              link_path = if assignable.is_a?(Person)
+                manage_person_path(assignable)
+              elsif assignable.is_a?(Group)
+                manage_directory_entry_path(type: 'group', id: assignable.id)
+              end
+            %>
+            <%= link_to link_path, class: "block" do %>
+              <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
                 <%= image_tag headshot_variant,
-                    alt: assignment.person.name,
+                    alt: assignable.name,
                     class: "w-12 h-12 rounded-lg object-cover shadow-sm hover:ring-2 hover:ring-pink-500 transition-all",
-                    data: { controller: "tooltip", tooltip_text: "#{assignment.person.name} - #{role.name}" } %>
+                    data: { controller: "tooltip", tooltip_text: "#{assignable.name} - #{role.name}" } %>
               <% else %>
                 <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center text-gray-700 font-bold text-xs shadow-sm hover:ring-2 hover:ring-pink-500 transition-all"
                      data-controller="tooltip"
-                     data-tooltip-text="<%= "#{assignment.person.name} - #{role.name}" %>">
-                  <%= assignment.person.initials %>
+                     data-tooltip-text="<%= "#{assignable.name} - #{role.name}" %>">
+                  <%= assignable.initials %>
                 </div>
               <% end %>
             <% end %>

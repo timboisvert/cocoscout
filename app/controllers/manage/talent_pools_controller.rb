@@ -59,23 +59,48 @@ class Manage::TalentPoolsController < Manage::ManageController
     end
   end
 
+  def add_group
+    @talent_pool = @production.talent_pools.find(params[:id])
+    group = Current.organization.groups.find(params[:group_id])
+    @talent_pool.groups << group unless @talent_pool.groups.exists?(group.id)
+    render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+  end
+
+  def remove_group
+    @talent_pool = @production.talent_pools.find(params[:id])
+    group = Current.organization.groups.find(params[:group_id])
+    @talent_pool.groups.delete(group)
+
+    # If it's an AJAX request, render the partial; otherwise redirect
+    if request.xhr?
+      render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+    else
+      redirect_to request.referrer || manage_production_casting_path(@production), notice: "Group removed from pool"
+    end
+  end
+
   def search_people
     q = params[:q].to_s.strip
     talent_pool_id = params[:talent_pool_id].to_s.strip
 
-    @people = if q.present?
-      Current.organization.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+    if q.present?
+      @people = Current.organization.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+      @groups = Current.organization.groups.where("name LIKE :q", q: "%#{q}%")
     else
-      Person.none
+      @people = Person.none
+      @groups = Group.none
     end
 
-    # Exclude people already in the selected talent pool
+    # Exclude people and groups already in the selected talent pool
     if talent_pool_id.present?
       talent_pool = @production.talent_pools.find(talent_pool_id)
       @people = @people.where.not(id: talent_pool.people.pluck(:id))
+      @groups = @groups.where.not(id: talent_pool.groups.pluck(:id))
     end
 
-    render partial: "manage/talent_pools/search_results", locals: { people: @people, talent_pool_id: talent_pool_id }
+    @members = (@people.to_a + @groups.to_a).sort_by(&:name)
+
+    render partial: "manage/talent_pools/search_results", locals: { members: @members, talent_pool_id: talent_pool_id }
   end
 
   private

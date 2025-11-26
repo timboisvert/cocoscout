@@ -1,9 +1,30 @@
 class ProfileController < ApplicationController
   before_action :set_person
-  layout "profile", except: [ :preview ]
+  layout "profile", except: [ :preview, :welcome ]
+  before_action :hide_sidebar_on_welcome, only: [ :welcome ]
 
   def index
+    # Redirect to welcome screen if this is their first time
+    if @person.profile_welcomed_at.nil?
+      redirect_to profile_welcome_path
+      nil
+    end
+
     # Edit mode - show profile edit form with left sidebar
+  end
+
+  def welcome
+    # Show welcome screen (don't mark as welcomed until they proceed)
+  end
+
+  def dismiss_welcome
+    @person.update(profile_welcomed_at: Time.current)
+    redirect_to profile_path
+  end
+
+  def mark_welcomed
+    @person.update(profile_welcomed_at: Time.current)
+    head :ok
   end
 
   def update
@@ -14,6 +35,42 @@ class ProfileController < ApplicationController
 
     if @person.update(person_params.except(:show_contact_info))
       respond_to do |format|
+        format.json do
+          # For JSON requests (from modal), return the uploaded file info
+          response_data = { success: true }
+
+          if person_params[:profile_resumes_attributes].present?
+            resume = @person.profile_resumes.order(created_at: :desc).first
+            if resume&.file&.attached?
+              response_data[:resume] = {
+                id: resume.id,
+                filename: resume.file.filename.to_s,
+                content_type: resume.file.content_type,
+                url: rails_blob_path(resume.file, only_path: true)
+              }
+
+              # Generate preview URL if possible
+              if resume.file.content_type == "application/pdf" && resume.file.representable?
+                response_data[:resume][:preview_url] = rails_representation_url(resume.file.representation(resize_to_limit: [ 300, 400 ]))
+              elsif resume.file.content_type.start_with?("image/")
+                response_data[:resume][:preview_url] = rails_blob_path(resume.file.variant(resize_to_fill: [ 300, 400 ]), only_path: true)
+              end
+            end
+          end
+
+          if person_params[:profile_headshots_attributes].present?
+            headshot = @person.profile_headshots.order(created_at: :desc).first
+            if headshot&.image&.attached?
+              response_data[:headshot] = {
+                id: headshot.id,
+                filename: headshot.image.filename.to_s,
+                preview_url: rails_blob_path(headshot.image.variant(resize_to_fill: [ 300, 400 ]), only_path: true)
+              }
+            end
+          end
+
+          render json: response_data
+        end
         format.turbo_stream do
           # Reload associations to ensure newly saved items are included
           @person.reload
@@ -62,6 +119,9 @@ class ProfileController < ApplicationController
       end
     else
       respond_to do |format|
+        format.json do
+          render json: { success: false, errors: @person.errors.full_messages }, status: :unprocessable_entity
+        end
         format.turbo_stream do
           error_message = @person.errors.full_messages.join(", ")
           render turbo_stream: turbo_stream.update(
@@ -236,6 +296,10 @@ class ProfileController < ApplicationController
 
   def set_person
     @person = Current.user.person
+  end
+
+  def hide_sidebar_on_welcome
+    @hide_sidebar = true
   end
 
   def person_params

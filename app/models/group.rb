@@ -18,6 +18,11 @@ class Group < ApplicationRecord
   has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
 
+  # Casting system associations
+  has_many :show_person_role_assignments, as: :assignable, dependent: :destroy
+  has_many :shows, through: :show_person_role_assignments
+  has_many :roles, through: :show_person_role_assignments
+
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_videos, as: :profileable, dependent: :destroy
@@ -142,6 +147,11 @@ class Group < ApplicationRecord
       settings = JSON.parse(settings) if settings.is_a?(String)
       settings.with_indifferent_access
     end
+  end
+
+  # Casting system helper methods
+  def has_person_role_assignment_for_show?(show)
+    show_person_role_assignments.exists?(show: show)
   end
 
   def performance_credits_visible?

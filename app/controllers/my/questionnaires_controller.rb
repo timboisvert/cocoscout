@@ -8,7 +8,7 @@ class My::QuestionnairesController < ApplicationController
   def index
     @filter = params[:filter] || "awaiting"
 
-    all_questionnaires = Current.user.person.invited_questionnaires
+    all_questionnaires = Current.user.person.all_invited_questionnaires
                                       .includes(:production)
                                       .order(created_at: :desc)
 
@@ -26,11 +26,45 @@ class My::QuestionnairesController < ApplicationController
   def form
     @person = Current.user.person
 
-    # Check if person is invited
-    unless @questionnaire.questionnaire_invitations.exists?(invitee: @person)
+    # Check if person is invited directly or through a group
+    directly_invited = @questionnaire.questionnaire_invitations.exists?(invitee: @person)
+    invited_groups = @questionnaire.questionnaire_invitations.where(invitee_type: "Group", invitee_id: @person.groups.pluck(:id)).map(&:invitee)
+
+    unless directly_invited || invited_groups.any?
       redirect_to my_dashboard_path, alert: "You are not invited to this questionnaire"
       return
     end
+
+    # Determine the respondent based on params or default logic
+    if params[:respondent_type].present? && params[:respondent_id].present?
+      # User explicitly selected a respondent
+      @respondent = params[:respondent_type].constantize.find(params[:respondent_id])
+
+      # Verify the selected respondent is valid
+      is_valid = (@respondent == @person && directly_invited) ||
+                 (@respondent.is_a?(Group) && invited_groups.include?(@respondent))
+
+      unless is_valid
+        redirect_to my_dashboard_path, alert: "Invalid respondent selection"
+        return
+      end
+    elsif directly_invited && invited_groups.empty?
+      # Only person is invited
+      @respondent = @person
+    elsif !directly_invited && invited_groups.one?
+      # Only one group is invited
+      @respondent = invited_groups.first
+    elsif directly_invited && invited_groups.any?
+      # Both person and group(s) are invited - default to person
+      @respondent = @person
+    else
+      # Multiple groups invited - default to first
+      @respondent = invited_groups.first
+    end
+
+    @responding_for_group = @respondent.is_a?(Group)
+    @directly_invited = directly_invited
+    @invited_groups = invited_groups
 
     # Check if questionnaire is still accepting responses
     unless @questionnaire.accepting_responses
@@ -47,16 +81,16 @@ class My::QuestionnairesController < ApplicationController
         @shows = @shows.where(id: @questionnaire.availability_show_ids)
       end
 
-      # Load existing availability data
+      # Load existing availability data for the respondent (person or group)
       @availability = {}
-      ShowAvailability.where(available_entity: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @respondent, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end
 
     # Check if they've already responded
-    if @questionnaire.questionnaire_responses.exists?(respondent: @person)
-      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @person)
+    if @questionnaire.questionnaire_responses.exists?(respondent: @respondent)
+      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
       @answers = {}
       @questions.each do |question|
         answer = @questionnaire_response.questionnaire_answers.find_by(question: question)
@@ -74,11 +108,43 @@ class My::QuestionnairesController < ApplicationController
   def submitform
     @person = Current.user.person
 
-    # Check if person is invited
-    unless @questionnaire.questionnaire_invitations.exists?(invitee: @person)
+    # Check if person is invited directly or through a group
+    directly_invited = @questionnaire.questionnaire_invitations.exists?(invitee: @person)
+    invited_groups = @questionnaire.questionnaire_invitations.where(invitee_type: "Group", invitee_id: @person.groups.pluck(:id)).map(&:invitee)
+
+    unless directly_invited || invited_groups.any?
       redirect_to my_dashboard_path, alert: "You are not invited to this questionnaire"
       return
     end
+
+    # Determine the respondent from form params
+    if params[:respondent_type].present? && params[:respondent_id].present?
+      @respondent = params[:respondent_type].constantize.find(params[:respondent_id])
+
+      # Verify the selected respondent is valid
+      is_valid = (@respondent == @person && directly_invited) ||
+                 (@respondent.is_a?(Group) && invited_groups.include?(@respondent))
+
+      unless is_valid
+        redirect_to my_dashboard_path, alert: "Invalid respondent selection"
+        return
+      end
+    else
+      # No explicit selection - use default logic
+      if directly_invited && invited_groups.empty?
+        @respondent = @person
+      elsif !directly_invited && invited_groups.one?
+        @respondent = invited_groups.first
+      else
+        # Ambiguous - require explicit selection
+        redirect_to my_questionnaire_form_path(token: @questionnaire.token), alert: "Please select who you're responding as"
+        return
+      end
+    end
+
+    @responding_for_group = @respondent.is_a?(Group)
+    @directly_invited = directly_invited
+    @invited_groups = invited_groups
 
     # Check if questionnaire is still accepting responses
     unless @questionnaire.accepting_responses
@@ -93,8 +159,8 @@ class My::QuestionnairesController < ApplicationController
     end
 
     # Check if updating existing response
-    if @questionnaire.questionnaire_responses.exists?(respondent: @person)
-      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @person)
+    if @questionnaire.questionnaire_responses.exists?(respondent: @respondent)
+      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
 
       # Update the answers
       @answers = {}
@@ -108,7 +174,7 @@ class My::QuestionnairesController < ApplicationController
       end
     else
       # New response
-      @questionnaire_response = QuestionnaireResponse.new(respondent: @person)
+      @questionnaire_response = QuestionnaireResponse.new(respondent: @respondent)
       @questionnaire_response.questionnaire = @questionnaire
 
       # Loop through the questions and store the answers
@@ -156,7 +222,7 @@ class My::QuestionnairesController < ApplicationController
         next if status.blank?
 
         show_availability = ShowAvailability.find_or_initialize_by(
-          available_entity: @person,
+          available_entity: @respondent,
           show_id: show_id
         )
         show_availability.status = status

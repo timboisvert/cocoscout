@@ -53,7 +53,7 @@ export default class extends Controller {
 
         if (!listContainer) return
 
-        const castMembers = listContainer.querySelectorAll('[data-drag-cast-member-target="person"]')
+        const castMembers = listContainer.querySelectorAll('[data-drag-cast-member-target="person"], [data-drag-cast-member-target="group"]')
         const castHeaders = listContainer.querySelectorAll('h3')
         const castContainers = listContainer.querySelectorAll('.mb-3')
 
@@ -62,7 +62,7 @@ export default class extends Controller {
 
             // Check availability filter
             if (this.availabilityFilter === "available") {
-                // Only show if person marked themselves as available (data-is-available="true")
+                // Only show if entity marked themselves as available (data-is-available="true")
                 // This will show them whether or not they're assigned (opacity-50 handles assignment styling)
                 const isAvailable = member.dataset.isAvailable === 'true'
                 shouldShow = isAvailable

@@ -15,7 +15,7 @@ class Person < ApplicationRecord
   has_many :invited_questionnaires, through: :questionnaire_invitations, source: :questionnaire
   has_many :questionnaire_responses, as: :respondent, dependent: :destroy
 
-  has_many :show_person_role_assignments, dependent: :destroy
+  has_many :show_person_role_assignments, as: :assignable, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
@@ -112,11 +112,27 @@ class Person < ApplicationRecord
     show_person_role_assignments.exists?(show: show)
   end
 
+  # Returns all questionnaires this person is invited to, either directly or through group membership
+  def all_invited_questionnaires
+    # Get questionnaires where person is directly invited
+    direct_questionnaires = invited_questionnaires
+
+    # Get questionnaires where person's groups are invited
+    group_questionnaire_ids = QuestionnaireInvitation
+      .where(invitee_type: "Group", invitee_id: groups.pluck(:id))
+      .pluck(:questionnaire_id)
+
+    group_questionnaires = Questionnaire.where(id: group_questionnaire_ids)
+
+    # Combine and return unique questionnaires
+    Questionnaire.where(id: (direct_questionnaires.pluck(:id) + group_questionnaires.pluck(:id)).uniq)
+  end
+
   # Returns the next show for a given production that this person has a role assignment in
   def next_show_for_production_that_im_cast_in(production)
     shows
       .joins(:show_person_role_assignments)
-      .where(production: production, show_person_role_assignments: { person_id: id })
+      .where(production: production, show_person_role_assignments: { assignable_type: "Person", assignable_id: id })
       .where("date_and_time >= ?", Time.current)
       .where(canceled: false)
       .order(:date_and_time)

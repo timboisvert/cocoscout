@@ -22,7 +22,8 @@ class My::AuditionsController < ApplicationController
         .joins(audition_request: :audition_cycle)
         .where(audition_cycles: { finalize_audition_invitations: true })
         .where(
-          "auditions.person_id = ? OR (audition_requests.requestable_type = ? AND audition_requests.requestable_id IN (?))",
+          "(auditions.auditionable_type = ? AND auditions.auditionable_id = ?) OR (auditions.auditionable_type = ? AND auditions.auditionable_id IN (?))",
+          "Person",
           Current.user.person.id,
           "Group",
           group_ids

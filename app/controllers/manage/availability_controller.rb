@@ -5,15 +5,18 @@ class Manage::AvailabilityController < Manage::ManageController
     # Get all future shows for this production, ordered by date
     @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-    # Get all cast members for this production
-    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
+    # Get all cast members (people and groups) for this production
+    @people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
+    @groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name)
+    @cast_members = (@people + @groups).sort_by(&:name)
 
-    # Build a hash of availabilities: { person_id => { show_id => show_availability } }
+    # Build a hash of availabilities: { "Person_1" => { show_id => show_availability }, "Group_2" => ... }
     @availabilities = {}
-    @cast_members.each do |person|
-      @availabilities[person.id] = {}
-      person.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[person.id][availability.show_id] = availability
+    @cast_members.each do |member|
+      key = "#{member.class.name}_#{member.id}"
+      @availabilities[key] = {}
+      member.show_availabilities.where(show: @shows).each do |availability|
+        @availabilities[key][availability.show_id] = availability
       end
     end
   end
@@ -22,13 +25,16 @@ class Manage::AvailabilityController < Manage::ManageController
     # Get the specific show
     @show = @production.shows.find(params[:id])
 
-    # Get all cast members for this production
-    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
+    # Get all cast members (people and groups) for this production
+    @people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
+    @groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name)
+    @cast_members = (@people + @groups).sort_by(&:name)
 
     # Build a hash of availabilities for this show
     @availabilities = {}
-    @cast_members.each do |person|
-      @availabilities[person.id] = person.show_availabilities.find_by(show: @show)
+    @cast_members.each do |member|
+      key = "#{member.class.name}_#{member.id}"
+      @availabilities[key] = member.show_availabilities.find_by(show: @show)
     end
 
     # Track edit mode
@@ -116,12 +122,22 @@ class Manage::AvailabilityController < Manage::ManageController
   def update_show_availability
     @show = @production.shows.find(params[:id])
 
-    # Update availabilities for each person
+    # Update availabilities for each person and group
     params.each do |key, value|
-      if key.match?(/^availability_/)
-        person_id = key.match(/availability_(\d+)/)[1].to_i
-        person = Person.find(person_id)
-        availability = person.show_availabilities.find_or_initialize_by(show: @show)
+      # Match pattern: availability_Person_123 or availability_Group_456
+      if key.match?(/^availability_(Person|Group)_(\d+)$/)
+        matches = key.match(/^availability_(Person|Group)_(\d+)$/)
+        entity_type = matches[1]
+        entity_id = matches[2].to_i
+
+        # Find the entity (Person or Group)
+        entity = if entity_type == "Person"
+          Person.find(entity_id)
+        else
+          Group.find(entity_id)
+        end
+
+        availability = entity.show_availabilities.find_or_initialize_by(show: @show)
 
         if value == "available"
           availability.available!
