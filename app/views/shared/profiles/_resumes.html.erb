@@ -82,14 +82,12 @@
       </div>
 
       <!-- Add Resume Button -->
-      <button type="button"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer"
-              data-action="click->profile-resumes#openModal">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        Add Resume
-      </button>
+      <%= render "shared/button",
+          text: "Add Resume",
+          variant: "outline-pink",
+          icon: "plus",
+          data: { action: "click->profile-resumes#openModal" },
+          type: :button %>
     </div>
   </div>
 
@@ -136,17 +134,17 @@
           </div>
         </div>
 
-        <div class="flex gap-3 mt-6">
-          <button type="button"
-                  data-action="click->profile-resumes#closeModal"
-                  class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-            Cancel
-          </button>
-          <button type="button"
-                  data-action="click->profile-resumes#save"
-                  class="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 cursor-pointer transition-colors">
-            Save
-          </button>
+        <div class="flex justify-end gap-2 mt-6">
+          <%= render "shared/button",
+              text: "Cancel",
+              variant: "ghost",
+              data: { action: "click->profile-resumes#closeModal" },
+              type: :button %>
+          <%= render "shared/button",
+              text: "Save",
+              variant: "primary",
+              data: { action: "click->profile-resumes#save" },
+              type: :button %>
         </div>
       </div>
     </div>

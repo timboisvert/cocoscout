@@ -60,13 +60,11 @@
       <p class="text-sm text-gray-500 mb-4">No social media links added yet.</p>
     <% end %>
 
-    <button type="button"
-            data-action="click->profile-modals#openAddSocial"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 rounded-lg text-sm font-medium transition-all cursor-pointer">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-      </svg>
-      Add Social Media/Link
-    </button>
+    <%= render "shared/button",
+        text: "Add Social Media/Link",
+        variant: "outline-pink",
+        icon: "plus",
+        data: { action: "click->profile-modals#openAddSocial" },
+        type: :button %>
   </div>
 </div>
