@@ -1,11 +1,11 @@
 <%
   # Renders an SVG icon for social media platforms
   # Usage: render "shared/social_icon", platform: "instagram"
-  
+
   platform = local_assigns[:platform]
   size_class = local_assigns[:size_class] || "w-4 h-4"
   color_class = local_assigns[:color_class] || "text-gray-600"
-  
+
   # Normalize platform to lowercase for case matching
   platform_normalized = platform&.downcase
 %>

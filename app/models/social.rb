@@ -3,7 +3,7 @@ class Social < ApplicationRecord
 
   validates :platform, presence: true
   validates :handle, presence: true
-  validates :name, presence: true, if: -> { platform.in?(['website', 'other']) }
+  validates :name, presence: true, if: -> { platform.in?([ "website", "other" ]) }
 
   enum :platform, {
     instagram: "Instagram",
@@ -20,7 +20,7 @@ class Social < ApplicationRecord
   before_save :normalize_handle
 
   def display_name
-    if platform.in?(['website', 'other'])
+    if platform.in?([ "website", "other" ])
       name.presence || handle
     else
       handle
@@ -30,8 +30,8 @@ class Social < ApplicationRecord
   private
 
   def normalize_handle
-    if platform.in?(['website', 'other']) && handle.present?
-      self.handle = handle.sub(/^https?:\/\//, '')
+    if platform.in?([ "website", "other" ]) && handle.present?
+      self.handle = handle.sub(/^https?:\/\//, "")
     end
   end
 

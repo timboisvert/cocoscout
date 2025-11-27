@@ -67,7 +67,7 @@ export default class extends Controller {
         setTimeout(() => {
             const modal = this.editSocialModalTarget
             const platformSelect = modal.querySelector('[data-social-form-target="platform"]')
-            
+
             if (platformSelect) {
                 platformSelect.dispatchEvent(new Event('change', { bubbles: true }))
             }

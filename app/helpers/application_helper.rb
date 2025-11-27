@@ -29,12 +29,12 @@ module ApplicationHelper
 
   def social_platform_display_name(platform)
     case platform.to_s.downcase
-    when 'youtube'
-      'YouTube'
-    when 'tiktok'
-      'TikTok'
-    when 'linkedin'
-      'LinkedIn'
+    when "youtube"
+      "YouTube"
+    when "tiktok"
+      "TikTok"
+    when "linkedin"
+      "LinkedIn"
     else
       platform.titleize
     end

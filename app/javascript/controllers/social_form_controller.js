@@ -13,13 +13,13 @@ export default class extends Controller {
     updateLabel() {
         const platform = this.platformTarget.value
         const label = this.labelTarget
-        
+
         if (platform === 'website' || platform === 'other') {
             label.textContent = 'URL'
         } else {
             label.textContent = 'Username/Handle'
         }
-        
+
         this.updatePlaceholder()
         this.updateFieldVisibility()
     }
@@ -27,7 +27,7 @@ export default class extends Controller {
     updatePlaceholder() {
         const platform = this.platformTarget.value
         const handleInput = this.handleTarget
-        
+
         if (platform === 'website' || platform === 'other') {
             handleInput.placeholder = 'example.com'
         } else {
@@ -38,7 +38,7 @@ export default class extends Controller {
     updateFieldVisibility() {
         const platform = this.platformTarget.value
         const isWebsiteOrOther = platform === 'website' || platform === 'other'
-        
+
         // Show/hide name field
         if (this.hasNameFieldTarget) {
             if (isWebsiteOrOther) {
@@ -47,7 +47,7 @@ export default class extends Controller {
                 this.nameFieldTarget.classList.add('hidden')
             }
         }
-        
+
         // Show/hide URL prefix and adjust input padding
         if (this.hasUrlPrefixTarget) {
             if (isWebsiteOrOther) {
