@@ -27,6 +27,19 @@ module ApplicationHelper
       Current.user.production_permissions.exists?
   end
 
+  def social_platform_display_name(platform)
+    case platform.to_s.downcase
+    when 'youtube'
+      'YouTube'
+    when 'tiktok'
+      'TikTok'
+    when 'linkedin'
+      'LinkedIn'
+    else
+      platform.titleize
+    end
+  end
+
   def displayable_attachment?(attachment)
     attachment.respond_to?(:attached?) &&
       attachment.attached? &&

@@ -311,7 +311,7 @@ class Manage::PeopleController < Manage::ManageController
     def person_params
       params.require(:person).permit(
         :name, :email, :pronouns, :resume, :headshot,
-        socials_attributes: [ :id, :platform, :handle, :_destroy ]
+        socials_attributes: [ :id, :platform, :handle, :name, :_destroy ]
       )
     end
 end

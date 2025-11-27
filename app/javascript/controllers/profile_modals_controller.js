@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["changeUrlModal", "changeGroupUrlModal", "changeEmailModal", "shareModal"]
+    static targets = ["changeUrlModal", "changeGroupUrlModal", "changeEmailModal", "shareModal", "addSocialModal", "editSocialModal"]
 
     connect() {
         this.keyHandler = this.handleKeydown.bind(this)
@@ -41,6 +41,39 @@ export default class extends Controller {
         document.addEventListener('keydown', this.keyHandler)
     }
 
+    openAddSocial(event) {
+        event.preventDefault()
+        this.addSocialModalTarget.classList.remove('hidden')
+        document.addEventListener('keydown', this.keyHandler)
+    }
+
+    openEditSocial(event) {
+        event.preventDefault()
+        const socialId = event.currentTarget.dataset.socialId
+        const platform = event.currentTarget.dataset.socialPlatform
+        const handle = event.currentTarget.dataset.socialHandle
+        const name = event.currentTarget.dataset.socialName || ''
+
+        // Populate the edit form
+        document.getElementById('edit-social-id').value = socialId
+        document.getElementById('edit-social-platform').value = platform
+        document.getElementById('edit-social-handle').value = handle
+        document.getElementById('edit-social-name').value = name
+
+        this.editSocialModalTarget.classList.remove('hidden')
+        document.addEventListener('keydown', this.keyHandler)
+
+        // Trigger the social-form controller to update label and placeholder
+        setTimeout(() => {
+            const modal = this.editSocialModalTarget
+            const platformSelect = modal.querySelector('[data-social-form-target="platform"]')
+            
+            if (platformSelect) {
+                platformSelect.dispatchEvent(new Event('change', { bubbles: true }))
+            }
+        }, 0)
+    }
+
     closeModal(event) {
         if (event) {
             event.preventDefault()
@@ -56,6 +89,12 @@ export default class extends Controller {
         }
         if (this.hasShareModalTarget) {
             this.shareModalTarget.classList.add('hidden')
+        }
+        if (this.hasAddSocialModalTarget) {
+            this.addSocialModalTarget.classList.add('hidden')
+        }
+        if (this.hasEditSocialModalTarget) {
+            this.editSocialModalTarget.classList.add('hidden')
         }
         document.removeEventListener('keydown', this.keyHandler)
     }

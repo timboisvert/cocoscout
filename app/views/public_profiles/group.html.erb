@@ -74,7 +74,7 @@
                     <% @entity.socials.each do |social| %>
                       <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
                         <%= social.icon(16) %>
-                        <span><%= social.handle %></span>
+                        <span><%= social.display_name %></span>
                       <% end %>
                     <% end %>
                   </div>
@@ -140,7 +140,7 @@
                     <% @entity.socials.each do |social| %>
                       <%= link_to social.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 text-sm text-gray-700 hover:text-pink-600 transition-colors" do %>
                         <%= social.icon(16) %>
-                        <span><%= social.handle %></span>
+                        <span><%= social.display_name %></span>
                       <% end %>
                     <% end %>
                   </div>
