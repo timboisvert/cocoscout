@@ -41,6 +41,7 @@
   target = local_assigns[:target]
   rel = local_assigns[:rel]
   onclick = local_assigns[:onclick]
+  style = local_assigns[:style]
 
   # Base classes for all buttons
   base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors cursor-pointer"
@@ -110,11 +111,9 @@
     <span><%= text %></span>
   <% end %>
 <% elsif type == :submit %>
-  <%= submit_tag text, class: all_classes, data: data, onclick: onclick do %>
-    <%= icon_html if icon_html %>
-  <% end %>
+  <%= submit_tag text, class: all_classes, data: data, onclick: onclick %>
 <% else %>
-  <button type="<%= type %>" class="<%= all_classes %>" <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
+  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
     <%= icon_html if icon_html %>
     <span><%= text %></span>
   </button>

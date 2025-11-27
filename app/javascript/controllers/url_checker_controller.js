@@ -7,13 +7,13 @@ export default class extends Controller {
     }
 
     connect() {
-        this.updateButtonTarget.classList.add('hidden')
+        this.updateButtonTarget.style.display = 'none'
         this.messageTarget.classList.add('hidden')
     }
 
     inputChanged() {
         // Reset state when input changes
-        this.updateButtonTarget.classList.add('hidden')
+        this.updateButtonTarget.style.display = 'none'
         this.checkButtonTarget.classList.remove('hidden')
         this.messageTarget.classList.add('hidden')
         this.checkButtonTarget.disabled = false
@@ -60,7 +60,7 @@ export default class extends Controller {
             if (data.available) {
                 this.showMessage(data.message, "success")
                 this.checkButtonTarget.classList.add('hidden')
-                this.updateButtonTarget.classList.remove('hidden')
+                this.updateButtonTarget.style.display = 'inline-flex'
             } else {
                 this.showMessage(data.message, "error")
                 this.checkButtonTarget.disabled = false
@@ -84,5 +84,10 @@ export default class extends Controller {
 
         this.messageTarget.textContent = text
         this.messageTarget.classList.remove('hidden')
+    }
+
+    submitForm(event) {
+        event.preventDefault()
+        this.formTarget.requestSubmit()
     }
 }

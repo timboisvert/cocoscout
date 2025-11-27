@@ -198,9 +198,9 @@
                 text: "Update URL",
                 variant: "primary",
                 size: "large",
-                data: { url_checker_target: "updateButton" },
-                classes: "hidden",
-                type: :submit %>
+                data: { action: "click->url-checker#submitForm", url_checker_target: "updateButton" },
+                style: "display: none;",
+                type: :button %>
           </div>
         <% end %>
       </div>

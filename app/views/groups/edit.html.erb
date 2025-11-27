@@ -36,19 +36,19 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-3">
-          <%= link_to public_profile_path(@group.public_key), target: "_blank", rel: "noopener", class: "cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors" do %>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>View Public Profile</span>
-          <% end %>
-          <a href="javascript:void(0)" data-action="click->profile-modals#openShare" class="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 rounded-lg text-sm font-medium transition-all">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-            </svg>
-            <span>Share Profile</span>
-          </a>
+          <%= render "shared/button",
+              text: "View Public Profile",
+              variant: "primary",
+              icon: "eye",
+              path: public_profile_path(@group.public_key),
+              target: "_blank",
+              rel: "noopener" %>
+          <%= render "shared/button",
+              text: "Share Profile",
+              variant: "outline",
+              icon: "share",
+              data: { action: "click->profile-modals#openShare" },
+              type: :button %>
         </div>
       </div>
     </div>
@@ -144,9 +144,24 @@
             <div data-url-checker-target="message" class="rounded-lg border p-3 text-sm hidden"></div>
           </div>
           <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-            <button type="button" data-action="click->profile-modals#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-            <button type="button" data-action="click->url-checker#checkAvailability" data-url-checker-target="checkButton" class="px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer">Check Availability</button>
-            <%= form.submit "Update URL", data: { url_checker_target: "updateButton" }, class: "hidden px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+            <%= render "shared/button",
+                text: "Cancel",
+                variant: "ghost-cancel",
+                data: { action: "click->profile-modals#closeModal" },
+                type: :button %>
+            <%= render "shared/button",
+                text: "Check Availability",
+                variant: "primary",
+                size: "large",
+                data: { action: "click->url-checker#checkAvailability", url_checker_target: "checkButton" },
+                type: :button %>
+            <%= render "shared/button",
+                text: "Update URL",
+                variant: "primary",
+                size: "large",
+                data: { action: "click->url-checker#submitForm", url_checker_target: "updateButton" },
+                style: "display: none;",
+                type: :button %>
           </div>
         <% end %>
       </div>
@@ -183,8 +198,16 @@
             </div>
 
             <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button type="button" data-action="click->profile-modals#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-              <%= f.submit "Add Social Media/Link", class: "px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+              <%= render "shared/button",
+                  text: "Cancel",
+                  variant: "ghost-cancel",
+                  data: { action: "click->profile-modals#closeModal" },
+                  type: :button %>
+              <%= render "shared/button",
+                  text: "Add Social Media/Link",
+                  variant: "primary",
+                  size: "large",
+                  type: :submit %>
             </div>
           <% end %>
         <% end %>
@@ -221,8 +244,16 @@
             </div>
 
             <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button type="button" data-action="click->profile-modals#closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-              <%= f.submit "Save Changes", class: "px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer" %>
+              <%= render "shared/button",
+                  text: "Cancel",
+                  variant: "ghost-cancel",
+                  data: { action: "click->profile-modals#closeModal" },
+                  type: :button %>
+              <%= render "shared/button",
+                  text: "Save Changes",
+                  variant: "primary",
+                  size: "large",
+                  type: :submit %>
             </div>
           <% end %>
         <% end %>
