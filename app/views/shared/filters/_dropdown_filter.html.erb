@@ -1,0 +1,53 @@
+<%
+# Shared dropdown filter component
+#
+# Parameters:
+#   label: String - Label for the filter (e.g., "Group", "Sort")
+#   name: String - Name attribute for the select element
+#   options: Array - Array of option hashes with :value, :text, and optional :condition keys
+#   selected: String - Currently selected value
+#   data_attributes: Hash (optional) - Additional data attributes for the select element
+#
+# Example usage:
+#   render "shared/filters/dropdown_filter",
+#     label: "Sort",
+#     name: "sort",
+#     options: [
+#       { value: "name_asc", text: "A→Z" },
+#       { value: "name_desc", text: "Z→A" }
+#     ],
+#     selected: @sort,
+#     data_attributes: {
+#       action: "change->filter-select#update",
+#       filter_select_search_value: @search
+#     }
+%>
+
+<div class="flex items-center gap-2">
+  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
+  <div class="relative">
+    <select
+      name="<%= name %>"
+      <% if data_attributes %>
+        <% data_attributes.each do |key, value| %>
+          <%
+            # For 'action', use it directly as data-action
+            # For other keys like filter_select_search_value, dasherize them
+            attr_name = key.to_s == 'action' ? 'action' : key.to_s.dasherize
+          %>
+          data-<%= attr_name %>="<%= value %>"
+        <% end %>
+      <% end %>
+      class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600"
+    >
+      <% options.each do |option| %>
+        <% if option[:condition].nil? || option[:condition] %>
+          <option value="<%= option[:value] %>" <%= 'selected' if selected == option[:value] %>><%= option[:text] %></option>
+        <% end %>
+      <% end %>
+    </select>
+    <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+</div>

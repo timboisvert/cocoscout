@@ -8,56 +8,38 @@
   } %>
 
   <div class="pb-10">
-    <!-- Filter Buttons -->
-    <div class="flex items-center justify-between mb-4 gap-4">
-      <!-- Left: Filter -->
-      <div class="flex flex-wrap gap-1">
-        <%= link_to "Awaiting My Response", my_questionnaires_path(filter: 'awaiting', entity: @entity_filter.join(",")), data: { turbo_prefetch: false }, class: "px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@filter == 'awaiting' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}" %>
-        <%= link_to "All", my_questionnaires_path(filter: 'all', entity: @entity_filter.join(",")), data: { turbo_prefetch: false }, class: "px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@filter == 'all' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}" %>
-      </div>
-
-      <% if @groups.any? %>
-      <!-- Right: Entity Filter -->
-      <div class="flex flex-wrap gap-1 justify-end">
-        <%
-          # Build the toggle URL for person
-          current_entities = @entity_filter.dup
-          person_url_entities = if current_entities.include?('person')
-            current_entities - ['person']
-          else
-            current_entities + ['person']
-          end
-          person_url_entities = ['person'] if person_url_entities.empty? # Keep at least one
-        %>
-        <%= link_to my_questionnaires_path(filter: @filter, entity: person_url_entities.join(",")),
-                data: { turbo_prefetch: false },
-                class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?("person") ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
-          <svg class="w-3.5 h-3.5 <%= @entity_filter.include?("person") ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-          <%= @person.name %>
-        <% end %>
-
-        <% @groups.each do |group| %>
-          <%
-            # Build the toggle URL for this group
-            group_key = "group_#{group.id}"
-            current_entities = @entity_filter.dup
-            group_url_entities = if current_entities.include?(group_key)
-              current_entities - [group_key]
-            else
-              current_entities + [group_key]
-            end
-            group_url_entities = ['person'] if group_url_entities.empty? # Keep at least one
-          %>
-          <%= link_to my_questionnaires_path(filter: @filter, entity: group_url_entities.join(",")),
-                  data: { turbo_prefetch: false },
-                  class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?(group_key) ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
-            <svg class="w-3.5 h-3.5 <%= @entity_filter.include?(group_key) ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-            <%= group.name %>
-          <% end %>
-        <% end %>
-      </div>
-      <% end %>
-    </div>
+    <%= render "shared/filters/filter_bar",
+        toggle_label: "Filters",
+        filter_groups: [
+          {
+            label: "View",
+            filters: [
+              {
+                text: "Awaiting My Response",
+                path: my_questionnaires_path(filter: 'awaiting', entity: @entity_filter.join(",")),
+                active: @filter == 'awaiting'
+              },
+              {
+                text: "All",
+                path: my_questionnaires_path(filter: 'all', entity: @entity_filter.join(",")),
+                active: @filter == 'all'
+              }
+            ]
+          },
+          { separator: true },
+          {
+            partial: "shared/filters/entity_filter",
+            locals: {
+              path_helper: method(:my_questionnaires_path),
+              person: @person,
+              groups: @groups,
+              entity_filter: @entity_filter,
+              label: "Include",
+              filter: @filter
+            }
+          }
+        ]
+    %>
 
     <% if @questionnaire_entity_pairs.any? %>
       <div class="grid grid-cols-1 gap-2">

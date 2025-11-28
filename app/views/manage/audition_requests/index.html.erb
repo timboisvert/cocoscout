@@ -12,35 +12,19 @@
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :review } %>
 
-  <div class="flex w-full space-x-2 mb-4">
-    <div class="flex flex-1 space-x-1">
-      <%= link_to "All",
-              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "all"),
-              data: { turbo_prefetch: false },
-              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-      %>
-      <%= link_to "Unreviewed",
-              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "unreviewed"),
-              data: { turbo_prefetch: false },
-              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "unreviewed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-      %>
-      <%= link_to "Revisit",
-              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "undecided"),
-              data: { turbo_prefetch: false },
-              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "undecided") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-      %>
-      <%= link_to "Yes",
-              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "accepted"),
-              data: { turbo_prefetch: false },
-              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-      %>
-      <%= link_to "No",
-              manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "passed"),
-              data: { turbo_prefetch: false },
-              class: "px-3 py-1 rounded-md border text-sm #{(@filter == "passed") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-      %>
-    </div>
-  </div>
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "View",
+      filters: [
+        { text: "All", path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "all"), active: @filter == "all" },
+        { text: "Unreviewed", path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "unreviewed"), active: @filter == "unreviewed" },
+        { text: "Revisit", path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "undecided"), active: @filter == "undecided" },
+        { text: "Yes", path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "accepted"), active: @filter == "accepted" },
+        { text: "No", path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: "passed"), active: @filter == "passed" }
+      ]
+    },
+    { separator: true }
+  ] %>
 
   <div class="grid grid-cols-1 gap-2 mb-4">
     <% if @audition_requests.any? %>

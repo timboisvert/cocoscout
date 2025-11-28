@@ -21,7 +21,15 @@
 
 %>
 
-<%= link_to path, class:"#{classes}" do %>
+<%
+  # Build data attributes hash
+  data_attrs = {}
+  if defined?(data_action) && data_action.present?
+    data_attrs[:action] = data_action
+  end
+%>
+
+<%= link_to path, class:"#{classes}", data: data_attrs do %>
   <% if defined?(icon) && icon.present? %>
     <%= icon.html_safe %>
   <% end %>

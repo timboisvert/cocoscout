@@ -38,6 +38,9 @@ class My::ShowsController < ApplicationController
     # Remove duplicates and filter by event type
     @shows = all_shows.uniq.select { |show| @event_type_filter.include?(show.event_type) }
 
+    # Store whether there are ANY shows available (before filtering by assignments)
+    @has_any_shows = @shows.any?
+
     # Get productions from shows
     production_ids = @shows.map(&:production_id).uniq
     @productions = Production.where(id: production_ids).order(:name)

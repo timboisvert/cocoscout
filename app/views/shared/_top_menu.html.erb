@@ -31,7 +31,15 @@
           end
         %>
         <% if can_show_link %>
-          <%= render partial: "shared/link_button", locals: {text: link[:text], path: link[:path], icon: link[:icon]} %>
+          <%= render partial: "shared/button", locals: {
+            text: link[:text],
+            path: link[:path],
+            icon: link[:icon],
+            variant: link[:color] == "white" ? "outline" : "primary",
+            size: "small",
+            data: link[:data_action].present? ? { action: link[:data_action] } : {},
+            classes: "text-xs sm:text-sm px-3 sm:px-5 py-1.5 sm:py-2.5 sm:h-10 whitespace-nowrap"
+          } %>
         <% end %>
       <% end %>
     </div>

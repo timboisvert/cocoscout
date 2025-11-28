@@ -6,23 +6,17 @@
         Drag each person from the list on the left to an audition slot on the right to schedule them.
     </span>
 
-    <div class="flex space-x-2 mb-4">
-        <%= link_to "To Be Scheduled",
-                manage_production_audition_sessions_path(production, filter: "to_be_scheduled"),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(filter.blank? || filter == "to_be_scheduled") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "All Yes",
-                manage_production_audition_sessions_path(production, filter: "accepted"),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(filter == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "All Sign-ups",
-                manage_production_audition_sessions_path(production, filter: "all"),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-    </div>
+    <%= render "shared/filters/filter_bar", filter_groups: [
+      {
+        label: "View",
+        filters: [
+          { text: "To Be Scheduled", path: manage_production_audition_sessions_path(production, filter: "to_be_scheduled"), active: filter.blank? || filter == "to_be_scheduled" },
+          { text: "All Yes", path: manage_production_audition_sessions_path(production, filter: "accepted"), active: filter == "accepted" },
+          { text: "All Sign-ups", path: manage_production_audition_sessions_path(production, filter: "all"), active: filter == "all" }
+        ]
+      },
+      { separator: true }
+    ] %>
 
     <%
         ar = AuditionRequest.joins(:audition_cycle).where(audition_cycles: { production_id: production.id })

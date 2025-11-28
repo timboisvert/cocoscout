@@ -7,108 +7,41 @@
         ["My Availability", my_availability_path]
     ],
     text: "Calendar",
-    links: []
+    links: [
+      {
+        text: "List",
+        path: my_availability_path,
+        icon: "list"
+      }
+    ]
   } %>
 
-  <!-- Filters -->
-  <div class="flex items-center justify-between mb-4 gap-4">
-    <!-- Left: Event Type Filter -->
-    <div class="flex flex-wrap gap-1">
-      <%
-        # Build toggle URL for show
-        current_types = @event_type_filter.dup
-        show_url_types = if current_types.include?('show')
-          current_types - ['show']
-        else
-          current_types + ['show']
-        end
-        show_url_types = ['show'] if show_url_types.empty? # Keep at least one
-      %>
-      <%= link_to my_availability_calendar_path(event_type: show_url_types.join(","), entity: @entity_filter.join(","), month: params[:month]),
-              data: { turbo_prefetch: false },
-              class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@event_type_filter.include?("show") ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
-        <svg class="w-3.5 h-3.5 <%= @event_type_filter.include?("show") ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-        Shows
-      <% end %>
-
-      <%
-        # Build toggle URL for rehearsal
-        current_types = @event_type_filter.dup
-        rehearsal_url_types = if current_types.include?('rehearsal')
-          current_types - ['rehearsal']
-        else
-          current_types + ['rehearsal']
-        end
-        rehearsal_url_types = ['rehearsal'] if rehearsal_url_types.empty?
-      %>
-      <%= link_to my_availability_calendar_path(event_type: rehearsal_url_types.join(','), entity: @entity_filter.join(','), month: params[:month]),
-              data: { turbo_prefetch: false },
-              class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@event_type_filter.include?('rehearsal') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50'}" do %>
-        <svg class="w-3.5 h-3.5 <%= @event_type_filter.include?('rehearsal') ? '' : 'opacity-20' %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-        Rehearsals
-      <% end %>
-
-      <%
-        # Build toggle URL for meeting
-        current_types = @event_type_filter.dup
-        meeting_url_types = if current_types.include?('meeting')
-          current_types - ['meeting']
-        else
-          current_types + ['meeting']
-        end
-        meeting_url_types = ['meeting'] if meeting_url_types.empty?
-      %>
-      <%= link_to my_availability_calendar_path(event_type: meeting_url_types.join(','), entity: @entity_filter.join(','), month: params[:month]),
-              data: { turbo_prefetch: false },
-              class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@event_type_filter.include?('meeting') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50'}" do %>
-        <svg class="w-3.5 h-3.5 <%= @event_type_filter.include?('meeting') ? '' : 'opacity-20' %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-        Meetings
-      <% end %>
-    </div>
-
-    <% if @groups.any? %>
-    <!-- Right: Entity Filter -->
-    <div class="flex flex-wrap gap-1 justify-end">
-      <%
-        # Build the toggle URL for person
-        current_entities = @entity_filter.dup
-        person_url_entities = if current_entities.include?('person')
-          current_entities - ['person']
-        else
-          current_entities + ['person']
-        end
-        person_url_entities = ['person'] if person_url_entities.empty? # Keep at least one
-      %>
-      <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: person_url_entities.join(","), month: params[:month]),
-              data: { turbo_prefetch: false },
-              class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?("person") ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
-        <svg class="w-3.5 h-3.5 <%= @entity_filter.include?("person") ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-        <%= @person.name %>
-      <% end %>
-
-      <% @groups.each do |group| %>
-        <%
-          # Build the toggle URL for this group
-          group_key = "group_#{group.id}"
-          current_entities = @entity_filter.dup
-          group_url_entities = if current_entities.include?(group_key)
-            current_entities - [group_key]
-          else
-            current_entities + [group_key]
-          end
-          group_url_entities = ['person'] if group_url_entities.empty? # Keep at least one
-        %>
-        <%= link_to my_availability_calendar_path(event_type: @event_type_filter.join(","), entity: group_url_entities.join(","), month: params[:month]),
-                data: { turbo_prefetch: false },
-                class: "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-sm font-normal transition-all #{@entity_filter.include?(group_key) ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-300 hover:bg-pink-50"}" do %>
-          <svg class="w-3.5 h-3.5 <%= @entity_filter.include?(group_key) ? "" : "opacity-20" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-          <%= group.name %>
-        <% end %>
-      <% end %>
-    </div>
-    <% end %>
-  </div>
-
+  <%= render "shared/filters/filter_bar",
+      toggle_label: "Filters",
+      filter_groups: [
+        {
+          partial: "shared/filters/event_type_filter",
+          locals: {
+            path_helper: method(:my_availability_calendar_path),
+            event_type_filter: @event_type_filter,
+            entity_filter: @entity_filter,
+            month: params[:month]
+          }
+        },
+        {
+          partial: "shared/filters/entity_filter",
+          locals: {
+            path_helper: method(:my_availability_calendar_path),
+            person: @person,
+            groups: @groups,
+            entity_filter: @entity_filter,
+            label: "Include",
+            event_type: @event_type_filter.join(","),
+            month: params[:month]
+          }
+        }
+      ]
+  %>
   <% if @show_entity_pairs.any? %>
     <% # Desktop: Show selected month only; Mobile: Show all months %>
     <% current_month_param = params[:month] ? Date.parse(params[:month]).to_time.beginning_of_month : nil %>
@@ -354,7 +287,6 @@
                             <div data-availability-target="success" class="hidden text-center mt-2">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mx-auto text-green-600">
                                 <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                              </svg>
                             </div>
                           <% end %>
 

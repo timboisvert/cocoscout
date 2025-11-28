@@ -67,22 +67,30 @@
         </div>
         <div class="p-4 space-y-1 border-b border-gray-200" data-controller="cast-filter">
           <!-- Availability Filter -->
-          <div class="flex gap-2">
-            <button type="button"
-              class="px-3 py-1 rounded-md border text-sm bg-pink-500 text-white border-pink-500 transition-all cursor-pointer"
-              data-action="cast-filter#filterByAvailability"
-              data-value="available"
-              title="Show only available people">
-              Available
-            </button>
-            <button type="button"
-              class="px-3 py-1 rounded-md border text-sm bg-white text-gray-700 border-gray-200 hover:border-gray-300 transition-all cursor-pointer"
-              data-action="cast-filter#filterByAvailability"
-              data-value="all"
-              title="Show all talent pool members">
-              All Talent Pool Members
-            </button>
-          </div>
+          <%= render "shared/filters/filter_bar", filter_groups: [
+            [
+              {
+                text: "Available",
+                path: "#",
+                active: true,
+                data_attributes: {
+                  action: "cast-filter#filterByAvailability",
+                  value: "available"
+                },
+                title: "Show only available people"
+              },
+              {
+                text: "All Talent Pool Members",
+                path: "#",
+                active: false,
+                data_attributes: {
+                  action: "cast-filter#filterByAvailability",
+                  value: "all"
+                },
+                title: "Show all talent pool members"
+              }
+            ]
+          ] %>
 
           <!-- View Availability Matrix link (shown when Available filter is active) -->
           <div id="availability-matrix-link" class="">

@@ -10,23 +10,17 @@
     ]
   } %>
 
-  <div class="flex w-full space-x-1 mb-4">
-    <%= link_to "All",
-            manage_production_questionnaires_path(@production, filter: "all"),
-            data: { turbo_prefetch: false },
-            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-    %>
-    <%= link_to "Accepting Responses",
-            manage_production_questionnaires_path(@production, filter: "accepting"),
-            data: { turbo_prefetch: false },
-            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "accepting") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-    %>
-    <%= link_to "Archived",
-            manage_production_questionnaires_path(@production, filter: "archived"),
-            data: { turbo_prefetch: false },
-            class: "px-3 py-1 rounded-md border text-sm #{(@filter == "archived") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-    %>
-  </div>
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "View",
+      filters: [
+        { text: "All", path: manage_production_questionnaires_path(@production, filter: "all"), active: @filter == "all" },
+        { text: "Accepting Responses", path: manage_production_questionnaires_path(@production, filter: "accepting"), active: @filter == "accepting" },
+        { text: "Archived", path: manage_production_questionnaires_path(@production, filter: "archived"), active: @filter == "archived" }
+      ]
+    },
+    { separator: true }
+  ] %>
 
   <% if @questionnaires.any? %>
     <div class="space-y-4">
