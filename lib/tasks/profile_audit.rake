@@ -9,7 +9,7 @@ namespace :profile do
     # People audit
     puts "PEOPLE AUDIT"
     puts "-" * 80
-    
+
     total_people = Person.count
     people_with_legacy_headshot = 0
     people_with_profile_headshot = 0
@@ -23,16 +23,16 @@ namespace :profile do
     Person.find_each do |person|
       # Check headshots
       has_legacy_headshot = ActiveStorage::Attachment.exists?(
-        record_type: 'Person',
+        record_type: "Person",
         record_id: person.id,
-        name: 'headshot'
+        name: "headshot"
       )
       has_profile_headshot = person.profile_headshots.any?
 
       if has_legacy_headshot
         people_with_legacy_headshot += 1
       end
-      
+
       if has_profile_headshot
         people_with_profile_headshot += 1
       end
@@ -45,16 +45,16 @@ namespace :profile do
 
       # Check resumes
       has_legacy_resume = ActiveStorage::Attachment.exists?(
-        record_type: 'Person',
+        record_type: "Person",
         record_id: person.id,
-        name: 'resume'
+        name: "resume"
       )
       has_profile_resume = person.profile_resumes.any?
 
       if has_legacy_resume
         people_with_legacy_resume += 1
       end
-      
+
       if has_profile_resume
         people_with_profile_resume += 1
       end
@@ -84,7 +84,7 @@ namespace :profile do
     # Groups audit
     puts "GROUPS AUDIT"
     puts "-" * 80
-    
+
     total_groups = Group.count
     groups_with_legacy_headshot = 0
     groups_with_profile_headshot = 0
@@ -98,16 +98,16 @@ namespace :profile do
     Group.find_each do |group|
       # Check headshots
       has_legacy_headshot = ActiveStorage::Attachment.exists?(
-        record_type: 'Group',
+        record_type: "Group",
         record_id: group.id,
-        name: 'headshot'
+        name: "headshot"
       )
       has_profile_headshot = group.profile_headshots.any?
 
       if has_legacy_headshot
         groups_with_legacy_headshot += 1
       end
-      
+
       if has_profile_headshot
         groups_with_profile_headshot += 1
       end
@@ -120,16 +120,16 @@ namespace :profile do
 
       # Check resumes
       has_legacy_resume = ActiveStorage::Attachment.exists?(
-        record_type: 'Group',
+        record_type: "Group",
         record_id: group.id,
-        name: 'resume'
+        name: "resume"
       )
       has_profile_resume = group.profile_resumes.any?
 
       if has_legacy_resume
         groups_with_legacy_resume += 1
       end
-      
+
       if has_profile_resume
         groups_with_profile_resume += 1
       end
@@ -160,10 +160,10 @@ namespace :profile do
     puts "=" * 80
     puts "MIGRATION STATUS SUMMARY"
     puts "=" * 80
-    
-    total_only_legacy = people_with_only_legacy_headshot + people_with_only_legacy_resume + 
+
+    total_only_legacy = people_with_only_legacy_headshot + people_with_only_legacy_resume +
                         groups_with_only_legacy_headshot + groups_with_only_legacy_resume
-    
+
     if total_only_legacy == 0
       puts "✅ All legacy attachments have been migrated to profile system!"
       puts "   Safe to remove legacy headshot/resume code."
@@ -192,18 +192,18 @@ namespace :profile do
       puts "=" * 80
       puts "DETAILED LIST OF LEGACY-ONLY ATTACHMENTS"
       puts "=" * 80
-      
+
       Person.find_each do |person|
         has_legacy_headshot = ActiveStorage::Attachment.exists?(
-          record_type: 'Person',
+          record_type: "Person",
           record_id: person.id,
-          name: 'headshot'
+          name: "headshot"
         )
         has_profile_headshot = person.profile_headshots.any?
         has_legacy_resume = ActiveStorage::Attachment.exists?(
-          record_type: 'Person',
+          record_type: "Person",
           record_id: person.id,
-          name: 'resume'
+          name: "resume"
         )
         has_profile_resume = person.profile_resumes.any?
 
@@ -217,15 +217,15 @@ namespace :profile do
 
       Group.find_each do |group|
         has_legacy_headshot = ActiveStorage::Attachment.exists?(
-          record_type: 'Group',
+          record_type: "Group",
           record_id: group.id,
-          name: 'headshot'
+          name: "headshot"
         )
         has_profile_headshot = group.profile_headshots.any?
         has_legacy_resume = ActiveStorage::Attachment.exists?(
-          record_type: 'Group',
+          record_type: "Group",
           record_id: group.id,
-          name: 'resume'
+          name: "resume"
         )
         has_profile_resume = group.profile_resumes.any?
 
