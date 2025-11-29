@@ -1,7 +1,7 @@
 class Manage::AuditionCyclesController < Manage::ManageController
   before_action :set_production
   before_action :check_production_access
-  before_action :set_audition_cycle, only: %i[ show edit form update destroy preview create_question update_question destroy_question reorder_questions archive ]
+  before_action :set_audition_cycle, only: %i[ show edit form update destroy preview create_question update_question destroy_question reorder_questions archive delete_confirm ]
   before_action :set_question, only: %i[ update_question destroy_question ]
   before_action :ensure_user_is_manager, except: %i[ preview show ]
 
@@ -118,9 +118,21 @@ class Manage::AuditionCyclesController < Manage::ManageController
   end
 
   # DELETE /audition_cycles/1
+  def delete_confirm
+    # Confirmation page before deleting
+    unless !@audition_cycle.active
+      redirect_to manage_production_audition_cycle_path(@production, @audition_cycle), alert: "Only archived audition cycles can be deleted"
+    end
+  end
+
   def destroy
+    unless !@audition_cycle.active
+      redirect_to manage_production_audition_cycle_path(@production, @audition_cycle), alert: "Only archived audition cycles can be deleted"
+      return
+    end
+
     @audition_cycle.destroy!
-    redirect_to [ :manage, @production ], notice: "Audition Cycle was successfully deleted", status: :see_other
+    redirect_to manage_production_auditions_path(@production), notice: "Audition Cycle was successfully deleted", status: :see_other
   end
 
   def preview

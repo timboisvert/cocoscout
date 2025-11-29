@@ -1,0 +1,135 @@
+<% content_for :title, "Delete Audition Cycle" %>
+
+<div class="w-full max-w-2xl mx-auto mt-10 mb-20">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Audition Cycle", manage_production_audition_cycle_path(@production, @audition_cycle)]
+    ],
+    text: "Delete Audition Cycle",
+    links: []
+  } %>
+
+  <div class="bg-white border-2 border-red-300 rounded-lg shadow-sm overflow-hidden">
+    <!-- Warning Header -->
+    <div class="bg-red-50 px-6 py-4 border-b-2 border-red-200">
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0">
+          <svg class="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-red-900 coustard-regular">Warning: Permanent Deletion</h2>
+          <p class="text-sm text-red-800 mt-1">This action cannot be undone</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="px-6 py-6 space-y-6">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-yellow-900 mb-2">⚠️ Important Notice</h3>
+        <p class="text-sm text-yellow-800">
+          Deleting an audition cycle should <strong>only be done for cycles that were created by mistake</strong>. 
+          This is not meant for regular cleanup of old audition cycles.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-gray-900 mb-3">What will be deleted:</h3>
+        <ul class="space-y-2 text-sm text-gray-700">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span>All audition requests and sign-ups for this cycle</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span>All audition sessions and scheduled time slots</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span>All custom questions and responses</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span>All audition notes and ratings</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span>All associated video uploads and files</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-blue-900 mb-2">ℹ️ What will NOT be deleted:</h3>
+        <ul class="space-y-1 text-sm text-blue-800">
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span>People records (profiles remain intact)</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span>Cast assignments (people added to cast remain)</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <span>Talent pools and production data</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="border-t pt-6">
+        <p class="text-sm text-gray-700 mb-4">
+          Type <strong class="text-red-600 font-mono">DELETE</strong> in the box below to confirm:
+        </p>
+        <%= form_with url: manage_production_audition_cycle_path(@production, @audition_cycle), 
+                      method: :delete, 
+                      data: { controller: "confirm-delete" },
+                      class: "space-y-4" do |f| %>
+          <div>
+            <input type="text" 
+                   name="confirmation" 
+                   data-confirm-delete-target="input"
+                   data-action="input->confirm-delete#checkInput"
+                   placeholder="Type DELETE to confirm"
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono"
+                   autocomplete="off">
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <%= link_to "Cancel", 
+                        manage_production_audition_cycle_path(@production, @audition_cycle),
+                        class: "px-6 py-3 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors" %>
+            
+            <button type="submit"
+                    data-confirm-delete-target="button"
+                    disabled
+                    class="px-6 py-3 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              Permanently Delete Audition Cycle
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

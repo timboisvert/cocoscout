@@ -185,10 +185,10 @@
                   <p class="text-sm font-medium text-gray-900 truncate"><%= person.name %></p>
                   <%
                     # Get their cast assignments from this audition cycle
-                    cast_names = person.cast_assignment_stages
-                                       .where(audition_cycle_id: @audition_cycle.id)
-                                       .includes(:cast)
-                                       .map { |stage| stage.cast.name }
+                    cast_names = CastAssignmentStage
+                                       .where(assignable: person, audition_cycle_id: @audition_cycle.id)
+                                       .includes(:talent_pool)
+                                       .map { |stage| stage.talent_pool.name }
                                        .uniq
                   %>
                   <% if cast_names.any? %>
@@ -206,4 +206,26 @@
       <% end %>
     </div>
   </div>
+
+  <!-- Danger Zone -->
+  <% if !@audition_cycle.active %>
+    <div class="bg-white border border-red-300 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+        <h3 class="text-md font-semibold text-red-900 coustard-regular">Danger Zone</h3>
+      </div>
+      <div class="p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h4 class="text-sm font-semibold text-gray-900 mb-1">Delete Audition Cycle</h4>
+            <p class="text-sm text-gray-600">
+              Permanently delete this audition cycle. This action is irreversible and should only be used for cycles created in error.
+            </p>
+          </div>
+          <%= link_to "Delete Audition Cycle",
+                      delete_confirm_manage_production_audition_cycle_path(@production, @audition_cycle),
+                      class: "flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>

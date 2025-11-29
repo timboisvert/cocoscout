@@ -249,6 +249,7 @@ Rails.application.routes.draw do
           delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
           patch  "archive",           to: "audition_cycles#archive",           as: "archive"
+          get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
           get    "prepare",           to: "auditions#prepare",                   as: "prepare"
           get    "publicize",         to: "auditions#publicize",                 as: "publicize"
           get    "review",            to: "auditions#review",                    as: "review"
