@@ -77,9 +77,9 @@
               <td class="sticky left-0 bg-white group-hover:bg-gray-100 z-10 border-r-2 border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] p-0">
                 <%
                   link_path = if member.is_a?(Person)
-                    manage_directory_entry_path(type: 'person', id: member.id, tab: 2)
+                    manage_person_path(member, tab: 2)
                   else
-                    manage_directory_entry_path(type: 'group', id: member.id, tab: 2)
+                    manage_group_path(member, tab: 2)
                   end
                 %>
                 <%= link_to link_path, class: "block px-4 py-3 w-full h-full" do %>

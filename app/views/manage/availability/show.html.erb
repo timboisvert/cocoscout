@@ -41,9 +41,9 @@
                   <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <%
                       link_path = if person.is_a?(Person)
-                        manage_directory_entry_path(type: 'person', id: person.id, tab: 2)
+                        manage_person_path(person, tab: 2)
                       else
-                        manage_directory_entry_path(type: 'group', id: person.id, tab: 2)
+                        manage_group_path(person, tab: 2)
                       end
                     %>
                     <%= link_to link_path, class: "flex items-center space-x-3 flex-1" do %>
@@ -86,9 +86,9 @@
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <%
                     link_path = if person.is_a?(Person)
-                      manage_directory_entry_path(type: 'person', id: person.id, tab: 2)
+                      manage_person_path(person, tab: 2)
                     else
-                      manage_directory_entry_path(type: 'group', id: person.id, tab: 2)
+                      manage_group_path(person, tab: 2)
                     end
                   %>
                   <%= link_to link_path, class: "flex items-center space-x-3 flex-1" do %>

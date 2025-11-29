@@ -58,7 +58,7 @@
               link_path = if assignable.is_a?(Person)
                 manage_person_path(assignable)
               elsif assignable.is_a?(Group)
-                manage_directory_entry_path(type: 'group', id: assignable.id)
+                manage_group_path(assignable)
               end
             %>
             <%= link_to link_path, class: "block" do %>
