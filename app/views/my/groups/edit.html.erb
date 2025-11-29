@@ -69,7 +69,7 @@
               <%= image_tag @group.headshot.variant(:thumb), class: "w-24 h-24 rounded-lg object-cover" %>
             </div>
           <% end %>
-          <%= f.file_field :headshot, accept: "image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
+          <%= f.file_field :headshot, accept: "image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
         </div>
 
         <%# Resume Upload %>
@@ -80,7 +80,7 @@
               Current: <%= link_to @group.resume.filename, rails_blob_path(@group.resume, disposition: "attachment"), class: "text-pink-600 hover:text-pink-700" %>
             </div>
           <% end %>
-          <%= f.file_field :resume, accept: "application/pdf,image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
+          <%= f.file_field :resume, accept: "application/pdf,image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
         </div>
 
         <%# Social Links %>
