@@ -24,7 +24,7 @@
             <!-- Group Details -->
             <div class="bg-white border border-pink-200 rounded-lg p-4 mb-6">
               <div class="flex gap-4">
-                <% if @invitation.group.headshot.attached? %>
+                <% if @invitation.group.headshot&.attached? %>
                   <%= image_tag @invitation.group.headshot.variant(:thumb), class: "w-16 h-24 rounded object-cover flex-shrink-0 shadow-sm" %>
                 <% else %>
                   <div class="w-16 h-24 rounded bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm">

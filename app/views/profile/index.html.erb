@@ -107,13 +107,6 @@
     <!-- Social Media & Links Section -->
     <%= render "shared/profiles/social_media", entity: @person %>
 
-    <!-- Legacy Headshot & Resume (for backward compatibility) -->
-    <div id="legacy-files" class="hidden">
-      <%= form_with(model: @person, url: update_profile_path, method: :patch) do |person_form| %>
-        <%= render "shared/person_form", person_form: person_form %>
-      <% end %>
-    </div>
-
     <!-- Headshots Section -->
     <%= render "shared/profiles/headshots", entity: @person %>
 

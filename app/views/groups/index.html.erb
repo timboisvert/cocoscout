@@ -25,7 +25,7 @@
         <div class="bg-white <%= is_owner ? 'border-2 border-pink-200' : 'border border-gray-300' %> rounded-lg p-6 hover:shadow-lg transition-shadow w-full sm:w-80">
           <div class="mb-4">
             <div class="flex items-center gap-3 mb-3">
-              <% if group.headshot.attached? %>
+              <% if group.headshot&.attached? %>
                 <%= image_tag group.headshot.variant(:thumb), class: "w-16 h-16 rounded-lg object-cover" %>
               <% else %>
                 <div class="w-16 h-16 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xl">

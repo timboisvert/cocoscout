@@ -64,7 +64,7 @@
         <%# Photo Upload %>
         <div>
           <%= f.label :headshot, "Group Photo", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <% if @group.headshot.attached? %>
+          <% if @group.headshot&.attached? %>
             <div class="mb-3">
               <%= image_tag @group.headshot.variant(:thumb), class: "w-24 h-24 rounded-lg object-cover" %>
             </div>
@@ -75,7 +75,7 @@
         <%# Resume Upload %>
         <div>
           <%= f.label :resume, "Group Resume", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <% if @group.resume.attached? %>
+          <% if @group.resume&.attached? %>
             <div class="mb-2 text-sm text-gray-600">
               Current: <%= link_to @group.resume.filename, rails_blob_path(@group.resume, disposition: "attachment"), class: "text-pink-600 hover:text-pink-700" %>
             </div>
@@ -114,7 +114,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <% @group.group_memberships.includes(:person).each do |membership| %>
           <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-            <% if membership.person.headshot.attached? %>
+            <% if membership.person.headshot&.attached? %>
               <%= image_tag membership.person.headshot.variant(:thumb), class: "w-12 h-12 rounded-lg object-cover" %>
             <% else %>
               <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold">

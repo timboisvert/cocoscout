@@ -20,7 +20,7 @@
                 <div class="flex flex-wrap gap-2">
                   <% stages.each do |stage| %>
                     <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_directory_person_path(assignable) : manage_directory_group_path(assignable) %>
+                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
                     <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
                       <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
@@ -48,7 +48,7 @@
                 <div class="flex flex-wrap gap-2">
                   <% stages.each do |stage| %>
                     <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_directory_person_path(assignable) : manage_directory_group_path(assignable) %>
+                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
                     <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
                       <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
@@ -87,7 +87,7 @@
                 <div class="flex flex-wrap gap-2">
                   <% cast_stages.each do |stage| %>
                     <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_directory_person_path(assignable) : manage_directory_group_path(assignable) %>
+                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
                     <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
                       <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>

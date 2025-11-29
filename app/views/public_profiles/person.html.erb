@@ -5,7 +5,7 @@
 
     <%# Detect if profile has rich content beyond basic info %>
     <%
-      has_rich_content = @entity.headshot.attached? ||
+      has_rich_content = @entity.headshot&.attached? ||
                          @entity.primary_headshot&.image&.attached? ||
                          @entity.profile_headshots.any? ||
                          @entity.profile_videos.any? ||
@@ -13,13 +13,13 @@
                          @entity.training_credits.any? ||
                          @entity.profile_skills.any? ||
                          @entity.profile_resumes.any? ||
-                         @entity.resume.attached? ||
+                         @entity.resume&.attached? ||
                          @entity.groups.any?
     %>
 
     <%# Hero Section - ALWAYS SHOWN with basic info %>
     <% primary_hs = @entity.primary_headshot %>
-    <% has_headshot = primary_hs&.image&.attached? || @entity.headshot.attached? %>
+    <% has_headshot = primary_hs&.image&.attached? || @entity.headshot&.attached? %>
 
     <% if has_headshot %>
       <%# With Headshot: Left-Right Layout %>
@@ -33,7 +33,7 @@
             <div class="flex-shrink-0 w-full sm:w-48 md:w-64">
               <% if primary_hs&.image&.attached? %>
                 <%= image_tag primary_hs.image.variant(resize_to_limit: [600, 1200]), class: "w-full h-full object-cover" %>
-              <% elsif @entity.headshot.attached? %>
+              <% elsif @entity.headshot&.attached? %>
                 <%= image_tag @entity.headshot, class: "w-full h-full object-cover" %>
               <% end %>
             </div>
@@ -386,7 +386,7 @@
     <% end %>
 
     <%# Legacy Resume (if present and no new resumes) %>
-    <% if @entity.resumes_visible? && @entity.resume.attached? && @entity.profile_resumes.empty? %>
+    <% if @entity.resumes_visible? && @entity.resume&.attached? && @entity.profile_resumes.empty? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Resume</h2>
@@ -412,7 +412,7 @@
           <% groups.each do |group| %>
             <%= link_to public_profile_path(group.public_key), class: "group" do %>
               <div class="flex flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl hover:border-pink-300 hover:shadow-lg transition-all">
-                <% if group.headshot.attached? %>
+                <% if group.headshot&.attached? %>
                   <%= image_tag group.headshot.variant(:thumb), class: "w-20 h-20 rounded-xl object-cover mb-3 ring-2 ring-gray-100 group-hover:ring-pink-200 transition-all" %>
                 <% else %>
                   <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl mb-3 ring-2 ring-gray-100 group-hover:ring-pink-200 transition-all">

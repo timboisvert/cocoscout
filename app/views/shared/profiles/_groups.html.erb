@@ -21,7 +21,7 @@
           <%= link_to edit_group_path(membership.group),
                       class: "group flex flex-col items-center p-4 border-2 border-gray-200 hover:border-pink-300 rounded-lg hover:shadow-md transition-all",
                       data: { membership_id: membership.id, group_id: membership.group.id } do %>
-            <% if membership.group.headshot.attached? %>
+            <% if membership.group.headshot&.attached? %>
               <%= image_tag membership.group.headshot.variant(:thumb), class: "w-24 h-32 rounded object-cover mb-3" %>
             <% else %>
               <div class="w-24 h-32 rounded bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl mb-3">

@@ -17,7 +17,7 @@
           class: "flex items-center gap-1.5 flex-1 min-w-0" do %>
     <%# Headshot %>
     <div class="flex-shrink-0 w-7 h-7 rounded overflow-hidden bg-gray-100">
-      <% if entry.headshot.attached? %>
+      <% if entry.headshot&.attached? %>
         <%= image_tag entry.safe_headshot_variant(:thumb),
                       class: "w-full h-full object-cover",
                       loading: "lazy",

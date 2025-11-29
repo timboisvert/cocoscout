@@ -154,7 +154,7 @@
                 <% elsif assignment.assignable_type == "Group" %>
                   <% is_my_group = @groups.include?(assignment.assignable) %>
                   <%= link_to public_profile_path(assignment.assignable.public_key), class: "flex flex-col items-center w-[100px] hover:opacity-80 transition-opacity" do %>
-                    <% if assignment.assignable.headshot.attached? %>
+                    <% if assignment.assignable.headshot&.attached? %>
                       <%= image_tag assignment.assignable.headshot.variant(:thumb), alt: assignment.assignable.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if is_my_group}", draggable: false %>
                     <% else %>
                       <div class="w-20 h-20 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if is_my_group}">

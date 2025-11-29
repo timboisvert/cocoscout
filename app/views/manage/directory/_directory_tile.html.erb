@@ -16,7 +16,7 @@
             data: { turbo_frame: "_top", directory_selection_target: "link" },
             class: "block" do %>
   <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
-    <% if entry.headshot.attached? %>
+    <% if entry.headshot&.attached? %>
       <%= image_tag entry.safe_headshot_variant(:thumb),
                     class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
                     loading: "lazy",

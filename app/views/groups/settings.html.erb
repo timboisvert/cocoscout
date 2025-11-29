@@ -90,7 +90,7 @@
         <% @group.group_memberships.includes(:person).each do |membership| %>
           <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
             <div class="flex items-center gap-3">
-              <% if membership.person.headshot.attached? %>
+              <% if membership.person.headshot&.attached? %>
                 <%= image_tag membership.person.headshot.variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
               <% else %>
                 <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
