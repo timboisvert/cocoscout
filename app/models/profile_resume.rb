@@ -27,8 +27,8 @@ class ProfileResume < ApplicationRecord
 
   def acceptable_file
     return unless file.attached?
-    unless file.content_type.in?(%w[application/pdf image/jpeg image/jpg])
-      errors.add(:file, "must be a PDF, JPG, or JPEG file")
+    unless file.content_type.in?(%w[application/pdf image/jpeg image/jpg image/png])
+      errors.add(:file, "must be a PDF, JPG, or PNG file")
     end
   end
 end
