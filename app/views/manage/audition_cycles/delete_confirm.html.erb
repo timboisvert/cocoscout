@@ -117,16 +117,19 @@
           </div>
 
           <div class="flex items-center justify-between gap-4">
-            <%= link_to "Cancel",
-                        manage_production_audition_cycle_path(@production, @audition_cycle),
-                        class: "px-6 py-3 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors" %>
+            <%= render "shared/button",
+                       text: "Cancel",
+                       variant: "secondary",
+                       size: "large",
+                       path: manage_production_audition_cycle_path(@production, @audition_cycle) %>
 
-            <button type="submit"
-                    data-confirm-delete-target="button"
-                    disabled
-                    class="px-6 py-3 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Permanently Delete Audition Cycle
-            </button>
+            <%= render "shared/button",
+                       text: "Permanently Delete Audition Cycle",
+                       variant: "danger",
+                       size: "large",
+                       type: :submit,
+                       disabled: true,
+                       data: { confirm_delete_target: "button" } %>
           </div>
         <% end %>
       </div>

@@ -52,56 +52,77 @@
 
         <!-- Right Column: Form -->
         <div>
-          <%= form_with(model: @audition_request, url: "", method: :get, data: { turbo: false }, class: "space-y-4") do |form| %>
+          <%
+            # Define variables used throughout the form
+            profile_incomplete = Current.user.person.name == Current.user.email_address.split("@").first ||
+                                !Current.user.person.profile_headshots.exists? ||
+                                !Current.user.person.profile_resumes.exists?
 
-      <%
-        # Show person form if there's an error, or if profile is incomplete
-        show_person_form = @update_person_error ||
-                          !Current.user.person.headshot.attached? ||
-                          !Current.user.person.resume.attached? ||
-                          Current.user.person.name == Current.user.email_address.split("@").first
-      %>
+            entity = Current.user.person
+            entity_headshot = entity.profile_headshots.order(created_at: :desc).first
+            entity_profile_path = profile_path
+          %>
+
+          <%= form_with(model: @audition_request, url: "", method: :get, data: { turbo: false }, class: "space-y-4") do |form| %>
 
             <!-- Profile Section -->
             <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
-              <div class="p-5 flex items-top gap-4">
+              <div class="p-5">
+                <!-- Entity Display -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-3">Applying as:</label>
 
-          <% headshot_url = safe_headshot_url(Current.user.person) %>
-          <% if headshot_url %>
-            <div class="flex-shrink-0">
-              <%= image_tag headshot_url, class: "relative inline-block rounded-lg" %>
+                  <!-- Static Tile -->
+                  <div class="flex items-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg">
+                    <% if entity_headshot&.image&.attached? %>
+                      <%= image_tag entity_headshot.image.variant(resize_to_fill: [48, 48]), class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                        </svg>
+                      </div>
+                    <% end %>
+                    <div class="flex-1 text-left min-w-0">
+                      <div class="font-medium text-gray-900 truncate"><%= Current.user.person.name %></div>
+                      <div class="text-sm text-gray-500 truncate"><%= Current.user.email_address %></div>
+                    </div>
+                  </div>
+
+                  <!-- Edit Profile Link -->
+                  <div class="mt-0 text-left">
+                    <%= link_to entity_profile_path, target: "_blank", class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
+                      Edit Profile
+                    <% end %>
+                  </div>
+                </div>
+              </div>
             </div>
-          <% end %>
 
-          <div>
-            <div class="text-sm text-gray-700">
-              Applying as:
-            </div>
-
-            <div class="font-bold text-lg text-gray-900">
-              <%= Current.user.person.name %>
-            </div>
-
-            <div class="text-sm text-gray-600">
-              <%= Current.user.email_address %>
-            </div>
-
-            <% unless show_person_form %>
-              <div class="mt-2">
-                <a id="update-profile-link" class="text-sm text-pink-500 cursor-pointer underline" onclick="document.getElementById('person-form-div').classList.remove('hidden'); this.classList.add('hidden');">Update your profile</a>
+            <!-- Profile Incomplete Warning -->
+            <% if profile_incomplete %>
+              <div class="bg-gradient-to-br from-pink-50 to-white border-2 border-pink-200 rounded-lg shadow-sm p-5">
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-base font-semibold text-gray-900 mb-1">Complete your profile!</h3>
+                    <p class="text-sm text-gray-700 mb-3">
+                      Adding a headshot and resume helps casting teams see your experience and increases your chances of being noticed. It only takes a minute!
+                    </p>
+                    <%= link_to entity_profile_path, target: "_blank", class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-sm font-medium transition-colors" do %>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>Complete Profile</span>
+                    <% end %>
+                  </div>
+                </div>
               </div>
             <% end %>
-
-          </div>
-
-        </div>
-
-              <div class="px-5 pb-5 <%= 'hidden' unless show_person_form %>" id="person-form-div">
-                <%= form.fields_for @person do |person_form| %>
-                  <%= render "shared/person_form", person_form: person_form %>
-                <% end %>
-              </div>
-            </div>
 
             <!-- Video Upload Section -->
             <% if @audition_cycle.audition_type == "video_upload" %>
@@ -204,7 +225,7 @@
           submit_text = "Submit video audition (Preview Mode)"
         end
       %>
-      <%= render "shared/button", text: submit_text, variant: "primary", size: "large", type: :submit, disabled: true, class: "w-full" %>
+      <%= render "shared/button", text: submit_text, variant: "primary", size: "jumbo", type: :submit, disabled: true, class: "w-full" %>
         <% end %>
       </div>      </div>
     </div>

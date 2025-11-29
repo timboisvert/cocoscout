@@ -2,28 +2,11 @@
   <div class="flex-1 overflow-y-auto">
 
     <div class="mt-2">
-      <%
-        shows_active = controller_name == "shows"
-        shows_classes = shows_active ? "bg-pink-500 text-white" : "text-gray-700"
-
-        availability_active = controller_name == "availability"
-        availability_classes = availability_active ? "bg-pink-500 text-white" : "text-gray-700"
-
-        auditions_active = controller_name == "auditions"
-        auditions_classes = auditions_active ? "bg-pink-500 text-white" : "text-gray-700"
-
-        audition_requests_active = controller_name == "audition_requests"
-        audition_requests_classes = audition_requests_active ? "bg-pink-500 text-white" : "text-gray-700"
-
-        questionnaires_active = controller_name == "questionnaires"
-        questionnaires_classes = questionnaires_active ? "bg-pink-500 text-white" : "text-gray-700"
-      %>
-
-      <%= link_to "My Shows & Events", my_shows_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{shows_classes}" %>
-      <%= link_to "My Availability", my_availability_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{availability_classes}" %>
-      <%= link_to "My Auditions", my_auditions_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{auditions_classes}" %>
-      <%= link_to "My Sign-ups", my_audition_requests_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{audition_requests_classes}" %>
-      <%= link_to "My Questionnaires", my_questionnaires_path, class: "coustard-regular flex items-center gap-3 px-4 py-2 hover:bg-pink-500 hover:text-white transition-all font-medium #{questionnaires_classes}" %>
+      <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
+      <%= render "shared/nav_link", text: "My Availability", path: my_availability_path, active: controller_name == "availability" %>
+      <%= render "shared/nav_link", text: "My Auditions", path: my_auditions_path, active: controller_name == "auditions" %>
+      <%= render "shared/nav_link", text: "My Sign-ups", path: my_audition_requests_path, active: controller_name == "audition_requests" %>
+      <%= render "shared/nav_link", text: "My Questionnaires", path: my_questionnaires_path, active: controller_name == "questionnaires" %>
     </div>
 
   </div>

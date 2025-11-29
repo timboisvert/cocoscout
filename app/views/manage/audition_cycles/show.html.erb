@@ -221,9 +221,12 @@
               Permanently delete this audition cycle. This action is irreversible and should only be used for cycles created in error.
             </p>
           </div>
-          <%= link_to "Delete Audition Cycle",
-                      delete_confirm_manage_production_audition_cycle_path(@production, @audition_cycle),
-                      class: "flex-shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors" %>
+          <%= render "shared/button",
+                     text: "Delete Audition Cycle",
+                     variant: "danger",
+                     size: "medium",
+                     path: delete_confirm_manage_production_audition_cycle_path(@production, @audition_cycle),
+                     classes: "flex-shrink-0" %>
         </div>
       </div>
     </div>

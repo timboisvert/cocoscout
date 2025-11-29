@@ -39,19 +39,12 @@ class Group < ApplicationRecord
   accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
 
-  has_one_attached :resume, dependent: :purge_later
-  has_one_attached :headshot, dependent: :purge_later do |attachable|
-    attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
-  end
-
   # Validations
   validates :name, presence: true
   validates :email, presence: true
   validates :public_key, presence: true, uniqueness: true
   validates :public_key, format: { with: /\A[a-z0-9][a-z0-9\-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
-  validate :resume_content_type
-  validate :headshot_content_type
 
   # Callbacks
   before_validation :generate_public_key, on: :create
@@ -90,18 +83,13 @@ class Group < ApplicationRecord
     save
   end
 
-  def safe_resume_preview(options = {})
-    return nil unless resume.attached?
+  # Profile system helper methods
+  def primary_headshot
+    profile_headshots.find_by(is_primary: true) || profile_headshots.first
+  end
 
-    if resume.content_type.start_with?("image/")
-      return resume.variant(options)
-    end
-
-    return nil unless resume.previewable?
-    resume.preview(options)
-  rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
-    Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
-    nil
+  def headshot
+    primary_headshot&.image
   end
 
   def safe_headshot_variant(variant_name)
@@ -113,34 +101,29 @@ class Group < ApplicationRecord
     nil
   end
 
-  # Profile system helper methods
-  def primary_headshot
-    profile_headshots.find_by(is_primary: true) || profile_headshots.first
-  end
+  def safe_resume_preview(options = {})
+    primary_resume = profile_resumes.find_by(is_primary: true) || profile_resumes.first
+    return nil unless primary_resume&.file&.attached?
 
-  # Override headshot to return the primary headshot's image when profile_headshots exist
-  def headshot
-    primary = primary_headshot
-    if primary&.image&.attached?
-      primary.image
-    else
-      # Call the original has_one_attached method
-      super()
+    # For image files (JPEG, PNG), display directly with variant
+    if primary_resume.file.content_type.start_with?("image/")
+      return primary_resume.file.variant(options)
     end
+
+    # For other files (PDF), generate preview
+    return nil unless primary_resume.file.previewable?
+    primary_resume.file.preview(options)
+  rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
+    Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
+    nil
   end
 
   def display_headshots
-    if profile_headshots.any?
-      profile_headshots
-    elsif headshot.attached?
-      [ OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0) ]
-    else
-      []
-    end
+    profile_headshots
   end
 
   def display_resume
-    resume # Existing ActiveStorage attachment
+    profile_resumes.find_by(is_primary: true) || profile_resumes.first
   end
 
   def visibility_settings
@@ -240,18 +223,6 @@ class Group < ApplicationRecord
     )
     if reserved.include?(public_key)
       errors.add(:public_key, "is reserved for CocoScout system pages")
-    end
-  end
-
-  def resume_content_type
-    if resume.attached? && !resume.content_type.in?(%w[application/pdf image/jpeg image/png])
-      errors.add(:resume, "Resume must be a PDF, JPEG, or PNG file")
-    end
-  end
-
-  def headshot_content_type
-    if headshot.attached? && !headshot.content_type.in?(%w[image/jpeg image/jpg image/png])
-      errors.add(:headshot, "Headshot must be a JPEG, JPG, or PNG file")
     end
   end
 end
