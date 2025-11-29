@@ -9,10 +9,10 @@
     </div>
 
     <!-- Features Grid -->
-    <div class="grid md:grid-cols-2 gap-6 mb-8">
+    <div class="grid md:grid-cols-2 gap-6 mb-8" data-controller="my-welcome">
 
       <!-- Profile Card - First -->
-      <%= link_to my_profile_path, class: "group" do %>
+      <%= link_to profile_path, class: "group", data: { action: "click->my-welcome#markWelcomed" } do %>
         <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
           <div class="flex items-start gap-4">
             <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
@@ -29,7 +29,7 @@
       <% end %>
 
       <!-- Audition Requests Card - Second -->
-      <%= link_to my_audition_requests_path, class: "group" do %>
+      <%= link_to my_audition_requests_path, class: "group", data: { action: "click->my-welcome#markWelcomed" } do %>
         <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
           <div class="flex items-start gap-4">
             <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
@@ -46,7 +46,7 @@
       <% end %>
 
       <!-- Auditions Card - Third -->
-      <%= link_to my_auditions_path, class: "group" do %>
+      <%= link_to my_auditions_path, class: "group", data: { action: "click->my-welcome#markWelcomed" } do %>
         <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
           <div class="flex items-start gap-4">
             <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
@@ -63,7 +63,7 @@
       <% end %>
 
       <!-- Shows & Events Card - Fourth -->
-      <%= link_to my_shows_path, class: "group" do %>
+      <%= link_to my_shows_path, class: "group", data: { action: "click->my-welcome#markWelcomed" } do %>
         <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-200 transition-all">
           <div class="flex items-start gap-4">
             <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
@@ -84,25 +84,25 @@
       <h3 class="text-lg font-semibold text-slate-900 mb-4">Quick Tips</h3>
       <ul class="space-y-3">
         <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="text-sm text-slate-700">Complete your profile with a headshot and resume for better audition opportunities</span>
         </li>
         <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="text-sm text-slate-700">Check your email regularly for audition updates and casting notifications</span>
         </li>
         <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="text-sm text-slate-700">Use the calendar view to see all your shows and events at a glance</span>
         </li>
         <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-pink-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="text-sm text-slate-700">CocoScout is free for performers—no credit card required, ever</span>

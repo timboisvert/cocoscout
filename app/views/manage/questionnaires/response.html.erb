@@ -1,4 +1,4 @@
-<% content_for :title, "Response - #{@response.person.name}" %>
+<% content_for :title, "Response - #{@response.respondent.name}" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -7,7 +7,7 @@
       ["Questionnaires", manage_production_questionnaires_path(@production)],
       [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
     ],
-    text: @response.person.name,
+    text: @response.respondent.name,
     links: []
   } %>
 
@@ -16,12 +16,12 @@
     <div class="flex flex-col sm:flex-row">
       <!-- Headshot Section -->
       <div class="flex-shrink-0 sm:w-48 bg-gray-50 flex items-center justify-center p-4">
-        <% headshot_variant = @response.person.safe_headshot_variant(:thumb) %>
+        <% headshot_variant = @response.respondent.respond_to?(:safe_headshot_variant) ? @response.respondent.safe_headshot_variant(:thumb) : nil %>
         <% if headshot_variant %>
-          <%= image_tag headshot_variant, alt: @response.person.name, class: "rounded-lg shadow-sm w-full max-w-[180px] aspect-square object-cover border border-gray-200" %>
+          <%= image_tag headshot_variant, alt: @response.respondent.name, class: "rounded-lg shadow-sm w-full max-w-[180px] aspect-square object-cover border border-gray-200" %>
         <% else %>
           <div class="w-full max-w-[180px] aspect-square rounded-lg bg-pink-100 flex items-center justify-center border border-gray-300">
-            <span class="text-pink-600 font-bold text-5xl"><%= @response.person.initials %></span>
+            <span class="text-pink-600 font-bold text-5xl"><%= @response.respondent.initials %></span>
           </div>
         <% end %>
       </div>
@@ -32,17 +32,17 @@
           <!-- Name -->
           <div>
             <h2 class="text-2xl font-bold text-gray-900 mb-2">
-              <%= @response.person.name %>
+              <%= @response.respondent.name %>
             </h2>
           </div>
 
-          <!-- Person Details -->
+          <!-- Respondent Details -->
           <div class="space-y-2 text-sm">
             <div class="flex items-start gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
               </svg>
-              <span class="text-gray-900 font-medium"><%= @response.person.email %></span>
+              <span class="text-gray-900 font-medium"><%= @response.respondent.email %></span>
             </div>
 
             <div class="flex items-start gap-2">

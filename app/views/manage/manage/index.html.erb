@@ -163,7 +163,7 @@
 
                 <!-- Submit Button -->
                 <div class="pt-2">
-                  <%= form.submit "Create production", class: "w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors cursor-pointer" %>
+                  <%= render "shared/button", text: "Create production", variant: "primary", size: "medium", type: :submit, class: "w-full" %>
                 </div>
               <% end %>
 

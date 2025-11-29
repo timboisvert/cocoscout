@@ -8,22 +8,80 @@
   } %>
 
   <div class="pb-10">
-    <!-- Filter Buttons -->
-    <div class="flex gap-2 mb-5">
-      <%= link_to "Awaiting My Response", my_questionnaires_path(filter: 'awaiting'), class: "px-3 py-1 rounded-md border text-sm #{@filter == 'awaiting' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" %>
-      <%= link_to "All", my_questionnaires_path(filter: 'all'), class: "px-3 py-1 rounded-md border text-sm #{@filter == 'all' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}" %>
-    </div>
+    <%= render "shared/filters/filter_bar",
+        toggle_label: "Filters",
+        filter_groups: [
+          {
+            label: "View",
+            filters: [
+              {
+                text: "Awaiting My Response",
+                path: my_questionnaires_path(filter: 'awaiting', entity: @entity_filter.join(",")),
+                active: @filter == 'awaiting'
+              },
+              {
+                text: "All",
+                path: my_questionnaires_path(filter: 'all', entity: @entity_filter.join(",")),
+                active: @filter == 'all'
+              }
+            ]
+          },
+          { separator: true },
+          {
+            partial: "shared/filters/entity_filter",
+            locals: {
+              path_helper: method(:my_questionnaires_path),
+              person: @person,
+              groups: @groups,
+              entity_filter: @entity_filter,
+              label: "Include",
+              filter: @filter
+            }
+          }
+        ]
+    %>
 
-    <% if @questionnaires.any? %>
-      <div class="space-y-4">
-        <% @questionnaires.each do |questionnaire| %>
-          <%= link_to my_questionnaire_form_path(token: questionnaire.token), class: "block p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
-            <div class="flex items-center justify-between">
+    <% if @questionnaire_entity_pairs.any? %>
+      <div class="grid grid-cols-1 gap-2">
+        <% @questionnaire_entity_pairs.each do |pair| %>
+          <% questionnaire = pair[:questionnaire] %>
+          <% entity = pair[:entity] %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg <%= questionnaire.archived_at.nil? && questionnaire.accepting_responses ? 'hover:border-gray-400' : '' %> transition-all flex items-start">
+            <% if questionnaire.archived_at.nil? && questionnaire.accepting_responses %>
+              <%
+                # Build the questionnaire URL with entity params if user has groups
+                questionnaire_url = if @groups.any?
+                  my_questionnaire_form_path(token: questionnaire.token, respondent_type: pair[:entity_type].classify, respondent_id: entity.id)
+                else
+                  my_questionnaire_form_path(token: questionnaire.token)
+                end
+              %>
+              <%= link_to questionnaire_url, class: "flex-1 no-underline" do %>
+                <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>
+                <p class="text-sm text-gray-600 mt-1"><%= questionnaire.production.name %></p>
+                <div class="flex items-center gap-3 mt-2">
+                  <% if questionnaire.questionnaire_responses.exists?(respondent: entity) %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20">
+                      Responded
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
+                      Not Responded
+                    </span>
+                  <% end %>
+                  <% unless questionnaire.accepting_responses %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                      Closed
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
               <div class="flex-1">
                 <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>
                 <p class="text-sm text-gray-600 mt-1"><%= questionnaire.production.name %></p>
                 <div class="flex items-center gap-3 mt-2">
-                  <% if questionnaire.questionnaire_responses.exists?(respondent: Current.user.person) %>
+                  <% if questionnaire.questionnaire_responses.exists?(respondent: entity) %>
                     <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20">
                       Responded
                     </span>
@@ -39,11 +97,15 @@
                   <% end %>
                 </div>
               </div>
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-              </svg>
-            </div>
-          <% end %>
+            <% end %>
+
+            <% if @groups.any? %>
+              <% headshot = entity.safe_headshot_variant(:thumb) %>
+              <% if headshot %>
+                <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover ml-2", alt: entity.name %>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
       </div>
     <% else %>

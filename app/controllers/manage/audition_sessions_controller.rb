@@ -17,7 +17,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
 
   def show
     if @audition.present?
-      @person = @audition_request.person
+      @requestable = @audition_request.requestable
       @answers = @audition_request.answers.includes(:question)
     end
   end

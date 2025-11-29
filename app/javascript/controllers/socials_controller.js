@@ -21,7 +21,7 @@ export default class extends Controller {
         });
         const nextIndex = maxIndex + 1;
 
-        // Determine the correct base name by checking existing fields
+        // Determine the correct base name by checking existing fields, or from template data attribute
         let baseName = 'audition_request[person][socials_attributes]';
         let baseId = 'audition_request_person_socials_attributes';
         const existingSelect = list.querySelector('select[name*="[socials_attributes]"]');
@@ -31,18 +31,34 @@ export default class extends Controller {
                 baseName = nameMatch[1] + '[socials_attributes]';
                 baseId = nameMatch[1].replace(/\[/g, '_').replace(/\]/g, '') + '_socials_attributes';
             }
+        } else if (template.dataset.entityName) {
+            // No existing fields, use the entity name from template
+            const entityName = template.dataset.entityName;
+            baseName = `${entityName}[socials_attributes]`;
+            baseId = `${entityName}_socials_attributes`;
         }
 
         // Set correct names/ids for new fields
         clone.querySelectorAll('select').forEach((el) => {
             el.name = `${baseName}[${nextIndex}][platform]`;
             el.id = `${baseId}_${nextIndex}_platform`;
+            // Add auto-save data-action
+            el.setAttribute('data-action', 'change->profile-auto-save#save');
         });
         clone.querySelectorAll('input[type="text"]').forEach((el) => {
             el.name = `${baseName}[${nextIndex}][handle]`;
             el.id = `${baseId}_${nextIndex}_handle`;
+            // Add auto-save data-action
+            el.setAttribute('data-action', 'blur->profile-auto-save#save');
         });
         list.appendChild(clone);
+
+        // Focus the new handle input
+        const newRow = list.lastElementChild;
+        const handleInput = newRow.querySelector('input[type="text"]');
+        if (handleInput) {
+            handleInput.focus();
+        }
     }
 
     remove(event) {
@@ -59,6 +75,9 @@ export default class extends Controller {
                 row.style.height = "0";
                 row.style.overflow = "hidden";
                 row.style.margin = "0";
+
+                // Trigger auto-save by dispatching a change event on the destroy input
+                destroyInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
         } else {
             row.remove();

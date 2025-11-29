@@ -37,47 +37,48 @@ export default class extends Controller {
     remove(event) {
         event.preventDefault();
 
-        if (!confirm("Are you sure you want to remove this person from the pool?")) {
+        const memberType = event.currentTarget.dataset.memberType;
+        const memberLabel = memberType === "Person" ? "person" : "group";
+
+        if (!confirm(`Are you sure you want to remove this ${memberLabel} from the pool?`)) {
             return;
         }
 
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const talentPoolId = this.talentPoolIdValue;
-        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/remove_person`, {
+
+        // Determine endpoint and parameter based on member type
+        const endpoint = memberType === "Person" ? "remove_person" : "remove_group";
+        const paramKey = memberType === "Person" ? "person_id" : "group_id";
+
+        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/${endpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
                 "X-Requested-With": "XMLHttpRequest"
             },
-            body: JSON.stringify({ person_id: personId })
+            body: JSON.stringify({ [paramKey]: personId })
         })
             .then(r => r.text())
             .then(html => {
                 // Replace the talent pool members list with the new HTML
                 const poolList = document.getElementById(`talent-pool-members-list-${talentPoolId}`);
                 if (poolList) poolList.innerHTML = html;
-
-                // If the add-person panel is open, hide the newly rendered "Add a person" button
-                const panel = document.getElementById("add-person-panel");
-                if (panel && !panel.classList.contains("hidden")) {
-                    const newAddButton = castList.querySelector('[data-action="click->add-person-panel#open"]');
-                    if (newAddButton) {
-                        newAddButton.classList.add("hidden");
-                    }
-                }
             });
     }
 
     dragStart(event) {
         const element = event.currentTarget;
         const personId = element.dataset.personId;
+        const memberType = element.dataset.memberType;
         const sourceTalentPoolId = element.dataset.sourceTalentPoolId;
 
         // Store data in the drag event
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("personId", personId);
+        event.dataTransfer.setData("memberType", memberType);
         event.dataTransfer.setData("sourceTalentPoolId", sourceTalentPoolId);
 
         // Add visual feedback
@@ -123,6 +124,7 @@ export default class extends Controller {
         dropZone.classList.remove("ring-2", "ring-pink-400", "bg-pink-50");
 
         const personId = event.dataTransfer.getData("personId");
+        const memberType = event.dataTransfer.getData("memberType") || "Person";
         const sourceTalentPoolId = event.dataTransfer.getData("sourceTalentPoolId");
         const targetTalentPoolId = dropZone.dataset.talentPoolId;
 
@@ -131,9 +133,9 @@ export default class extends Controller {
             return;
         }
 
-        // Get production ID from the nearest element that has it
-        const gridElement = document.querySelector('[data-controller="add-person-panel"]');
-        const productionId = gridElement?.dataset.productionId;
+        // Get production ID from the modal or page
+        const modal = document.getElementById('add-member-modal');
+        const productionId = modal?.dataset.productionId || this.productionIdValue;
 
         if (!productionId) {
             console.error("Production ID not found");
@@ -141,18 +143,24 @@ export default class extends Controller {
         }
 
         // Remove from source pool and add to target pool
-        this.movePerson(productionId, personId, sourceTalentPoolId, targetTalentPoolId);
+        this.moveMember(productionId, personId, memberType, sourceTalentPoolId, targetTalentPoolId);
     }
 
-    movePerson(productionId, personId, sourceTalentPoolId, targetTalentPoolId) {
+    moveMember(productionId, memberId, memberType, sourceTalentPoolId, targetTalentPoolId) {
+        // Determine endpoints based on member type
+        const removeEndpoint = memberType === "Person" ? "remove_person" : "remove_group";
+        const addEndpoint = memberType === "Person" ? "add_person" : "add_group";
+        const paramKey = memberType === "Person" ? "person_id" : "group_id";
+
         // First remove from source pool
-        fetch(`/manage/productions/${productionId}/talent-pools/${sourceTalentPoolId}/remove_person`, {
+        fetch(`/manage/productions/${productionId}/talent-pools/${sourceTalentPoolId}/${removeEndpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
+                "X-Requested-With": "XMLHttpRequest"
             },
-            body: JSON.stringify({ person_id: personId })
+            body: JSON.stringify({ [paramKey]: memberId })
         })
             .then(r => r.text())
             .then(html => {
@@ -161,13 +169,14 @@ export default class extends Controller {
                 if (sourcePoolList) sourcePoolList.innerHTML = html;
 
                 // Then add to target pool
-                return fetch(`/manage/productions/${productionId}/talent-pools/${targetTalentPoolId}/add_person`, {
+                return fetch(`/manage/productions/${productionId}/talent-pools/${targetTalentPoolId}/${addEndpoint}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
+                        "X-Requested-With": "XMLHttpRequest"
                     },
-                    body: JSON.stringify({ person_id: personId })
+                    body: JSON.stringify({ [paramKey]: memberId })
                 });
             })
             .then(r => r.text())

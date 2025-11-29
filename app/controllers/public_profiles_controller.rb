@@ -1,5 +1,6 @@
 class PublicProfilesController < ApplicationController
   skip_before_action :require_authentication
+  before_action :resume_session_if_present
 
   def show
     key = params[:public_key]
@@ -9,11 +10,14 @@ class PublicProfilesController < ApplicationController
 
     # If not found, check if it's an old key that was changed
     unless @person
-      @person = Person.where("old_keys LIKE ?", "%#{key}%").first
-      if @person
-        # Redirect to new key
-        redirect_to public_profile_path(@person.public_key), status: :moved_permanently
-        return
+      Person.where.not(old_keys: nil).find_each do |person|
+        old_keys_array = JSON.parse(person.old_keys) rescue []
+        if old_keys_array.include?(key)
+          @person = person
+          # Redirect to new key
+          redirect_to public_profile_path(@person.public_key), status: :moved_permanently
+          return
+        end
       end
     end
 
@@ -22,11 +26,14 @@ class PublicProfilesController < ApplicationController
 
     # If not found, check if it's an old group key that was changed
     unless @group || @person
-      @group = Group.where("old_keys LIKE ?", "%#{key}%").first
-      if @group
-        # Redirect to new key
-        redirect_to public_profile_path(@group.public_key), status: :moved_permanently
-        return
+      Group.where.not(old_keys: nil).find_each do |group|
+        old_keys_array = JSON.parse(group.old_keys) rescue []
+        if old_keys_array.include?(key)
+          @group = group
+          # Redirect to new key
+          redirect_to public_profile_path(@group.public_key), status: :moved_permanently
+          return
+        end
       end
     end
 
@@ -45,5 +52,11 @@ class PublicProfilesController < ApplicationController
     else
       render "public_profiles/group"
     end
+  end
+
+  private
+
+  def resume_session_if_present
+    resume_session
   end
 end

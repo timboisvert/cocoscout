@@ -1,19 +1,24 @@
-<% if people.any? %>
-  <% people.each do |person| %>
+<% if members.any? %>
+  <% members.each do |member| %>
     <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-full">
-      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+      <% headshot_variant = member.safe_headshot_variant(:thumb) %>
       <% if headshot_variant %>
-        <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-      <% else %>
+        <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+      <% elsif member.is_a?(Person) %>
         <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-          <%= person.initials %>
+          <%= member.initials %>
+        </div>
+      <% else %>
+        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+          <i class="fa-solid fa-users"></i>
         </div>
       <% end %>
-      <span class="font-medium text-sm flex-grow"><%= person.name %></span>
+      <span class="font-medium text-sm flex-grow"><%= member.name %></span>
       <button type="button"
         class="px-3 py-1 text-pink-500 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 cursor-pointer flex-shrink-0"
-        data-action="add-person-panel#addPerson"
-        data-person-id="<%= person.id %>"
+        data-action="add-member-modal#addMember"
+        data-member-id="<%= member.id %>"
+        data-member-type="<%= member.class.name %>"
         data-talent-pool-id="<%= talent_pool_id %>"
       >
         Add
@@ -21,5 +26,5 @@
     </div>
   <% end %>
 <% else %>
-  <div class="text-sm text-gray-500">No people found.</div>
+  <div class="text-sm text-gray-500">No people or groups found.</div>
 <% end %>

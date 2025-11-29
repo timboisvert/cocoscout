@@ -3,7 +3,13 @@ class Show < ApplicationRecord
   belongs_to :location
 
   has_many :show_person_role_assignments, -> { joins(:role).order(Arel.sql("roles.position ASC, roles.created_at ASC")) }, dependent: :destroy
-  has_many :people, through: :show_person_role_assignments
+
+  # Polymorphic associations for cast members (people or groups)
+  has_many :cast_people, -> { where(show_person_role_assignments: { assignable_type: "Person" }) }, through: :show_person_role_assignments, source: :assignable, source_type: "Person"
+  has_many :cast_groups, -> { where(show_person_role_assignments: { assignable_type: "Group" }) }, through: :show_person_role_assignments, source: :assignable, source_type: "Group"
+
+  # Convenience methods for backward compatibility
+  has_many :people, through: :show_person_role_assignments, source: :assignable, source_type: "Person"
   has_many :roles, through: :show_person_role_assignments
 
   has_many :show_links, dependent: :destroy

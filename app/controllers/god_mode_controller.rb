@@ -1,5 +1,10 @@
 class GodModeController < ApplicationController
   before_action :require_god_mode, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending ]
+  before_action :hide_sidebar
+
+  def hide_sidebar
+    @show_my_sidebar = false
+  end
 
   def index
     @users = User.order(:email_address)

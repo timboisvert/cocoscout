@@ -101,8 +101,8 @@
 
             <!-- Buttons -->
             <div class="flex flex-col sm:flex-row gap-3 pt-2">
-              <%= form.submit "Create production", class: "flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors cursor-pointer" %>
-              <%= link_to "Cancel", manage_path, class: "flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors cursor-pointer" %>
+              <%= render "shared/button", text: "Create production", variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
+              <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: manage_path, type: :button, class: "flex-1" %>
             </div>
           <% end %>
         </div>

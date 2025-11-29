@@ -166,9 +166,9 @@ class Manage::QuestionnairesController < Manage::ManageController
         @shows = @shows.where(id: @questionnaire.availability_show_ids)
       end
 
-      # Load availability data for this person
+      # Load availability data for this respondent (person or group)
       @availability = {}
-      ShowAvailability.where(available_entity: @response.person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @response.respondent, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end
@@ -178,31 +178,41 @@ class Manage::QuestionnairesController < Manage::ManageController
 
   def invite_people
     recipient_type = params[:recipient_type]
-    cast_id = params[:cast_id]
+    talent_pool_id = params[:talent_pool_id]
     person_ids = params[:person_ids] || []
+    group_ids = params[:group_ids] || []
     subject_template = params[:subject]
     message_template = params[:message]
 
-    # Get all people in the production
+    # Get all people and groups in the production
     all_people = @production.talent_pools.flat_map(&:people).uniq
+    all_groups = @production.talent_pools.flat_map(&:groups).uniq
 
-    # Determine recipients based on recipient_type
-    recipients = if recipient_type == "all"
-      all_people
+    # Determine person and group recipients based on recipient_type
+    person_recipients = []
+    group_recipients = []
+
+    if recipient_type == "all"
+      person_recipients = all_people
+      group_recipients = all_groups
     elsif recipient_type == "cast"
-      TalentPool.find(cast_id).people
+      talent_pool = TalentPool.find(talent_pool_id)
+      person_recipients = talent_pool.people
+      group_recipients = talent_pool.groups
     elsif recipient_type == "specific"
-      Person.where(id: person_ids)
-    else
-      []
+      person_recipients = Person.where(id: person_ids)
+      group_recipients = Group.where(id: group_ids)
     end
 
-    # Create invitations
-    recipients.each do |person|
+    invitation_count = 0
+
+    # Create invitations for people
+    person_recipients.each do |person|
       QuestionnaireInvitation.find_or_create_by(
         questionnaire: @questionnaire,
         invitee: person
       )
+      invitation_count += 1
 
       # Send email if person has a user account
       if person.user
@@ -210,7 +220,24 @@ class Manage::QuestionnairesController < Manage::ManageController
       end
     end
 
-    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Invited #{recipients.count} #{'person'.pluralize(recipients.count)}"
+    # Create invitations for groups and send to members with notifications enabled
+    group_recipients.each do |group|
+      QuestionnaireInvitation.find_or_create_by(
+        questionnaire: @questionnaire,
+        invitee: group
+      )
+      invitation_count += 1
+
+      # Send emails to all group members with notifications enabled
+      members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
+      members_with_notifications.each do |person|
+        if person.user
+          Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template, message_template).deliver_later
+        end
+      end
+    end
+
+    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
   end
 
   private

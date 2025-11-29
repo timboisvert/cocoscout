@@ -1,0 +1,256 @@
+<%
+  # Performance credits form section with modal-based management
+  # Parameters:
+  # - entity: Person or Group instance
+  entity_name = entity.is_a?(Person) ? 'person' : 'group'
+  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+%>
+
+<div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section">
+<%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "performance-history-form", data: { turbo: true, controller: "profile-auto-save" }) do |entity_form| %>
+    <%= render "shared/section_header",
+      entity: entity,
+      title: "Performance History",
+      collapsible: true,
+      visibility_toggle: true,
+      visibility_field: "performance_credits_visible",
+      visibility_checked: entity.performance_credits_visible? %>
+
+    <div class="p-6 space-y-4" data-profile-section-target="content">
+      <p class="text-sm text-gray-600 mb-4">
+        Organize your performance credits into sections (Improv, TV, Dance, Sketch, etc.), then add credits within each section.
+      </p>
+
+      <div id="performance-sections-container" data-performance-credits-target="sectionsList">
+      <%= entity_form.fields_for :performance_sections do |section_form| %>
+        <div class="border border-gray-200 rounded-lg p-5 mb-4 bg-white shadow-sm" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+          <%= section_form.hidden_field :id %>
+          <%= section_form.hidden_field :name %>
+          <%= section_form.hidden_field :position %>
+          <%= section_form.hidden_field :_destroy, value: "0", class: "section-destroy-field" %>
+
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+            <h4 class="text-lg font-semibold text-gray-900 coustard-regular"><%= section_form.object.name %></h4>
+            <div class="flex gap-3">
+              <button type="button"
+                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                      data-action="click->performance-credits#editSection"
+                      data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>"
+                      data-section-name="<%= section_form.object.name %>">
+                Edit
+              </button>
+              <button type="button"
+                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                      data-action="click->performance-credits#removeSection"
+                      data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+                Remove
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-3 credits-list mb-4" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+            <%= section_form.fields_for :performance_credits do |credit_form| %>
+              <div class="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors credit-item group"
+                   data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>"
+                   data-role="<%= credit_form.object.role %>"
+                   data-title="<%= credit_form.object.title %>"
+                   data-year-start="<%= credit_form.object.year_start %>"
+                   data-year-end="<%= credit_form.object.year_end %>"
+                   data-link-url="<%= credit_form.object.link_url %>"
+                   data-notes="<%= credit_form.object.notes %>">
+                <%= credit_form.hidden_field :id %>
+                <%= credit_form.hidden_field :title %>
+                <%= credit_form.hidden_field :role %>
+                <%= credit_form.hidden_field :year_start %>
+                <%= credit_form.hidden_field :year_end %>
+                <%= credit_form.hidden_field :link_url %>
+                <%= credit_form.hidden_field :notes %>
+                <%= credit_form.hidden_field :position %>
+                <%= credit_form.hidden_field :_destroy, value: "0", class: "credit-destroy-field" %>
+
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900">
+                    <%= [credit_form.object.title, credit_form.object.role, credit_form.object.year_start ? credit_form.object.display_year_range_with_present : nil].compact.reject(&:blank?).join(' • ') %>
+                  </div>
+                </div>
+
+                <div class="flex gap-3 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button"
+                          class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                          data-action="click->performance-credits#editCredit"
+                          data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>"
+                          data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+                    Edit
+                  </button>
+                  <button type="button"
+                          class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                          data-action="click->performance-credits#removeCredit"
+                          data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%= render "shared/button",
+              text: "Add Credit",
+              variant: "outline-pink",
+              icon: "plus",
+              data: { action: "click->performance-credits#openCreditModal", section_id: (section_form.object.id || "new-#{section_form.object.object_id}") },
+              type: :button %>
+        </div>
+      <% end %>
+    </div>
+
+    <%= render "shared/button",
+        text: "Add Section",
+        variant: "outline-pink",
+        icon: "plus",
+        data: { action: "click->performance-credits#openSectionModal" },
+        type: :button %>
+  </div>
+
+  <!-- Section Modal -->
+  <div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-performance-credits-target="sectionModal"
+       data-action="click->performance-credits#closeSectionModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+         data-action="click->performance-credits#stopPropagation">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4 coustard-regular">Add Section</h3>
+
+      <div data-performance-credits-target="sectionForm">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Section Name</label>
+          <input type="text"
+                 name="name"
+                 data-field="name"
+                 data-action="keydown->performance-credits#handleKeydown"
+                 placeholder="e.g., Improv, TV, Dance, Sketch"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+          <p class="mt-2 text-xs text-gray-500">
+            Suggested: Improv, TV, Dance, Sketch
+          </p>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <%= render "shared/button",
+              text: "Cancel",
+              variant: "ghost",
+              data: { action: "click->performance-credits#closeSectionModal" },
+              type: :button %>
+          <%= render "shared/button",
+              text: "Save Section",
+              variant: "primary",
+              data: { action: "click->performance-credits#saveSection" },
+              type: :button %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Modal -->
+  <div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-performance-credits-target="creditModal"
+       data-action="click->performance-credits#closeCreditModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+         data-action="click->performance-credits#stopPropagation">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4 coustard-regular">Add Performance Credit</h3>
+
+      <div data-performance-credits-target="creditForm">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">What or Where *</label>
+            <input type="text"
+                   name="title"
+                   data-field="title"
+                   data-action="keydown->performance-credits#handleKeydown"
+                   placeholder="e.g., Hamlet at Second City, The Comedy Show, Spring Showcase"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            <p class="mt-1 text-xs text-gray-500">Production, theater, or event</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+            <input type="text"
+                   name="role"
+                   data-field="role"
+                   data-action="keydown->performance-credits#handleKeydown"
+                   placeholder="e.g., Hamlet, Producer, Ensemble"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            <p class="mt-1 text-xs text-gray-500">Your role or character</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">When *</label>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <input type="number"
+                       name="year_start"
+                       data-field="year_start"
+                       data-action="keydown->performance-credits#handleKeydown"
+                       placeholder="2024"
+                       min="1900"
+                       max="2100"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              </div>
+              <div>
+                <input type="number"
+                       name="year_end"
+                       data-field="year_end"
+                       data-action="keydown->performance-credits#handleKeydown"
+                       placeholder="To (optional)"
+                       min="1900"
+                       max="2100"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-gray-200">
+            <p class="text-xs text-gray-500 mb-3">Optional Information</p>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Link (optional)</label>
+                <input type="text"
+                       name="link_url"
+                       data-field="link_url"
+                       placeholder="https://..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              </div>
+
+              <div data-controller="character-counter" data-character-counter-max-value="200">
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                  <span data-character-counter-target="counter" class="text-xs text-gray-500"></span>
+                </div>
+                <textarea name="notes"
+                          data-field="notes"
+                          data-character-counter-target="input"
+                          data-action="input->character-counter#updateCounter"
+                          rows="2"
+                          placeholder="Additional details..."
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <%= render "shared/button",
+              text: "Cancel",
+              variant: "ghost",
+              data: { action: "click->performance-credits#closeCreditModal" },
+              type: :button %>
+          <%= render "shared/button",
+              text: "Save Credit",
+              variant: "primary",
+              data: { action: "click->performance-credits#saveCredit" },
+              type: :button %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+</div>

@@ -1,0 +1,152 @@
+<% content_for :title, "Create a Group Profile" %>
+
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Header with Logo -->
+    <div class="text-center mb-8 sm:mb-12">
+      <%= image_tag "cocoscout.png", alt: "CocoScout Logo", class: "w-20 sm:w-24 mx-auto mb-4" %>
+      <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 coustard-regular mb-3">Create a Group Profile</h1>
+      <p class="text-lg sm:text-xl text-pink-600">Showcase your performing group and audition together</p>
+    </div>
+
+    <!-- What is a Group? Section -->
+    <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 mb-8 shadow-sm">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4 coustard-regular">What's a Group Profile?</h2>
+      <p class="text-gray-700 mb-4">
+        Create a profile for your performing group—whether you're a band, improv troupe, dance ensemble, or any group that performs together.
+        Your group gets its own page separate from individual profiles.
+      </p>
+      <p class="text-gray-700">
+        This lets you sign up for auditions as a complete group, showcase your collective work, and get cast in productions together.
+      </p>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+
+      <!-- Feature 1: Group Auditions -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Audition as a Group</h3>
+            <p class="text-sm text-gray-600">Sign up for auditions together and get cast as a complete ensemble. Directors can book your whole group for their production.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 2: Showcase Work -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Share Group Photos & Videos</h3>
+            <p class="text-sm text-gray-600">Upload group headshots, performance videos, and reels that showcase your ensemble's work and style.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 3: Performance History -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Track Group Experience</h3>
+            <p class="text-sm text-gray-600">Document your group's performance history, tours, festivals, and notable shows all in one place.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 4: Member Management -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Manage Members & Permissions</h3>
+            <p class="text-sm text-gray-600">Invite members, control who can edit your profile, and manage who receives notifications about opportunities.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 mb-8 shadow-sm">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Tips</h3>
+      <ul class="space-y-3">
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">Create the group first with basic info, then add photos, videos, and experience on the next page</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">Each group has its own profile page separate from individual members' pages</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">You'll be the group owner and can invite other members after creation</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Creation Form -->
+    <%= form_with model: @group, url: create_group_path, class: "space-y-6" do |f| %>
+      <div class="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 shadow-sm">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 coustard-regular">Let's Get Started</h2>
+
+        <div class="space-y-4">
+          <div>
+            <%= f.label :name, "Group Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.text_field :name, required: true, placeholder: "The Amazing Improv Troupe", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+
+          <div>
+            <%= f.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.email_field :email, required: true, placeholder: "bookings@amazingimprov.com", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">This will be the primary contact email for the group</p>
+          </div>
+
+          <div>
+            <%= f.label :phone, "Phone Number", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.telephone_field :phone, placeholder: "(555) 123-4567", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+
+          <div>
+            <%= f.label :bio, "About Your Group", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.text_area :bio, rows: 4, placeholder: "Tell people about your group, your style, and what makes you unique...", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">You can add more details later</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <%= render "shared/button", text: "Create Group Profile", variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: profile_path, type: :button %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+</div>

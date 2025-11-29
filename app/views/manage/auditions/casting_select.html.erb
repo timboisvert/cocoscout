@@ -28,7 +28,7 @@
                 data-drag-drop-type="cast"
                 data-talent-pool-id="<%= talent_pool.id %>"
                 data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
-              <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == cast.id } %>
+              <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == talent_pool.id } %>
 
               <div class="flex items-center gap-4">
                 <div class="font-bold text-md flex-shrink-0">
@@ -39,28 +39,31 @@
                   <% if cast_stages.any? %>
                     <div class="space-y-2">
                       <% cast_stages.each do |stage| %>
+                        <% assignable = stage.assignable %>
                         <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
                             draggable="true"
                             data-casting-drag-target="person"
-                            data-person-id="<%= stage.person.id %>"
-                            data-person-name="<%= stage.person.name %>"
+                            data-auditionee-type="<%= assignable.class.name %>"
+                            data-auditionee-id="<%= assignable.id %>"
+                            data-auditionee-name="<%= assignable.name %>"
                             data-source-talent-pool-id="<%= talent_pool.id %>"
                             data-action="dragstart->casting-drag#dragStartPerson dragend->casting-drag#dragEnd">
-                          <% headshot_variant = stage.person.safe_headshot_variant(:thumb) %>
+                          <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                           <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: stage.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                            <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
                           <% else %>
                             <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                              <%= stage.person.initials %>
+                              <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-gray-600"></i>') %>
                             </div>
                           <% end %>
 
-                          <span class="font-medium text-sm flex-1 truncate"><%= stage.person.name %></span>
+                          <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
                           <button type="button"
                             class="text-pink-500 hover:bg-pink-100 rounded px-2 py-1 text-xs font-bold transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                             data-action="click->casting-drag#removePerson"
                             data-talent-pool-id="<%= talent_pool.id %>"
-                            data-person-id="<%= stage.person.id %>">
+                            data-auditionee-type="<%= assignable.class.name %>"
+                            data-auditionee-id="<%= assignable.id %>">
                             Remove
                           </button>
                         </div>
@@ -87,7 +90,7 @@
 
         <% if @talent_pools.any? %>
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), color: "pink" } %>
+            <%= render partial: "shared/button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
           </div>
         <% end %>
       </div>      <!-- Right side: Auditionees (fixed width, sticky) -->
@@ -98,26 +101,27 @@
           </div>
           <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
             <div class="space-y-1">
-              <% @auditioned_people.each do |person| %>
-                <% is_assigned = @cast_assignment_stages.any? { |stage| stage.person_id == person.id } %>
+              <% @auditioned_people.each do |auditionee| %>
+                <% is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id } %>
 
                 <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if is_assigned %>"
                     data-casting-drag-target="auditionee"
-                    data-person-id="<%= person.id %>"
-                    data-person-name="<%= person.name %>"
+                    data-auditionee-type="<%= auditionee.class.name %>"
+                    data-auditionee-id="<%= auditionee.id %>"
+                    data-auditionee-name="<%= auditionee.name %>"
                     draggable="true"
                     data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd">
 
-                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
                   <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if is_assigned}", draggable: false %>
+                    <%= image_tag headshot_variant, alt: auditionee.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if is_assigned}", draggable: false %>
                   <% else %>
                     <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if is_assigned}">
-                      <%= person.initials %>
+                      <%= auditionee.is_a?(Person) ? auditionee.initials : raw('<i class="fa-solid fa-users text-gray-600"></i>') %>
                     </div>
                   <% end %>
 
-                  <span class="font-medium text-sm flex-1 truncate"><%= person.name %></span>
+                  <span class="font-medium text-sm flex-1 truncate"><%= auditionee.name %></span>
                 </div>
               <% end %>
 

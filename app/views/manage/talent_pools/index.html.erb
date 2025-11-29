@@ -12,12 +12,10 @@
     ]
   } %>
 
-  <p class="text-sm text-gray-500 pb-4">You can create any number of talent pools, each with its own group of people.</p>
+  <p class="text-sm text-gray-500 pb-4">You can create any number of talent pools, each with its own group of people and groups.</p>
 
-  <div class="lg:flex gap-6" data-controller="add-person-panel" data-production-id="<%= @production.id %>">
-    <!-- Left side: Talent Pools List (flexible width on desktop, full width on mobile) -->
-    <div id="talent-pools-container" class="lg:flex-1" data-add-person-panel-target="talentPoolsContainer">
-      <div id="talent-pools" class="space-y-5">
+  <div>
+    <div id="talent-pools" class="space-y-5">
         <% if @talent_pools.any? %>
           <% @talent_pools.each do |talent_pool| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -55,37 +53,36 @@
         <% end %>
       </div>
     </div>
+  </div>
 
-    <!-- Right side: Add Person to Talent Pool Panel (fixed width on desktop, full width on mobile, sticky, hidden by default) -->
-    <% if current_user_can_manage?(Current.production) && @talent_pools.any? %>
-      <div id="add-person-panel" class="hidden w-full lg:w-100 lg:sticky lg:top-4 lg:h-fit" data-add-person-panel-target="panel">
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-900" data-add-person-panel-target="title">Add Person</h3>
-            <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="add-person-panel#close">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <div class="p-4 space-y-4">
-            <!-- People search -->
-            <div data-controller="people-search"
-                data-people-search-url-value="<%= search_people_manage_production_talent_pools_path(@production, format: :html) %>"
-                data-people-search-result-partial-value=""
-                data-people-search-talent-pool-id-value=""
-                data-add-person-panel-target="searchController">
-              <input type="text"
-                id="person-search"
-                class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                placeholder="Search People"
-                data-people-search-target="input"
-                data-action="input->people-search#search">
-              <div class="mt-2 max-h-[calc(100vh-400px)] overflow-y-auto space-y-2" data-people-search-target="results"></div>
-            </div>
+  <!-- Modal for adding members -->
+  <% if current_user_can_manage?(Current.production) && @talent_pools.any? %>
+    <div id="add-member-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-controller="add-member-modal" data-production-id="<%= @production.id %>" data-action="click->add-member-modal#close">
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->add-member-modal#stopPropagation">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Add Person or Group to Talent Pool</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600" data-action="add-member-modal#close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <div data-controller="people-search"
+              data-people-search-url-value="<%= search_people_manage_production_talent_pools_path(@production, format: :html) %>"
+              data-people-search-result-partial-value=""
+              data-people-search-talent-pool-id-value=""
+              data-add-member-modal-target="searchController">
+            <input type="text"
+              id="member-search"
+              class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+              placeholder="Search People and Groups"
+              data-people-search-target="input"
+              data-action="input->people-search#search">
+            <div class="mt-3 max-h-96 overflow-y-auto space-y-2" data-people-search-target="results"></div>
           </div>
         </div>
       </div>
-    <% end %>
-  </div>
+    </div>
+  <% end %>
 </div>

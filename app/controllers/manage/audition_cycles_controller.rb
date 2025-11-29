@@ -125,7 +125,7 @@ class Manage::AuditionCyclesController < Manage::ManageController
 
   def preview
     @audition_request = AuditionRequest.new
-    @person = @audition_request.build_person
+    @person = Person.new
     @questions = @audition_cycle.questions.order(:position)
     @answers = {}
 

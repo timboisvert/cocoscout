@@ -7,7 +7,7 @@
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
       [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
-      [@audition_request.person.name, manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
+      [@audition_request.requestable.name, manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
     ],
     text: "Edit Answers",
     links: []
@@ -25,9 +25,9 @@
       <%= form.text_field :video_url, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @audition_request.errors[:video_url].none?, "border-pink-500": @audition_request.errors[:video_url].any?}] %>
     </div>
 
-    <div class="inline">
-      <%= form.submit 'Update Video', class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to 'Back', 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+    <div class="border-t border-gray-200 pt-5 mt-5">
+      <%= render "shared/button", text: "Update Video", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
     </div>
   <% end %>
 

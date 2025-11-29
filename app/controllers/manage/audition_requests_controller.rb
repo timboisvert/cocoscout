@@ -31,8 +31,8 @@ class Manage::AuditionRequestsController < Manage::ManageController
       @audition_request.undecided!
     end
 
-    # Get the person
-    @person = @audition_request.person
+    # Get the requestable (Person or Group)
+    @requestable = @audition_request.requestable
 
     # Get the answers
     @answers = @audition_request.answers.includes(:question)
@@ -42,13 +42,13 @@ class Manage::AuditionRequestsController < Manage::ManageController
 
     # Load availability data if enabled
     if @audition_cycle.include_availability_section
-      @shows = @production.shows.order(:date_and_time)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
       if @audition_cycle.availability_show_ids.present?
         @shows = @shows.where(id: @audition_cycle.availability_show_ids)
       end
 
       @availability = {}
-      ShowAvailability.where(available_entity: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @requestable, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end

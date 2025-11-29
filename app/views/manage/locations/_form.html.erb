@@ -85,7 +85,8 @@
     <div class="text-gray-500 text-sm mt-1">When creating shows or auditions, this location will be pre-selected.</div>
   </div>
 
-  <div class="inline">
-    <%= form.submit location.new_record? ? "Add Location" : "Update Location", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
+  <div class="border-t border-gray-200 pt-5 mt-5">
+    <%= render "shared/button", text: (location.new_record? ? "Add Location" : "Update Location"), variant: "primary", size: "medium", type: :submit %>
+    <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
   </div>
 <% end %>

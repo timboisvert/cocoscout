@@ -1,6 +1,6 @@
 <% content_for :title, "Editing audition cycle" %>
 
-<div class="w-full">
+<div class="w-full" data-controller="question-modal" data-create-path="<%= create_question_manage_production_audition_cycle_path(@production, @audition_cycle) %>" data-new-description="Custom Questions are shown at the bottom of the Audition sign-up form." data-has-errors="<%= @question.errors.any? %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -107,7 +107,7 @@
           </div>
 
           <div class="border-t border-gray-200 pt-4 mt-4">
-            <%= form.submit "Save Availability Settings", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium text-sm cursor-pointer" %>
+            <%= render "shared/button", text: "Save Availability Settings", variant: "primary", size: "medium", type: :submit %>
           </div>
         </div>
       <% end %>
@@ -156,9 +156,9 @@
           <%= form.rich_text_area :instruction_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:instruction_text].none?, "border-pink-500": @audition_cycle.errors[:instruction_text].any?}] %>
         </div>
 
-        <div class="w-full border-t border-gray-200 pt-5 my-5">
-          <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-          <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        <div class="border-t border-gray-200 pt-5 mt-5">
+          <%= render "shared/button", text: "Update", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
         </div>
       </div>
 
@@ -169,9 +169,9 @@
             <%= form.rich_text_area :video_field_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:video_field_text].none?, "border-pink-500": @audition_cycle.errors[:video_field_text].any?}] %>
           </div>
 
-          <div class="w-full border-t border-gray-200 pt-5 my-5">
-            <%= form.submit "Update", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-            <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+          <div class="border-t border-gray-200 pt-5 mt-5">
+            <%= render "shared/button", text: "Update", variant: "primary", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
           </div>
         </div>
       <% end %>
@@ -182,9 +182,9 @@
           <%= form.rich_text_area :success_text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full max-h-96 overflow-auto min-w-0", {"border-gray-400": @audition_cycle.errors[:success_text].none?, "border-pink-500": @audition_cycle.errors[:success_text].any?}] %>
         </div>
 
-        <div class="w-full border-t border-gray-200 pt-5 my-5">
-          <%= form.submit "Update Text", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-          <%= link_to "Back", "javascript:history.back()", class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+        <div class="border-t border-gray-200 pt-5 mt-5">
+          <%= render "shared/button", text: "Update Text", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
         </div>
       </div>
           </div>
@@ -206,12 +206,15 @@
           <input type="checkbox" id="form_reviewed" name="audition_cycle[form_reviewed]" value="1" <%= @audition_cycle.form_reviewed ? 'checked' : '' %> class="rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" />
           <label for="form_reviewed" class="ml-2 text-sm text-gray-700 cursor-pointer">I have reviewed the sign-up form and it's ready to be shared</label>
         </div>
-        <div class="w-full border-t border-gray-200 pt-4">
-          <button type="submit" class="rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm cursor-pointer">Save Review Status</button>
+        <div class="border-t border-gray-200 pt-4 mt-4">
+          <%= render "shared/button", text: "Save Review Status", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
     </div>
   </div>
+
+  <!-- Question Modal -->
+  <%= render "shared/question_modal" %>
 
 </div>
 

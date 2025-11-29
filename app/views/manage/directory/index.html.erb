@@ -1,0 +1,347 @@
+<% content_for :title, "Directory" %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Directory",
+    links: [
+      { text: "Invite People", path: new_manage_person_path, global_manager_required: true }
+    ]
+  } %>
+
+  <%# Search Bar - Always Visible %>
+  <div class="mb-4" data-controller="search-bar">
+    <%= form_with url: manage_directory_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+      <div class="relative flex-1">
+        <input
+          type="text"
+          name="q"
+          value="<%= @search %>"
+          placeholder="Search by name or email..."
+          class="w-full h-12 px-4 pl-10 pr-10 rounded border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          autocomplete="off"
+          data-action="input->search-bar#toggleClear"
+          data-search-bar-target="input"
+        />
+        <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <button
+          type="button"
+          data-action="click->search-bar#clear"
+          data-search-bar-target="clearBtn"
+          class="absolute right-2 top-2.5 p-1 rounded-full hover:bg-gray-100 transition cursor-pointer <%= @search.blank? ? 'hidden' : '' %>"
+          title="Clear search"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 hover:text-gray-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <%= render "shared/button",
+          text: "Search",
+          variant: "primary",
+          size: "large",
+          icon: "search",
+          type: :submit %>
+
+      <%# Hidden fields to preserve other filters %>
+      <%= f.hidden_field :sort, value: @sort %>
+      <%= f.hidden_field :show, value: @show %>
+      <%= f.hidden_field :filter, value: @filter %>
+      <%= f.hidden_field :type, value: @type %>
+    <% end %>
+  </div>
+
+  <%= render "shared/filters/filter_bar",
+      toggle_label: "Filters & View Options",
+      wrapper_data_controller: "filter-select",
+      filter_groups: [
+        {
+          partial: "shared/filters/dropdown_filter",
+          locals: {
+            label: "Group",
+            name: "filter",
+            options: [
+              (Current.production ? {
+                value: "current_production",
+                text: "#{Current.production.name} Talent Pool"
+              } : nil),
+              {
+                value: "org_talent_pools",
+                text: "#{Current.organization.name} Talent Pool"
+              },
+              {
+                value: "everyone",
+                text: "Everyone"
+              }
+            ].compact,
+            selected: @filter,
+            data_attributes: {
+              action: "change->filter-select#update",
+              filter_select_search_value: @search,
+              filter_select_show_value: @show,
+              filter_select_type_value: @type
+            }
+          }
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/dropdown_filter",
+          locals: {
+            label: "Include",
+            name: "type",
+            options: [
+              { value: "all", text: "People & Groups" },
+              { value: "people", text: "Just People" },
+              { value: "groups", text: "Just Groups" }
+            ],
+            selected: @type,
+            data_attributes: {
+              action: "change->filter-select#update",
+              filter_select_search_value: @search,
+              filter_select_show_value: @show,
+              filter_select_filter_value: @filter
+            }
+          }
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/dropdown_filter",
+          locals: {
+            label: "Sort",
+            name: "sort",
+            options: [
+              { value: "name_asc", text: "A→Z" },
+              { value: "name_desc", text: "Z→A" },
+              { value: "date_desc", text: "Newest" },
+              { value: "date_asc", text: "Oldest" }
+            ],
+            selected: @sort,
+            data_attributes: {
+              action: "change->filter-select#update",
+              filter_select_search_value: @search,
+              filter_select_filter_value: @filter,
+              filter_select_show_value: @show,
+              filter_select_type_value: @type
+            }
+          }
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/view_mode_filter",
+          locals: {
+            path_helper: method(:manage_directory_path),
+            current_mode: @show,
+            q: @search,
+            sort: @sort,
+            filter: @filter,
+            type: @type
+          }
+        }
+      ]
+  %>
+
+  <%# Results Count and Selection Controls - Wrap in controller %>
+  <div data-controller="directory-selection">
+    <div class="mb-3 flex items-center justify-between">
+      <div class="text-sm text-gray-600">
+        <% if @people_count > 0 && @groups_count > 0 %>
+          <%= pluralize(@people_count, "person") %>, <%= pluralize(@groups_count, "group") %>
+        <% elsif @people_count > 0 %>
+          <%= pluralize(@people_count, "person") %>
+        <% elsif @groups_count > 0 %>
+          <%= pluralize(@groups_count, "group") %>
+        <% else %>
+          No results
+        <% end %>
+        <% if @search.present? %>
+          matching "<%= @search %>"
+        <% end %>
+      </div>
+
+      <%# Selection Controls %>
+      <div class="flex items-center gap-3">
+        <%# Selection count - shown when items selected %>
+        <span class="hidden text-sm font-medium text-gray-700" data-directory-selection-target="selectedCount">
+          <span data-directory-selection-target="count">0</span> selected
+        </span>
+
+        <%# Select All Button - shown in selection mode %>
+        <button type="button"
+                data-action="click->directory-selection#selectAll"
+                data-directory-selection-target="selectAllButton"
+                class="hidden px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Select All
+        </button>
+
+        <%# Bulk Actions Dropdown - shown when items selected %>
+        <div class="hidden relative" data-directory-selection-target="bulkActions">
+          <button type="button"
+                  data-action="click->directory-selection#toggleDropdown"
+                  class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600 inline-flex items-center gap-2">
+            Bulk Actions
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="hidden absolute right-0 mt-1 w-36 bg-white rounded border border-gray-200 shadow-lg z-50"
+               data-directory-selection-target="dropdown">
+            <button type="button"
+                    data-action="click->directory-selection#openContactModal"
+                    class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-pink-50 first:rounded-t cursor-pointer">
+              Send Message
+            </button>
+            <button type="button"
+                    data-action="click->directory-selection#clearSelection"
+                    class="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-pink-50 border-t border-gray-100 last:rounded-b cursor-pointer">
+              Clear Selection
+            </button>
+          </div>
+        </div>
+
+        <%# Select Multiple Button - shown when not in selection mode %>
+        <button type="button"
+                data-action="click->directory-selection#enableSelectionMode"
+                data-directory-selection-target="selectButton"
+                class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600">
+          Select
+        </button>
+      </div>
+    </div>
+
+  <% if @entries.any? %>
+
+    <%# Tile View %>
+    <% if @show == "tiles" %>
+      <div id="directory_content" class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+        <% @entries.each do |entry| %>
+          <% cache ["directory_tile_v2", entry, entry.updated_at, Current.production&.id] do %>
+            <%= render "directory_tile", entry: entry %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <%# List View %>
+      <div id="directory_content" class="space-y-1">
+        <% @entries.each do |entry| %>
+          <% cache ["directory_list_v2", entry, entry.updated_at, Current.production&.id] do %>
+            <%= render "directory_list_item", entry: entry %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Infinite Scroll - Auto-load more when scrolling to bottom %>
+    <% if @pagy.pages > 1 && @pagy.page < @pagy.pages %>
+      <%= turbo_frame_tag "pagination" do %>
+        <div data-controller="infinite-scroll"
+             data-infinite-scroll-url-value="<%= manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream) %>"
+             data-infinite-scroll-page-value="<%= @pagy.page %>"
+             data-infinite-scroll-pages-value="<%= @pagy.pages %>">
+          <%= link_to "Load More",
+                  manage_directory_path(page: @pagy.page + 1, q: @search, sort: @sort, show: @show, filter: @filter, type: @type, format: :turbo_stream),
+                  data: {
+                    infinite_scroll_target: "nextLink"
+                  },
+                  class: "hidden" %>
+
+          <div data-infinite-scroll-target="sentinel" class="h-20 flex items-center justify-center">
+            <div class="text-sm text-gray-400">Loading more...</div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+
+  <% else %>
+    <div class="text-center text-gray-500 text-sm py-12">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <p class="text-lg font-medium mb-2">No results found</p>
+        <% if @search.present? %>
+          <p>Try adjusting your filters or search query.</p>
+          <%= link_to "Clear all filters", manage_directory_path, class: "inline-block mt-3 text-pink-500 hover:text-pink-600 font-medium" %>
+        <% else %>
+          <p>No people or groups in this organization yet.</p>
+        <% end %>
+      </div>
+  <% end %>
+
+    <%# Contact Modal %>
+    <div id="contact-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+         data-directory-selection-target="modal"
+         data-action="click->directory-selection#closeModalOnBackdrop">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+           data-directory-selection-target="modalContent"
+           data-action="click->directory-selection#stopPropagation">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Send Message</h2>
+        <button type="button"
+                data-action="click->directory-selection#closeContactModal"
+                class="text-gray-400 hover:text-gray-600 transition">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <%# Selected Recipients %>
+        <div class="mb-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-sm font-medium text-gray-700">Sending to</span>
+            <span class="inline-flex items-center rounded-full bg-pink-500 px-2.5 py-0.5 text-xs font-medium text-white"
+                  data-directory-selection-target="modalCount">
+              0 selected
+            </span>
+          </div>
+
+          <div id="selected-recipients" class="grid grid-cols-2 sm:grid-cols-3 gap-2" data-directory-selection-target="recipients">
+            <%# Recipients will be inserted here dynamically %>
+          </div>
+        </div>
+
+        <%# Email Form %>
+        <%= form_with url: manage_contact_directory_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+          <div data-directory-selection-target="selectedIdsContainer">
+            <%# Hidden fields for selected IDs will be inserted here %>
+          </div>
+
+          <div>
+            <%= form.text_field :subject,
+              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
+              placeholder: "Email subject...",
+              required: true %>
+          </div>
+
+          <div>
+            <%= form.text_area :message,
+              rows: 8,
+              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
+              placeholder: "Write your message...",
+              required: true %>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <button type="button"
+                    data-action="click->directory-selection#closeContactModal"
+                    class="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <%= form.submit "Send Email",
+              class: "rounded-lg px-5 py-2.5 text-sm text-white bg-pink-500 hover:bg-pink-600 font-medium cursor-pointer transition-colors shadow-sm" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  </div><%# Close directory-selection controller %>
+
+</div>

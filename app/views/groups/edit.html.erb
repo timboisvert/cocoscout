@@ -1,0 +1,263 @@
+<% content_for :title, "#{@group.name} - Edit Group Profile" %>
+
+<!-- Main Content -->
+<div class="w-full" data-controller="profile-modals">
+  <div id="notice-container">
+    <%= render partial: "shared/notice", locals: { notice: notice } %>
+  </div>
+
+  <!-- Public Profile Card -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Group Profile</h3>
+    </div>
+    <div class="p-6">
+      <div class="space-y-4">
+        <!-- URL Box -->
+        <div>
+          <%= render "shared/copy_url", url: (public_profile_url(@group.public_key) if @group.public_key.present?), label: "Your Group's Profile URL" %>
+          <p class="mt-2 text-xs text-gray-500">
+            <a href="javascript:void(0)" data-action="click->profile-modals#openChangeGroupUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3">
+          <%= render "shared/button",
+              text: "View Public Profile",
+              variant: "primary",
+              icon: "eye",
+              path: public_profile_path(@group.public_key),
+              target: "_blank",
+              rel: "noopener" %>
+          <%= render "shared/button",
+              text: "Share Profile",
+              variant: "outline",
+              icon: "share",
+              data: { action: "click->profile-modals#openShare" },
+              type: :button %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Basic Information Section -->
+  <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |form| %>
+    <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <%= form.label :name, "Group Name", class: "block text-sm font-medium text-gray-700" %>
+          <%= form.text_field :name, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <%= form.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.email_field :email, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+          </div>
+
+          <div>
+            <%= form.label :phone, "Phone Number (optional)", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.telephone_field :phone, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+          </div>
+        </div>
+
+        <!-- Privacy Settings moved here -->
+        <div class="pt-4 border-t border-gray-200">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Privacy Settings</h4>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">Show Contact Information</p>
+              <p class="text-xs text-gray-500 mt-1">
+                When enabled, your email and phone will be visible on your public profile
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <%= form.check_box :show_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- About/Bio Section -->
+  <%= render "shared/profiles/bio", entity: @group %>
+
+  <!-- Social Media & Links Section -->
+  <%= render "shared/profiles/social_media", entity: @group %>
+
+  <!-- Headshots Section -->
+  <%= render "shared/profiles/headshots", entity: @group %>
+
+  <!-- Videos & Reels Section -->
+  <%= render "shared/profiles/videos", entity: @group %>
+
+  <!-- Performance History Section -->
+  <%= render "shared/profiles/performance_credits", entity: @group %>
+
+  <!-- Resumes Section -->
+  <%= render "shared/profiles/resumes", entity: @group %>
+
+  <!-- Change URL Modal -->
+  <div data-profile-modals-target="changeGroupUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_group_path(@group) %>">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Group URL</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with(model: @group, url: update_url_group_path(@group), method: :patch, data: { url_checker_target: "form", action: "keydown->url-checker#preventEnterSubmit" }) do |form| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Current URL</label>
+              <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="text-sm font-mono text-gray-600"><%= public_profile_url(@group.public_key) if @group.public_key.present? %></div>
+              </div>
+            </div>
+            <div>
+              <%= form.label :public_key, "New URL", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-500"><%= request.base_url %>/</span>
+                <%= form.text_field :public_key, value: "", placeholder: "your-group-url", pattern: "[a-z0-9][a-z0-9\\-]{2,29}", class: "flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { url_checker_target: "input", action: "input->url-checker#inputChanged" } %>
+              </div>
+              <p class="mt-2 text-xs text-gray-500">3-30 characters: lowercase letters, numbers, hyphens only</p>
+            </div>
+
+            <!-- Status Message -->
+            <div data-url-checker-target="message" class="rounded-lg border p-3 text-sm hidden"></div>
+          </div>
+          <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+            <%= render "shared/button",
+                text: "Cancel",
+                variant: "ghost-cancel",
+                data: { action: "click->profile-modals#closeModal" },
+                type: :button %>
+            <%= render "shared/button",
+                text: "Check Availability",
+                variant: "primary",
+                size: "medium",
+                data: { action: "click->url-checker#checkAvailability", url_checker_target: "checkButton" },
+                type: :button %>
+            <%= render "shared/button",
+                text: "Update URL",
+                variant: "primary",
+                size: "medium",
+                data: { action: "click->url-checker#submitForm", url_checker_target: "updateButton" },
+                style: "display: none;",
+                type: :button %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%= render "shared/share_profile_modal", entity: @group %>
+
+  <!-- Add Social Media Modal -->
+  <div data-profile-modals-target="addSocialModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->profile-modals#stopPropagation" data-controller="social-form">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add Social Media/Link</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with(model: @group, url: update_group_path(@group), method: :patch, data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
+          <%= f.fields_for :socials, @group.socials.build do |sf| %>
+            <div class="space-y-4">
+              <div>
+                <%= sf.label :platform, "Platform", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= sf.select :platform, Social.platforms.keys.map { |k| [social_platform_display_name(k), k] }, {}, class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "change->social-form#updateLabel", social_form_target: "platform" } %>
+              </div>
+              <div data-social-form-target="nameField" class="hidden">
+                <%= sf.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= sf.text_field :name, placeholder: "Display name", class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { social_form_target: "name" } %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-social-form-target="label">Username/Handle</label>
+                <div class="relative">
+                  <span data-social-form-target="urlPrefix" class="hidden absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">https://</span>
+                  <%= sf.text_field :handle, placeholder: "your-username", class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { social_form_target: "handle" } %>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <%= render "shared/button",
+                  text: "Cancel",
+                  variant: "ghost-cancel",
+                  data: { action: "click->profile-modals#closeModal" },
+                  type: :button %>
+              <%= render "shared/button",
+                  text: "Add Social Media/Link",
+                  variant: "primary",
+                  size: "medium",
+                  type: :submit %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Social Media Modal -->
+  <div data-profile-modals-target="editSocialModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->profile-modals#stopPropagation" data-controller="social-form">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Social Media/Link</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "edit-social-form", data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
+          <%= f.fields_for :socials, @group.socials.build do |sf| %>
+            <%= sf.hidden_field :id, id: "edit-social-id" %>
+            <div class="space-y-4">
+              <div>
+                <%= sf.label :platform, "Platform", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= sf.select :platform, Social.platforms.keys.map { |k| [social_platform_display_name(k), k] }, {}, id: "edit-social-platform", class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "change->social-form#updateLabel", social_form_target: "platform" } %>
+              </div>
+              <div data-social-form-target="nameField" class="hidden">
+                <%= sf.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= sf.text_field :name, placeholder: "Display name", id: "edit-social-name", class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { social_form_target: "name" } %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-social-form-target="label">Username/Handle</label>
+                <div class="relative">
+                  <span data-social-form-target="urlPrefix" class="hidden absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">https://</span>
+                  <%= sf.text_field :handle, placeholder: "your-username", id: "edit-social-handle", class: "w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { social_form_target: "handle" } %>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <%= render "shared/button",
+                  text: "Cancel",
+                  variant: "ghost-cancel",
+                  data: { action: "click->profile-modals#closeModal" },
+                  type: :button %>
+              <%= render "shared/button",
+                  text: "Save Changes",
+                  variant: "primary",
+                  size: "medium",
+                  type: :submit %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Image Modal for viewing headshots full size -->
+<div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">
+  <div class="relative max-w-6xl max-h-full" data-action="click->modal#stopPropagation">
+    <button type="button" data-action="click->modal#close" class="absolute -top-12 right-0 text-white hover:text-pink-300 transition-colors cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    <img id="modalImage" src="" alt="Full size" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+  </div>
+</div>

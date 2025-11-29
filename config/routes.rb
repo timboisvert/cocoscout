@@ -66,17 +66,7 @@ Rails.application.routes.draw do
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
-    get   "/profile",                       to: "profile#index",            as: "profile"
-    get   "/profile/edit",                  to: "profile#edit",             as: "edit_profile"
-    patch "/profile/edit",                  to: "profile#update",           as: "update_profile"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
-    get   "/groups",                        to: "groups#index",             as: "groups"
-    get   "/groups/new",                    to: "groups#new",               as: "new_group"
-    post  "/groups",                        to: "groups#create",            as: "create_group"
-    get   "/groups/:id/edit",               to: "groups#edit",              as: "edit_group"
-    patch "/groups/:id",                    to: "groups#update",            as: "update_group"
-    patch "/groups/:id/archive",            to: "groups#archive",           as: "archive_group"
-    patch "/groups/:id/unarchive",          to: "groups#unarchive",         as: "unarchive_group"
 
     scope "/auditions/:token" do
       get "/", to: redirect { |params, _req| "/a/#{params[:token]}" }
@@ -99,6 +89,11 @@ Rails.application.routes.draw do
     get  "/",                              to: "manage#index"
     get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
+
+    # Directory - unified people and groups listing
+    get  "/directory",          to: "directory#index",        as: "directory"
+    post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
+    patch "/directory/group/:id/update_availability", to: "directory#update_group_availability", as: "update_group_availability"
 
     resources :organizations do
       collection do
@@ -134,7 +129,7 @@ Rails.application.routes.draw do
     get  "person_invitations/accept/:token",  to: "person_invitations#accept",    as: "accept_person_invitations"
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
 
-    resources :people do
+    resources :people, except: [] do
       collection do
         get :search
         post :batch_invite
@@ -146,6 +141,15 @@ Rails.application.routes.draw do
         post :remove_from_organization
         get :contact
         post :send_contact_email
+        patch :update_availability
+      end
+    end
+
+    resources :groups, only: %i[show destroy] do
+      member do
+        post :add_to_cast
+        post :remove_from_cast
+        post :remove_from_organization
         patch :update_availability
       end
     end
@@ -201,9 +205,11 @@ Rails.application.routes.draw do
           get :search_people
         end
         member do
-          # These two are only used when dragging and dropping on the talent pool members list
+          # These are used when dragging and dropping on the talent pool members list or adding from search
           post :add_person
           post :remove_person
+          post :add_group
+          post :remove_group
         end
       end
 
@@ -291,6 +297,47 @@ Rails.application.routes.draw do
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
+
+  # Profile routes (top-level)
+  get    "/profile",         to: "profile#index",   as: "profile"
+  get    "/profile/welcome", to: "profile#welcome", as: "profile_welcome"
+  post   "/profile/dismiss_welcome", to: "profile#dismiss_welcome", as: "dismiss_profile_welcome"
+  post   "/profile/mark_welcomed", to: "profile#mark_welcomed", as: "mark_profile_welcomed"
+  patch  "/profile",         to: "profile#update",  as: "update_profile"
+  patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
+  patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
+  get    "/profile/public",  to: "profile#public",  as: "profile_public"
+  get    "/profile/change-url", to: "profile#change_url", as: "change_url_profile"
+  post   "/profile/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile"
+  patch  "/profile/update-url", to: "profile#update_url", as: "update_url_profile"
+  get    "/profile/search_groups", to: "profile#search_groups", as: "search_groups_profile"
+  post   "/profile/join_group", to: "profile#join_group", as: "join_group_profile"
+  delete "/profile/leave_group/:id", to: "profile#leave_group", as: "leave_group_profile"
+  get    "/profile/change-email", to: "profile#change_email", as: "change_email_profile"
+  patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
+
+  # Groups routes (top-level, use profile layout)
+  get    "/groups",                   to: "groups#index",      as: "groups"
+  get    "/groups/new",               to: "groups#new",        as: "new_group"
+  post   "/groups",                   to: "groups#create",     as: "create_group"
+  patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"
+  post   "/groups/:id/check-url-availability", to: "groups#check_url_availability", as: "check_url_availability_group"
+  patch  "/groups/:id/update-url", to: "groups#update_url", as: "update_url_group"
+  patch  "/groups/:id/visibility", to: "groups#update_visibility", as: "update_group_visibility"
+  get    "/groups/:id",               to: "groups#edit",       as: "edit_group"
+  get    "/groups/:id/settings",      to: "groups#settings",   as: "settings_group"
+  patch  "/groups/:id",               to: "groups#update",     as: "update_group"
+  patch  "/groups/:id/update_member_role", to: "groups#update_member_role", as: "update_member_role_group"
+  delete "/groups/:id/remove_member", to: "groups#remove_member", as: "remove_member_group"
+  patch  "/groups/:id/update_member_notifications", to: "groups#update_member_notifications", as: "update_member_notifications_group"
+  patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
+  patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
+
+  # Group invitations
+  post "/groups/:group_id/invitations", to: "group_invitations#create", as: "group_invitations"
+  delete "/groups/:group_id/invitations/:id", to: "group_invitations#revoke", as: "revoke_group_invitation"
+  get "/group_invitations/:token/accept", to: "group_invitations#accept", as: "accept_group_invitation"
+  post "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }

@@ -114,12 +114,18 @@
         <p class="text-sm text-gray-600 mb-3">
             Removing this person from the production company will take away all of their ability to manage any of <%= Current.organization.name %>'s productions.
         </p>
-        <a
-            href="#"
-            class="w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer"
-            data-team-remove-target="removeButton"
-            data-action="team-remove#remove"
-            data-url="<%= remove_member_manage_team_index_path(id: @user.id, format: :json) %>"
-        >Remove from Team</a>
+        <%= render "shared/button",
+            text: "Remove from Team",
+            variant: "danger",
+            size: "medium",
+            type: :link,
+            href: "#",
+            extra_attrs: {
+                data: {
+                    team_remove_target: "removeButton",
+                    action: "team-remove#remove",
+                    url: remove_member_manage_team_index_path(id: @user.id, format: :json)
+                }
+            } %>
     </div>
 </div>

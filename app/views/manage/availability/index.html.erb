@@ -72,29 +72,39 @@
           </tr>
         </thead>
         <tbody>
-          <% @cast_members.each do |person| %>
+          <% @cast_members.each do |member| %>
             <tr class="border-b border-gray-200 group" data-availability-grid-target="row">
               <td class="sticky left-0 bg-white group-hover:bg-gray-100 z-10 border-r-2 border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] p-0">
-                <%= link_to manage_person_path(person), class: "block px-4 py-3 w-full h-full" do %>
+                <%
+                  link_path = if member.is_a?(Person)
+                    manage_directory_entry_path(type: 'person', id: member.id, tab: 2)
+                  else
+                    manage_directory_entry_path(type: 'group', id: member.id, tab: 2)
+                  end
+                %>
+                <%= link_to link_path, class: "block px-4 py-3 w-full h-full" do %>
                   <div class="flex items-center space-x-3">
-                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% headshot_variant = member.safe_headshot_variant(:thumb) %>
                     <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                      <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
                     <% else %>
                       <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-sm flex-shrink-0">
-                        <%= person.initials %>
+                        <%= member.initials %>
                       </div>
                     <% end %>
                     <div class="min-w-0">
                       <div class="font-medium text-sm text-gray-900 truncate">
-                        <%= person.name %>
+                        <%= member.name %>
                       </div>
                     </div>
                   </div>
                 <% end %>
               </td>
               <% @shows.each_with_index do |show, col_index| %>
-                <% availability = @availabilities[person.id][show.id] %>
+                <%
+                  availability_key = "#{member.class.name}_#{member.id}"
+                  availability = @availabilities[availability_key][show.id]
+                %>
                 <td class="px-4 py-3 text-center bg-white group-hover:bg-gray-100"
                     data-col="<%= col_index %>"
                     data-availability-grid-target="cell"

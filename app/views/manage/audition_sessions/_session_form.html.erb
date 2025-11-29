@@ -29,12 +29,12 @@
     <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
   </div>
 
-  <div class="w-full border-t border-gray-200 pt-5 mt-5">
+  <div class="border-t border-gray-200 pt-5 mt-5">
     <% button_text = audition_session.persisted? ? "Update Session" : "Schedule Session" %>
     <div class="flex gap-2">
-      <%= form.submit button_text, class: "flex-1 rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
+      <%= render "shared/button", text: button_text, variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
       <% if audition_session.persisted? %>
-        <button type="button" data-action="click->audition-session-form#resetForm" class="flex-1 rounded-lg px-3.5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 inline-block font-medium cursor-pointer">Cancel</button>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->audition-session-form#resetForm" }, class: "flex-1" %>
       <% end %>
     </div>
   </div>

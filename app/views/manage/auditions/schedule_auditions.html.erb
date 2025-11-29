@@ -25,25 +25,19 @@
           <p class="text-xs text-gray-500 mb-3">
             Drag each person from the list on the left to an audition slot on the right to schedule them.
           </p>
-          <div class="flex gap-2 flex-wrap">
-            <%= link_to "To Be Scheduled",
-                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "to_be_scheduled"),
-                    data: { turbo_prefetch: false },
-                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter].blank? || params[:filter] == "to_be_scheduled") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-            %>
-            <%= link_to "All Yes",
-                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "accepted"),
-                    data: { turbo_prefetch: false },
-                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter] == "accepted") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-            %>
-            <%= link_to "All Sign-ups",
-                    schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "all"),
-                    data: { turbo_prefetch: false },
-                    class: "px-3 py-1 rounded-md border text-xs #{(params[:filter] == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-            %>
-          </div>
+          <%= render "shared/filters/filter_bar", filter_groups: [
+            {
+              label: "View",
+              filters: [
+                { text: "To Be Scheduled", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "to_be_scheduled"), active: params[:filter].blank? || params[:filter] == "to_be_scheduled" },
+                { text: "All Yes", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "accepted"), active: params[:filter] == "accepted" },
+                { text: "All Sign-ups", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle, filter: "all"), active: params[:filter] == "all" }
+              ]
+            },
+            { separator: true }
+          ], text_size: "xs" %>
         </div>
-        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, filter: params[:filter], scheduled_request_ids: @scheduled_request_ids, scheduled_person_ids: @scheduled_person_ids } %>
+        <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, filter: params[:filter], scheduled_request_ids: @scheduled_request_ids, scheduled_auditionables: @scheduled_auditionables } %>
       </div>
     </div>
   </div>

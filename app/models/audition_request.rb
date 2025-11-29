@@ -2,6 +2,7 @@ class AuditionRequest < ApplicationRecord
   belongs_to :audition_cycle
   belongs_to :requestable, polymorphic: true
   has_many :answers, dependent: :destroy
+  has_many :auditions, dependent: :destroy
 
   enum :status, {
     unreviewed: 0,

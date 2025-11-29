@@ -28,7 +28,7 @@
           ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)],
           ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_cycle_audition_session_path(@production, @audition_cycle, @audition_session)]
         ],
-        text: "#{@person.name}",
+        text: "#{@requestable.name}",
         links: []
       }
     %>
@@ -36,25 +36,32 @@
     <div class="w-full" data-controller="tabs">
       <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
         <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Profile</button>
-        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
+        <% if @requestable.is_a?(Person) %>
+          <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
+        <% end %>
         <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Cast Membership</button>
       </nav>
 
       <div data-tabs-target="panel">
-        <%= render "shared/person_card", person: @person %>
-      </div>
-
-      <div data-tabs-target="panel" class="hidden">
-        <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
-        <% if resume_preview %>
-          <div class="w-full">
-            <%= image_tag resume_preview, class: "object-contain" %>
-          </div>
+        <% if @requestable.is_a?(Person) %>
+          <%= render "shared/person_card", person: @requestable %>
         <% else %>
-          <p class="text-left text-gray-500 text-sm">No resume found</p>
+          <%= render "shared/group_card", group: @requestable %>
         <% end %>
       </div>
+
+      <% if @requestable.is_a?(Person) %>
+        <div data-tabs-target="panel" class="hidden">
+          <% resume_preview = @requestable.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
+          <% if resume_preview %>
+            <div class="w-full">
+              <%= image_tag resume_preview, class: "object-contain" %>
+            </div>
+          <% else %>
+            <p class="text-left text-gray-500 text-sm">No resume found</p>
+          <% end %>
+        </div>
+      <% end %>
 
       <div data-tabs-target="panel" class="hidden">
         <% if @answers.any? %>
@@ -64,12 +71,6 @@
         <% else %>
           <p class="text-left text-gray-500 text-sm">No sign-up questions answered</p>
         <% end %>
-      </div>
-
-      <div data-tabs-target="panel" class="hidden">
-        <div class="mt-2">
-          <%= render "manage/casts/cast_membership_card", production: @production, person: @person %>
-        </div>
       </div>
 
     </div>
@@ -83,17 +84,24 @@
 
   <div class="flex justify-start lg:justify-center gap-1 flex-wrap">
       <% @audition_session.auditions.each do |audition| %>
+        <% auditionable = audition.auditionable %>
         <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @production.audition_cycle, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
           <div
             data-controller="tooltip"
-            data-tooltip-text="<%= audition.person.name.truncate(40, omission: "...") %>"
+            data-tooltip-text="<%= auditionable.name.truncate(40, omission: "...") %>"
           >
-            <% headshot_variant = audition.person.safe_headshot_variant(:thumb) %>
-            <% if headshot_variant %>
-              <%= image_tag headshot_variant, alt: audition.person.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
+            <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
+            <% if headshot_url %>
+              <%= image_tag headshot_url, alt: auditionable.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
+            <% elsif auditionable.is_a?(Person) %>
+              <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
+                <%= auditionable.initials %>
+              </div>
             <% else %>
               <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
-                <%= audition.person.initials %>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
               </div>
             <% end %>
           </div>

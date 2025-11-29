@@ -1,0 +1,8 @@
+# Profile URL and Email Change Settings
+# These values control how frequently users can update their profile URLs and email addresses
+
+# Number of days a user must wait between URL changes
+url_change_cooldown_days: 365
+
+# Number of days a user must wait between email changes
+email_change_cooldown_days: 30

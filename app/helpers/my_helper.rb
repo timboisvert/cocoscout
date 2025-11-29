@@ -6,11 +6,10 @@ module MyHelper
     if !cycle.active
       # If invitations were finalized before archiving, show the actual status
       if cycle.finalize_audition_invitations == true
-        case audition_request.status
-        when "accepted"
+        # Check if they were actually scheduled for an audition (have an Audition record)
+        if audition_request.auditions.exists?
           return "<div class=\"bg-pink-500 text-white px-2 py-1 text-sm rounded-lg\">Audition Offered</div>".html_safe
         else
-          # unreviewed, undecided, or passed all become "No Audition Offered"
           return "<div class=\"bg-red-500 text-white px-2 py-1 text-sm rounded-lg\">No Audition Offered</div>".html_safe
         end
       else
@@ -24,15 +23,11 @@ module MyHelper
       return "<div class=\"bg-gray-500 text-white px-2 py-1 text-sm rounded-lg\">In Review</div>".html_safe
     end
 
-    case audition_request.status
-    when "unreviewed"
-      "<div class=\"bg-black text-white px-2 py-1 text-sm rounded-lg\">Awaiting Review</div>".html_safe
-    when "undecided"
-      "<div class=\"bg-black text-white px-2 py-1 text-sm rounded-lg\">In Review</div>".html_safe
-    when "passed"
-      "<div class=\"bg-red-500 text-white px-2 py-1 text-sm rounded-lg\">No Audition Offered</div>".html_safe
-    when "accepted"
+    # Check if they were actually scheduled for an audition (have an Audition record)
+    if audition_request.auditions.exists?
       "<div class=\"bg-pink-500 text-white px-2 py-1 text-sm rounded-lg\">Audition Offered</div>".html_safe
+    else
+      "<div class=\"bg-red-500 text-white px-2 py-1 text-sm rounded-lg\">No Audition Offered</div>".html_safe
     end
   end
 

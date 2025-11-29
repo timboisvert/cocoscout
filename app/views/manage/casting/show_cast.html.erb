@@ -14,11 +14,11 @@
   <%= render "manage/shows/show_info_card", show: @show %>
 
   <%= render "shared/help_section",
-    title: "How to assign cast members to roles",
+    title: "How to assign talent pool members to roles",
     initial_state: "closed",
     storage_key: "casting_help_collapsed",
     steps: [
-      { text: "<strong>Drag to assign:</strong> Drag a cast member from the right panel onto a role box on the left." },
+      { text: "<strong>Drag to assign:</strong> Drag a talent pool member from the right panel onto a role box on the left." },
       { text: "<strong>Swap roles:</strong> Drag a person from one role to another to swap their assignments." },
       { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the × button to remove them." },
       { text: "<strong>Filter by availability:</strong> Use the \"Available\" button to see only people who've marked themselves available for this show." }
@@ -31,22 +31,22 @@
   %>
 
   <% if role_count > 0 %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="p-4">
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-semibold text-gray-900">
+          <span id="progress-label" class="text-sm font-semibold text-gray-900">
             <% if percentage == 100 %>
               This show is 100% cast
             <% else %>
               <%= assignment_count %> of <%= role_count %> roles have been cast
             <% end %>
           </span>
-          <span class="text-sm font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
+          <span id="progress-fraction" class="text-sm font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
             <%= assignment_count %>/<%= role_count %> roles cast
           </span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2">
-          <div class="<%= percentage == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
+          <div id="progress-bar" class="<%= percentage == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
         </div>
       </div>
     </div>
@@ -63,29 +63,37 @@
     <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900">Cast Members</h2>
+          <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
         </div>
-        <div class="p-4 space-y-1 border-b border-gray-200" data-controller="cast-filter">
+        <div class="p-4 border-b border-gray-200" data-controller="cast-filter">
           <!-- Availability Filter -->
-          <div class="flex gap-2">
-            <button type="button"
-              class="px-3 py-1 rounded-md border text-sm bg-pink-500 text-white border-pink-500 transition-all cursor-pointer"
-              data-action="cast-filter#filterByAvailability"
-              data-value="available"
-              title="Show only available people">
-              Available
-            </button>
-            <button type="button"
-              class="px-3 py-1 rounded-md border text-sm bg-white text-gray-700 border-gray-200 hover:border-gray-300 transition-all cursor-pointer"
-              data-action="cast-filter#filterByAvailability"
-              data-value="all"
-              title="Show all cast members">
-              All Cast Members
-            </button>
-          </div>
+          <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+            {
+              filters: [
+                {
+                  text: "Available",
+                  path: "#",
+                  active: true,
+                  data: {
+                    action: "cast-filter#filterByAvailability",
+                    value: "available"
+                  }
+                },
+                {
+                  text: "All Talent Pool Members",
+                  path: "#",
+                  active: false,
+                  data: {
+                    action: "cast-filter#filterByAvailability",
+                    value: "all"
+                  }
+                }
+              ]
+            }
+          ] %>
 
           <!-- View Availability Matrix link (shown when Available filter is active) -->
-          <div id="availability-matrix-link" class="">
+          <div id="availability-matrix-link" class="mt-1">
             <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
           </div>
         </div>

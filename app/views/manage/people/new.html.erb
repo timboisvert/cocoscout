@@ -6,7 +6,7 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Directory", manage_people_path]
+      ["Directory", manage_directory_path]
     ],
     text: "Invite People",
     links: []
@@ -79,9 +79,9 @@
           </div>
         </div>
 
-        <div class="w-full my-5">
-          <%= person_form.submit "Invite Person", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
-          <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+        <div class="border-t border-gray-200 pt-5 mt-5">
+          <%= render "shared/button", text: "Invite Person", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
         </div>
 
       <% end %>
@@ -124,9 +124,9 @@
           </div>
         </div>
 
-        <div class="w-full my-5">
-          <%= form.submit "Invite Everyone", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
-          <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+        <div class="border-t border-gray-200 pt-5 mt-5">
+          <%= render "shared/button", text: "Invite Everyone", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
         </div>
 
       <% end %>

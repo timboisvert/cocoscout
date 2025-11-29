@@ -1,0 +1,17 @@
+You've been added to <%= @group.name %>
+
+<% if @invited_by %>
+<%= @invited_by.name %> has added you to <%= @group.name %> on CocoScout.
+<% else %>
+You've been added to <%= @group.name %> on CocoScout.
+<% end %>
+
+You can now access the group's profile and collaborate with other members.
+
+View the group: <%= edit_group_url(@group) %>
+
+<% if @custom_message.present? %>
+
+---
+<%= @custom_message %>
+<% end %>

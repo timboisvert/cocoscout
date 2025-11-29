@@ -41,7 +41,7 @@
     </div>
 
     <% if current_user_can_manage?(@production) %>
-      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production)} %>
+      <%= render partial: "shared/button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production), variant: "primary"} %>
     <% end %>
   <% else %>
     <% audition_cycle = @audition_cycle %>
@@ -103,7 +103,7 @@
         </div>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_audition_cycle_path(@production, audition_cycle)} %>
+        <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
       <% end %>
       </div>
     </div>
@@ -147,7 +147,7 @@
       <% end %>
 
       <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle)} %>
+        <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "primary"} %>
       <% end %>
       </div>
     </div>
@@ -177,9 +177,9 @@
 
         <div class="flex flex-col sm:flex-row sm:space-x-2 gap-4 sm:gap-0">
           <% if current_user_can_manage?(@production) %>
-            <%= render partial: "shared/link_button", locals: {text: (@audition_cycle.active ? "Edit Form" : "View Form"), path: form_manage_production_audition_cycle_path(@production, audition_cycle)} %>
+            <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Edit Form" : "View Form"), path: form_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
           <% end %>
-          <%= render partial: "shared/link_button", locals: {text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, audition_cycle)} %>
+          <%= render partial: "shared/button", locals: {text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
         </div>
       </div>
     </div>

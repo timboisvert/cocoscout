@@ -1,48 +1,5 @@
 <div>
 
-    <div class="mb-5">
-        <% if @person.errors[:name].none? %>
-            <%= person_form.label :name, "Name" %>
-        <% else %>
-            <%= person_form.label :name, "Name is required", class: "text-pink-600"  %>
-        <% end %>
-        <span class="text-sm text-gray-500"> (Your stage name or performing name)</span>
-        <%= person_form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:name].none?, "border-pink-500": @person.errors[:name].any?}] %>
-    </div>
-
-    <div class="mb-5">
-        <%= person_form.label :pronouns %>
-        <span class="text-sm text-gray-500"> (optional)</span>
-        <%= person_form.text_field :pronouns, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @person.errors[:pronouns].none?, "border-pink-500": @person.errors[:pronouns].any?}] %>
-    </div>
-
-    <div class="my-5" data-controller="socials">
-        <label>Socials<span class="text-sm text-gray-500"> (optional)</span></label>
-        <div id="socials-fields" data-socials-target="list" class="mt-1">
-            <%= person_form.fields_for :socials do |social_form| %>
-                <div class="flex items-center mb-2 socials-fields-row" data-socials-target="row"<% if social_form.object.persisted? %> data-socials-persisted="true"<% end %>>
-                    <%= social_form.hidden_field :id %>
-                    <%= social_form.hidden_field :_destroy, value: "0", data: { socials_target: "destroy" } %>
-                    <%= social_form.select :platform, Social.platforms.keys.map { |k| [k.titleize, k] }, {}, class: "inline-block shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
-                    <%= social_form.text_field :handle, placeholder: "Username/Handle", class: "inline-block w-40 md:w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" %>
-                    <%= link_to "Remove", '#', class: "remove-social text-pink-500 underline text-sm", data: { action: "socials#remove" } %>
-                </div>
-            <% end %>
-        </div>
-        <%= link_to "Add Social", '#', class: "text-pink-500 underline text-sm", data: { action: "socials#add" } %>
-        <template id="socials-template">
-            <div class="flex items-center mb-2 socials-fields-row" data-socials-target="row">
-                <select name="" class="inline-block shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400">
-                    <% Social.platforms.keys.each do |platform| %>
-                        <option value="<%= platform %>"><%= platform.titleize %></option>
-                    <% end %>
-                </select>
-                <input type="text" name="" class="inline-block w-40 md:w-64 shadow-sm rounded-lg border px-3 py-2 mr-2 border-gray-400" placeholder="Username/Handle" />
-                <a href="#" class="remove-social text-pink-500 underline text-sm" data-action="socials#remove">Remove</a>
-            </div>
-        </template>
-    </div>
-
     <div class="my-5">
         <% if @person.headshot.attached? %>
             <div class="text-md">Headshot</div>
@@ -70,7 +27,7 @@
                     </div>
 
                     <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                        <%= person_form.file_field :headshot, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        <%= person_form.file_field :headshot, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                     </div>
 
                 </div>
@@ -84,7 +41,7 @@
                 </div>
 
                 <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                    <%= person_form.file_field :headshot, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                    <%= person_form.file_field :headshot, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                 </div>
 
             </div>
@@ -121,7 +78,7 @@
                         </div>
 
                         <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                            <%= person_form.file_field :resume, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                            <%= person_form.file_field :resume, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                         </div>
 
                     </div>
@@ -135,7 +92,7 @@
                     </div>
 
                     <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                        <%= person_form.file_field :resume, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                        <%= person_form.file_field :resume, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
                     </div>
 
                 </div>

@@ -37,7 +37,7 @@
             <span class="text-sm text-gray-500"> (PDF, JPG, or PNG)</span>
 
             <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                <%= form.file_field :image, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+                <%= form.file_field :image, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
             </div>
 
         </div>
@@ -49,9 +49,9 @@
         <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @poster.errors[:name].none?, "border-pink-500": @poster.errors[:name].any?}] %>
     </div>
 
-    <div class="inline">
-        <%= form.submit "Update Poster", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer inline-block" %>
-        <%= link_to "Back", "javascript:history.back()", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+    <div class="border-t border-gray-200 pt-5 mt-5">
+        <%= render "shared/button", text: "Update Poster", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
     </div>
 
 <% end %>

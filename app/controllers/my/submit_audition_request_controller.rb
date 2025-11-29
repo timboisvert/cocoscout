@@ -29,6 +29,9 @@ class My::SubmitAuditionRequestController < ApplicationController
 
     @person = Current.user.person
 
+    # Determine requestable entity (person or group)
+    @requestable = get_requestable_entity
+
     # Load shows for availability section if enabled
     if @audition_cycle.include_availability_section
       @production = @audition_cycle.production
@@ -41,15 +44,15 @@ class My::SubmitAuditionRequestController < ApplicationController
 
       # Load existing availability data
       @availability = {}
-      ShowAvailability.where(available_entity: @person, show_id: @shows.pluck(:id)).each do |show_availability|
+      ShowAvailability.where(available_entity: @requestable, show_id: @shows.pluck(:id)).each do |show_availability|
         @availability["#{show_availability.show_id}"] = show_availability.status.to_s
       end
     end
 
     # First we'll check if they've already responded to this audition cycle
-    if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(requestable: @requestable)
 
-      @audition_request = @audition_cycle.audition_requests.find_by(requestable: Current.user.person)
+      @audition_request = @audition_cycle.audition_requests.find_by(requestable: @requestable)
       @answers = {}
       @questions.each do |question|
         answer = @audition_request.answers.find_by(question: question)
@@ -71,18 +74,21 @@ class My::SubmitAuditionRequestController < ApplicationController
 
   def submitform
     @person = Current.user.person
+    @requestable = get_requestable_entity
 
-    # Associate the person with the organization if not already
+    # Associate the requestable with the organization if not already
     organization = @audition_cycle.production.organization
-    unless @person.organizations.include?(organization)
-      @person.organizations << organization
+    if @requestable.is_a?(Person) && !@requestable.organizations.include?(organization)
+      @requestable.organizations << organization
+    elsif @requestable.is_a?(Group) && !@requestable.organizations.include?(organization)
+      @requestable.organizations << organization
     end
 
     # We may be updating an existing response, so check for that first
-    if @audition_cycle.audition_requests.exists?(requestable: Current.user.person)
+    if @audition_cycle.audition_requests.exists?(requestable: @requestable)
 
-      # Get the person and audition request
-      @audition_request = @audition_cycle.audition_requests.find_by(requestable: @person)
+      # Get the audition request
+      @audition_request = @audition_cycle.audition_requests.find_by(requestable: @requestable)
 
       # Update the answers
       @answers = {}
@@ -98,7 +104,7 @@ class My::SubmitAuditionRequestController < ApplicationController
     else
 
       # It's a new request, so instantiate the objects
-      @audition_request = AuditionRequest.new(requestable: @person)
+      @audition_request = AuditionRequest.new(requestable: @requestable)
       @audition_request.audition_cycle = @audition_cycle
 
       # Loop through the questions and store the answers
@@ -114,8 +120,10 @@ class My::SubmitAuditionRequestController < ApplicationController
 
     end
 
-    # Assign the submitted attributes to the audition request
-    @audition_request.assign_attributes(person_params.except(:person))
+    # Assign the submitted attributes to the audition request (video_url if present)
+    if params[:audition_request].present?
+      @audition_request.assign_attributes(audition_request_params)
+    end
 
     # Validate required questions
     @missing_required_questions = []
@@ -149,17 +157,6 @@ class My::SubmitAuditionRequestController < ApplicationController
       render :form, status: :unprocessable_entity
     elsif @audition_request.valid?
 
-      # Update the person with any updated details
-      @person.assign_attributes(person_params[:person])
-
-      if @person.valid?
-        @person.save!
-      else
-        @person.reload
-        @update_person_error = true
-        render :form, status: :unprocessable_entity and return
-      end
-
       # Save the audition request and redirect to the success page
       @audition_request.save!
 
@@ -169,7 +166,7 @@ class My::SubmitAuditionRequestController < ApplicationController
           next if status.blank?
 
           show_availability = ShowAvailability.find_or_initialize_by(
-            available_entity: @person,
+            available_entity: @requestable,
             show_id: show_id
           )
 
@@ -226,7 +223,45 @@ class My::SubmitAuditionRequestController < ApplicationController
 
   private
 
-  def person_params
-    params.require(:audition_request).permit(:video_url, person: [ :name, :pronouns, :resume, :headshot, socials_attributes: [ :id, :platform, :handle, :_destroy ] ])
+  def get_requestable_entity
+    # Check session/params for requestable type and ID
+    requestable_type = params[:requestable_type] || session[:requestable_type] || "Person"
+    requestable_id = params[:requestable_id] || session[:requestable_id] || Current.user.person.id
+
+    # Store in session for persistence across requests
+    session[:requestable_type] = requestable_type
+    session[:requestable_id] = requestable_id
+
+    # Return the appropriate entity
+    if requestable_type == "Group"
+      group = Group.find_by(id: requestable_id)
+
+      # Verify group exists and user has permission
+      if group.nil?
+        # Group doesn't exist, fall back to person
+        session[:requestable_type] = "Person"
+        session[:requestable_id] = Current.user.person.id
+        return Current.user.person
+      end
+
+      membership = group.group_memberships.find_by(person: Current.user.person)
+
+      if membership && (membership.write? || membership.owner?)
+        # User has permission
+        group
+      else
+        # User doesn't have permission - this is unauthorized access attempt
+        # Redirect with error
+        redirect_to my_submit_audition_request_form_path(token: @audition_cycle.token, requestable_type: "Person", requestable_id: Current.user.person.id),
+                    alert: "You don't have permission to submit on behalf of that group." and return
+        Current.user.person
+      end
+    else
+      Current.user.person
+    end
+  end
+
+  def audition_request_params
+    params.require(:audition_request).permit(:video_url)
   end
 end

@@ -1,5 +1,6 @@
 class Group < ApplicationRecord
   has_many :group_memberships, dependent: :destroy
+  has_many :group_invitations, dependent: :destroy
   has_many :members, through: :group_memberships, source: :person
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
@@ -16,6 +17,27 @@ class Group < ApplicationRecord
 
   has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
+
+  # Casting system associations
+  has_many :show_person_role_assignments, as: :assignable, dependent: :destroy
+  has_many :shows, through: :show_person_role_assignments
+  has_many :roles, through: :show_person_role_assignments
+
+  # Profile system associations
+  has_many :profile_headshots, as: :profileable, dependent: :destroy
+  has_many :profile_videos, as: :profileable, dependent: :destroy
+  has_many :performance_sections, as: :profileable, dependent: :destroy
+  has_many :performance_credits, as: :profileable, dependent: :destroy
+  has_many :profile_skills, as: :profileable, dependent: :destroy
+  has_many :profile_resumes, as: :profileable, dependent: :destroy
+
+  # Accept nested attributes for profile system
+  accepts_nested_attributes_for :profile_headshots, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_videos, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :performance_sections, allow_destroy: true
+  accepts_nested_attributes_for :performance_credits, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
 
   has_one_attached :resume, dependent: :purge_later
   has_one_attached :headshot, dependent: :purge_later do |attachable|
@@ -34,6 +56,7 @@ class Group < ApplicationRecord
   # Callbacks
   before_validation :generate_public_key, on: :create
   before_validation :downcase_public_key
+  before_save :track_public_key_change
 
   # Scopes
   scope :active, -> { where(archived_at: nil) }
@@ -82,11 +105,90 @@ class Group < ApplicationRecord
   end
 
   def safe_headshot_variant(variant_name)
-    return nil unless headshot.attached?
-    headshot.variant(variant_name)
+    hs = headshot
+    return nil unless hs&.attached?
+    hs.variant(variant_name)
   rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
     Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
     nil
+  end
+
+  # Profile system helper methods
+  def primary_headshot
+    profile_headshots.find_by(is_primary: true) || profile_headshots.first
+  end
+
+  # Override headshot to return the primary headshot's image when profile_headshots exist
+  def headshot
+    if profile_headshots.any?
+      primary_headshot&.image
+    else
+      super
+    end
+  end
+
+  def display_headshots
+    if profile_headshots.any?
+      profile_headshots
+    elsif headshot.attached?
+      [ OpenStruct.new(image: headshot, category: "Primary", is_primary: true, position: 0) ]
+    else
+      []
+    end
+  end
+
+  def display_resume
+    resume # Existing ActiveStorage attachment
+  end
+
+  def visibility_settings
+    @visibility_settings ||= begin
+      settings = profile_visibility_settings.presence || "{}"
+      settings = JSON.parse(settings) if settings.is_a?(String)
+      settings.with_indifferent_access
+    end
+  end
+
+  # Casting system helper methods
+  def has_person_role_assignment_for_show?(show)
+    show_person_role_assignments.exists?(show: show)
+  end
+
+  def performance_credits_visible?
+    read_attribute(:performance_credits_visible)
+  end
+
+  def profile_skills_visible?
+    read_attribute(:profile_skills_visible)
+  end
+
+  def videos_visible?
+    read_attribute(:videos_visible)
+  end
+
+  def headshots_visible?
+    read_attribute(:headshots_visible)
+  end
+
+  def resumes_visible?
+    read_attribute(:resumes_visible)
+  end
+
+  def social_media_visible?
+    read_attribute(:social_media_visible)
+  end
+
+  def bio_visible?
+    read_attribute(:bio_visible)
+  end
+
+  # Virtual attribute for inverted contact info visibility logic
+  def show_contact_info
+    !hide_contact_info
+  end
+
+  def show_contact_info=(value)
+    self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
   private
@@ -94,7 +196,7 @@ class Group < ApplicationRecord
   def generate_public_key
     return if public_key.present?
 
-    base_key = name.parameterize
+    base_key = name.parameterize(separator: "")
     key = base_key
     counter = 2
 
@@ -110,8 +212,30 @@ class Group < ApplicationRecord
     self.public_key = public_key.downcase if public_key.present?
   end
 
+  def track_public_key_change
+    if public_key_changed? && !new_record?
+      # Store the old key
+      old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+      old_key = public_key_was
+
+      # Add the old key to the array if it's not already there and not nil
+      if old_key.present? && !old_keys_array.include?(old_key)
+        old_keys_array << old_key
+        self.old_keys = old_keys_array.to_json
+      end
+
+      # Update the timestamp
+      self.public_key_changed_at = Time.current
+    end
+  end
+
   def public_key_not_reserved
-    reserved = %w[admin api manage my about help contact support settings login logout signup privacy terms groups people search directory]
+    reserved = YAML.safe_load_file(
+      Rails.root.join("config", "reserved_public_keys.yml"),
+      permitted_classes: [],
+      permitted_symbols: [],
+      aliases: true
+    )
     if reserved.include?(public_key)
       errors.add(:public_key, "is reserved for CocoScout system pages")
     end

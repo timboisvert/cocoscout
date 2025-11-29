@@ -23,9 +23,9 @@
      <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @talent_pool.errors[:name].none?, "border-pink-500": @talent_pool.errors[:name].any?}] %>
     </div>
 
-    <div class="w-full border-t border-gray-200 pt-5 my-5">
-      <%= form.submit "Rename Pool", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+    <div class="border-t border-gray-200 pt-5 mt-5">
+      <%= render "shared/button", text: "Rename Pool", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
     </div>
 
   <% end %>

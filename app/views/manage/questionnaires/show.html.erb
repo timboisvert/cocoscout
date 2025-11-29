@@ -45,7 +45,7 @@
           </p>
         </div>
         <div class="p-3 bg-gray-50 rounded-lg">
-          <p class="text-xs text-gray-600 font-medium">People Invited</p>
+          <p class="text-xs text-gray-600 font-medium">Invitations Sent</p>
           <p class="text-sm font-semibold text-gray-900 mt-1">
             <%= @questionnaire.questionnaire_invitations.count %>
           </p>
@@ -53,14 +53,7 @@
       </div>
 
       <div class="border-t border-gray-200 pt-4">
-        <p class="text-sm font-medium text-gray-700 mb-2">Share Link</p>
-        <div class="flex items-center gap-3">
-          <input type="text" readonly value="<%= @questionnaire.respond_url %>" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-gray-50" id="questionnaire-url">
-          <button onclick="navigator.clipboard.writeText(document.getElementById('questionnaire-url').value)" class="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition text-sm">
-            Copy Link
-          </button>
-        </div>
-        <p class="mt-2 text-xs text-gray-600">Only people you've invited can access this questionnaire</p>
+        <%= render "shared/copy_url", url: @questionnaire.respond_url, label: "Share Link", help_text: "Only people you've invited can access this questionnaire" %>
       </div>
     </div>
   </div>
@@ -111,11 +104,13 @@
         <!-- Active invitation form -->
         <%= form_with url: invite_people_manage_production_questionnaire_path(@production, @questionnaire), method: :post, local: true, data: { controller: "questionnaire-invitation" } do |form| %>
 
-        <!-- Already Invited People -->
+        <!-- Already Invited People and Groups -->
         <% invited_people = @questionnaire.questionnaire_invitations.includes(:invitee).where(invitee_type: 'Person').map(&:invitee).sort_by(&:name) %>
-        <% if invited_people.any? %>
+        <% invited_groups = @questionnaire.questionnaire_invitations.includes(:invitee).where(invitee_type: 'Group').map(&:invitee).sort_by(&:name) %>
+        <% invited_count = invited_people.count + invited_groups.count %>
+        <% if invited_count > 0 %>
           <div class="mb-5">
-            <h4 class="text-sm font-semibold text-gray-700 mb-3">Already Invited (<%= invited_people.count %>)</h4>
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Already Invited (<%= invited_count %>)</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <% invited_people.each do |person| %>
                 <% response = @questionnaire.questionnaire_responses.find_by(respondent: person) %>
@@ -155,20 +150,60 @@
                   </div>
                 <% end %>
               <% end %>
+              <% invited_groups.each do |group| %>
+                <% group_response = @questionnaire.questionnaire_responses.find_by(respondent: group) %>
+                <% if group_response %>
+                  <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: group_response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
+                    <div class="flex items-center gap-3">
+                      <% if group.primary_headshot&.image&.attached? %>
+                        <%= image_tag group.primary_headshot.image.variant(resize_to_limit: [80, 80]), alt: group.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                          <%= group.initials %>
+                        </div>
+                      <% end %>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate"><%= group.name %></p>
+                        <p class="text-xs text-pink-600">✓ Responded</p>
+                      </div>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <div class="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <div class="flex items-center gap-3">
+                      <% if group.primary_headshot&.image&.attached? %>
+                        <%= image_tag group.primary_headshot.image.variant(resize_to_limit: [80, 80]), alt: group.name, class: "w-10 h-10 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
+                          <%= group.initials %>
+                        </div>
+                      <% end %>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate"><%= group.name %></p>
+                        <p class="text-xs text-gray-500">Not yet responded</p>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
             </div>
           </div>
         <% end %>
 
         <% all_people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name) %>
+        <% all_groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name) %>
         <% invited_person_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Person').pluck(:invitee_id) %>
+        <% invited_group_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Group').pluck(:invitee_id) %>
         <% not_invited_people = all_people.reject { |p| invited_person_ids.include?(p.id) } %>
+        <% not_invited_groups = all_groups.reject { |g| invited_group_ids.include?(g.id) } %>
+        <% not_invited_count = not_invited_people.count + not_invited_groups.count %>
 
-        <% if all_people.empty? %>
+        <% if all_people.empty? && all_groups.empty? %>
           <div class="text-sm text-gray-600 border-t border-gray-200 pt-5">
-            <p class="mb-2">No cast members yet.</p>
-            <p class="text-xs">Add people to your production's talent pool to send questionnaire invitations.</p>
+            <p class="mb-2">No talent pool members yet.</p>
+            <p class="text-xs">Add people or groups to your production's talent pools to send questionnaire invitations.</p>
           </div>
-        <% elsif not_invited_people.any? %>
+        <% elsif not_invited_count > 0 %>
           <div class="mb-5 <%= 'border-t border-gray-200 pt-5' if invited_people.any? %>">
             <div class="mb-4">
               <label class="block font-semibold mb-2 text-sm">
@@ -178,9 +213,9 @@
                 <div>
                   <label class="flex items-center cursor-pointer">
                     <%= radio_button_tag :recipient_type, "all", true, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                    <span class="text-sm">All cast members not yet invited (<%= not_invited_people.count %>)</span>
+                    <span class="text-sm">All talent pool members not yet invited (<%= not_invited_count %>)</span>
                     <button type="button" onclick="document.getElementById('cast-member-status').classList.toggle('hidden')" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-questionnaire-invitation-target="viewDetailsButton">
-                      Show People
+                      Show
                     </button>
                   </label>
                 </div>
@@ -190,17 +225,22 @@
                     <% not_invited_people.each do |person| %>
                       <div class="text-gray-600"><%= person.name %></div>
                     <% end %>
+                    <% not_invited_groups.each do |group| %>
+                      <div class="text-gray-600"><%= group.name %></div>
+                    <% end %>
                   </div>
                 </div>
 
                 <% if @production.talent_pools.count > 1 %>
                   <label class="flex items-center cursor-pointer">
                     <%= radio_button_tag :recipient_type, "cast", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleCastDropdown" } %>
-                    <span class="text-sm mr-3">Specific cast</span>
+                    <span class="text-sm mr-3">Specific talent pool</span>
                     <span class="hidden" data-questionnaire-invitation-target="castDropdown">
                       <% talent_pool_options = @production.talent_pools.map do |cast|
-                        not_invited = cast.people.select { |p| not_invited_people.include?(p) }.count
-                        ["#{cast.name} (#{not_invited} not yet invited)", cast.id]
+                        not_invited_people_in_cast = cast.people.select { |p| not_invited_people.include?(p) }.count
+                        not_invited_groups_in_cast = cast.groups.select { |g| not_invited_groups.include?(g) }.count
+                        not_invited_total = not_invited_people_in_cast + not_invited_groups_in_cast
+                        ["#{cast.name} (#{not_invited_total} not yet invited)", cast.id]
                       end %>
                       <%= select_tag :talent_pool_id, options_for_select(talent_pool_options, @production.talent_pools.first&.id), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500" %>
                     </span>
@@ -209,7 +249,7 @@
 
                 <label class="flex items-center cursor-pointer">
                   <%= radio_button_tag :recipient_type, "specific", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleSpecific" } %>
-                  <span class="text-sm">Specific people</span>
+                  <span class="text-sm">Specific people & groups</span>
                 </label>
               </div>
 
@@ -223,6 +263,13 @@
                     <label class="flex items-center cursor-pointer">
                       <%= check_box_tag "person_ids[]", person.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
                       <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_talent_pools.map(&:name).join(", ") %></span></span>
+                    </label>
+                  <% end %>
+                  <% not_invited_groups.each do |group| %>
+                    <% group_talent_pools = @production.talent_pools.select { |c| c.groups.include?(group) } %>
+                    <label class="flex items-center cursor-pointer">
+                      <%= check_box_tag "group_ids[]", group.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
+                      <span class="text-sm"><%= group.name %> <span class="text-gray-500">- <%= group_talent_pools.map(&:name).join(", ") %></span></span>
                     </label>
                   <% end %>
                 </div>
@@ -240,12 +287,12 @@
               <% default_message = "You're invited to respond to #{@questionnaire.title} for #{@production.name}.\n\nPlease click the link below to access the questionnaire:\n#{@questionnaire.respond_url}\n\nThank you!" %>
               <%= text_area_tag :message, default_message, rows: 6, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm" %>
               <p class="mt-2 text-xs text-gray-500">
-                This email will be sent to each person you invite.
+                This email will be sent to each talent pool member you invite.
               </p>
             </div>
 
             <div class="flex gap-3">
-              <%= form.submit "Send Invitations", class: "rounded-lg px-4 py-2 text-white bg-pink-500 hover:bg-pink-600 text-sm font-medium cursor-pointer" %>
+              <%= render "shared/button", text: "Send Invitations", variant: "primary", size: "small", type: :submit %>
             </div>
           </div>
         <% else %>

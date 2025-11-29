@@ -52,7 +52,7 @@
                     <%= form_with url: add_to_cast_manage_person_path(production, person), method: :post, html: { class: "flex gap-2 items-center", data: { action: "cast-membership-card#add", cast_membership_card_target: "form" } } do |f| %>
                         <%= select_tag :talent_pool_id, options_from_collection_for_select(available_talent_pools, :id, :name), class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
                         <%= hidden_field_tag :person_id, person.id %>
-                        <%= submit_tag "Add", class: "px-3 py-1 rounded bg-pink-500 text-white font-bold hover:bg-pink-600 cursor-pointer" %>
+                        <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
                     <% end %>
                 <% end %>
             </div>

@@ -1,6 +1,6 @@
 <% content_for :title, "Email Log Details - God Mode" %>
 
-<div class="w-full">
+<div class="w-full px-5 pt-5">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -111,14 +111,8 @@
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold text-gray-900">Email Body</h2>
         <div class="flex gap-2">
-          <button onclick="document.getElementById('raw-view').classList.add('hidden'); document.getElementById('rendered-view').classList.remove('hidden'); this.classList.add('bg-pink-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); document.getElementById('raw-btn').classList.remove('bg-pink-600', 'text-white'); document.getElementById('raw-btn').classList.add('bg-gray-200', 'text-gray-700');"
-                  class="px-3 py-1 text-sm rounded bg-pink-600 text-white">
-            Rendered
-          </button>
-          <button id="raw-btn" onclick="document.getElementById('rendered-view').classList.add('hidden'); document.getElementById('raw-view').classList.remove('hidden'); this.classList.add('bg-pink-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); this.previousElementSibling.classList.remove('bg-pink-600', 'text-white'); this.previousElementSibling.classList.add('bg-gray-200', 'text-gray-700');"
-                  class="px-3 py-1 text-sm rounded bg-gray-200 text-gray-700">
-            Raw
-          </button>
+          <%= render "shared/button", text: "Rendered", variant: "primary", size: "small", type: :button, onclick: "document.getElementById('raw-view').classList.add('hidden'); document.getElementById('rendered-view').classList.remove('hidden'); this.classList.add('bg-pink-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); document.getElementById('raw-btn').classList.remove('bg-pink-600', 'text-white'); document.getElementById('raw-btn').classList.add('bg-gray-200', 'text-gray-700');" %>
+          <%= render "shared/button", text: "Raw", variant: "ghost-cancel", size: "small", type: :button, id: "raw-btn", onclick: "document.getElementById('rendered-view').classList.add('hidden'); document.getElementById('raw-view').classList.remove('hidden'); this.classList.add('bg-pink-600', 'text-white'); this.classList.remove('bg-gray-200', 'text-gray-700'); this.previousElementSibling.classList.remove('bg-pink-600', 'text-white'); this.previousElementSibling.classList.add('bg-gray-200', 'text-gray-700');" %>
         </div>
       </div>
 

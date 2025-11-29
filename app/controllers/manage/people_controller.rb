@@ -1,50 +1,6 @@
 class Manage::PeopleController < Manage::ManageController
-  before_action :set_person, only: %i[ show edit update destroy update_availability ]
-  before_action :ensure_user_is_global_manager, except: %i[index show remove_from_organization]
-
-  def index
-    # Store the order
-    @order = (params[:order] || session[:people_order] || "alphabetical")
-    session[:people_order] = @order
-
-    # Store the show
-    @show = (params[:show] || session[:people_show] || "tiles")
-    @show = "tiles" unless %w[tiles list].include?(@show)
-    session[:people_show] = @show
-
-    # Store the filter
-    @filter = (params[:filter] || session[:people_filter] || "everyone")
-    session[:people_filter] = @filter
-
-    # Process the filter - scope to current production company
-    @people = Current.organization&.people || Person.none
-
-    case @filter
-    when "cast-members"
-      @people = @people.joins(:talent_pools).distinct
-    when "everyone"
-      @people = @people.all
-    else
-      @filter = "everyone"
-      @people = @people.all
-    end
-
-    # Process the order
-    case @order
-    when "alphabetical"
-      @people = @people.order(:name)
-    when "newest"
-      @people = @people.order(created_at: :desc)
-    when "oldest"
-      @people = @people.order(created_at: :asc)
-    else
-      @filter = "alphabetical"
-      @people = @people.order(:name)
-    end
-
-    limit_per_page = @show == "list" ? 12 : 24
-    @pagy, @people = pagy(@people, limit: limit_per_page, params: { order: @order, show: @show, filter: @filter })
-  end
+  before_action :set_person, only: %i[ show update destroy update_availability ]
+  before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization]
 
   def show
     # Get all future shows for productions this person is a cast member of
@@ -65,9 +21,6 @@ class Manage::PeopleController < Manage::ManageController
 
   def new
     @person = Person.new
-  end
-
-  def edit
   end
 
   def create
@@ -150,23 +103,42 @@ class Manage::PeopleController < Manage::ManageController
 
   def update_availability
     # Update availabilities for each show
+    updated_count = 0
     params.each do |key, value|
-      if key.match?(/^availability_/)
-        show_id = key.match(/availability_(\d+)/)[1].to_i
+      if key.start_with?("availability_Person_")
+        show_id = key.split("_").last.to_i
         show = Show.find(show_id)
         availability = @person.show_availabilities.find_or_initialize_by(show: show)
 
-        if value == "available"
-          availability.available!
-        elsif value == "unavailable"
-          availability.unavailable!
+        # Only update if the status has changed
+        new_status = value
+        current_status = if availability.available?
+          "available"
+        elsif availability.unavailable?
+          "unavailable"
+        else
+          nil
         end
 
-        availability.save
+        if new_status != current_status
+          case new_status
+          when "available"
+            availability.available!
+          when "unavailable"
+            availability.unavailable!
+          end
+
+          availability.save
+          updated_count += 1
+        end
       end
     end
 
-    redirect_to manage_person_path(@person, tab: 2), notice: "Availability updated"
+    if updated_count > 0
+      redirect_to manage_directory_person_path(@person, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+    else
+      redirect_to manage_directory_person_path(@person, tab: 2), alert: "No availability changes were made"
+    end
   end
 
   def destroy
@@ -336,7 +308,7 @@ class Manage::PeopleController < Manage::ManageController
     def person_params
       params.require(:person).permit(
         :name, :email, :pronouns, :resume, :headshot,
-        socials_attributes: [ :id, :platform, :handle, :_destroy ]
+        socials_attributes: [ :id, :platform, :handle, :name, :_destroy ]
       )
     end
 end

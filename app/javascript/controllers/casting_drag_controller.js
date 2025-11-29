@@ -14,12 +14,14 @@ export default class extends Controller {
     // When dragging from the right column (auditionees)
     dragStart(event) {
         const item = event.currentTarget
-        const personId = item.dataset.personId
-        const personName = item.dataset.personName
+        const auditioneeType = item.dataset.auditioneeType
+        const auditioneeId = item.dataset.auditioneeId
+        const auditioneeName = item.dataset.auditioneeName
 
         event.dataTransfer.effectAllowed = "move"
-        event.dataTransfer.setData("personId", personId)
-        event.dataTransfer.setData("personName", personName)
+        event.dataTransfer.setData("auditioneeType", auditioneeType)
+        event.dataTransfer.setData("auditioneeId", auditioneeId)
+        event.dataTransfer.setData("auditioneeName", auditioneeName)
         event.dataTransfer.setData("sourceType", "auditionee")
 
         item.classList.add("opacity-50")
@@ -28,13 +30,15 @@ export default class extends Controller {
     // When dragging from the left column (already assigned people)
     dragStartPerson(event) {
         const item = event.currentTarget
-        const personId = item.dataset.personId
-        const personName = item.dataset.personName
+        const auditioneeType = item.dataset.auditioneeType
+        const auditioneeId = item.dataset.auditioneeId
+        const auditioneeName = item.dataset.auditioneeName
         const sourceTalentPoolId = item.dataset.sourceTalentPoolId
 
         event.dataTransfer.effectAllowed = "move"
-        event.dataTransfer.setData("personId", personId)
-        event.dataTransfer.setData("personName", personName)
+        event.dataTransfer.setData("auditioneeType", auditioneeType)
+        event.dataTransfer.setData("auditioneeId", auditioneeId)
+        event.dataTransfer.setData("auditioneeName", auditioneeName)
         event.dataTransfer.setData("sourceTalentPoolId", sourceTalentPoolId)
         event.dataTransfer.setData("sourceType", "assigned")
 
@@ -69,7 +73,10 @@ export default class extends Controller {
         if (dropZone) {
             dropZone.classList.remove("bg-pink-50", "border-pink-400")
 
-            const personId = event.dataTransfer.getData("personId")
+            const auditioneeType = event.dataTransfer.getData("auditioneeType")
+            const auditioneeId = event.dataTransfer.getData("auditioneeId")
+            const auditioneeName = event.dataTransfer.getData("auditioneeName")
+            const personId = event.dataTransfer.getData("personId") // For backward compatibility with assigned people
             const personName = event.dataTransfer.getData("personName")
             const sourceType = event.dataTransfer.getData("sourceType")
             const sourceTalentPoolId = event.dataTransfer.getData("sourceTalentPoolId")
@@ -80,28 +87,30 @@ export default class extends Controller {
                 return
             }
 
-            if (targetTalentPoolId && personId) {
-                this.moveToCast(personId, personName, targetTalentPoolId, sourceTalentPoolId, sourceType)
+            if (targetTalentPoolId) {
+                if (auditioneeType && auditioneeId) {
+                    this.moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType)
+                }
             }
         }
     }
 
-    moveToCast(personId, personName, targetTalentPoolId, sourceTalentPoolId, sourceType) {
+    moveToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, sourceTalentPoolId, sourceType) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
         const productionId = this.element.dataset.productionId
 
         // If moving from another cast, first remove from source
         if (sourceType === "assigned" && sourceTalentPoolId) {
-            this.removeFromCast(personId, sourceTalentPoolId, () => {
-                this.addToCast(personId, personName, targetTalentPoolId, csrfToken, productionId)
+            this.removeFromCast(auditioneeType, auditioneeId, sourceTalentPoolId, () => {
+                this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId)
             })
         } else {
             // Adding from auditionee list
-            this.addToCast(personId, personName, targetTalentPoolId, csrfToken, productionId)
+            this.addToCast(auditioneeType, auditioneeId, auditioneeName, targetTalentPoolId, csrfToken, productionId)
         }
     }
 
-    addToCast(personId, personName, talentPoolId, csrfToken, productionId) {
+    addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, productionId) {
         fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
@@ -110,7 +119,8 @@ export default class extends Controller {
             },
             body: JSON.stringify({
                 talent_pool_id: talentPoolId,
-                person_id: personId
+                auditionee_type: auditioneeType,
+                auditionee_id: auditioneeId
             })
         })
             .then(response => {
@@ -124,7 +134,7 @@ export default class extends Controller {
             .catch(error => console.error('Error:', error))
     }
 
-    removeFromCast(personId, talentPoolId, callback) {
+    removeFromCast(auditioneeType, auditioneeId, talentPoolId, callback) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
         fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
@@ -135,7 +145,8 @@ export default class extends Controller {
             },
             body: JSON.stringify({
                 talent_pool_id: talentPoolId,
-                person_id: personId
+                auditionee_type: auditioneeType,
+                auditionee_id: auditioneeId
             })
         })
             .then(response => {
@@ -151,13 +162,14 @@ export default class extends Controller {
     removePerson(event) {
         event.preventDefault()
 
-        if (!confirm('Are you sure you want to remove this person from this cast?')) {
+        if (!confirm('Are you sure you want to remove this auditionee from this talent pool?')) {
             return
         }
 
         const button = event.currentTarget
         const talentPoolId = button.dataset.talentPoolId
-        const personId = button.dataset.personId
+        const auditioneeType = button.dataset.auditioneeType
+        const auditioneeId = button.dataset.auditioneeId
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
         fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
@@ -168,7 +180,8 @@ export default class extends Controller {
             },
             body: JSON.stringify({
                 talent_pool_id: talentPoolId,
-                person_id: personId
+                auditionee_type: auditioneeType,
+                auditionee_id: auditioneeId
             })
         })
             .then(response => {

@@ -19,7 +19,7 @@
           <%= form.label :name, "Role Name is required:", class: "text-pink-600"  %>
       <% end %>
       <%= form.text_field :name, class: ["inline-block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-96 sm:ml-2", {"border-gray-400": @role.errors[:name].none?, "border-pink-500": @role.errors[:name].any?}] %>
-      <%= form.submit "Update Role", class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer mt-2 sm:mt-0" %>
+      <%= render "shared/button", text: "Update Role", variant: "primary", size: "medium", type: :submit, class: "mt-2 sm:mt-0" %>
 
     </div>
 

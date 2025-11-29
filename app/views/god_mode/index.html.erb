@@ -1,13 +1,15 @@
 <% content_for :title, "God Mode" %>
 
-<div class="w-full">
+<div class="w-full px-5 pt-5">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "God Mode",
-    links: []
+    links: [
+      { text: "Exit", path: manage_path }
+    ]
   } %>
 
   <!-- First Row: Queue Monitor and Email Logs -->

@@ -27,6 +27,19 @@ module ApplicationHelper
       Current.user.production_permissions.exists?
   end
 
+  def social_platform_display_name(platform)
+    case platform.to_s.downcase
+    when "youtube"
+      "YouTube"
+    when "tiktok"
+      "TikTok"
+    when "linkedin"
+      "LinkedIn"
+    else
+      platform.titleize
+    end
+  end
+
   def displayable_attachment?(attachment)
     attachment.respond_to?(:attached?) &&
       attachment.attached? &&
@@ -94,9 +107,28 @@ module ApplicationHelper
     end
   end
 
-  def safe_headshot_url(person, variant = :thumb)
-    variant_obj = person.safe_headshot_variant(variant)
-    variant_obj ? url_for(variant_obj) : nil
+  def safe_headshot_url(entity, variant: :thumb)
+    return nil unless entity
+
+    # Handle both Person and Group
+    if entity.respond_to?(:primary_headshot)
+      headshot = entity.primary_headshot
+      return nil unless headshot&.image&.attached?
+
+      begin
+        # Generate variant and return URL
+        variant_obj = headshot.image.variant(variant)
+        return rails_representation_url(variant_obj) if variant_obj
+      rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
+        Rails.logger.error("Failed to generate variant for #{entity.name}'s headshot: #{e.message}")
+        return nil
+      end
+    elsif entity.respond_to?(:safe_headshot_variant)
+      variant_obj = entity.safe_headshot_variant(variant)
+      return url_for(variant_obj) if variant_obj
+    end
+
+    nil
   end
 
   def safe_poster_url(show, variant = :small)

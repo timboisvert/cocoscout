@@ -1,0 +1,151 @@
+<%
+  # Training credits form section
+  # Parameters:
+  # - entity: Person or Group instance (defaults to @person for backward compatibility)
+  entity ||= @person
+%>
+
+<%= form_with(model: entity, url: entity.is_a?(Person) ? update_profile_path : update_group_path(entity), method: :patch, id: "training-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
+<div id="training" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-training profile-section">
+  <%= render "shared/section_header",
+    entity: entity,
+    title: "Training & Education",
+    collapsible: true,
+    visibility_toggle: true,
+    visibility_field: "training_credits_visible",
+    visibility_checked: entity.training_credits_visible? %>
+
+  <div class="p-6 space-y-4" data-profile-section-target="content">
+    <p class="text-sm text-gray-600 mb-4">
+      Add your training, education, and professional development.
+    </p>
+
+    <div id="training-credits-container" class="space-y-3" data-profile-training-target="list">
+      <%= person_form.fields_for :training_credits do |training_form| %>
+        <div class="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
+             data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>"
+             data-institution="<%= training_form.object.institution %>"
+             data-program="<%= training_form.object.program %>"
+             data-year-start="<%= training_form.object.year_start %>"
+             data-year-end="<%= training_form.object.year_end %>"
+             data-notes="<%= training_form.object.notes %>">
+          <%= training_form.hidden_field :id %>
+          <%= training_form.hidden_field :institution %>
+          <%= training_form.hidden_field :program %>
+          <%= training_form.hidden_field :year_start %>
+          <%= training_form.hidden_field :year_end %>
+          <%= training_form.hidden_field :notes %>
+          <%= training_form.hidden_field :position %>
+          <%= training_form.hidden_field :_destroy, value: "0", class: "destroy-field" %>
+
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-900">
+              <%= [training_form.object.program, training_form.object.institution, training_form.object.year_start.present? ? (training_form.object.year_end.present? ? "#{training_form.object.year_start}-#{training_form.object.year_end}" : training_form.object.year_start) : nil].compact.reject(&:blank?).join(' • ') %>
+            </div>
+          </div>
+
+          <div class="flex gap-3 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                    data-action="click->profile-training#edit"
+                    data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+              Edit
+            </button>
+            <button type="button"
+                    class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                    data-action="click->profile-training#remove"
+                    data-training-id="<%= training_form.object.id || "new-#{training_form.object.object_id}" %>">
+              Remove
+            </button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= render "shared/button",
+        text: "Add Training/Education",
+        variant: "outline-pink",
+        icon: "plus",
+        data: { action: "click->profile-training#openModal" },
+        type: :button %>
+  </div>
+
+  <!-- Training Modal -->
+  <div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-profile-training-target="modal"
+       data-action="click->profile-training#closeModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
+         data-action="click->profile-training#stopPropagation">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4 coustard-regular">Add Training/Education</h3>
+
+      <div data-profile-training-target="form">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Institution *</label>
+            <input type="text"
+                   data-field="institution"
+                   data-action="keydown->profile-training#handleKeydown"
+                   placeholder="e.g., Juilliard School, Second City, Acting Studio"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Program/Degree *</label>
+            <input type="text"
+                   data-field="program"
+                   placeholder="e.g., BFA Acting, Improv Workshop"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year Start *</label>
+              <input type="number"
+                     data-field="year_start"
+                     placeholder="2019"
+                     min="1900"
+                     max="2100"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year End (optional)</label>
+              <input type="number"
+                     data-field="year_end"
+                     placeholder="2023 or leave blank"
+                     min="1900"
+                     max="2100"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+          </div>
+
+          <div data-controller="character-counter" data-character-counter-max-value="200">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+              <span data-character-counter-target="counter" class="text-xs text-gray-500"></span>
+            </div>
+            <textarea data-field="notes"
+                      data-character-counter-target="input"
+                      data-action="input->character-counter#updateCounter"
+                      rows="2"
+                      placeholder="Additional details..."
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"></textarea>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <%= render "shared/button",
+              text: "Cancel",
+              variant: "ghost",
+              data: { action: "click->profile-training#closeModal" },
+              type: :button %>
+          <%= render "shared/button",
+              text: "Save Training",
+              variant: "primary",
+              data: { action: "click->profile-training#save" },
+              type: :button %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>

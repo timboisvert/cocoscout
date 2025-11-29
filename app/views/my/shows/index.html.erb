@@ -11,60 +11,39 @@
       {
         text: "Calendar",
         path: my_shows_calendar_path,
-        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg>'
+        icon: "calendar"
       }
     ]
   } %>
 
-  <% if @productions.any? %>
+  <% if @has_any_shows %>
 
-  <div data-controller="show-toggle" class="mb-4">
-    <!-- Mobile filter button -->
-    <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-md border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
-      <span class="text-sm font-medium">Filters</span>
-      <span data-show-toggle-target="icon">
-        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </span>
-    </button>
-
-    <!-- Filter sections -->
-    <div data-show-toggle-target="content" class="hidden lg:flex flex-col lg:flex-row w-full space-y-2 lg:space-y-0 lg:space-x-2">
-      <div class="flex flex-1 space-x-1">
-        <%= link_to "All",
-                my_shows_path(filter: 'all', event_type: @event_type_filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == 'all') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "By Production",
-                my_shows_path(filter: 'by_production', event_type: @event_type_filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == 'by_production') ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-      </div>
-      <div class="flex space-x-1">
-        <%= link_to "All Types",
-                my_shows_path(filter: @filter),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter.blank? ? 'bg-gray-500 text-white border-gray-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "Shows",
-                my_shows_path(filter: @filter, event_type: 'show'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'show' ? 'bg-pink-500 text-white border-pink-500' : 'bg-pink-50 text-pink-700 border-pink-300'}"
-        %>
-        <%= link_to "Rehearsals",
-                my_shows_path(filter: @filter, event_type: 'rehearsal'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'rehearsal' ? 'bg-blue-500 text-white border-blue-500' : 'bg-blue-50 text-blue-700 border-blue-300'}"
-        %>
-        <%= link_to "Meetings",
-                my_shows_path(filter: @filter, event_type: 'meeting'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{@event_type_filter == 'meeting' ? 'bg-green-500 text-white border-green-500' : 'bg-green-50 text-green-700 border-green-300'}"
-        %>
-      </div>
-    </div>
-  </div>
+  <%= render "shared/filters/filter_bar",
+      toggle_label: "Filters & View Options",
+      filter_groups: [
+        {
+          label: "View",
+          filters: [
+            { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'my_assignments' },
+            { text: "All Shows", path: my_shows_path(filter: 'all', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'all' },
+            { text: "By Production", path: my_shows_path(filter: 'by_production', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'by_production' }
+          ]
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/entity_filter",
+          locals: {
+            path_helper: method(:my_shows_path),
+            person: @person,
+            groups: @groups,
+            entity_filter: @entity_filter,
+            label: "Include",
+            filter: @filter,
+            event_type: @event_type_filter.join(",")
+          }
+        }
+      ]
+  %>
 
   <% if @filter == 'by_production' %>
     <!-- By Production View -->
@@ -76,7 +55,7 @@
           <div class="space-y-1">
             <% production_shows.each do |show| %>
               <%= link_to my_show_path(show), class: "block" do %>
-                <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+                <div class="flex bg-white items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-semibold <%= 'line-through text-red-400' if show.canceled %>">
                       <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
@@ -103,14 +82,41 @@
                           <%= show.location.name %>
                         </span>
                       <% end %>
-                      <% if show.event_type == "show" %>
-                        <% assignment = @assignments_by_show[show.id] %>
-                        <% if assignment %>
-                          <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
+                      <% if @entity_type == "group" %>
+                        <span class="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Group: <%= @selected_group.name %></span>
+                      <% end %>
+                      <% if @show_assignments[show.id].present? %>
+                        <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
+                          (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                          (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
+                        end %>
+                        <% filtered_assignments.each do |entity_info| %>
+                          <% # Find the actual assignment record for this entity
+                             assignment = ShowPersonRoleAssignment.find_by(
+                               show_id: show.id,
+                               assignable_type: entity_info[:type] == "person" ? "Person" : "Group",
+                               assignable_id: entity_info[:entity].id
+                             ) %>
+                          <% if assignment %>
+                            <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
+                          <% end %>
                         <% end %>
                       <% end %>
                     </div>
                   </div>
+                  <% if @groups.any? && @show_assignments[show.id].present? %>
+                    <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
+                      (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                      (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
+                    end %>
+                    <% if filtered_assignments.any? %>
+                      <div class="flex-shrink-0 flex gap-1">
+                        <% filtered_assignments.each do |entity_info| %>
+                          <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  <% end %>
                 </div>
               <% end %>
             <% end %>
@@ -124,7 +130,7 @@
       <div class="space-y-1">
         <% @shows.each do |show| %>
           <%= link_to my_show_path(show), class: "block" do %>
-            <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="flex bg-white items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-semibold <%= 'line-through text-red-400' if show.canceled %>">
                   <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
@@ -152,14 +158,41 @@
                       <%= show.location.name %>
                     </span>
                   <% end %>
-                  <% if show.event_type == "show" %>
-                    <% assignment = @assignments_by_show[show.id] %>
-                    <% if assignment %>
-                      <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
+                  <% if @entity_type == "group" %>
+                    <span class="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Group: <%= @selected_group.name %></span>
+                  <% end %>
+                  <% if @show_assignments[show.id].present? %>
+                    <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
+                      (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                      (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
+                    end %>
+                    <% filtered_assignments.each do |entity_info| %>
+                      <% # Find the actual assignment record for this entity
+                         assignment = ShowPersonRoleAssignment.find_by(
+                           show_id: show.id,
+                           assignable_type: entity_info[:type] == "person" ? "Person" : "Group",
+                           assignable_id: entity_info[:entity].id
+                         ) %>
+                      <% if assignment %>
+                        <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= assignment.role.name %></strong></span>
+                      <% end %>
                     <% end %>
                   <% end %>
                 </div>
               </div>
+              <% if @groups.any? && @show_assignments[show.id].present? %>
+                <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
+                  (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                  (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
+                end %>
+                <% if filtered_assignments.any? %>
+                  <div class="flex-shrink-0 flex gap-1">
+                    <% filtered_assignments.each do |entity_info| %>
+                      <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                    <% end %>
+                  </div>
+                <% end %>
+              <% end %>
             </div>
           <% end %>
         <% end %>

@@ -37,27 +37,30 @@
               <% if has_assignment %>
                 <div class="space-y-2">
                   <% assignments.each do |assignment| %>
+                    <% assignable = assignment.assignable %>
                     <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
                         draggable="true"
                         data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
-                        data-person-id="<%= assignment.person.id %>"
+                        data-assignable-type="<%= assignable.class.name %>"
+                        data-assignable-id="<%= assignable.id %>"
                         data-assignment-id="<%= assignment.id %>"
                         data-source-role-id="<%= role.id %>">
-                      <% headshot_variant = assignment.person.safe_headshot_variant(:thumb) %>
+                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignment.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
                       <% else %>
                         <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
-                          <%= assignment.person.initials %>
+                          <%= assignable.initials %>
                         </div>
                       <% end %>
 
-                      <span class="font-medium text-sm flex-1 truncate"><%= assignment.person.name %></span>
+                      <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
                       <button type="button"
                         class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
                         data-action="click->drop-role#removeAssignment"
                         data-assignment-id="<%= assignment.id %>"
-                        data-person-id="<%= assignment.person.id %>"
+                        data-assignable-type="<%= assignable.class.name %>"
+                        data-assignable-id="<%= assignable.id %>"
                         title="Remove assignment"
                       >
                         Remove
@@ -67,7 +70,7 @@
                 </div>
               <% else %>
                 <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
-                  <span>Drag a cast member here</span>
+                  <span>Drag a talent pool member here</span>
                 </div>
               <% end %>
             </div>

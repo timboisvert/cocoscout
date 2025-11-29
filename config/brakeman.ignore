@@ -2,20 +2,100 @@
   "ignored_warnings": [
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "109e1d7ba24d82012da92b818d2aa41b60654cb052b18ff347dcd0552bfb7fe0",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/edit.html.erb",
+      "line": 277,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Update #{Show.find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :data => ({ :show_edit_target => \"submitButton\", :recurring_edit_target => \"submitButton\" }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "edit",
+          "line": 73,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/edit",
+            "file": "app/views/manage/shows/edit.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/edit"
+      },
+      "user_input": "Show.find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "1616c50d5933bfe7e9f9e69eeba85527ba5c31e60ab84ef440dcf845ff83288e",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/profile_controller.rb",
+      "line": 329,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params[:person][:profile_skills_attributes].permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ProfileController",
+        "method": "person_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Remote Code Execution",
+      "warning_code": 24,
+      "fingerprint": "226272261a982667a4983ecacfde538d20d2e7172ad4e7500565d2905c381fce",
+      "check_name": "UnsafeReflection",
+      "message": "Unsafe reflection method `constantize` called on parameter value",
+      "file": "app/controllers/my/questionnaires_controller.rb",
+      "line": 171,
+      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
+      "code": "params[:respondent_type].constantize",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "My::QuestionnairesController",
+        "method": "submitform"
+      },
+      "user_input": "params[:respondent_type]",
+      "confidence": "High",
+      "cwe_id": [
+        470
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
-      "fingerprint": "a4177f99fea1a9a8a881b364c83ab47cb8a929de18f2e35dba38a03b39fc3527",
+      "fingerprint": "7a84727dca2f511ba11c1b900174689b7fa4e7345188062db04d8ecb69c82145",
       "check_name": "LinkToHref",
       "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/manage/groups/show.html.erb",
-      "line": 62,
+      "line": 51,
       "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to(Current.organization.groups.find(params[:id]).website, Current.organization.groups.find(params[:id]).website, :target => \"_blank\", :rel => \"noopener\", :class => \"text-pink-600 hover:text-pink-700\")",
+      "code": "link_to((Unresolved Model).new.handle, (Unresolved Model).new.url, :class => \"text-pink-500 text-sm hover:underline\", :target => \"_blank\", :rel => \"noopener\")",
       "render_path": [
         {
           "type": "controller",
           "class": "Manage::GroupsController",
           "method": "show",
-          "line": 9,
+          "line": 19,
           "file": "app/controllers/manage/groups_controller.rb",
           "rendered": {
             "name": "manage/groups/show",
@@ -27,10 +107,33 @@
         "type": "template",
         "template": "manage/groups/show"
       },
-      "user_input": "Current.organization.groups.find(params[:id]).website",
+      "user_input": "(Unresolved Model).new.url",
       "confidence": "Weak",
       "cwe_id": [
         79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Remote Code Execution",
+      "warning_code": 24,
+      "fingerprint": "98446517e8fd98c9a1f539abbeab7fca50c1bc803f43189806591d76cf952960",
+      "check_name": "UnsafeReflection",
+      "message": "Unsafe reflection method `constantize` called on parameter value",
+      "file": "app/controllers/my/questionnaires_controller.rb",
+      "line": 90,
+      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
+      "code": "params[:respondent_type].constantize",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "My::QuestionnairesController",
+        "method": "form"
+      },
+      "user_input": "params[:respondent_type]",
+      "confidence": "High",
+      "cwe_id": [
+        470
       ],
       "note": ""
     },
@@ -41,7 +144,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/god_mode_controller.rb",
-      "line": 182,
+      "line": 187,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
       "render_path": null,
@@ -54,6 +157,40 @@
       "confidence": "Medium",
       "cwe_id": [
         470
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "caaf5b2c8981544c0bbe582df7a612e57cf9b4f6f59ebf812475bbfb5cffd285",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/team_invitations/accept.html.erb",
+      "line": 133,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Join #{TeamInvitation.find_by(:token => params[:token]).organization.name}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :class => \"w-full\" })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::TeamInvitationsController",
+          "method": "accept",
+          "line": 11,
+          "file": "app/controllers/manage/team_invitations_controller.rb",
+          "rendered": {
+            "name": "manage/team_invitations/accept",
+            "file": "app/views/manage/team_invitations/accept.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/team_invitations/accept"
+      },
+      "user_input": "TeamInvitation.find_by(:token => params[:token]).organization.name",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
       ],
       "note": ""
     }

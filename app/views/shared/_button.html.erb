@@ -1,59 +1,127 @@
 <%
-  # Shared button component for consistent styling across the app
+  # Button component for profile and groups pages
   #
-  # Usage:
-  #   <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium" %>
-  #   <%= render "shared/button", text: "Cancel", variant: "secondary", path: root_path %>
-  #   <%= render "shared/button", text: "Delete", variant: "danger", size: "small", type: :button %>
+  # Usage Examples:
+  #   render "shared/button", text: "View Public Profile", variant: "primary", icon: "eye"
+  #   render "shared/button", text: "Share Profile", variant: "outline", icon: "share"
+  #   render "shared/button", text: "Add Social Media/Link", variant: "outline-pink", icon: "plus"
+  #   render "shared/button", text: "Save Changes", variant: "primary", size: "medium"
+  #   render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium"
+  #   render "shared/button", text: "Check Availability", variant: "primary"
+  #   render "shared/button", path: root_path, text: "Go Home", variant: "primary"
   #
   # Parameters:
-  #   text (required): Button text
-  #   variant: "primary" (default), "secondary", "danger", "ghost"
+  #   text (required): Button text/label
+  #   variant: Button style variant (see options below)
   #   size: "small", "medium" (default), "large"
-  #   type: :submit (default), :button
-  #   path: If provided, renders as link_to instead of button
+  #   icon: Icon name (optional) - renders before text
+  #   type: :submit (default), :button, :link
+  #   path: URL path (for link_to rendering)
+  #   target: Link target (e.g., "_blank")
+  #   rel: Link rel attribute (e.g., "noopener")
+  #   data: Hash of data attributes
   #   classes: Additional custom classes
+  #   onclick: JavaScript onclick handler
+  #
+  # Variant Options:
+  #   "primary" - Pink filled button (bg-pink-500 hover:bg-pink-600)
+  #   "outline" - White with gray border (border-gray-300 hover:border-pink-500)
+  #   "outline-pink" - White with pink border (border-pink-200 hover:border-pink-300)
+  #   "ghost" - Text only, no border (text-gray-700 hover:bg-gray-100)
+  #   "ghost-cancel" - Cancel text style (text-gray-700 hover:text-gray-900)
 
-  variant ||= "primary"
-  size ||= "medium"
-  type ||= :submit
-  classes ||= ""
+  text = local_assigns[:text] || ""
+  variant = local_assigns[:variant] || "primary"
+  size = local_assigns[:size] || "medium"
+  type = local_assigns[:type] || :submit
+  classes = local_assigns[:classes] || ""
+  data = local_assigns[:data] || {}
+  icon = local_assigns[:icon]
+  path = local_assigns[:path]
+  target = local_assigns[:target]
+  rel = local_assigns[:rel]
+  onclick = local_assigns[:onclick]
+  style = local_assigns[:style]
 
-  base_classes = "font-medium rounded-md transition-colors inline-flex items-center justify-center"
+  # Base classes for all buttons
+  base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap"
 
+  # Variant-specific classes
   variant_classes = case variant
     when "primary"
-      "bg-pink-600 text-white hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
-    when "secondary"
-      "border border-pink-600 text-pink-600 hover:bg-pink-50 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
-    when "danger"
-      "bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+      "bg-pink-500 hover:bg-pink-600 text-white"
+    when "outline"
+      "bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 transition-all"
+    when "outline-pink"
+      "bg-white hover:bg-pink-50 text-pink-600 border border-pink-200 hover:border-pink-300 transition-all"
     when "ghost"
-      "text-pink-600 hover:bg-pink-50 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+      "text-gray-700 hover:bg-gray-100"
+    when "ghost-cancel"
+      "text-gray-700 hover:text-gray-900"
     else
-      "bg-pink-600 text-white hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+      "bg-pink-500 hover:bg-pink-600 text-white"
   end
 
+  # Size-specific padding and text size
   size_classes = case size
     when "small"
-      "px-3 py-1.5 text-xs"
+      "px-3 py-1.5 text-sm"
     when "medium"
-      "px-4 py-2 text-sm"
+      "px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10"
     when "large"
-      "px-5 py-2.5 text-base"
+      "px-6 py-2 text-sm sm:px-8 sm:py-3"
     else
-      "px-4 py-2 text-sm"
+      "px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10"
   end
 
+  # Icon size based on button size
+  icon_size = case size
+    when "small"
+      "w-4 h-4"
+    when "medium", "large"
+      "w-5 h-5"
+    else
+      "w-5 h-5"
+  end
+
+  # Combine all classes
   all_classes = "#{base_classes} #{variant_classes} #{size_classes} #{classes}".strip
+
+  # Icon SVG paths
+  icons = {
+    "eye" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>',
+    "share" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>',
+    "plus" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>',
+    "calendar" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg>',
+    "list" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>',
+    "search" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>',
+    "clipboard" => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="ICON_SIZE"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>'
+  }
+
+  # Get icon HTML if specified
+  icon_html = if icon && icons[icon]
+    icons[icon].gsub("ICON_SIZE", icon_size).html_safe
+  else
+    nil
+  end
+
+  # Build data attributes string
+  data_attrs = data.map { |k, v| "data-#{k.to_s.dasherize}=\"#{v}\"" }.join(' ')
 %>
 
-<% if defined?(path) && path.present? %>
-  <%= link_to text, path, class: all_classes %>
+<% if path.present? %>
+  <%= link_to path, class: all_classes, data: data, target: target, rel: rel, onclick: onclick do %>
+    <%= icon_html if icon_html %>
+    <span><%= text %></span>
+  <% end %>
 <% elsif type == :submit %>
-  <%= submit_tag text, class: all_classes %>
+  <button type="submit" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
+    <%= icon_html if icon_html %>
+    <span><%= text %></span>
+  </button>
 <% else %>
-  <button type="<%= type %>" class="<%= all_classes %>">
-    <%= text %>
+  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
+    <%= icon_html if icon_html %>
+    <span><%= text %></span>
   </button>
 <% end %>

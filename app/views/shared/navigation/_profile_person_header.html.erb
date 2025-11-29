@@ -1,0 +1,64 @@
+<!-- Profile Header Navigation -->
+<header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
+  <div class="flex items-center gap-8 pl-4">
+    <%= link_to my_dashboard_path, class: "mt-2 ml-" do %>
+      <span class="text-3xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+    <% end %>
+
+    <div class="flex items-center gap-4 mt-2 ml-10">
+      <span class="text-2xl font-semibold coustard-regular text-slate-800">My Profile</span>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 mr-4">
+    <% if impersonating? %>
+      <div class="flex items-center gap-3 bg-pink-100 border border-pink-300 px-4 py-2 rounded-lg">
+        <div class="flex flex-col">
+          <div class="text-xs font-semibold text-pink-800 uppercase">Impersonating</div>
+          <div class="text-sm font-medium text-pink-900"><%= Current.user.person&.name || Current.user.email_address %></div>
+        </div>
+        <%= button_to stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded-md bg-pink-600 text-white font-semibold text-sm hover:bg-pink-700 cursor-pointer transition cursor-pointer" do %>
+          Stop
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="relative mt-1" data-controller="dropdown">
+      <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-0 py-2 transition cursor-pointer">
+        <% if Current.user.person&.headshot&.attached? %>
+          <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+        <% else %>
+          <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
+            <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+          </div>
+        <% end %>
+        <div class="text-sm font-medium text-slate-700"><%= Current.user.person&.name || Current.user.email_address %></div>
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+
+        <%= link_to "My Profile", profile_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% if Current.user.person&.groups&.any? %>
+          <%= link_to "My Groups", groups_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% end %>
+
+        <div class="border-t border-slate-200 my-1"></div>
+
+        <%= link_to "Talent Dashboard", my_dashboard_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <%= link_to "Production Dashboard", manage_path, data: { turbo: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+
+        <% if Current.user.god? %>
+          <div class="border-t border-slate-200 my-1"></div>
+          <%= link_to "God Mode", god_mode_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% end %>
+
+        <div class="border-t border-slate-200 my-1"></div>
+
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+      </div>
+    </div>
+  </div>
+</header>

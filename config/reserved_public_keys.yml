@@ -1,0 +1,88 @@
+# Reserved Public Keys
+# These keys cannot be used as public_key values for people or groups
+# to prevent conflicts with system routes and reserved words
+
+# System routes
+- admin
+- api
+- www
+- cdn
+- static
+- assets
+- uploads
+
+# App namespaces
+- manage
+- my
+- god
+- auth
+- sessions
+- signout
+- login
+- logout
+- signup
+- signin
+- signoff
+
+# Common pages
+- about
+- contact
+- help
+- support
+- faq
+- terms
+- privacy
+- legal
+- pricing
+- features
+
+# HTTP methods
+- get
+- post
+- put
+- patch
+- delete
+- options
+- head
+
+# Reserved words
+- user
+- users
+- account
+- accounts
+- profile
+- profiles
+- settings
+- setting
+- config
+- configuration
+
+# Tech terms
+- app
+- application
+- system
+- dashboard
+- console
+- root
+- index
+
+# CocoScout specific
+- cocoscout
+- coco
+- scout
+- productions
+- auditions
+- shows
+- casting
+- questionnaires
+- groups
+- people
+- search
+- directory
+
+# Status/Meta
+- status
+- health
+- metrics
+- monitoring
+- analytics

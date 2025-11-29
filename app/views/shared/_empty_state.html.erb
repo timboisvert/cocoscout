@@ -1,0 +1,25 @@
+<%
+  # Shared empty state component for consistent empty state styling
+  #
+  # Usage:
+  #   render "shared/empty_state", message: "No headshots yet"
+  #   render "shared/empty_state",
+  #       message: "No performance history yet",
+  #       link_text: "Add your first credit",
+  #       link_path: "#"
+  #
+  # Parameters:
+  #   message (required): Empty state message text
+  #   link_text: Optional link text
+  #   link_path: Optional link path (required if link_text is provided)
+
+  link_text ||= nil
+  link_path ||= nil
+%>
+
+<div class="text-center py-12">
+  <p class="text-gray-500 text-sm"><%= message %></p>
+  <% if link_text.present? && link_path.present? %>
+    <%= link_to link_text, link_path, class: "text-pink-600 hover:text-pink-700 text-sm underline mt-2 inline-block" %>
+  <% end %>
+</div>

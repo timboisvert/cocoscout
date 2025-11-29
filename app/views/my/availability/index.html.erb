@@ -11,168 +11,173 @@
       {
         text: "Calendar",
         path: my_availability_calendar_path,
-        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg>'
+        icon: "calendar"
       }
     ]
   } %>
 
   <% if @productions.any? %>
 
-  <div data-controller="show-toggle" class="mb-4">
-    <!-- Mobile filter button -->
-    <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-md border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
-      <span class="text-sm font-medium">Filters</span>
-      <span data-show-toggle-target="icon">
-        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-      </span>
-    </button>
-
-    <!-- Filter sections -->
-    <div data-show-toggle-target="content" class="hidden lg:flex flex-col lg:flex-row w-full space-y-2 lg:space-y-0 lg:space-x-2">
-      <div class="flex flex-1 space-x-1">
-        <%= link_to "Awaiting My Response",
-                my_availability_path(filter: 'no_response'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == "no_response") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "All Shows",
-                my_availability_path(filter: 'all'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == "all") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-        <%= link_to "By Production",
-                my_availability_path(filter: 'by_production'),
-                data: { turbo_prefetch: false },
-                class: "px-3 py-1 rounded-md border text-sm #{(@filter == "by_production") ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-200'}"
-        %>
-      </div>
-    </div>
-  </div>
+  <%= render "shared/filters/filter_bar",
+      toggle_label: "Filters & View Options",
+      filter_groups: [
+        {
+          label: "View",
+          filters: [
+            { text: "Awaiting My Response", path: my_availability_path(filter: 'no_response', entity: @entity_filter.join(',')), active: @filter == 'no_response' },
+            { text: "All Shows", path: my_availability_path(filter: 'all', entity: @entity_filter.join(',')), active: @filter == 'all' },
+            { text: "By Production", path: my_availability_path(filter: 'by_production', entity: @entity_filter.join(',')), active: @filter == 'by_production' },
+            { text: "By Cast Member", path: my_availability_path(filter: 'by_entity', entity: @entity_filter.join(',')), active: @filter == 'by_entity' }
+          ]
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/entity_filter",
+          locals: {
+            path_helper: method(:my_availability_path),
+            person: @person,
+            groups: @groups,
+            entity_filter: @entity_filter,
+            label: "Include",
+            filter: @filter
+          }
+        }
+      ]
+  %>
 
   <% if @filter == 'no_response' %>
-      <div class="mb-8">
-        <% if @no_response_shows.any? %>
-          <div class="space-y-1">
-            <% @no_response_shows.each do |show| %>
-            <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
-              <div class="flex-1 min-w-0 mr-2">
-                <div class="text-sm font-semibold">
-                  <span class="sm:hidden">
-                    <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
-                    <%= show.date_and_time.strftime("%l:%M %p") %>
-                  </span>
-                  <span class="hidden sm:inline">
-                    <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
-                    <%= show.date_and_time.strftime("%l:%M %p") %>
-                  </span>
-                </div>
-                <div class="flex items-center gap-1 mt-1 flex-wrap">
-                  <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
-                  <% event_type_badge_classes = case show.event_type
-                    when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                    when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                    else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                  end %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
-                    <%= show.event_type.titleize %>
-                  </span>
-                  <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-                    <%= show.location.name %>
-                  </span>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <% current_status = @availabilities[show.id]&.status || 'unset' %>
-                <div class="w-6 flex justify-center">
-                  <span data-availability-target="success" class="hidden text-green-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                      <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                    </svg>
-                  </span>
-                </div>
-                <div class="flex gap-0">
-                <%
-                  [:available, :unavailable].each do |status|
-                    classes = "w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
-
-                    if status == :available
-                      classes += " rounded-l-lg border-r-0"
-                    elsif status == :unavailable
-                      classes += " rounded-r-lg"
-                    end
-
-                    current_status = @availabilities[show.id]&.status || 'unset'
-                    if current_status == status.to_s
-                      classes += " bg-pink-500 text-white"
-                    else
-                      classes += " bg-white text-gray-700 hover:bg-gray-50"
-                    end
-
-                    desktop_content = status.to_s.humanize
-                %>
-                  <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
-                    <span class="sm:hidden">
-                      <% if status == :available %>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
-                      <% else %>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
-                      <% end %>
-                    </span>
-                    <span class="hidden sm:inline"><%= desktop_content %></span>
-                  <% end %>
-                <% end %>
-                </div>
-              </div>
+    <% if @no_response_shows.any? %>
+      <div class="space-y-1">
+        <% @no_response_shows.each do |show| %>
+          <% @show_entities[show.id]&.each do |entity_info| %>
+            <% entity_key = entity_info[:type] == "person" ? "person" : "group_#{entity_info[:entity].id}" %>
+            <% availability = @entity_data[entity_key][:availabilities][show.id] %>
+        <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= availability&.status || 'unset' %>" data-availability-entity-key="<%= entity_key %>">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold">
+              <span class="sm:hidden">
+                <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                <%= show.date_and_time.strftime("%l:%M %p") %>
+              </span>
+              <span class="hidden sm:inline">
+                <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                <%= show.date_and_time.strftime("%l:%M %p") %>
+              </span>
             </div>
-            <% end %>
+            <div class="flex items-center gap-1 mt-1 flex-wrap">
+              <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
+              <% event_type_badge_classes = case show.event_type
+                when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                else "bg-pink-50 text-pink-700 ring-pink-600/10"
+              end %>
+              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                <%= show.event_type.titleize %>
+              </span>
+              <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                <%= show.location.name %>
+              </span>
+            </div>
           </div>
-        <% else %>
-          <p class="text-gray-500 text-sm">You're up to date on your show availabilities</p>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <% current_status = availability&.status || 'unset' %>
+            <div class="w-6 flex justify-center">
+              <span data-availability-target="success" class="hidden text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                  <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                </svg>
+              </span>
+            </div>
+            <div class="flex gap-0">
+            <%
+              [:available, :unavailable].each do |status|
+                classes = "w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
+
+                if status == :available
+                  classes += " rounded-l-lg border-r-0"
+                elsif status == :unavailable
+                  classes += " rounded-r-lg"
+                end
+
+                current_status = availability&.status || 'unset'
+                if current_status == status.to_s
+                  classes += " bg-pink-500 text-white"
+                else
+                  classes += " bg-white text-gray-700 hover:bg-gray-50"
+                end
+
+                desktop_content = status.to_s.humanize
+            %>
+              <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
+                <span class="sm:hidden">
+                  <% if status == :available %>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
+                  <% else %>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
+                  <% end %>
+                </span>
+                <span class="hidden sm:inline"><%= desktop_content %></span>
+              <% end %>
+            <% end %>
+            </div>
+          </div>
+          <% if @groups.any? %>
+            <div class="flex-shrink-0 ml-2">
+              <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+            </div>
+          <% end %>
+        </div>
+          <% end %>
         <% end %>
       </div>
+    <% else %>
+      <p class="text-gray-500 text-sm">You're up to date on your show availabilities</p>
+    <% end %>
 
-    <% elsif @filter == 'all' %>
-      <div class="mb-8">
-        <% if @all_shows.any? %>
-          <div class="space-y-1">
+  <% elsif @filter == 'all' %>
+    <% if @all_shows.any? %>
+      <div class="space-y-1">
             <% @all_shows.each do |show| %>
-            <div class="flex bg-white items-center justify-between p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
-              <div class="flex-1 min-w-0 mr-2">
-                <div class="text-sm font-semibold">
-                  <span class="sm:hidden">
-                    <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
-                    <%= show.date_and_time.strftime("%l:%M %p") %>
-                  </span>
-                  <span class="hidden sm:inline">
-                    <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
-                    <%= show.date_and_time.strftime("%l:%M %p") %>
-                  </span>
+              <% @show_entities[show.id]&.each do |entity_info| %>
+                <% entity_key = entity_info[:type] == "person" ? "person" : "group_#{entity_info[:entity].id}" %>
+                <% availability = @entity_data[entity_key][:availabilities][show.id] %>
+            <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= availability&.status || 'unset' %>" data-availability-entity-key="<%= entity_key %>">
+              <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold">
+                    <span class="sm:hidden">
+                      <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                      <%= show.date_and_time.strftime("%l:%M %p") %>
+                    </span>
+                    <span class="hidden sm:inline">
+                      <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                      <%= show.date_and_time.strftime("%l:%M %p") %>
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1 mt-1 flex-wrap">
+                    <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
+                    <% event_type_badge_classes = case show.event_type
+                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                    end %>
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                      <%= show.event_type.titleize %>
+                    </span>
+                    <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      <%= show.location.name %>
+                    </span>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1 mt-1 flex-wrap">
-                  <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
-                  <% event_type_badge_classes = case show.event_type
-                    when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                    when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                    else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                  end %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
-                    <%= show.event_type.titleize %>
-                  </span>
-                  <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-                    <%= show.location.name %>
-                  </span>
-                </div>
-              </div>
 
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <% current_status = @availabilities[show.id]&.status || 'unset' %>
-                <div class="w-6 flex justify-center">
-                  <span data-availability-target="success" class="hidden text-green-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                      <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <% current_status = availability&.status || 'unset' %>
+                  <div class="w-6 flex justify-center">
+                    <span data-availability-target="success" class="hidden text-green-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
                     </svg>
                   </span>
                 </div>
@@ -187,7 +192,7 @@
                       classes += " rounded-r-lg"
                     end
 
-                    current_status = @availabilities[show.id]&.status || 'unset'
+                    current_status = availability&.status || 'unset'
                     if current_status == status.to_s
                       classes += " bg-pink-500 text-white"
                     else
@@ -209,30 +214,141 @@
                 <% end %>
                 </div>
               </div>
+              <% if @groups.any? %>
+                <div class="flex-shrink-0 ml-2">
+                  <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                </div>
+              <% end %>
             </div>
             <% end %>
           </div>
+        <% end %>
         <% else %>
           <p class="text-gray-500 text-sm">You don't have any upcoming shows</p>
         <% end %>
-      </div>
 
-    <% elsif @filter == 'by_production' %>
-      <% @productions.each do |production| %>
+  <% elsif @filter == 'by_production' %>
+        <% if @productions.any? %>
+        <% @productions.each do |production| %>
+          <div class="mb-8">
+
+            <%= render partial: "shared/top_menu", locals: {
+              breadcrumbs: [],
+              text: production.name,
+              links: []
+            } %>
+
+            <% if @shows_by_production[production].any? %>
+              <div class="space-y-1">
+
+                <% @shows_by_production[production].each do |show| %>
+                  <% @show_entities[show.id]&.each do |entity_info| %>
+                    <% entity_key = entity_info[:type] == "person" ? "person" : "group_#{entity_info[:entity].id}" %>
+                    <% availability = @entity_data[entity_key][:availabilities][show.id] %>
+
+                  <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= availability&.status || 'unset' %>" data-availability-entity-key="<%= entity_key %>">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold">
+                          <span class="sm:hidden">
+                            <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                            <%= show.date_and_time.strftime("%l:%M %p") %>
+                          </span>
+                          <span class="hidden sm:inline">
+                            <%= show.date_and_time.strftime("%a, %b %-d, %Y") %> <span class="font-normal">at</span>
+                            <%= show.date_and_time.strftime("%l:%M %p") %>
+                          </span>
+                        </div>
+                        <div class="mt-0 flex items-center gap-1">
+                          <% event_type_badge_classes = case show.event_type
+                            when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                            when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                            else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                          end %>
+                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                            <%= show.event_type.titleize %>
+                          </span>
+                          <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                            <%= show.location.name %>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+                        <% current_status = availability&.status || 'unset' %>
+                        <div class="w-6 flex justify-center">
+                          <span data-availability-target="success" class="hidden text-green-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                              <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                          </span>
+                        </div>
+                        <div class="flex gap-0">
+                        <%
+                          [:available, :unavailable].each do |status|
+                            classes = "w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
+
+                            if status == :available
+                              classes += " rounded-l-lg border-r-0"
+                            elsif status == :unavailable
+                              classes += " rounded-r-lg"
+                            end
+
+                            current_status = availability&.status || 'unset'
+                            if current_status == status.to_s
+                              classes += " bg-pink-500 text-white"
+                            else
+                              classes += " bg-white text-gray-700 hover:bg-gray-50"
+                            end
+
+                            desktop_content = status.to_s.humanize
+                        %>
+                          <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
+                            <span class="sm:hidden">
+                              <% if status == :available %>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
+                              <% else %>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
+                              <% end %>
+                            </span>
+                            <span class="hidden sm:inline"><%= desktop_content %></span>
+                          <% end %>
+                        <% end %>
+                        </div>
+                      </div>
+                      <% if @groups.any? %>
+                        <div class="flex-shrink-0 ml-2">
+                          <%= image_tag entity_info[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                <% end %>
+
+              </div>
+            <% else %>
+              <p class="text-gray-500 text-sm"><%= production.name %> doesn't have any upcoming events</p>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+
+  <% elsif @filter == 'by_entity' %>
+      <% @entity_data.each do |entity_key, data| %>
         <div class="mb-8">
 
           <%= render partial: "shared/top_menu", locals: {
             breadcrumbs: [],
-            text: production.name,
+            text: data[:entity].is_a?(Person) ? data[:entity].name : data[:entity].name,
             links: []
           } %>
 
-          <% if @shows_by_production[production].any? %>
+          <% if data[:shows].any? %>
             <div class="space-y-1">
 
-              <% @shows_by_production[production].each do |show| %>
+              <% data[:shows].each do |show| %>
 
-                <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all " data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= @availabilities[show.id]&.status || 'unset' %>">
+                <div class="flex bg-white items-center justify-between gap-4 p-3 group border border-gray-200 rounded-lg hover:border-gray-400 transition-all" data-availability-show-id-value="<%= show.id %>" data-availability-status-value="<%= data[:availabilities][show.id]&.status || 'unset' %>" data-availability-entity-key="<%= entity_key %>">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-semibold">
                       <span class="sm:hidden">
@@ -244,7 +360,8 @@
                         <%= show.date_and_time.strftime("%l:%M %p") %>
                       </span>
                     </div>
-                    <div class="mt-0 flex items-center gap-1">
+                    <div class="flex items-center gap-1 mt-1 flex-wrap">
+                      <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
                       <% event_type_badge_classes = case show.event_type
                         when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
                         when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
@@ -261,13 +378,13 @@
                   </div>
 
                   <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
-                    <% current_status = @availabilities[show.id]&.status || 'unset' %>
+                    <% current_status = data[:availabilities][show.id]&.status || 'unset' %>
                     <div class="w-6 flex justify-center">
                       <span data-availability-target="success" class="hidden text-green-600">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                           <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                        </svg>
-                      </span>
+                      </svg>
+                    </span>
                     </div>
                     <div class="flex gap-0">
                     <%
@@ -280,7 +397,7 @@
                           classes += " rounded-r-lg"
                         end
 
-                        current_status = @availabilities[show.id]&.status || 'unset'
+                        current_status = data[:availabilities][show.id]&.status || 'unset'
                         if current_status == status.to_s
                           classes += " bg-pink-500 text-white"
                         else
@@ -302,18 +419,22 @@
                     <% end %>
                     </div>
                   </div>
-
+                  <% if @groups.any? %>
+                    <div class="flex-shrink-0 ml-2">
+                      <%= image_tag data[:entity].safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                    </div>
+                  <% end %>
                 </div>
-
               <% end %>
-
             </div>
           <% else %>
-            <p class="text-gray-500 text-sm"><%= production.name %> doesn't have any upcoming events</p>
+            <p class="text-gray-500 text-sm"><%= data[:entity].is_a?(Person) ? data[:entity].name : data[:entity].name %> doesn't have any upcoming shows</p>
           <% end %>
         </div>
       <% end %>
-    <% end %>
+
+  <% end %>
+
   <% else %>
     <p class="text-gray-500 text-sm">You aren't a cast member of any shows</p>
   <% end %>

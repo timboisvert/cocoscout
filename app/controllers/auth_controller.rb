@@ -66,6 +66,21 @@ class AuthController < ApplicationController
   end
 
   def signin
+    # If user is already authenticated, redirect them to their dashboard
+    if authenticated?
+      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+      user_preference = last_dashboard_prefs[Current.user.id.to_s]
+      default_path = case user_preference
+      when "manage"
+                       manage_path
+      else
+                       my_dashboard_path
+      end
+
+      redirect_to(session.delete(:return_to) || default_path) and return
+    end
+
     @user = User.new
 
     if session[:password_reset_instructions_sent] == true

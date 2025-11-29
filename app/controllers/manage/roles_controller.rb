@@ -28,11 +28,11 @@ class Manage::RolesController < Manage::ManageController
   end
 
   def update
-    @roles = @production.roles.order(:position, :created_at)
     if @role.update(role_params)
       redirect_to manage_production_roles_path(@production), notice: "Role was successfully updated", status: :see_other
     else
-      render :edit, status: :unprocessable_entity
+      @roles = @production.roles.order(:position, :created_at)
+      render :index, status: :unprocessable_entity
     end
   end
 

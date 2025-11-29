@@ -5,8 +5,8 @@ class BackfillPublicKeysForPeople < ActiveRecord::Migration[8.1]
     Person.find_each do |person|
       next if person.public_key.present?
 
-      # Generate key from name: "firstname-lastname" or "firstname-lastname-id"
-      base_key = person.name.parameterize
+      # Generate key from name: "firstnamelastname" or "firstnamelastname-2"
+      base_key = person.name.parameterize(separator: '')
       key = base_key
       counter = 2
 
