@@ -79,10 +79,8 @@
             <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: "e.g., Host, Comic 1", class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
           </div>
           <div class="flex justify-end gap-2">
-            <button type="button" data-action="role-modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-              Cancel
-            </button>
-            <%= form.submit @role.persisted? ? "Update Role" : "Add Role", data: { role_modal_target: "submitButton" }, class: "px-4 py-2 text-sm font-medium text-white bg-pink-500 rounded-md hover:bg-pink-600 cursor-pointer" %>
+            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "role-modal#close" } %>
+            <%= render "shared/button", text: (@role.persisted? ? "Update Role" : "Add Role"), variant: "primary", size: "small", type: :submit, data: { role_modal_target: "submitButton" } %>
           </div>
         <% end %>
       </div>

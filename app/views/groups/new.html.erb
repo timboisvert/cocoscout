@@ -142,8 +142,8 @@
         </div>
 
         <div class="flex gap-3 mt-8">
-          <%= f.submit "Create Group Profile", class: "flex-1 px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer transition-colors" %>
-          <%= link_to "Cancel", profile_path, class: "px-6 py-3 text-base font-medium text-gray-700 hover:text-gray-900 transition-colors" %>
+          <%= render "shared/button", text: "Create Group Profile", variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: profile_path, type: :button %>
         </div>
       </div>
     <% end %>

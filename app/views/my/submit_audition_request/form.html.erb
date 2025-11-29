@@ -350,19 +350,17 @@
         end
       end
     %>
-    <% if entity_profile_incomplete %>
-      <button type="button"
-              disabled
-              class="w-full rounded-lg px-4 py-3 text-white bg-gray-400 font-semibold cursor-not-allowed">
-        <%= submit_text %> (Complete profile first)
-      </button>
-    <% else %>
-      <%= form.submit submit_text, class: "w-full rounded-lg px-4 py-3 text-white bg-pink-500 hover:bg-pink-600 font-semibold cursor-pointer transition shadow-sm hover:shadow-md" %>
-    <% end %>
-        <% end %>
-      </div>
-
-    </div>
+  <% if entity_profile_incomplete %>
+    <button type="button"
+            disabled
+            class="w-full rounded-lg px-4 py-3 text-white bg-gray-400 font-semibold cursor-not-allowed">
+      <%= submit_text %> (Complete profile first)
+    </button>
+  <% else %>
+    <%= render "shared/button", text: submit_text, variant: "primary", size: "large", type: :submit, class: "w-full" %>
+  <% end %>
+      <% end %>
+    </div>    </div>
   </div>
 
   <!-- Coco Link -->

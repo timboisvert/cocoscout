@@ -202,9 +202,7 @@
       <% if @show.poster.attached? %>
         <div class="text-md mt-5 flex items-center">
           <span>Show/Event Poster</span>
-          <button type="button" class="remove-poster-btn ml-3 px-3 py-1 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded-md transition-colors" data-action="click->show-edit#removePoster">
-            Remove Poster
-          </button>
+          <%= render "shared/button", text: "Remove Poster", variant: "danger", size: "small", type: :button, data: { action: "click->show-edit#removePoster" }, class: "ml-3" %>
         </div>
         <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
             <div class="w-full">
@@ -275,14 +273,9 @@
 
 
 
-  <div class="w-full border-t border-gray-200 pt-5 my-5">
-    <%= form.submit "Update #{@show.event_type.titleize}",
-        data: {
-          show_edit_target: "submitButton",
-          recurring_edit_target: "submitButton"
-        },
-        class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 inline-block font-medium cursor-pointer" %>
-    <%= link_to "Back", 'javascript:history.back()', class: "sm:w-auto rounded-lg px-3.5 py-2.5 text-pink-500 bg-gray-200 hover:bg-pink-600 hover:text-white inline-block font-medium cursor-pointer" %>
+  <div class="border-t border-gray-200 pt-5 mt-5">
+    <%= render "shared/button", text: "Update #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, data: { show_edit_target: "submitButton", recurring_edit_target: "submitButton" } %>
+    <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
   </div>
 
 <% end %>
@@ -432,8 +425,8 @@
         </div>
 
         <div class="flex gap-2 pt-6">
-          <button type="submit" class="rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer">Add Location</button>
-          <button type="button" data-action="click->location-modal#closeModal" class="rounded-lg px-3.5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 inline-block font-medium">Cancel</button>
+          <%= render "shared/button", text: "Add Location", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->location-modal#closeModal" } %>
         </div>
       </form>
     </div>

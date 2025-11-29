@@ -1,6 +1,6 @@
 <% content_for :title, "Edit Questionnaire - #{@questionnaire.title}" %>
 
-<div class="w-full">
+<div class="w-full" data-controller="question-modal" data-create-path="<%= create_question_manage_production_questionnaire_path(@production, @questionnaire) %>" data-has-errors="<%= @question.errors.any? %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -49,8 +49,8 @@
             </div>
 
             <% unless @questionnaire.archived_at.present? %>
-              <div class="border-t border-gray-200 pt-4">
-                <%= form.submit "Save Settings", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium text-sm cursor-pointer" %>
+              <div class="border-t border-gray-200 pt-4 mt-4">
+                <%= render "shared/button", text: "Save Settings", variant: "primary", size: "medium", type: :submit %>
               </div>
             <% end %>
           </div>
@@ -152,7 +152,7 @@
 
           <% unless @questionnaire.archived_at.present? %>
             <div class="border-t border-gray-200 pt-4 mt-4">
-              <%= form.submit "Save Availability Settings", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium text-sm cursor-pointer" %>
+              <%= render "shared/button", text: "Save Availability Settings", variant: "primary", size: "medium", type: :submit %>
             </div>
           <% end %>
         </div>
@@ -170,9 +170,7 @@
       <div class="p-4">
         <p class="text-sm text-gray-500 mb-4">Add custom questions to your questionnaire.</p>
 
-        <div class="flex flex-col md:flex-row gap-4">
-          <!-- Left: Questions List -->
-          <div class="flex-1 space-y-2">
+        <div class="space-y-2">
             <% if @questions.any? %>
               <div class="space-y-2" data-controller="<%= @questionnaire.archived_at.present? ? '' : 'question-order' %>" data-question-order-url="<%= reorder_questions_manage_production_questionnaire_path(@production, @questionnaire) %>">
                 <% @questions.each do |question| %>
@@ -200,11 +198,16 @@
                         </p>
                         <% unless @questionnaire.archived_at.present? %>
                           <div class="flex gap-2 items-baseline">
-                            <%= link_to "Edit",
-                                form_manage_production_questionnaire_path(@production, @questionnaire, question_id: question.id),
-                                class: "text-xs underline text-pink-500 hover:text-pink-600",
-                                data: { turbo_frame: "_top" }
-                            %>
+                            <button
+                              type="button"
+                              data-action="question-modal#openForEdit"
+                              data-question-text="<%= question.text %>"
+                              data-question-type="<%= question.question_type %>"
+                              data-question-required="<%= question.required %>"
+                              data-update-path="<%= update_question_manage_production_questionnaire_path(@production, @questionnaire, question_id: question.id) %>"
+                              class="text-xs underline text-pink-500 hover:text-pink-600 cursor-pointer">
+                              Edit
+                            </button>
                             <%= button_to "Delete",
                                 destroy_question_manage_production_questionnaire_path(@production, @questionnaire, question_id: question.id),
                                 method: :delete,
@@ -219,66 +222,34 @@
                 <% end %>
               </div>
             <% else %>
-              <div class="p-4 text-sm border border-gray-200 bg-white rounded-lg text-left text-gray-500">
-                No questions yet. Add your first question using the form on the right.
-              </div>
-            <% end %>
-          </div>
-
-          <!-- Right: Question Form -->
-          <% unless @questionnaire.archived_at.present? %>
-            <div class="flex-1">
-              <div class="sticky top-4 border border-gray-200 rounded-lg overflow-hidden bg-white" id="question-form">
-                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= @question.persisted? ? "Edit Question" : "Add a Question" %></h3>
-                </div>
-
-                <%= form_with url: (@question.persisted? ? update_question_manage_production_questionnaire_path(@production, @questionnaire, question_id: @question.id) : create_question_manage_production_questionnaire_path(@production, @questionnaire)), model: @question, method: (@question.persisted? ? :patch : :post), class: "p-6" do |form| %>
-
-                  <div class="mb-4">
-                    <%= form.label :text, "Question Text", class: "text-sm font-medium" %>
-                    <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
-                  </div>
-
-                  <div data-controller="form-toggle">
-                    <div class="flex gap-2 mb-4">
-                      <div class="flex-1">
-                        <%= form.label :question_type, "Question Type", class: "text-sm font-medium" %>
-                        <%= form.select :question_type,
-                          QuestionTypes::Base.all_types.map { |type| [type.label, type.key] },
-                          {},
-                          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:question_type].none?, "border-pink-500": @question.errors[:question_type].any?}],
-                            data: { "form-toggle-target": "select", action: "change->form-toggle#toggle"}
-                          } %>
-                      </div>
-
-                      <div class="w-32">
-                        <%= form.label :required, "Required", class: "text-sm font-medium" %>
-                        <%= form.select :required,
-                          [["No", false], ["Yes", true]],
-                          {},
-                          { class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @question.errors[:required].none?, "border-pink-500": @question.errors[:required].any?}] } %>
-                      </div>
-                    </div>
-
-                    <div data-form-toggle-target="section" data-toggle-value="multiple,ranking" class="hidden mb-4">
-                      <%= render partial: "manage/audition_cycles/multiple_options", locals: { form: form } %>
-                    </div>
-                  </div>
-
-                  <div class="border-t border-gray-200 pt-4">
-                    <%= form.submit @question.persisted? ? "Update Question" : "Add Question", class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-medium cursor-pointer" %>
-                    <% if @question.persisted? %>
-                      <%= link_to "Cancel", form_manage_production_questionnaire_path(@production, @questionnaire), class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
-                    <% end %>
-                  </div>
+              <div class="p-4 text-sm border border-gray-200 bg-white rounded-lg text-center text-gray-500">
+                <% if @questionnaire.archived_at.present? %>
+                  No questions in this questionnaire.
+                <% else %>
+                  No questions yet. Click "Add Question" to create your first question.
                 <% end %>
               </div>
-            </div>
-          <% end %>
+            <% end %>
+
+            <% unless @questionnaire.archived_at.present? %>
+              <div class="mt-4">
+                <%= render "shared/button",
+                  text: "Add Question",
+                  variant: "primary",
+                  size: "medium",
+                  type: :button,
+                  icon: "plus",
+                  data: { action: "question-modal#openForNew" } %>
+              </div>
+            <% end %>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Question Modal -->
+  <% unless @questionnaire.archived_at.present? %>
+    <%= render "shared/question_modal" %>
+  <% end %>
 
 </div>

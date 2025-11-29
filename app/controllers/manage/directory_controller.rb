@@ -145,15 +145,6 @@ class Manage::DirectoryController < Manage::ManageController
     redirect_to manage_directory_path, notice: "Email sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
   end
 
-  def show
-    # Redirect to the actual person or group pages
-    if params[:type] == "person"
-      redirect_to manage_person_path(params[:id]), status: :moved_permanently
-    else
-      redirect_to manage_group_path(params[:id]), status: :moved_permanently
-    end
-  end
-
   def update_group_availability
     @group = Group.find(params[:id])
     updated_count = 0

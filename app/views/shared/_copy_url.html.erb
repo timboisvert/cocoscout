@@ -1,0 +1,52 @@
+<%
+  # Required parameters:
+  # - url: The URL to display and copy
+  #
+  # Optional parameters:
+  # - label: Label text above the URL (default: nil)
+  # - help_text: Help text below the URL box (default: nil)
+  # - copy_button_text: Text for the copy button (default: "Copy")
+%>
+
+<%
+  label ||= nil
+  help_text ||= nil
+  copy_button_text ||= "Copy"
+%>
+
+<div data-controller="copy-url">
+  <% if label %>
+    <label class="block text-sm font-medium text-gray-700 mb-2"><%= label %></label>
+  <% end %>
+
+  <div class="flex items-center gap-2 pl-3 pr-1 py-1.5 bg-gray-50 rounded border border-gray-200">
+    <div class="flex-1 overflow-hidden">
+      <div class="text-sm font-mono text-gray-700 truncate">
+        <%= url %>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <%= render "shared/button",
+        text: "Visit",
+        variant: "outline-pink",
+        size: "small",
+        type: :button,
+        icon: "eye",
+        path: url,
+        target: "_blank" %>
+      <div data-copy-url-target="button" data-url="<%= url %>">
+        <%= render "shared/button",
+          text: copy_button_text,
+          variant: "outline-pink",
+          size: "small",
+          type: :button,
+          icon: "clipboard",
+          data: { action: "click->copy-url#copy" } %>
+      </div>
+    </div>
+  </div>
+
+  <% if help_text %>
+    <p class="mt-2 text-xs text-gray-600"><%= help_text %></p>
+  <% end %>
+</div>

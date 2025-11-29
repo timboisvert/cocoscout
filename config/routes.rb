@@ -93,12 +93,7 @@ Rails.application.routes.draw do
     # Directory - unified people and groups listing
     get  "/directory",          to: "directory#index",        as: "directory"
     post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
-    get  "/directory/:type/:id", to: "directory#show", as: "directory_entry", constraints: { type: /person|group/ }
     patch "/directory/group/:id/update_availability", to: "directory#update_group_availability", as: "update_group_availability"
-
-    # Keep these for backwards compatibility
-    get  "/directory/person/:id", to: "directory#show", defaults: { type: "person" }, as: "directory_person"
-    get  "/directory/group/:id",  to: "directory#show", defaults: { type: "group" }, as: "directory_group"
 
     resources :organizations do
       collection do
@@ -134,7 +129,7 @@ Rails.application.routes.draw do
     get  "person_invitations/accept/:token",  to: "person_invitations#accept",    as: "accept_person_invitations"
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
 
-    resources :people do
+    resources :people, except: [] do
       collection do
         get :search
         post :batch_invite
@@ -146,6 +141,15 @@ Rails.application.routes.draw do
         post :remove_from_organization
         get :contact
         post :send_contact_email
+        patch :update_availability
+      end
+    end
+
+    resources :groups, only: %i[show destroy] do
+      member do
+        post :add_to_cast
+        post :remove_from_cast
+        post :remove_from_organization
         patch :update_availability
       end
     end

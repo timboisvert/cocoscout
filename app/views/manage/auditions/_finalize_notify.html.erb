@@ -57,13 +57,13 @@
                 <p class="text-sm text-green-800 mb-3">
                   Notification emails have been sent to <%= notified_count %> <%= 'auditionee'.pluralize(notified_count) %>. To make changes and send additional notifications, click the button below.
                 </p>
-                <button
-                  type="button"
-                  data-action="click->show-toggle#toggle"
-                  class="font-medium rounded-lg text-sm px-4 py-2 text-center text-white bg-green-600 hover:bg-green-700 transition cursor-pointer"
-                >
-                  Edit Invitations & Send More Notifications
-                </button>
+                <%= render "shared/button",
+                  text: "Edit Invitations & Send More Notifications",
+                  variant: "primary",
+                  size: "medium",
+                  type: :button,
+                  data: { action: "click->show-toggle#toggle" },
+                  style: "background-color: rgb(22 163 74); --tw-bg-opacity: 1;" %>
               </div>
             </div>
           </div>

@@ -1,8 +1,8 @@
-<div class="my-2 sm:my-5">
-    <p>Options</p>
+<div class="mb-4">
+    <label class="block text-sm font-medium text-gray-700 mb-3">Options</label>
 
     <div data-controller="nested-form">
-        <div data-nested-form-target="children">
+        <div data-nested-form-target="children" class="space-y-2">
         <%= form.fields_for :question_options do |option_form| %>
             <%= render "question_option_fields", form: option_form %>
         <% end %>
@@ -14,24 +14,15 @@
         <% end %>
         </template>
 
-        <button type="button" data-action="nested-form#add" class="class=
-        text-white
-        bg-pink-500
-        hover:bg-pink-600
-        font-medium
-        rounded-lg
-        text-sm
-        px-5
-        mt-2
-        h-10
-        py-2.5
-        text-center
-        mb-0
-        inline-block
-        cursor-pointer"
-        >
-            Add an option
-        </button>
+        <div class="mt-3">
+            <%= render "shared/button",
+                text: "Add an option",
+                variant: "outline",
+                size: "small",
+                type: :button,
+                icon: "plus",
+                data: { action: "nested-form#add" } %>
+        </div>
     </div>
 
 </div>

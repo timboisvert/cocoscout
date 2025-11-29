@@ -102,15 +102,4 @@ export default class extends Controller {
     stopPropagation(event) {
         event.stopPropagation()
     }
-
-    copyUrl(event) {
-        event.preventDefault()
-        const url = event.currentTarget.dataset.url
-        navigator.clipboard.writeText(url)
-        const textSpan = event.currentTarget.querySelector('.copy-text')
-        if (textSpan) {
-            textSpan.textContent = 'Copied!'
-            setTimeout(() => textSpan.textContent = 'Copy', 2000)
-        }
-    }
 }

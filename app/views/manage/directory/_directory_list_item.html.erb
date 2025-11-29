@@ -12,7 +12,7 @@
          data-directory-selection-target="checkbox"
          data-action="change->directory-selection#toggleCheckbox click->directory-selection#preventNavigation">
 
-  <%= link_to (entry.is_a?(Person) ? manage_directory_person_path(entry) : manage_directory_group_path(entry)),
+  <%= link_to (entry.is_a?(Person) ? manage_person_path(entry) : manage_group_path(entry)),
           data: { turbo_frame: "_top", directory_selection_target: "link" },
           class: "flex items-center gap-1.5 flex-1 min-w-0" do %>
     <%# Headshot %>

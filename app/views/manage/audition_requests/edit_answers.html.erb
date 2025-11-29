@@ -31,9 +31,9 @@
       <% end %>
     <% end %>
 
-    <div class="inline">
-      <%= form.submit 'Update Answers', class: "w-full sm:w-auto rounded-lg px-3.5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to 'Back', 'javascript:history.back()', class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-lg px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+    <div class="border-t border-gray-200 pt-5 mt-5">
+      <%= render "shared/button", text: "Update Answers", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
     </div>
   <% end %>
 

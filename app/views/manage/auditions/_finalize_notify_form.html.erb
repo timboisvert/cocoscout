@@ -291,14 +291,12 @@ The <%= @production.name %> Team<% end %></textarea>
 
                 <% if group_people.empty? %>
                   <div class="mt-4 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      data-action="click->email-groups#deleteGroup"
-                      data-group-id="<%= custom_group.id %>"
-                      class="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
-                    >
-                      Delete this empty email group
-                    </button>
+                    <%= render "shared/button",
+                      text: "Delete this empty email group",
+                      variant: "danger",
+                      size: "small",
+                      type: :button,
+                      data: { action: "click->email-groups#deleteGroup", group_id: custom_group.id } %>
                   </div>
                 <% else %>
                   <div class="mt-4 pt-4 border-t border-gray-200">
@@ -327,13 +325,12 @@ The <%= @production.name %> Team<% end %></textarea>
             <p class="text-sm text-gray-700 mb-4">
               All email groups have been reviewed. Click the button below to finalize cast changes and send notification emails to all auditionees.
             </p>
-            <button
-              type="button"
-              data-action="click->email-groups#sendNotifications"
-              class="font-medium rounded-lg text-sm px-5 py-2.5 text-center text-white bg-pink-500 hover:bg-pink-600 inline-block cursor-pointer transition"
-            >
-              Finalize Cast Changes & Send Notifications
-            </button>
+            <%= render "shared/button",
+              text: "Finalize Cast Changes & Send Notifications",
+              variant: "primary",
+              size: "medium",
+              type: :button,
+              data: { action: "click->email-groups#sendNotifications" } %>
           </div>
         </div>
       <% end %>

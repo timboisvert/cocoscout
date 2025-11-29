@@ -1,5 +1,5 @@
 class Manage::PeopleController < Manage::ManageController
-  before_action :set_person, only: %i[ show edit update destroy update_availability ]
+  before_action :set_person, only: %i[ show update destroy update_availability ]
   before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization]
 
   def show
@@ -21,9 +21,6 @@ class Manage::PeopleController < Manage::ManageController
 
   def new
     @person = Person.new
-  end
-
-  def edit
   end
 
   def create

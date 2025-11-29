@@ -1,26 +1,12 @@
 <div class="nested-fields" data-nested-form-target="target">
-    <div class="w-full mt-2">
-        <div class="flex items-center gap-2">
-            <%= form.text_field :text, class: ["block shadow-sm rounded-lg border px-3 py-2 flex-1", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
-            <%= form.hidden_field :_destroy %>
-            <button type="button" data-action="nested-form#remove" class="
-                text-white
-                bg-pink-500
-                hover:bg-pink-600
-                font-medium
-                rounded-lg
-                text-sm
-                px-3
-                h-10
-                py-2.5
-                text-center
-                mb-0
-                inline-block
-                cursor-pointer
-                whitespace-nowrap"
-            >
-                Remove
-            </button>
-        </div>
+    <div class="flex items-center gap-2">
+        <%= form.text_field :text, placeholder: "Option text", class: ["block shadow-sm rounded-lg border px-3 py-2 flex-1", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
+        <%= form.hidden_field :_destroy %>
+        <%= render "shared/button",
+            text: "Remove",
+            variant: "danger",
+            size: "small",
+            type: :button,
+            data: { action: "nested-form#remove" } %>
     </div>
 </div>

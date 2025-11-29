@@ -107,9 +107,7 @@
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-900">Members</h3>
         <% if @membership&.owner? || @membership&.write? %>
-          <button type="button" data-action="click->group-members#openInviteModal" class="px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-md">
-            Invite Member
-          </button>
+          <%= render "shared/button", text: "Invite Member", variant: "primary", size: "small", type: :button, data: { action: "click->group-members#openInviteModal" } %>
         <% end %>
       </div>
 

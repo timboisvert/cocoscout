@@ -31,18 +31,14 @@
           <h3 class="font-semibold text-gray-900 mb-2">Accepted Candidates</h3>
           <p class="text-2xl font-bold text-pink-500 mb-2"><%= audition_cycle.counts[:accepted] %></p>
           <p class="text-sm text-gray-600 mb-3">Ready to send callback notifications</p>
-          <button class="inline-block font-medium text-sm px-3 py-1 bg-pink-100 text-pink-500 rounded hover:bg-pink-200" disabled>
-            Send Callbacks (Coming Soon)
-          </button>
+          <%= render "shared/button", text: "Send Callbacks (Coming Soon)", variant: "primary", size: "small", type: :button, disabled: true %>
         </div>
 
         <div class="p-4 bg-gray-50 rounded-lg">
           <h3 class="font-semibold text-gray-900 mb-2">Declined Candidates</h3>
           <p class="text-2xl font-bold text-gray-400 mb-2"><%= audition_cycle.counts[:passed] %></p>
           <p class="text-sm text-gray-600 mb-3">Ready to send thank you/rejection messages</p>
-          <button class="inline-block font-medium text-sm px-3 py-1 bg-gray-200 text-gray-500 rounded hover:bg-gray-300" disabled>
-            Send Messages (Coming Soon)
-          </button>
+          <%= render "shared/button", text: "Send Messages (Coming Soon)", variant: "primary", size: "small", type: :button, disabled: true %>
         </div>
       </div>
       </div>
@@ -59,9 +55,7 @@
         <p class="text-gray-700 mb-3">
           <span class="font-semibold"><%= audition_cycle.counts[:accepted] %></span> candidates are ready to be added to your cast.
         </p>
-        <button class="inline-block font-medium text-sm px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600" disabled>
-          Add Selected to Cast (Coming Soon)
-        </button>
+        <%= render "shared/button", text: "Add Selected to Cast (Coming Soon)", variant: "primary", size: "small", type: :button, disabled: true %>
       </div>
       </div>
     </div>
