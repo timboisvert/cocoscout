@@ -16,10 +16,10 @@ class Manage::AuditionCyclesController < Manage::ManageController
     @accepted_requests = @audition_requests.where(status: :accepted)
 
     # Get people added to casts during this audition cycle via cast_assignment_stages
-    @cast_people = Person.joins(:cast_assignment_stages)
-                         .where(cast_assignment_stages: { audition_cycle_id: @audition_cycle.id })
-                         .distinct
-                         .order(:name)
+    person_ids = CastAssignmentStage.where(audition_cycle_id: @audition_cycle.id, assignable_type: "Person")
+                                    .pluck(:assignable_id)
+                                    .uniq
+    @cast_people = Person.where(id: person_ids).order(:name)
   end
 
   def create
