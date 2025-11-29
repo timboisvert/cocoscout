@@ -409,7 +409,11 @@ class Manage::ShowsController < Manage::ManageController
 
   private
     def set_production
-      @production = Current.organization.productions.find(params[:production_id])
+      if Current.organization
+        @production = Current.organization.productions.find(params[:production_id])
+      else
+        redirect_to select_organization_path, alert: "Please select an organization first."
+      end
     end
 
     def set_show

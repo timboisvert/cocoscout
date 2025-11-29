@@ -47,7 +47,7 @@
 
       <% end %>
 
-      <%= render "shared/nav_link", text: "Directory", path: manage_directory_path, active: controller_name == "directory" %>
+      <%= render "shared/nav_link", text: "Directory", path: manage_directory_path, active: ["directory", "people", "groups"].include?(controller_name) %>
       <%= render "shared/nav_link", text: "Production Team", path: manage_team_index_path, active: controller_name == "team" %>
       <%= render "shared/nav_link", text: "Locations", path: manage_locations_path, active: controller_name == "locations" %>
     </div>
