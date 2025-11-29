@@ -47,7 +47,7 @@ class DashboardService
         cast_percentage = if @production.roles.count > 0
           ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
         else
-          0
+          100  # If there are no roles, consider it 100% cast
         end
 
         {
