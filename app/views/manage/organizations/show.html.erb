@@ -20,7 +20,7 @@
       <div class="flex items-center justify-between">
         <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 coustard-regular"><%= @organization.name %></h2>
         <% if @is_owner || @role == "manager" %>
-          <%= link_to "Edit", edit_manage_organization_path(@organization), class: "px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg transition-colors" %>
+          <%= render "shared/button", text: "Edit", variant: "primary", size: "medium", path: edit_manage_organization_path(@organization) %>
         <% end %>
       </div>
     </div>
@@ -113,11 +113,11 @@
               These actions are permanent and cannot be undone.
             </p>
 
-            <%= button_to "Delete Organization",
-                manage_organization_path(@organization),
+            <%= button_to manage_organization_path(@organization),
                 method: :delete,
-                data: { turbo_confirm: "Are you sure you want to delete #{@organization.name}? This will permanently delete all productions, shows, and data. This action cannot be undone." },
-                class: "px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition-colors" %>
+                data: { turbo_confirm: "Are you sure you want to delete #{@organization.name}? This will permanently delete all productions, shows, and data. This action cannot be undone." } do %>
+              <%= render "shared/button", text: "Delete Organization", variant: "danger", size: "medium", type: :submit %>
+            <% end %>
           </div>
         <% end %>
 
@@ -171,9 +171,13 @@
                   { prompt: "Select new owner..." },
                   { class: "block w-full rounded-lg border-gray-300 text-sm mb-3" } %>
 
-              <%= f.submit "Transfer Ownership",
-                  class: "w-full px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg cursor-pointer transition-colors",
-                  data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
+              <%= render "shared/button",
+                         text: "Transfer Ownership",
+                         variant: "primary",
+                         size: "medium",
+                         type: :submit,
+                         classes: "w-full",
+                         data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
             <% end %>
           </div>
         <% end %>

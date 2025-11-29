@@ -86,11 +86,8 @@
           Email will be sent to all cast members
         </p>
         <div class="flex items-center gap-3">
-          <%= link_to "Cancel", manage_production_show_cast_path(@production, @show),
-            class: "rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium transition-colors" %>
-          <%= form.submit "Send Email",
-            class: "rounded-lg px-5 py-2.5 text-sm text-white bg-pink-500 hover:bg-pink-600 font-medium cursor-pointer transition-colors shadow-sm #{'opacity-50 cursor-not-allowed' if @cast_members.empty?}",
-            disabled: @cast_members.empty? %>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_production_show_cast_path(@production, @show) %>
+          <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit, disabled: @cast_members.empty? %>
         </div>
       </div>
 

@@ -329,13 +329,8 @@
           </div>
 
           <div class="flex items-center justify-end gap-3 pt-2">
-            <button type="button"
-                    data-action="click->directory-selection#closeContactModal"
-                    class="rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium transition-colors cursor-pointer">
-              Cancel
-            </button>
-            <%= form.submit "Send Email",
-              class: "rounded-lg px-5 py-2.5 text-sm text-white bg-pink-500 hover:bg-pink-600 font-medium cursor-pointer transition-colors shadow-sm" %>
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->directory-selection#closeContactModal" } %>
+            <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>

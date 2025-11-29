@@ -1,0 +1,45 @@
+<%
+  # Shared navigation link component
+  #
+  # Usage:
+  #   render "shared/nav_link", text: "My Shows", path: my_shows_path, active: true
+  #   render "shared/nav_link", text: "Basic Info", href: "#basic-info", style: "anchor"
+  #
+  # Parameters:
+  #   text (required): Link text
+  #   path: Rails path for link_to (mutually exclusive with href)
+  #   href: Direct href for <a> tag (mutually exclusive with path)
+  #   active: Boolean, whether this link is currently active (for path links)
+  #   style: "link" (default, for route links) or "anchor" (for hash/fragment links)
+
+  text = local_assigns[:text] || ""
+  path = local_assigns[:path]
+  href = local_assigns[:href]
+  active = local_assigns[:active] || false
+  style = local_assigns[:style] || (href.present? ? "anchor" : "link")
+
+  # Base classes
+  base_classes = "coustard-regular flex items-center px-4 py-2 transition-all font-medium"
+
+  # Style-specific classes
+  if style == "anchor"
+    # Fragment/anchor links (profile sections)
+    anchor_state_classes = active ? "bg-gray-200 text-pink-600" : "bg-transparent text-black"
+    classes = "#{base_classes} justify-between #{anchor_state_classes} hover:bg-pink-500 hover:text-white"
+  else
+    # Route links with active state
+    state_classes = active ? "bg-gray-200 text-pink-600" : "bg-transparent text-black"
+    classes = "#{base_classes} gap-3 #{state_classes} hover:bg-pink-500 hover:text-white"
+  end
+%>
+
+<% if path.present? %>
+  <%= link_to text, path, class: classes %>
+<% elsif href.present? %>
+  <a href="<%= href %>"
+     class="<%= classes %>"
+     data-profile-nav-target="link"
+     data-action="click->profile-nav#scrollTo">
+    <span><%= text %></span>
+  </a>
+<% end %>

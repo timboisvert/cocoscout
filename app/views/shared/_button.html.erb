@@ -25,6 +25,8 @@
   #
   # Variant Options:
   #   "primary" - Pink filled button (bg-pink-500 hover:bg-pink-600)
+  #   "secondary" - Gray bordered button (border-gray-300 hover:bg-gray-50)
+  #   "danger" - Red filled button (bg-red-600 hover:bg-red-700)
   #   "outline" - White with gray border (border-gray-300 hover:border-pink-500)
   #   "outline-pink" - White with pink border (border-pink-200 hover:border-pink-300)
   #   "ghost" - Text only, no border (text-gray-700 hover:bg-gray-100)
@@ -42,6 +44,7 @@
   rel = local_assigns[:rel]
   onclick = local_assigns[:onclick]
   style = local_assigns[:style]
+  disabled = local_assigns[:disabled] || false
 
   # Base classes for all buttons
   base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap"
@@ -50,6 +53,10 @@
   variant_classes = case variant
     when "primary"
       "bg-pink-500 hover:bg-pink-600 text-white"
+    when "secondary"
+      "bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
+    when "danger"
+      "bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
     when "outline"
       "bg-white border-2 border-gray-300 hover:border-pink-500 hover:bg-pink-50 text-gray-700 hover:text-pink-600 transition-all"
     when "outline-pink"
@@ -119,12 +126,12 @@
     <span><%= text %></span>
   <% end %>
 <% elsif type == :submit %>
-  <button type="submit" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
+  <button type="submit" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
     <span><%= text %></span>
   </button>
 <% else %>
-  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %>>
+  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
     <span><%= text %></span>
   </button>
