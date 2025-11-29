@@ -4,6 +4,7 @@
 # Parameters:
 #   toggle_label: String - Label for mobile toggle button (default: "Filters & View Options")
 #   wrapper_data_controller: String (optional) - Additional data-controller to add to the filter bar wrapper
+#   bare: Boolean (optional) - If true, removes container styling (no border, padding, or margin)
 #   filter_groups: Array of hashes - Each hash defines a filter group:
 #     {
 #       label: String - Label for the filter group (e.g., "View", "Events")
@@ -45,25 +46,35 @@
 toggle_label ||= "Filters & View Options"
 wrapper_data_controller ||= nil
 text_size ||= "sm"
+bare ||= false
 
 # Build data-controller attribute
-data_controller_attr = ["show-toggle"]
-data_controller_attr << wrapper_data_controller if wrapper_data_controller
-data_controller_value = data_controller_attr.join(" ")
+if bare
+  data_controller_value = wrapper_data_controller || nil
+else
+  data_controller_attr = ["show-toggle"]
+  data_controller_attr << wrapper_data_controller if wrapper_data_controller
+  data_controller_value = data_controller_attr.join(" ")
+end
+
+# Container classes based on bare parameter
+container_classes = bare ? "" : "bg-white rounded border border-gray-200 p-3 mb-3"
 %>
 
-<div data-controller="<%= data_controller_value %>" class="mb-4">
+<div <%= "data-controller=\"#{data_controller_value}\"".html_safe if data_controller_value %> class="<%= bare ? '' : 'mb-4' %>">
   <!-- Mobile filter button -->
-  <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded-md border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
-    <span class="text-sm font-medium"><%= toggle_label %></span>
-    <span data-show-toggle-target="icon">
-      <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    </span>
-  </button>
+  <% unless bare %>
+    <button type="button" data-action="click->show-toggle#toggle" class="lg:hidden w-full flex items-center justify-between px-4 py-2 mb-3 rounded border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
+      <span class="text-sm font-medium"><%= toggle_label %></span>
+      <span data-show-toggle-target="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </span>
+    </button>
+  <% end %>
 
-  <div data-show-toggle-target="content" class="hidden lg:block">
+  <div <%= 'data-show-toggle-target="content"'.html_safe unless bare %> class="<%= bare ? '' : 'hidden lg:block' %>">
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg border border-gray-200 p-3 mb-3">
+    <div class="<%= container_classes %>">
       <div class="flex flex-wrap gap-4 items-center">
         <% filter_groups.each do |group| %>
           <% if group.is_a?(Hash) && group[:separator] %>

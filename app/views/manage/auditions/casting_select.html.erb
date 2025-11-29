@@ -90,7 +90,7 @@
 
         <% if @talent_pools.any? %>
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), color: "pink" } %>
+            <%= render partial: "shared/button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
           </div>
         <% end %>
       </div>      <!-- Right side: Auditionees (fixed width, sticky) -->

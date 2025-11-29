@@ -83,7 +83,7 @@
 
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: { text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle) } %>
+          <%= render partial: "shared/button", locals: { text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "primary" } %>
         <% end %>
         </div>
       </div>

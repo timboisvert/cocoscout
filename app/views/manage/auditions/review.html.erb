@@ -62,7 +62,7 @@
         <%
           button_text = @audition_cycle.audition_type == "video_upload" ? "View all Video Auditions" : "View all Sign-ups"
         %>
-        <%= render partial: "shared/link_button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :all)} %>
+        <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :all), variant: "primary"} %>
       </div>
     </div>
 
@@ -125,11 +125,11 @@
           </div>
 
           <div class="mt-4">
-            <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle)} %>
+            <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary"} %>
           </div>
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/link_button", locals: {text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle)} %>
+          <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "primary"} %>
         <% end %>
       </div>
     </div>

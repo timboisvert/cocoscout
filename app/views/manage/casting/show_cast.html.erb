@@ -65,35 +65,35 @@
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
         </div>
-        <div class="p-4 space-y-1 border-b border-gray-200" data-controller="cast-filter">
+        <div class="p-4 border-b border-gray-200" data-controller="cast-filter">
           <!-- Availability Filter -->
-          <%= render "shared/filters/filter_bar", filter_groups: [
-            [
-              {
-                text: "Available",
-                path: "#",
-                active: true,
-                data_attributes: {
-                  action: "cast-filter#filterByAvailability",
-                  value: "available"
+          <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+            {
+              filters: [
+                {
+                  text: "Available",
+                  path: "#",
+                  active: true,
+                  data: {
+                    action: "cast-filter#filterByAvailability",
+                    value: "available"
+                  }
                 },
-                title: "Show only available people"
-              },
-              {
-                text: "All Talent Pool Members",
-                path: "#",
-                active: false,
-                data_attributes: {
-                  action: "cast-filter#filterByAvailability",
-                  value: "all"
-                },
-                title: "Show all talent pool members"
-              }
-            ]
+                {
+                  text: "All Talent Pool Members",
+                  path: "#",
+                  active: false,
+                  data: {
+                    action: "cast-filter#filterByAvailability",
+                    value: "all"
+                  }
+                }
+              ]
+            }
           ] %>
 
           <!-- View Availability Matrix link (shown when Available filter is active) -->
-          <div id="availability-matrix-link" class="">
+          <div id="availability-matrix-link" class="mt-1">
             <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
           </div>
         </div>

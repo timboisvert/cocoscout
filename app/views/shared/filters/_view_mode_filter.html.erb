@@ -24,7 +24,7 @@ label ||= "View"
 path_params = local_assigns.except(:path_helper, :current_mode, :label)
 %>
 
-<div class="ml-auto flex items-center gap-2">
+<div class="flex items-center gap-2">
   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
   <div class="flex gap-1">
     <%= link_to path_helper.call(**path_params, show: "tiles"),

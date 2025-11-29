@@ -130,7 +130,7 @@
         </div>
 
         <% if current_user_can_manage?(@production) %>
-          <%= render partial: "shared/link_button", locals: {text: "Edit Settings", path: edit_manage_production_audition_cycle_path(@production, @active_audition_cycle)} %>
+          <%= render partial: "shared/button", locals: {text: "Edit Settings", path: edit_manage_production_audition_cycle_path(@production, @active_audition_cycle), variant: "primary"} %>
         <% end %>
       </div>
     </div>
@@ -311,7 +311,7 @@
     </div>
 
     <% if current_user_can_manage?(@production) %>
-      <%= render partial: "shared/link_button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production)} %>
+      <%= render partial: "shared/button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production), variant: "primary"} %>
     <% end %>
   <% end %>
 
