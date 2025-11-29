@@ -155,10 +155,12 @@ class Person < ApplicationRecord
 
   # Override headshot to return the primary headshot's image when profile_headshots exist
   def headshot
-    if profile_headshots.any?
-      primary_headshot&.image
+    primary = primary_headshot
+    if primary&.image&.attached?
+      primary.image
     else
-      super
+      # Call the original has_one_attached method
+      super()
     end
   end
 
