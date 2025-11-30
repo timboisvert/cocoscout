@@ -57,9 +57,11 @@ class Manage::PersonInvitationsController < Manage::ManageController
       end
     end
 
-    # Ensure the person is in the organization
-    unless person.organizations.include?(@person_invitation.organization)
-      person.organizations << @person_invitation.organization
+    # Ensure the person is in the organization (if invitation has one)
+    if @person_invitation.organization
+      unless person.organizations.include?(@person_invitation.organization)
+        person.organizations << @person_invitation.organization
+      end
     end
 
     # Mark the invitation as accepted
@@ -68,15 +70,21 @@ class Manage::PersonInvitationsController < Manage::ManageController
     # Sign the user in
     start_new_session_for user
 
-    # Set the current production company in session
-    user_id = user&.id
-    if user_id
-      session[:current_organization_id] ||= {}
-      session[:current_organization_id]["#{user_id}"] = @person_invitation.organization.id
+    # Set the current production company in session (if invitation has one)
+    if @person_invitation.organization
+      user_id = user&.id
+      if user_id
+        session[:current_organization_id] ||= {}
+        session[:current_organization_id]["#{user_id}"] = @person_invitation.organization.id
+      end
     end
 
-    # And redirect to the directory
-    redirect_to manage_people_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
+    # And redirect appropriately
+    if @person_invitation.organization
+      redirect_to manage_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
+    else
+      redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your account is ready.", status: :see_other
+    end
   end
 
   private

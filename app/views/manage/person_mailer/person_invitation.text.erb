@@ -1,4 +1,8 @@
 Welcome to CocoScout
+<% if @organization %>
 <%= @organization.name %> is using CocoScout to manage its productions, auditions, and casting.
+<% else %>
+You've been invited to join CocoScout, the platform for managing productions, auditions, and casting.
+<% end %>
 To get started, please click the link below to set a password:
 <%= link_to "Set your password", manage_accept_person_invitations_url(token: @token), target: "_blank", class: "text-pink-500" %>

@@ -1,5 +1,5 @@
 class PersonInvitation < ApplicationRecord
-  belongs_to :organization
+  belongs_to :organization, optional: true
 
   validates :email, presence: true
   validates :token, presence: true, uniqueness: true

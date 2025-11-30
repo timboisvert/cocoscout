@@ -5,7 +5,12 @@ class Manage::PersonMailer < ApplicationMailer
     @organization = person_invitation.organization
     @custom_message = message
 
-    subject ||= "You've been invited to join #{@organization.name} on CocoScout"
+    subject ||= if @organization
+      "You've been invited to join #{@organization.name} on CocoScout"
+    else
+      "You've been invited to join CocoScout"
+    end
+
     mail(to: @person_invitation.email, subject: subject)
   end
 

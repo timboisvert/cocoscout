@@ -19,6 +19,7 @@ class Manage::ManageController < ActionController::Base
     if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank?
       @show_manage_sidebar = false
       @has_organization = Current.user.organizations.any?
+      @has_production = @has_organization && Current.organization&.productions&.any?
       @current_org = Current.organization
       @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
       render "welcome" and return
@@ -45,6 +46,7 @@ class Manage::ManageController < ActionController::Base
   def welcome
     @show_manage_sidebar = false
     @has_organization = Current.user.organizations.any?
+    @has_production = @has_organization && Current.organization&.productions&.any?
     @current_org = Current.organization
     @user_orgs = Current.user.organizations.includes(:organization_roles).order(:name)
     render "welcome"
@@ -58,7 +60,13 @@ class Manage::ManageController < ActionController::Base
     end
 
     Current.user.update(welcomed_production_at: Time.current)
-    redirect_to manage_path
+
+    # Redirect to shows page if we have a production, otherwise to manage path
+    if Current.production.present?
+      redirect_to manage_production_shows_path(Current.production)
+    else
+      redirect_to manage_path
+    end
   end
 
   def ensure_user_is_manager

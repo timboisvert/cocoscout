@@ -5,7 +5,11 @@
   </p>
 <% else %>
   <h1>Welcome to CocoScout</h1>
-  <p><%= @organization.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
+  <% if @organization %>
+    <p><%= @organization.name %> is using CocoScout to manage its productions, auditions, and casting.</p>
+  <% else %>
+    <p>You've been invited to join CocoScout, the platform for managing productions, auditions, and casting.</p>
+  <% end %>
   <p>To get started, please click the link below to set a password:</p>
   <p><%= link_to "Set your password", manage_accept_person_invitations_url(token: @token), target: "_blank", style: "display: inline-block; padding: 10px 20px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;" %></p>
 <% end %>

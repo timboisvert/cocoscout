@@ -14,6 +14,8 @@
     validates :password, length: { minimum: 8, message: "must be at least 8 characters" }, if: -> { password.present? }
     validate :email_not_malicious
 
+    GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
+
     def email_not_malicious
       return if email_address.blank?
       # Reject emails with special characters commonly used in injection attacks
@@ -25,8 +27,6 @@
         errors.add(:email_address, "is not valid")
       end
     end
-
-    GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
     def can_manage?
       organization_roles.any?

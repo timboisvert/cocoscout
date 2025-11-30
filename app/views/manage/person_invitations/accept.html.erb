@@ -13,9 +13,15 @@
         <div class="lg:sticky lg:top-8">
           <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
             <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">You're invited!</h2>
-            <p class="text-slate-600 mb-6">
-              <span class="font-semibold text-pink-600"><%= @person_invitation.organization.name %></span> is using CocoScout to manage its productions, auditions, and casting.
-            </p>
+            <% if @person_invitation.organization %>
+              <p class="text-slate-600 mb-6">
+                <span class="font-semibold text-pink-600"><%= @person_invitation.organization.name %></span> is using CocoScout to manage its productions, auditions, and casting.
+              </p>
+            <% else %>
+              <p class="text-slate-600 mb-6">
+                You've been invited to join <span class="font-semibold text-pink-600">CocoScout</span>, the platform for managing productions, auditions, and casting.
+              </p>
+            <% end %>
 
             <!-- Invitation Details -->
             <div class="bg-white border border-pink-200 rounded-lg p-4 mb-6">

@@ -42,6 +42,19 @@ Rails.application.routes.draw do
     delete "/queue/clear_pending", to: "god_mode#queue_clear_pending", as: "queue_clear_pending"
   end
 
+  # Pilot user setup (gods only)
+  get "/pilot", to: "pilot#index", as: "pilot"
+  post "/pilot/create_talent", to: "pilot#create_talent", as: "pilot_create_talent"
+  post "/pilot/create_producer_user", to: "pilot#create_producer_user", as: "pilot_create_producer_user"
+  post "/pilot/create_producer_org", to: "pilot#create_producer_org", as: "pilot_create_producer_org"
+  post "/pilot/create_producer_location", to: "pilot#create_producer_location", as: "pilot_create_producer_location"
+  post "/pilot/create_producer_production", to: "pilot#create_producer_production", as: "pilot_create_producer_production"
+  post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
+  post "/pilot/create_producer_additional", to: "pilot#create_producer_additional", as: "pilot_create_producer_additional"
+  post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"
+  post "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
+  post "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
+
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
