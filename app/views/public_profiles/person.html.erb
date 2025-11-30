@@ -13,7 +13,6 @@
                          @entity.training_credits.any? ||
                          @entity.profile_skills.any? ||
                          @entity.profile_resumes.any? ||
-                         @entity.resume&.attached? ||
                          @entity.groups.any?
     %>
 
@@ -380,21 +379,6 @@
                 </div>
               </a>
             <% end %>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-
-    <%# Legacy Resume (if present and no new resumes) %>
-    <% if @entity.resumes_visible? && @entity.resume&.attached? && @entity.profile_resumes.empty? %>
-      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Resume</h2>
-          <%= link_to rails_blob_path(@entity.resume, disposition: "attachment"), class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg shadow-sm transition-colors" do %>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            Download
           <% end %>
         </div>
       </div>
