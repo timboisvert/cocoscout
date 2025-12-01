@@ -13,7 +13,20 @@ class PublicProfilesController < ApplicationController
   end
 
   def shoutouts
-    @shoutouts = @entity.received_shoutouts.newest_first.includes(:author)
+    # Only show current versions (not replaced shoutouts)
+    @shoutouts = @entity.received_shoutouts
+      .left_joins(:replacement)
+      .where(replacement: { id: nil })
+      .newest_first
+      .includes(:author)
+
+    # Check if current user has already given this person a shoutout
+    if Current.user&.person
+      @has_given_shoutout = Current.user.person.given_shoutouts
+        .where(shoutee: @entity)
+        .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+        .exists?
+    end
   end
 
   private

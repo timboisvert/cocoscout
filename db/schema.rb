@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_01_163443) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_01_193034) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -546,11 +546,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_01_163443) do
     t.integer "author_id", null: false
     t.text "content", null: false
     t.datetime "created_at", null: false
+    t.integer "replaces_shoutout_id"
     t.integer "shoutee_id", null: false
     t.string "shoutee_type", null: false
     t.datetime "updated_at", null: false
     t.index ["author_id", "created_at"], name: "index_shoutouts_on_author_and_created"
     t.index ["author_id"], name: "index_shoutouts_on_author_id"
+    t.index ["replaces_shoutout_id"], name: "index_shoutouts_on_replaces_shoutout_id"
     t.index ["shoutee_type", "shoutee_id", "created_at"], name: "index_shoutouts_on_shoutee_and_created"
     t.index ["shoutee_type", "shoutee_id"], name: "index_shoutouts_on_shoutee"
   end

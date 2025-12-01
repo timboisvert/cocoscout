@@ -1,47 +1,179 @@
 class My::ShoutoutsController < ApplicationController
   before_action :require_authentication
-  before_action :set_shoutee, only: [ :new, :create ]
-  before_action :set_shoutout, only: [ :destroy ]
+  before_action :set_shoutee, only: [ :create ]
 
   def index
+    @show_my_sidebar = true
     @person = Current.user.person
 
-    # Get received shoutouts for the current user's person
-    @received_shoutouts = @person.received_shoutouts.newest_first
+    # Get received shoutouts for the current user's person (only current versions)
+    @received_shoutouts = @person.received_shoutouts
+      .left_joins(:replacement)
+      .where(replacement: { id: nil })
+      .newest_first
 
-    # Get given shoutouts by the current user
-    @given_shoutouts = @person.given_shoutouts.newest_first.includes(:shoutee)
+    # Get given shoutouts by the current user (only current versions)
+    @given_shoutouts = @person.given_shoutouts
+      .left_joins(:replacement)
+      .where(replacement: { id: nil })
+      .newest_first
+      .includes(:shoutee)
 
     # Determine which tab to show
     @active_tab = params[:tab] || "received"
-  end
 
-  def new
-    @shoutout = Shoutout.new(shoutee: @shoutee)
+    # Check if we're creating a new shoutout (shoutee params present)
+    if params[:shoutee_type].present? && params[:shoutee_id].present?
+      @shoutee = case params[:shoutee_type]
+      when "Person"
+        Person.find_by(id: params[:shoutee_id])
+      when "Group"
+        Group.find_by(id: params[:shoutee_id])
+      end
+
+      # Check if user has already given this person/group a shoutout
+      if @shoutee.present?
+        @existing_shoutout = Current.user.person.given_shoutouts
+          .where(shoutee: @shoutee)
+          .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+          .first
+      end
+
+      # Auto-switch to given tab when creating a shoutout
+      @active_tab = "given" if @shoutee.present?
+    end
   end
 
   def create
+    # Handle invite flow
+    if params[:shoutee_type] == "invite"
+      return handle_invite_shoutout
+    end
+
+    # Check if user has already given this person/group a shoutout
+    existing_shoutout = Current.user.person.given_shoutouts
+      .where(shoutee: @shoutee)
+      .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+      .first
+
     @shoutout = Shoutout.new(shoutout_params)
     @shoutout.author = Current.user.person
     @shoutout.shoutee = @shoutee
 
+    # Link to existing shoutout if present
+    if existing_shoutout
+      @shoutout.replaces_shoutout = existing_shoutout
+    end
+
     if @shoutout.save
-      redirect_to public_profile_shoutouts_path(@shoutee.public_key), notice: "Shoutout sent successfully!"
+      redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
     else
       render :new, status: :unprocessable_entity
     end
   end
 
-  def destroy
-    @shoutout.destroy
-    redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout deleted successfully."
-  end
-
   private
+
+  def handle_invite_shoutout
+    invite_name = params[:invite_name]
+    invite_email = params[:invite_email]
+
+    if invite_name.blank? || invite_email.blank?
+      redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Name and email are required to invite someone."
+      return
+    end
+
+    # Normalize email
+    invite_email = invite_email.downcase.strip
+
+    # First, check if a person with this email already exists
+    existing_person = Person.find_by(email: invite_email)
+
+    if existing_person
+      # Person exists - give them the shoutout directly
+      @shoutee = existing_person
+
+      # Check for existing shoutout
+      existing_shoutout = Current.user.person.given_shoutouts
+        .where(shoutee: @shoutee)
+        .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+        .first
+
+      @shoutout = Shoutout.new(shoutout_params)
+      @shoutout.author = Current.user.person
+      @shoutout.shoutee = @shoutee
+
+      if existing_shoutout
+        @shoutout.replaces_shoutout = existing_shoutout
+      end
+
+      if @shoutout.save
+        redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
+      else
+        redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Could not save shoutout."
+      end
+    else
+      # Person doesn't exist - create user, person, and send invitation
+
+      # Check if user already exists
+      existing_user = User.find_by(email_address: invite_email)
+
+      if existing_user
+        redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "A user with this email already exists."
+        return
+      end
+
+      # Create user with random password
+      user = User.create!(
+        email_address: invite_email,
+        password: SecureRandom.hex(16)
+      )
+
+      # Create person
+      person = Person.create!(
+        name: invite_name,
+        email: invite_email,
+        user: user
+      )
+
+      # Add to current organization if present
+      if Current.organization
+        person.organizations << Current.organization unless person.organizations.include?(Current.organization)
+      end
+
+      # Create shoutout
+      @shoutout = Shoutout.new(shoutout_params)
+      @shoutout.author = Current.user.person
+      @shoutout.shoutee = person
+
+      if @shoutout.save
+        # Create person invitation
+        person_invitation = PersonInvitation.create!(
+          email: person.email,
+          organization: Current.organization
+        )
+
+        # Send invitation email
+        invitation_subject = "#{Current.user.person.name} gave you a shoutout on CocoScout!"
+        invitation_message = "#{Current.user.person.name} gave you a shoutout on CocoScout:\n\n\"#{@shoutout.content}\"\n\nJoin CocoScout to see your shoutout and connect with others in the industry. Click the link below to set a password and create your account."
+
+        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+
+        redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent and invitation delivered to #{invite_name}!"
+      else
+        redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Could not save shoutout."
+      end
+    end
+  end
 
   def set_shoutee
     shoutee_type = params[:shoutee_type]
     shoutee_id = params[:shoutee_id]
+
+    # Skip validation for invite mode
+    if shoutee_type == "invite"
+      return
+    end
 
     if shoutee_type.blank? || shoutee_id.blank?
       redirect_to my_shoutouts_path, alert: "Please select a person or group to give a shoutout to."
@@ -62,14 +194,12 @@ class My::ShoutoutsController < ApplicationController
     end
   end
 
-  def set_shoutout
-    @shoutout = Current.user.person.given_shoutouts.find_by(id: params[:id])
-    unless @shoutout
-      redirect_to my_shoutouts_path, alert: "Shoutout not found."
-    end
-  end
-
   def shoutout_params
-    params.require(:shoutout).permit(:content)
+    if params[:shoutout].present?
+      params.require(:shoutout).permit(:content)
+    else
+      # For invite flow, content comes directly
+      { content: params[:content] }
+    end
   end
 end

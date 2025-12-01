@@ -247,7 +247,7 @@
     <% end %>
 
     <%# Shoutouts Section %>
-    <% shoutouts_count = @entity.received_shoutouts.count %>
+    <% shoutouts_count = @entity.received_shoutouts.left_joins(:replacement).where(replacement: { id: nil }).count %>
     <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Shoutouts</h2>
@@ -256,7 +256,7 @@
         <% end %>
       </div>
 
-      <% recent_shoutouts = @entity.received_shoutouts.newest_first.includes(:author).limit(3) %>
+      <% recent_shoutouts = @entity.received_shoutouts.left_joins(:replacement).where(replacement: { id: nil }).newest_first.includes(:author).limit(3) %>
       <% if recent_shoutouts.any? %>
         <div class="space-y-3 mb-4">
           <% recent_shoutouts.each do |shoutout| %>

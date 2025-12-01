@@ -4,6 +4,12 @@ Rails.application.routes.draw do
   # Utility
   get "/up", to: proc { [ 200, {}, [ "OK" ] ] }
 
+  # API endpoints
+  namespace :api do
+    get "/search/people_and_groups", to: "search#people_and_groups"
+    get "/check_existing_shoutout", to: "search#check_existing_shoutout"
+  end
+
   # Landing page
   get "home/index"
   post "/notify_me", to: "home#notify_me", as: "notify_me"
@@ -98,9 +104,7 @@ Rails.application.routes.draw do
 
     # Shoutouts management
     get   "/shoutouts",                         to: "shoutouts#index",     as: "shoutouts"
-    get   "/shoutouts/new",                     to: "shoutouts#new",       as: "new_shoutout"
     post  "/shoutouts",                         to: "shoutouts#create",    as: "create_shoutout"
-    delete "/shoutouts/:id",                    to: "shoutouts#destroy",   as: "destroy_shoutout"
   end
 
   # Management interface
