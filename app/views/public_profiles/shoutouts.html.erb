@@ -1,0 +1,133 @@
+<% content_for :title, "#{@entity.name} - Shoutouts" %>
+
+<div class="w-full bg-gradient-to-b from-gray-50 to-white min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-500 mb-6">
+      <%= link_to @entity.name, public_profile_path(@entity.public_key), class: "hover:text-pink-600" %> /
+      <span class="text-gray-700">Shoutouts</span>
+    </nav>
+
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <% headshot = @entity.safe_headshot_variant(:thumb) %>
+          <% if headshot %>
+            <%= link_to public_profile_path(@entity.public_key) do %>
+              <%= image_tag headshot, class: "w-16 h-16 rounded-full object-cover", alt: @entity.name %>
+            <% end %>
+          <% else %>
+            <%= link_to public_profile_path(@entity.public_key), class: "w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl" do %>
+              <%= @entity.initials %>
+            <% end %>
+          <% end %>
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 inter-bold"><%= @entity.name %>'s Shoutouts</h1>
+            <p class="text-gray-500 text-sm">
+              <%= @shoutouts.count %> <%= "shoutout".pluralize(@shoutouts.count) %> received
+            </p>
+          </div>
+        </div>
+
+        <% if Current.user && Current.user.person != @entity %>
+          <%= link_to my_new_shoutout_path(shoutee_type: @entity.class.name, shoutee_id: @entity.id),
+              class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Give a Shoutout
+          <% end %>
+        <% elsif !Current.user %>
+          <%= link_to signin_path(return_to: my_new_shoutout_path(shoutee_type: @entity.class.name, shoutee_id: @entity.id)),
+              class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Sign in to Give a Shoutout
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Shoutouts List -->
+    <% if @shoutouts.any? %>
+      <div class="space-y-4">
+        <% @shoutouts.each do |shoutout| %>
+          <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-6" data-controller="expand-shoutout">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Author headshot -->
+              <% author_headshot = shoutout.author.safe_headshot_variant(:thumb) %>
+              <% if author_headshot %>
+                <%= link_to public_profile_path(shoutout.author.public_key) do %>
+                  <%= image_tag author_headshot, class: "w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover flex-shrink-0", alt: shoutout.author.name %>
+                <% end %>
+              <% else %>
+                <%= link_to public_profile_path(shoutout.author.public_key), class: "w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0" do %>
+                  <%= shoutout.author.initials %>
+                <% end %>
+              <% end %>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                  <%= link_to shoutout.author.name, public_profile_path(shoutout.author.public_key), class: "font-semibold text-gray-900 hover:text-pink-600" %>
+                  <span class="text-xs text-gray-500"><%= time_ago_in_words(shoutout.created_at) %> ago</span>
+                </div>
+
+                <!-- Shoutout content with expand/collapse -->
+                <div class="text-sm sm:text-base text-gray-700">
+                  <div data-expand-shoutout-target="preview" class="whitespace-pre-wrap">
+                    <%= shoutout.preview(length: 300) %>
+                    <% if shoutout.content.length > 300 %>
+                      <button data-action="click->expand-shoutout#expand" class="text-pink-600 hover:text-pink-700 font-medium ml-1">Read more</button>
+                    <% end %>
+                  </div>
+                  <div data-expand-shoutout-target="full" class="hidden whitespace-pre-wrap">
+                    <%= shoutout.content %>
+                    <button data-action="click->expand-shoutout#collapse" class="text-pink-600 hover:text-pink-700 font-medium ml-1">Show less</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-8 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-300 mb-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No shoutouts yet</h3>
+        <p class="text-gray-500 text-sm mb-4">Be the first to give <%= @entity.name %> a shoutout!</p>
+        <% if Current.user && Current.user.person != @entity %>
+          <%= link_to my_new_shoutout_path(shoutee_type: @entity.class.name, shoutee_id: @entity.id),
+              class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Give a Shoutout
+          <% end %>
+        <% elsif !Current.user %>
+          <%= link_to signin_path(return_to: my_new_shoutout_path(shoutee_type: @entity.class.name, shoutee_id: @entity.id)),
+              class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+            Sign in to Give a Shoutout
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- CocoScout Footer -->
+    <div class="mt-16 pt-4 border-t border-gray-100">
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-5 h-5 object-contain opacity-50" />
+        <span class="coustard-regular">CocoScout</span>
+        <% unless Current.user %>
+          <span class="text-gray-300 mx-1">·</span>
+          <%= link_to "Create your profile", signup_path, class: "hover:text-pink-500 transition-colors" %>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+</div>

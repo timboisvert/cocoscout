@@ -95,6 +95,12 @@ Rails.application.routes.draw do
       get "/success", to: "questionnaires#success", as: "questionnaire_success"
       get "/inactive", to: "questionnaires#inactive", as: "questionnaire_inactive"
     end
+
+    # Shoutouts management
+    get   "/shoutouts",                         to: "shoutouts#index",     as: "shoutouts"
+    get   "/shoutouts/new",                     to: "shoutouts#new",       as: "new_shoutout"
+    post  "/shoutouts",                         to: "shoutouts#create",    as: "create_shoutout"
+    delete "/shoutouts/:id",                    to: "shoutouts#destroy",   as: "destroy_shoutout"
   end
 
   # Management interface
@@ -354,5 +360,6 @@ Rails.application.routes.draw do
   post "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
+  get "/:public_key/shoutouts", to: "public_profiles#shoutouts", as: "public_profile_shoutouts", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
   get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
 end

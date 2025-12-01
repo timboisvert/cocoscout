@@ -1,8 +1,24 @@
 class PublicProfilesController < ApplicationController
   skip_before_action :require_authentication
   before_action :resume_session_if_present
+  before_action :find_entity, only: [ :show, :shoutouts ]
 
   def show
+    # Render appropriate template
+    if @person
+      render "public_profiles/person"
+    else
+      render "public_profiles/group"
+    end
+  end
+
+  def shoutouts
+    @shoutouts = @entity.received_shoutouts.newest_first.includes(:author)
+  end
+
+  private
+
+  def find_entity
     key = params[:public_key]
 
     # Try to find a person with this key
@@ -45,16 +61,7 @@ class PublicProfilesController < ApplicationController
 
     # Set @entity for the views
     @entity = @person || @group
-
-    # Render appropriate template
-    if @person
-      render "public_profiles/person"
-    else
-      render "public_profiles/group"
-    end
   end
-
-  private
 
   def resume_session_if_present
     resume_session

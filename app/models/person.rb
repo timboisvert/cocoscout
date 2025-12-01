@@ -25,6 +25,10 @@ class Person < ApplicationRecord
   has_many :group_memberships, dependent: :destroy
   has_many :groups, through: :group_memberships
 
+  # Shoutout associations
+  has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
+  has_many :given_shoutouts, class_name: "Shoutout", foreign_key: :author_id, dependent: :destroy
+
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_resumes, as: :profileable, dependent: :destroy
