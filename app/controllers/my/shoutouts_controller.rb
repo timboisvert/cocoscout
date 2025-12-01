@@ -66,6 +66,10 @@ class My::ShoutoutsController < ApplicationController
     end
 
     if @shoutout.save
+      # Send email notification to recipient if they have an email
+      if @shoutee.respond_to?(:email) && @shoutee.email.present?
+        ShoutoutMailer.shoutout_received(@shoutout).deliver_later
+      end
       redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
     else
       render :new, status: :unprocessable_entity
@@ -108,6 +112,10 @@ class My::ShoutoutsController < ApplicationController
       end
 
       if @shoutout.save
+        # Send email notification to recipient
+        if @shoutee.email.present?
+          ShoutoutMailer.shoutout_received(@shoutout).deliver_later
+        end
         redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
       else
         redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Could not save shoutout."
@@ -136,11 +144,6 @@ class My::ShoutoutsController < ApplicationController
         user: user
       )
 
-      # Add to current organization if present
-      if Current.organization
-        person.organizations << Current.organization unless person.organizations.include?(Current.organization)
-      end
-
       # Create shoutout
       @shoutout = Shoutout.new(shoutout_params)
       @shoutout.author = Current.user.person
@@ -150,12 +153,12 @@ class My::ShoutoutsController < ApplicationController
         # Create person invitation
         person_invitation = PersonInvitation.create!(
           email: person.email,
-          organization: Current.organization
+          organization: nil
         )
 
         # Send invitation email
         invitation_subject = "#{Current.user.person.name} gave you a shoutout on CocoScout!"
-        invitation_message = "#{Current.user.person.name} gave you a shoutout on CocoScout:\n\n\"#{@shoutout.content}\"\n\nJoin CocoScout to see your shoutout and connect with others in the industry. Click the link below to set a password and create your account."
+        invitation_message = "#{Current.user.person.name} gave you a shoutout on CocoScout!\n\nJoin CocoScout to see your shoutout and connect with others in the industry. Click the link below to set a password and create your account."
 
         Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
