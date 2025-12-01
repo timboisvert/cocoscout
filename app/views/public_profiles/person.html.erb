@@ -264,6 +264,41 @@
       </div>
     <% end %>
 
+    <%# Shoutouts Section %>
+    <% shoutouts_count = @entity.received_shoutouts.left_joins(:replacement).where(replacement: { id: nil }).count %>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Shoutouts</h2>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm mb-3">
+            <%= @entity.name %> has received
+            <% if shoutouts_count > 0 %>
+              <%= link_to "#{shoutouts_count} #{'shoutout'.pluralize(shoutouts_count)}", public_profile_shoutouts_path(@entity.public_key), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
+            <% else %>
+              <%= shoutouts_count %> <%= "shoutout".pluralize(shoutouts_count) %>.
+            <% end %>
+          </p>
+        </div>
+      </div>
+
+      <% if Current.user && Current.user.person != @entity %>
+        <%= render "shared/button",
+            text: "Give #{@entity.name} a Shoutout",
+            path: my_shoutouts_path(tab: "given", shoutee_type: @entity.class.name, shoutee_id: @entity.id),
+            variant: "primary",
+            size: "medium" %>
+      <% elsif !Current.user %>
+        <%= render "shared/button",
+            text: "Sign in to Give a Shoutout",
+            path: signin_path,
+            variant: "primary",
+            size: "medium" %>
+      <% end %>
+    </div>
+
     <%# Performance History with Sections %>
     <% if @entity.performance_credits_visible? %>
       <% sections_with_credits = @entity.performance_sections.includes(:performance_credits).where.not(performance_credits: { id: nil }).order(position: :asc) %>

@@ -23,6 +23,9 @@ class Group < ApplicationRecord
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
+  # Shoutout associations
+  has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy
+
   # Profile system associations
   has_many :profile_headshots, as: :profileable, dependent: :destroy
   has_many :profile_videos, as: :profileable, dependent: :destroy

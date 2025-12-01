@@ -246,6 +246,75 @@
       </div>
     <% end %>
 
+    <%# Shoutouts Section %>
+    <% shoutouts_count = @entity.received_shoutouts.left_joins(:replacement).where(replacement: { id: nil }).count %>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-5 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 inter-bold">Shoutouts</h2>
+        <%= link_to public_profile_shoutouts_path(@entity.public_key), class: "text-sm text-pink-600 hover:text-pink-700 font-medium" do %>
+          View all (<%= shoutouts_count %>)
+        <% end %>
+      </div>
+
+      <% recent_shoutouts = @entity.received_shoutouts.left_joins(:replacement).where(replacement: { id: nil }).newest_first.includes(:author).limit(3) %>
+      <% if recent_shoutouts.any? %>
+        <div class="space-y-3 mb-4">
+          <% recent_shoutouts.each do |shoutout| %>
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg" data-controller="expand-shoutout">
+              <% author_headshot = shoutout.author.safe_headshot_variant(:thumb) %>
+              <% if author_headshot %>
+                <%= link_to public_profile_path(shoutout.author.public_key) do %>
+                  <%= image_tag author_headshot, class: "w-8 h-8 rounded-full object-cover flex-shrink-0", alt: shoutout.author.name %>
+                <% end %>
+              <% else %>
+                <%= link_to public_profile_path(shoutout.author.public_key), class: "w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0" do %>
+                  <%= shoutout.author.initials %>
+                <% end %>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <%= link_to shoutout.author.name, public_profile_path(shoutout.author.public_key), class: "text-sm font-medium text-gray-900 hover:text-pink-600" %>
+                  <span class="text-xs text-gray-400"><%= time_ago_in_words(shoutout.created_at) %> ago</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <div data-expand-shoutout-target="preview" class="whitespace-pre-wrap">
+                    <%= shoutout.preview(length: 150) %>
+                    <% if shoutout.content.length > 150 %>
+                      <button data-action="click->expand-shoutout#expand" class="text-pink-600 hover:text-pink-700 font-medium ml-1">more</button>
+                    <% end %>
+                  </div>
+                  <div data-expand-shoutout-target="full" class="hidden whitespace-pre-wrap">
+                    <%= shoutout.content %>
+                    <button data-action="click->expand-shoutout#collapse" class="text-pink-600 hover:text-pink-700 font-medium ml-1">less</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm mb-4">No shoutouts yet. Be the first!</p>
+      <% end %>
+
+      <% if Current.user %>
+        <%= link_to my_new_shoutout_path(shoutee_type: @entity.class.name, shoutee_id: @entity.id),
+            class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Give a Shoutout
+        <% end %>
+      <% else %>
+        <%= link_to signin_path,
+            class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Sign in to Give a Shoutout
+        <% end %>
+      <% end %>
+    </div>
+
     <%# Performance History with Sections %>
     <% if @entity.performance_credits_visible? %>
       <% sections_with_credits = @entity.performance_sections.includes(:performance_credits).where.not(performance_credits: { id: nil }).order(position: :asc) %>

@@ -1,8 +1,6 @@
 class My::QuestionnairesController < ApplicationController
   allow_unauthenticated_access only: [ :inactive ]
-
   skip_before_action :show_my_sidebar, only: [ :entry, :form, :submitform, :success, :inactive ]
-
   before_action :set_questionnaire_and_questions, except: [ :index ]
 
   def index

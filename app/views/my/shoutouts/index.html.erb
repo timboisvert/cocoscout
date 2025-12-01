@@ -1,0 +1,221 @@
+<% content_for :title, "My Shoutouts" %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Shoutouts",
+    links: []
+  } %>
+
+  <!-- Tabs -->
+  <div class="border-b border-gray-200 mb-6">
+    <nav class="-mb-px flex gap-6">
+      <%= link_to "Shoutouts I've Received", my_shoutouts_path(tab: "received"),
+          class: "pb-3 px-1 text-sm font-medium border-b-2 #{@active_tab == 'received' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "Shoutouts I've Given", my_shoutouts_path(tab: "given"),
+          class: "pb-3 px-1 text-sm font-medium border-b-2 #{@active_tab == 'given' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+    </nav>
+  </div>
+
+  <% if @active_tab == "received" %>
+    <!-- Received Shoutouts -->
+    <% if @received_shoutouts.any? %>
+      <div class="space-y-4">
+        <% @received_shoutouts.each do |shoutout| %>
+          <%= render partial: "shoutout", locals: { shoutout: shoutout, context: "received" } %>
+        <% end %>
+      </div>
+        <% else %>
+          <div class="text-center py-8">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto text-gray-300 mb-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+            <p class="text-gray-500 text-sm">You haven't received any shoutouts yet.</p>
+            <p class="text-gray-400 text-xs mt-1">Share your profile with others to start receiving shoutouts!</p>
+          </div>
+        <% end %>
+  <% else %>
+    <!-- Given Shoutouts -->
+
+    <%# Prompt Box or Form %>
+    <% if @shoutee.present? || params[:show_form] == "true" %>
+      <%# New Shoutout Form %>
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 coustard-regular mb-4">Give a Shoutout</h3>
+
+        <%# Notice for updating existing shoutout %>
+        <% if @existing_shoutout.present? %>
+          <div class="mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
+            <div class="flex items-start gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+              <div class="flex-1">
+                <p class="text-sm font-medium text-pink-900 mb-1">You've already given <%= @shoutee.name %> a shoutout</p>
+                <p class="text-sm text-pink-700">You can leave another shoutout and it will be linked to your previous one. Your older shoutouts will be shown as "Previous versions" under your new shoutout.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Shoutee Info Box (only shown when coming from a profile) %>
+        <% if @shoutee.present? %>
+          <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg mb-4">
+            <% headshot = @shoutee.safe_headshot_variant(:thumb) %>
+            <% if headshot %>
+              <%= link_to public_profile_path(@shoutee.public_key) do %>
+                <%= image_tag headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0", alt: @shoutee.name %>
+              <% end %>
+            <% else %>
+              <%= link_to public_profile_path(@shoutee.public_key), class: "w-12 h-12 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0" do %>
+                <%= @shoutee.initials %>
+              <% end %>
+            <% end %>
+            <div>
+              <p class="text-sm text-gray-500">Give a shoutout to:</p>
+              <%= link_to @shoutee.name, public_profile_path(@shoutee.public_key), class: "font-semibold text-gray-900 hover:text-pink-600" %>
+            </div>
+          </div>
+        <% end %>
+
+        <%= form_with url: my_create_shoutout_path, method: :post, class: "space-y-4", data: { controller: "shoutout-search character-counter", "character-counter-max-value": 1000 } do |f| %>
+          <%# Search for recipient (only shown when not coming from a profile) %>
+          <% if @shoutee.blank? %>
+            <div>
+              <div data-shoutout-search-target="searchContainer">
+                <%= label_tag :search_query, "Who would you like to give a shoutout to?", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= text_field_tag :search_query, nil,
+                    class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent",
+                    placeholder: "Search for a person or group...",
+                    data: {
+                      action: "input->shoutout-search#search",
+                      shoutout_search_target: "searchField"
+                    } %>
+
+                <%# Search results dropdown %>
+                <div data-shoutout-search-target="results" class="hidden mt-2 border border-gray-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto">
+                </div>
+              </div>
+
+              <%# Selected recipient display %>
+              <div data-shoutout-search-target="selectedContainer" class="hidden">
+                <%# Notice for updating existing shoutout (shown via JS) %>
+                <div data-shoutout-search-target="existingShoutoutNotice" class="hidden mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
+                  <div class="flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                    </svg>
+                    <div class="flex-1">
+                      <p class="text-sm font-medium text-pink-900 mb-1">You've already given <span data-shoutout-search-target="existingShoutoutName"></span> a shoutout</p>
+                      <p class="text-sm text-pink-700">You can leave another shoutout and it will be linked to your previous one. Your older shoutouts will be shown as "Previous versions" under your new shoutout.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <img data-shoutout-search-target="selectedHeadshot" src="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0 hidden" alt="">
+                  <div data-shoutout-search-target="selectedInitials" class="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0 hidden"></div>
+                  <div class="flex-1">
+                    <p class="text-sm text-gray-500">Give a shoutout to:</p>
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-gray-900" data-shoutout-search-target="selectedName"></span>
+                      <button type="button" data-action="click->shoutout-search#clearSelection" class="text-xs text-pink-500 underline cursor-pointer mt-1">
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>              <%# Invite form %>
+              <div data-shoutout-search-target="inviteForm" class="hidden mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="text-sm font-semibold text-gray-900">Invite Someone to CocoScout</h4>
+                  <button type="button" data-action="click->shoutout-search#cancelInvite" class="text-sm text-gray-600 hover:text-gray-900 cursor-pointer">
+                    ✕
+                  </button>
+                </div>
+                <div class="space-y-3">
+                  <div>
+                    <%= label_tag :invite_name, "Name", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                    <%= text_field_tag :invite_name, nil,
+                        class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent",
+                        placeholder: "Their stage name",
+                        required: false %>
+                  </div>
+                  <div>
+                    <%= label_tag :invite_email, "Email Address", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                    <%= email_field_tag :invite_email, nil,
+                        class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent",
+                        placeholder: "their@email.com",
+                        required: false %>
+                  </div>
+                  <p class="text-xs text-gray-600">
+                    They'll receive your shoutout along with an invitation to join CocoScout.
+                  </p>
+                </div>
+              </div>
+
+              <%= hidden_field_tag :shoutee_type, "", data: { shoutout_search_target: "shouteeType" } %>
+              <%= hidden_field_tag :shoutee_id, "", data: { shoutout_search_target: "shouteeId" } %>
+            </div>
+          <% else %>
+            <%= hidden_field_tag :shoutee_type, @shoutee.class.name %>
+            <%= hidden_field_tag :shoutee_id, @shoutee.id %>
+          <% end %>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <%= label_tag "shoutout[content]", "Your Shoutout", class: "block text-sm font-medium text-gray-700" %>
+              <span data-character-counter-target="counter" class="text-xs text-gray-500"></span>
+            </div>
+            <%= text_area_tag "shoutout[content]", nil, rows: 5, required: true,
+                class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent",
+                placeholder: @shoutee.present? ? "Recognize #{@shoutee.name}'s exceptional performance, talent, or hard work..." : "Recognize their exceptional performance, talent, or hard work...",
+                data: { action: "input->character-counter#updateCounter", "character-counter-target": "input" } %>
+          </div>
+
+          <div class="flex gap-3">
+            <%= render "shared/button", text: "Send Shoutout", type: :submit %>
+            <% if @shoutee.present? %>
+              <%= render "shared/button", text: "Cancel", variant: "secondary", path: "javascript:history.back()" %>
+            <% else %>
+              <button type="button" data-action="click->shoutout-search#cancel" class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1.5 text-sm sm:px-5 sm:py-2.5 sm:h-10">
+                <span>Cancel</span>
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <%# Prompt Box %>
+      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6 max-w-2xl">
+        <div class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-pink-500 flex-shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+          </svg>
+          <div class="flex-1">
+            <h3 class="text-base font-semibold text-gray-900 mb-1">Give Someone a Shoutout</h3>
+            <p class="text-gray-600 text-sm mb-3">
+              Recognize someone's exceptional performance, talent, or hard work by giving them a shoutout.
+            </p>
+            <%= render "shared/button",
+                text: "Give a Shoutout",
+                path: my_shoutouts_path(tab: "given", show_form: "true"),
+                variant: "primary",
+                size: "small" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @given_shoutouts.any? %>
+      <div class="space-y-4">
+        <% @given_shoutouts.each do |shoutout| %>
+          <%= render partial: "shoutout", locals: { shoutout: shoutout, context: "given" } %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
