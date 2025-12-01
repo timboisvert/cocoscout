@@ -33,12 +33,8 @@ class My::ShoutoutsController < ApplicationController
   end
 
   def destroy
-    if @shoutout.author_id == Current.user.person.id
-      @shoutout.destroy
-      redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout deleted successfully."
-    else
-      redirect_to my_shoutouts_path, alert: "You can only delete your own shoutouts."
-    end
+    @shoutout.destroy
+    redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout deleted successfully."
   end
 
   private
@@ -67,7 +63,10 @@ class My::ShoutoutsController < ApplicationController
   end
 
   def set_shoutout
-    @shoutout = Shoutout.find(params[:id])
+    @shoutout = Current.user.person.given_shoutouts.find_by(id: params[:id])
+    unless @shoutout
+      redirect_to my_shoutouts_path, alert: "Shoutout not found."
+    end
   end
 
   def shoutout_params
