@@ -14,55 +14,85 @@
     <!-- Production Selector -->
     <% if Current.organization.present? %>
       <div class="relative" data-controller="dropdown">
-        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center hover:bg-slate-50 rounded-lg py-1 pr-3 transition cursor-pointer border border-slate-200">
+        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-12">
           <% if Current.production.present? && !Current.production.new_record? %>
             <% logo_variant = Current.production.safe_logo_variant(:small) %>
             <% if logo_variant %>
-              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 pl-2">
+              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
                 <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-16 h-8 object-cover rounded" %>
               </div>
             <% else %>
-              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 pl-2">
-                <div class="w-12 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs">
-                  <%= Current.production.initials %>
-                </div>
+              <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                <%= Current.production.initials %>
               </div>
             <% end %>
-            <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate ml-2"><%= Current.production.name %></div>
+            <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= Current.production.name %></div>
           <% else %>
-            <div class="text-sm font-medium text-slate-700 px-3">Select Production</div>
+            <div class="text-sm font-medium text-slate-700">Select Production</div>
           <% end %>
-          <svg class="w-4 h-4 text-slate-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
 
-        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1 max-h-96 overflow-y-auto">
-          <% Current.user.accessible_productions.each do |production| %>
-            <%= link_to manage_production_path(production), class: "flex items-center hover:bg-slate-50 transition cursor-pointer #{'bg-pink-50 text-pink-600 font-medium' if production.id == Current.production&.id}" do %>
-              <% logo_variant = production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <div class="w-20 h-10 flex items-center justify-center flex-shrink-0 py-2 pl-2">
-                  <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-20 h-10 object-cover rounded" %>
-                </div>
-              <% else %>
-                <div class="w-20 h-10 flex items-center justify-center flex-shrink-0 py-2 pl-2">
-                  <div class="w-16 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm">
-                    <%= production.initials %>
+        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+          <!-- Current Production Section -->
+          <% if Current.production.present? && !Current.production.new_record? %>
+            <%= link_to edit_manage_production_path(Current.production), data: { turbo: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" do %>
+              <div class="flex items-center gap-3">
+                <% logo_variant = Current.production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
+                    <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-16 h-8 object-cover rounded" %>
                   </div>
+                <% else %>
+                  <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                    <%= Current.production.initials %>
+                  </div>
+                <% end %>
+                <div class="flex flex-col">
+                  <span class="text-sm text-slate-900 font-medium"><%= Current.production.name %></span>
+                  <% if current_user_is_global_manager? %>
+                    <span class="text-xs text-pink-500 hover:text-pink-600 underline">Production Settings</span>
+                  <% end %>
                 </div>
-              <% end %>
-              <span class="truncate text-sm py-3 pr-4 pl-2"><%= production.name %></span>
+              </div>
             <% end %>
           <% end %>
 
+          <!-- Other Productions List -->
+          <% other_productions = Current.user.accessible_productions.reject { |p| p.id == Current.production&.id } %>
+          <% if other_productions.any? %>
+            <% if Current.production.present? && !Current.production.new_record? %>
+              <div class="border-t border-slate-200 my-1"></div>
+            <% end %>
+
+            <div class="px-4 py-2 text-xs text-slate-500 font-semibold uppercase">Other Productions</div>
+            <% other_productions.each do |production| %>
+              <%= link_to manage_production_path(production), data: { turbo: false }, class: "flex items-center hover:bg-slate-50 transition cursor-pointer py-2 px-4" do %>
+                <% logo_variant = production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
+                    <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-16 h-8 object-cover rounded" %>
+                  </div>
+                <% else %>
+                  <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                    <%= production.initials %>
+                  </div>
+                <% end %>
+                <span class="truncate text-sm ml-3"><%= production.name %></span>
+              <% end %>
+            <% end %>
+          <% end %>
+
+          <!-- Create Production Link -->
           <% if Current.user.manager? %>
             <div class="border-t border-slate-200 my-1"></div>
-            <%= link_to new_manage_production_path, class: "flex items-center gap-3 px-4 py-2 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium" do %>
+            <%= link_to new_manage_production_path, data: { turbo: false }, class: "flex items-center gap-3 px-4 py-2 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium" do %>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              Add a Production
+              Create a Production
             <% end %>
           <% end %>
         </div>
@@ -84,7 +114,7 @@
       <% end %>
 
       <div class="relative" data-controller="dropdown">
-        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer">
+        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-12">
           <% if Current.user.person&.headshot&.attached? %>
             <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
           <% else %>
