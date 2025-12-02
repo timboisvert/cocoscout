@@ -4,6 +4,15 @@ class PublicProfilesController < ApplicationController
   before_action :find_entity, only: [ :show, :shoutouts ]
 
   def show
+    # Check if profile is enabled
+    if @person && !@person.public_profile_enabled
+      render "public_profiles/not_found", status: :not_found
+      return
+    elsif @group && !@group.public_profile_enabled
+      render "public_profiles/not_found", status: :not_found
+      return
+    end
+
     # Render appropriate template
     if @person
       render "public_profiles/person"
@@ -68,7 +77,7 @@ class PublicProfilesController < ApplicationController
 
     # If neither found, 404
     unless @person || @group
-      render file: "#{Rails.root}/public/404.html", status: :not_found, layout: false
+      render "public_profiles/not_found", status: :not_found
       return
     end
 

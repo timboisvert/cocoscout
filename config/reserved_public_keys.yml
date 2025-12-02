@@ -14,7 +14,7 @@
 # App namespaces
 - manage
 - my
-- god
+- superadmin
 - auth
 - sessions
 - signout
@@ -86,3 +86,88 @@
 - metrics
 - monitoring
 - analytics
+
+# System/Meta Pages
+- robots
+- sitemap
+- favicon
+- apple-touch-icon
+- manifest
+- service-worker
+- 404
+- 422
+- 500
+- maintenance
+- error
+- errors
+- up
+
+# Security/Account Terms
+- password
+- reset
+- token
+- verify
+- verification
+- invite
+- invitation
+- register
+- registration
+- confirm
+- confirmation
+- activate
+- activation
+- deactivate
+- deactivation
+
+# API/Integration Terms
+- webhook
+- webhooks
+- callback
+- oauth
+- api-key
+- apikey
+- graphql
+- rest
+- json
+- xml
+
+# Other Reserved Words
+- adminpanel
+- administrator
+- owner
+- member
+- members
+- team
+- teams
+- organization
+- org
+
+# Other CocoScout Features
+- calendar
+- event
+- events
+- message
+- messages
+- notification
+- notifications
+- task
+- tasks
+- feed
+- timeline
+- activity
+- activities
+- report
+- reports
+
+# Miscellaneous
+- home
+- welcome
+- start
+- demo
+- trial
+- beta
+- test
+- testing
+- sample
+- example
+- examples

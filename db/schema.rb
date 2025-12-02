@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_01_193034) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_02_173211) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -220,6 +220,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_01_193034) do
     t.text "profile_visibility_settings", default: "{}"
     t.string "public_key", null: false
     t.datetime "public_key_changed_at"
+    t.boolean "public_profile_enabled", default: true, null: false
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
     t.datetime "updated_at", null: false
@@ -320,6 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_01_193034) do
     t.string "pronouns"
     t.string "public_key"
     t.datetime "public_key_changed_at"
+    t.boolean "public_profile_enabled", default: true, null: false
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
     t.boolean "training_credits_visible", default: true, null: false

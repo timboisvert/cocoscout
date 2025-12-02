@@ -2,7 +2,7 @@ class PilotController < ApplicationController
   include Authentication
 
   before_action :require_authentication
-  before_action :require_god_user
+  before_action :require_superadmin
   skip_before_action :show_my_sidebar
   before_action :initialize_pilot_session
 
@@ -453,8 +453,8 @@ class PilotController < ApplicationController
     session[:pilot_producer_state] ||= {}
   end
 
-  def require_god_user
-    unless Current.user&.god?
+  def require_superadmin
+    unless Current.user&.superadmin?
       redirect_to root_path, alert: "Access denied"
     end
   end

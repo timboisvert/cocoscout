@@ -7,38 +7,65 @@
   </div>
 
   <!-- Public Profile Card -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div id="public-profile" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile</h3>
     </div>
     <div class="p-6">
       <div class="space-y-4">
-        <!-- URL Box -->
-        <div>
-          <%= render "shared/copy_url", url: (public_profile_url(@person.public_key) if @person.public_key.present?), label: "Your Profile URL" %>
-          <p class="mt-2 text-xs text-gray-500">
-            <a href="javascript:void(0)" data-action="click->profile-modals#openChangeUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
-          </p>
-        </div>
+        <!-- Enable/Disable Toggle -->
+        <%= form_with(model: @person, url: update_profile_path, method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
+              <p class="text-xs text-gray-500 mt-1">
+                When enabled, your profile will be visible to anyone with your profile URL
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <%= f.check_box :public_profile_enabled,
+                { class: "sr-only peer",
+                  data: {
+                    action: "change->profile-visibility#toggle",
+                    profile_visibility_target: "checkbox"
+                  }
+                } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+        <% end %>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-3">
-          <%= render "shared/button",
-              text: "View Public Profile",
-              variant: "primary",
-              icon: "eye",
-              path: public_profile_url(@person.public_key) %>
-          <%= render "shared/button",
-              text: "Share Profile",
-              variant: "outline",
-              icon: "share",
-              data: { action: "click->profile-modals#openShare" },
-              type: :button %>
+        <!-- Profile Content (hidden when disabled) -->
+        <div data-profile-visibility-target="content" class="pt-4 border-t border-gray-200 <%= 'hidden' unless @person.public_profile_enabled %>">
+          <!-- URL Box -->
+          <div>
+            <%= render "shared/copy_url", url: (public_profile_url(@person.public_key) if @person.public_key.present?), label: "Your Public Profile URL" %>
+            <p class="mt-1 mb-4 text-xs text-gray-500">
+              <a href="javascript:void(0)" data-action="click->profile-modals#openChangeUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap gap-3">
+            <%= render "shared/button",
+                text: "View Public Profile",
+                variant: "primary",
+                icon: "eye",
+                path: public_profile_url(@person.public_key) %>
+            <%= render "shared/button",
+                text: "Share Profile",
+                variant: "outline",
+                icon: "share",
+                data: { action: "click->profile-modals#openShare" },
+                type: :button %>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Profile Sections (hidden when profile disabled) -->
+  <div data-profile-visibility-target="sections" class="<%= 'hidden' unless @person.public_profile_enabled %>">
     <!-- Basic Information Section -->
     <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
     <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -121,6 +148,8 @@
 
     <!-- Groups Section -->
     <%= render "shared/profiles/groups", entity: @person %>
+  </div>
+  <!-- End Profile Sections -->
 
 <!-- Image Modal -->
 <div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">
@@ -139,7 +168,7 @@
   <div data-profile-modals-target="changeUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_profile_path %>">
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Profile URL</h2>
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Public Profile URL</h2>
       </div>
       <div class="p-6">
         <%= form_with(model: @person, url: update_url_profile_path, method: :patch, data: { url_checker_target: "form" }) do |f| %>

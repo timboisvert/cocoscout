@@ -1,0 +1,72 @@
+<% content_for :title, "Profile Not Found" %>
+
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <%= link_to root_path, class: "flex flex-col items-center pt-6 sm:pt-10 pb-8 hover:opacity-80 transition-opacity" do %>
+    <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-20 sm:w-28 object-contain select-none pointer-events-none" />
+    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
+  <% end %>
+
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <!-- Card Container -->
+    <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
+      <!-- Icon -->
+      <div class="mb-6 flex justify-center">
+        <div class="p-4 bg-pink-100 rounded-full">
+          <svg class="h-12 w-12 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Heading -->
+      <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 text-center">
+        Profile Not Found
+      </h2>
+
+      <!-- Subheading -->
+      <p class="text-slate-600 mb-8 text-center">
+        The profile you're looking for doesn't exist or is not publicly available.
+      </p>
+
+      <!-- Divider -->
+      <div class="my-6 border-t border-pink-200"></div>
+
+      <!-- Call to Action Section -->
+      <div class="text-center mb-8">
+        <h3 class="text-lg font-semibold text-slate-900 mb-3">
+          Ready to join CocoScout?
+        </h3>
+        <p class="text-slate-600 mb-6">
+          Create a free profile to showcase your talent, discover opportunities, and connect with industry professionals.
+        </p>
+
+        <!-- Features List -->
+        <div class="mb-6 space-y-2 text-left max-w-xs mx-auto">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span class="text-sm text-slate-700">Sign up for auditions easily</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span class="text-sm text-slate-700">Build your talent portfolio</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span class="text-sm text-slate-700">Connect with performing arts professionals</span>
+          </div>
+        </div>
+
+        <%= link_to "Create Your Free Profile", signup_path, class: "inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition-colors" %>
+      </div>
+
+
+    </div>
+  </div>
+</div>

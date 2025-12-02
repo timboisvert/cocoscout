@@ -5,7 +5,19 @@
       <% if controller_name == 'groups' && action_name == 'settings' %>
         <%= render "shared/nav_link", text: "Members", href: "#members" %>
         <%= render "shared/nav_link", text: "Notification Settings", href: "#notifications" %>
+      <% elsif controller_name == 'groups' && action_name == 'edit' %>
+        <%= render "shared/nav_link", text: "Public Group Profile", href: "#public-group-profile" %>
+        <div data-profile-visibility-target="menuItems" class="<%= 'hidden' unless @group&.public_profile_enabled %>">
+          <%= render "shared/nav_link", text: "Basic Information", href: "#basic-info" %>
+          <%= render "shared/nav_link", text: "Bio", href: "#bio" %>
+          <%= render "shared/nav_link", text: "Social Media & Links", href: "#social-media" %>
+          <%= render "shared/nav_link", text: "Headshots", href: "#headshots" %>
+          <%= render "shared/nav_link", text: "Videos & Reels", href: "#videos" %>
+          <%= render "shared/nav_link", text: "Performance History", href: "#performance-history" %>
+          <%= render "shared/nav_link", text: "Resumes", href: "#resumes" %>
+        </div>
       <% else %>
+        <%= render "shared/nav_link", text: "Public Group Profile", href: "#public-group-profile" %>
         <%= render "shared/nav_link", text: "Basic Information", href: "#basic-info" %>
         <%= render "shared/nav_link", text: "Bio", href: "#bio" %>
         <%= render "shared/nav_link", text: "Social Media & Links", href: "#social-media" %>

@@ -2,17 +2,19 @@
 <nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between" data-controller="profile-nav">
   <div class="flex-1 overflow-y-auto">
     <div class="mt-2">
-      <%= render "shared/nav_link", text: "Basic Information", href: "#basic-info" %>
-      <%= render "shared/nav_link", text: "Bio", href: "#bio" %>
-      <%= render "shared/nav_link", text: "Social Media & Links", href: "#social-media" %>
-      <%= render "shared/nav_link", text: "Headshots", href: "#headshots" %>
-      <%= render "shared/nav_link", text: "Videos & Reels", href: "#videos" %>
-      <%= render "shared/nav_link", text: "Performance History", href: "#performance-history" %>
-      <%= render "shared/nav_link", text: "Training & Education", href: "#training" %>
-      <%= render "shared/nav_link", text: "Skills & Talents", href: "#skills" %>
-      <%= render "shared/nav_link", text: "Resumes", href: "#resumes" %>
-      <%= render "shared/nav_link", text: "Groups", href: "#groups" %>
-
+      <%= render "shared/nav_link", text: "Public Profile", href: "#public-profile" %>
+      <div data-profile-visibility-target="menuItems" class="<%= 'hidden' unless @person&.public_profile_enabled %>">
+        <%= render "shared/nav_link", text: "Basic Information", href: "#basic-info" %>
+        <%= render "shared/nav_link", text: "Bio", href: "#bio" %>
+        <%= render "shared/nav_link", text: "Social Media & Links", href: "#social-media" %>
+        <%= render "shared/nav_link", text: "Headshots", href: "#headshots" %>
+        <%= render "shared/nav_link", text: "Videos & Reels", href: "#videos" %>
+        <%= render "shared/nav_link", text: "Performance History", href: "#performance-history" %>
+        <%= render "shared/nav_link", text: "Training & Education", href: "#training" %>
+        <%= render "shared/nav_link", text: "Skills & Talents", href: "#skills" %>
+        <%= render "shared/nav_link", text: "Resumes", href: "#resumes" %>
+        <%= render "shared/nav_link", text: "Groups", href: "#groups" %>
+      </div>
     </div>
   </div>
 

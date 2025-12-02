@@ -1,5 +1,5 @@
-class GodModeController < ApplicationController
-  before_action :require_god_mode, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending ]
+class SuperadminController < ApplicationController
+  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending ]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -85,13 +85,13 @@ class GodModeController < ApplicationController
     person = Person.find_by(email: old_email)
 
     if user.nil?
-      redirect_to god_mode_path, alert: "No user found with email: #{old_email}"
+      redirect_to superadmin_path, alert: "No user found with email: #{old_email}"
       return
     end
 
     # Check if new email is already taken
     if User.exists?(email_address: new_email)
-      redirect_to god_mode_path, alert: "A user with email #{new_email} already exists"
+      redirect_to superadmin_path, alert: "A user with email #{new_email} already exists"
       return
     end
 
@@ -114,9 +114,9 @@ class GodModeController < ApplicationController
       end
     end
 
-    redirect_to god_mode_path, notice: "Successfully changed email from #{old_email} to #{new_email}. Updated: #{updates_made.join(', ')}"
+    redirect_to superadmin_path, notice: "Successfully changed email from #{old_email} to #{new_email}. Updated: #{updates_made.join(', ')}"
   rescue ActiveRecord::RecordInvalid => e
-    redirect_to god_mode_path, alert: "Failed to change email: #{e.message}"
+    redirect_to superadmin_path, alert: "Failed to change email: #{e.message}"
   end
 
   def email_logs
@@ -218,8 +218,8 @@ class GodModeController < ApplicationController
 
   private
 
-  def require_god_mode
-    unless Current.user&.god?
+  def require_superadmin
+    unless Current.user&.superadmin?
       redirect_to my_dashboard_path
     end
   end

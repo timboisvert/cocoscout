@@ -63,7 +63,7 @@
           <% end %>
         </div>
 
-        <% if current_user_can_manage? || Current.user&.god? %>
+        <% if current_user_can_manage? || Current.user&.superadmin? %>
           <div class="mt-5">
             <%= render partial: "shared/top_menu", locals: {
               breadcrumbs: [],
@@ -88,11 +88,11 @@
           </div>
         <% end %>
 
-        <% if Current.user&.god? %>
+        <% if Current.user&.superadmin? %>
           <div class="mt-5">
             <%= render partial: "shared/top_menu", locals: {
               breadcrumbs: [],
-              text: "God Mode Actions",
+              text: "Superadmin Actions",
               links: []
             } %>
           </div>

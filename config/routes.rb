@@ -32,23 +32,23 @@ Rails.application.routes.draw do
   get   "/set_password/:token",  to: "auth#set_password",        as: "set_password"
   post  "/set_password/:token",  to: "auth#handle_set_password", as: "handle_set_password"
 
-  # God mode
-  scope "/god_mode" do
-    get  "/",                   to: "god_mode#index",               as: "god_mode"
-    post "/impersonate",        to: "god_mode#impersonate",         as: "impersonate_user"
-    post "/stop_impersonating", to: "god_mode#stop_impersonating",  as: "stop_impersonating_user"
-    post "/change_email",       to: "god_mode#change_email",        as: "change_email_user"
-    get  "/email_logs",         to: "god_mode#email_logs",          as: "email_logs"
-    get  "/email_logs/:id",     to: "god_mode#email_log",           as: "email_log"
-    get  "/queue",              to: "god_mode#queue",               as: "queue_monitor"
-    get  "/queue/failed",       to: "god_mode#queue_failed",        as: "queue_failed"
-    post "/queue/retry/:id",    to: "god_mode#queue_retry",         as: "queue_retry"
-    delete "/queue/job/:id",    to: "god_mode#queue_delete_job",    as: "queue_delete_job"
-    delete "/queue/clear_failed", to: "god_mode#queue_clear_failed", as: "queue_clear_failed"
-    delete "/queue/clear_pending", to: "god_mode#queue_clear_pending", as: "queue_clear_pending"
+  # Superadmin
+  scope "/superadmin" do
+    get  "/",                   to: "superadmin#index",               as: "superadmin"
+    post "/impersonate",        to: "superadmin#impersonate",         as: "impersonate_user"
+    post "/stop_impersonating", to: "superadmin#stop_impersonating",  as: "stop_impersonating_user"
+    post "/change_email",       to: "superadmin#change_email",        as: "change_email_user"
+    get  "/email_logs",         to: "superadmin#email_logs",          as: "email_logs"
+    get  "/email_logs/:id",     to: "superadmin#email_log",           as: "email_log"
+    get  "/queue",              to: "superadmin#queue",               as: "queue_monitor"
+    get  "/queue/failed",       to: "superadmin#queue_failed",        as: "queue_failed"
+    post "/queue/retry/:id",    to: "superadmin#queue_retry",         as: "queue_retry"
+    delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
+    delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
+    delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
   end
 
-  # Pilot user setup (gods only)
+  # Pilot user setup (superadmins only)
   get "/pilot", to: "pilot#index", as: "pilot"
   post "/pilot/create_talent", to: "pilot#create_talent", as: "pilot_create_talent"
   post "/pilot/create_producer_user", to: "pilot#create_producer_user", as: "pilot_create_producer_user"

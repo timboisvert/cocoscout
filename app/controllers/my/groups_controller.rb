@@ -29,6 +29,7 @@ class My::GroupsController < ApplicationController
   end
 
   def edit
+    @show_group_sidebar = true
     @membership = @group.group_memberships.find_by(person: Current.user.person)
   end
 
@@ -77,7 +78,7 @@ class My::GroupsController < ApplicationController
   end
 
   def group_params
-    params.require(:group).permit(:name, :bio, :email, :phone, :website, :public_key, :headshot, :resume,
+    params.require(:group).permit(:name, :bio, :email, :phone, :website, :public_key, :public_profile_enabled, :headshot, :resume,
                                    socials_attributes: [ :id, :platform, :url, :_destroy ])
   end
 end

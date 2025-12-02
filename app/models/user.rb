@@ -14,7 +14,7 @@
     validates :password, length: { minimum: 8, message: "must be at least 8 characters" }, if: -> { password.present? }
     validate :email_not_malicious
 
-    GOD_MODE_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
+    SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
     def email_not_malicious
       return if email_address.blank?
@@ -96,8 +96,8 @@
       end
     end
 
-    def god?
-      GOD_MODE_EMAILS.include?(email_address.to_s.downcase)
+    def superadmin?
+      SUPERADMIN_EMAILS.include?(email_address.to_s.downcase)
     end
 
     # Generate an invitation token for setting password

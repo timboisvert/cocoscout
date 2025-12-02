@@ -304,7 +304,7 @@ class ProfileController < ApplicationController
 
   def person_params
     permitted_params = params.require(:person).permit(
-      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio,
+      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled,
       profile_visibility_settings: {},
       socials_attributes: [ :id, :platform, :handle, :name, :_destroy ],
       profile_headshots_attributes: [ :id, :category, :is_primary, :position, :image, :_destroy ],

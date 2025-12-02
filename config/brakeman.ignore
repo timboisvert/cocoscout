@@ -143,7 +143,7 @@
       "fingerprint": "b8eb88c010f0550baf1d0b989ab623e7b1aa4019197016f3b5ec72d0a7edc5ba",
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
-      "file": "app/controllers/god_mode_controller.rb",
+      "file": "app/controllers/superadmin_controller.rb",
       "line": 187,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",

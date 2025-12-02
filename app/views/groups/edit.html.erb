@@ -1,107 +1,132 @@
 <% content_for :title, "#{@group.name} - Edit Group Profile" %>
 
 <!-- Main Content -->
-<div class="w-full" data-controller="profile-modals">
+<div class="w-full" data-controller="profile-modals profile-visibility">
   <div id="notice-container">
     <%= render partial: "shared/notice", locals: { notice: notice } %>
   </div>
 
   <!-- Public Profile Card -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div id="public-group-profile" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Group Profile</h3>
     </div>
     <div class="p-6">
-      <div class="space-y-4">
-        <!-- URL Box -->
-        <div>
-          <%= render "shared/copy_url", url: (public_profile_url(@group.public_key) if @group.public_key.present?), label: "Your Group's Profile URL" %>
-          <p class="mt-2 text-xs text-gray-500">
-            <a href="javascript:void(0)" data-action="click->profile-modals#openChangeGroupUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
-          </p>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-3">
-          <%= render "shared/button",
-              text: "View Public Profile",
-              variant: "primary",
-              icon: "eye",
-              path: public_profile_path(@group.public_key),
-              target: "_blank",
-              rel: "noopener" %>
-          <%= render "shared/button",
-              text: "Share Profile",
-              variant: "outline",
-              icon: "share",
-              data: { action: "click->profile-modals#openShare" },
-              type: :button %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Basic Information Section -->
-  <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |form| %>
-    <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
-      </div>
-      <div class="p-6 space-y-4">
-        <div>
-          <%= form.label :name, "Group Name", class: "block text-sm font-medium text-gray-700" %>
-          <%= form.text_field :name, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <%= form.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700" %>
-            <%= form.email_field :email, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
-          </div>
-
-          <div>
-            <%= form.label :phone, "Phone Number (optional)", class: "block text-sm font-medium text-gray-700" %>
-            <%= form.telephone_field :phone, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
-          </div>
-        </div>
-
-        <!-- Privacy Settings moved here -->
-        <div class="pt-4 border-t border-gray-200">
-          <h4 class="text-sm font-semibold text-gray-900 mb-3">Privacy Settings</h4>
-          <div class="flex items-center justify-between">
+      <%= form_with(model: @group, url: update_group_path(@group), method: :patch, data: { profile_visibility_target: "form", turbo: true }) do |form| %>
+        <div class="space-y-4">
+          <!-- Enable Toggle -->
+          <div class="flex items-center justify-between pb-4 border-b border-gray-200">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-700">Show Contact Information</p>
+              <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
               <p class="text-xs text-gray-500 mt-1">
-                When enabled, your email and phone will be visible on your public profile
+                When enabled, your group profile will be visible to the public
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-4">
-              <%= form.check_box :show_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } } %>
+              <%= form.check_box :public_profile_enabled, {
+                class: "sr-only peer",
+                data: {
+                  profile_visibility_target: "toggle",
+                  action: "change->profile-visibility#toggle"
+                }
+              } %>
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
+
+          <!-- URL Box -->
+          <div>
+            <%= render "shared/copy_url", url: (public_profile_url(@group.public_key) if @group.public_key.present?), label: "Your Group's Profile URL" %>
+            <p class="mt-2 text-xs text-gray-500">
+              <a href="javascript:void(0)" data-action="click->profile-modals#openChangeGroupUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap gap-3">
+            <%= render "shared/button",
+                text: "View Public Profile",
+                variant: "primary",
+                icon: "eye",
+                path: public_profile_path(@group.public_key),
+                target: "_blank",
+                rel: "noopener" %>
+            <%= render "shared/button",
+                text: "Share Profile",
+                variant: "outline",
+                icon: "share",
+                data: { action: "click->profile-modals#openShare" },
+                type: :button %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Conditional sections wrapper -->
+  <div data-profile-visibility-target="sections" class="<%= 'hidden' unless @group.public_profile_enabled %>">
+    <!-- Basic Information Section -->
+    <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |form| %>
+      <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= form.label :name, "Group Name", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.text_field :name, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <%= form.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.email_field :email, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+            </div>
+
+            <div>
+              <%= form.label :phone, "Phone Number (optional)", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.telephone_field :phone, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>
+            </div>
+          </div>
+
+          <!-- Privacy Settings moved here -->
+          <div class="pt-4 border-t border-gray-200">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">Privacy Settings</h4>
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <p class="text-sm font-medium text-gray-700">Show Contact Information</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  When enabled, your email and phone will be visible on your public profile
+                </p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer ml-4">
+                <%= form.check_box :show_contact_info, { class: "sr-only peer", data: { action: "change->profile-auto-save#save" } } %>
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  <% end %>
+    <% end %>
 
-  <!-- About/Bio Section -->
-  <%= render "shared/profiles/bio", entity: @group %>
+    <!-- About/Bio Section -->
+    <%= render "shared/profiles/bio", entity: @group %>
 
-  <!-- Social Media & Links Section -->
-  <%= render "shared/profiles/social_media", entity: @group %>
+    <!-- Social Media & Links Section -->
+    <%= render "shared/profiles/social_media", entity: @group %>
 
-  <!-- Headshots Section -->
-  <%= render "shared/profiles/headshots", entity: @group %>
+    <!-- Headshots Section -->
+    <%= render "shared/profiles/headshots", entity: @group %>
 
-  <!-- Videos & Reels Section -->
-  <%= render "shared/profiles/videos", entity: @group %>
+    <!-- Videos & Reels Section -->
+    <%= render "shared/profiles/videos", entity: @group %>
 
-  <!-- Performance History Section -->
-  <%= render "shared/profiles/performance_credits", entity: @group %>
+    <!-- Performance History Section -->
+    <%= render "shared/profiles/performance_credits", entity: @group %>
 
-  <!-- Resumes Section -->
-  <%= render "shared/profiles/resumes", entity: @group %>
+    <!-- Resumes Section -->
+    <%= render "shared/profiles/resumes", entity: @group %>
+  </div>
 
   <!-- Change URL Modal -->
   <div data-profile-modals-target="changeGroupUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

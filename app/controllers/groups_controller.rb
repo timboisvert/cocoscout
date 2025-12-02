@@ -309,6 +309,7 @@ class GroupsController < ApplicationController
     params.require(:group).permit(
       :name, :bio, :email, :phone, :public_key, :headshot, :resume,
       :hide_contact_info, :show_contact_info, :headshots_visible, :resumes_visible, :social_media_visible,
+      :public_profile_enabled,
       socials_attributes: [ :id, :platform, :handle, :name, :_destroy ],
       profile_headshots_attributes: [ :id, :image, :category, :is_primary, :position, :_destroy ],
       profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],
