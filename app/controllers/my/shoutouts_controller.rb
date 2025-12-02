@@ -44,10 +44,33 @@ class My::ShoutoutsController < ApplicationController
     end
   end
 
+  def search_people_and_groups
+    query = params[:q].to_s.strip
+    service = ShoutoutSearchService.new(query, Current.user, method(:url_for))
+    results = service.call
+
+    render json: results
+  end
+
+  def check_existing_shoutout
+    shoutee_type = params[:shoutee_type]
+    shoutee_id = params[:shoutee_id]
+    service = ShoutoutExistenceCheckService.new(shoutee_type, shoutee_id, Current.user)
+    has_existing = service.call
+
+    render json: { has_existing_shoutout: has_existing }
+  end
+
   def create
     # Handle invite flow
     if params[:shoutee_type] == "invite"
       return handle_invite_shoutout
+    end
+
+    # If shoutee is a group and the current user is a member, deny creation
+    if @shoutee.is_a?(Group) && @shoutee.group_memberships.exists?(person: Current.user.person)
+      redirect_to my_shoutouts_path(tab: "given"), alert: "You cannot give a shoutout to a group you belong to."
+      return
     end
 
     # Check if user has already given this person/group a shoutout

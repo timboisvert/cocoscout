@@ -219,16 +219,7 @@ class Person < ApplicationRecord
   def generate_public_key
     return if public_key.present?
 
-    base_key = name.parameterize(separator: "")
-    key = base_key
-    counter = 2
-
-    while Person.where(public_key: key).exists? || Group.where(public_key: key).exists?
-      key = "#{base_key}-#{counter}"
-      counter += 1
-    end
-
-    self.public_key = key
+    self.public_key = PublicKeyService.generate(name)
   end
 
   def downcase_public_key

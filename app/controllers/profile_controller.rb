@@ -188,68 +188,11 @@ class ProfileController < ApplicationController
   end
 
   def check_url_availability
-    proposed_key = params[:public_key]&.strip&.downcase
+    proposed_key = params[:public_key]
+    result = PublicKeyService.validate(proposed_key, entity_type: :person, exclude_entity: @person)
 
-    # Check cooldown period first
-    settings = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))
-    cooldown_days = settings["url_change_cooldown_days"]
-
-    if @person.public_key_changed_at && @person.public_key_changed_at > cooldown_days.days.ago
-      render json: {
-        available: false,
-        message: "You changed your public URL too recently."
-      }, status: :unprocessable_entity
-      return
-    end
-
-    # Validate format
-    unless proposed_key =~ /\A[a-z0-9][a-z0-9\-]{2,29}\z/
-      render json: {
-        available: false,
-        message: "URL must be 3-30 characters: lowercase letters, numbers, and hyphens only"
-      }, status: :unprocessable_entity
-      return
-    end
-
-    # Check if it's the same as current
-    if proposed_key == @person.public_key
-      render json: {
-        available: false,
-        message: "This is already your current URL"
-      }, status: :unprocessable_entity
-      return
-    end
-
-    # Check if reserved
-    reserved = YAML.safe_load_file(
-      Rails.root.join("config", "reserved_public_keys.yml"),
-      permitted_classes: [],
-      permitted_symbols: [],
-      aliases: true
-    )
-    if reserved.include?(proposed_key)
-      render json: {
-        available: false,
-        message: "This URL is reserved for CocoScout system pages"
-      }, status: :unprocessable_entity
-      return
-    end
-
-    # Check if taken by another person or group
-    if Person.where(public_key: proposed_key).where.not(id: @person.id).exists? ||
-       Group.where(public_key: proposed_key).exists?
-      render json: {
-        available: false,
-        message: "This URL is already taken"
-      }, status: :unprocessable_entity
-      return
-    end
-
-    # Available!
-    render json: {
-      available: true,
-      message: "This URL is available!"
-    }
+    status = result[:available] ? :ok : :unprocessable_entity
+    render json: result, status: status
   end
 
   def update_url

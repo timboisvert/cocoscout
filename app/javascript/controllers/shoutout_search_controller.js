@@ -37,7 +37,7 @@ export default class extends Controller {
 
         // Debounce the search
         this.timeout = setTimeout(() => {
-            fetch(`/api/search/people_and_groups?q=${encodeURIComponent(query)}`)
+            fetch(`/my/shoutouts/search?q=${encodeURIComponent(query)}`)
                 .then(response => response.json())
                 .then(data => {
                     this.displayResults(data, query)
@@ -156,7 +156,7 @@ export default class extends Controller {
 
     async checkExistingShoutout(type, id, name) {
         try {
-            const response = await fetch(`/api/check_existing_shoutout?shoutee_type=${type}&shoutee_id=${id}`)
+            const response = await fetch(`/my/shoutouts/check_existing?shoutee_type=${type}&shoutee_id=${id}`)
             const data = await response.json()
 
             if (data.has_existing_shoutout && this.hasExistingShoutoutNoticeTarget) {

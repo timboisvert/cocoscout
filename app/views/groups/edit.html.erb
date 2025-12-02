@@ -1,7 +1,7 @@
 <% content_for :title, "#{@group.name} - Edit Group Profile" %>
 
 <!-- Main Content -->
-<div class="w-full" data-controller="profile-modals profile-visibility">
+<div class="w-full" data-controller="profile-modals">
   <div id="notice-container">
     <%= render partial: "shared/notice", locals: { notice: notice } %>
   </div>
@@ -15,18 +15,18 @@
       <%= form_with(model: @group, url: update_group_path(@group), method: :patch, data: { profile_visibility_target: "form", turbo: true }) do |form| %>
         <div class="space-y-4">
           <!-- Enable Toggle -->
-          <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
+              <p class="text-sm font-medium text-gray-700">Enable Group's Public Profile</p>
               <p class="text-xs text-gray-500 mt-1">
-                When enabled, your group profile will be visible to the public
+                When enabled, your group's profile will be visible to the public
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-4">
               <%= form.check_box :public_profile_enabled, {
                 class: "sr-only peer",
                 data: {
-                  profile_visibility_target: "toggle",
+                  profile_visibility_target: "checkbox",
                   action: "change->profile-visibility#toggle"
                 }
               } %>
@@ -35,28 +35,28 @@
           </div>
 
           <!-- URL Box -->
-          <div>
-            <%= render "shared/copy_url", url: (public_profile_url(@group.public_key) if @group.public_key.present?), label: "Your Group's Profile URL" %>
-            <p class="mt-2 text-xs text-gray-500">
+          <div data-profile-visibility-target="content" class="pt-4 border-t border-gray-200">
+            <%= render "shared/copy_url", url: (public_profile_url(@group.public_key) if @group.public_key.present?), label: "Your Group's Public Profile URL" %>
+            <p class="mt-1 mb-4 text-xs text-gray-500">
               <a href="javascript:void(0)" data-action="click->profile-modals#openChangeGroupUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
             </p>
-          </div>
 
-          <!-- Action Buttons -->
-          <div class="flex flex-wrap gap-3">
-            <%= render "shared/button",
-                text: "View Public Profile",
-                variant: "primary",
-                icon: "eye",
-                path: public_profile_path(@group.public_key),
-                target: "_blank",
-                rel: "noopener" %>
-            <%= render "shared/button",
-                text: "Share Profile",
-                variant: "outline",
-                icon: "share",
-                data: { action: "click->profile-modals#openShare" },
-                type: :button %>
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-3 mt-4">
+              <%= render "shared/button",
+                  text: "View Group's Public Profile",
+                  variant: "primary",
+                  icon: "eye",
+                  path: public_profile_path(@group.public_key),
+                  target: "_blank",
+                  rel: "noopener" %>
+              <%= render "shared/button",
+                  text: "Share Profile",
+                  variant: "outline",
+                  icon: "share",
+                  data: { action: "click->profile-modals#openShare" },
+                  type: :button %>
+            </div>
           </div>
         </div>
       <% end %>
