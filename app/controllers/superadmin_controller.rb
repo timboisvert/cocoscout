@@ -1,5 +1,5 @@
 class SuperadminController < ApplicationController
-  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending ]
+  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending, :organizations_list, :organization_detail ]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -8,6 +8,12 @@ class SuperadminController < ApplicationController
 
   def index
     @users = User.order(:email_address)
+
+    # Organization stats for overview
+    @organizations_total = Organization.count
+    @organizations_new_this_week = Organization.where("created_at > ?", 1.week.ago).count
+    @organizations_new_this_month = Organization.where("created_at > ?", 1.month.ago).count
+    @recent_organizations = Organization.order(created_at: :desc).limit(5)
 
     if cookies.encrypted[:recent_impersonations].present?
       begin
@@ -18,6 +24,27 @@ class SuperadminController < ApplicationController
     else
       @recent_impersonations = []
     end
+  end
+
+  def organizations_list
+    @search = params[:search].to_s.strip
+    @organizations = Organization.order(created_at: :desc)
+
+    # Filter by search term if provided (search by org name or owner email/name)
+    if @search.present?
+      search_term = "%#{@search}%"
+      @organizations = @organizations.joins(:owner)
+        .where("organizations.name LIKE ? OR users.email_address LIKE ? OR people.name LIKE ?",
+               search_term, search_term, search_term)
+        .joins("LEFT JOIN people ON users.person_id = people.id")
+        .distinct
+    end
+
+    @pagy, @organizations = pagy(@organizations, items: 25)
+  end
+
+  def organization_detail
+    @organization = Organization.find(params[:id])
   end
 
   def impersonate

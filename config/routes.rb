@@ -40,6 +40,8 @@ Rails.application.routes.draw do
     delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
+    get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
+    get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
   end
 
   # Pilot user setup (superadmins only)
