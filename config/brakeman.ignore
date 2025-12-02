@@ -41,7 +41,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/profile_controller.rb",
-      "line": 329,
+      "line": 272,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params[:person][:profile_skills_attributes].permit!",
       "render_path": null,
@@ -64,7 +64,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/my/questionnaires_controller.rb",
-      "line": 171,
+      "line": 169,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "params[:respondent_type].constantize",
       "render_path": null,
@@ -87,7 +87,7 @@
       "check_name": "LinkToHref",
       "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/manage/groups/show.html.erb",
-      "line": 51,
+      "line": 61,
       "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
       "code": "link_to((Unresolved Model).new.handle, (Unresolved Model).new.url, :class => \"text-pink-500 text-sm hover:underline\", :target => \"_blank\", :rel => \"noopener\")",
       "render_path": [
@@ -117,11 +117,34 @@
     {
       "warning_type": "Remote Code Execution",
       "warning_code": 24,
+      "fingerprint": "82ff9dc34686e29768c6dd065ef5404fccd44d4824fedaf7b43d20bd66cfc385",
+      "check_name": "UnsafeReflection",
+      "message": "Unsafe reflection method `constantize` called on parameter value",
+      "file": "app/controllers/superadmin_controller.rb",
+      "line": 214,
+      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
+      "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "SuperadminController",
+        "method": "queue_retry"
+      },
+      "user_input": "params[:id]",
+      "confidence": "Medium",
+      "cwe_id": [
+        470
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Remote Code Execution",
+      "warning_code": 24,
       "fingerprint": "98446517e8fd98c9a1f539abbeab7fca50c1bc803f43189806591d76cf952960",
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/my/questionnaires_controller.rb",
-      "line": 90,
+      "line": 88,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "params[:respondent_type].constantize",
       "render_path": null,
@@ -132,29 +155,6 @@
       },
       "user_input": "params[:respondent_type]",
       "confidence": "High",
-      "cwe_id": [
-        470
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Remote Code Execution",
-      "warning_code": 24,
-      "fingerprint": "b8eb88c010f0550baf1d0b989ab623e7b1aa4019197016f3b5ec72d0a7edc5ba",
-      "check_name": "UnsafeReflection",
-      "message": "Unsafe reflection method `constantize` called on parameter value",
-      "file": "app/controllers/superadmin_controller.rb",
-      "line": 187,
-      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
-      "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "GodModeController",
-        "method": "queue_retry"
-      },
-      "user_input": "params[:id]",
-      "confidence": "Medium",
       "cwe_id": [
         470
       ],
