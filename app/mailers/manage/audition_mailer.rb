@@ -17,7 +17,7 @@ class Manage::AuditionMailer < ApplicationMailer
 
     mail(
       to: person.email,
-      subject: "Audition Invitation for #{production.name}"
+      subject: "#{production.name} Auditions"
     )
   end
 end

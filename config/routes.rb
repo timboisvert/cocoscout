@@ -58,8 +58,8 @@ Rails.application.routes.draw do
   post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
   post "/pilot/create_producer_additional", to: "pilot#create_producer_additional", as: "pilot_create_producer_additional"
   post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"
-  post "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
-  post "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
+  delete "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
+  delete "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
 
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"

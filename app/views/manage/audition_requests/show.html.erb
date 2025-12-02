@@ -7,7 +7,7 @@
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
       [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
     ],
-    text: @audition_request.requestable.name.truncate(40, omission: "..."),
+    text: @requestable&.name&.truncate(40, omission: "...") || "Deleted",
     links: []
   } %>
 
@@ -38,22 +38,26 @@
     </div>
 
     <div data-tabs-target="panel" class="hidden">
-      <%# Use ProfileResume for both Person and Group %>
-      <% resume = @requestable.profile_resumes.first %>
-      <% if resume&.file&.attached? %>
-        <% if resume.file.content_type == 'application/pdf' && resume.file.representable? %>
-          <div class="w-full">
-            <%= image_tag resume.file.representation(resize_to_limit: [1224, 1584]), class: "object-contain" %>
-          </div>
-        <% elsif resume.file.content_type.start_with?('image/') %>
-          <div class="w-full">
-            <%= image_tag resume.file, class: "object-contain" %>
-          </div>
-        <% else %>
-          <p class="text-left text-gray-500 text-sm">Resume preview not available</p>
-        <% end %>
+      <% if @requestable.nil? %>
+        <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
       <% else %>
-        <p class="text-left text-gray-500 text-sm">No resume found</p>
+        <%# Use ProfileResume for both Person and Group %>
+        <% resume = @requestable.profile_resumes.first %>
+        <% if resume&.file&.attached? %>
+          <% if resume.file.content_type == 'application/pdf' && resume.file.representable? %>
+            <div class="w-full">
+              <%= image_tag resume.file.representation(resize_to_limit: [1224, 1584]), class: "object-contain" %>
+            </div>
+          <% elsif resume.file.content_type.start_with?('image/') %>
+            <div class="w-full">
+              <%= image_tag resume.file, class: "object-contain" %>
+            </div>
+          <% else %>
+            <p class="text-left text-gray-500 text-sm">Resume preview not available</p>
+          <% end %>
+        <% else %>
+          <p class="text-left text-gray-500 text-sm">No resume found</p>
+        <% end %>
       <% end %>
     </div>
 
@@ -121,7 +125,7 @@
     </div>
 
     <div data-tabs-target="panel" class="hidden">
-      <% if @answers.any? %>
+      <% if @answers&.any? %>
         <div class="mt-2">
           <%= render "manage/audition_requests/answers", answers: @answers %>
         </div>
@@ -168,7 +172,7 @@
             <% else %>
               <% classes += " bg-white text-pink-500 hover:bg-pink-600 hover:text-white" %>
             <% end %>
-            <% count = @status_counts[status.to_s] || 0 %>
+            <% count = @status_counts&.dig(status.to_s) || 0 %>
             <%= link_to set_status_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request, status: status), class: classes, data: { turbo_method: :post } do %>
               <span class="w-full flex justify-center items-center">
                 <span class="flex w-full justify-center items-center relative">

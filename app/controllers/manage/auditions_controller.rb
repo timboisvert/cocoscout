@@ -541,8 +541,6 @@ class Manage::AuditionsController < Manage::ManageController
 
         Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
 
-        Please confirm your acceptance by replying to this email.
-
         Best regards,
         The #{production.name} Team
       EMAIL
@@ -564,33 +562,18 @@ class Manage::AuditionsController < Manage::ManageController
     end
 
     def generate_default_invitation_email(person, production, audition_cycle)
-      if audition_cycle.audition_type == "video_upload"
-        <<~EMAIL
-          Dear #{person.name},
+      <<~EMAIL
+        Dear #{person.name},
 
-          Congratulations! You've been invited to audition for #{production.name}.
+        Congratulations! You've been invited to audition for #{production.name}.
 
-          Your audition materials have been received and are under review. We'll notify you once decisions have been made.
+        Your audition schedule is now available. Please log in to view your audition time and location details.
 
-          We look forward to seeing your work!
+        We look forward to seeing you!
 
-          Best regards,
-          The #{production.name} Team
-        EMAIL
-      else
-        <<~EMAIL
-          Dear #{person.name},
-
-          Congratulations! You've been invited to audition for #{production.name}.
-
-          Your audition schedule is now available. Please log in to view your audition time and location details.
-
-          We look forward to seeing you!
-
-          Best regards,
-          The #{production.name} Team
-        EMAIL
-      end
+        Best regards,
+        The #{production.name} Team
+      EMAIL
     end
 
     def generate_default_not_invited_email(person, production)

@@ -84,7 +84,7 @@ class PilotController < ApplicationController
   def create_talent
     ActiveRecord::Base.transaction do
       email = params[:email]
-      full_name = "#{params[:first_name]} #{params[:last_name]}".strip
+      full_name = params[:name]
 
       # Find or create user
       @user = User.find_by(email_address: email)
@@ -163,7 +163,7 @@ class PilotController < ApplicationController
   def create_producer_user
     ActiveRecord::Base.transaction do
       email = params[:email]
-      full_name = "#{params[:first_name]} #{params[:last_name]}".strip
+      full_name = params[:name]
 
       # Find or create user
       @user = User.find_by(email_address: email)

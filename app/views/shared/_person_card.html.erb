@@ -2,6 +2,11 @@
     show_delete_signup = false if local_assigns[:show_delete_signup].nil?
 %>
 
+<% if person.nil? %>
+    <div class="p-6 text-center text-gray-500">
+        <p>This person is no longer available.</p>
+    </div>
+<% else %>
 <div class="">
     <% headshot = person.primary_headshot %>
     <% if headshot&.image&.attached? %>
@@ -125,3 +130,4 @@
     </div>
 
 </div>
+<% end %>

@@ -8,14 +8,12 @@
 
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
-        label: "View",
         filters: [
           { text: "To Be Scheduled", path: manage_production_audition_sessions_path(production, filter: "to_be_scheduled"), active: filter.blank? || filter == "to_be_scheduled" },
           { text: "All Yes", path: manage_production_audition_sessions_path(production, filter: "accepted"), active: filter == "accepted" },
           { text: "All Sign-ups", path: manage_production_audition_sessions_path(production, filter: "all"), active: filter == "all" }
         ]
-      },
-      { separator: true }
+      }
     ] %>
 
     <%
