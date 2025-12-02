@@ -1,0 +1,189 @@
+<% content_for :title, "#{@organization.name} - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path],
+        ["Organizations", organizations_list_path]
+    ],
+    text: @organization.name,
+    links: []
+  } %>
+
+  <!-- Header section -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6 mt-4">
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 coustard-regular mb-2">
+          <%= @organization.name %>
+        </h1>
+        <div class="space-y-2 text-sm text-gray-600">
+          <div>
+            <span class="font-medium">Owner:</span>
+            <% if @organization.owner.person&.public_key %>
+              <%= link_to(@organization.owner.person.name, public_profile_path(@organization.owner.person.public_key), class: "text-pink-600 hover:text-pink-700") %>
+            <% else %>
+              <%= @organization.owner.email_address %>
+            <% end %>
+            <span class="text-gray-400">(<%= @organization.owner.email_address %>)</span>
+          </div>
+          <div>
+            <span class="font-medium">Created:</span>
+            <%= @organization.created_at&.strftime("%B %d, %Y at %l:%M %p") %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics grid -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <!-- Total Productions -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Productions</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @organization.productions.count %></div>
+    </div>
+
+    <!-- Shows with Events -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Total Shows</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @organization.productions.joins(:shows).count %></div>
+    </div>
+
+    <!-- Future Shows -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Future Shows</div>
+      <div class="text-4xl font-bold text-blue-600">
+        <%= @organization.productions.joins(:shows).where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current, false).distinct.count %>
+      </div>
+    </div>
+
+    <!-- Team Members -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Team Members</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @organization.users.count %></div>
+    </div>
+  </div>
+
+  <!-- Locations -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Locations</h2>
+    <% if @organization.locations.empty? %>
+      <p class="text-gray-500 text-sm">No locations</p>
+    <% else %>
+      <div class="space-y-3">
+        <% @organization.locations.each do |location| %>
+          <div class="border border-gray-200 rounded p-4 hover:bg-gray-50">
+            <div class="font-medium text-gray-900"><%= location.name %></div>
+            <% if location.address1.present? %>
+              <div class="text-sm text-gray-600 mt-1">
+                <%= location.address1 %>
+                <% if location.address2.present? %><br><%= location.address2 %><% end %>
+                <% if location.city.present? %><br><%= location.city %>, <%= location.state %> <%= location.postal_code %><% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Productions -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Productions</h2>
+    <% if @organization.productions.empty? %>
+      <p class="text-gray-500 text-sm">No productions</p>
+    <% else %>
+      <div class="space-y-3">
+        <% @organization.productions.each do |production| %>
+          <div class="border border-gray-200 rounded p-4 hover:bg-gray-50">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="font-medium text-gray-900"><%= production.name %></div>
+                <div class="text-sm text-gray-600 mt-1">
+                  <% show_count = production.shows.count %>
+                  <% future_shows_count = production.shows.where("date_and_time >= ? AND canceled = ?", Time.current, false).count %>
+                  <% if show_count > 0 %>
+                    <%= show_count %> show<%= show_count != 1 ? 's' : '' %>
+                    <% if future_shows_count > 0 %>
+                      (<span class="text-blue-600 font-medium"><%= future_shows_count %> upcoming</span>)
+                    <% end %>
+                  <% else %>
+                    No shows scheduled
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Future Shows/Events -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Upcoming Shows & Events</h2>
+    <% future_shows = @organization.productions.joins(:shows)
+                        .where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current, false)
+                        .sort_by { |p| p.shows.map(&:date_and_time).min || Time.current }
+                        .first(10)
+    %>
+    <% if future_shows.empty? %>
+      <p class="text-gray-500 text-sm">No upcoming shows</p>
+    <% else %>
+      <div class="space-y-3">
+        <% future_shows.each do |production| %>
+          <% upcoming_shows = production.shows.where("date_and_time >= ? AND canceled = ?", Time.current, false).sort_by { |s| s.date_and_time } %>
+          <% upcoming_shows.each do |show| %>
+            <div class="border border-gray-200 rounded p-4 hover:bg-gray-50">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="font-medium text-gray-900"><%= production.name %></div>
+                  <div class="text-sm text-gray-600 mt-1">
+                    <%= show.date_and_time.strftime("%B %d, %Y at %l:%M %p") %>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Upcoming
+                </span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Team Members -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Team Members</h2>
+    <% if @organization.users.empty? %>
+      <p class="text-gray-500 text-sm">No team members</p>
+    <% else %>
+      <div class="space-y-3">
+        <% @organization.users.each do |user| %>
+          <div class="border border-gray-200 rounded p-4 hover:bg-gray-50">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="font-medium text-gray-900">
+                  <% if user.person&.public_key %>
+                    <%= link_to user.person.name, public_profile_path(user.person.public_key), class: "text-pink-600 hover:text-pink-700" %>
+                  <% else %>
+                    <%= user.email_address %>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-600 mt-1"><%= user.email_address %></div>
+              </div>
+              <% if user == @organization.owner %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Owner
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+</div>
