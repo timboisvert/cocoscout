@@ -1,40 +1,6 @@
 {
   "ignored_warnings": [
     {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 84,
-      "fingerprint": "109e1d7ba24d82012da92b818d2aa41b60654cb052b18ff347dcd0552bfb7fe0",
-      "check_name": "RenderInline",
-      "message": "Unescaped model attribute rendered inline",
-      "file": "app/views/manage/shows/edit.html.erb",
-      "line": 277,
-      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
-      "code": "render(text => \"Update #{Show.find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :data => ({ :show_edit_target => \"submitButton\", :recurring_edit_target => \"submitButton\" }) })",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::ShowsController",
-          "method": "edit",
-          "line": 73,
-          "file": "app/controllers/manage/shows_controller.rb",
-          "rendered": {
-            "name": "manage/shows/edit",
-            "file": "app/views/manage/shows/edit.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/shows/edit"
-      },
-      "user_input": "Show.find((params[:show_id] or params[:id])).event_type.titleize",
-      "confidence": "Medium",
-      "cwe_id": [
-        79
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "1616c50d5933bfe7e9f9e69eeba85527ba5c31e60ab84ef440dcf845ff83288e",
@@ -82,6 +48,40 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "4692470d24ebe31b2723b68abdfb45cea039dc0389bba60d1d540b8c02004c9e",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/edit.html.erb",
+      "line": 277,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Update #{Show.includes(:location, :show_person_role_assignments, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :data => ({ :show_edit_target => \"submitButton\", :recurring_edit_target => \"submitButton\" }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "edit",
+          "line": 95,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/edit",
+            "file": "app/views/manage/shows/edit.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/edit"
+      },
+      "user_input": "Show.includes(:location, :show_person_role_assignments, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
       "fingerprint": "7a84727dca2f511ba11c1b900174689b7fa4e7345188062db04d8ecb69c82145",
       "check_name": "LinkToHref",
@@ -121,7 +121,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/superadmin_controller.rb",
-      "line": 214,
+      "line": 221,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
       "render_path": null,

@@ -73,10 +73,12 @@ class Manage::DirectoryController < Manage::ManageController
     person_ids = paginated_data.select { |e| e[:type] == "Person" }.map { |e| e[:id] }
     group_ids = paginated_data.select { |e| e[:type] == "Group" }.map { |e| e[:id] }
 
-    loaded_people = Person.includes(:profile_headshots, :profile_resumes, :talent_pools)
+    loaded_people = Person
+                          .includes(profile_headshots: { image_attachment: :blob })
                           .where(id: person_ids)
                           .index_by(&:id)
-    loaded_groups = Group.includes(:profile_headshots, :profile_resumes, :talent_pools, :members)
+    loaded_groups = Group
+                         .includes(profile_headshots: { image_attachment: :blob }, members: {})
                          .where(id: group_ids)
                          .index_by(&:id)
 
