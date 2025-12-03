@@ -7,6 +7,10 @@ development:
   primary:
     <<: *default
     database: db/development.sqlite3
+  cache:
+    <<: *default
+    database: db/development_cache.sqlite3
+    migrations_paths: db/cache_migrate
   queue:
     <<: *default
     database: storage/development.sqlite3

@@ -361,7 +361,7 @@ class CacheDiagnostics
       key_patterns = Hash.new { |h, k| h[k] = { count: 0, bytes: 0 } }
 
       entries.each do |key_binary, byte_size|
-        key = key_binary.to_s.force_encoding("UTF-8")
+        key = key_binary.to_s.dup.force_encoding("UTF-8")
 
         # Extract key pattern (first segment or prefix)
         pattern = extract_key_pattern(key)

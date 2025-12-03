@@ -1,0 +1,218 @@
+<% content_for :title, "Cache Monitor - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Cache Monitor",
+    links: []
+  } %>
+
+  <% if @solid_cache_available == false %>
+    <div class="mt-4 border border-amber-200 rounded-lg p-4 bg-amber-50">
+      <p class="text-amber-800 font-medium">Solid Cache is not available</p>
+      <p class="text-sm text-amber-600 mt-1">The cache database may not be configured or the table doesn't exist.</p>
+    </div>
+  <% else %>
+    <!-- Overview Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@entry_count) %></div>
+        <div class="text-sm text-gray-500">Total Entries</div>
+      </div>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="text-2xl font-bold text-gray-900"><%= number_to_human_size(@total_bytes) %></div>
+        <div class="text-sm text-gray-500">Total Size</div>
+      </div>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="text-2xl font-bold <%= @usage_percent > 80 ? 'text-amber-600' : 'text-green-600' %>"><%= @usage_percent %>%</div>
+        <div class="text-sm text-gray-500">Capacity Used (256 MB max)</div>
+      </div>
+      <div class="border border-gray-200 rounded-lg p-4">
+        <% if @cache_healthy %>
+          <div class="text-2xl font-bold text-green-600">✓ Healthy</div>
+        <% else %>
+          <div class="text-2xl font-bold text-red-600">✗ Unhealthy</div>
+        <% end %>
+        <div class="text-sm text-gray-500">Connection Status</div>
+      </div>
+    </div>
+
+    <!-- Usage Bar -->
+    <div class="mt-4 border border-gray-200 rounded-lg p-4">
+      <div class="flex justify-between text-sm text-gray-600 mb-2">
+        <span>Cache Usage</span>
+        <span><%= number_to_human_size(@total_bytes) %> / <%= number_to_human_size(@max_size) %></span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-3">
+        <div class="<%= @usage_percent > 80 ? 'bg-amber-500' : 'bg-green-500' %> h-3 rounded-full transition-all" style="width: <%= [@usage_percent, 100].min %>%"></div>
+      </div>
+      <% if @oldest_entry && @newest_entry %>
+        <div class="flex justify-between text-xs text-gray-500 mt-2">
+          <span>Oldest: <%= time_ago_in_words(@oldest_entry) %> ago</span>
+          <span>Newest: <%= time_ago_in_words(@newest_entry) %> ago</span>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <!-- Size Distribution -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Size Distribution</h3>
+        </div>
+        <div class="p-4">
+          <% if @size_distribution.any? %>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 border-b">
+                  <th class="pb-2">Range</th>
+                  <th class="pb-2 text-right">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @size_distribution.each do |range, count| %>
+                  <tr class="border-b border-gray-100">
+                    <td class="py-2"><%= range %></td>
+                    <td class="py-2 text-right"><%= number_with_delimiter(count) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <p class="text-sm text-gray-500">No entries to analyze</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Key Patterns -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Top Key Patterns</h3>
+        </div>
+        <div class="p-4">
+          <% if @key_patterns.any? %>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 border-b">
+                  <th class="pb-2">Pattern</th>
+                  <th class="pb-2 text-right">Count</th>
+                  <th class="pb-2 text-right">Size</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @key_patterns.each do |pattern, stats| %>
+                  <tr class="border-b border-gray-100">
+                    <td class="py-2 font-mono text-xs truncate max-w-[200px]" title="<%= pattern %>"><%= pattern %></td>
+                    <td class="py-2 text-right"><%= stats[:count] %></td>
+                    <td class="py-2 text-right"><%= number_to_human_size(stats[:bytes]) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            <p class="text-xs text-gray-500 mt-2">Based on sample of 500 entries</p>
+          <% else %>
+            <p class="text-sm text-gray-500">No entries to analyze</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Entries -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Recent Entries</h3>
+      </div>
+      <div class="p-4 overflow-x-auto">
+        <% if @recent_entries.any? %>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 border-b">
+                <th class="pb-2">Key</th>
+                <th class="pb-2 text-right">Size</th>
+                <th class="pb-2 text-right">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_entries.each do |entry| %>
+                <tr class="border-b border-gray-100">
+                  <td class="py-2 font-mono text-xs truncate max-w-[400px]" title="<%= entry[:key] %>"><%= entry[:key].truncate(60) %></td>
+                  <td class="py-2 text-right whitespace-nowrap"><%= number_to_human_size(entry[:size]) %></td>
+                  <td class="py-2 text-right whitespace-nowrap"><%= time_ago_in_words(entry[:created_at]) %> ago</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% else %>
+          <p class="text-sm text-gray-500">No recent entries</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <!-- Clear All Cache -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Clear All Cache</h3>
+        </div>
+        <div class="p-4">
+          <p class="text-sm text-gray-600 mb-3">
+            Clear all cached data. The cache will be rebuilt automatically as pages are accessed.
+          </p>
+          <%= form_with url: cache_clear_path, method: :post do %>
+            <%= render "shared/button", text: "Clear All Cache", variant: "danger", size: "small", type: :submit,
+                data: { turbo_confirm: "This will clear all #{number_with_delimiter(@entry_count)} cache entries. Continue?" } %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Clear by Pattern -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Clear by Pattern</h3>
+        </div>
+        <div class="p-4">
+          <p class="text-sm text-gray-600 mb-3">
+            Clear cache entries matching a pattern (e.g., "person_card", "dashboard", "views/manage").
+          </p>
+          <%= form_with url: cache_clear_pattern_path, method: :post, class: "flex gap-2" do |f| %>
+            <%= f.text_field :pattern, placeholder: "Enter pattern...", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400 text-sm" %>
+            <%= render "shared/button", text: "Clear Pattern", variant: "warning", size: "small", type: :submit,
+                data: { turbo_confirm: "This will clear cache entries matching the pattern. Continue?" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cache Info -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Cache Configuration</h3>
+      </div>
+      <div class="p-4">
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <dt class="text-gray-500">Cache Store</dt>
+            <dd class="font-medium">Solid Cache (Database-backed)</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Max Size</dt>
+            <dd class="font-medium"><%= number_to_human_size(@max_size) %></dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Average Entry Size</dt>
+            <dd class="font-medium"><%= @entry_count > 0 ? number_to_human_size(@total_bytes / @entry_count) : 'N/A' %></dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Cache Age</dt>
+            <dd class="font-medium"><%= @oldest_entry ? distance_of_time_in_words(@oldest_entry, @newest_entry) : 'N/A' %></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+</div>

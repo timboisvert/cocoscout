@@ -15,7 +15,7 @@ Rails.application.configure do
     config.action_controller.perform_caching = false
   end
 
-  config.cache_store = :memory_store
+  config.cache_store = :solid_cache_store
 
   config.active_storage.service = :local
 
