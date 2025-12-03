@@ -161,8 +161,6 @@ export default class extends Controller {
     openContactModal() {
         if (this.selectedItems.size === 0) return
 
-        console.log('Opening modal with items:', Array.from(this.selectedItems.values()))
-
         // Hide dropdown
         this.dropdownTarget.classList.add('hidden')
 
@@ -196,11 +194,8 @@ export default class extends Controller {
     }
 
     renderRecipients() {
-        console.log('Rendering recipients:', Array.from(this.selectedItems.values()))
-
         const html = Array.from(this.selectedItems.values()).map(item => {
             if (!item || !item.name) {
-                console.error('Invalid item:', item)
                 return ''
             }
 

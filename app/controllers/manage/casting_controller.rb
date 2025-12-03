@@ -53,13 +53,15 @@ class Manage::CastingController < Manage::ManageController
     @cast_people.uniq!
     @cast_groups.uniq!
     @cast_members = people_for_email.uniq.sort_by(&:name)
+
+    # Create a new draft for the form
+    @email_draft = EmailDraft.new(emailable: @show)
   end
 
   def send_cast_email
-    title = params[:title]
-    message = params[:message]
+    @email_draft = EmailDraft.new(email_draft_params.merge(emailable: @show))
 
-    if title.blank? || message.blank?
+    if @email_draft.title.blank? || @email_draft.body.blank?
       redirect_to manage_production_show_contact_cast_path(@production, @show), alert: "Title and message are required"
       return
     end
@@ -95,9 +97,12 @@ class Manage::CastingController < Manage::ManageController
 
     people_to_email.uniq!
 
+    # Convert rich text to HTML string for serialization in background jobs
+    body_html = @email_draft.body.to_s
+
     # Send email to each person
     people_to_email.each do |person|
-      Manage::CastingMailer.cast_email(person, @show, title, message, Current.user).deliver_later
+      Manage::CastingMailer.cast_email(person, @show, @email_draft.title, body_html, Current.user).deliver_later
     end
 
     redirect_to manage_production_show_path(@production, @show), notice: "Email sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
@@ -212,5 +217,9 @@ class Manage::CastingController < Manage::ManageController
         end
       end
       availability
+    end
+
+    def email_draft_params
+      params.require(:email_draft).permit(:title, :body)
     end
 end

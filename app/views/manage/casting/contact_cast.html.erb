@@ -64,7 +64,7 @@
     <% end %>
 
     <!-- Email Compose -->
-    <%= form_with url: manage_production_send_cast_email_path(@production, @show), method: :post, class: "space-y-4" do |form| %>
+    <%= form_with model: @email_draft, url: manage_production_send_cast_email_path(@production, @show), method: :post, class: "space-y-4" do |form| %>
 
       <div class="relative">
         <%= form.text_field :title,
@@ -74,17 +74,11 @@
       </div>
 
       <div class="relative">
-        <%= form.text_area :message,
-          rows: 8,
-          class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-          placeholder: "Write your message to the cast...",
-          required: true %>
+        <%= form.rich_text_area :body,
+          class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
       </div>
 
       <div class="flex items-center justify-between pt-2">
-        <p class="text-xs text-gray-500">
-          Email will be sent to all cast members
-        </p>
         <div class="flex items-center gap-3">
           <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_production_show_cast_path(@production, @show) %>
           <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit, disabled: @cast_members.empty? %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_02_173211) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_03_001306) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -145,6 +145,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_02_173211) do
     t.index ["audition_cycle_id", "talent_pool_id", "assignable_type", "assignable_id"], name: "index_cast_assignment_stages_unique", unique: true
     t.index ["audition_cycle_id"], name: "index_cast_assignment_stages_on_audition_cycle_id"
     t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
+  end
+
+  create_table "email_drafts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "emailable_id"
+    t.string "emailable_type"
+    t.integer "show_id"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["emailable_type", "emailable_id"], name: "index_email_drafts_on_emailable"
+    t.index ["show_id"], name: "index_email_drafts_on_show_id"
   end
 
   create_table "email_groups", force: :cascade do |t|
@@ -696,6 +707,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_02_173211) do
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "cast_assignment_stages", "talent_pools"
+  add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "users"
   add_foreign_key "group_invitations", "groups"

@@ -9,10 +9,7 @@ export default class extends Controller {
     }
 
     connect() {
-        console.log(`Infinite scroll connected: page ${this.pageValue} of ${this.pagesValue}`)
-
         if (this.pageValue < this.pagesValue && this.hasSentinelTarget) {
-            console.log("Setting up IntersectionObserver")
             this.observer = new IntersectionObserver(
                 entries => this.handleIntersect(entries),
                 {
@@ -22,9 +19,6 @@ export default class extends Controller {
                 }
             )
             this.observer.observe(this.sentinelTarget)
-            console.log("Observer is watching sentinel")
-        } else {
-            console.log("No more pages or sentinel missing")
         }
     }
 
@@ -36,9 +30,7 @@ export default class extends Controller {
 
     handleIntersect(entries) {
         entries.forEach(entry => {
-            console.log("Intersection event:", entry.isIntersecting, "Has link:", this.hasNextLinkTarget)
             if (entry.isIntersecting && this.hasNextLinkTarget) {
-                console.log("Triggering load more")
                 this.nextLinkTarget.click()
                 this.observer.disconnect()
             }

@@ -101,6 +101,9 @@ class Manage::DirectoryController < Manage::ManageController
     @people_count = people_data.count
     @groups_count = groups_data.count
 
+    # Create email draft for the contact modal
+    @email_draft = EmailDraft.new
+
     # Handle pagination with Turbo Streams for infinite scroll
     respond_to do |format|
       format.html # Normal page load
@@ -110,8 +113,9 @@ class Manage::DirectoryController < Manage::ManageController
 
   def contact_directory
     person_ids = params[:person_ids]&.select { |id| id.present? } || []
-    subject = params[:subject]
-    message = params[:message]
+    @email_draft = EmailDraft.new(email_draft_params)
+    subject = @email_draft.title
+    body_html = @email_draft.body.to_s
 
     if person_ids.empty?
       redirect_to manage_directory_path, alert: "Please select at least one person or group."
@@ -139,7 +143,7 @@ class Manage::DirectoryController < Manage::ManageController
 
     # Send emails
     people_to_email.each do |person|
-      Manage::ContactMailer.send_message(person, subject, message, Current.user).deliver_later
+      Manage::ContactMailer.send_message(person, subject, body_html, Current.user).deliver_later
     end
 
     redirect_to manage_directory_path, notice: "Email sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
@@ -185,5 +189,11 @@ class Manage::DirectoryController < Manage::ManageController
     else
       redirect_to manage_directory_group_path(@group, tab: 2), alert: "No availability changes were made"
     end
+  end
+
+  private
+
+  def email_draft_params
+    params.require(:email_draft).permit(:title, :body)
   end
 end

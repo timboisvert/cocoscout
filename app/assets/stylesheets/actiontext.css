@@ -11,6 +11,45 @@ trix-editor {
   outline: none;
 }
 
+/* Restore list styles inside Trix editor (Tailwind resets these) */
+trix-editor ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+trix-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+trix-editor ul ul {
+  list-style-type: circle;
+}
+
+trix-editor ul ul ul {
+  list-style-type: square;
+}
+
+trix-editor li {
+  margin-bottom: 0.25em;
+}
+
+trix-editor blockquote {
+  border-left: 3px solid #ccc;
+  margin: 0.5em 0;
+  padding-left: 0.75em;
+  color: #666;
+}
+
+trix-editor pre {
+  background-color: #f4f4f4;
+  padding: 0.5em;
+  border-radius: 3px;
+  overflow-x: auto;
+}
+
 trix-toolbar * {
   box-sizing: border-box;
 }
@@ -474,6 +513,27 @@ trix-editor .attachment__metadata .attachment__size {
 
 .trix-content li {
   margin-left: 1em;
+}
+
+/* Restore list styles for rendered content (Tailwind resets these) */
+.trix-content ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.trix-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.trix-content ul ul {
+  list-style-type: circle;
+}
+
+.trix-content ul ul ul {
+  list-style-type: square;
 }
 
 .trix-content [dir=rtl] li {
