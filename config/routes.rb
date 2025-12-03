@@ -41,6 +41,8 @@ Rails.application.routes.draw do
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
     get  "/people",            to: "superadmin#people_list",         as: "people_list"
+    delete "/people/bulk_destroy", to: "superadmin#bulk_destroy_people", as: "bulk_destroy_people"
+    delete "/people/suspicious/destroy_all", to: "superadmin#destroy_all_suspicious_people", as: "destroy_all_suspicious_people"
     get  "/people/:id",        to: "superadmin#person_detail",       as: "person_detail"
     delete "/people/:id",      to: "superadmin#destroy_person",      as: "destroy_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"

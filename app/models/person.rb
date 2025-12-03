@@ -1,5 +1,6 @@
 class Person < ApplicationRecord
   include CacheInvalidation
+  include SuspiciousDetection
   invalidates_cache :person_card, :person_profile
 
   has_many :socials, as: :sociable, dependent: :destroy
@@ -52,13 +53,15 @@ class Person < ApplicationRecord
   belongs_to :user, optional: true
 
   # Validations
-  validates :name, presence: true
-  validates :email, presence: true
+  validates :name, presence: true, length: { minimum: 2, maximum: 100 }
+  validates :email, presence: true, length: { maximum: 100 }
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
   validates :public_key, uniqueness: true, allow_nil: true
   validates :public_key, format: { with: /\A[a-z0-9][a-z0-9\-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
   validate :email_change_frequency
   validate :public_key_change_frequency
+  # name_not_malicious, email_not_malicious, and sanitize_name are in SuspiciousDetection concern
 
   # Callbacks
   before_validation :generate_public_key, on: :create
@@ -261,6 +264,7 @@ class Person < ApplicationRecord
 
   def generate_public_key
     return if public_key.present?
+    return if name.blank? # Can't generate without a name
 
     self.public_key = PublicKeyService.generate(name)
   end
@@ -282,8 +286,6 @@ class Person < ApplicationRecord
       errors.add(:public_key, "is reserved for CocoScout system pages")
     end
   end
-
-
 
   def email_change_frequency
     return if email_was.nil? || email == email_was # No change or new record

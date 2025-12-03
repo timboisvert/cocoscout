@@ -35,7 +35,13 @@ class SuperadminController < ApplicationController
 
   def people_list
     @search = params[:search].to_s.strip
+    @filter = params[:filter].to_s.strip
     @people = Person.order(created_at: :desc)
+
+    # Apply filter for suspicious people
+    if @filter == "suspicious"
+      @people = @people.suspicious
+    end
 
     # Filter by search term if provided (search by name or email)
     if @search.present?
@@ -44,6 +50,7 @@ class SuperadminController < ApplicationController
     end
 
     @pagy, @people = pagy(@people, items: 25)
+    @suspicious_count = Person.suspicious.count
   end
 
   def person_detail
@@ -52,20 +59,51 @@ class SuperadminController < ApplicationController
 
   def destroy_person
     @person = Person.find(params[:id])
-    user = @person.user
     person_name = @person.name
 
-    # Remove from join tables
-    @person.talent_pools.clear
-    @person.organizations.clear
-
-    # Destroy the user first (which will nullify the person association)
-    user&.destroy!
-
-    # Now destroy the person (dependent associations will be handled automatically)
-    @person.destroy!
+    destroy_person_record(@person)
 
     redirect_to people_list_path, notice: "#{person_name} was successfully deleted", status: :see_other
+  end
+
+  def bulk_destroy_people
+    person_ids = params[:person_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
+
+    if person_ids.empty?
+      redirect_to people_list_path, alert: "No people selected for deletion", status: :see_other
+      return
+    end
+
+    people = Person.where(id: person_ids)
+    count = people.count
+
+    ActiveRecord::Base.transaction do
+      people.find_each do |person|
+        destroy_person_record(person)
+      end
+    end
+
+    redirect_to people_list_path(filter: params[:filter], search: params[:search]),
+                notice: "Successfully deleted #{count} #{'person'.pluralize(count)}",
+                status: :see_other
+  end
+
+  def destroy_all_suspicious_people
+    people = Person.suspicious
+    count = people.count
+
+    if count.zero?
+      redirect_to people_list_path, alert: "No suspicious people to delete", status: :see_other
+      return
+    end
+
+    ActiveRecord::Base.transaction do
+      people.find_each do |person|
+        destroy_person_record(person)
+      end
+    end
+
+    redirect_to people_list_path, notice: "Successfully deleted all #{count} suspicious #{'person'.pluralize(count)}", status: :see_other
   end
 
   def organizations_list
@@ -601,5 +639,26 @@ class SuperadminController < ApplicationController
     result
   rescue
     false
+  end
+
+  def destroy_person_record(person)
+    user = person.user
+
+    # Clear join tables
+    person.talent_pools.clear
+    person.organizations.clear
+
+    # Clear any direct person_id references in show_person_role_assignments
+    # (legacy column alongside polymorphic assignable_id/assignable_type)
+    ShowPersonRoleAssignment.where(person_id: person.id).update_all(person_id: nil)
+
+    # Nullify person's user_id before destroying user (foreign key constraint)
+    if user
+      person.update_column(:user_id, nil)
+      user.destroy!
+    end
+
+    # Now destroy the person (dependent associations will be handled automatically)
+    person.destroy!
   end
 end

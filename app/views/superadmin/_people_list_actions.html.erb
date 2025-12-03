@@ -1,0 +1,12 @@
+<% if suspicious_count > 0 %>
+  <%= button_to destroy_all_suspicious_people_path,
+      method: :delete,
+      form: { data: { turbo_confirm: "Are you sure you want to delete ALL #{suspicious_count} suspicious people? This cannot be undone." } } do %>
+    <%= render "shared/button",
+        text: "Delete All Suspicious",
+        variant: "danger",
+        size: "small",
+        icon: "trash",
+        type: :button %>
+  <% end %>
+<% end %>
