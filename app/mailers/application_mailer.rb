@@ -1,5 +1,5 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "no-reply@cocoscout.com"
+  default from: "info@cocoscout.com"
   layout "mailer"
 
   before_action :attach_logo
