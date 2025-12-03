@@ -10,11 +10,11 @@
     </div>
   </div>
 
-  <div class="flex items-center gap-4 mr-2">
+  <div class="flex items-center mr-2">
     <!-- Production Selector -->
     <% if Current.organization.present? %>
       <div class="relative" data-controller="dropdown">
-        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-3 py-2 transition cursor-pointer h-12">
+        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-l border-r border-slate-200">
           <% if Current.production.present? && !Current.production.new_record? %>
             <% logo_variant = Current.production.safe_logo_variant(:small) %>
             <% if logo_variant %>

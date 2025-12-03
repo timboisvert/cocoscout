@@ -1,4 +1,6 @@
 class ProfileHeadshot < ApplicationRecord
+  include HierarchicalStorageKey
+
   belongs_to :profileable, polymorphic: true
   has_one_attached :image do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true

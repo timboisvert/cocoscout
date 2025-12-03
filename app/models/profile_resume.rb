@@ -1,4 +1,6 @@
 class ProfileResume < ApplicationRecord
+  include HierarchicalStorageKey
+
   belongs_to :profileable, polymorphic: true
   has_one_attached :file
 

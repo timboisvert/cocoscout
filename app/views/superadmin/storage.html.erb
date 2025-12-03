@@ -234,6 +234,28 @@
     </div>
   </div>
 
+  <!-- Orphaned S3 Files -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Orphaned S3 Files</h3>
+    </div>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-3">
+        After migrating keys, old flat-key files remain on S3. This cleanup finds and deletes
+        S3 files that don't have a corresponding blob record in the database.
+      </p>
+      <p class="text-sm text-amber-600 mb-3">
+        <strong>⚠️ Warning:</strong> This scans all S3 objects and may take a while. Only run after
+        verifying all blob keys are correct.
+      </p>
+
+      <%= form_with url: storage_cleanup_s3_orphans_path, method: :post do %>
+        <%= render "shared/button", text: "Clean Up Orphaned S3 Files", variant: "danger", size: "small", type: :submit,
+            data: { turbo_confirm: "This will permanently delete S3 files that don't have matching blob records. This cannot be undone. Continue?" } %>
+      <% end %>
+    </div>
+  </div>
+
   <!-- Variants Info -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">

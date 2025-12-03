@@ -378,6 +378,58 @@ class SuperadminController < ApplicationController
     redirect_to storage_monitor_path, alert: "Migration failed: #{e.message}"
   end
 
+  def storage_cleanup_s3_orphans
+    # This finds files on S3 that don't have a corresponding blob record
+    # WARNING: This is a slow operation as it lists all S3 objects
+
+    storage_service = ActiveStorage::Blob.services.fetch(:amazon)
+
+    unless storage_service.respond_to?(:bucket)
+      redirect_to storage_monitor_path, alert: "S3 cleanup only works with Amazon S3 service"
+      return
+    end
+
+    # Get all blob keys from the database
+    db_keys = Set.new(ActiveStorage::Blob.where(service_name: "amazon").pluck(:key))
+
+    # Also include variant keys (they're stored differently)
+    # Variants use the format: variants/{blob_key}/{variant_key}
+
+    deleted_count = 0
+    deleted_size = 0
+    errors = []
+
+    # List all objects in the bucket and delete orphans
+    storage_service.bucket.objects.each do |object|
+      key = object.key
+
+      # Skip if this key exists in the database
+      next if db_keys.include?(key)
+
+      # Skip variant files - they reference the parent blob key
+      # Format: variants/{blob_key}/{variant_key}
+      if key.start_with?("variants/")
+        parent_key = key.split("/")[1]
+        next if db_keys.include?(parent_key)
+      end
+
+      begin
+        deleted_size += object.size
+        object.delete
+        deleted_count += 1
+      rescue => e
+        errors << "#{key}: #{e.message}"
+      end
+    end
+
+    message = "Deleted #{deleted_count} orphaned S3 files (#{ActionController::Base.helpers.number_to_human_size(deleted_size)})"
+    message += ". Errors: #{errors.first(3).join('; ')}" if errors.any?
+
+    redirect_to storage_monitor_path, notice: message
+  rescue => e
+    redirect_to storage_monitor_path, alert: "S3 cleanup failed: #{e.message}"
+  end
+
   private
 
   def require_superadmin

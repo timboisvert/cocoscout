@@ -1,4 +1,6 @@
 class Show < ApplicationRecord
+  include HierarchicalStorageKey
+
   belongs_to :production
   belongs_to :location
 

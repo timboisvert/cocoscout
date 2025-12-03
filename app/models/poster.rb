@@ -1,4 +1,6 @@
 class Poster < ApplicationRecord
+  include HierarchicalStorageKey
+
   belongs_to :production
 
   has_one_attached :image, dependent: :purge_later do |attachable|
