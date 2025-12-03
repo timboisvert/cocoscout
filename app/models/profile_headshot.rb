@@ -34,8 +34,18 @@ class ProfileHeadshot < ApplicationRecord
   before_validation :clear_other_primaries, if: -> { is_primary == true }
   after_create :set_as_primary_if_first
   after_destroy :set_new_primary_if_needed
+  after_commit :invalidate_profileable_cache
 
   private
+
+  # Invalidate the parent person/group cache when headshot changes
+  def invalidate_profileable_cache
+    return unless profileable.respond_to?(:invalidate_cache)
+    profileable.invalidate_cache(:person_card) if profileable.is_a?(Person)
+    profileable.invalidate_cache(:person_profile) if profileable.is_a?(Person)
+    profileable.invalidate_cache(:group_card) if profileable.is_a?(Group)
+    profileable.invalidate_cache(:group_profile) if profileable.is_a?(Group)
+  end
 
   def set_default_position
     return if position.present?

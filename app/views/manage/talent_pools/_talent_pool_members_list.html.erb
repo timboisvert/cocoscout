@@ -1,4 +1,6 @@
 <%# Renders the list of people in a talent pool, for AJAX refresh %>
+<% can_manage = current_user_can_manage?(talent_pool.production) %>
+<% cache ["talent_pool_members_v1", talent_pool.id, talent_pool.updated_at.to_i, talent_pool.talent_pool_memberships.maximum(:updated_at)&.to_i, can_manage] do %>
   <div class="flex flex-wrap gap-2 w-full"
       data-talent-pool-id="<%= talent_pool.id %>"
       data-droppable-talent-pool
@@ -27,7 +29,7 @@
             <% end %>
             <span class="font-medium text-xs text-center"><%= member.name.truncate(20, omission: '...') %></span>
 
-            <% if current_user_can_manage?(talent_pool.production) %>
+            <% if can_manage %>
               <button type="button"
                   class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                   data-action="talent-pool-person#remove"
@@ -43,7 +45,7 @@
       <% end %>
     <% end %>
 
-    <% if current_user_can_manage?(talent_pool.production) %>
+    <% if can_manage %>
       <button type="button"
           class="flex flex-col items-center p-3 bg-gray-50 border border-dashed border-gray-200 rounded-lg justify-center cursor-pointer hover:border-pink-500 transition-all relative group w-[120px]"
           data-talent-pool-id="<%= talent_pool.id %>"
@@ -57,3 +59,4 @@
     <% end %>
 
   </div>
+<% end %>

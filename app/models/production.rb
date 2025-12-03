@@ -24,6 +24,9 @@ class Production < ApplicationRecord
     validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
     validate :logo_content_type
 
+    # Cache invalidation
+    after_commit :invalidate_caches
+
     def active_audition_cycle
         audition_cycles.find_by(active: true)
     end
@@ -54,12 +57,27 @@ class Production < ApplicationRecord
         posters.find_by(is_primary: true)
     end
 
+    # Cached count of roles for this production
+    # Used in cast percentage calculations and other aggregate views
+    def cached_roles_count
+        Rails.cache.fetch(["production_roles_count_v1", id, roles.maximum(:updated_at)], expires_in: 30.minutes) do
+            roles.count
+        end
+    end
+
     def safe_logo_variant(variant_name)
         return nil unless logo.attached?
         logo.variant(variant_name)
     rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
         Rails.logger.error("Failed to generate variant for production #{id} logo: #{e.message}")
         nil
+    end
+
+    def invalidate_caches
+        # Invalidate dashboard cache
+        Rails.cache.delete("production_dashboard_#{id}")
+        # Invalidate roles count cache
+        Rails.cache.delete_matched("production_roles_count*#{id}*")
     end
 
     private

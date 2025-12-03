@@ -19,6 +19,9 @@ class AuditionCycle < ApplicationRecord
   validate :closes_at_after_opens_at
   validate :only_one_active_per_production
 
+  # Cache invalidation
+  after_commit :invalidate_caches
+
   enum :audition_type, {
     in_person: "in_person",
     video_upload: "video_upload"
@@ -31,12 +34,14 @@ class AuditionCycle < ApplicationRecord
   end
 
   def counts
-    {
-      unreviewed: self.audition_requests.where(status: :unreviewed).count,
-      undecided: self.audition_requests.where(status: :undecided).count,
-      passed: self.audition_requests.where(status: :passed).count,
-      accepted: self.audition_requests.where(status: :accepted).count
-    }
+    Rails.cache.fetch(["audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i], expires_in: 2.minutes) do
+      {
+        unreviewed: audition_requests.where(status: :unreviewed).count,
+        undecided: audition_requests.where(status: :undecided).count,
+        passed: audition_requests.where(status: :passed).count,
+        accepted: audition_requests.where(status: :accepted).count
+      }
+    end
   end
 
   def timeline_status
@@ -94,5 +99,14 @@ class AuditionCycle < ApplicationRecord
 
   def opening_soon_and_not_reviewed?
     opening_soon? && !form_reviewed
+  end
+
+  private
+
+  def invalidate_caches
+    # Invalidate counts cache
+    Rails.cache.delete_matched("audition_cycle_counts*#{id}*")
+    # Invalidate production dashboard
+    Rails.cache.delete("production_dashboard_#{production_id}") if production_id
   end
 end

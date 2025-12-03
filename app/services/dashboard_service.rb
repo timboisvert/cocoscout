@@ -4,14 +4,33 @@ class DashboardService
   end
 
   def generate
-    {
-      open_calls: open_calls_summary,
-      upcoming_shows: upcoming_shows,
-      availability_summary: availability_summary
-    }
+    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      {
+        open_calls: open_calls_summary,
+        upcoming_shows: upcoming_shows,
+        availability_summary: availability_summary
+      }
+    end
+  end
+
+  def self.invalidate(production)
+    Rails.cache.delete(["dashboard_v1", production.id])
   end
 
   private
+
+  def cache_key
+    # Cache key includes production ID and relevant timestamps
+    max_show_updated = @production.shows.maximum(:updated_at)
+    max_request_updated = @production.audition_cycle&.audition_requests&.maximum(:updated_at)
+    [
+      "dashboard_v1",
+      @production.id,
+      @production.updated_at.to_i,
+      max_show_updated&.to_i,
+      max_request_updated&.to_i
+    ]
+  end
 
   def open_calls_summary
     call = @production.audition_cycle

@@ -13,6 +13,9 @@ class AuditionRequest < ApplicationRecord
 
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
+  # Cache invalidation - when status changes, invalidate the counts cache
+  after_commit :invalidate_cycle_caches, on: [:create, :update, :destroy]
+
   # Helper method for backward compatibility - auditions are always for individual people
   def person
     requestable if requestable_type == "Person"
@@ -34,5 +37,15 @@ class AuditionRequest < ApplicationRecord
     Audition.joins(:audition_session)
       .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
       .exists?
+  end
+
+  private
+
+  def invalidate_cycle_caches
+    return unless audition_cycle_id
+    # Invalidate the audition cycle counts cache
+    Rails.cache.delete_matched("audition_cycle_counts*#{audition_cycle_id}*")
+    # Also invalidate production dashboard
+    Rails.cache.delete("production_dashboard_#{audition_cycle.production_id}") if audition_cycle&.production_id
   end
 end

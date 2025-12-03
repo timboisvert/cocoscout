@@ -196,13 +196,17 @@ class CacheDiagnostics
         puts "Newest entry:      #{stats[:newest_entry].strftime('%Y-%m-%d %H:%M:%S')} (#{time_ago_in_words(stats[:newest_entry])} ago)"
       end
 
-      # Size distribution
-      puts "\nSize distribution:"
-      distribution = cache_size_distribution
-      distribution.each do |range, count|
-        bar = "█" * [ (count.to_f / stats[:entry_count] * 30).round, 1 ].max
-        pct = (count.to_f / stats[:entry_count] * 100).round(1)
-        puts "  #{range.ljust(12)} #{bar} #{count} (#{pct}%)"
+      # Size distribution (only show if there are entries)
+      if stats[:entry_count] > 0
+        puts "\nSize distribution:"
+        distribution = cache_size_distribution
+        distribution.each do |range, count|
+          bar = "█" * [ (count.to_f / stats[:entry_count] * 30).round, 1 ].max
+          pct = (count.to_f / stats[:entry_count] * 100).round(1)
+          puts "  #{range.ljust(12)} #{bar} #{count} (#{pct}%)"
+        end
+      else
+        puts "\n⚠️  Cache is empty - no entries to analyze"
       end
 
       puts ""

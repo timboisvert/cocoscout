@@ -13,8 +13,37 @@
   <div class="flex items-center mr-2">
     <!-- Production Selector -->
     <% if Current.organization.present? %>
-      <div class="relative" data-controller="dropdown">
-        <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-l border-r border-slate-200">
+      <%
+        # Calculate if user has multiple productions or can create new ones
+        all_productions = Current.user.accessible_productions
+        other_productions = all_productions.reject { |p| p.id == Current.production&.id }
+        has_dropdown_content = other_productions.any? || Current.user.manager?
+      %>
+      <% if has_dropdown_content %>
+        <div class="relative" data-controller="dropdown">
+          <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-l border-r border-slate-200">
+            <% if Current.production.present? && !Current.production.new_record? %>
+              <% logo_variant = Current.production.safe_logo_variant(:small) %>
+              <% if logo_variant %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded">
+                  <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-16 h-8 object-cover rounded" %>
+                </div>
+              <% else %>
+                <div class="w-16 h-8 flex items-center justify-center flex-shrink-0 rounded bg-gray-100 text-gray-600 font-bold text-xs">
+                  <%= Current.production.initials %>
+                </div>
+              <% end %>
+              <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= Current.production.name %></div>
+            <% else %>
+              <div class="text-sm font-medium text-slate-700">Select Production</div>
+            <% end %>
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+      <% else %>
+        <!-- Single production, no dropdown - just show the production info -->
+        <div class="flex items-center gap-3 px-3 py-2 h-12 border-l border-r border-slate-200">
           <% if Current.production.present? && !Current.production.new_record? %>
             <% logo_variant = Current.production.safe_logo_variant(:small) %>
             <% if logo_variant %>
@@ -27,13 +56,11 @@
               </div>
             <% end %>
             <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= Current.production.name %></div>
-          <% else %>
-            <div class="text-sm font-medium text-slate-700">Select Production</div>
           <% end %>
-          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+        </div>
+      <% end %>
+
+      <% if has_dropdown_content %>
 
         <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
           <!-- Current Production Section -->
@@ -61,7 +88,6 @@
           <% end %>
 
           <!-- Other Productions List -->
-          <% other_productions = Current.user.accessible_productions.reject { |p| p.id == Current.production&.id } %>
           <% if other_productions.any? %>
             <% if Current.production.present? && !Current.production.new_record? %>
               <div class="border-t border-slate-200 my-1"></div>
@@ -97,6 +123,7 @@
           <% end %>
         </div>
       </div>
+      <% end %> <%# end has_dropdown_content %>
     <% end %>
 
     <!-- User Profile and Impersonation Banner -->

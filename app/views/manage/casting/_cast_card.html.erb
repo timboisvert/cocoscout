@@ -16,8 +16,19 @@
 
   cast_count = show.show_person_role_assignments.size
   percentage = roles_count > 0 ? (cast_count.to_f / roles_count * 100).round : 0
+
+  # Cache key includes show, assignments, and roles timestamps
+  cast_card_cache_key = [
+    "cast_card_v1",
+    show.id,
+    show.updated_at.to_i,
+    show.show_person_role_assignments.maximum(:updated_at)&.to_i,
+    production.roles.maximum(:updated_at)&.to_i,
+    title.presence || "default"
+  ]
 %>
 
+<% cache cast_card_cache_key do %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
   <!-- Title Bar -->
   <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -114,3 +125,4 @@
     <%= link_to "Contact Cast", manage_production_show_contact_cast_path(production, show), class: "text-pink-500 underline" %>
   </div>
 </div>
+<% end %>

@@ -1,5 +1,6 @@
 <% production = audition.audition_request.audition_cycle.production %>
-
+<% has_groups = @groups.present? && @groups.any? %>
+<% cache ["audition_past_v1", audition.id, audition.updated_at.to_i, production.updated_at.to_i, has_groups] do %>
 <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-center gap-4">
     <% logo_variant = production.safe_logo_variant(:small) %>
     <% if logo_variant %>
@@ -25,3 +26,4 @@
       </div>
     <% end %>
 </div>
+<% end %>

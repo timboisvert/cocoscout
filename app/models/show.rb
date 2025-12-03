@@ -35,6 +35,9 @@ class Show < ApplicationRecord
   validates :date_and_time, presence: true
   validate :poster_content_type
 
+  # Cache invalidation - invalidate production dashboard when show changes
+  after_commit :invalidate_production_caches
+
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
 
@@ -64,6 +67,13 @@ class Show < ApplicationRecord
   end
 
   private
+
+  def invalidate_production_caches
+    # Invalidate production dashboard cache when show changes
+    Rails.cache.delete_matched("production_dashboard_#{production_id}*")
+    # Invalidate show info card cache
+    Rails.cache.delete_matched("views/*show_info_card*#{id}*")
+  end
 
   def poster_content_type
     if poster.attached? && !poster.content_type.in?(%w[image/jpeg image/jpg image/png])

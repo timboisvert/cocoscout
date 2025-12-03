@@ -4,6 +4,7 @@
     - context: "received", "given", or "public" - determines which person to highlight
 %>
 
+<% cache ["shoutout_v1", shoutout.id, shoutout.updated_at.to_i, context] do %>
 <div class="bg-white rounded-lg border border-gray-200 p-4 sm:p-6" data-controller="expand-shoutout">
   <div class="flex items-start gap-3 sm:gap-4">
     <!-- Person headshot (author for received/public, recipient for given) -->
@@ -66,3 +67,4 @@
     </div>
   </div>
 </div>
+<% end %>

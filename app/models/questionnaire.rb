@@ -17,6 +17,19 @@ class Questionnaire < ApplicationRecord
   scope :active, -> { where(archived_at: nil) }
   scope :archived, -> { where.not(archived_at: nil) }
 
+  # Cached response statistics for display
+  def cached_response_stats
+    Rails.cache.fetch(["questionnaire_stats_v1", id, questionnaire_responses.maximum(:updated_at), questionnaire_invitations.maximum(:updated_at)], expires_in: 5.minutes) do
+      total_invited = questionnaire_invitations.count
+      total_responded = questionnaire_responses.count
+      {
+        invited: total_invited,
+        responded: total_responded,
+        response_rate: total_invited > 0 ? (total_responded.to_f / total_invited * 100).round(1) : 0
+      }
+    end
+  end
+
   def respond_url
     if Rails.env.development?
       "http://localhost:3000/my/questionnaires/#{self.token}/form"

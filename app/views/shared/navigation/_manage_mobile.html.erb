@@ -28,10 +28,18 @@
 
       <!-- Production Section -->
       <% if Current.production.present? && !Current.production.new_record? %>
+        <%
+          # Check if user has multiple productions or can create new ones
+          all_productions = Current.user.accessible_productions
+          other_productions = all_productions.reject { |p| p.id == Current.production&.id }
+          can_switch = other_productions.any? || Current.user.manager?
+        %>
         <div class="mb-6">
           <div class="flex items-center justify-between mb-3">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Production Dashboard</div>
-            <%= link_to "Switch", select_production_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+            <% if can_switch %>
+              <%= link_to "Switch", select_production_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+            <% end %>
           </div>
           <%= link_to manage_production_path(Current.production), class: "block rounded-lg border-2 border-pink-200 bg-gradient-to-br from-pink-50 to-white p-4 hover:border-pink-300 transition mb-3" do %>
             <div class="flex items-center gap-3">

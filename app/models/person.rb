@@ -1,4 +1,7 @@
 class Person < ApplicationRecord
+  include CacheInvalidation
+  invalidates_cache :person_card, :person_profile
+
   has_many :socials, as: :sociable, dependent: :destroy
   accepts_nested_attributes_for :socials, allow_destroy: true
 
@@ -104,6 +107,45 @@ class Person < ApplicationRecord
   rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
     Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
     nil
+  end
+
+  # Cached card data for display in lists (talent pools, directories, etc.)
+  # Invalidated automatically when person is updated via CacheInvalidation concern
+  def cached_card_data
+    Rails.cache.fetch(cache_key_for(:person_card), expires_in: 1.hour) do
+      {
+        id: id,
+        name: name,
+        initials: initials,
+        email: email,
+        has_headshot: headshot&.attached?,
+        updated_at: updated_at
+      }
+    end
+  end
+
+  # Cached profile data for profile views
+  # Invalidated automatically when person is updated via CacheInvalidation concern
+  def cached_profile_data
+    Rails.cache.fetch(cache_key_for(:person_profile), expires_in: 1.hour) do
+      {
+        id: id,
+        name: name,
+        initials: initials,
+        email: email,
+        phone: phone,
+        bio: bio,
+        pronouns: pronouns,
+        public_key: public_key,
+        visibility_settings: visibility_settings,
+        has_headshot: headshot&.attached?,
+        headshot_count: profile_headshots.count,
+        resume_count: profile_resumes.count,
+        video_count: profile_videos.count,
+        skills_count: profile_skills.count,
+        updated_at: updated_at
+      }
+    end
   end
 
   def has_person_role_assignment_for_show?(show)

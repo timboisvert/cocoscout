@@ -1,3 +1,5 @@
+<%# Note: This partial is NOT cached because it contains interactive drag-drop elements
+    that require real-time state. The roles data is preloaded in the controller instead. %>
 <div id="show-roles" data-controller="drop-role" data-show-id="<%= @show.id %>" data-production-id="<%= @production.id %>">
 
   <%
