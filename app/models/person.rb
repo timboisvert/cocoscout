@@ -148,7 +148,9 @@ class Person < ApplicationRecord
 
   # Profile system helper methods
   def primary_headshot
-    profile_headshots.find_by(is_primary: true) || profile_headshots.first
+    # Use in-memory filtering to leverage preloaded associations
+    # instead of find_by which bypasses eager loading
+    profile_headshots.find { |hs| hs.is_primary } || profile_headshots.first
   end
 
   def headshot

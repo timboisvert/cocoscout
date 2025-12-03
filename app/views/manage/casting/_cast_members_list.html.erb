@@ -1,13 +1,20 @@
 <div id="show-cast-members" data-controller="drag-cast-member" class="space-y-1">
-    <% has_multiple_pools = show.production.talent_pools.count > 1 %>
-    <% availability ||= {} %>
-    <% has_visible_people = false %>
+    <%
+      # Use preloaded data if available, otherwise fall back to queries
+      talent_pools = local_assigns[:talent_pools] || @talent_pools || show.production.talent_pools.to_a
+      members_by_pool_id = local_assigns[:members_by_pool_id] || @members_by_pool_id || {}
+      assigned_member_keys = local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new
+      has_multiple_pools = talent_pools.size > 1
+      availability ||= {}
+      has_visible_people = false
+    %>
 
-    <% show.production.talent_pools.each do |talent_pool| %>
+    <% talent_pools.each do |talent_pool| %>
 
-        <% pool_people = talent_pool.people %>
-        <% pool_groups = talent_pool.groups %>
-        <% pool_members = pool_people + pool_groups %>
+        <%
+          # Use preloaded members if available
+          pool_members = members_by_pool_id[talent_pool.id] || (talent_pool.people.to_a + talent_pool.groups.to_a)
+        %>
 
         <% if pool_members.any? %>
             <% if has_multiple_pools %>
@@ -17,7 +24,11 @@
                     <div class="space-y-1">
                     <% pool_members.each do |member| %>
                         <% is_person = member.is_a?(Person) %>
-                        <% has_show_person_role_assignment = member.has_person_role_assignment_for_show?(show) %>
+                        <%
+                          # Use preloaded set for assignment check instead of DB query
+                          member_key = "#{member.class.name}_#{member.id}"
+                          has_show_person_role_assignment = assigned_member_keys.include?(member_key)
+                        %>
                         <% availability_key = "#{member.class.name}_#{member.id}" %>
                         <% member_availability = availability[availability_key] || availability[member.id] %>
                         <% is_available = member_availability&.available? %>
@@ -50,7 +61,11 @@
                 <div class="space-y-1">
                 <% pool_members.each do |member| %>
                     <% is_person = member.is_a?(Person) %>
-                    <% has_show_person_role_assignment = member.has_person_role_assignment_for_show?(show) %>
+                    <%
+                      # Use preloaded set for assignment check instead of DB query
+                      member_key = "#{member.class.name}_#{member.id}"
+                      has_show_person_role_assignment = assigned_member_keys.include?(member_key)
+                    %>
                     <% availability_key = "#{member.class.name}_#{member.id}" %>
                     <% member_availability = availability[availability_key] || availability[member.id] %>
                     <% is_available = member_availability&.available? %>

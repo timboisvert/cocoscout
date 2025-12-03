@@ -34,6 +34,69 @@ class Manage::CastingController < Manage::ManageController
 
   def show_cast
     @availability = build_availability_hash(@show)
+
+    # Preload roles for the production
+    @roles = @production.roles.order(:position).to_a
+    @roles_count = @roles.size
+
+    # Preload all assignments for this show with their roles
+    @assignments = @show.show_person_role_assignments.includes(:role).to_a
+
+    # Build assignment lookup by role_id for the roles_list partial
+    @assignments_by_role_id = @assignments.group_by(&:role_id)
+
+    # Get assignable IDs for preloading
+    person_ids = @assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+    group_ids = @assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+
+    # Preload assignables with headshots
+    @people_by_id = Person
+      .where(id: person_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
+
+    @groups_by_id = Group
+      .where(id: group_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
+
+    # For cast_members_list: preload talent pool members with headshots
+    @talent_pools = @production.talent_pools.to_a
+    talent_pool_ids = @talent_pools.map(&:id)
+
+    @pool_people = Person
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .to_a
+
+    @pool_groups = Group
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .to_a
+
+    # Build lookup for talent pool memberships
+    memberships = TalentPoolMembership.where(talent_pool_id: talent_pool_ids).to_a
+    @members_by_pool_id = {}
+    @talent_pools.each { |tp| @members_by_pool_id[tp.id] = [] }
+
+    people_by_id_for_pools = @pool_people.index_by(&:id)
+    groups_by_id_for_pools = @pool_groups.index_by(&:id)
+
+    memberships.each do |m|
+      member = if m.member_type == "Person"
+        people_by_id_for_pools[m.member_id]
+      else
+        groups_by_id_for_pools[m.member_id]
+      end
+      @members_by_pool_id[m.talent_pool_id] << member if member
+    end
+
+    # Build set of assigned member keys for quick lookup
+    @assigned_member_keys = Set.new(@assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
   end
 
   def contact_cast
