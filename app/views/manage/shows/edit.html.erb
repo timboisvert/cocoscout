@@ -199,7 +199,7 @@
         <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
       </div>
 
-      <% if @show.poster.attached? %>
+      <% if @show.poster.attached? && @show.poster.blob&.persisted? %>
         <div class="text-md mt-5 flex items-center">
           <span>Show/Event Poster</span>
           <%= render "shared/button", text: "Remove Poster", variant: "danger", size: "small", type: :button, data: { action: "click->show-edit#removePoster" }, class: "ml-3" %>

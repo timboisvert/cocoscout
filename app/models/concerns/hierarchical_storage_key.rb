@@ -39,9 +39,15 @@ module HierarchicalStorageKey
         migrate_blob_if_needed(blob, attachment_name)
       end
     end
+  rescue => e
+    # Don't let migration errors break the application
+    Rails.logger.error("[HierarchicalStorageKey] Error in migrate_blob_keys_to_hierarchical: #{e.message}")
   end
 
   def migrate_blob_if_needed(blob, attachment_name)
+    # Skip if blob is not persisted
+    return unless blob.persisted?
+
     # Skip if already hierarchical (contains /)
     return if blob.key.include?("/")
 
