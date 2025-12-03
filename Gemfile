@@ -27,6 +27,7 @@ gem "mail", "~> 2.9.0" # Pin to 2.8.x to avoid breaking changes in 2.9.0
 group :production do
   gem "poppler"
   gem "mailgun-ruby", "~> 1.2"
+  gem "skylight"
 end
 
 group :development do
