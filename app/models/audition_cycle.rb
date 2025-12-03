@@ -104,9 +104,8 @@ class AuditionCycle < ApplicationRecord
   private
 
   def invalidate_caches
-    # Invalidate counts cache
-    Rails.cache.delete_matched("audition_cycle_counts*#{id}*")
-    # Invalidate production dashboard
+    # Note: counts cache uses key versioning with audition_requests.maximum(:updated_at)
+    # so it auto-invalidates when requests change. We just need to clear production dashboard.
     Rails.cache.delete("production_dashboard_#{production_id}") if production_id
   end
 end

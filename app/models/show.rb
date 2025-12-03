@@ -70,9 +70,9 @@ class Show < ApplicationRecord
 
   def invalidate_production_caches
     # Invalidate production dashboard cache when show changes
-    Rails.cache.delete_matched("production_dashboard_#{production_id}*")
-    # Invalidate show info card cache
-    Rails.cache.delete_matched("views/*show_info_card*#{id}*")
+    Rails.cache.delete("production_dashboard_#{production_id}")
+    # Note: show_info_card uses cache key versioning with updated_at,
+    # so it auto-invalidates when show.updated_at changes
   end
 
   def poster_content_type

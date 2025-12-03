@@ -13,7 +13,7 @@ class TalentPoolMembership < ApplicationRecord
 
   def invalidate_talent_pool_caches
     return unless talent_pool_id
-    # Invalidate talent pool member counts cache
-    Rails.cache.delete_matched("talent_pool_counts*#{talent_pool_id}*")
+    # Note: talent_pool_counts uses key versioning with talent_pool_memberships.maximum(:updated_at)
+    # so it auto-invalidates when membership updated_at changes
   end
 end

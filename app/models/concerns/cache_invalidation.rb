@@ -31,9 +31,11 @@ module CacheInvalidation
       after_commit :invalidate_all_declared_caches, on: [:create, :update, :destroy]
     end
 
-    # Invalidate all caches for all records of this model (use sparingly)
+    # Invalidate all caches for all records of this model
+    # NOTE: Solid Cache doesn't support delete_matched, so this is a no-op.
+    # Use cache key versioning (include updated_at in keys) for automatic invalidation.
     def invalidate_all_caches(cache_name)
-      Rails.cache.delete_matched("#{cache_name}_*")
+      Rails.logger.warn("invalidate_all_caches called for #{cache_name} but Solid Cache doesn't support delete_matched. Use cache key versioning instead.")
     end
   end
 

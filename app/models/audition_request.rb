@@ -43,9 +43,9 @@ class AuditionRequest < ApplicationRecord
 
   def invalidate_cycle_caches
     return unless audition_cycle_id
-    # Invalidate the audition cycle counts cache
-    Rails.cache.delete_matched("audition_cycle_counts*#{audition_cycle_id}*")
-    # Also invalidate production dashboard
+    # Note: audition_cycle_counts uses key versioning with audition_requests.maximum(:updated_at)
+    # so it auto-invalidates when this request's updated_at changes
+    # Just invalidate production dashboard
     Rails.cache.delete("production_dashboard_#{audition_cycle.production_id}") if audition_cycle&.production_id
   end
 end

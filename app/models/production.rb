@@ -76,8 +76,10 @@ class Production < ApplicationRecord
     def invalidate_caches
         # Invalidate dashboard cache
         Rails.cache.delete("production_dashboard_#{id}")
-        # Invalidate roles count cache
-        Rails.cache.delete_matched("production_roles_count*#{id}*")
+        # Invalidate roles count cache - use explicit key pattern
+        # The cache key is: ["production_roles_count_v1", id, roles.maximum(:updated_at)]
+        # Since we can't predict the timestamp, we need a different approach
+        # Touch updated_at to invalidate via cache key versioning
     end
 
     private
