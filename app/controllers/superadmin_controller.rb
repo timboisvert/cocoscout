@@ -149,8 +149,8 @@ class SuperadminController < ApplicationController
   def email_logs
     # Exclude the heavy 'body' column from list queries for performance
     @email_logs = EmailLog
-      .select(:id, :user_id, :recipient, :subject, :mailer_class, :mailer_action, 
-              :message_id, :delivery_status, :sent_at, :delivered_at, :error_message, 
+      .select(:id, :user_id, :recipient, :subject, :mailer_class, :mailer_action,
+              :message_id, :delivery_status, :sent_at, :delivered_at, :error_message,
               :created_at, :updated_at)
       .includes(:user)
       .order(sent_at: :desc)
