@@ -184,31 +184,44 @@ class Manage::QuestionnairesController < Manage::ManageController
     subject_template = params[:subject]
     message_template = params[:message]
 
+    # Get IDs of already invited people and groups
+    already_invited_person_ids = @questionnaire.questionnaire_invitations
+      .where(invitee_type: "Person").pluck(:invitee_id)
+    already_invited_group_ids = @questionnaire.questionnaire_invitations
+      .where(invitee_type: "Group").pluck(:invitee_id)
+
     # Get all people and groups in the production
     all_people = @production.talent_pools.flat_map(&:people).uniq
     all_groups = @production.talent_pools.flat_map(&:groups).uniq
+
+    # Filter to only those not yet invited
+    not_invited_people = all_people.reject { |p| already_invited_person_ids.include?(p.id) }
+    not_invited_groups = all_groups.reject { |g| already_invited_group_ids.include?(g.id) }
 
     # Determine person and group recipients based on recipient_type
     person_recipients = []
     group_recipients = []
 
     if recipient_type == "all"
-      person_recipients = all_people
-      group_recipients = all_groups
+      # Only send to those NOT yet invited
+      person_recipients = not_invited_people
+      group_recipients = not_invited_groups
     elsif recipient_type == "cast"
       talent_pool = TalentPool.find(talent_pool_id)
-      person_recipients = talent_pool.people
-      group_recipients = talent_pool.groups
+      # Only send to those in the talent pool who are NOT yet invited
+      person_recipients = talent_pool.people.reject { |p| already_invited_person_ids.include?(p.id) }
+      group_recipients = talent_pool.groups.reject { |g| already_invited_group_ids.include?(g.id) }
     elsif recipient_type == "specific"
-      person_recipients = Person.where(id: person_ids)
-      group_recipients = Group.where(id: group_ids)
+      # For specific selection, only include those not yet invited
+      person_recipients = Person.where(id: person_ids).reject { |p| already_invited_person_ids.include?(p.id) }
+      group_recipients = Group.where(id: group_ids).reject { |g| already_invited_group_ids.include?(g.id) }
     end
 
     invitation_count = 0
 
-    # Create invitations for people
+    # Create invitations for people and send emails
     person_recipients.each do |person|
-      QuestionnaireInvitation.find_or_create_by(
+      QuestionnaireInvitation.create!(
         questionnaire: @questionnaire,
         invitee: person
       )
@@ -222,7 +235,7 @@ class Manage::QuestionnairesController < Manage::ManageController
 
     # Create invitations for groups and send to members with notifications enabled
     group_recipients.each do |group|
-      QuestionnaireInvitation.find_or_create_by(
+      QuestionnaireInvitation.create!(
         questionnaire: @questionnaire,
         invitee: group
       )
