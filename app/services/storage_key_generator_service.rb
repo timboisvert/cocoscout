@@ -5,7 +5,7 @@
 # Key structure examples:
 #   - people/{person_id}/headshots/{blob_key}
 #   - people/{person_id}/resumes/{blob_key}
-#   - groups/{group_id}/headshots/D{blob_key}
+#   - groups/{group_id}/headshots/{blob_key}
 #   - organizations/{org_id}/productions/{prod_id}/posters/{blob_key}
 #   - organizations/{org_id}/productions/{prod_id}/shows/{show_id}/posters/{blob_key}
 #   - action_text/{record_type}/{record_id}/{blob_key}
@@ -45,6 +45,8 @@ class StorageKeyGeneratorService
         build_profile_resume_key(record, blob_key)
       when Poster
         build_poster_key(record, blob_key)
+      when Show
+        build_show_attachment_key(record, attachment_name, blob_key)
       when ActionText::RichText
         build_action_text_key(record, blob_key)
       else
@@ -80,19 +82,20 @@ class StorageKeyGeneratorService
     end
 
     def build_poster_key(poster, blob_key)
-      posterable = poster.posterable
+      production = poster.production
+      return nil unless production
 
-      case posterable
-      when Production
-        org_id = posterable.organization_id
-        "organizations/#{org_id}/productions/#{posterable.id}/posters/#{blob_key}"
-      when Show
-        production = posterable.production
-        org_id = production.organization_id
-        "organizations/#{org_id}/productions/#{production.id}/shows/#{posterable.id}/posters/#{blob_key}"
-      else
-        nil
-      end
+      org_id = production.organization_id
+      "organizations/#{org_id}/productions/#{production.id}/posters/#{blob_key}"
+    end
+
+    def build_show_attachment_key(show, attachment_name, blob_key)
+      production = show.production
+      return nil unless production
+
+      org_id = production.organization_id
+      folder = attachment_name.to_s.pluralize  # "poster" -> "posters"
+      "organizations/#{org_id}/productions/#{production.id}/shows/#{show.id}/#{folder}/#{blob_key}"
     end
 
     def build_action_text_key(rich_text, blob_key)

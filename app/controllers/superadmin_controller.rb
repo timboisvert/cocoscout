@@ -279,6 +279,7 @@ class SuperadminController < ApplicationController
     # Key structure analysis
     @flat_keys_count = ActiveStorage::Blob.where("key NOT LIKE '%/%'").count
     @hierarchical_keys_count = ActiveStorage::Blob.where("key LIKE '%/%'").count
+    @flat_keys_by_service = ActiveStorage::Blob.where("key NOT LIKE '%/%'").group(:service_name).count
 
     # Variant records
     @variant_count = ActiveStorage::VariantRecord.count
@@ -310,7 +311,22 @@ class SuperadminController < ApplicationController
   end
 
   def storage_migrate_keys
-    service_name = params[:service] || "amazon"
+    # Auto-detect service with flat keys if not specified
+    service_name = params[:service].presence
+    unless service_name
+      service_name = ActiveStorage::Blob
+        .where("key NOT LIKE '%/%'")
+        .group(:service_name)
+        .count
+        .max_by { |_, count| count }
+        &.first
+    end
+
+    unless service_name
+      redirect_to storage_monitor_path, notice: "No flat keys to migrate"
+      return
+    end
+
     migrated = 0
     errors = []
 

@@ -204,7 +204,7 @@
     </div>
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-3">
-        Migrate flat keys (e.g., <code class="bg-gray-100 px-1 rounded">abc123xyz</code>) to hierarchical structure 
+        Migrate flat keys (e.g., <code class="bg-gray-100 px-1 rounded">abc123xyz</code>) to hierarchical structure
         (e.g., <code class="bg-gray-100 px-1 rounded">people/123/headshots/abc123xyz</code>).
       </p>
 
@@ -220,10 +220,12 @@
       </div>
 
       <% if @flat_keys_count > 0 %>
-        <%= form_with url: storage_migrate_keys_path, method: :post do %>
-          <%= hidden_field_tag :service, "amazon" %>
-          <%= render "shared/button", text: "Migrate S3 Keys", variant: "primary", size: "small", type: :submit,
-              data: { turbo_confirm: "This will copy #{@flat_keys_count} files to new hierarchical paths in S3. Old files will be kept. Continue?" } %>
+        <% @flat_keys_by_service.each do |service, count| %>
+          <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block mr-2 mb-2" do %>
+            <%= hidden_field_tag :service, service %>
+            <%= render "shared/button", text: "Migrate #{service} Keys (#{count})", variant: "primary", size: "small", type: :submit,
+                data: { turbo_confirm: "This will copy #{count} files to new hierarchical paths. Old files will be kept. Continue?" } %>
+          <% end %>
         <% end %>
         <p class="text-xs text-gray-500 mt-2">Note: Old files are preserved. You can delete them later after verifying the migration.</p>
       <% else %>
