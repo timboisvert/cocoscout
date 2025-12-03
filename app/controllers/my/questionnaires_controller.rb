@@ -155,9 +155,15 @@ class My::QuestionnairesController < ApplicationController
   def submitform
     @person = Current.user.person
 
+    # Preload person's group IDs to avoid N+1
+    person_group_ids = @person.group_ids
+
     # Check if person is invited directly or through a group
     directly_invited = @questionnaire.questionnaire_invitations.exists?(invitee: @person)
-    invited_groups = @questionnaire.questionnaire_invitations.where(invitee_type: "Group", invitee_id: @person.groups.pluck(:id)).map(&:invitee)
+    invited_groups = @questionnaire.questionnaire_invitations
+      .where(invitee_type: "Group", invitee_id: person_group_ids)
+      .includes(:invitee)
+      .map(&:invitee)
 
     unless directly_invited || invited_groups.any?
       redirect_to my_dashboard_path, alert: "You are not invited to this questionnaire"
@@ -201,19 +207,28 @@ class My::QuestionnairesController < ApplicationController
 
     # Associate the person with the organization if not already
     organization = @questionnaire.production.organization
-    unless @person.organizations.include?(organization)
+    unless @person.organization_ids.include?(organization.id)
       @person.organizations << organization
     end
 
+    # Preload questions by ID for efficient lookup
+    questions_by_id = @questions.index_by(&:id)
+
     # Check if updating existing response
-    if @questionnaire.questionnaire_responses.exists?(respondent: @respondent)
-      @questionnaire_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
+    existing_response = @questionnaire.questionnaire_responses.find_by(respondent: @respondent)
+
+    if existing_response
+      @questionnaire_response = existing_response
+
+      # Preload existing answers for this response
+      existing_answers = @questionnaire_response.questionnaire_answers.index_by(&:question_id)
 
       # Update the answers
       @answers = {}
       if params[:question]
         params[:question].each do |id, keyValue|
-          answer = @questionnaire_response.questionnaire_answers.find_or_initialize_by(question: Question.find(id))
+          question_id = id.to_i
+          answer = existing_answers[question_id] || @questionnaire_response.questionnaire_answers.build(question: questions_by_id[question_id])
           answer.value = keyValue
           answer.save!
           @answers["#{id}"] = answer.value
@@ -228,8 +243,9 @@ class My::QuestionnairesController < ApplicationController
       @answers = {}
       if params[:question]
         params[:question].each do |question|
+          question_id = question.first.to_i
           answer = @questionnaire_response.questionnaire_answers.build
-          answer.question = Question.find question.first
+          answer.question = questions_by_id[question_id]
           answer.value = question.last
           @answers["#{answer.question.id}"] = answer.value
         end
@@ -253,6 +269,7 @@ class My::QuestionnairesController < ApplicationController
       if @questionnaire.availability_show_ids.present?
         @shows = @shows.where(id: @questionnaire.availability_show_ids)
       end
+      @shows = @shows.to_a
 
       # Check if all shows have a response
       @shows.each do |show|
@@ -265,12 +282,19 @@ class My::QuestionnairesController < ApplicationController
 
     # Save availability data if provided
     if params[:availability].present?
+      # Preload existing availabilities for this respondent
+      show_ids = params[:availability].keys.map(&:to_i)
+      existing_availabilities = ShowAvailability
+        .where(available_entity: @respondent, show_id: show_ids)
+        .index_by(&:show_id)
+
       params[:availability].each do |show_id, status|
         next if status.blank?
 
-        show_availability = ShowAvailability.find_or_initialize_by(
+        show_id_int = show_id.to_i
+        show_availability = existing_availabilities[show_id_int] || ShowAvailability.new(
           available_entity: @respondent,
-          show_id: show_id
+          show_id: show_id_int
         )
         show_availability.status = status
         show_availability.save!

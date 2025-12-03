@@ -7,12 +7,12 @@ class My::DashboardController < ApplicationController
     end
 
     @person = Current.user.person
-    @groups = @person.groups.active.order(:name)
+    @groups = @person.groups.active.order(:name).to_a
+    group_ids = @groups.map(&:id)
 
     @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
     # Get upcoming shows where user or their groups have a role assignment
-    group_ids = @groups.pluck(:id)
     @upcoming_show_entities = []
 
     # Person shows
@@ -38,98 +38,108 @@ class My::DashboardController < ApplicationController
         .order(:date_and_time)
         .limit(10)
 
+      # Build groups_by_id lookup for O(1) access
+      groups_by_id = @groups.index_by(&:id)
+
       group_shows.each do |show|
         assignment = show.show_person_role_assignments.find { |a| a.assignable_type == "Group" && group_ids.include?(a.assignable_id) }
-        group = @groups.find { |g| g.id == assignment.assignable_id }
+        group = groups_by_id[assignment.assignable_id]
         @upcoming_show_entities << { show: show, entity_type: "group", entity: group }
       end
     end
 
     @upcoming_show_entities = @upcoming_show_entities.sort_by { |item| item[:show].date_and_time }.first(5)
 
-    # Upcoming audition sessions for person and groups
+    # Upcoming audition sessions for person and groups - batch query
     @upcoming_audition_entities = []
 
-    person_auditions = Audition
+    # Build list of auditionable entities for batch query
+    auditionable_conditions = [ [ @person.class.name, @person.id ] ]
+    @groups.each { |g| auditionable_conditions << [ g.class.name, g.id ] }
+
+    all_auditions = Audition
       .joins(:audition_session)
-      .where(auditionable: @person)
       .where("audition_sessions.start_at >= ?", Time.current)
+      .where(
+        auditionable_conditions.map { "(auditionable_type = ? AND auditionable_id = ?)" }.join(" OR "),
+        *auditionable_conditions.flatten
+      )
       .includes(audition_session: :production)
       .order(Arel.sql("audition_sessions.start_at"))
-      .limit(10)
+      .limit(20)
+      .to_a
 
-    person_auditions.each do |audition|
-      @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "person", entity: @person }
-    end
-
-    @groups.each do |group|
-      group_auditions = Audition
-        .joins(:audition_session)
-        .where(auditionable: group)
-        .where("audition_sessions.start_at >= ?", Time.current)
-        .includes(audition_session: :production)
-        .order(Arel.sql("audition_sessions.start_at"))
-        .limit(10)
-
-      group_auditions.each do |audition|
-        @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "group", entity: group }
+    groups_by_id = @groups.index_by(&:id)
+    all_auditions.each do |audition|
+      if audition.auditionable_type == "Person" && audition.auditionable_id == @person.id
+        @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "person", entity: @person }
+      elsif audition.auditionable_type == "Group"
+        group = groups_by_id[audition.auditionable_id]
+        @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "group", entity: group } if group
       end
     end
 
     @upcoming_audition_entities = @upcoming_audition_entities.sort_by { |item| item[:audition_session].start_at }.first(5)
 
-    # Audition requests for person and groups
+    # Audition requests for person and groups - batch query
     @open_audition_request_entities = []
 
-    person_requests = AuditionRequest
+    all_requests = AuditionRequest
       .joins(:audition_cycle)
-      .where(requestable: @person)
       .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)
+      .where(
+        auditionable_conditions.map { "(requestable_type = ? AND requestable_id = ?)" }.join(" OR "),
+        *auditionable_conditions.flatten
+      )
       .includes(:audition_cycle)
       .order(Arel.sql("audition_cycles.closes_at ASC NULLS LAST"))
-      .limit(10)
+      .limit(20)
+      .to_a
 
-    person_requests.each do |request|
-      @open_audition_request_entities << { audition_request: request, entity_type: "person", entity: @person }
-    end
-
-    @groups.each do |group|
-      group_requests = AuditionRequest
-        .joins(:audition_cycle)
-        .where(requestable: group)
-        .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)
-        .includes(:audition_cycle)
-        .order(Arel.sql("audition_cycles.closes_at ASC NULLS LAST"))
-        .limit(10)
-
-      group_requests.each do |request|
-        @open_audition_request_entities << { audition_request: request, entity_type: "group", entity: group }
+    all_requests.each do |request|
+      if request.requestable_type == "Person" && request.requestable_id == @person.id
+        @open_audition_request_entities << { audition_request: request, entity_type: "person", entity: @person }
+      elsif request.requestable_type == "Group"
+        group = groups_by_id[request.requestable_id]
+        @open_audition_request_entities << { audition_request: request, entity_type: "group", entity: group } if group
       end
     end
 
     @open_audition_request_entities = @open_audition_request_entities.sort_by { |item| item[:audition_request].audition_cycle.closes_at || Time.new(9999) }.first(5)
 
-    # Pending questionnaires for person and groups
+    # Pending questionnaires for person and groups - batch query
     @pending_questionnaire_entities = []
 
-    questionnaire_ids = []
-    questionnaire_ids += QuestionnaireInvitation.where(invitee: @person).pluck(:questionnaire_id)
-    @groups.each do |group|
-      questionnaire_ids += QuestionnaireInvitation.where(invitee: group).pluck(:questionnaire_id)
-    end
+    # Get all questionnaire IDs in one query
+    invitee_conditions = [ [ "Person", @person.id ] ]
+    @groups.each { |g| invitee_conditions << [ "Group", g.id ] }
+
+    questionnaire_ids = QuestionnaireInvitation
+      .where(
+        invitee_conditions.map { "(invitee_type = ? AND invitee_id = ?)" }.join(" OR "),
+        *invitee_conditions.flatten
+      )
+      .pluck(:questionnaire_id)
+      .uniq
 
     questionnaires = Questionnaire
-      .where(id: questionnaire_ids.uniq, accepting_responses: true, archived_at: nil)
+      .where(id: questionnaire_ids, accepting_responses: true, archived_at: nil)
       .includes(:production, :questionnaire_responses, :questionnaire_invitations)
       .order(created_at: :desc)
+      .to_a
 
+    # Build lookup of invitations by questionnaire
     questionnaires.each do |questionnaire|
-      if questionnaire.questionnaire_invitations.exists?(invitee: @person)
+      invitations = questionnaire.questionnaire_invitations.to_a
+
+      # Check person invitation using in-memory filter
+      if invitations.any? { |inv| inv.invitee_type == "Person" && inv.invitee_id == @person.id }
         @pending_questionnaire_entities << { questionnaire: questionnaire, entity_type: "person", entity: @person }
       end
 
+      # Check group invitations using in-memory filter
       @groups.each do |group|
-        if questionnaire.questionnaire_invitations.exists?(invitee: group)
+        if invitations.any? { |inv| inv.invitee_type == "Group" && inv.invitee_id == group.id }
           @pending_questionnaire_entities << { questionnaire: questionnaire, entity_type: "group", entity: group }
         end
       end

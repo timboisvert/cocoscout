@@ -1,7 +1,7 @@
 class My::AuditionRequestsController < ApplicationController
   def index
     @person = Current.user.person
-    @groups = @person.groups.active.order(:name)
+    @groups = @person.groups.active.order(:name).to_a
 
     # Store the audition requests_filter
     @requests_filter = (params[:requests_filter] || session[:requests_filter] || "open")
@@ -10,28 +10,33 @@ class My::AuditionRequestsController < ApplicationController
     # Handle entity filter - comma-separated like availability
     @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
-    # Collect audition requests from selected entities
-    all_audition_requests = []
+    include_person = @entity_filter.include?("person")
+    selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
+    groups_by_id = @groups.index_by(&:id)
 
-    # Add person audition requests if selected
-    if @entity_filter.include?("person")
-      person_requests = AuditionRequest
+    # Build conditions for batch query
+    requestable_conditions = []
+    requestable_params = []
+
+    if include_person
+      requestable_conditions << "(requestable_type = 'Person' AND requestable_id = ?)"
+      requestable_params << @person.id
+    end
+
+    if selected_group_ids.any?
+      requestable_conditions << "(requestable_type = 'Group' AND requestable_id IN (?))"
+      requestable_params << selected_group_ids
+    end
+
+    # Batch query for all audition requests
+    @audition_requests = if requestable_conditions.any?
+      AuditionRequest
         .eager_load(audition_cycle: :production)
-        .where(requestable: @person)
-      all_audition_requests += person_requests.to_a
+        .where(requestable_conditions.join(" OR "), *requestable_params)
+        .to_a
+    else
+      []
     end
-
-    # Add group audition requests if selected
-    @groups.each do |group|
-      if @entity_filter.include?("group_#{group.id}")
-        group_requests = AuditionRequest
-          .eager_load(audition_cycle: :production)
-          .where(requestable: group)
-        all_audition_requests += group_requests.to_a
-      end
-    end
-
-    @audition_requests = all_audition_requests.uniq
 
     # Apply filter
     case @requests_filter
@@ -50,21 +55,20 @@ class My::AuditionRequestsController < ApplicationController
       req.audition_cycle.closes_at || Time.new(9999)
     end
 
-    # Build audition request entities mapping for headshot display
+    # Build audition request entities mapping for headshot display using preloaded data
     @audition_request_entities = {}
     @audition_requests.each do |audition_request|
       entities = []
 
       # Check if person has this audition request and is in entity filter
-      if @entity_filter.include?("person") && audition_request.requestable_type == "Person" && audition_request.requestable_id == @person.id
+      if include_person && audition_request.requestable_type == "Person" && audition_request.requestable_id == @person.id
         entities << { type: "person", entity: @person }
       end
 
-      # Check groups
-      @groups.each do |group|
-        if @entity_filter.include?("group_#{group.id}") && audition_request.requestable_type == "Group" && audition_request.requestable_id == group.id
-          entities << { type: "group", entity: group }
-        end
+      # Check groups using preloaded data
+      if audition_request.requestable_type == "Group" && selected_group_ids.include?(audition_request.requestable_id)
+        group = groups_by_id[audition_request.requestable_id]
+        entities << { type: "group", entity: group } if group
       end
 
       @audition_request_entities[audition_request.id] = entities if entities.any?

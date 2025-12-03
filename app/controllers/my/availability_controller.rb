@@ -1,7 +1,7 @@
 class My::AvailabilityController < ApplicationController
   def index
     @person = Current.user.person
-    @groups = @person.groups.active.order(:name)
+    @groups = @person.groups.active.order(:name).to_a
 
     @filter = (params[:filter] || session[:availability_filter] || "no_response")
     session[:availability_filter] = @filter
@@ -11,70 +11,124 @@ class My::AvailabilityController < ApplicationController
 
     @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: @person.id }).distinct
 
-    # Get all upcoming non-canceled shows from selected entities
-    all_shows = []
+    # Build selected group IDs for batch queries
+    selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
+    groups_by_id = @groups.index_by(&:id)
+    include_person = @entity_filter.include?("person")
 
-    # Add person shows if selected
-    if @entity_filter.include?("person")
+    # Batch fetch ALL shows for person and selected groups in one query
+    show_conditions = []
+    show_params = []
+
+    if include_person
+      show_conditions << "people.id = ?"
+      show_params << @person.id
+    end
+
+    if selected_group_ids.any?
+      show_conditions << "groups.id IN (?)"
+      show_params << selected_group_ids
+    end
+
+    # Single query for all shows with entity tracking
+    all_shows_with_source = []
+
+    if include_person
       person_shows = Show.joins(production: { talent_pools: :people })
         .where(people: { id: @person.id })
         .where.not(canceled: true)
         .where("date_and_time > ?", Time.current)
-        .order(:date_and_time)
+        .includes(:production, :location)
         .distinct
-      all_shows += person_shows.to_a
+        .to_a
+      person_shows.each { |s| all_shows_with_source << { show: s, entity_key: "person", entity: @person } }
     end
 
-    # Add group shows if selected
-    @groups.each do |group|
-      if @entity_filter.include?("group_#{group.id}")
-        group_shows = Show.joins(production: { talent_pools: :groups })
-          .where(groups: { id: group.id })
-          .where.not(canceled: true)
-          .where("date_and_time > ?", Time.current)
-          .order(:date_and_time)
-          .distinct
-        all_shows += group_shows.to_a
+    if selected_group_ids.any?
+      # Single batch query for all group shows with group_id tracking
+      group_shows_with_group = Show
+        .select("shows.*, groups.id as source_group_id")
+        .joins(production: { talent_pools: :groups })
+        .where(groups: { id: selected_group_ids })
+        .where.not(canceled: true)
+        .where("date_and_time > ?", Time.current)
+        .includes(:production, :location)
+        .distinct
+        .to_a
+
+      group_shows_with_group.each do |show|
+        group_id = show.read_attribute(:source_group_id)
+        group = groups_by_id[group_id]
+        all_shows_with_source << { show: show, entity_key: "group_#{group_id}", entity: group }
       end
     end
 
-    @all_shows = all_shows.uniq.sort_by(&:date_and_time)
+    # Get unique shows
+    @all_shows = all_shows_with_source.map { |item| item[:show] }.uniq.sort_by(&:date_and_time)
+    all_show_ids = @all_shows.map(&:id)
 
-    # Get shows with no response for each entity
+    # Batch fetch ALL availabilities for person and selected groups
+    availability_conditions = []
+    availability_params = []
+
+    if include_person
+      availability_conditions << "(available_entity_type = 'Person' AND available_entity_id = ?)"
+      availability_params << @person.id
+    end
+
+    selected_group_ids.each do |gid|
+      availability_conditions << "(available_entity_type = 'Group' AND available_entity_id = ?)"
+      availability_params << gid
+    end
+
+    all_availabilities = if availability_conditions.any?
+      ShowAvailability
+        .where(show_id: all_show_ids)
+        .where(availability_conditions.join(" OR "), *availability_params)
+        .to_a
+    else
+      []
+    end
+
+    # Index availabilities by entity_key and show_id
+    availabilities_by_entity = Hash.new { |h, k| h[k] = {} }
+    availability_ids_by_entity = Hash.new { |h, k| h[k] = Set.new }
+
+    all_availabilities.each do |avail|
+      entity_key = if avail.available_entity_type == "Person"
+        "person"
+      else
+        "group_#{avail.available_entity_id}"
+      end
+      availabilities_by_entity[entity_key][avail.show_id] = avail
+      availability_ids_by_entity[entity_key].add(avail.show_id)
+    end
+
+    # Build entity_data using preloaded data
     @entity_data = {}
 
-    if @entity_filter.include?("person")
-      person_availability_ids = ShowAvailability.where(available_entity: @person).pluck(:show_id)
-      person_shows = Show.joins(production: { talent_pools: :people })
-        .where(people: { id: @person.id })
-        .where.not(canceled: true)
-        .where("date_and_time > ?", Time.current)
-        .order(:date_and_time)
-        .distinct
+    if include_person
+      person_shows = all_shows_with_source.select { |item| item[:entity_key] == "person" }.map { |item| item[:show] }.uniq.sort_by(&:date_and_time)
+      person_avail_ids = availability_ids_by_entity["person"]
       @entity_data["person"] = {
         entity: @person,
-        shows: person_shows.to_a,
-        no_response_shows: person_shows.where.not(id: person_availability_ids).to_a,
-        availabilities: ShowAvailability.where(available_entity: @person).index_by(&:show_id)
+        shows: person_shows,
+        no_response_shows: person_shows.reject { |s| person_avail_ids.include?(s.id) },
+        availabilities: availabilities_by_entity["person"]
       }
     end
 
-    @groups.each do |group|
-      if @entity_filter.include?("group_#{group.id}")
-        group_availability_ids = ShowAvailability.where(available_entity: group).pluck(:show_id)
-        group_shows = Show.joins(production: { talent_pools: :groups })
-          .where(groups: { id: group.id })
-          .where.not(canceled: true)
-          .where("date_and_time > ?", Time.current)
-          .order(:date_and_time)
-          .distinct
-        @entity_data["group_#{group.id}"] = {
-          entity: group,
-          shows: group_shows.to_a,
-          no_response_shows: group_shows.where.not(id: group_availability_ids).to_a,
-          availabilities: ShowAvailability.where(available_entity: group).index_by(&:show_id)
-        }
-      end
+    selected_group_ids.each do |group_id|
+      entity_key = "group_#{group_id}"
+      group = groups_by_id[group_id]
+      group_shows = all_shows_with_source.select { |item| item[:entity_key] == entity_key }.map { |item| item[:show] }.uniq.sort_by(&:date_and_time)
+      group_avail_ids = availability_ids_by_entity[entity_key]
+      @entity_data[entity_key] = {
+        entity: group,
+        shows: group_shows,
+        no_response_shows: group_shows.reject { |s| group_avail_ids.include?(s.id) },
+        availabilities: availabilities_by_entity[entity_key]
+      }
     end
 
     # Group shows by production for each entity
@@ -100,34 +154,29 @@ class My::AvailabilityController < ApplicationController
     @no_response_shows = @all_shows.select { |show|
       @entity_data.values.any? { |data| data[:no_response_shows].include?(show) }
     }
-    @availabilities = ShowAvailability.where(available_entity: @person).index_by(&:show_id)
+    @availabilities = availabilities_by_entity["person"] || {}
 
-    # Build show_entities mapping (which entities each show belongs to)
+    # Build show_entities mapping using preloaded data (no additional queries)
+    # First, index shows by entity_key for O(1) lookup
+    shows_by_entity_key = Hash.new { |h, k| h[k] = Set.new }
+    all_shows_with_source.each do |item|
+      shows_by_entity_key[item[:entity_key]].add(item[:show].id)
+    end
+
     @show_entities = {}
     @all_shows.each do |show|
       @show_entities[show.id] = []
 
-      # Check if person has this show
-      if @entity_filter.include?("person")
-        person_show = Show.joins(production: { talent_pools: :people })
-                         .where(people: { id: @person.id })
-                         .where(id: show.id)
-                         .exists?
-        if person_show
-          @show_entities[show.id] << { type: "person", entity: @person }
-        end
+      # Check if person has this show using preloaded data
+      if include_person && shows_by_entity_key["person"].include?(show.id)
+        @show_entities[show.id] << { type: "person", entity: @person }
       end
 
-      # Check if any selected group has this show
-      @groups.each do |group|
-        if @entity_filter.include?("group_#{group.id}")
-          group_show = Show.joins(production: { talent_pools: :groups })
-                          .where(groups: { id: group.id })
-                          .where(id: show.id)
-                          .exists?
-          if group_show
-            @show_entities[show.id] << { type: "group", entity: group }
-          end
+      # Check if any selected group has this show using preloaded data
+      selected_group_ids.each do |group_id|
+        entity_key = "group_#{group_id}"
+        if shows_by_entity_key[entity_key].include?(show.id)
+          @show_entities[show.id] << { type: "group", entity: groups_by_id[group_id] }
         end
       end
     end
@@ -147,7 +196,7 @@ class My::AvailabilityController < ApplicationController
 
   def calendar
     @person = Current.user.person
-    @groups = @person.groups.active.order(:name)
+    @groups = @person.groups.active.order(:name).to_a
 
     # Handle event type filter (show, rehearsal, meeting) - checkboxes
     @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
@@ -163,14 +212,20 @@ class My::AvailabilityController < ApplicationController
     # This creates SEPARATE entries for each show/entity combination
     @show_entity_pairs = []
 
+    include_person = @entity_filter.include?("person")
+    selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
+    groups_by_id = @groups.index_by(&:id)
+
     # Add person shows if selected
-    if @entity_filter.include?("person")
+    if include_person
       person_shows = Show.joins(production: { talent_pools: :people })
         .where(people: { id: @person.id })
         .where.not(canceled: true)
         .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+        .includes(:production, :location)
         .order(:date_and_time)
         .distinct
+        .to_a
 
       person_shows.each do |show|
         if @event_type_filter.include?(show.event_type)
@@ -183,24 +238,27 @@ class My::AvailabilityController < ApplicationController
       end
     end
 
-    # Add group shows if selected
-    @groups.each do |group|
-      if @entity_filter.include?("group_#{group.id}")
-        group_shows = Show.joins(production: { talent_pools: :groups })
-          .where(groups: { id: group.id })
-          .where.not(canceled: true)
-          .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
-          .order(:date_and_time)
-          .distinct
+    # Add group shows in batch if selected
+    if selected_group_ids.any?
+      group_shows = Show
+        .select("shows.*, groups.id as source_group_id")
+        .joins(production: { talent_pools: :groups })
+        .where(groups: { id: selected_group_ids })
+        .where.not(canceled: true)
+        .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+        .includes(:production, :location)
+        .order(:date_and_time)
+        .distinct
+        .to_a
 
-        group_shows.each do |show|
-          if @event_type_filter.include?(show.event_type)
-            @show_entity_pairs << {
-              show: show,
-              entity_key: "group_#{group.id}",
-              entity: group
-            }
-          end
+      group_shows.each do |show|
+        if @event_type_filter.include?(show.event_type)
+          group_id = show.read_attribute(:source_group_id)
+          @show_entity_pairs << {
+            show: show,
+            entity_key: "group_#{group_id}",
+            entity: groups_by_id[group_id]
+          }
         end
       end
     end
@@ -211,19 +269,39 @@ class My::AvailabilityController < ApplicationController
     # Group by month using TimeWithZone (important for hash key matching)
     @pairs_by_month = @show_entity_pairs.group_by { |pair| pair[:show].date_and_time.beginning_of_month }
 
-    # Get availabilities for all entities - indexed by [show_id, entity_key]
-    @availabilities = {}
-    if @entity_filter.include?("person")
-      ShowAvailability.where(available_entity: @person).each do |availability|
-        @availabilities[[ availability.show_id, "person" ]] = availability
-      end
+    # Get availabilities for all entities in batch - indexed by [show_id, entity_key]
+    all_show_ids = @show_entity_pairs.map { |p| p[:show].id }.uniq
+
+    availability_conditions = []
+    availability_params = []
+
+    if include_person
+      availability_conditions << "(available_entity_type = 'Person' AND available_entity_id = ?)"
+      availability_params << @person.id
     end
-    @groups.each do |group|
-      if @entity_filter.include?("group_#{group.id}")
-        ShowAvailability.where(available_entity: group).each do |availability|
-          @availabilities[[ availability.show_id, "group_#{group.id}" ]] = availability
-        end
+
+    selected_group_ids.each do |gid|
+      availability_conditions << "(available_entity_type = 'Group' AND available_entity_id = ?)"
+      availability_params << gid
+    end
+
+    all_availabilities = if availability_conditions.any? && all_show_ids.any?
+      ShowAvailability
+        .where(show_id: all_show_ids)
+        .where(availability_conditions.join(" OR "), *availability_params)
+        .to_a
+    else
+      []
+    end
+
+    @availabilities = {}
+    all_availabilities.each do |availability|
+      entity_key = if availability.available_entity_type == "Person"
+        "person"
+      else
+        "group_#{availability.available_entity_id}"
       end
+      @availabilities[[ availability.show_id, entity_key ]] = availability
     end
   end
 
