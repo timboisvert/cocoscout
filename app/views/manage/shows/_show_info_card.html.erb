@@ -12,7 +12,7 @@
     <div class="flex-shrink-0 bg-gray-50 flex items-center justify-center p-4">
       <% poster_url = safe_poster_url(show) %>
       <% if poster_url && !show.canceled %>
-        <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow-sm h-full #{compact ? 'max-h-[120px]' : 'max-h-[180px]'} w-auto border border-gray-200" %>
+        <%= image_tag poster_url, alt: "Show Poster", class: "rounded shadow-sm object-contain #{compact ? 'max-h-[120px]' : 'max-h-[180px]'} max-w-[200px] border border-gray-200" %>
       <% else %>
         <div class="<%= compact ? 'w-[90px] h-[120px]' : 'w-[90px] h-[120px]' %> rounded bg-gray-200 flex items-center justify-center border border-gray-300">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="<%= compact ? 'w-8 h-8' : 'w-8 h-8' %> text-gray-400">
