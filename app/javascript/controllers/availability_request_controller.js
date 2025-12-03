@@ -1,7 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["specificSection", "castDropdown", "viewDetailsButton", "showsSection"]
+    static targets = [
+        "specificSection",
+        "castDropdown",
+        "viewDetailsButton",
+        "showsSection",
+        "needingUpdateCount",
+        "needingUpdateCountDetails",
+        "upToDateCountDetails",
+        "needingUpdateList",
+        "upToDateList",
+        "specificPeopleList",
+        "talentPoolSelect"
+    ]
+
+    static values = {
+        availabilityData: Array,
+        talentPoolData: Array,
+        allShowIds: Array
+    }
 
     connect() {
         // Listen to all radio button changes
@@ -10,6 +28,9 @@ export default class extends Controller {
                 this.handleRecipientTypeChange(e.target.value)
             }
         })
+
+        // Initial calculation for talent pool dropdown
+        this.updateTalentPoolDropdown()
     }
 
     toggleShowSelection(event) {
@@ -18,7 +39,173 @@ export default class extends Controller {
             this.showsSectionTarget.classList.remove("hidden")
         } else {
             this.showsSectionTarget.classList.add("hidden")
+            // When switching back to "all", recalculate with all shows
+            this.updateRecipients()
         }
+    }
+
+    // Get the currently selected show IDs based on radio selection
+    getSelectedShowIds() {
+        const selectionType = document.querySelector('input[name="show_selection_type"]:checked')?.value
+        if (selectionType === "all") {
+            return this.allShowIdsValue
+        } else {
+            const checkedShows = Array.from(document.querySelectorAll('input[name="show_ids[]"]:checked'))
+            return checkedShows.map(cb => parseInt(cb.value, 10))
+        }
+    }
+
+    // Calculate which people need updates vs are up to date for the selected shows
+    calculateRecipientStatus(selectedShowIds) {
+        if (selectedShowIds.length === 0) {
+            // If no shows selected, everyone is "up to date" (nothing to update)
+            return {
+                needingUpdate: [],
+                upToDate: this.availabilityDataValue
+            }
+        }
+
+        const needingUpdate = []
+        const upToDate = []
+
+        for (const person of this.availabilityDataValue) {
+            // A person needs update if they haven't submitted for at least one of the selected shows
+            const hasSubmittedAll = selectedShowIds.every(showId =>
+                person.submitted_show_ids.includes(showId)
+            )
+
+            if (hasSubmittedAll) {
+                upToDate.push(person)
+            } else {
+                needingUpdate.push(person)
+            }
+        }
+
+        return { needingUpdate, upToDate }
+    }
+
+    updateRecipients() {
+        const selectedShowIds = this.getSelectedShowIds()
+        const { needingUpdate, upToDate } = this.calculateRecipientStatus(selectedShowIds)
+
+        // Update counts
+        if (this.hasNeedingUpdateCountTarget) {
+            this.needingUpdateCountTarget.textContent = needingUpdate.length
+        }
+        if (this.hasNeedingUpdateCountDetailsTarget) {
+            this.needingUpdateCountDetailsTarget.textContent = needingUpdate.length
+        }
+        if (this.hasUpToDateCountDetailsTarget) {
+            this.upToDateCountDetailsTarget.textContent = upToDate.length
+        }
+
+        // Update the "Needs Updates" list in the details panel
+        if (this.hasNeedingUpdateListTarget) {
+            if (needingUpdate.length > 0) {
+                this.needingUpdateListTarget.innerHTML = needingUpdate
+                    .map(m => {
+                        return `<div class="text-gray-600 flex items-center gap-1">${this.escapeHtml(m.name)}</div>`
+                    })
+                    .join('')
+            } else {
+                this.needingUpdateListTarget.innerHTML = '<div class="text-gray-400 italic">None</div>'
+            }
+        }
+
+        // Update the "Up to Date" list in the details panel
+        if (this.hasUpToDateListTarget) {
+            if (upToDate.length > 0) {
+                this.upToDateListTarget.innerHTML = upToDate
+                    .map(m => {
+                        return `<div class="text-green-600 flex items-center gap-1"><span class="mr-1">✓</span>${this.escapeHtml(m.name)}</div>`
+                    })
+                    .join('')
+            } else {
+                this.upToDateListTarget.innerHTML = '<div class="text-gray-400 italic">None</div>'
+            }
+        }
+
+        // Update the specific people selection list
+        if (this.hasSpecificPeopleListTarget) {
+            this.updateSpecificPeopleList(needingUpdate, upToDate)
+        }
+
+        // Update talent pool dropdown
+        this.updateTalentPoolDropdown(needingUpdate)
+    }
+
+    updateSpecificPeopleList(needingUpdate, upToDate) {
+        const talentPoolLookup = {}
+        for (const tp of this.talentPoolDataValue) {
+            talentPoolLookup[tp.id] = tp.name
+        }
+
+        let html = ''
+
+        if (needingUpdate.length > 0) {
+            html += '<div class="text-xs font-semibold text-gray-700 uppercase mb-2">Needs Update</div>'
+            for (const member of needingUpdate) {
+                const poolNames = member.talent_pool_ids
+                    .map(id => talentPoolLookup[id])
+                    .filter(Boolean)
+                    .join(', ')
+                const fieldName = member.type === 'Group' ? 'group_ids[]' : 'person_ids[]'
+                html += `
+                    <label class="flex items-center cursor-pointer" data-member-id="${member.id}" data-member-type="${member.type}">
+                        <input type="checkbox" name="${fieldName}" value="${member.id}" class="mr-2 accent-pink-500 cursor-pointer">
+                        <span class="text-sm flex items-center gap-1">${this.escapeHtml(member.name)} <span class="text-gray-500">- ${this.escapeHtml(poolNames)}</span></span>
+                    </label>
+                `
+            }
+        }
+
+        if (upToDate.length > 0) {
+            html += `<div class="text-xs font-semibold text-gray-700 uppercase mb-2 ${needingUpdate.length > 0 ? 'mt-4' : ''}">Up to Date</div>`
+            for (const member of upToDate) {
+                const poolNames = member.talent_pool_ids
+                    .map(id => talentPoolLookup[id])
+                    .filter(Boolean)
+                    .join(', ')
+                const fieldName = member.type === 'Group' ? 'group_ids[]' : 'person_ids[]'
+                html += `
+                    <div class="flex items-center opacity-50" data-member-id="${member.id}" data-member-type="${member.type}">
+                        <input type="checkbox" name="${fieldName}" value="${member.id}" disabled class="mr-2 cursor-not-allowed">
+                        <span class="text-sm flex items-center gap-1">${this.escapeHtml(member.name)} <span class="text-gray-500">- ${this.escapeHtml(poolNames)}</span></span>
+                        <span class="ml-2 text-xs text-green-600">✓</span>
+                    </div>
+                `
+            }
+        }
+
+        if (html === '') {
+            html = '<div class="text-gray-400 italic">No cast members</div>'
+        }
+
+        this.specificPeopleListTarget.innerHTML = html
+    }
+
+    updateTalentPoolDropdown(needingUpdate = null) {
+        if (!this.hasTalentPoolSelectTarget) return
+
+        if (needingUpdate === null) {
+            const selectedShowIds = this.getSelectedShowIds()
+            const result = this.calculateRecipientStatus(selectedShowIds)
+            needingUpdate = result.needingUpdate
+        }
+
+        const needingUpdateIds = new Set(needingUpdate.map(p => p.id))
+
+        // Build options for each talent pool
+        const options = this.talentPoolDataValue.map(tp => {
+            // Count people in this talent pool who need updates
+            const count = this.availabilityDataValue.filter(person =>
+                person.talent_pool_ids.includes(tp.id) && needingUpdateIds.has(person.id)
+            ).length
+
+            return `<option value="${tp.id}">${this.escapeHtml(tp.name)} (${count} needing updates)</option>`
+        }).join('')
+
+        this.talentPoolSelectTarget.innerHTML = options
     }
 
     updateMessage(event) {
@@ -109,5 +296,11 @@ export default class extends Controller {
 
     toggleCastDropdown(event) {
         this.handleRecipientTypeChange(event.target.value)
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div')
+        div.textContent = text
+        return div.innerHTML
     }
 }
