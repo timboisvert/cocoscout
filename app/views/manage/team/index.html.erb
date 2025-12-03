@@ -25,14 +25,14 @@
 <div class="w-full">
 
     <% @members.each do |member| %>
-        <% organization_role = member.organization_roles.find_by(organization: Current.organization) %>
+        <% organization_role = member.organization_roles.find { |r| r.organization_id == Current.organization.id } %>
         <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mb-2" data-controller="team-remove" data-team-remove-target="row">
 
                 <div class="<%= current_user_can_manage? ? 'w-2/3' : 'w-full' %>">
                     <div class="h-full flex flex-col justify-center">
                         <div class="">
                             <div class="font-bold text-md">
-                                <%= member.person.name %>
+                                <%= member.person&.name || member.email_address %>
                                 <% if member == Current.user %>
                                     <span class="ml-1 text-sm text-gray-500">(Me)</span>
                                 <% end %>

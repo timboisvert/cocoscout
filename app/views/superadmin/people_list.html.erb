@@ -1,4 +1,4 @@
-<% content_for :title, "Organizations - Superadmin" %>
+<% content_for :title, "People - Superadmin" %>
 
 <div class="w-full px-5 pt-5">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -7,17 +7,17 @@
     breadcrumbs: [
         ["Superadmin", superadmin_path]
     ],
-    text: "Organizations",
+    text: "People",
     links: []
   } %>
 
   <!-- Search Bar -->
   <div class="mb-4 mt-4">
-    <%= form_with url: organizations_list_path, method: :get, class: "flex gap-2" do |f| %>
+    <%= form_with url: people_list_path, method: :get, class: "flex gap-2" do |f| %>
       <div class="relative flex-1">
         <%= f.text_field :search,
             value: @search,
-            placeholder: "Search by organization name or owner...",
+            placeholder: "Search by name or email...",
             class: "w-full h-12 px-4 pl-10 pr-10 rounded border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent",
             autocomplete: "off" %>
         <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,60 +34,63 @@
     <% end %>
   </div>
 
-  <!-- Organizations table -->
+  <!-- People table -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        Organizations
+        People
         <% if @search.present? %>
           <span class="text-sm font-normal text-gray-600">(filtered)</span>
         <% end %>
       </h3>
     </div>
 
-    <% if @organizations.empty? %>
+    <% if @people.empty? %>
       <div class="text-center py-12 text-gray-500">
-        No organizations found.
+        No people found.
       </div>
     <% else %>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organization</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productions</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Future Shows</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Has User</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public Key</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talent Pools</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <% @organizations.each do |org| %>
-              <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='<%= organization_detail_path(org) %>'">
+            <% @people.each do |person| %>
+              <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='<%= person_detail_path(person) %>'">
                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <%= org.name %>
+                  <%= person.name %>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  <div class="font-medium"><%= org.owner.person&.name || org.owner.email_address %></div>
-                  <div class="text-xs text-gray-500"><%= org.owner.email_address %></div>
+                  <%= person.email %>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  <%= org.created_at&.strftime("%b %d, %Y") %>
+                  <%= person.created_at&.strftime("%b %d, %Y") %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                  <% if person.user.present? %>
+                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">No</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                  <% if person.public_key.present? %>
+                    <code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded"><%= person.public_key %></code>
+                  <% else %>
+                    <span class="text-gray-400">—</span>
+                  <% end %>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center">
                   <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-medium text-xs">
-                    <%= org.productions.count %>
-                  </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center">
-                  <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-medium text-xs">
-                    <%= org.productions.joins(:shows).where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current, false).distinct.count %>
-                  </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center">
-                  <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-medium text-xs">
-                    <%= org.users.count %>
+                    <%= person.talent_pool_memberships.count %>
                   </span>
                 </td>
               </tr>
@@ -101,12 +104,12 @@
         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
           <div class="flex-1 flex justify-between sm:hidden">
             <% if @pagy.previous %>
-              <%= link_to "Previous", organizations_list_path(page: @pagy.previous, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              <%= link_to "Previous", people_list_path(page: @pagy.previous, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
             <% else %>
               <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">Previous</span>
             <% end %>
             <% if @pagy.next %>
-              <%= link_to "Next", organizations_list_path(page: @pagy.next, search: @search), class: "ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              <%= link_to "Next", people_list_path(page: @pagy.next, search: @search), class: "ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
             <% else %>
               <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">Next</span>
             <% end %>
@@ -123,12 +126,12 @@
             </div>
             <div class="flex gap-2">
               <% if @pagy.previous %>
-                <%= link_to "Previous", organizations_list_path(page: @pagy.previous, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+                <%= link_to "Previous", people_list_path(page: @pagy.previous, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
               <% else %>
                 <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed">Previous</span>
               <% end %>
               <% if @pagy.next %>
-                <%= link_to "Next", organizations_list_path(page: @pagy.next, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+                <%= link_to "Next", people_list_path(page: @pagy.next, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
               <% else %>
                 <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed">Next</span>
               <% end %>
@@ -138,5 +141,4 @@
       <% end %>
     <% end %>
   </div>
-
 </div>

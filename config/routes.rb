@@ -40,6 +40,9 @@ Rails.application.routes.draw do
     delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
+    get  "/people",            to: "superadmin#people_list",         as: "people_list"
+    get  "/people/:id",        to: "superadmin#person_detail",       as: "person_detail"
+    delete "/people/:id",      to: "superadmin#destroy_person",      as: "destroy_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
     get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"
@@ -158,7 +161,7 @@ Rails.application.routes.draw do
     get  "person_invitations/accept/:token",  to: "person_invitations#accept",    as: "accept_person_invitations"
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
 
-    resources :people, except: [] do
+    resources :people, except: [:destroy] do
       collection do
         get :search
         post :batch_invite

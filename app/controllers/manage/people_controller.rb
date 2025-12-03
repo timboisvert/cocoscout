@@ -1,5 +1,5 @@
 class Manage::PeopleController < Manage::ManageController
-  before_action :set_person, only: %i[ show update destroy update_availability ]
+  before_action :set_person, only: %i[ show update update_availability ]
   before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization]
 
   def show
@@ -105,9 +105,13 @@ class Manage::PeopleController < Manage::ManageController
     # Update availabilities for each show
     updated_count = 0
     params.each do |key, value|
-      if key.start_with?("availability_Person_")
+      if key.start_with?("availability_") && key != "availability"
         show_id = key.split("_").last.to_i
-        show = Show.find(show_id)
+        next if show_id == 0
+
+        show = Show.find_by(id: show_id)
+        next unless show
+
         availability = @person.show_availabilities.find_or_initialize_by(show: show)
 
         # Only update if the status has changed
@@ -135,29 +139,10 @@ class Manage::PeopleController < Manage::ManageController
     end
 
     if updated_count > 0
-      redirect_to manage_directory_person_path(@person, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+      redirect_to manage_person_path(@person, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
     else
-      redirect_to manage_directory_person_path(@person, tab: 2), alert: "No availability changes were made"
+      redirect_to manage_person_path(@person, tab: 2), alert: "No availability changes were made"
     end
-  end
-
-  def destroy
-    user = @person.user
-
-    # Manually destroy associations that don't have dependent: :destroy
-    @person.auditions.destroy_all
-
-    # Remove from join tables
-    @person.talent_pools.clear
-    @person.organizations.clear
-
-    # Destroy the user first (which will nullify the person association)
-    user&.destroy!
-
-    # Now destroy the person (dependent associations will be handled automatically)
-    @person.destroy!
-
-    redirect_to manage_people_path, notice: "Person was successfully deleted", status: :see_other
   end
 
   def batch_invite

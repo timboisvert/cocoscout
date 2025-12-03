@@ -13,7 +13,8 @@
   } %>
 
    <% if @locations.any? %>
-
+        <% cache_key = ["locations_list_v1", Current.organization.id, @locations.map(&:updated_at).max, current_user_is_global_manager?] %>
+        <% cache cache_key do %>
         <div class="grid grid-cols-1 gap-2 mt-2">
             <% @locations.each do |location| %>
                 <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
@@ -43,6 +44,7 @@
                 </div>
             <% end %>
         </div>
+        <% end %>
     <% else %>
         <p class="text-gray-500 text-sm pt-2">
           You haven't added any locations. <%= link_to "Add a Location", new_manage_location_path, class: "text-pink-500 hover:underline" %>

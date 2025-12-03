@@ -2,8 +2,7 @@
   before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
-    members = Current.organization.users.joins(:organization_roles).where(organization_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
-    @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
+    @members = fetch_team_members
     @team_invitation = Current.organization.team_invitations.new
     @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
   end
@@ -16,11 +15,11 @@
     invitation_message = params[:team_invitation][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account."
 
     if @team_invitation.save
+      expire_team_cache
       Manage::TeamMailer.invite(@team_invitation, invitation_subject, invitation_message).deliver_later
       redirect_to manage_team_index_path, notice: "Invitation sent"
     else
-      members = Current.organization.users.joins(:organization_roles).where(organization_roles: { organization_id: Current.organization.id, company_role: [ "manager", "viewer", "none" ] }).distinct
-      @members = members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
+      @members = fetch_team_members
       @team_invitation = Current.organization.team_invitations.new
       @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
       @team_invitation_error = true
@@ -34,6 +33,7 @@
     organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
     if organization_role && %w[manager viewer none].include?(role)
       organization_role.update(company_role: role)
+      expire_team_cache
       respond_to do |format|
         format.json { render json: { success: true } }
         format.html { redirect_to manage_team_index_path, notice: "Role updated" }
@@ -50,6 +50,7 @@
     team_invitation = Current.organization.team_invitations.find_by(id: params[:id], accepted_at: nil)
     if team_invitation
       team_invitation.destroy
+      expire_team_cache
       redirect_to manage_team_index_path, notice: "Invitation revoked"
     else
       redirect_to manage_team_index_path, alert: "Invitation not found or already accepted"
@@ -62,6 +63,7 @@
       organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
       if organization_role
         organization_role.destroy
+        expire_team_cache
         respond_to do |format|
           format.json { render json: { success: true } }
           format.html { redirect_to manage_team_index_path, notice: "Team member removed" }
@@ -124,6 +126,7 @@
       return
     end
 
+    expire_team_cache
     respond_to do |format|
       format.json { render json: { success: true } }
       format.html { redirect_to permissions_manage_team_path(user), notice: message }
@@ -137,6 +140,7 @@
 
     if organization_role && %w[manager viewer none].include?(role)
       organization_role.update(company_role: role)
+      expire_team_cache
       role_display = case role
       when "manager" then "Manager"
       when "viewer" then "Viewer"
@@ -156,7 +160,29 @@
 
 
   private
+
+  def fetch_team_members
+    Rails.cache.fetch(team_cache_key, expires_in: 10.minutes) do
+      members = Current.organization.users
+        .joins(:organization_roles)
+        .includes(:person, :organization_roles)
+        .where(organization_roles: { organization_id: Current.organization.id, company_role: %w[manager viewer none] })
+        .distinct
+      members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
+    end
+  end
+
+  def team_cache_key
+    max_role_updated = OrganizationRole.where(organization: Current.organization).maximum(:updated_at)
+    max_user_updated = Current.organization.users.maximum(:updated_at)
+    [ "team_members_v1", Current.organization.id, Current.user.id, max_role_updated, max_user_updated ]
+  end
+
+  def expire_team_cache
+    Rails.cache.delete(team_cache_key)
+  end
+
   def team_invitation_params
     params.require(:team_invitation).permit(:email)
   end
- end
+end

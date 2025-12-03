@@ -44,9 +44,9 @@
 
       <div data-tabs-target="panel">
         <% if @requestable.is_a?(Person) %>
-          <%= render "shared/person_card", person: @requestable %>
+          <%= render "shared/person_card", person: @requestable, show_public_profile_link: false %>
         <% else %>
-          <%= render "shared/group_card", group: @requestable %>
+          <%= render "shared/group_card", group: @requestable, show_public_profile_link: false %>
         <% end %>
       </div>
 

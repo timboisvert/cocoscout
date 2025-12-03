@@ -1,5 +1,5 @@
 class SuperadminController < ApplicationController
-  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending, :organizations_list, :organization_detail ]
+  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending, :people_list, :person_detail, :destroy_person, :organizations_list, :organization_detail ]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -8,6 +8,13 @@ class SuperadminController < ApplicationController
 
   def index
     @users = User.order(:email_address)
+
+    # Organization stats for overview
+    # People stats for overview
+    @people_total = Person.count
+    @people_new_this_week = Person.where("created_at > ?", 1.week.ago).count
+    @people_new_this_month = Person.where("created_at > ?", 1.month.ago).count
+    @recent_people = Person.order(created_at: :desc).limit(5)
 
     # Organization stats for overview
     @organizations_total = Organization.count
@@ -24,6 +31,41 @@ class SuperadminController < ApplicationController
     else
       @recent_impersonations = []
     end
+  end
+
+  def people_list
+    @search = params[:search].to_s.strip
+    @people = Person.order(created_at: :desc)
+
+    # Filter by search term if provided (search by name or email)
+    if @search.present?
+      search_term = "%#{@search}%"
+      @people = @people.where("name LIKE ? OR email LIKE ?", search_term, search_term)
+    end
+
+    @pagy, @people = pagy(@people, items: 25)
+  end
+
+  def person_detail
+    @person = Person.find(params[:id])
+  end
+
+  def destroy_person
+    @person = Person.find(params[:id])
+    user = @person.user
+    person_name = @person.name
+
+    # Remove from join tables
+    @person.talent_pools.clear
+    @person.organizations.clear
+
+    # Destroy the user first (which will nullify the person association)
+    user&.destroy!
+
+    # Now destroy the person (dependent associations will be handled automatically)
+    @person.destroy!
+
+    redirect_to people_list_path, notice: "#{person_name} was successfully deleted", status: :see_other
   end
 
   def organizations_list

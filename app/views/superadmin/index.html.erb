@@ -12,49 +12,92 @@
     ]
   } %>
 
-  <!-- First Row: Organizations (left) and Queue Monitor + Email Logs (right stacked) -->
+  <!-- First Row: People and Organizations (left) and Queue Monitor + Email Logs (right stacked) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-    <!-- Organizations Overview Card (left, tall) -->
-    <%= link_to organizations_list_path, class: "block md:row-span-2" do %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organizations</h3>
-        </div>
-        <div class="p-6">
-
-          <!-- Stats Grid -->
-          <div class="grid grid-cols-3 gap-3 mt-4">
-            <div>
-              <div class="text-2xl font-bold text-gray-900"><%= @organizations_total %></div>
-              <div class="text-xs text-gray-500 mt-1">Total</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-green-600"><%= @organizations_new_this_week %></div>
-              <div class="text-xs text-gray-500 mt-1">New This Week</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-blue-600"><%= @organizations_new_this_month %></div>
-              <div class="text-xs text-gray-500 mt-1">New This Month</div>
-            </div>
+    <!-- Left Column: People and Organizations (stacked) -->
+    <div class="grid grid-cols-1 gap-4">
+      <!-- People Overview Card -->
+      <%= link_to people_list_path, class: "block" do %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">People</h3>
           </div>
-
-          <!-- Recent Organizations -->
-          <% if @recent_organizations.any? %>
-            <div class="mt-4 pt-3 border-t border-gray-200">
-              <p class="text-xs font-medium text-gray-600 mb-2">Recent:</p>
-              <div class="space-y-1">
-                <% @recent_organizations.each do |org| %>
-                  <div class="text-sm text-gray-700">
-                    <%= org.name %>
-                    <span class="text-xs text-gray-400"><%= org.created_at.strftime("%b %d") %></span>
-                  </div>
-                <% end %>
+          <div class="p-6">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <div class="text-2xl font-bold text-gray-900"><%= @people_total %></div>
+                <div class="text-xs text-gray-500 mt-1">Total</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-green-600"><%= @people_new_this_week %></div>
+                <div class="text-xs text-gray-500 mt-1">New This Week</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-blue-600"><%= @people_new_this_month %></div>
+                <div class="text-xs text-gray-500 mt-1">New This Month</div>
               </div>
             </div>
-          <% end %>
+
+            <!-- Recent People -->
+            <% if @recent_people.any? %>
+              <div class="mt-4 pt-3 border-t border-gray-200">
+                <p class="text-xs font-medium text-gray-600 mb-2">Recent:</p>
+                <div class="space-y-1">
+                  <% @recent_people.each do |person| %>
+                    <div class="text-sm text-gray-700">
+                      <%= person.name %>
+                      <span class="text-xs text-gray-400"><%= person.created_at.strftime("%b %d") %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
         </div>
-      </div>
-    <% end %>
+      <% end %>
+
+      <!-- Organizations Overview Card -->
+      <%= link_to organizations_list_path, class: "block" do %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organizations</h3>
+          </div>
+          <div class="p-6">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <div class="text-2xl font-bold text-gray-900"><%= @organizations_total %></div>
+                <div class="text-xs text-gray-500 mt-1">Total</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-green-600"><%= @organizations_new_this_week %></div>
+                <div class="text-xs text-gray-500 mt-1">New This Week</div>
+              </div>
+              <div>
+                <div class="text-2xl font-bold text-blue-600"><%= @organizations_new_this_month %></div>
+                <div class="text-xs text-gray-500 mt-1">New This Month</div>
+              </div>
+            </div>
+
+            <!-- Recent Organizations -->
+            <% if @recent_organizations.any? %>
+              <div class="mt-4 pt-3 border-t border-gray-200">
+                <p class="text-xs font-medium text-gray-600 mb-2">Recent:</p>
+                <div class="space-y-1">
+                  <% @recent_organizations.each do |org| %>
+                    <div class="text-sm text-gray-700">
+                      <%= org.name %>
+                      <span class="text-xs text-gray-400"><%= org.created_at.strftime("%b %d") %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
 
     <!-- Right Column: Queue Monitor and Email Logs (stacked) -->
     <div class="grid grid-cols-1 gap-4">

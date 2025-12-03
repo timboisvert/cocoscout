@@ -1,3 +1,8 @@
+<%
+    show_delete_signup = false if local_assigns[:show_delete_signup].nil?
+    show_public_profile_link = local_assigns[:show_public_profile_link] != false
+%>
+
 <% if group.nil? %>
     <div class="p-6 text-center text-gray-500">
         <p>This group is no longer available.</p>
@@ -13,33 +18,92 @@
 
     <div class="flex flex-col lg:flex-row items-start lg:space-x-6">
         <div class="flex-1 w-full">
-            <div class="font-bold text-2xl sm:text-3xl mt-3"><%= group.name.truncate(40, omission: "...") %></div>
-
-            <div class="mt-5">
-                <%= render partial: "shared/top_menu", locals: {
-                    breadcrumbs: [],
-                    text: "Email & Socials",
-                    links: []
-                } %>
+            <!-- Name -->
+            <div class="flex items-center gap-3 mt-3">
+                <div class="font-bold text-2xl sm:text-3xl"><%= group.name.truncate(40, omission: "...") %></div>
             </div>
 
-            <div class="flex items-center space-x-2 border-gray-200 mt-4">
-                <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/></svg>
-                <% if group.email.present? %>
-                    <%= link_to group.email, "mailto:#{group.email}", class: "text-pink-500 text-sm hover:underline" %>
-                <% else %>
-                    <span class="text-gray-400 text-sm">No email</span>
-                <% end %>
-            </div>
+            <!-- Public Profile Link -->
+            <% if show_public_profile_link && group.public_key.present? %>
+                <div class="mt-2">
+                    <%= link_to public_profile_path(group.public_key), target: "_blank", class: "inline-flex items-center gap-1 text-sm text-pink-600 hover:text-pink-700" do %>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                        View Public Profile
+                    <% end %>
+                </div>
+            <% end %>
 
-            <div class="space-y-1 mt-1">
-                <% group.socials.each do |social| %>
+            <!-- Email & Socials Box -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
+                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Email & Socials</h3>
+                </div>
+                <div class="p-4">
                     <div class="flex items-center space-x-2">
-                        <%= social.icon(20) %>
-                        <%= link_to social.handle, social.url, class: "text-pink-500 text-sm hover:underline", target: "_blank", rel: "noopener" %>
+                        <svg width="20" height="20" class="fill-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z"/></svg>
+                        <% if group.email.present? %>
+                            <%= link_to group.email, "mailto:#{group.email}", class: "text-pink-500 text-sm hover:underline" %>
+                        <% else %>
+                            <span class="text-gray-400 text-sm">No email</span>
+                        <% end %>
                     </div>
-                <% end %>
+
+                    <% if group.socials.any? %>
+                        <div class="space-y-1 mt-2">
+                            <% group.socials.each do |social| %>
+                                <div class="flex items-center space-x-2">
+                                    <%= social.icon(20) %>
+                                    <%= link_to social.handle, social.url, class: "text-pink-500 text-sm hover:underline", target: "_blank", rel: "noopener" %>
+                                </div>
+                            <% end %>
+                        </div>
+                    <% end %>
+                </div>
             </div>
+
+            <% if current_user_can_manage? || Current.user&.superadmin? %>
+                <!-- Organization Box -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organization</h3>
+                    </div>
+                    <div class="p-4">
+                        <% if current_user_can_manage? && group.organizations.include?(Current.organization) %>
+                            <%= link_to "Remove from #{Current.organization.name}",
+                                remove_from_organization_manage_group_path(group),
+                                data: {
+                                    turbo_method: :post,
+                                    turbo_confirm: "Are you sure you want to remove #{group.name} from #{Current.organization.name}?"
+                                },
+                                class: "text-sm text-pink-500 hover:underline"
+                            %>
+                        <% end %>
+
+                        <% if show_delete_signup %>
+                            <%= link_to "Delete Sign-up",
+                                manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
+                                data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this sign-up?" },
+                                class: "block text-sm text-pink-500 hover:underline mt-1"
+                            %>
+                        <% end %>
+                    </div>
+                </div>
+            <% end %>
+
+            <% if Current.user&.superadmin? %>
+                <!-- Superadmin Actions Box -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Superadmin Actions</h3>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        <span class="text-gray-400 text-sm">No superadmin actions available for groups</span>
+                    </div>
+                </div>
+            <% end %>
+
         </div>
 
         <% if headshot&.image&.attached? %>
@@ -48,5 +112,6 @@
             </div>
         <% end %>
     </div>
+
 </div>
 <% end %>

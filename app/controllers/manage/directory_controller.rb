@@ -187,9 +187,9 @@ class Manage::DirectoryController < Manage::ManageController
     end
 
     if updated_count > 0
-      redirect_to manage_directory_group_path(@group, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+      redirect_to manage_group_path(@group, tab: 2), notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
     else
-      redirect_to manage_directory_group_path(@group, tab: 2), alert: "No availability changes were made"
+      redirect_to manage_group_path(@group, tab: 2), alert: "No availability changes were made"
     end
   end
 

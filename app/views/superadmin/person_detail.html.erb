@@ -1,0 +1,238 @@
+<% content_for :title, "#{@person.name} - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path],
+        ["People", people_list_path]
+    ],
+    text: @person.name,
+    links: []
+  } %>
+
+  <!-- Header section -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6 mt-4">
+    <div class="flex items-start gap-6">
+      <% if @person.primary_headshot.present? %>
+        <%= image_tag @person.primary_headshot.image.variant(:thumb), class: "w-24 h-24 rounded-full object-cover border border-gray-200" %>
+      <% else %>
+        <div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold">
+          <%= @person.name.to_s.first.upcase %>
+        </div>
+      <% end %>
+      <div class="flex-1">
+        <div class="flex items-start justify-between">
+          <h1 class="text-3xl font-bold text-gray-900 coustard-regular mb-2">
+            <%= @person.name %>
+          </h1>
+          <%= render "shared/button",
+                text: "Delete Person",
+                variant: "danger",
+                size: "small",
+                icon: "trash",
+                path: destroy_person_path(@person),
+                data: {
+                  turbo_method: :delete,
+                  turbo_confirm: "Are you sure you want to permanently delete #{@person.name}? This will remove them from ALL organizations and cannot be undone."
+                }
+          %>
+        </div>
+        <div class="space-y-2 text-sm text-gray-600">
+          <div>
+            <span class="font-medium">Email:</span>
+            <%= @person.email || "—" %>
+          </div>
+          <% if @person.public_key.present? %>
+            <div>
+              <span class="font-medium">Public Profile:</span>
+              <%= link_to @person.public_key, public_profile_path(@person.public_key), class: "text-pink-600 hover:text-pink-700" %>
+            </div>
+          <% end %>
+          <div>
+            <span class="font-medium">Created:</span>
+            <%= @person.created_at&.strftime("%B %d, %Y at %l:%M %p") %>
+          </div>
+          <div>
+            <span class="font-medium">Updated:</span>
+            <%= @person.updated_at&.strftime("%B %d, %Y at %l:%M %p") %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics grid -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <!-- Has User Account -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">User Account</div>
+      <% if @person.user.present? %>
+        <div class="text-xl font-bold text-green-600">Yes</div>
+        <div class="text-xs text-gray-500 mt-1"><%= @person.user.email_address %></div>
+      <% else %>
+        <div class="text-xl font-bold text-gray-400">No</div>
+      <% end %>
+    </div>
+
+    <!-- Talent Pools -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Talent Pools</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @person.talent_pool_memberships.count %></div>
+    </div>
+
+    <!-- Headshots -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Headshots</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @person.profile_headshots.count %></div>
+    </div>
+
+    <!-- Resumes -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-gray-600 text-sm font-medium mb-2">Resumes</div>
+      <div class="text-4xl font-bold text-gray-900"><%= @person.profile_resumes.count %></div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- Profile Info -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Profile Info</h2>
+      <dl class="space-y-3 text-sm">
+        <% if @person.pronouns.present? %>
+          <div>
+            <dt class="text-gray-500">Pronouns</dt>
+            <dd class="font-medium text-gray-900"><%= @person.pronouns %></dd>
+          </div>
+        <% end %>
+        <% if @person.phone.present? %>
+          <div>
+            <dt class="text-gray-500">Phone</dt>
+            <dd class="font-medium text-gray-900"><%= @person.phone %></dd>
+          </div>
+        <% end %>
+        <% if @person.bio.present? %>
+          <div>
+            <dt class="text-gray-500">Bio</dt>
+            <dd class="font-medium text-gray-900"><%= truncate(@person.bio, length: 200) %></dd>
+          </div>
+        <% end %>
+        <div>
+          <dt class="text-gray-500">Public Profile</dt>
+          <dd class="font-medium <%= @person.public_profile_enabled? ? 'text-green-600' : 'text-gray-400' %>">
+            <%= @person.public_profile_enabled? ? "Enabled" : "Disabled" %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- User Info -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">User Account</h2>
+      <% if @person.user.present? %>
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="text-gray-500">Email Address</dt>
+            <dd class="font-medium text-gray-900"><%= @person.user.email_address %></dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">Superadmin</dt>
+            <dd class="font-medium <%= @person.user.superadmin? ? 'text-green-600' : 'text-gray-400' %>">
+              <%= @person.user.superadmin? ? "Yes" : "No" %>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-gray-500">User Created</dt>
+            <dd class="font-medium text-gray-900"><%= @person.user.created_at&.strftime("%B %d, %Y") %></dd>
+          </div>
+          <% if @person.organizations.any? %>
+            <div>
+              <dt class="text-gray-500">Organizations</dt>
+              <dd class="font-medium">
+                <% @person.organizations.each_with_index do |org, i| %>
+                  <%= link_to org.name, organization_detail_path(org), class: "text-pink-600 hover:text-pink-700" %><%= ", " unless i == @person.organizations.size - 1 %>
+                <% end %>
+              </dd>
+            </div>
+          <% end %>
+        </dl>
+      <% else %>
+        <p class="text-gray-500 text-sm">No user account linked to this person.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Talent Pool Memberships -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Talent Pool Memberships</h2>
+    <% memberships = @person.talent_pool_memberships.includes(talent_pool: { production: :organization }) %>
+    <% if memberships.empty? %>
+      <p class="text-gray-500 text-sm">Not in any talent pools.</p>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Talent Pool</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Production</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% memberships.each do |membership| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm text-gray-900"><%= membership.talent_pool.name %></td>
+                <td class="px-4 py-3 text-sm text-gray-900"><%= membership.talent_pool.production.name %></td>
+                <td class="px-4 py-3 text-sm">
+                  <%= link_to membership.talent_pool.production.organization.name, organization_detail_path(membership.talent_pool.production.organization), class: "text-pink-600 hover:text-pink-700" %>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600"><%= membership.created_at&.strftime("%b %d, %Y") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Audition Requests -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular mb-4">Recent Audition Requests</h2>
+    <% requests = @person.audition_requests.includes(audition_cycle: :production).order(created_at: :desc).limit(10) %>
+    <% if requests.empty? %>
+      <p class="text-gray-500 text-sm">No audition requests.</p>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Production</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Submitted</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% requests.each do |request| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm text-gray-900"><%= request.audition_cycle.production.name %></td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                    <%= case request.status
+                        when 'submitted' then 'bg-blue-100 text-blue-800'
+                        when 'reviewed' then 'bg-purple-100 text-purple-800'
+                        when 'scheduled' then 'bg-green-100 text-green-800'
+                        when 'rejected' then 'bg-red-100 text-red-800'
+                        else 'bg-gray-100 text-gray-600'
+                        end %>">
+                    <%= request.status&.titleize || "Unknown" %>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600"><%= request.created_at&.strftime("%b %d, %Y") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
