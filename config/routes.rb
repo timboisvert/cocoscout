@@ -42,6 +42,10 @@ Rails.application.routes.draw do
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
+    get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"
+    post "/storage/cleanup_orphans", to: "superadmin#storage_cleanup_orphans", as: "storage_cleanup_orphans"
+    post "/storage/cleanup_legacy",  to: "superadmin#storage_cleanup_legacy",  as: "storage_cleanup_legacy"
+    post "/storage/migrate_keys",    to: "superadmin#storage_migrate_keys",    as: "storage_migrate_keys"
   end
 
   # Pilot user setup (superadmins only)

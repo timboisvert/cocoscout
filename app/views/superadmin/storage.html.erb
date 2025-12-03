@@ -1,0 +1,247 @@
+<% content_for :title, "Storage Monitor - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Storage Monitor",
+    links: []
+  } %>
+
+  <!-- Overview Stats -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @total_blobs %></div>
+      <div class="text-sm text-gray-500">Total Blobs</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_to_human_size(@total_size_bytes) %></div>
+      <div class="text-sm text-gray-500">Total Storage</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-green-600"><%= @hierarchical_keys_count %></div>
+      <div class="text-sm text-gray-500">Hierarchical Keys</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-amber-600"><%= @flat_keys_count %></div>
+      <div class="text-sm text-gray-500">Flat Keys (Unmigrated)</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <!-- By Service -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">By Service</h3>
+      </div>
+      <div class="p-4">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b">
+              <th class="pb-2">Service</th>
+              <th class="pb-2 text-right">Blobs</th>
+              <th class="pb-2 text-right">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @blobs_by_service.each do |service, count| %>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 font-medium"><%= service %></td>
+                <td class="py-2 text-right"><%= count %></td>
+                <td class="py-2 text-right"><%= number_to_human_size(@size_by_service[service] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- By Content Type -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">By Content Type</h3>
+      </div>
+      <div class="p-4">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b">
+              <th class="pb-2">Type</th>
+              <th class="pb-2 text-right">Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @blobs_by_content_type.each do |type, count| %>
+              <tr class="border-b border-gray-100">
+                <td class="py-2"><%= type %></td>
+                <td class="py-2 text-right"><%= count %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attachments Breakdown -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Attachments by Type</h3>
+    </div>
+    <div class="p-4">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b">
+            <th class="pb-2">Record Type</th>
+            <th class="pb-2">Attachment Name</th>
+            <th class="pb-2 text-right">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @attachments_by_type.each do |(record_type, name), count| %>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 font-medium"><%= record_type %></td>
+              <td class="py-2"><%= name %></td>
+              <td class="py-2 text-right"><%= count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cleanup Actions -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <!-- Orphaned Blobs -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Orphaned Blobs</h3>
+        <% if @orphaned_count > 0 %>
+          <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+            <%= @orphaned_count %> orphans
+          </span>
+        <% else %>
+          <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+            Clean
+          </span>
+        <% end %>
+      </div>
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-3">
+          Blobs with no attachments (wasting storage).
+        </p>
+
+        <% if @orphaned_count > 0 %>
+          <div class="text-sm mb-3">
+            <p><strong>Count:</strong> <%= @orphaned_count %></p>
+            <p><strong>Size:</strong> <%= number_to_human_size(@orphaned_size) %></p>
+            <p><strong>By service:</strong></p>
+            <ul class="ml-4 list-disc">
+              <% @orphaned_by_service.each do |service, count| %>
+                <li><%= service %>: <%= count %></li>
+              <% end %>
+            </ul>
+          </div>
+
+          <%= form_with url: storage_cleanup_orphans_path, method: :post do %>
+            <%= render "shared/button", text: "Purge All Orphans", variant: "danger", size: "small", type: :submit,
+                data: { turbo_confirm: "This will permanently delete #{@orphaned_count} orphaned blobs. Continue?" } %>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-green-600">✓ No orphaned blobs</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Legacy Attachments -->
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Legacy Attachments</h3>
+        <% if @legacy_count > 0 %>
+          <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+            <%= @legacy_count %> legacy
+          </span>
+        <% else %>
+          <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+            Clean
+          </span>
+        <% end %>
+      </div>
+      <div class="p-4">
+        <p class="text-sm text-gray-600 mb-3">
+          Old Person.headshot and Person.resume attachments (replaced by ProfileHeadshot/ProfileResume).
+        </p>
+
+        <% if @legacy_count > 0 %>
+          <p class="text-sm mb-3"><strong>Count:</strong> <%= @legacy_count %></p>
+
+          <%= form_with url: storage_cleanup_legacy_path, method: :post do %>
+            <%= render "shared/button", text: "Delete Legacy Attachments", variant: "danger", size: "small", type: :submit,
+                data: { turbo_confirm: "This will delete #{@legacy_count} legacy attachment records. The blobs will remain. Continue?" } %>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-green-600">✓ No legacy attachments</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Migration -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Key Structure Migration</h3>
+      <% if @flat_keys_count > 0 %>
+        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+          <%= @flat_keys_count %> to migrate
+        </span>
+      <% else %>
+        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+          All migrated
+        </span>
+      <% end %>
+    </div>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-3">
+        Migrate flat keys (e.g., <code class="bg-gray-100 px-1 rounded">abc123xyz</code>) to hierarchical structure 
+        (e.g., <code class="bg-gray-100 px-1 rounded">people/123/headshots/abc123xyz</code>).
+      </p>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="bg-gray-50 rounded-lg p-3">
+          <div class="text-xl font-bold text-green-600"><%= @hierarchical_keys_count %></div>
+          <div class="text-xs text-gray-500">Hierarchical (migrated)</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3">
+          <div class="text-xl font-bold text-amber-600"><%= @flat_keys_count %></div>
+          <div class="text-xs text-gray-500">Flat (unmigrated)</div>
+        </div>
+      </div>
+
+      <% if @flat_keys_count > 0 %>
+        <%= form_with url: storage_migrate_keys_path, method: :post do %>
+          <%= hidden_field_tag :service, "amazon" %>
+          <%= render "shared/button", text: "Migrate S3 Keys", variant: "primary", size: "small", type: :submit,
+              data: { turbo_confirm: "This will copy #{@flat_keys_count} files to new hierarchical paths in S3. Old files will be kept. Continue?" } %>
+        <% end %>
+        <p class="text-xs text-gray-500 mt-2">Note: Old files are preserved. You can delete them later after verifying the migration.</p>
+      <% else %>
+        <p class="text-sm text-green-600">✓ All keys are hierarchical</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Variants Info -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Variants</h3>
+    </div>
+    <div class="p-4">
+      <p class="text-sm text-gray-600">
+        <strong><%= @variant_count %></strong> variant records (thumbnails, resized images, etc.)
+      </p>
+    </div>
+  </div>
+
+</div>

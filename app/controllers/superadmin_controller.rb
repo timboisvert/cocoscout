@@ -147,7 +147,14 @@ class SuperadminController < ApplicationController
   end
 
   def email_logs
-    @email_logs = EmailLog.includes(:user).order(sent_at: :desc).limit(100)
+    # Exclude the heavy 'body' column from list queries for performance
+    @email_logs = EmailLog
+      .select(:id, :user_id, :recipient, :subject, :mailer_class, :mailer_action, 
+              :message_id, :delivery_status, :sent_at, :delivered_at, :error_message, 
+              :created_at, :updated_at)
+      .includes(:user)
+      .order(sent_at: :desc)
+      .limit(100)
 
     # Filter by user if requested
     if params[:user_id].present?
@@ -241,6 +248,118 @@ class SuperadminController < ApplicationController
     redirect_to queue_monitor_path, notice: "Cleared #{count} pending jobs"
   rescue => e
     redirect_to queue_monitor_path, alert: "Failed to clear pending jobs: #{e.message}"
+  end
+
+  def storage
+    # Overall stats
+    @total_blobs = ActiveStorage::Blob.count
+    @total_size_bytes = ActiveStorage::Blob.sum(:byte_size)
+
+    # By service
+    @blobs_by_service = ActiveStorage::Blob.group(:service_name).count
+    @size_by_service = ActiveStorage::Blob.group(:service_name).sum(:byte_size)
+
+    # By content type
+    @blobs_by_content_type = ActiveStorage::Blob.group(:content_type).count.sort_by { |_, v| -v }
+
+    # Attachments breakdown
+    @attachments_by_type = ActiveStorage::Attachment.group(:record_type, :name).count.sort_by { |_, v| -v }
+
+    # Orphaned blobs
+    @orphaned_blobs = ActiveStorage::Blob.left_joins(:attachments)
+                                          .where(active_storage_attachments: { id: nil })
+    @orphaned_count = @orphaned_blobs.count
+    @orphaned_size = @orphaned_blobs.sum(:byte_size)
+    @orphaned_by_service = @orphaned_blobs.group(:service_name).count
+
+    # Legacy Person attachments
+    @legacy_attachments = ActiveStorage::Attachment.where(record_type: "Person", name: %w[headshot resume])
+    @legacy_count = @legacy_attachments.count
+
+    # Key structure analysis
+    @flat_keys_count = ActiveStorage::Blob.where("key NOT LIKE '%/%'").count
+    @hierarchical_keys_count = ActiveStorage::Blob.where("key LIKE '%/%'").count
+
+    # Variant records
+    @variant_count = ActiveStorage::VariantRecord.count
+  end
+
+  def storage_cleanup_orphans
+    orphaned = ActiveStorage::Blob.left_joins(:attachments)
+                                   .where(active_storage_attachments: { id: nil })
+    count = orphaned.count
+
+    if params[:service].present?
+      orphaned = orphaned.where(service_name: params[:service])
+      count = orphaned.count
+    end
+
+    orphaned.find_each(&:purge)
+    redirect_to storage_monitor_path, notice: "Purged #{count} orphaned blobs"
+  rescue => e
+    redirect_to storage_monitor_path, alert: "Failed to cleanup orphans: #{e.message}"
+  end
+
+  def storage_cleanup_legacy
+    legacy = ActiveStorage::Attachment.where(record_type: "Person", name: %w[headshot resume])
+    count = legacy.count
+    legacy.delete_all
+    redirect_to storage_monitor_path, notice: "Deleted #{count} legacy Person attachments"
+  rescue => e
+    redirect_to storage_monitor_path, alert: "Failed to cleanup legacy attachments: #{e.message}"
+  end
+
+  def storage_migrate_keys
+    service_name = params[:service] || "amazon"
+    migrated = 0
+    errors = []
+
+    # Only migrate blobs with flat keys (no /)
+    blobs_to_migrate = ActiveStorage::Blob
+      .where(service_name: service_name)
+      .where("key NOT LIKE '%/%'")
+      .joins(:attachments)
+      .includes(:attachments)
+      .distinct
+
+    # Get the storage service
+    storage_service = ActiveStorage::Blob.services.fetch(service_name.to_sym)
+
+    blobs_to_migrate.find_each do |blob|
+      begin
+        new_key = StorageKeyGeneratorService.generate_key_for_blob(blob)
+        next if new_key.nil? || new_key == blob.key
+
+        # Copy object to new key using S3 client directly
+        if storage_service.respond_to?(:bucket)
+          # S3 service - use copy_object
+          storage_service.bucket.object(new_key).copy_from(
+            copy_source: "#{storage_service.bucket.name}/#{blob.key}"
+          )
+        else
+          # Disk service - download and re-upload
+          data = blob.download
+          storage_service.upload(new_key, StringIO.new(data), checksum: blob.checksum)
+        end
+
+        # Update the blob record
+        old_key = blob.key
+        blob.update_column(:key, new_key)
+
+        # Note: Old key is preserved. Run delete_old_keys after verifying migration.
+
+        migrated += 1
+      rescue => e
+        errors << "Blob #{blob.id}: #{e.message}"
+      end
+    end
+
+    message = "Migrated #{migrated} blobs to hierarchical keys"
+    message += ". Errors: #{errors.first(3).join('; ')}" if errors.any?
+
+    redirect_to storage_monitor_path, notice: message
+  rescue => e
+    redirect_to storage_monitor_path, alert: "Migration failed: #{e.message}"
   end
 
   private

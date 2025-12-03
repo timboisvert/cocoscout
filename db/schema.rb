@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_03_001306) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_03_023658) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -185,6 +185,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_03_001306) do
     t.integer "user_id", null: false
     t.index ["message_id"], name: "index_email_logs_on_message_id"
     t.index ["recipient"], name: "index_email_logs_on_recipient"
+    t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
     t.index ["sent_at"], name: "index_email_logs_on_sent_at"
     t.index ["user_id"], name: "index_email_logs_on_user_id"
   end
