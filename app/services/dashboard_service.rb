@@ -20,64 +20,86 @@ class DashboardService
     is_open = call.opens_at <= Time.current && (call.closes_at.nil? || call.closes_at >= Time.current)
     return { total_open: 0, with_auditionees: [] } unless is_open
 
+    # Use size instead of count to avoid extra query if already loaded
+    auditionee_count = call.audition_requests.size
+
     {
       total_open: 1,
       with_auditionees: [ {
         call: call,
-        auditionee_count: call.audition_requests.count
+        auditionee_count: auditionee_count
       } ]
     }
   end
 
   def upcoming_shows
-    @production.shows
+    # Pre-fetch roles count once (not per show)
+    roles_count = @production.roles.count
+
+    # Eager load location and assignments in a single query
+    shows = @production.shows
       .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+      .includes(:location, :show_person_role_assignments)
       .order(date_and_time: :asc)
       .limit(5)
-      .map do |show|
-        uncast_count = @production.roles.count - show.show_person_role_assignments.count
-        days_until = (show.date_and_time.to_date - Date.today).to_i
 
-        days_label = case days_until
-        when 0 then "today"
-        when 1 then "tomorrow"
-        else "#{days_until} days from now"
-        end
+    shows.map do |show|
+      # Use .size on already-loaded associations to avoid COUNT queries
+      assignments_count = show.show_person_role_assignments.size
+      uncast_count = roles_count - assignments_count
+      days_until = (show.date_and_time.to_date - Date.today).to_i
 
-        cast_percentage = if @production.roles.count > 0
-          ((show.show_person_role_assignments.count.to_f / @production.roles.count) * 100).round
-        else
-          100  # If there are no roles, consider it 100% cast
-        end
-
-        {
-          show: show,
-          uncast_count: uncast_count,
-          days_until: days_label,
-          cast_percentage: cast_percentage
-        }
+      days_label = case days_until
+      when 0 then "today"
+      when 1 then "tomorrow"
+      else "#{days_until} days from now"
       end
-  end
 
-  def availability_summary
-    upcoming_shows = @production.shows
-      .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-      .order(date_and_time: :asc)
-
-    # Get all people in the production's talent pools
-    all_cast_people = @production.talent_pools.flat_map(&:people).uniq
-
-    shows_with_availability = upcoming_shows.map do |show|
-      # For each show, check which cast people have an availability record
-      people_with_availability = show.show_availabilities.where(available_entity_type: "Person", available_entity_id: all_cast_people.pluck(:id)).count
-      people_without_availability = all_cast_people.count - people_with_availability
+      cast_percentage = if roles_count > 0
+        ((assignments_count.to_f / roles_count) * 100).round
+      else
+        100  # If there are no roles, consider it 100% cast
+      end
 
       {
         show: show,
-        total_cast_people: all_cast_people.count,
+        uncast_count: uncast_count,
+        days_until: days_label,
+        cast_percentage: cast_percentage
+      }
+    end
+  end
+
+  def availability_summary
+    # Eager load shows with availabilities in a single query
+    upcoming_shows = @production.shows
+      .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+      .includes(:show_availabilities)
+      .order(date_and_time: :asc)
+
+    # Get all people in the production's talent pools in a single query
+    # Use joins instead of flat_map to avoid N+1
+    all_cast_person_ids = Person
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
+      .distinct
+      .pluck(:id)
+
+    total_cast_count = all_cast_person_ids.size
+
+    shows_with_availability = upcoming_shows.map do |show|
+      # Use already-loaded show_availabilities and filter in memory
+      people_with_availability = show.show_availabilities.count do |avail|
+        avail.available_entity_type == "Person" && all_cast_person_ids.include?(avail.available_entity_id)
+      end
+      people_without_availability = total_cast_count - people_with_availability
+
+      {
+        show: show,
+        total_cast_people: total_cast_count,
         with_availability: people_with_availability,
         without_availability: people_without_availability,
-        percentage_responded: all_cast_people.count > 0 ? ((people_with_availability.to_f / all_cast_people.count) * 100).round : 0
+        percentage_responded: total_cast_count > 0 ? ((people_with_availability.to_f / total_cast_count) * 100).round : 0
       }
     end
 

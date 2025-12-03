@@ -10,8 +10,8 @@ class Manage::ShowsController < Manage::ManageController
 
     session[:shows_filter] = @filter
 
-    # Get the shows using the shows filter
-    @shows = @production.shows
+    # Get the shows using the shows filter, eager load location to avoid N+1
+    @shows = @production.shows.includes(:location)
 
     case @filter
     when "past"
@@ -20,9 +20,31 @@ class Manage::ShowsController < Manage::ManageController
       @filter = "upcoming"
       @shows = @shows.where("shows.date_and_time > ?", Time.current).order(Arel.sql("shows.date_and_time ASC"))
     end
+
+    # Load into memory to avoid multiple queries
+    @shows = @shows.to_a
   end
 
   def show
+    # Preload data for the cast_card partial to avoid N+1 queries
+    @roles = @production.roles.order(:position).to_a
+    @roles_count = @roles.size
+
+    # Preload assignables (people and groups) with their headshots
+    assignments = @show.show_person_role_assignments.to_a
+
+    person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+    group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+
+    @people_by_id = Person
+      .where(id: person_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
+
+    @groups_by_id = Group
+      .where(id: group_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
   end
 
   def calendar
@@ -31,8 +53,8 @@ class Manage::ShowsController < Manage::ManageController
 
     session[:shows_filter] = @filter
 
-    # Get the shows using the shows filter
-    @shows = @production.shows
+    # Get the shows using the shows filter, eager load location to avoid N+1
+    @shows = @production.shows.includes(:location)
 
     case @filter
     when "past"
@@ -42,8 +64,8 @@ class Manage::ShowsController < Manage::ManageController
       @shows = @shows.where("shows.date_and_time > ?", Time.current).order(:date_and_time)
     end
 
-    # Group shows by month for calendar display
-    @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+    # Load into memory and group shows by month for calendar display
+    @shows_by_month = @shows.to_a.group_by { |show| show.date_and_time.beginning_of_month }
   end
 
   def new
@@ -418,7 +440,14 @@ class Manage::ShowsController < Manage::ManageController
 
     def set_show
       show_id = params[:show_id] || params[:id]
-      @show = Show.find(show_id)
+      @show = Show
+        .includes(
+          :location,
+          :show_person_role_assignments,
+          poster_attachment: :blob,
+          production: { posters: { image_attachment: :blob } }
+        )
+        .find(show_id)
     end
 
     # Only allow a list of trusted parameters through.

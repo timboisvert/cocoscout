@@ -154,7 +154,7 @@ class Manage::ManageController < ActionController::Base
     if user_id && Current.organization && session[:current_production_id_for_organization].is_a?(Hash)
       prod_id = session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"]
       if prod_id
-        Current.production = Current.organization.productions.find_by(id: prod_id)
+        Current.production = Current.organization.productions.includes(logo_attachment: :blob).find_by(id: prod_id)
       else
         Current.production = nil
       end

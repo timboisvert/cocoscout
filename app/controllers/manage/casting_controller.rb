@@ -7,9 +7,29 @@ class Manage::CastingController < Manage::ManageController
     @upcoming_shows = @production.shows
       .where("date_and_time >= ?", Time.current)
       .where(casting_enabled: true)
-      .includes(show_person_role_assignments: [ :assignable, :role ])
+      .includes(:location, show_person_role_assignments: :role)
       .order(:date_and_time)
       .limit(10)
+
+    # Eager load roles for the production (used in cast_card partial)
+    @roles = @production.roles.order(:position).to_a
+    @roles_count = @roles.size
+
+    # Preload assignables (people and groups) with their headshots
+    all_assignments = @upcoming_shows.flat_map(&:show_person_role_assignments)
+
+    person_ids = all_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+    group_ids = all_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+
+    @people_by_id = Person
+      .where(id: person_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
+
+    @groups_by_id = Group
+      .where(id: group_ids)
+      .includes(profile_headshots: { image_attachment: :blob })
+      .index_by(&:id)
   end
 
   def show_cast

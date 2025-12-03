@@ -3,38 +3,93 @@ class Manage::AvailabilityController < Manage::ManageController
 
   def index
     # Get all future shows for this production, ordered by date
-    @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
+    # Load them into memory once to avoid multiple queries
+    @shows = @production.shows
+      .where(canceled: false)
+      .where("date_and_time >= ?", Time.current)
+      .order(:date_and_time)
+      .to_a
 
-    # Get all cast members (people and groups) for this production
-    @people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
-    @groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name)
+    # Get talent pool IDs in a single query
+    talent_pool_ids = @production.talent_pool_ids
+
+    # Get all cast members with headshots eager loaded in a single query
+    @people = Person
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .order(:name)
+      .to_a
+
+    @groups = Group
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .order(:name)
+      .to_a
+
     @cast_members = (@people + @groups).sort_by(&:name)
+
+    # Fetch all availabilities for these shows in one query
+    # Use .map(&:id) on already-loaded array instead of .pluck which triggers another query
+    show_ids = @shows.map(&:id)
+    all_availabilities = ShowAvailability.where(show_id: show_ids).to_a
 
     # Build a hash of availabilities: { "Person_1" => { show_id => show_availability }, "Group_2" => ... }
     @availabilities = {}
     @cast_members.each do |member|
       key = "#{member.class.name}_#{member.id}"
       @availabilities[key] = {}
-      member.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[key][availability.show_id] = availability
-      end
+    end
+
+    all_availabilities.each do |availability|
+      key = "#{availability.available_entity_type}_#{availability.available_entity_id}"
+      @availabilities[key] ||= {}
+      @availabilities[key][availability.show_id] = availability
     end
   end
 
   def show
-    # Get the specific show
-    @show = @production.shows.find(params[:id])
+    # Get the specific show with its poster and production's posters eager loaded
+    @show = @production.shows
+      .includes(
+        :location,
+        poster_attachment: :blob,
+        production: { posters: { image_attachment: :blob } }
+      )
+      .find(params[:id])
 
-    # Get all cast members (people and groups) for this production
-    @people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
-    @groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name)
+    # Get talent pool IDs in a single query
+    talent_pool_ids = @production.talent_pool_ids
+
+    # Get all cast members with headshots eager loaded in a single query
+    @people = Person
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .order(:name)
+      .to_a
+
+    @groups = Group
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .order(:name)
+      .to_a
+
     @cast_members = (@people + @groups).sort_by(&:name)
 
-    # Build a hash of availabilities for this show
+    # Fetch all availabilities for this show in one query
+    show_availabilities = ShowAvailability.where(show: @show).to_a
+
     @availabilities = {}
-    @cast_members.each do |member|
-      key = "#{member.class.name}_#{member.id}"
-      @availabilities[key] = member.show_availabilities.find_by(show: @show)
+    show_availabilities.each do |availability|
+      key = "#{availability.available_entity_type}_#{availability.available_entity_id}"
+      @availabilities[key] = availability
     end
 
     # Track edit mode
@@ -42,19 +97,38 @@ class Manage::AvailabilityController < Manage::ManageController
   end
 
   def request_availability
-    # Get all future shows for this production
-    @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
+    # Get all future shows for this production - load into memory once
+    @shows = @production.shows
+      .where(canceled: false)
+      .where("date_and_time >= ?", Time.current)
+      .order(:date_and_time)
+      .to_a
+    show_ids = @shows.map(&:id)
 
     # Get all talent pools for this production
-    @talent_pools = @production.talent_pools.order(:name)
+    @talent_pools = @production.talent_pools.order(:name).to_a
+    talent_pool_ids = @talent_pools.map(&:id)
 
-    # Get all cast members
-    @cast_members = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name)
+    # Get all cast members (people only for this view) with eager loading
+    @cast_members = Person
+      .joins(:talent_pool_memberships)
+      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      .includes(profile_headshots: { image_attachment: :blob })
+      .distinct
+      .order(:name)
+      .to_a
 
-    # Determine which cast members are up to date (have submitted availability for all future shows)
+    # Fetch all availabilities in one query and build lookup
+    all_availabilities = ShowAvailability
+      .where(show_id: show_ids, available_entity_type: "Person")
+      .pluck(:available_entity_id, :show_id)
+      .group_by(&:first)
+      .transform_values { |pairs| pairs.map(&:last).sort }
+
+    # Determine which cast members are up to date
     @up_to_date_person_ids = @cast_members.select do |person|
-      submitted_show_ids = person.show_availabilities.where(show: @shows).pluck(:show_id)
-      submitted_show_ids.sort == @shows.pluck(:id).sort
+      submitted_show_ids = all_availabilities[person.id] || []
+      submitted_show_ids == show_ids.sort
     end.map(&:id)
 
     # Split cast members into those needing updates and those up to date

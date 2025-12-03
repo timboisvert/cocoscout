@@ -80,19 +80,20 @@
     end
 
     # Returns all productions the user has access to in the current organization
+    # Eager loads logo attachments for efficient rendering in navigation
     def accessible_productions
       return Production.none unless Current.organization
 
       # If user has manager or viewer as default role, they have access to all productions
       role = default_role
       if role == "manager" || role == "viewer"
-        Current.organization.productions
+        Current.organization.productions.includes(logo_attachment: :blob)
       else
         # Otherwise, only return productions they have specific permissions for
         production_ids = production_permissions.where(
           production_id: Current.organization.productions.pluck(:id)
         ).pluck(:production_id)
-        Current.organization.productions.where(id: production_ids)
+        Current.organization.productions.where(id: production_ids).includes(logo_attachment: :blob)
       end
     end
 

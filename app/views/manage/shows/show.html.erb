@@ -45,7 +45,7 @@
       <% end %>
 
       <% if @show.casting_enabled %>
-        <%= render "manage/casting/cast_card", show: @show, production: @production, title: "Cast" %>
+        <%= render "manage/casting/cast_card", show: @show, production: @production, title: "Cast", roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
       <% end %>
 
       <% if @show.location.present? && !@show.canceled %>

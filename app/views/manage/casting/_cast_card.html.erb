@@ -3,10 +3,19 @@
   # - show: the Show object
   # - title: optional string to override the date/time in the title bar (e.g., "Cast")
   # - production: the Production object
+  # - roles: (optional) preloaded roles array
+  # - roles_count: (optional) preloaded roles count
+  # - people_by_id: (optional) preloaded people hash
+  # - groups_by_id: (optional) preloaded groups hash
 
-  cast_count = show.show_person_role_assignments.count
-  total_roles = show.production.roles.count
-  percentage = total_roles > 0 ? (cast_count.to_f / total_roles * 100).round : 0
+  # Use preloaded data if available, otherwise fall back to queries
+  roles = local_assigns[:roles] || @roles || show.production.roles.order(:position).to_a
+  roles_count = local_assigns[:roles_count] || @roles_count || roles.size
+  people_by_id = local_assigns[:people_by_id] || @people_by_id || {}
+  groups_by_id = local_assigns[:groups_by_id] || @groups_by_id || {}
+
+  cast_count = show.show_person_role_assignments.size
+  percentage = roles_count > 0 ? (cast_count.to_f / roles_count * 100).round : 0
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -17,7 +26,7 @@
     </h3>
     <div class="flex-shrink-0 text-right">
       <span class="text-sm font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
-        <%= cast_count %>/<%= total_roles %> roles cast
+        <%= cast_count %>/<%= roles_count %> roles cast
       </span>
     </div>
   </div>
@@ -47,12 +56,19 @@
     </div>
 
     <!-- Cast Members by Role -->
-    <% if show.production.roles.any? %>
+    <% if roles.any? %>
       <div class="flex flex-wrap gap-2 mb-3">
-        <% show.production.roles.each do |role| %>
+        <% roles.each do |role| %>
           <% assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
           <% if assignment %>
-            <% assignable = assignment.assignable %>
+            <%
+              # Get assignable from preloaded hash or fall back to association
+              assignable = if assignment.assignable_type == "Person"
+                people_by_id[assignment.assignable_id] || assignment.assignable
+              else
+                groups_by_id[assignment.assignable_id] || assignment.assignable
+              end
+            %>
             <%
               # Build link path based on type
               link_path = if assignable.is_a?(Person)
