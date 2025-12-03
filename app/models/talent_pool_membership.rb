@@ -12,7 +12,7 @@ class TalentPoolMembership < ApplicationRecord
   private
 
   def invalidate_talent_pool_caches
-    return unless talent_pool_id
+    nil unless talent_pool_id
     # Note: talent_pool_counts uses key versioning with talent_pool_memberships.maximum(:updated_at)
     # so it auto-invalidates when membership updated_at changes
   end

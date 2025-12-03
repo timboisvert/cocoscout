@@ -19,7 +19,7 @@ class Questionnaire < ApplicationRecord
 
   # Cached response statistics for display
   def cached_response_stats
-    Rails.cache.fetch(["questionnaire_stats_v1", id, questionnaire_responses.maximum(:updated_at), questionnaire_invitations.maximum(:updated_at)], expires_in: 5.minutes) do
+    Rails.cache.fetch([ "questionnaire_stats_v1", id, questionnaire_responses.maximum(:updated_at), questionnaire_invitations.maximum(:updated_at) ], expires_in: 5.minutes) do
       total_invited = questionnaire_invitations.count
       total_responded = questionnaire_responses.count
       {

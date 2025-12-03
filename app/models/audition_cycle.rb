@@ -34,7 +34,7 @@ class AuditionCycle < ApplicationRecord
   end
 
   def counts
-    Rails.cache.fetch(["audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i], expires_in: 2.minutes) do
+    Rails.cache.fetch([ "audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i ], expires_in: 2.minutes) do
       {
         unreviewed: audition_requests.where(status: :unreviewed).count,
         undecided: audition_requests.where(status: :undecided).count,

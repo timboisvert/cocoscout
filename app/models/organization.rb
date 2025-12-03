@@ -44,7 +44,7 @@ class Organization < ApplicationRecord
 
   # Cached directory counts for display in headers/pagination
   def cached_directory_counts
-    Rails.cache.fetch(["org_directory_counts_v1", id, people.maximum(:updated_at), groups.maximum(:updated_at)], expires_in: 10.minutes) do
+    Rails.cache.fetch([ "org_directory_counts_v1", id, people.maximum(:updated_at), groups.maximum(:updated_at) ], expires_in: 10.minutes) do
       {
         people: people.count,
         groups: groups.count

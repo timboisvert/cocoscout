@@ -16,7 +16,7 @@ class TalentPool < ApplicationRecord
 
   # Cached member counts for display in lists
   def cached_member_counts
-    Rails.cache.fetch(["talent_pool_counts_v1", id, talent_pool_memberships.maximum(:updated_at)], expires_in: 10.minutes) do
+    Rails.cache.fetch([ "talent_pool_counts_v1", id, talent_pool_memberships.maximum(:updated_at) ], expires_in: 10.minutes) do
       {
         people: talent_pool_memberships.where(member_type: "Person").count,
         groups: talent_pool_memberships.where(member_type: "Group").count,

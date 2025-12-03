@@ -60,7 +60,7 @@ class Production < ApplicationRecord
     # Cached count of roles for this production
     # Used in cast percentage calculations and other aggregate views
     def cached_roles_count
-        Rails.cache.fetch(["production_roles_count_v1", id, roles.maximum(:updated_at)], expires_in: 30.minutes) do
+        Rails.cache.fetch([ "production_roles_count_v1", id, roles.maximum(:updated_at) ], expires_in: 30.minutes) do
             roles.count
         end
     end
@@ -76,10 +76,10 @@ class Production < ApplicationRecord
     def invalidate_caches
         # Invalidate dashboard cache
         Rails.cache.delete("production_dashboard_#{id}")
-        # Invalidate roles count cache - use explicit key pattern
-        # The cache key is: ["production_roles_count_v1", id, roles.maximum(:updated_at)]
-        # Since we can't predict the timestamp, we need a different approach
-        # Touch updated_at to invalidate via cache key versioning
+      # Invalidate roles count cache - use explicit key pattern
+      # The cache key is: ["production_roles_count_v1", id, roles.maximum(:updated_at)]
+      # Since we can't predict the timestamp, we need a different approach
+      # Touch updated_at to invalidate via cache key versioning
     end
 
     private

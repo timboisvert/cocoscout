@@ -14,7 +14,7 @@ class DashboardService
   end
 
   def self.invalidate(production)
-    Rails.cache.delete(["dashboard_v1", production.id])
+    Rails.cache.delete([ "dashboard_v1", production.id ])
   end
 
   private

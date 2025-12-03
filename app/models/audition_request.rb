@@ -14,7 +14,7 @@ class AuditionRequest < ApplicationRecord
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
   # Cache invalidation - when status changes, invalidate the counts cache
-  after_commit :invalidate_cycle_caches, on: [:create, :update, :destroy]
+  after_commit :invalidate_cycle_caches, on: [ :create, :update, :destroy ]
 
   # Helper method for backward compatibility - auditions are always for individual people
   def person

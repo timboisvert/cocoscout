@@ -28,7 +28,7 @@ module CacheInvalidation
     def invalidates_cache(*cache_names)
       self.cache_keys_to_invalidate = cache_names
 
-      after_commit :invalidate_all_declared_caches, on: [:create, :update, :destroy]
+      after_commit :invalidate_all_declared_caches, on: [ :create, :update, :destroy ]
     end
 
     # Invalidate all caches for all records of this model

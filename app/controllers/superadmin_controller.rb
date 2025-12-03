@@ -430,11 +430,134 @@ class SuperadminController < ApplicationController
     redirect_to storage_monitor_path, alert: "S3 cleanup failed: #{e.message}"
   end
 
+  # Cache Monitor
+  def cache
+    if solid_cache_available?
+      @entry_count = SolidCache::Entry.count
+      @total_bytes = SolidCache::Entry.sum(:byte_size)
+      @max_size = 256.megabytes
+      @usage_percent = @max_size > 0 ? (@total_bytes.to_f / @max_size * 100).round(1) : 0
+
+      @oldest_entry = SolidCache::Entry.minimum(:created_at)
+      @newest_entry = SolidCache::Entry.maximum(:created_at)
+
+      # Size distribution
+      @size_distribution = calculate_size_distribution
+
+      # Key patterns analysis
+      @key_patterns = analyze_key_patterns
+
+      # Recent entries
+      @recent_entries = SolidCache::Entry
+        .order(created_at: :desc)
+        .limit(20)
+        .pluck(:key, :byte_size, :created_at)
+        .map { |k, s, t| { key: decode_key(k), size: s, created_at: t } }
+
+      # Cache health
+      @cache_healthy = test_cache_connectivity
+    else
+      @solid_cache_available = false
+    end
+  end
+
+  def cache_clear
+    count_before = solid_cache_available? ? SolidCache::Entry.count : 0
+
+    Rails.cache.clear
+
+    count_after = solid_cache_available? ? SolidCache::Entry.count : 0
+    cleared = count_before - count_after
+
+    redirect_to cache_monitor_path, notice: "Cache cleared. #{cleared} entries removed."
+  rescue => e
+    redirect_to cache_monitor_path, alert: "Cache clear failed: #{e.message}"
+  end
+
+  def cache_clear_pattern
+    pattern = params[:pattern].to_s.strip
+    return redirect_to cache_monitor_path, alert: "Pattern is required" if pattern.blank?
+
+    # Since Solid Cache doesn't support delete_matched, we manually find and delete matching entries
+    if solid_cache_available?
+      matching = SolidCache::Entry.where("key LIKE ?", "%#{pattern}%")
+      count = matching.count
+      matching.delete_all
+
+      redirect_to cache_monitor_path, notice: "Cleared #{count} cache entries matching '#{pattern}'"
+    else
+      redirect_to cache_monitor_path, alert: "Pattern clearing requires Solid Cache"
+    end
+  rescue => e
+    redirect_to cache_monitor_path, alert: "Pattern clear failed: #{e.message}"
+  end
+
   private
 
   def require_superadmin
     unless Current.user&.superadmin?
       redirect_to my_dashboard_path
     end
+  end
+
+  # Cache helper methods
+  def solid_cache_available?
+    defined?(SolidCache::Entry) && SolidCache::Entry.table_exists?
+  rescue
+    false
+  end
+
+  def calculate_size_distribution
+    return {} unless solid_cache_available?
+
+    ranges = {
+      "< 1 KB" => SolidCache::Entry.where("byte_size < ?", 1.kilobyte).count,
+      "1-10 KB" => SolidCache::Entry.where("byte_size >= ? AND byte_size < ?", 1.kilobyte, 10.kilobytes).count,
+      "10-100 KB" => SolidCache::Entry.where("byte_size >= ? AND byte_size < ?", 10.kilobytes, 100.kilobytes).count,
+      "100 KB - 1 MB" => SolidCache::Entry.where("byte_size >= ? AND byte_size < ?", 100.kilobytes, 1.megabyte).count,
+      "> 1 MB" => SolidCache::Entry.where("byte_size >= ?", 1.megabyte).count
+    }
+    ranges.reject { |_, v| v == 0 }
+  end
+
+  def analyze_key_patterns
+    return [] unless solid_cache_available?
+
+    entries = SolidCache::Entry.limit(500).pluck(:key, :byte_size)
+    patterns = Hash.new { |h, k| h[k] = { count: 0, bytes: 0 } }
+
+    entries.each do |key_binary, byte_size|
+      key = decode_key(key_binary)
+      pattern = extract_key_pattern(key)
+      patterns[pattern][:count] += 1
+      patterns[pattern][:bytes] += byte_size
+    end
+
+    patterns.sort_by { |_, v| -v[:count] }.first(10)
+  end
+
+  def extract_key_pattern(key)
+    # Remove specific IDs/timestamps to find the pattern
+    # Examples: "person_card_v1/123/1234567890" -> "person_card_v1"
+    #           "views/manage/..." -> "views/manage"
+    key.to_s.split("/").first(2).join("/").truncate(50)
+  rescue
+    "unknown"
+  end
+
+  def decode_key(key_binary)
+    key_binary.to_s.force_encoding("UTF-8")
+  rescue
+    key_binary.to_s
+  end
+
+  def test_cache_connectivity
+    test_key = "superadmin_cache_test_#{Time.current.to_i}"
+    Rails.cache.write(test_key, "ok", expires_in: 1.minute)
+    result = Rails.cache.read(test_key) == "ok"
+    Rails.cache.delete(test_key)
+    result
+  rescue
+    false
   end
 end
