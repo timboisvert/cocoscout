@@ -181,4 +181,33 @@ class Manage::ManageController < ActionController::Base
       redirect_to select_organization_path
     end
   end
+
+  # Shared data fetchers for use across controllers
+  def fetch_locations
+    Rails.cache.fetch(locations_cache_key, expires_in: 10.minutes) do
+      Current.organization.locations.order(:name).to_a
+    end
+  end
+
+  def locations_cache_key
+    max_updated = Current.organization.locations.maximum(:updated_at)
+    [ "locations_v1", Current.organization.id, max_updated ]
+  end
+
+  def fetch_team_members
+    Rails.cache.fetch(team_cache_key, expires_in: 10.minutes) do
+      members = Current.organization.users
+        .joins(:organization_roles)
+        .includes(:person, :organization_roles)
+        .where(organization_roles: { organization_id: Current.organization.id, company_role: %w[manager viewer none] })
+        .distinct
+      members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
+    end
+  end
+
+  def team_cache_key
+    max_role_updated = OrganizationRole.where(organization: Current.organization).maximum(:updated_at)
+    max_user_updated = Current.organization.users.maximum(:updated_at)
+    [ "team_members_v1", Current.organization.id, Current.user.id, max_role_updated, max_user_updated ]
+  end
 end

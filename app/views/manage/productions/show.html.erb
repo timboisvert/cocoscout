@@ -167,7 +167,7 @@
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Info</h3>
         <% if current_user_can_manage?(@production) %>
           <div class="flex gap-2">
-            <%= link_to "Edit Production", edit_manage_production_path(@production), class: "text-pink-500 text-xs underline" %>
+            <%= link_to "Production Settings", edit_manage_production_path(@production), class: "text-pink-500 text-xs underline" %>
           </div>
         <% end %>
       </div>

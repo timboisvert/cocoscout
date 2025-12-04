@@ -2,9 +2,12 @@
   before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
-    @members = fetch_team_members
-    @team_invitation = Current.organization.team_invitations.new
-    @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
+    # Redirect to production settings page with team tab
+    if Current.production
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3")
+    else
+      redirect_to manage_path
+    end
   end
 
   def invite
@@ -17,13 +20,9 @@
     if @team_invitation.save
       expire_team_cache
       Manage::TeamMailer.invite(@team_invitation, invitation_subject, invitation_message).deliver_later
-      redirect_to manage_team_index_path, notice: "Invitation sent"
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Invitation sent"
     else
-      @members = fetch_team_members
-      @team_invitation = Current.organization.team_invitations.new
-      @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
-      @team_invitation_error = true
-      render :index, status: :unprocessable_entity
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not send invitation. Please check the email address."
     end
   end
 
@@ -51,9 +50,9 @@
     if team_invitation
       team_invitation.destroy
       expire_team_cache
-      redirect_to manage_team_index_path, notice: "Invitation revoked"
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Invitation revoked"
     else
-      redirect_to manage_team_index_path, alert: "Invitation not found or already accepted"
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Invitation not found or already accepted"
     end
   end
 
@@ -66,18 +65,18 @@
         expire_team_cache
         respond_to do |format|
           format.json { render json: { success: true } }
-          format.html { redirect_to manage_team_index_path, notice: "Team member removed" }
+          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Team member removed" }
         end
       else
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
-          format.html { redirect_to manage_team_index_path, alert: "Could not remove Team member" }
+          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not remove Team member" }
         end
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to manage_team_index_path, alert: "Unable to remove team member" }
+        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Unable to remove team member" }
       end
     end
   end
@@ -87,12 +86,20 @@
 
     # Don't let users access their own permissions page
     if @user == Current.user
-      redirect_to manage_team_index_path, alert: "You cannot manage your own permissions."
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "You cannot manage your own permissions."
       return
     end
 
     @productions = Current.organization.productions.order(:name)
     @organization_role = @user.organization_roles.find_by(organization: Current.organization)
+
+    # Render partial for AJAX/modal requests
+    if request.xhr? || request.headers["X-Requested-With"] == "XMLHttpRequest"
+      render partial: "manage/productions/permissions_content", locals: { user: @user, productions: @productions, organization_role: @organization_role }, layout: false
+    else
+      # Redirect to production edit page with team tab for direct access
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3")
+    end
   end
 
   def update_production_permission
@@ -114,14 +121,14 @@
       else
         respond_to do |format|
           format.json { render json: { success: false, error: permission.errors.full_messages.join(", ") }, status: :unprocessable_entity }
-          format.html { redirect_to permissions_manage_team_path(user), alert: "Could not update role" }
+          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not update role" }
         end
         return
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to permissions_manage_team_path(user), alert: "Invalid role" }
+        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Invalid role" }
       end
       return
     end
@@ -129,7 +136,7 @@
     expire_team_cache
     respond_to do |format|
       format.json { render json: { success: true } }
-      format.html { redirect_to permissions_manage_team_path(user), notice: message }
+      format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: message }
     end
   end
 
@@ -148,12 +155,12 @@
       end
       respond_to do |format|
         format.json { render json: { success: true } }
-        format.html { redirect_to permissions_manage_team_path(user), notice: "Global role updated to #{role_display}" }
+        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Global role updated to #{role_display}" }
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to permissions_manage_team_path(user), alert: "Could not update global role" }
+        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not update global role" }
       end
     end
   end

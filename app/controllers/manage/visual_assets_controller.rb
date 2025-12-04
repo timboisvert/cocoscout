@@ -5,62 +5,66 @@ class Manage::VisualAssetsController < Manage::ManageController
   before_action :ensure_user_is_manager, except: [ :index ]
 
   def index
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1")
   end
 
   def new_logo
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1")
   end
 
   def create_logo
     if @production.update(logo_params)
-      redirect_to [ :manage, @production, :visual_assets ], notice: "Logo was successfully uploaded"
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Logo was successfully uploaded"
     else
-      render :new_logo, status: :unprocessable_entity
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: "Could not upload logo"
     end
   end
 
   def edit_logo
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1")
   end
 
   def update_logo
     if @production.update(logo_params)
-      redirect_to [ :manage, @production, :visual_assets ], notice: "Logo was successfully updated"
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Logo was successfully updated"
     else
-      render :edit_logo, status: :unprocessable_entity
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: "Could not update logo"
     end
   end
 
   def new_poster
-    @poster = @production.posters.new
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1")
   end
 
   def create_poster
     @poster = @production.posters.new(poster_params)
     if @poster.save
-      redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was successfully created"
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Poster was successfully created"
     else
-      render :new_poster, status: :unprocessable_entity
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: "Could not create poster"
     end
   end
 
   def edit_poster
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1")
   end
 
   def update_poster
     if @poster.update(poster_params)
-      redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was successfully updated"
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Poster was successfully updated"
     else
-      render :edit_poster, status: :unprocessable_entity
+      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), alert: "Could not update poster"
     end
   end
 
   def destroy_poster
     @poster.destroy
-    redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was successfully deleted"
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Poster was successfully deleted"
   end
 
   def set_primary_poster
     @poster.update!(is_primary: true)
-    redirect_to [ :manage, @production, :visual_assets ], notice: "Poster was set as primary"
+    redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Poster was set as primary"
   end
 
   private

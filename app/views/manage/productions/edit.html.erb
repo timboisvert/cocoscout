@@ -1,44 +1,391 @@
-<% content_for :title, "Editing production" %>
+<% content_for :title, "Edit #{@production.name}" %>
 
 <div class="w-full">
 
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: @production.name,
+    text: "Production Settings",
     links: []
   } %>
 
-  <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
-    <div class="my-5">
-      <%= form.label :name %>
-      <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}] %>
+  <!-- Production Info Card -->
+  <%= render "manage/productions/production_info_card", production: @production %>
+
+  <!-- Tabs Section -->
+  <div class="w-full" data-controller="tabs">
+    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+    </nav>
+
+    <!-- Tab 1: Basic Information -->
+    <div data-tabs-target="panel">
+      <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
+        <div class="my-5">
+          <%= form.label :name %>
+          <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}] %>
+        </div>
+
+        <div class="my-5">
+          <%= form.label :description %>
+          <%= form.textarea :description, rows: 4, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}] %>
+        </div>
+
+        <div class="my-5">
+          <%= form.label :contact_email %>
+          <%= form.email_field :contact_email, autocapitalize: "none", class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}] %>
+        </div>
+
+        <div class="border-t border-gray-200 pt-5 mt-5">
+          <%= render "shared/button", text: "Update Production", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+
+      <!-- Danger Zone -->
+      <div class="mt-20 pt-10 mb-4 border-t-2 border-red-500">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Danger Zone</h3>
+        <%= button_to "Delete this production", [:manage, @production], method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0", class: "w-full rounded-lg px-3.5 py-2.5 text-white bg-red-600 hover:bg-red-500 font-medium cursor-pointer", data: { turbo_confirm: "Are you sure? This will permanently delete this production and all associated data." } %>
+      </div>
     </div>
 
-    <div class="my-5">
-      <%= form.label :description %>
-      <%= form.textarea :description, rows: 4, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}] %>
+    <!-- Tab 2: Visual Assets -->
+    <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal">
+      <!-- Logo Section -->
+      <div class="w-full pt-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Logo</h3>
+
+        <% logo_variant = @production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <%= image_tag logo_variant, class: "h-auto max-h-32" %>
+          <% if current_user_can_manage?(@production) %>
+            <div class="mt-2">
+              <button type="button" data-action="click->visual-assets-modal#openLogoModal" class="text-pink-500 underline text-sm cursor-pointer">Replace logo</button>
+            </div>
+          <% end %>
+        <% else %>
+          <span class="text-sm text-gray-500">No logo added.</span>
+        <% end %>
+      </div>
+
+      <!-- Posters Section -->
+      <div class="w-full pt-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Production/Season Posters</h3>
+
+        <% if @production.posters.any? %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+            <% @production.posters.each do |poster| %>
+              <div class="bg-white rounded shadow p-4 flex flex-col <%= 'ring-2 ring-pink-500' if poster.is_primary %>">
+                <% image_variant = poster.safe_image_variant(:small) %>
+                <% if image_variant %>
+                  <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
+                <% end %>
+
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="font-semibold flex-1"><%= poster.name.presence || "Untitled Poster" %></span>
+                  <% if poster.is_primary %>
+                    <span class="inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/10">Primary</span>
+                  <% end %>
+                </div>
+
+                <% if current_user_can_manage?(@production) %>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    <% unless poster.is_primary %>
+                      <%= link_to "Set as Primary", set_primary_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :patch }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                    <% end %>
+                    <button type="button" data-action="click->visual-assets-modal#openEditPosterModal" data-poster-id="<%= poster.id %>" data-poster-name="<%= poster.name %>" data-edit-poster-path="<%= update_poster_manage_production_visual_asset_path(@production, poster) %>" class="text-sm underline text-pink-500 hover:text-pink-600 cursor-pointer">Edit</button>
+                    <%= link_to "Delete", destroy_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm">No posters added.</p>
+        <% end %>
+      </div>
+
+      <% if current_user_can_manage?(@production) %>
+        <div class="border-t border-gray-200 pt-5 mt-8 flex gap-3">
+          <%= render "shared/button", text: "Upload Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
+          <%= render "shared/button", text: "Add Poster", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openNewPosterModal" } %>
+        </div>
+      <% end %>
+
+      <!-- Logo Modal -->
+      <div data-visual-assets-modal-target="logoModal" data-action="click->visual-assets-modal#closeLogoModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full" data-action="click->visual-assets-modal#stopPropagation">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular"><%= @production.logo.attached? ? "Replace Logo" : "Upload Logo" %></h2>
+          </div>
+          <div class="p-6">
+            <% if @production.logo.attached? %>
+              <div class="mb-4">
+                <p class="text-sm font-medium text-gray-700 mb-2">Current Logo</p>
+                <%= image_tag @production.logo, class: "h-20 object-contain bg-gray-50 rounded p-2" %>
+              </div>
+            <% end %>
+            <%= form_with model: [:manage, @production], url: (@production.logo.attached? ? update_logo_manage_production_visual_asset_path(@production, :logo) : create_logo_manage_production_visual_assets_path(@production)), method: (@production.logo.attached? ? :patch : :post), local: true do |f| %>
+              <div class="mb-4">
+                <%= f.label :logo, "Logo Image", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <span class="text-sm text-gray-500">(PNG, JPG, or GIF)</span>
+                <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-300">
+                  <%= f.file_field :logo, class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600", accept: "image/*" %>
+                </div>
+              </div>
+              <div class="flex justify-end gap-3">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#closeLogoModal" } %>
+                <%= render "shared/button", text: (@production.logo.attached? ? "Update Logo" : "Upload Logo"), variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Poster Modal -->
+      <div data-visual-assets-modal-target="posterModal" data-action="click->visual-assets-modal#closePosterModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-create-poster-path="<%= create_poster_manage_production_visual_assets_path(@production) %>">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full" data-action="click->visual-assets-modal#stopPropagation">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 data-visual-assets-modal-target="posterModalTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Add a Poster</h2>
+          </div>
+          <div class="p-6">
+            <form data-visual-assets-modal-target="posterForm" action="<%= create_poster_manage_production_visual_assets_path(@production) %>" method="post" enctype="multipart/form-data">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <input type="hidden" data-visual-assets-modal-target="posterIdField" name="poster[id]" value="">
+              <div class="mb-4">
+                <label for="poster_image" class="block text-sm font-medium text-gray-700 mb-2">Poster Image</label>
+                <span class="text-sm text-gray-500">(PDF, JPG, or PNG)</span>
+                <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-300">
+                  <input type="file" id="poster_image" name="poster[image]" data-visual-assets-modal-target="posterImage" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" accept="image/*,.pdf">
+                </div>
+              </div>
+              <div class="mb-4">
+                <label for="poster_name" class="block text-sm font-medium text-gray-700 mb-2">Poster Name/Description <span class="text-gray-500 font-normal">(optional)</span></label>
+                <input type="text" id="poster_name" name="poster[name]" data-visual-assets-modal-target="posterName" class="block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm">
+              </div>
+              <div class="flex justify-end gap-3">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#closePosterModal" } %>
+                <%= render "shared/button", text: "Add Poster", variant: "primary", size: "medium", type: :submit, data: { "visual-assets-modal-target": "posterSubmitButton" } %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="my-5">
-      <%= form.label :contact_email %>
-      <%= form.email_field :contact_email, autocapitalize: "none", class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}] %>
+    <!-- Tab 3: Locations -->
+    <div data-tabs-target="panel" class="hidden" data-controller="locations-settings">
+      <% if @locations.any? %>
+        <div class="grid grid-cols-1 gap-2">
+          <% @locations.each do |location| %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+              <div class="flex-1">
+                <div class="font-bold text-md">
+                  <%= location.name %>
+                  <% if location.default? %>
+                    <span class="text-sm font-normal text-gray-500">(Default)</span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-500"><%= location.address1 %></div>
+                <% if location.address2.present? %>
+                  <div class="text-sm text-gray-500"><%= location.address2 %></div>
+                <% end %>
+                <div class="text-sm text-gray-500"><%= location.city %>, <%= location.state %> <%= location.postal_code %></div>
+                <% if current_user_is_global_manager? %>
+                  <div class="mt-2">
+                    <button type="button" data-action="click->locations-settings#openEditModal" data-location-id="<%= location.id %>" data-location-name="<%= location.name %>" data-location-address1="<%= location.address1 %>" data-location-address2="<%= location.address2 %>" data-location-city="<%= location.city %>" data-location-state="<%= location.state %>" data-location-postal-code="<%= location.postal_code %>" data-location-notes="<%= location.notes %>" data-location-default="<%= location.default? %>" data-edit-path="<%= manage_location_path(location) %>" class="text-pink-500 text-xs underline cursor-pointer">Edit Location</button>
+                    <%= button_to "Delete Location", manage_location_path(location), method: :delete, data: { turbo: false, confirm: "Are you sure you want to delete this location?" }, class: "ml-2 text-pink-500 text-xs underline cursor-pointer", form: { class: "inline" } %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">You haven't added any locations.</p>
+      <% end %>
+
+      <% if current_user_is_global_manager? %>
+        <div class="border-t border-gray-200 pt-5 mt-8">
+          <%= render "shared/button", text: "Add Location", variant: "secondary", size: "medium", type: :button, data: { action: "click->locations-settings#openAddModal" } %>
+        </div>
+      <% end %>
+
+      <!-- Add Location Modal -->
+      <div data-locations-settings-target="addModal" data-action="click->locations-settings#closeAddModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->locations-settings#stopPropagation">
+          <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add a Location</h2>
+          </div>
+          <div class="p-6">
+            <form data-locations-settings-target="addForm" action="<%= manage_locations_path %>" method="post" data-action="submit->locations-settings#submitAddForm">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <div data-locations-settings-target="addErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+                <ul data-locations-settings-target="addErrorList" class="list-disc ml-6"></ul>
+              </div>
+              <%= render "manage/productions/location_form_fields" %>
+              <div class="flex justify-end gap-3 pt-4">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->locations-settings#closeAddModal" } %>
+                <%= render "shared/button", text: "Add Location", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Location Modal -->
+      <div data-locations-settings-target="editModal" data-action="click->locations-settings#closeEditModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->locations-settings#stopPropagation">
+          <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Location</h2>
+          </div>
+          <div class="p-6">
+            <form data-locations-settings-target="editForm" action="" method="post" data-action="submit->locations-settings#submitEditForm">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <input type="hidden" name="_method" value="patch">
+              <input type="hidden" data-locations-settings-target="editLocationId" name="location[id]" value="">
+              <div data-locations-settings-target="editErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+                <ul data-locations-settings-target="editErrorList" class="list-disc ml-6"></ul>
+              </div>
+              <%= render "manage/productions/location_form_fields", prefix: "edit" %>
+              <div class="flex justify-end gap-3 pt-4">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->locations-settings#closeEditModal" } %>
+                <%= render "shared/button", text: "Update Location", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="border-t border-gray-200 pt-5 mt-5">
-      <%= render "shared/button", text: "Update Production", variant: "primary", size: "medium", type: :submit %>
-      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
+    <!-- Tab 4: Production Team -->
+    <div data-tabs-target="panel" class="hidden" data-controller="team-modals">
+      <%= render "shared/help_section",
+        title: "About Production Team Members",
+        initial_state: "open",
+        storage_key: "team_help_collapsed",
+        steps: [
+          { text: "This page is for inviting <strong>production team members</strong> (co-producers, production assistants, etc.) who need access to manage productions in CocoScout." },
+          { text: "This is <strong>not</strong> for adding talent/performers to your cast. Use the <strong>Directory</strong> for inviting performers." },
+          { text: "After inviting someone, you can click <strong>Manage Permissions</strong> to control what they can view and manage." }
+        ] %>
+
+      <div class="w-full mt-4">
+        <% @members.each do |member| %>
+          <% organization_role = member.organization_roles.find { |r| r.organization_id == Current.organization.id } %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mb-2">
+            <div class="<%= current_user_can_manage? ? 'w-2/3' : 'w-full' %>">
+              <div class="h-full flex flex-col justify-center">
+                <div>
+                  <div class="font-bold text-md">
+                    <%= member.person&.name || member.email_address %>
+                    <% if member == Current.user %>
+                      <span class="ml-1 text-sm text-gray-500">(Me)</span>
+                    <% end %>
+                  </div>
+                  <div class="text-sm text-gray-500"><%= member.email_address %></div>
+                </div>
+                <% if current_user_is_global_manager? && member != Current.user %>
+                  <button type="button" data-action="click->team-modals#openPermissionsModal" data-member-id="<%= member.id %>" data-member-name="<%= member.person&.name || member.email_address %>" data-permissions-url="<%= permissions_manage_team_path(member) %>" class="mt-1 text-xs text-pink-500 underline cursor-pointer text-left">Manage Permissions</button>
+                <% end %>
+              </div>
+            </div>
+
+            <% if current_user_is_global_manager? %>
+              <div class="w-1/3 flex items-center justify-end text-sm text-gray-500">
+                <% role_display = case organization_role&.company_role
+                     when 'manager' then 'Manager'
+                     when 'viewer' then 'Viewer'
+                     when 'none' then 'Per-production access'
+                     else 'Unknown'
+                     end %>
+                <%= role_display %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <% if current_user_is_global_manager? && @team_invitations.any? %>
+          <% @team_invitations.each do |invite| %>
+            <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex mb-2">
+              <div class="w-2/3">
+                <div class="h-full flex flex-col justify-center">
+                  <div class="flex items-center">
+                    <p><%= invite.email %></p>
+                  </div>
+                  <%= button_to "Revoke Invitation", revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline mt-1 cursor-pointer w-fit" %>
+                </div>
+              </div>
+              <div class="w-1/3 flex items-center justify-end text-gray-500">
+                <span class="ml-2 text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">Pending Invitation</span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <% if current_user_is_global_manager? %>
+        <div class="border-t border-gray-200 pt-5 mt-8">
+          <%= render "shared/button", text: "Invite Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->team-modals#openInviteModal" } %>
+        </div>
+      <% end %>
+
+      <!-- Invite Team Member Modal -->
+      <% if current_user_is_global_manager? %>
+        <div data-team-modals-target="inviteModal" data-action="click->team-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->team-modals#stopPropagation">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite a Team Member</h2>
+            </div>
+            <div class="p-6">
+              <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
+                <div class="space-y-4">
+                  <div>
+                    <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                    <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                  </div>
+
+                  <div>
+                    <%= f.label :invitation_subject, "Email Subject", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                    <%= f.text_field :invitation_subject, value: "You've been invited to join #{Current.organization.name}'s team on CocoScout", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                  </div>
+
+                  <div>
+                    <%= f.label :invitation_message, "Email Message", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                    <%= f.text_area :invitation_message, rows: 5, value: "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account.", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                  <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->team-modals#closeModal" } %>
+                  <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Permissions Modal -->
+      <% if current_user_is_global_manager? %>
+        <div data-team-modals-target="permissionsModal" data-action="click->team-modals#closePermissionsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" data-action="click->team-modals#stopPropagation">
+            <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 data-team-modals-target="permissionsTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Permissions</h2>
+              <button type="button" data-action="click->team-modals#closePermissionsModal" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            <div data-team-modals-target="permissionsContent" class="p-6">
+              <!-- Content loaded via AJAX -->
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
+  </div>
 
-  <% end %>
-
-</div>
-
-<div class="mt-20 pt-10 mb-4 border-t-2 border-red-500">
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Danger Zone",
-    links: []
-  } %>
-
-  <%= button_to "Delete this production", [:manage, @production], method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0", class: "w-full rounded-lg px-3.5 py-2.5 text-white bg-red-600 hover:bg-red-500 font-medium cursor-pointer", data: { turbo_confirm: "Are you sure?" } %>
 </div>

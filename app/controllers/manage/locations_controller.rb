@@ -3,17 +3,24 @@ class Manage::LocationsController < Manage::ManageController
   before_action :ensure_user_is_global_manager, except: %i[index show]
 
   def index
-    @locations = fetch_locations
+    # Redirect to production settings page with locations tab
+    if Current.production
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-2")
+    else
+      redirect_to manage_path
+    end
   end
 
   def show
+    redirect_to edit_manage_production_path(Current.production, anchor: "tab-2")
   end
 
   def new
-    @location = Current.organization.locations.new
+    redirect_to edit_manage_production_path(Current.production, anchor: "tab-2")
   end
 
   def edit
+    redirect_to edit_manage_production_path(Current.production, anchor: "tab-2")
   end
 
   def create
@@ -25,16 +32,14 @@ class Manage::LocationsController < Manage::ManageController
       if request.accept == "application/json" || request.xhr?
         render json: { id: @location.id, name: @location.name }, status: :created
       else
-        # Handle standard form submissions
-        redirect_to [ :manage, :locations ], notice: "Location was successfully created"
+        redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), notice: "Location was successfully created"
       end
     else
       # Handle AJAX error requests
       if request.accept == "application/json" || request.xhr?
         render json: { errors: @location.errors.messages }, status: :unprocessable_entity
       else
-        # Handle standard form submission errors
-        render :new, status: :unprocessable_entity
+        redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), alert: "Could not create location"
       end
     end
   end
@@ -42,23 +47,34 @@ class Manage::LocationsController < Manage::ManageController
   def update
     if @location.update(location_params)
       expire_locations_cache
-      redirect_to [ :manage, :locations ], notice: "Location was successfully updated", status: :see_other
+      # Handle AJAX requests (from modal)
+      if request.accept == "application/json" || request.xhr?
+        render json: { id: @location.id, name: @location.name }, status: :ok
+      else
+        redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), notice: "Location was successfully updated", status: :see_other
+      end
     else
-      render :edit, status: :unprocessable_entity
+      # Handle AJAX error requests
+      if request.accept == "application/json" || request.xhr?
+        render json: { errors: @location.errors.messages }, status: :unprocessable_entity
+      else
+        redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), alert: "Could not update location"
+      end
     end
   end
 
   def destroy
     if @location.has_upcoming_events?
-      redirect_to cannot_delete_manage_location_path(@location), status: :see_other
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), alert: "Cannot delete location with upcoming events"
     else
       @location.destroy!
       expire_locations_cache
-      redirect_to manage_locations_path, notice: "Location was successfully deleted", status: :see_other
+      redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), notice: "Location was successfully deleted", status: :see_other
     end
   end
 
   def cannot_delete
+    redirect_to edit_manage_production_path(Current.production, anchor: "tab-2"), alert: "Cannot delete location with upcoming events"
   end
 
   private

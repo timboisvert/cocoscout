@@ -1,0 +1,117 @@
+<%= render "shared/help_section",
+  title: "How Permissions Work",
+  initial_state: "open",
+  storage_key: "team_permissions_help_collapsed",
+  steps: [
+    { text: "<strong>Global Role:</strong> Sets the default access level across all productions. Choose 'Manager' for full access, 'Viewer' for read-only, or 'None' for per-production access only." },
+    { text: "<strong>Per-Production Permissions:</strong> Override the global role for specific productions. Useful when someone needs manager access to some productions but viewer access to others." },
+    { text: "<strong>Use Global Role:</strong> Select this option in the per-production dropdown to inherit the global role setting instead of using a custom override." }
+  ] %>
+
+<div class="mt-4">
+  <div class="p-4 border border-gray-200 rounded-lg mb-4">
+    <h3 class="text-lg font-semibold mb-2">Global Role</h3>
+    <p class="text-sm text-gray-600 mb-3">
+      This role applies to all productions managed by <%= Current.organization.name %>. You can override this role for specific productions below.
+    </p>
+    <div class="flex flex-col md:flex-row md:items-center gap-4">
+      <div class="w-full md:w-96">
+        <%= form_with url: update_global_role_manage_team_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" } do |f| %>
+          <%= select_tag :global_role,
+              options_for_select(
+                [
+                  ["Manager (full access to all productions)", "manager"],
+                  ["Viewer (read-only access to all productions)", "viewer"],
+                  ["None (no default access, set per-production)", "none"]
+                ],
+                organization_role&.company_role || "none"
+              ),
+              class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400",
+              data: { action: "change->auto-submit#submit" }
+          %>
+        <% end %>
+      </div>
+      <% if organization_role&.company_role == "none" %>
+        <p class="text-sm text-gray-500">
+          This user has no default access. Grant per-production permissions below.
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="p-4 border border-gray-200 rounded-lg">
+    <h3 class="text-lg font-semibold mb-2">Per-Production Permissions</h3>
+    <p class="text-sm text-gray-600 mb-4">
+      Override the global role for specific productions. Leave as "Use Global Role" to inherit the global role above.
+    </p>
+
+    <% if productions.any? %>
+      <div class="space-y-2">
+        <% productions.each do |production| %>
+          <% permission = user.production_permissions.find_by(production: production) %>
+          <% effective_role = user.role_for_production(production) %>
+          <% global_role = organization_role&.company_role %>
+          <div class="flex bg-white items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="flex-1">
+              <p class="font-medium"><%= production.name %></p>
+              <% if permission %>
+                <p class="text-xs text-gray-500">
+                  Current access: <span class="font-semibold text-pink-600"><%= permission.role.capitalize %></span> (override)
+                </p>
+              <% elsif effective_role && effective_role != 'none' %>
+                <p class="text-xs text-gray-500">
+                  Current access: <span class="font-semibold text-gray-700"><%= effective_role.capitalize %></span>
+                </p>
+              <% else %>
+                <p class="text-xs text-gray-500">
+                  Current access: <span class="font-semibold text-gray-400">No access</span>
+                </p>
+              <% end %>
+            </div>
+            <div class="w-48">
+              <%= form_with url: update_production_permission_manage_team_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" } do |f| %>
+                <%= hidden_field_tag :production_id, production.id %>
+                <%= select_tag :role,
+                    options_for_select(
+                      [
+                        ["Use Global Role", "default"],
+                        ["Manager", "manager"],
+                        ["Viewer", "viewer"]
+                      ],
+                      permission ? permission.role : "default"
+                    ),
+                    class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400",
+                    data: { action: "change->auto-submit#submit" }
+                %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">No productions available.</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="mt-4" data-controller="team-remove">
+  <div class="p-4 border border-gray-200 rounded-lg mb-4">
+    <h3 class="text-lg font-semibold mb-2">Remove from Production Team</h3>
+    <p class="text-sm text-gray-600 mb-3">
+      Removing this person from the production company will take away all of their ability to manage any of <%= Current.organization.name %>'s productions.
+    </p>
+    <%= render "shared/button",
+        text: "Remove from Team",
+        variant: "danger",
+        size: "medium",
+        type: :link,
+        href: "#",
+        extra_attrs: {
+            data: {
+                team_remove_target: "removeButton",
+                action: "team-remove#remove",
+                url: remove_member_manage_team_index_path(id: user.id, format: :json)
+            }
+        } %>
+  </div>
+</div>

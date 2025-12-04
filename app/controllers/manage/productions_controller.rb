@@ -20,6 +20,13 @@ class Manage::ProductionsController < Manage::ManageController
   end
 
   def edit
+    # Eager load posters for visual assets tab
+    @production = Current.organization.productions.includes(:posters).find_by(id: params[:id])
+    # Load data for all tabs
+    @locations = fetch_locations
+    @members = fetch_team_members
+    @team_invitation = Current.organization.team_invitations.new
+    @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
   end
 
   def create
