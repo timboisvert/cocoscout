@@ -1,6 +1,7 @@
 class ApplicationController < ActionController::Base
   include Authentication
   include Pagy::Method
+  include ActivityTracking
 
   before_action :track_my_dashboard
   before_action :show_my_sidebar

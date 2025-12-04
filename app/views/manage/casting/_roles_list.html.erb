@@ -4,30 +4,30 @@
   # Use local variable 'show' if passed, otherwise fall back to @show
   show = local_assigns[:show] || @show
   production = show.production
-  
+
   # Use preloaded data if available, otherwise fall back to queries
   roles = local_assigns[:roles] || @roles || production.roles.order(:position).to_a
-  
+
   # If assignments_by_role_id not provided, build it from the show's assignments
   assignments_by_role_id = local_assigns[:assignments_by_role_id] || @assignments_by_role_id
   unless assignments_by_role_id
     all_assignments = show.show_person_role_assignments.includes(:role).to_a
     assignments_by_role_id = all_assignments.group_by(&:role_id)
   end
-  
+
   # Build people/groups lookups if not provided
   people_by_id = local_assigns[:people_by_id] || @people_by_id
   groups_by_id = local_assigns[:groups_by_id] || @groups_by_id
-  
+
   unless people_by_id && groups_by_id
     all_assignments_flat = assignments_by_role_id.values.flatten
     person_ids = all_assignments_flat.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
     group_ids = all_assignments_flat.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
-    
+
     people_by_id ||= Person.where(id: person_ids).includes(profile_headshots: { image_attachment: :blob }).index_by(&:id)
     groups_by_id ||= Group.where(id: group_ids).includes(profile_headshots: { image_attachment: :blob }).index_by(&:id)
   end
-  
+
   role_count = roles.size
 %>
 <div id="show-roles" data-controller="drop-role" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>">

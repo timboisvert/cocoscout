@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_03_023658) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_04_183124) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -683,6 +683,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_03_023658) do
     t.string "email_address", null: false
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
+    t.datetime "last_seen_at"
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
     t.string "password_reset_token"
@@ -692,6 +693,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_03_023658) do
     t.datetime "welcomed_production_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
+    t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
     t.index ["person_id"], name: "index_users_on_person_id"
   end
