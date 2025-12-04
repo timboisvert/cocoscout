@@ -7,11 +7,16 @@ class Manage::ShowsController < Manage::ManageController
   def index
     # Store the shows filter
     @filter = (params[:filter] || session[:shows_filter] || "upcoming")
-
     session[:shows_filter] = @filter
+
+    # Handle event type filter (show, rehearsal, meeting) - checkboxes
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
 
     # Get the shows using the shows filter, eager load location to avoid N+1
     @shows = @production.shows.includes(:location)
+
+    # Apply event type filter
+    @shows = @shows.where(event_type: @event_type_filter)
 
     case @filter
     when "past"

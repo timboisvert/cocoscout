@@ -19,9 +19,19 @@
     {
       label: "View",
       filters: [
-        { text: "Upcoming", path: manage_production_shows_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
-        { text: "Past", path: manage_production_shows_path(@production, filter: "past"), active: @filter == "past" }
+        { text: "Upcoming", path: manage_production_shows_path(@production, filter: "upcoming", event_type: @event_type_filter.join(",")), active: @filter == "upcoming" },
+        { text: "Past", path: manage_production_shows_path(@production, filter: "past", event_type: @event_type_filter.join(",")), active: @filter == "past" }
       ]
+    },
+    { separator: true },
+    {
+      partial: "shared/filters/event_type_filter",
+      locals: {
+        path_helper: ->(event_type:, entity:, filter:) { manage_production_shows_path(@production, event_type: event_type, filter: filter) },
+        event_type_filter: @event_type_filter,
+        entity_filter: [],
+        filter: @filter
+      }
     }
   ] %>
 
