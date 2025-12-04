@@ -43,6 +43,7 @@ env:
     - AWS_SECRET_ACCESS_KEY
     - MAILGUN_API_KEY
     - SKYLIGHT_AUTHENTICATION
+    - SENTRY_DSN
   clear:
     # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
