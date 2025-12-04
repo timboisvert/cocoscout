@@ -3,7 +3,7 @@
 
     <!-- Header with Logo -->
     <div class="text-center mb-8 sm:mb-12">
-      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-20 sm:w-24 mx-auto object-contain mb-4" />
+      <%= render "shared/cocoscout_logo", size: :large, class: "mx-auto mb-4" %>
       <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 mb-3 coustard-regular">Start Producing Shows</h1>
       <p class="text-lg sm:text-xl text-slate-600">Your complete toolkit for managing auditions, casting, and productions</p>
     </div>

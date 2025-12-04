@@ -399,7 +399,7 @@
     <%# CocoScout Footer %>
     <div class="mt-16 pt-4 border-t border-gray-100">
       <div class="flex items-center gap-2 text-xs text-gray-400">
-        <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="w-5 h-5 object-contain opacity-50" />
+        <%= render "shared/cocoscout_logo", size: :tiny, class: "opacity-50" %>
         <span class="coustard-regular">CocoScout</span>
         <% unless Current.user %>
           <span class="text-gray-300 mx-1">·</span>

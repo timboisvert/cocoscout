@@ -1,0 +1,29 @@
+<%#
+  CocoScout Logo partial
+  
+  Parameters:
+    size: Symbol - Size of the logo
+          - :tiny   -> w-5 h-5
+          - :xsmall -> w-6 h-6
+          - :small  -> no explicit size (inherits from container, ~64px)
+          - :medium -> w-20 sm:w-28 (default)
+          - :large  -> w-20 sm:w-24
+    class: String - Additional CSS classes to add
+%>
+<%
+  size ||= :medium
+  extra_class = local_assigns[:class] || ""
+  
+  size_classes = case size
+    when :tiny then "w-5 h-5"
+    when :xsmall then "w-6 h-6"
+    when :small then ""
+    when :medium then "w-20 sm:w-28"
+    when :large then "w-20 sm:w-24"
+    else "w-20 sm:w-28"
+  end
+  
+  base_classes = "object-contain select-none pointer-events-none"
+  all_classes = [size_classes, base_classes, extra_class].reject(&:blank?).join(" ")
+%>
+<img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="<%= all_classes %>" />

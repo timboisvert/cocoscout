@@ -366,7 +366,7 @@
   <!-- Coco Link -->
   <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
     <%= link_to my_dashboard_path do %>
-      <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="object-contain select-none pointer-events-none mr-5" />
+      <%= render "shared/cocoscout_logo", size: :small, class: "mr-5" %>
     <% end %>
   </div>
 
