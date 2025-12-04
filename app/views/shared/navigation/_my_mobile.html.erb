@@ -36,7 +36,6 @@
           <%= link_to "My Sign-ups", my_audition_requests_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
           <%= link_to "My Questionnaires", my_questionnaires_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
           <%= link_to "My Shoutouts", my_shoutouts_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Profile", profile_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
         </div>
       </div>
 
@@ -53,6 +52,7 @@
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
             <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
+            <%= link_to "My Profile", profile_path, class: "text-xs text-pink-500 underline" %>
           </div>
         </div>
       </div>

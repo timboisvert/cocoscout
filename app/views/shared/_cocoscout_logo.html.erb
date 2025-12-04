@@ -21,7 +21,7 @@
     else "w-20 sm:w-24"
   end
 
-  base_classes = "object-contain select-none pointer-events-none"
+  base_classes = "object-contain select-none pointer-events-none drop-shadow-lg"
   all_classes = [size_classes, base_classes, extra_class].reject(&:blank?).join(" ")
 %>
 <img src="<%= asset_path('cocoscout.png') %>" alt="CocoScout" class="<%= all_classes %>" />
