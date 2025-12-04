@@ -185,4 +185,4 @@
   def team_invitation_params
     params.require(:team_invitation).permit(:email)
   end
-end
+ end

@@ -23,7 +23,7 @@ module SuspiciousDetection
     /\b(exec|eval|system|popen|spawn)\b/i,       # Code execution keywords
     /(wget|curl|bash|sh|cat|type)\s/i,           # Command execution
     /jndi:|ldap:|rmi:/i,                         # JNDI injection (Log4j)
-    %r{file://}i,                                # File protocol
+    %r{file://}i                                # File protocol
   ].freeze
 
   # SQL patterns for finding suspicious records in the database
@@ -51,7 +51,7 @@ module SuspiciousDetection
     "name LIKE '%\\\\%'",
     "email LIKE '%<%'",
     "email LIKE '%>%'",
-    "email LIKE '%jndi:%'",
+    "email LIKE '%jndi:%'"
   ].freeze
 
   included do
