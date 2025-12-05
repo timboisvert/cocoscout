@@ -4,12 +4,6 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Production Settings",
-    links: []
-  } %>
-
   <!-- Production Info Card -->
   <%= render "manage/productions/production_info_card", production: @production %>
 

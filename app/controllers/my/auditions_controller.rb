@@ -40,7 +40,9 @@ class My::AuditionsController < ApplicationController
       []
     end
 
-    # Apply time filter
+    # Apply time filter - filter out auditions without sessions first
+    @auditions = @auditions.select { |a| a.audition_session.present? }
+
     case @auditions_filter
     when "past"
       @auditions = @auditions.select { |a| a.audition_session.start_at <= Time.current }.sort_by { |a| a.audition_session.start_at }.reverse

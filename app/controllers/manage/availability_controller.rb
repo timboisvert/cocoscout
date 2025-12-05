@@ -238,14 +238,14 @@ class Manage::AvailabilityController < Manage::ManageController
       person_submitted = ShowAvailability
         .where(show_id: show_ids_sorted, available_entity_type: "Person", available_entity_id: recipient_person_ids)
         .group(:available_entity_id)
-        .pluck(:available_entity_id, Arel.sql("GROUP_CONCAT(show_id)"))
+        .pluck(:available_entity_id, Arel.sql("STRING_AGG(show_id::text, ',')"))
         .to_h
         .transform_values { |ids| ids.split(",").map(&:to_i).sort }
 
       group_submitted = ShowAvailability
         .where(show_id: show_ids_sorted, available_entity_type: "Group", available_entity_id: recipient_group_ids)
         .group(:available_entity_id)
-        .pluck(:available_entity_id, Arel.sql("GROUP_CONCAT(show_id)"))
+        .pluck(:available_entity_id, Arel.sql("STRING_AGG(show_id::text, ',')"))
         .to_h
         .transform_values { |ids| ids.split(",").map(&:to_i).sort }
 

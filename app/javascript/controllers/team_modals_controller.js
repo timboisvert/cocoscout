@@ -36,13 +36,13 @@ export default class extends Controller {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.text())
-        .then(html => {
-            this.permissionsContentTarget.innerHTML = html
-        })
-        .catch(error => {
-            this.permissionsContentTarget.innerHTML = '<p class="text-red-500 text-center py-8">Error loading permissions</p>'
-        })
+            .then(response => response.text())
+            .then(html => {
+                this.permissionsContentTarget.innerHTML = html
+            })
+            .catch(error => {
+                this.permissionsContentTarget.innerHTML = '<p class="text-red-500 text-center py-8">Error loading permissions</p>'
+            })
     }
 
     closePermissionsModal(event) {
