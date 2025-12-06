@@ -9,7 +9,6 @@ class Manage::CastingController < Manage::ManageController
       .where(casting_enabled: true)
       .includes(:location, show_person_role_assignments: :role)
       .order(:date_and_time)
-      .limit(10)
 
     # Eager load roles for the production (used in cast_card partial)
     @roles = @production.roles.order(:position).to_a

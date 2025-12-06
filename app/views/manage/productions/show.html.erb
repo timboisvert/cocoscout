@@ -42,10 +42,10 @@
     <!-- Upcoming Shows -->
     <div class="border border-gray-200 rounded-lg overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows & Events</h3>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows & Events (next 45 days)</h3>
         <% if current_user_can_manage?(@production) %>
           <div class="flex gap-2">
-            <%= link_to "All Shows & Events", manage_production_shows_path(@production), class: "text-pink-500 text-xs underline" %>
+            <%= link_to "View All Shows & Events", manage_production_shows_path(@production), class: "text-pink-500 text-xs underline" %>
           </div>
         <% end %>
       </div>
