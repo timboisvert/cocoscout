@@ -12,17 +12,17 @@ class My::DashboardController < ApplicationController
 
     @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
-    # Get upcoming shows where user or their groups have a role assignment
+    # Get upcoming shows where user or their groups have a role assignment (next 45 days)
     @upcoming_show_entities = []
+    end_date = 45.days.from_now
 
     # Person shows
     person_shows = Show
       .joins(:show_person_role_assignments)
       .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: @person.id })
-      .where("date_and_time >= ?", Time.current)
+      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
       .includes(:production, :location, show_person_role_assignments: :role)
       .order(:date_and_time)
-      .limit(10)
 
     person_shows.each do |show|
       @upcoming_show_entities << { show: show, entity_type: "person", entity: @person }
@@ -33,10 +33,9 @@ class My::DashboardController < ApplicationController
       group_shows = Show
         .joins(:show_person_role_assignments)
         .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: group_ids })
-        .where("date_and_time >= ?", Time.current)
+        .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
         .includes(:production, :location, show_person_role_assignments: :role)
         .order(:date_and_time)
-        .limit(10)
 
       # Build groups_by_id lookup for O(1) access
       groups_by_id = @groups.index_by(&:id)
@@ -48,7 +47,7 @@ class My::DashboardController < ApplicationController
       end
     end
 
-    @upcoming_show_entities = @upcoming_show_entities.sort_by { |item| item[:show].date_and_time }.first(5)
+    @upcoming_show_entities = @upcoming_show_entities.sort_by { |item| item[:show].date_and_time }
 
     # Upcoming audition sessions for person and groups - batch query
     @upcoming_audition_entities = []

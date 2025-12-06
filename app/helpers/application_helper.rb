@@ -154,16 +154,21 @@ module ApplicationHelper
   # Returns CSS classes for event type badges
   # @param event_type [String] The event type (show, rehearsal, meeting, class, workshop)
   # @param style [Symbol] :badge for ring-style badges, :calendar for calendar-style badges
+  # @param is_past [Boolean] For calendar style, whether the event is in the past (adds muted styling)
   # @return [String] Tailwind CSS classes
-  def event_type_badge_classes(event_type, style: :badge)
+  def event_type_badge_classes(event_type, style: :badge, is_past: false)
     case style
     when :calendar
-      case event_type.to_s
-      when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
-      when "meeting" then "bg-green-100 text-green-800 border-green-300"
-      when "class" then "bg-purple-100 text-purple-800 border-purple-300"
-      when "workshop" then "bg-amber-100 text-amber-800 border-amber-300"
-      else "bg-pink-100 text-pink-800 border-pink-300"
+      if is_past
+        "bg-gray-100 text-gray-600 border-gray-300"
+      else
+        case event_type.to_s
+        when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
+        when "meeting" then "bg-green-100 text-green-800 border-green-300"
+        when "class" then "bg-purple-100 text-purple-800 border-purple-300"
+        when "workshop" then "bg-amber-100 text-amber-800 border-amber-300"
+        else "bg-pink-100 text-pink-800 border-pink-300"
+        end
       end
     else # :badge
       case event_type.to_s
