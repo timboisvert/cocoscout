@@ -24,8 +24,8 @@ path_params = local_assigns.except(:path_helper, :event_type_filter, :entity_fil
 %>
 <div class="flex items-center gap-2">
   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
-  <div class="flex gap-1">
-    <% ['show', 'rehearsal', 'meeting'].each do |event_type| %>
+  <div class="flex gap-1 flex-wrap">
+    <% EventTypes.all.each do |event_type| %>
       <%
         # Build toggle URL for this event type
         current_types = event_type_filter.dup
@@ -36,11 +36,7 @@ path_params = local_assigns.except(:path_helper, :event_type_filter, :entity_fil
         end
         event_url_types = [event_type] if event_url_types.empty? # Keep at least one
 
-        event_label = case event_type
-          when 'show' then 'Shows'
-          when 'rehearsal' then 'Rehearsals'
-          when 'meeting' then 'Meetings'
-        end
+        event_label = EventTypes.labels[event_type].pluralize
       %>
       <%= link_to path_helper.call(**path_params, event_type: event_url_types.join(","), entity: entity_filter.join(",")),
               data: { turbo_prefetch: false },

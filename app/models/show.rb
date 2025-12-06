@@ -24,11 +24,8 @@ class Show < ApplicationRecord
   has_many :show_availabilities, dependent: :destroy
   has_many :available_people, through: :show_availabilities, source: :person
 
-  enum :event_type, {
-    show: "show",
-    rehearsal: "rehearsal",
-    meeting: "meeting"
-  }
+  # Event types are defined in config/event_types.yml
+  enum :event_type, EventTypes.enum_hash
 
   validates :location, presence: true
   validates :event_type, presence: true

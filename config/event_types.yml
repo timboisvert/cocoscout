@@ -1,0 +1,19 @@
+# Event Types Configuration
+# This file defines the available event types for shows/events and their default settings
+
+event_types:
+  show:
+    label: "Show"
+    casting_enabled_default: true
+  rehearsal:
+    label: "Rehearsal"
+    casting_enabled_default: false
+  meeting:
+    label: "Meeting"
+    casting_enabled_default: false
+  class:
+    label: "Class"
+    casting_enabled_default: true
+  workshop:
+    label: "Workshop"
+    casting_enabled_default: true

@@ -198,8 +198,8 @@ class My::AvailabilityController < ApplicationController
     @person = Current.user.person
     @groups = @person.groups.active.order(:name).to_a
 
-    # Handle event type filter (show, rehearsal, meeting) - checkboxes
-    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    # Handle event type filter - checkboxes
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
     # Handle entity filter (person, group_N)
     @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })

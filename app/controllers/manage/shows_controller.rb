@@ -9,8 +9,8 @@ class Manage::ShowsController < Manage::ManageController
     @filter = (params[:filter] || session[:shows_filter] || "upcoming")
     session[:shows_filter] = @filter
 
-    # Handle event type filter (show, rehearsal, meeting) - checkboxes
-    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
     # Get the shows using the shows filter, eager load location to avoid N+1
     @shows = @production.shows.includes(:location)
@@ -76,8 +76,8 @@ class Manage::ShowsController < Manage::ManageController
   def new
     @show = @production.shows.new
 
-    # Set default casting_enabled based on event_type
-    @show.casting_enabled = true
+    # Set default casting_enabled based on event_type from config
+    @show.casting_enabled = EventTypes.casting_enabled_default(@show.event_type || "show")
 
     # Set default location if available
     default_location = Current.organization.locations.find_by(default: true)

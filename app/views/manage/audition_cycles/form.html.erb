@@ -55,11 +55,7 @@
                     <% @shows.each do |show| %>
                       <li class="flex justify-between" data-show-id="<%= show.id %>">
                         <span class="text-gray-900">
-                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type
-                            when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                            when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                            else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                          end %>">
+                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                             <%= show.event_type.titleize %>
                           </span>
                           <%= show.date_and_time.strftime("%a, %b %-d at %-l:%M %p") %>
@@ -85,11 +81,7 @@
                 <div>
                   <%= check_box_tag "audition_cycle[availability_show_ids][]", show.id, @audition_cycle.availability_show_ids&.include?(show.id), id: "audition_cycle_availability_show_ids_#{show.id}", class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500", data: { action: "change->availability-filter#updateShowList", availability_filter_target: "checkbox" } %>
                   <%= label_tag "audition_cycle_availability_show_ids_#{show.id}", class: "ml-2 text-sm text-gray-700 cursor-pointer" do %>
-                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= case show.event_type
-                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                    end %>">
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                       <%= show.event_type.titleize %>
                     </span>
                     <%= show.date_and_time.strftime("%a, %b %-d at %-l:%M %p") %>

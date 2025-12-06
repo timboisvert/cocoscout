@@ -61,16 +61,7 @@
                   <%= link_to edit_manage_production_show_path(@production, show),
                       class: "block mb-1" do %>
                     <% is_past = show.date_and_time < Time.current %>
-                    <% event_type_badge_classes = if is_past
-                      "bg-gray-100 text-gray-600 border-gray-300"
-                    else
-                      case show.event_type
-                        when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
-                        when "meeting" then "bg-green-100 text-green-800 border-green-300"
-                        else "bg-pink-100 text-pink-800 border-pink-300"
-                      end
-                    end %>
-                    <div class="text-xs p-1 rounded border <%= event_type_badge_classes %> <%= 'opacity-50 line-through' if show.canceled %>">
+                    <div class="text-xs p-1 rounded border <%= event_type_badge_classes(show.event_type, style: :calendar, is_past: is_past) %> <%= 'opacity-50 line-through' if show.canceled %>">
                       <div class="font-semibold"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
                       <% if show.secondary_name.present? %>
                         <div class="truncate"><%= show.secondary_name %></div>

@@ -16,5 +16,13 @@ FactoryBot.define do
     trait :meeting do
       event_type { :meeting }
     end
+
+    trait :class_event do
+      event_type { :class }
+    end
+
+    trait :workshop do
+      event_type { :workshop }
+    end
   end
 end

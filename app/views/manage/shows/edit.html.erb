@@ -20,13 +20,13 @@
       { text: "<strong>Optional Settings:</strong> Update the secondary name, change the poster image, or modify notes as needed." }
     ] %>
 
-<%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit" }) do |form| %>
+<%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
 
   <div class="w-full sm:flex sm:space-x-5">
     <div class="w-full sm:w-1/2">
       <%= form.label :event_type, "Event Type" %>
       <%= form.select :event_type,
-          Show.event_types.keys.map { |type| [type.titleize, type] },
+          EventTypes.for_select,
           { include_blank: false },
           {
             class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
@@ -181,7 +181,7 @@
           } %>
         <div>
           <div class="font-medium text-gray-900">Enable casting for this event</div>
-          <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows default to enabled, while rehearsals and meetings default to disabled.</div>
+          <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows, classes, and workshops default to enabled, while rehearsals and meetings default to disabled.</div>
         </div>
       </label>
     </div>

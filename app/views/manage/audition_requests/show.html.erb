@@ -91,12 +91,7 @@
                     <%= show.date_and_time.strftime("%l:%M %p") %>
                   </div>
                   <div class="flex items-center gap-2 mt-1 flex-wrap">
-                    <% event_type_badge_classes = case show.event_type
-                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                    end %>
-                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                       <%= show.event_type.titleize %>
                     </span>
                     <% if show.secondary_name.present? %>

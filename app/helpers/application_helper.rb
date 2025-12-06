@@ -150,4 +150,34 @@ module ApplicationHelper
     variant_obj = production.safe_logo_variant(variant)
     variant_obj ? url_for(variant_obj) : nil
   end
+
+  # Returns CSS classes for event type badges
+  # @param event_type [String] The event type (show, rehearsal, meeting, class, workshop)
+  # @param style [Symbol] :badge for ring-style badges, :calendar for calendar-style badges
+  # @return [String] Tailwind CSS classes
+  def event_type_badge_classes(event_type, style: :badge)
+    case style
+    when :calendar
+      case event_type.to_s
+      when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300"
+      when "meeting" then "bg-green-100 text-green-800 border-green-300"
+      when "class" then "bg-purple-100 text-purple-800 border-purple-300"
+      when "workshop" then "bg-amber-100 text-amber-800 border-amber-300"
+      else "bg-pink-100 text-pink-800 border-pink-300"
+      end
+    else # :badge
+      case event_type.to_s
+      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+      when "class" then "bg-purple-50 text-purple-700 ring-purple-600/10"
+      when "workshop" then "bg-amber-50 text-amber-700 ring-amber-600/10"
+      else "bg-pink-50 text-pink-700 ring-pink-600/10"
+      end
+    end
+  end
+
+  # Returns the display label for an event type from config
+  def event_type_label(event_type)
+    EventTypes.labels[event_type.to_s] || event_type.to_s.titleize
+  end
 end

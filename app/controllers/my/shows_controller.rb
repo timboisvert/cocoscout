@@ -9,7 +9,7 @@ class My::ShowsController < ApplicationController
 
     # Handle filter parameters
     @filter = params[:filter] || "my_assignments"
-    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
     @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
     include_person = @entity_filter.include?("person")
@@ -133,7 +133,7 @@ class My::ShowsController < ApplicationController
     group_ids = @groups.map(&:id)
     groups_by_id = @groups.index_by(&:id)
 
-    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : [ "show", "rehearsal", "meeting" ]
+    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
     @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
     include_person = @entity_filter.include?("person")

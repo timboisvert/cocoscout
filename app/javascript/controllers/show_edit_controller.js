@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["eventTypeSelect", "sectionTitle", "castingEnabledCheckbox"]
+    static values = { castingDefaults: Array }
 
     connect() {
         this.updateTitle()
@@ -24,9 +25,13 @@ export default class extends Controller {
 
         // Only update if the checkbox hasn't been manually changed
         if (this.castingEnabledCheckboxTarget.dataset.manuallyChanged !== 'true') {
-            this.castingEnabledCheckboxTarget.checked = (eventType === 'show')
+            // Check if this event type should have casting enabled by default
+            const castingDefaults = this.hasCastingDefaultsValue ? this.castingDefaultsValue : ['show']
+            this.castingEnabledCheckboxTarget.checked = castingDefaults.includes(eventType)
         }
-    } eventTypeChanged() {
+    }
+
+    eventTypeChanged() {
         this.updateTitle()
         this.updateCastingDefault()
     }

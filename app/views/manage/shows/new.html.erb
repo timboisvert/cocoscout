@@ -75,7 +75,7 @@
     </div>
   <% end %>
 
-  <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "recurring-event show-edit" }) do |form| %>
+  <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "recurring-event show-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
     <%= hidden_field_tag :duplicate_from_id, params[:duplicate] if params[:duplicate].present? %>
 
     <% if @show.errors.any? %>
@@ -94,7 +94,7 @@
       <div class="w-full sm:w-1/2">
       <%= form.label :event_type, "Event Type" %>
       <%= form.select :event_type,
-        Show.event_types.keys.map { |type| [type.titleize, type] },
+        EventTypes.for_select,
         { include_blank: false },
         {
           class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
@@ -215,7 +215,7 @@
             } %>
           <div>
             <div class="font-medium text-gray-900">Enable casting for this event</div>
-            <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows default to enabled, while rehearsals and meetings default to disabled.</div>
+            <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows, classes, and workshops default to enabled, while rehearsals and meetings default to disabled.</div>
           </div>
         </label>
       </div>
