@@ -33,7 +33,6 @@ module Cocoscout
     config.log_level = ENV["LOG_LEVEL"] || :info
     # config.semantic_logger.application = "cocoscout"
     # config.semantic_logger.environment = ENV["STACK_NAME"] || Rails.env
-    # config.semantic_logger.add_appender(appender: :honeybadger_insights)
 
     config.generators.system_tests = nil
 
