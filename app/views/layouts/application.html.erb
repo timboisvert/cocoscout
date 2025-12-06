@@ -45,6 +45,11 @@
         <%= render "shared/navigation/manage" %>
         <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56 overflow-x-hidden">
 
+      <% elsif @show_manage_header_only %>
+
+        <%= render "shared/navigation/manage_header" %>
+        <main class="flex-1 px-5 pt-16 lg:pt-20 overflow-x-hidden">
+
       <% elsif @show_group_sidebar %>
 
         <%= render "shared/navigation/group_header" %>

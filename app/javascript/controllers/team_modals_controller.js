@@ -3,20 +3,39 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["inviteModal", "permissionsModal", "permissionsContent", "permissionsTitle"]
 
+    connect() {
+        this.escapeListener = (e) => {
+            if (e.key === "Escape") {
+                this.closeInviteModal()
+                this.closePermissionsModal()
+            }
+        }
+        document.addEventListener("keydown", this.escapeListener)
+    }
+
+    disconnect() {
+        document.removeEventListener("keydown", this.escapeListener)
+    }
+
     openInviteModal(event) {
         event.preventDefault()
         this.inviteModalTarget.classList.remove("hidden")
     }
 
     closeModal(event) {
+        // Only close if clicking the backdrop (currentTarget), not the modal content
         if (event.target === event.currentTarget) {
             this.inviteModalTarget.classList.add("hidden")
         }
     }
 
     closeInviteModal(event) {
-        event.preventDefault()
-        this.inviteModalTarget.classList.add("hidden")
+        if (event) {
+            event.preventDefault()
+        }
+        if (this.hasInviteModalTarget) {
+            this.inviteModalTarget.classList.add("hidden")
+        }
     }
 
     openPermissionsModal(event) {
@@ -48,11 +67,14 @@ export default class extends Controller {
     closePermissionsModal(event) {
         if (event) {
             event.preventDefault()
+            // Only close if clicking the backdrop, not the modal content
             if (event.target !== event.currentTarget && event.type === 'click') {
                 return
             }
         }
-        this.permissionsModalTarget.classList.add("hidden")
+        if (this.hasPermissionsModalTarget) {
+            this.permissionsModalTarget.classList.add("hidden")
+        }
     }
 
     stopPropagation(event) {

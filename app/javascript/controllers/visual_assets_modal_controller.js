@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["logoModal", "posterModal", "posterForm", "posterImage", "posterName", "posterIdField", "posterModalTitle", "posterSubmitButton"]
+    static targets = ["logoModal", "posterModal", "posterForm", "posterImage", "posterName", "posterIdField", "posterModalTitle", "posterSubmitButton", "currentPosterPreview"]
+    static values = { createPosterPath: String }
 
     connect() {
         this.escapeListener = (e) => {
@@ -10,6 +11,7 @@ export default class extends Controller {
                 this.closePosterModal()
             }
         }
+        document.addEventListener("keydown", this.escapeListener)
     }
 
     disconnect() {
@@ -19,7 +21,6 @@ export default class extends Controller {
     openLogoModal(event) {
         event.preventDefault()
         this.logoModalTarget.classList.remove("hidden")
-        document.addEventListener("keydown", this.escapeListener)
     }
 
     closeLogoModal(event) {
@@ -27,7 +28,6 @@ export default class extends Controller {
             event.preventDefault()
         }
         this.logoModalTarget.classList.add("hidden")
-        document.removeEventListener("keydown", this.escapeListener)
     }
 
     openNewPosterModal(event) {
@@ -39,11 +39,14 @@ export default class extends Controller {
         }
         this.posterModalTitleTarget.textContent = "Add a Poster"
         this.posterSubmitButtonTarget.textContent = "Add Poster"
+        // Hide current poster preview when adding new
+        if (this.hasCurrentPosterPreviewTarget) {
+            this.currentPosterPreviewTarget.classList.add("hidden")
+        }
         // Update form action for create
-        this.posterFormTarget.action = this.element.dataset.createPosterPath
+        this.posterFormTarget.action = this.createPosterPathValue
         this.posterFormTarget.querySelector('input[name="_method"]')?.remove()
         this.posterModalTarget.classList.remove("hidden")
-        document.addEventListener("keydown", this.escapeListener)
     }
 
     openEditPosterModal(event) {
@@ -51,6 +54,7 @@ export default class extends Controller {
         const button = event.currentTarget
         const posterId = button.dataset.posterId
         const posterName = button.dataset.posterName || ""
+        const posterImageUrl = button.dataset.posterImageUrl || ""
 
         // Set form for editing
         if (this.hasPosterIdFieldTarget) {
@@ -61,6 +65,17 @@ export default class extends Controller {
         }
         this.posterModalTitleTarget.textContent = "Edit Poster"
         this.posterSubmitButtonTarget.textContent = "Update Poster"
+
+        // Show current poster preview if URL is available
+        if (this.hasCurrentPosterPreviewTarget && posterImageUrl) {
+            this.currentPosterPreviewTarget.classList.remove("hidden")
+            const img = this.currentPosterPreviewTarget.querySelector("img")
+            if (img) {
+                img.src = posterImageUrl
+            }
+        } else if (this.hasCurrentPosterPreviewTarget) {
+            this.currentPosterPreviewTarget.classList.add("hidden")
+        }
 
         // Update form action for update and add method override
         this.posterFormTarget.action = button.dataset.editPosterPath
@@ -76,7 +91,6 @@ export default class extends Controller {
         methodField.value = "patch"
 
         this.posterModalTarget.classList.remove("hidden")
-        document.addEventListener("keydown", this.escapeListener)
     }
 
     closePosterModal(event) {
@@ -85,7 +99,10 @@ export default class extends Controller {
         }
         this.posterModalTarget.classList.add("hidden")
         this.posterFormTarget.reset()
-        document.removeEventListener("keydown", this.escapeListener)
+        // Hide current poster preview
+        if (this.hasCurrentPosterPreviewTarget) {
+            this.currentPosterPreviewTarget.classList.add("hidden")
+        }
     }
 
     stopPropagation(event) {

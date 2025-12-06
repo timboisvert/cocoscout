@@ -1,8 +1,8 @@
 class Manage::ProductionsController < Manage::ManageController
-  before_action :set_production, only: %i[ show edit update destroy ]
-  before_action :check_production_access, only: %i[ show edit update destroy ]
+  before_action :set_production, only: %i[ show edit update destroy confirm_delete ]
+  before_action :check_production_access, only: %i[ show edit update destroy confirm_delete ]
   before_action :ensure_user_is_global_manager, only: %i[ new create ]
-  before_action :ensure_user_is_manager, only: %i[ edit update destroy ]
+  before_action :ensure_user_is_manager, only: %i[ edit update destroy confirm_delete ]
   skip_before_action :show_manage_sidebar, only: %i[ index new create ]
 
   def index
@@ -22,11 +22,6 @@ class Manage::ProductionsController < Manage::ManageController
   def edit
     # Eager load posters for visual assets tab
     @production = Current.organization.productions.includes(:posters).find_by(id: params[:id])
-    # Load data for all tabs
-    @locations = fetch_locations
-    @members = fetch_team_members
-    @team_invitation = Current.organization.team_invitations.new
-    @team_invitations = Current.organization.team_invitations.where(accepted_at: nil)
   end
 
   def create
@@ -50,6 +45,15 @@ class Manage::ProductionsController < Manage::ManageController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def confirm_delete
+    # Gather stats about what will be deleted
+    @shows_count = @production.shows.count
+    @roles_count = @production.roles.count
+    @posters_count = @production.posters.count
+    @audition_cycles_count = @production.audition_cycles.count
+    @questionnaires_count = @production.questionnaires.count
   end
 
   def destroy

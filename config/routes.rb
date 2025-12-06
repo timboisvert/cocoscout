@@ -132,6 +132,7 @@ Rails.application.routes.draw do
         get :setup_guide
       end
       member do
+        get :confirm_delete
         post :transfer_ownership
         delete :remove_logo
       end
@@ -193,6 +194,10 @@ Rails.application.routes.draw do
     end
 
     resources :productions do
+      member do
+        get :confirm_delete
+      end
+
       resources :availability, only: [ :index, :show ] do
         collection do
           get  :request_availability

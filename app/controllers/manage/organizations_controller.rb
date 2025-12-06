@@ -1,7 +1,7 @@
 class Manage::OrganizationsController < Manage::ManageController
-  before_action :set_organization, only: %i[ show edit update destroy transfer_ownership remove_logo ]
-  skip_before_action :show_manage_sidebar, only: %i[ new create index show edit ]
-  before_action :ensure_user_is_owner, only: %i[ destroy transfer_ownership ]
+  before_action :set_organization, only: %i[ show edit update destroy transfer_ownership remove_logo confirm_delete ]
+  skip_before_action :show_manage_sidebar, only: %i[ new create index edit ]
+  before_action :ensure_user_is_owner, only: %i[ destroy transfer_ownership confirm_delete ]
   before_action :ensure_user_can_manage, only: %i[ show edit update remove_logo ]
 
   def index
@@ -19,6 +19,9 @@ class Manage::OrganizationsController < Manage::ManageController
     @role = @organization.role_for(Current.user)
     @is_owner = @organization.owned_by?(Current.user)
     @team_members = @organization.users.includes(:person, :organization_roles)
+    @team_invitations = @organization.team_invitations.where(accepted_at: nil)
+    @locations = @organization.locations.order(:name)
+    @team_invitation = TeamInvitation.new
   end
 
   def new
@@ -84,6 +87,17 @@ class Manage::OrganizationsController < Manage::ManageController
   def remove_logo
     @organization.logo.purge
     redirect_to edit_manage_organization_path(@organization), notice: "Logo removed successfully"
+  end
+
+  def confirm_delete
+    @stats = {
+      productions: @organization.productions.count,
+      shows: @organization.productions.joins(:shows).count,
+      people: @organization.people.count,
+      groups: @organization.groups.count,
+      locations: @organization.locations.count,
+      team_members: @organization.users.count
+    }
   end
 
   def set_current

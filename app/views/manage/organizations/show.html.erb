@@ -1,189 +1,366 @@
 <% content_for :title, @organization.name %>
 
-<div class="min-h-screen bg-white">
+<div class="w-full" data-controller="tabs org-team-modals org-locations-settings">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <!-- Header -->
-  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4">
-    <%= render "shared/cocoscout_logo", size: :medium %>
-    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
-  </div>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Organizations", manage_organizations_path]
+    ],
+    text: @organization.name,
+    links: []
+  } %>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-    <!-- Breadcrumbs and Title -->
-    <div class="mb-8">
-      <div class="flex items-center gap-2 text-sm text-gray-600 mb-4">
-        <%= link_to "Organizations", manage_organizations_path, class: "hover:text-pink-600" %>
-        <span>/</span>
-        <span class="text-gray-900"><%= @organization.name %></span>
+  <!-- Tabs Navigation -->
+  <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto mt-4">
+    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Team Members</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
+    <% if @is_owner %>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+    <% end %>
+  </nav>
+
+  <!-- Tab 1: Basic Information -->
+  <div data-tabs-target="panel">
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900 coustard-regular">Organization Details</h2>
       </div>
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 coustard-regular"><%= @organization.name %></h2>
-        <% if @is_owner || @role == "manager" %>
-          <%= render "shared/button", text: "Edit", variant: "primary", size: "medium", path: edit_manage_organization_path(@organization) %>
+      <div class="p-6 bg-white">
+        <%= form_with model: [:manage, @organization], method: :patch, class: "space-y-6" do |f| %>
+          <% if @organization.errors.any? %>
+            <div class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg">
+              <ul class="list-disc ml-6">
+                <% @organization.errors.each do |error| %>
+                  <li><%= error.full_message %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <div class="sm:flex sm:space-x-5">
+            <div class="w-full sm:w-1/2">
+              <%= f.label :name, "Organization Name", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.text_field :name, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+          </div>
+
+          <!-- Logo Section -->
+          <div class="border-t border-gray-200 pt-6">
+            <h3 class="text-sm font-medium text-gray-700 mb-4">Organization Logo</h3>
+            <div class="flex items-start gap-6">
+              <div class="flex-shrink-0">
+                <% if @organization.logo.attached? %>
+                  <%= image_tag @organization.logo, alt: "#{@organization.name} Logo", class: "rounded shadow-sm object-contain max-h-[100px] max-w-[120px] border border-gray-200" %>
+                <% else %>
+                  <div class="w-[100px] h-[100px] rounded bg-gray-200 flex items-center justify-center border border-gray-300">
+                    <span class="text-2xl font-bold text-gray-400"><%= @organization.name.split.map { |w| w[0] }.join.upcase.first(2) %></span>
+                  </div>
+                <% end %>
+              </div>
+              <div class="flex-1">
+                <%= f.label :logo, class: "block text-sm font-medium text-gray-600 mb-2" do %>
+                  <span class="cursor-pointer text-pink-500 underline">Choose a new logo...</span>
+                <% end %>
+                <%= f.file_field :logo, accept: "image/*", class: "hidden" %>
+                <p class="text-xs text-gray-500">PNG, JPG, or GIF. Recommended size: 200x200 pixels or larger.</p>
+                <% if @organization.logo.attached? %>
+                  <div class="mt-2">
+                    <%= button_to "Remove logo", remove_logo_manage_organization_path(@organization), method: :delete, data: { turbo: false, confirm: "Are you sure you want to remove the logo?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 pt-6 flex justify-end">
+            <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
+          </div>
         <% end %>
       </div>
     </div>
+  </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Tab 2: Team Members -->
+  <div data-tabs-target="panel" class="hidden">
+    <%= render "shared/help_section",
+      title: "About Team Members",
+      initial_state: "open",
+      storage_key: "org_team_help_collapsed",
+      steps: [
+        { text: "Team members are users who can access and manage your organization in CocoScout." },
+        { text: "Managers can manage all productions and settings. Viewers have read-only access." },
+        { text: "After inviting someone, you can adjust their role and permissions." }
+      ] %>
 
-      <!-- Main Content -->
-      <div class="lg:col-span-2 space-y-6">
-
-        <!-- Organization Details Card -->
-        <div class="bg-white border-2 border-pink-200 rounded-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-6 coustard-regular">Details</h2>
-
-          <dl class="space-y-4">
-            <div>
-              <dt class="text-sm font-medium text-gray-500 mb-1">Organization Name</dt>
-              <dd class="text-sm text-gray-900"><%= @organization.name %></dd>
-            </div>
-
-            <div>
-              <dt class="text-sm font-medium text-gray-500 mb-1">Owner</dt>
-              <dd class="text-sm text-gray-900">
-                <%= @organization.owner.person&.name || @organization.owner.email_address %>
-                <% if @is_owner %>
-                  <span class="ml-2 text-xs text-pink-600 font-semibold">(You)</span>
-                <% end %>
-              </dd>
-            </div>
-
-            <div>
-              <dt class="text-sm font-medium text-gray-500 mb-1">Your Role</dt>
-              <dd>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold <%= @role == 'owner' ? 'bg-pink-500 text-white' : @role == 'manager' ? 'bg-blue-600 text-white' : @role == 'viewer' ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white' %>">
-                  <%= @role.titleize %>
+    <div class="mt-4 space-y-2">
+      <% @team_members.each do |member| %>
+        <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
+        <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-semibold text-gray-600">
+                  <%= (member.person&.name || member.email_address).first.upcase %>
                 </span>
-              </dd>
-            </div>
-
-            <div>
-              <dt class="text-sm font-medium text-gray-500 mb-1">Created</dt>
-              <dd class="text-sm text-gray-900">
-                <%= @organization.created_at.strftime("%B %d, %Y") %>
-                <span class="text-gray-500">(<%= time_ago_in_words(@organization.created_at) %> ago)</span>
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <!-- Team Members Card -->
-        <div class="bg-white border-2 border-pink-200 rounded-lg p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-6 coustard-regular">Team Members</h2>
-
-          <div class="space-y-3">
-            <% @team_members.each do |user| %>
-              <% role = user.organization_roles.find_by(organization: @organization)&.company_role || "member" %>
-              <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <span class="text-sm font-semibold text-gray-600">
-                      <%= (user.person&.name || user.email_address).first.upcase %>
-                    </span>
-                  </div>
-                  <div>
-                    <div class="text-sm font-medium text-gray-900">
-                      <%= user.person&.name || user.email_address %>
-                    </div>
-                    <div class="text-xs text-gray-500"><%= user.email_address %></div>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold <%= role == 'manager' ? 'bg-blue-600 text-white' : role == 'viewer' ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white' %>">
-                    <%= role.titleize %>
-                  </span>
-                  <% if user.id == @organization.owner_id %>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">
-                      Owner
-                    </span>
+              </div>
+              <div>
+                <div class="font-bold text-md">
+                  <%= member.person&.name || member.email_address %>
+                  <% if member == Current.user %>
+                    <span class="ml-1 text-sm text-gray-500">(Me)</span>
+                  <% end %>
+                  <% if member.id == @organization.owner_id %>
+                    <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">Owner</span>
                   <% end %>
                 </div>
+                <div class="text-sm text-gray-500"><%= member.email_address %></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-sm text-gray-500">
+            <% role_display = case organization_role&.company_role
+                 when 'manager' then 'Manager'
+                 when 'viewer' then 'Viewer'
+                 when 'none' then 'Per-production access'
+                 else 'Member'
+                 end %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold <%= organization_role&.company_role == 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-500 text-white' %>">
+              <%= role_display %>
+            </span>
+          </div>
+        </div>
+      <% end %>
+
+      <% if @is_owner || @role == "manager" %>
+        <% @team_invitations.each do |invite| %>
+          <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-semibold text-yellow-600">
+                    <%= invite.email.first.upcase %>
+                  </span>
+                </div>
+                <div>
+                  <div class="font-medium text-md"><%= invite.email %></div>
+                  <div class="text-sm text-gray-500">Invited <%= time_ago_in_words(invite.created_at) %> ago</div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">Pending</span>
+              <%= button_to "Revoke", revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if @is_owner || @role == "manager" %>
+      <div class="border-t border-gray-200 pt-5 mt-8">
+        <%= render "shared/button", text: "Invite Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
+      </div>
+
+      <!-- Invite Team Member Modal -->
+      <div data-org-team-modals-target="inviteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->org-team-modals#stopPropagation">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite a Team Member</h2>
+          </div>
+          <div class="p-6">
+            <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
+              <div class="space-y-4">
+                <div>
+                  <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                </div>
+
+                <div>
+                  <%= f.label :invitation_subject, "Email Subject", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <%= f.text_field :invitation_subject, value: "You've been invited to join #{@organization.name}'s team on CocoScout", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                </div>
+
+                <div>
+                  <%= f.label :invitation_message, "Email Message", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <%= f.text_area :invitation_message, rows: 5, value: "Welcome to CocoScout!\n\n#{@organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account.", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-end gap-3">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closeInviteModal" } %>
+                <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
               </div>
             <% end %>
           </div>
         </div>
+      </div>
+    <% end %>
+  </div>
 
-        <!-- Owner Actions -->
-        <% if @is_owner %>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-red-900 mb-2 coustard-regular">Danger Zone</h2>
-            <p class="text-sm text-red-700 mb-4">
-              These actions are permanent and cannot be undone.
-            </p>
+  <!-- Tab 3: Locations -->
+  <div data-tabs-target="panel" class="hidden">
+    <%= render "shared/help_section",
+      title: "About Locations",
+      initial_state: "open",
+      storage_key: "org_locations_help_collapsed",
+      steps: [
+        { text: "Locations are venues where your shows, rehearsals, and events take place." },
+        { text: "Set a default location to automatically pre-fill it when scheduling new events." },
+        { text: "Locations are shared across all productions in this organization." }
+      ] %>
 
-            <%= button_to manage_organization_path(@organization),
-                method: :delete,
-                data: { turbo_confirm: "Are you sure you want to delete #{@organization.name}? This will permanently delete all productions, shows, and data. This action cannot be undone." } do %>
-              <%= render "shared/button", text: "Delete Organization", variant: "danger", size: "medium", type: :submit %>
-            <% end %>
+    <% if @locations.any? %>
+      <div class="grid grid-cols-1 gap-2 mt-4">
+        <% @locations.each do |location| %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-top">
+            <div class="flex-1">
+              <div class="font-bold text-md">
+                <%= location.name %>
+                <% if location.default? %>
+                  <span class="text-sm font-normal text-gray-500">(Default)</span>
+                <% end %>
+              </div>
+              <div class="text-sm text-gray-500"><%= location.address1 %></div>
+              <% if location.address2.present? %>
+                <div class="text-sm text-gray-500"><%= location.address2 %></div>
+              <% end %>
+              <div class="text-sm text-gray-500"><%= location.city %>, <%= location.state %> <%= location.postal_code %></div>
+              <% if @is_owner || @role == "manager" %>
+                <div class="mt-2">
+                  <button type="button" data-action="click->org-locations-settings#openEditModal" data-location-id="<%= location.id %>" data-location-name="<%= location.name %>" data-location-address1="<%= location.address1 %>" data-location-address2="<%= location.address2 %>" data-location-city="<%= location.city %>" data-location-state="<%= location.state %>" data-location-postal-code="<%= location.postal_code %>" data-location-notes="<%= location.notes %>" data-location-default="<%= location.default? %>" data-edit-path="<%= manage_location_path(location) %>" class="text-pink-500 text-xs underline cursor-pointer">Edit Location</button>
+                  <%= button_to "Delete Location", manage_location_path(location), method: :delete, data: { turbo: false, confirm: "Are you sure you want to delete this location?" }, class: "ml-2 text-pink-500 text-xs underline cursor-pointer", form: { class: "inline" } %>
+                </div>
+              <% end %>
+            </div>
           </div>
         <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-sm">No locations have been added yet.</p>
+    <% end %>
 
+    <% if @is_owner || @role == "manager" %>
+      <div class="border-t border-gray-200 pt-5 mt-8">
+        <%= render "shared/button", text: "Add Location", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#openAddModal" } %>
       </div>
 
-      <!-- Stats Sidebar -->
-      <div class="lg:col-span-1 space-y-6">
+      <!-- Add Location Modal -->
+      <div data-org-locations-settings-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->org-locations-settings#stopPropagation">
+          <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add a Location</h2>
+          </div>
+          <div class="p-6">
+            <form data-org-locations-settings-target="addForm" action="<%= manage_locations_path %>" method="post" data-action="submit->org-locations-settings#submitAddForm">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <div data-org-locations-settings-target="addErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+                <ul data-org-locations-settings-target="addErrorList" class="list-disc ml-6"></ul>
+              </div>
+              <%= render "manage/organizations/location_form_fields" %>
+              <div class="flex justify-end gap-3 pt-4">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#closeAddModal" } %>
+                <%= render "shared/button", text: "Add Location", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
 
-        <!-- Quick Stats Card -->
-        <div class="bg-white border-2 border-pink-200 rounded-lg p-6">
-          <h3 class="text-base font-semibold text-gray-900 mb-4 coustard-regular">Quick Stats</h3>
+      <!-- Edit Location Modal -->
+      <div data-org-locations-settings-target="editModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" data-action="click->org-locations-settings#stopPropagation">
+          <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Location</h2>
+          </div>
+          <div class="p-6">
+            <form data-org-locations-settings-target="editForm" action="" method="post" data-action="submit->org-locations-settings#submitEditForm">
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+              <input type="hidden" name="_method" value="patch">
+              <input type="hidden" data-org-locations-settings-target="editLocationId" name="location[id]" value="">
+              <div data-org-locations-settings-target="editErrorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+                <ul data-org-locations-settings-target="editErrorList" class="list-disc ml-6"></ul>
+              </div>
+              <%= render "manage/organizations/location_form_fields", prefix: "edit" %>
+              <div class="flex justify-end gap-3 pt-4">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#closeEditModal" } %>
+                <%= render "shared/button", text: "Update Location", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
 
-          <div class="space-y-4">
-            <div>
-              <div class="text-3xl font-bold text-gray-900"><%= @organization.active_productions_count %></div>
-              <div class="text-sm text-gray-600 mt-1">Active Productions</div>
-            </div>
+  <!-- Tab 4: Danger Zone (Owner only) -->
+  <% if @is_owner %>
+    <div data-tabs-target="panel" class="hidden">
+      <!-- Transfer Ownership Section -->
+      <% if @team_members.count > 1 %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <div class="bg-yellow-50 px-4 py-3 border-b border-yellow-200">
+            <h2 class="text-lg font-semibold text-yellow-800 coustard-regular">Transfer Ownership</h2>
+          </div>
+          <div class="p-6 bg-white">
+            <p class="text-sm text-gray-600 mb-4">
+              Transfer ownership of this organization to another manager. You will remain a manager but will lose owner privileges.
+            </p>
 
-            <div class="pt-4 border-t border-gray-100">
-              <div class="text-3xl font-bold text-gray-900"><%= @organization.productions.count %></div>
-              <div class="text-sm text-gray-600 mt-1">Total Productions</div>
-            </div>
+            <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post, class: "space-y-4" do |f| %>
+              <div class="sm:w-1/2">
+                <%= f.label :new_owner_id, "New Owner", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= f.select :new_owner_id,
+                    options_from_collection_for_select(
+                      @team_members.select { |u| u.organization_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
+                      :id,
+                      ->(u) { u.person&.name || u.email_address }
+                    ),
+                    { prompt: "Select new owner..." },
+                    { class: "block w-full rounded-lg border border-gray-400 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" } %>
+              </div>
 
-            <div class="pt-4 border-t border-gray-100">
-              <div class="text-3xl font-bold text-gray-900"><%= @organization.team_size %></div>
-              <div class="text-sm text-gray-600 mt-1">Team Members</div>
-            </div>
+              <div class="pt-2">
+                <%= render "shared/button",
+                           text: "Transfer Ownership",
+                           variant: "secondary",
+                           size: "medium",
+                           type: :submit,
+                           data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
 
-            <div class="pt-4 border-t border-gray-100">
-              <div class="text-3xl font-bold text-gray-900"><%= @organization.member_count %></div>
-              <div class="text-sm text-gray-600 mt-1">Talent Members</div>
+      <!-- Delete Organization Section -->
+      <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-red-800 mb-2">Delete this Organization</h3>
+            <p class="text-sm text-red-700 mb-4">
+              Deleting this organization is <strong>permanent and cannot be undone</strong>. This action will remove the organization and all associated productions, shows, talent pool, and data from the system.
+            </p>
+            <p class="text-sm text-red-700 mb-4">
+              Before deleting, please review what will be removed. You'll be asked to confirm on the next page.
+            </p>
+            <div class="mt-6">
+              <%= render "shared/button",
+                  text: "Delete this organization",
+                  variant: "danger",
+                  size: "medium",
+                  path: confirm_delete_manage_organization_path(@organization),
+                  icon: "trash" %>
             </div>
           </div>
         </div>
-
-        <!-- Transfer Ownership (Owner Only) -->
-        <% if @is_owner && @team_members.count > 1 %>
-          <div class="bg-white border-2 border-pink-200 rounded-lg p-6">
-            <h3 class="text-base font-semibold text-gray-900 mb-3 coustard-regular">Transfer Ownership</h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Transfer ownership to another manager. You will remain a manager but lose owner privileges.
-            </p>
-
-            <%= form_with url: transfer_ownership_manage_organization_path(@organization), method: :post do |f| %>
-              <%= f.select :new_owner_id,
-                  options_from_collection_for_select(
-                    @team_members.select { |u| u.organization_roles.exists?(organization: @organization, company_role: 'manager') && u.id != Current.user.id },
-                    :id,
-                    ->(u) { u.person&.name || u.email_address }
-                  ),
-                  { prompt: "Select new owner..." },
-                  { class: "block w-full rounded-lg border-gray-300 text-sm mb-3" } %>
-
-              <%= render "shared/button",
-                         text: "Transfer Ownership",
-                         variant: "primary",
-                         size: "medium",
-                         type: :submit,
-                         classes: "w-full",
-                         data: { turbo_confirm: "Are you sure you want to transfer ownership? This action cannot be undone." } %>
-            <% end %>
-          </div>
-        <% end %>
-
       </div>
-
     </div>
-  </div>
+  <% end %>
 </div>
