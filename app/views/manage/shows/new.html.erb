@@ -80,7 +80,7 @@
 
     <% if @show.errors.any? %>
       <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mt-3">
-        <h2><%= pluralize(show.errors.count, "error") %> prohibited this show from being saved:</h2>
+        <h2><%= pluralize(@show.errors.count, "error") %> prohibited this show from being saved:</h2>
 
         <ul class="list-disc ml-6">
           <% @show.errors.each do |error| %>

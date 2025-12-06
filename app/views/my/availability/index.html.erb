@@ -66,12 +66,7 @@
             </div>
             <div class="flex items-center gap-1 mt-1 flex-wrap">
               <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
-              <% event_type_badge_classes = case show.event_type
-                when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                else "bg-pink-50 text-pink-700 ring-pink-600/10"
-              end %>
-              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                 <%= show.event_type.titleize %>
               </span>
               <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
@@ -157,12 +152,7 @@
                   </div>
                   <div class="flex items-center gap-1 mt-1 flex-wrap">
                     <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
-                    <% event_type_badge_classes = case show.event_type
-                      when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                      when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                      else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                    end %>
-                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                       <%= show.event_type.titleize %>
                     </span>
                     <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
@@ -259,12 +249,7 @@
                           </span>
                         </div>
                         <div class="mt-0 flex items-center gap-1">
-                          <% event_type_badge_classes = case show.event_type
-                            when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                            when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                            else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                          end %>
-                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                             <%= show.event_type.titleize %>
                           </span>
                           <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
@@ -362,12 +347,7 @@
                     </div>
                     <div class="flex items-center gap-1 mt-1 flex-wrap">
                       <span class="text-xs sm:text-sm text-gray-600"><%= show.production.name %></span>
-                      <% event_type_badge_classes = case show.event_type
-                        when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
-                        when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
-                        else "bg-pink-50 text-pink-700 ring-pink-600/10"
-                      end %>
-                      <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes %>">
+                      <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
                         <%= show.event_type.titleize %>
                       </span>
                       <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] sm:text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-700 ring-gray-600/10">
