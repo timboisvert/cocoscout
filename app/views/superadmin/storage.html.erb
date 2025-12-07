@@ -221,11 +221,19 @@
 
       <% if @flat_keys_count > 0 %>
         <% @flat_keys_by_service.each do |service, count| %>
-          <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block mr-2 mb-2" do %>
-            <%= hidden_field_tag :service, service %>
-            <%= render "shared/button", text: "Migrate #{service} Keys (#{count})", variant: "primary", size: "small", type: :submit,
-                data: { turbo_confirm: "This will copy #{count} files to new hierarchical paths. Old files will be kept. Continue?" } %>
-          <% end %>
+          <div class="mb-2">
+            <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block mr-2" do %>
+              <%= hidden_field_tag :service, service %>
+              <%= hidden_field_tag :limit, 5 %>
+              <%= render "shared/button", text: "Test Migrate 5 #{service} Keys", variant: "secondary", size: "small", type: :submit,
+                  data: { turbo_confirm: "This will copy 5 files to new hierarchical paths as a test. Old files will be kept. Continue?" } %>
+            <% end %>
+            <%= form_with url: storage_migrate_keys_path, method: :post, class: "inline-block" do %>
+              <%= hidden_field_tag :service, service %>
+              <%= render "shared/button", text: "Migrate All #{service} Keys (#{count})", variant: "primary", size: "small", type: :submit,
+                  data: { turbo_confirm: "This will copy #{count} files to new hierarchical paths. Old files will be kept. Continue?" } %>
+            <% end %>
+          </div>
         <% end %>
         <p class="text-xs text-gray-500 mt-2">Note: Old files are preserved. You can delete them later after verifying the migration.</p>
       <% else %>

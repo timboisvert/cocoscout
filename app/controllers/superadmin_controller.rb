@@ -409,19 +409,23 @@ class SuperadminController < ApplicationController
 
     migrated = 0
     errors = []
+    limit = params[:limit].to_i if params[:limit].present?
 
     # Only migrate blobs with flat keys (no /)
-    blobs_to_migrate = ActiveStorage::Blob
+    blobs_query = ActiveStorage::Blob
       .where(service_name: service_name)
       .where("key NOT LIKE '%/%'")
       .joins(:attachments)
       .includes(:attachments)
       .distinct
 
+    # Apply limit if specified (for testing migration with a small batch)
+    blobs_to_migrate = limit ? blobs_query.limit(limit) : blobs_query
+
     # Get the storage service
     storage_service = ActiveStorage::Blob.services.fetch(service_name.to_sym)
 
-    blobs_to_migrate.find_each do |blob|
+    blobs_to_migrate.each do |blob|
       begin
         new_key = StorageKeyGeneratorService.generate_key_for_blob(blob)
         next if new_key.nil? || new_key == blob.key
