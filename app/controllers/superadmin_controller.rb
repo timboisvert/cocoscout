@@ -644,8 +644,8 @@ class SuperadminController < ApplicationController
   def destroy_person_record(person)
     user = person.user
 
-    # Clear join tables
-    person.talent_pools.clear
+    # Clear join tables - explicitly destroy memberships for proper polymorphic cleanup
+    person.talent_pool_memberships.destroy_all
     person.organizations.clear
 
     # Clear any direct person_id references in show_person_role_assignments
