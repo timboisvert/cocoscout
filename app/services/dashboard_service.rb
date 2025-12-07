@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DashboardService
   def initialize(production)
     @production = production
@@ -57,10 +59,10 @@ class DashboardService
 
     # Eager load location and assignments in a single query
     shows = @production.shows
-      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-      .includes(:location, :show_person_role_assignments)
-      .order(date_and_time: :asc)
-      .limit(5)
+                       .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+                       .includes(:location, :show_person_role_assignments)
+                       .order(date_and_time: :asc)
+                       .limit(5)
 
     shows.map do |show|
       # Use .size on already-loaded associations to avoid COUNT queries
@@ -74,10 +76,10 @@ class DashboardService
       else "#{days_until} days from now"
       end
 
-      cast_percentage = if roles_count > 0
-        ((assignments_count.to_f / roles_count) * 100).round
+      cast_percentage = if roles_count.positive?
+                          ((assignments_count.to_f / roles_count) * 100).round
       else
-        100  # If there are no roles, consider it 100% cast
+                          100 # If there are no roles, consider it 100% cast
       end
 
       {
@@ -92,17 +94,17 @@ class DashboardService
   def availability_summary
     # Eager load shows with availabilities in a single query
     upcoming_shows = @production.shows
-      .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-      .includes(:show_availabilities)
-      .order(date_and_time: :asc)
+                                .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+                                .includes(:show_availabilities)
+                                .order(date_and_time: :asc)
 
     # Get all people in the production's talent pools in a single query
     # Use joins instead of flat_map to avoid N+1
     all_cast_person_ids = Person
-      .joins(:talent_pool_memberships)
-      .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
-      .distinct
-      .pluck(:id)
+                          .joins(:talent_pool_memberships)
+                          .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
+                          .distinct
+                          .pluck(:id)
 
     total_cast_count = all_cast_person_ids.size
 
@@ -118,15 +120,15 @@ class DashboardService
         total_cast_people: total_cast_count,
         with_availability: people_with_availability,
         without_availability: people_without_availability,
-        percentage_responded: total_cast_count > 0 ? ((people_with_availability.to_f / total_cast_count) * 100).round : 0
+        percentage_responded: total_cast_count.positive? ? ((people_with_availability.to_f / total_cast_count) * 100).round : 0
       }
     end
 
     {
       shows_with_availability: shows_with_availability,
-      shows_needing_responses: shows_with_availability.select { |s| s[:without_availability] > 0 },
+      shows_needing_responses: shows_with_availability.select { |s| s[:without_availability].positive? },
       total_shows: shows_with_availability.count,
-      fully_responded: shows_with_availability.select { |s| s[:without_availability] == 0 }.count
+      fully_responded: shows_with_availability.select { |s| s[:without_availability].zero? }.count
     }
   end
 end

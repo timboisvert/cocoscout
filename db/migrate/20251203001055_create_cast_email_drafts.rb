@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateCastEmailDrafts < ActiveRecord::Migration[8.1]
   def change
     create_table :cast_email_drafts do |t|

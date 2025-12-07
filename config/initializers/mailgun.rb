@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Mailgun configuration
 # https://github.com/mailgun/mailgun-ruby
 

@@ -1,440 +1,441 @@
-class Manage::ShowsController < Manage::ManageController
-  before_action :set_production
-  before_action :check_production_access
-  before_action :set_show, only: %i[ show edit update destroy cancel cancel_show delete_show uncancel ]
-  before_action :ensure_user_is_manager, except: %i[ index show ]
+# frozen_string_literal: true
 
-  def index
-    # Store the shows filter
-    @filter = (params[:filter] || session[:shows_filter] || "upcoming")
-    session[:shows_filter] = @filter
+module Manage
+  class ShowsController < Manage::ManageController
+    before_action :set_production
+    before_action :check_production_access
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel]
+    before_action :ensure_user_is_manager, except: %i[index show]
 
-    # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
-    @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
+    def index
+      # Store the shows filter
+      @filter = params[:filter] || session[:shows_filter] || "upcoming"
+      session[:shows_filter] = @filter
 
-    # Get the shows using the shows filter, eager load location to avoid N+1
-    @shows = @production.shows.includes(:location)
+      # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
+      @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
-    # Apply event type filter
-    @shows = @shows.where(event_type: @event_type_filter)
+      # Get the shows using the shows filter, eager load location to avoid N+1
+      @shows = @production.shows.includes(:location)
 
-    case @filter
-    when "past"
-      @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(Arel.sql("shows.date_and_time DESC"))
-    else
-      @filter = "upcoming"
-      @shows = @shows.where("shows.date_and_time > ?", Time.current).order(Arel.sql("shows.date_and_time ASC"))
+      # Apply event type filter
+      @shows = @shows.where(event_type: @event_type_filter)
+
+      case @filter
+      when "past"
+        @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(Arel.sql("shows.date_and_time DESC"))
+      else
+        @filter = "upcoming"
+        @shows = @shows.where("shows.date_and_time > ?", Time.current).order(Arel.sql("shows.date_and_time ASC"))
+      end
+
+      # Load into memory to avoid multiple queries
+      @shows = @shows.to_a
     end
 
-    # Load into memory to avoid multiple queries
-    @shows = @shows.to_a
-  end
+    def show
+      # Preload data for the cast_card partial to avoid N+1 queries
+      @roles = @production.roles.order(:position).to_a
+      @roles_count = @roles.size
 
-  def show
-    # Preload data for the cast_card partial to avoid N+1 queries
-    @roles = @production.roles.order(:position).to_a
-    @roles_count = @roles.size
+      # Preload assignables (people and groups) with their headshots
+      assignments = @show.show_person_role_assignments.to_a
 
-    # Preload assignables (people and groups) with their headshots
-    assignments = @show.show_person_role_assignments.to_a
+      person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+      group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
 
-    person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
-    group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+      @people_by_id = Person
+                      .where(id: person_ids)
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .index_by(&:id)
 
-    @people_by_id = Person
-      .where(id: person_ids)
-      .includes(profile_headshots: { image_attachment: :blob })
-      .index_by(&:id)
-
-    @groups_by_id = Group
-      .where(id: group_ids)
-      .includes(profile_headshots: { image_attachment: :blob })
-      .index_by(&:id)
-  end
-
-  def calendar
-    # Store the shows filter
-    @filter = (params[:filter] || session[:shows_filter] || "upcoming")
-
-    session[:shows_filter] = @filter
-
-    # Get the shows using the shows filter, eager load location to avoid N+1
-    @shows = @production.shows.includes(:location)
-
-    case @filter
-    when "past"
-      @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(:date_and_time)
-    else
-      @filter = "upcoming"
-      @shows = @shows.where("shows.date_and_time > ?", Time.current).order(:date_and_time)
+      @groups_by_id = Group
+                      .where(id: group_ids)
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .index_by(&:id)
     end
 
-    # Load into memory and group shows by month for calendar display
-    @shows_by_month = @shows.to_a.group_by { |show| show.date_and_time.beginning_of_month }
-  end
+    def calendar
+      # Store the shows filter
+      @filter = params[:filter] || session[:shows_filter] || "upcoming"
 
-  def new
-    @show = @production.shows.new
+      session[:shows_filter] = @filter
 
-    # Set default casting_enabled based on event_type from config
-    @show.casting_enabled = EventTypes.casting_enabled_default(@show.event_type || "show")
+      # Get the shows using the shows filter, eager load location to avoid N+1
+      @shows = @production.shows.includes(:location)
 
-    # Set default location if available
-    default_location = Current.organization.locations.find_by(default: true)
-    @show.location = default_location if default_location
+      case @filter
+      when "past"
+        @shows = @shows.where("shows.date_and_time <= ?", Time.current).order(:date_and_time)
+      else
+        @filter = "upcoming"
+        @shows = @shows.where("shows.date_and_time > ?", Time.current).order(:date_and_time)
+      end
 
-    # Handle duplication
-    if params[:duplicate].present?
+      # Load into memory and group shows by month for calendar display
+      @shows_by_month = @shows.to_a.group_by { |show| show.date_and_time.beginning_of_month }
+    end
+
+    def new
+      @show = @production.shows.new
+
+      # Set default casting_enabled based on event_type from config
+      @show.casting_enabled = EventTypes.casting_enabled_default(@show.event_type || "show")
+
+      # Set default location if available
+      default_location = Current.organization.locations.find_by(default: true)
+      @show.location = default_location if default_location
+
+      # Handle duplication
+      return unless params[:duplicate].present?
+
       @original_show = @production.shows.find_by(id: params[:duplicate])
-      if @original_show.present?
-        @show.date_and_time = @original_show.date_and_time
-        @show.event_type = @original_show.event_type
-        @show.secondary_name = @original_show.secondary_name
-        @show.location = @original_show.location
-        @show.casting_enabled = @original_show.casting_enabled
-      end
+      return unless @original_show.present?
+
+      @show.date_and_time = @original_show.date_and_time
+      @show.event_type = @original_show.event_type
+      @show.secondary_name = @original_show.secondary_name
+      @show.location = @original_show.location
+      @show.casting_enabled = @original_show.casting_enabled
     end
-  end
 
-  def edit
-  end
+    def edit; end
 
-  def create
-    if params[:show][:event_frequency] == "recurring"
-      create_recurring_events
-    else
-      # Check if this is a duplicate with the same date
-      if params[:duplicate_from_id].present? && params[:confirm_same_date] != "true"
-        original_show = @production.shows.find_by(id: params[:duplicate_from_id])
-        if original_show.present?
-          # Parse the submitted date_and_time
-          submitted_date = DateTime.parse(params[:show][:date_and_time]) rescue nil
-          if submitted_date.present? && submitted_date.to_date == original_show.date_and_time.to_date
-            # Same date - need confirmation
-            @show = Show.new(show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope))
-            @show.production = @production
-            @original_show = original_show
-            @needs_confirmation = true
-            render :new, status: :unprocessable_entity
-            return
+    def create
+      if params[:show][:event_frequency] == "recurring"
+        create_recurring_events
+      else
+        # Check if this is a duplicate with the same date
+        if params[:duplicate_from_id].present? && params[:confirm_same_date] != "true"
+          original_show = @production.shows.find_by(id: params[:duplicate_from_id])
+          if original_show.present?
+            # Parse the submitted date_and_time
+            submitted_date = begin
+              DateTime.parse(params[:show][:date_and_time])
+            rescue StandardError
+              nil
+            end
+            if submitted_date.present? && submitted_date.to_date == original_show.date_and_time.to_date
+              # Same date - need confirmation
+              @show = Show.new(show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type,
+                                                  :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope))
+              @show.production = @production
+              @original_show = original_show
+              @needs_confirmation = true
+              render :new, status: :unprocessable_entity
+              return
+            end
           end
         end
-      end
 
-      # Filter out virtual attributes used only for recurring event logic
-      filtered_params = show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope)
-      @show = Show.new(filtered_params)
-      @show.production = @production
+        # Filter out virtual attributes used only for recurring event logic
+        filtered_params = show_params.except(:event_frequency, :recurrence_pattern, :recurrence_end_type,
+                                             :recurrence_start_datetime, :recurrence_custom_end_date, :recurrence_edit_scope)
+        @show = Show.new(filtered_params)
+        @show.production = @production
 
-      if @show.save
-        redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
-      else
-        render :new, status: :unprocessable_entity
-      end
-    end
-  end
-
-  def create_recurring_events
-    # Parse the datetime in the application's timezone
-    start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
-    pattern = params[:show][:recurrence_pattern]
-    end_type = params[:show][:recurrence_end_type]
-
-    # Calculate end date based on duration
-    end_date = case end_type
-    when "3_months"
-      start_datetime.to_date + 3.months
-    when "6_months"
-      start_datetime.to_date + 6.months
-    when "12_months"
-      start_datetime.to_date + 12.months
-    when "end_of_year"
-      Date.new(start_datetime.year, 12, 31)
-    when "custom"
-      Date.parse(params[:show][:recurrence_custom_end_date])
-    else
-      start_datetime.to_date + 6.months # default
-    end
-
-    datetimes = []
-    current_datetime = start_datetime
-
-    # Store initial values for monthly_week pattern
-    initial_day_of_week = start_datetime.wday
-    initial_week_of_month = (start_datetime.day - 1) / 7 + 1
-
-    # Generate datetimes based on pattern
-    while current_datetime.to_date <= end_date
-      case pattern
-      when "daily"
-        datetimes << current_datetime
-        current_datetime += 1.day
-      when "weekly"
-        datetimes << current_datetime
-        current_datetime += 1.week
-      when "biweekly"
-        datetimes << current_datetime
-        current_datetime += 2.weeks
-      when "monthly_date"
-        datetimes << current_datetime
-        current_datetime = current_datetime + 1.month
-      when "monthly_week"
-        datetimes << current_datetime
-        # Move to next month, then find the same week and day
-        next_month = current_datetime + 1.month
-        # Find the first occurrence of the target day in the next month
-        first_of_month = next_month.beginning_of_month
-        days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
-        first_occurrence = first_of_month + days_until_target_day.days
-        # Add weeks to get to the target week, then preserve the original time
-        target_date = first_occurrence + (initial_week_of_month - 1).weeks
-        current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min, sec: start_datetime.sec)
-      when "weekdays"
-        if current_datetime.wday.between?(1, 5) # Monday to Friday
-          datetimes << current_datetime
-        end
-        current_datetime += 1.day
-      end
-    end
-
-    # Generate a UUID for this recurrence group
-    recurrence_group_id = SecureRandom.uuid
-
-    # Create shows for each datetime
-    created_count = 0
-    datetimes.each do |datetime|
-      show = Show.new(
-        event_type: params[:show][:event_type],
-        secondary_name: params[:show][:secondary_name],
-        location_id: params[:show][:location_id],
-        date_and_time: datetime,
-        production: @production,
-        recurrence_group_id: recurrence_group_id
-      )
-      created_count += 1 if show.save
-    end
-
-    redirect_to manage_production_shows_path(@production),
-                notice: "Successfully created #{created_count} recurring events"
-  end
-
-  def update
-    # Check if this is a recurring event and what scope to edit
-    if @show.recurring? && params[:show][:recurrence_edit_scope] == "all"
-      # Check if recurrence pattern is being changed
-      if params[:show][:recurrence_pattern].present?
-        # Recreate the entire series with new pattern
-        update_recurring_series
-      else
-        # Just update properties on all events in the group
-        update_params = show_params.except(:recurrence_edit_scope, :date_and_time,
-                                          :recurrence_pattern, :recurrence_start_datetime,
-                                          :recurrence_end_type, :recurrence_custom_end_date)
-
-        # Handle poster removal for all events in the group
-        if update_params[:remove_poster] == "1"
-          @show.recurrence_group.each do |show|
-            show.poster.purge if show.poster.attached?
-          end
-          update_params.delete(:remove_poster)
+        if @show.save
+          redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
         else
-          update_params.delete(:remove_poster)
+          render :new, status: :unprocessable_entity
         end
+      end
+    end
 
-        updated_count = 0
+    def create_recurring_events
+      # Parse the datetime in the application's timezone
+      start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
+      pattern = params[:show][:recurrence_pattern]
+      end_type = params[:show][:recurrence_end_type]
 
-        @show.recurrence_group.each do |show|
-          if show.update(update_params)
-            updated_count += 1
+      # Calculate end date based on duration
+      end_date = case end_type
+      when "3_months"
+                   start_datetime.to_date + 3.months
+      when "6_months"
+                   start_datetime.to_date + 6.months
+      when "12_months"
+                   start_datetime.to_date + 12.months
+      when "end_of_year"
+                   Date.new(start_datetime.year, 12, 31)
+      when "custom"
+                   Date.parse(params[:show][:recurrence_custom_end_date])
+      else
+                   start_datetime.to_date + 6.months # default
+      end
+
+      datetimes = []
+      current_datetime = start_datetime
+
+      # Store initial values for monthly_week pattern
+      initial_day_of_week = start_datetime.wday
+      initial_week_of_month = (start_datetime.day - 1) / 7 + 1
+
+      # Generate datetimes based on pattern
+      while current_datetime.to_date <= end_date
+        case pattern
+        when "daily"
+          datetimes << current_datetime
+          current_datetime += 1.day
+        when "weekly"
+          datetimes << current_datetime
+          current_datetime += 1.week
+        when "biweekly"
+          datetimes << current_datetime
+          current_datetime += 2.weeks
+        when "monthly_date"
+          datetimes << current_datetime
+          current_datetime += 1.month
+        when "monthly_week"
+          datetimes << current_datetime
+          # Move to next month, then find the same week and day
+          next_month = current_datetime + 1.month
+          # Find the first occurrence of the target day in the next month
+          first_of_month = next_month.beginning_of_month
+          days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
+          first_occurrence = first_of_month + days_until_target_day.days
+          # Add weeks to get to the target week, then preserve the original time
+          target_date = first_occurrence + (initial_week_of_month - 1).weeks
+          current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min,
+                                                sec: start_datetime.sec)
+        when "weekdays"
+          datetimes << current_datetime if current_datetime.wday.between?(1, 5) # Monday to Friday
+          current_datetime += 1.day
+        end
+      end
+
+      # Generate a UUID for this recurrence group
+      recurrence_group_id = SecureRandom.uuid
+
+      # Create shows for each datetime
+      created_count = 0
+      datetimes.each do |datetime|
+        show = Show.new(
+          event_type: params[:show][:event_type],
+          secondary_name: params[:show][:secondary_name],
+          location_id: params[:show][:location_id],
+          date_and_time: datetime,
+          production: @production,
+          recurrence_group_id: recurrence_group_id
+        )
+        created_count += 1 if show.save
+      end
+
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Successfully created #{created_count} recurring events"
+    end
+
+    def update
+      # Check if this is a recurring event and what scope to edit
+      if @show.recurring? && params[:show][:recurrence_edit_scope] == "all"
+        # Check if recurrence pattern is being changed
+        if params[:show][:recurrence_pattern].present?
+          # Recreate the entire series with new pattern
+          update_recurring_series
+        else
+          # Just update properties on all events in the group
+          update_params = show_params.except(:recurrence_edit_scope, :date_and_time,
+                                             :recurrence_pattern, :recurrence_start_datetime,
+                                             :recurrence_end_type, :recurrence_custom_end_date)
+
+          # Handle poster removal for all events in the group
+          if update_params[:remove_poster] == "1"
+            @show.recurrence_group.each do |show|
+              show.poster.purge if show.poster.attached?
+            end
           end
+          update_params.delete(:remove_poster)
+
+          updated_count = 0
+
+          @show.recurrence_group.each do |show|
+            updated_count += 1 if show.update(update_params)
+          end
+
+          redirect_to manage_production_shows_path(@production),
+                      notice: "Successfully updated #{updated_count} events in the series",
+                      status: :see_other
+        end
+      else
+        # Update only this occurrence (remove from recurrence group if editing date/time)
+        update_params = show_params.except(:recurrence_edit_scope, :recurrence_pattern,
+                                           :recurrence_start_datetime, :recurrence_end_type,
+                                           :recurrence_custom_end_date)
+
+        # If date/time is being changed on a recurring event, unlink it from the group
+        if @show.recurring? && update_params[:date_and_time].present? &&
+           update_params[:date_and_time] != @show.date_and_time.to_s
+          update_params[:recurrence_group_id] = nil
         end
 
-        redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully updated #{updated_count} events in the series",
-                    status: :see_other
-      end
-    else
-      # Update only this occurrence (remove from recurrence group if editing date/time)
-      update_params = show_params.except(:recurrence_edit_scope, :recurrence_pattern,
-                                        :recurrence_start_datetime, :recurrence_end_type,
-                                        :recurrence_custom_end_date)
-
-      # If date/time is being changed on a recurring event, unlink it from the group
-      if @show.recurring? && update_params[:date_and_time].present? &&
-         update_params[:date_and_time] != @show.date_and_time.to_s
-        update_params[:recurrence_group_id] = nil
-      end
-
-      # Handle poster removal
-      if update_params[:remove_poster] == "1" && @show.poster.attached?
-        @show.poster.purge
+        # Handle poster removal
+        @show.poster.purge if update_params[:remove_poster] == "1" && @show.poster.attached?
         update_params.delete(:remove_poster)
-      else
-        update_params.delete(:remove_poster)
-      end
 
-      if @show.update(update_params)
-        redirect_to manage_production_shows_path(@production),
-                    notice: "#{@show.event_type.titleize} was successfully updated",
-                    status: :see_other
-      else
-        render :edit, status: :unprocessable_entity
-      end
-    end
-  end
-
-  def update_recurring_series
-    # Get the recurrence group ID before deleting
-    recurrence_group_id = @show.recurrence_group_id
-
-    # Store the properties we want to keep
-    event_type = params[:show][:event_type] || @show.event_type
-    secondary_name = params[:show][:secondary_name] || @show.secondary_name
-    location_id = params[:show][:location_id] || @show.location_id
-
-    # Delete all existing events in the series
-    @show.recurrence_group.destroy_all
-
-    # Parse new recurrence parameters - use Time.zone.parse to respect application timezone
-    start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
-    pattern = params[:show][:recurrence_pattern]
-    end_type = params[:show][:recurrence_end_type]
-
-    # Calculate end date based on duration
-    end_date = case end_type
-    when "3_months"
-      start_datetime.to_date + 3.months
-    when "6_months"
-      start_datetime.to_date + 6.months
-    when "12_months"
-      start_datetime.to_date + 12.months
-    when "end_of_year"
-      Date.new(start_datetime.year, 12, 31)
-    when "custom"
-      Date.parse(params[:show][:recurrence_custom_end_date])
-    else
-      start_datetime.to_date + 6.months # default
-    end
-
-    datetimes = []
-    current_datetime = start_datetime
-
-    # Store initial values for monthly_week pattern
-    initial_day_of_week = start_datetime.wday
-    initial_week_of_month = (start_datetime.day - 1) / 7 + 1
-
-    # Generate datetimes based on pattern
-    while current_datetime.to_date <= end_date
-      case pattern
-      when "weekly"
-        datetimes << current_datetime
-        current_datetime += 1.week
-      when "biweekly"
-        datetimes << current_datetime
-        current_datetime += 2.weeks
-      when "monthly_date"
-        datetimes << current_datetime
-        current_datetime = current_datetime + 1.month
-      when "monthly_week"
-        datetimes << current_datetime
-        # Move to next month, then find the same week and day
-        next_month = current_datetime + 1.month
-        # Find the first occurrence of the target day in the next month
-        first_of_month = next_month.beginning_of_month
-        days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
-        first_occurrence = first_of_month + days_until_target_day.days
-        # Add weeks to get to the target week, then preserve the original time
-        target_date = first_occurrence + (initial_week_of_month - 1).weeks
-        current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min, sec: start_datetime.sec)
+        if @show.update(update_params)
+          redirect_to manage_production_shows_path(@production),
+                      notice: "#{@show.event_type.titleize} was successfully updated",
+                      status: :see_other
+        else
+          render :edit, status: :unprocessable_entity
+        end
       end
     end
 
-    # Create new shows for each datetime with the same recurrence group ID
-    created_count = 0
-    datetimes.each do |datetime|
-      show = Show.new(
-        event_type: event_type,
-        secondary_name: secondary_name,
-        location_id: location_id,
-        date_and_time: datetime,
-        production: @production,
-        recurrence_group_id: recurrence_group_id
-      )
-      created_count += 1 if show.save
-    end
+    def update_recurring_series
+      # Get the recurrence group ID before deleting
+      recurrence_group_id = @show.recurrence_group_id
 
-    redirect_to manage_production_shows_path(@production),
-                notice: "Successfully recreated series with #{created_count} events"
-  end
+      # Store the properties we want to keep
+      event_type = params[:show][:event_type] || @show.event_type
+      secondary_name = params[:show][:secondary_name] || @show.secondary_name
+      location_id = params[:show][:location_id] || @show.location_id
 
-  def cancel
-    # Shows the cancel/delete options page
-  end
-
-  def cancel_show
-    scope = params[:scope] || "this"
-    event_label = @show.event_type.titleize
-
-    if scope == "all" && @show.recurring?
-      # Cancel all occurrences in the recurrence group
-      count = @show.recurrence_group.update_all(canceled: true)
-      redirect_to manage_production_shows_path(@production),
-                  notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
-                  status: :see_other
-    else
-      # Cancel just this occurrence
-      @show.update!(canceled: true)
-      redirect_to manage_production_shows_path(@production),
-                  notice: "#{event_label} was successfully canceled",
-                  status: :see_other
-    end
-  end
-
-  def delete_show
-    scope = params[:scope] || "this"
-    event_label = @show.event_type.titleize
-
-    if scope == "all" && @show.recurring?
-      # Delete all occurrences in the recurrence group
-      count = @show.recurrence_group.count
+      # Delete all existing events in the series
       @show.recurrence_group.destroy_all
+
+      # Parse new recurrence parameters - use Time.zone.parse to respect application timezone
+      start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
+      pattern = params[:show][:recurrence_pattern]
+      end_type = params[:show][:recurrence_end_type]
+
+      # Calculate end date based on duration
+      end_date = case end_type
+      when "3_months"
+                   start_datetime.to_date + 3.months
+      when "6_months"
+                   start_datetime.to_date + 6.months
+      when "12_months"
+                   start_datetime.to_date + 12.months
+      when "end_of_year"
+                   Date.new(start_datetime.year, 12, 31)
+      when "custom"
+                   Date.parse(params[:show][:recurrence_custom_end_date])
+      else
+                   start_datetime.to_date + 6.months # default
+      end
+
+      datetimes = []
+      current_datetime = start_datetime
+
+      # Store initial values for monthly_week pattern
+      initial_day_of_week = start_datetime.wday
+      initial_week_of_month = (start_datetime.day - 1) / 7 + 1
+
+      # Generate datetimes based on pattern
+      while current_datetime.to_date <= end_date
+        case pattern
+        when "weekly"
+          datetimes << current_datetime
+          current_datetime += 1.week
+        when "biweekly"
+          datetimes << current_datetime
+          current_datetime += 2.weeks
+        when "monthly_date"
+          datetimes << current_datetime
+          current_datetime += 1.month
+        when "monthly_week"
+          datetimes << current_datetime
+          # Move to next month, then find the same week and day
+          next_month = current_datetime + 1.month
+          # Find the first occurrence of the target day in the next month
+          first_of_month = next_month.beginning_of_month
+          days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
+          first_occurrence = first_of_month + days_until_target_day.days
+          # Add weeks to get to the target week, then preserve the original time
+          target_date = first_occurrence + (initial_week_of_month - 1).weeks
+          current_datetime = target_date.change(hour: start_datetime.hour, min: start_datetime.min,
+                                                sec: start_datetime.sec)
+        end
+      end
+
+      # Create new shows for each datetime with the same recurrence group ID
+      created_count = 0
+      datetimes.each do |datetime|
+        show = Show.new(
+          event_type: event_type,
+          secondary_name: secondary_name,
+          location_id: location_id,
+          date_and_time: datetime,
+          production: @production,
+          recurrence_group_id: recurrence_group_id
+        )
+        created_count += 1 if show.save
+      end
+
       redirect_to manage_production_shows_path(@production),
-                  notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}",
-                  status: :see_other
-    else
-      # Delete just this occurrence
-      @show.destroy!
-      redirect_to manage_production_shows_path(@production),
-                  notice: "#{event_label} was successfully deleted",
-                  status: :see_other
+                  notice: "Successfully recreated series with #{created_count} events"
     end
-  end
 
-  def uncancel
-    scope = params[:scope] || "this"
-    event_label = @show.event_type.titleize
-
-    if scope == "all" && @show.recurring?
-      # Uncancel all canceled occurrences in the recurrence group
-      count = @show.recurrence_group.where(canceled: true).update_all(canceled: false)
-      redirect_to manage_production_shows_path(@production),
-                  notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
-                  status: :see_other
-    else
-      # Uncancel just this occurrence
-      @show.update!(canceled: false)
-      redirect_to manage_production_shows_path(@production),
-                  notice: "#{event_label} was successfully uncanceled",
-                  status: :see_other
+    def cancel
+      # Shows the cancel/delete options page
     end
-  end
 
-  def destroy
-    # Legacy destroy action - redirects to new cancel page
-    redirect_to cancel_manage_production_show_path(@production, @show)
-  end
+    def cancel_show
+      scope = params[:scope] || "this"
+      event_label = @show.event_type.titleize
 
-  private
+      if scope == "all" && @show.recurring?
+        # Cancel all occurrences in the recurrence group
+        count = @show.recurrence_group.update_all(canceled: true)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
+                    status: :see_other
+      else
+        # Cancel just this occurrence
+        @show.update!(canceled: true)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "#{event_label} was successfully canceled",
+                    status: :see_other
+      end
+    end
+
+    def delete_show
+      scope = params[:scope] || "this"
+      event_label = @show.event_type.titleize
+
+      if scope == "all" && @show.recurring?
+        # Delete all occurrences in the recurrence group
+        count = @show.recurrence_group.count
+        @show.recurrence_group.destroy_all
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}",
+                    status: :see_other
+      else
+        # Delete just this occurrence
+        @show.destroy!
+        redirect_to manage_production_shows_path(@production),
+                    notice: "#{event_label} was successfully deleted",
+                    status: :see_other
+      end
+    end
+
+    def uncancel
+      scope = params[:scope] || "this"
+      event_label = @show.event_type.titleize
+
+      if scope == "all" && @show.recurring?
+        # Uncancel all canceled occurrences in the recurrence group
+        count = @show.recurrence_group.where(canceled: true).update_all(canceled: false)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
+                    status: :see_other
+      else
+        # Uncancel just this occurrence
+        @show.update!(canceled: false)
+        redirect_to manage_production_shows_path(@production),
+                    notice: "#{event_label} was successfully uncanceled",
+                    status: :see_other
+      end
+    end
+
+    def destroy
+      # Legacy destroy action - redirects to new cancel page
+      redirect_to cancel_manage_production_show_path(@production, @show)
+    end
+
+    private
+
     def set_production
       if Current.organization
         @production = Current.organization.productions.find(params[:production_id])
@@ -446,24 +447,24 @@ class Manage::ShowsController < Manage::ManageController
     def set_show
       show_id = params[:show_id] || params[:id]
       @show = Show
-        .includes(
-          :location,
-          :show_person_role_assignments,
-          poster_attachment: :blob,
-          production: { posters: { image_attachment: :blob } }
-        )
-        .find(show_id)
+              .includes(
+                :location,
+                :show_person_role_assignments,
+                poster_attachment: :blob,
+                production: { posters: { image_attachment: :blob } }
+              )
+              .find(show_id)
     end
 
     # Only allow a list of trusted parameters through.
     def show_params
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
-        :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
-        :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
-        show_links_attributes: [ :id, :url, :text, :_destroy ])
+                                               :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
+                                               :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
+                                               show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info
-      if permitted[:is_online] == "1" || permitted[:is_online] == "true" || permitted[:is_online] == true
+      if [ "1", "true", true ].include?(permitted[:is_online])
         permitted[:location_id] = nil
         permitted[:is_online] = true
       else
@@ -473,4 +474,5 @@ class Manage::ShowsController < Manage::ManageController
 
       permitted
     end
+  end
 end

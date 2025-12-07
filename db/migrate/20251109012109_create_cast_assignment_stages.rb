@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateCastAssignmentStages < ActiveRecord::Migration[8.1]
   def change
     create_table :cast_assignment_stages do |t|
@@ -9,6 +11,7 @@ class CreateCastAssignmentStages < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :cast_assignment_stages, [ :production_id, :cast_id, :person_id ], unique: true, name: 'index_cast_assignment_stages_unique'
+    add_index :cast_assignment_stages, %i[production_id cast_id person_id], unique: true,
+                                                                            name: 'index_cast_assignment_stages_unique'
   end
 end

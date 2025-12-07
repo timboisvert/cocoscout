@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ApplicationHelper
   def impersonating?
     session[:user_doing_the_impersonating].present?
@@ -16,14 +18,16 @@ module ApplicationHelper
 
   def current_user_is_global_manager?
     return false unless Current.user
+
     Current.user.manager?
   end
 
   def current_user_has_any_manage_access?
     return false unless Current.user
+
     # Check if user has any production company access with manager or viewer role,
     # OR has per-production permissions
-    Current.user.organization_roles.exists?(company_role: [ "manager", "viewer" ]) ||
+    Current.user.organization_roles.exists?(company_role: %w[manager viewer]) ||
       Current.user.production_permissions.exists?
   end
 
@@ -61,28 +65,29 @@ module ApplicationHelper
     disabled_classes = "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed"
     gap_classes      = "inline-flex items-center justify-center px-3 py-1 text-sm text-slate-400"
 
-    anchor = ->(page, text = pagy.label_for(page), classes: nil, aria_label: nil) do
+    anchor = lambda do |page, text = pagy.label_for(page), classes: nil, aria_label: nil|
       link_to text, pagy.url_for(page),
               class: classes,
               "aria-label": aria_label
     end
 
-    html  = %(<nav#{id} class="pagy-tailwind nav" aria-label="#{aria_label || 'Pagination'}"><ul class="flex items-center gap-2">#{
+    html = %(<nav#{id} class="pagy-tailwind nav" aria-label="#{aria_label || 'Pagination'}"><ul class="flex items-center gap-2">#{
 							 tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
-						 })
-        pagy.series.each do |item|
-          segment =
-            case item
-            when Integer
-              %(<li>#{anchor.(item, classes: link_classes)}</li>)
-            when String
-              %(<li><span class="#{active_classes}" aria-current="page">#{pagy.label_for(item)}</span></li>)
-            when :gap
-              %(<li><span class="#{gap_classes}" aria-hidden="true">&hellip;</span></li>)
-            else
-              raise Pagy::InternalError, "expected item types in series to be Integer, String or :gap; got #{item.inspect}"
-            end
-        html << segment
+						})
+    pagy.series.each do |item|
+      segment =
+        case item
+        when Integer
+          %(<li>#{anchor.call(item, classes: link_classes)}</li>)
+        when String
+          %(<li><span class="#{active_classes}" aria-current="page">#{pagy.label_for(item)}</span></li>)
+        when :gap
+          %(<li><span class="#{gap_classes}" aria-hidden="true">&hellip;</span></li>)
+        else
+          raise Pagy::InternalError,
+                "expected item types in series to be Integer, String or :gap; got #{item.inspect}"
+        end
+      html << segment
     end
     html << %(#{tailwind_next_html(pagy, anchor, link_classes, disabled_classes)}</ul></nav>)
 
@@ -93,7 +98,7 @@ module ApplicationHelper
 
   def tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
     if (p_prev = pagy.prev)
-      %(<li>#{anchor.(p_prev, 'Previous', classes: link_classes, aria_label: 'Previous page')}</li>)
+      %(<li>#{anchor.call(p_prev, 'Previous', classes: link_classes, aria_label: 'Previous page')}</li>)
     else
       %(<li><span class="#{disabled_classes}" aria-disabled="true">Previous</span></li>)
     end
@@ -101,7 +106,7 @@ module ApplicationHelper
 
   def tailwind_next_html(pagy, anchor, link_classes, disabled_classes)
     if (p_next = pagy.next)
-      %(<li>#{anchor.(p_next, 'Next', classes: link_classes, aria_label: 'Next page')}</li>)
+      %(<li>#{anchor.call(p_next, 'Next', classes: link_classes, aria_label: 'Next page')}</li>)
     else
       %(<li><span class="#{disabled_classes}" aria-disabled="true">Next</span></li>)
     end

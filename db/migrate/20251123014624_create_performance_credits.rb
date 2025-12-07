@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreatePerformanceCredits < ActiveRecord::Migration[8.1]
   def change
     create_table :performance_credits do |t|
@@ -16,6 +18,7 @@ class CreatePerformanceCredits < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :performance_credits, [ :profileable_type, :profileable_id, :section_name, :position ], name: 'index_performance_credits_on_profileable_and_section'
+    add_index :performance_credits, %i[profileable_type profileable_id section_name position],
+              name: 'index_performance_credits_on_profileable_and_section'
   end
 end

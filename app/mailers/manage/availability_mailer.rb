@@ -1,17 +1,21 @@
-class Manage::AvailabilityMailer < ApplicationMailer
-  def request_availability(person, production, message)
-    @person = person
-    @production = production
-    @message = message
+# frozen_string_literal: true
 
-    mail(to: person.email, subject: "Please submit your availability for #{production.name}")
-  end
+module Manage
+  class AvailabilityMailer < ApplicationMailer
+    def request_availability(person, production, message)
+      @person = person
+      @production = production
+      @message = message
 
-  def request_availability_for_group(group, production, message)
-    @group = group
-    @production = production
-    @message = message
+      mail(to: person.email, subject: "Please submit your availability for #{production.name}")
+    end
 
-    mail(to: group.email, subject: "Please submit availability for #{group.name} - #{production.name}")
+    def request_availability_for_group(group, production, message)
+      @group = group
+      @production = production
+      @message = message
+
+      mail(to: group.email, subject: "Please submit availability for #{group.name} - #{production.name}")
+    end
   end
 end

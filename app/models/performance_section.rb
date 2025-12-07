@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PerformanceSection < ApplicationRecord
   belongs_to :profileable, polymorphic: true
   has_many :performance_credits, dependent: :destroy
@@ -17,12 +19,13 @@ class PerformanceSection < ApplicationRecord
   def set_credit_profileable
     # Ensure all credits have the same profileable as their section
     performance_credits.each do |credit|
-      credit.profileable = self.profileable if credit.profileable_id.nil?
+      credit.profileable = profileable if credit.profileable_id.nil?
     end
   end
 
   def set_default_position
     return if position.present?
+
     max_position = profileable&.performance_sections&.maximum(:position) || -1
     self.position = max_position + 1
   end

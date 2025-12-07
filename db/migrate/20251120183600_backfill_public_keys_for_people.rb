@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class BackfillPublicKeysForPeople < ActiveRecord::Migration[8.1]
   def up
     # Backfill public_keys for existing Person records

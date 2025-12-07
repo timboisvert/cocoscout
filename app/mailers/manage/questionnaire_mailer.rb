@@ -1,13 +1,17 @@
-class Manage::QuestionnaireMailer < ApplicationMailer
-  def invitation(person, questionnaire, production, subject, message)
-    @person = person
-    @questionnaire = questionnaire
-    @production = production
-    @message = message
+# frozen_string_literal: true
 
-    mail(
-      to: person.user.email_address,
-      subject: subject
-    )
+module Manage
+  class QuestionnaireMailer < ApplicationMailer
+    def invitation(person, questionnaire, production, subject, message)
+      @person = person
+      @questionnaire = questionnaire
+      @production = production
+      @message = message
+
+      mail(
+        to: person.user.email_address,
+        subject: subject
+      )
+    end
   end
 end

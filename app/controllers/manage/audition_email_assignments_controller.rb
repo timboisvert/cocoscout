@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # AuditionEmailAssignments track which email template each auditionee receives.
 # This is SEPARATE from cast assignments (CastAssignmentStage).
 # - People in casts can receive custom emails
@@ -7,7 +9,7 @@ module Manage
   class AuditionEmailAssignmentsController < ManageController
     before_action :set_production
     before_action :set_audition_cycle
-    before_action :set_assignment, only: [ :update, :destroy ]
+    before_action :set_assignment, only: %i[update destroy]
 
     def create
       @assignment = @audition_cycle.audition_email_assignments.new(assignment_params)

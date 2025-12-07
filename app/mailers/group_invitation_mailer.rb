@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class GroupInvitationMailer < ApplicationMailer
   def invitation(group_invitation, subject = nil, message = nil)
     @invitation = group_invitation

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddOwnerToOrganizations < ActiveRecord::Migration[8.1]
   def change
     add_reference :organizations, :owner, null: true, foreign_key: { to_table: :users }
@@ -7,7 +9,7 @@ class AddOwnerToOrganizations < ActiveRecord::Migration[8.1]
       dir.up do
         Organization.reset_column_information
         Organization.find_each do |org|
-          manager = org.user_roles.find_by(company_role: "manager")&.user
+          manager = org.user_roles.find_by(company_role: 'manager')&.user
           org.update_column(:owner_id, manager&.id) if manager
         end
       end

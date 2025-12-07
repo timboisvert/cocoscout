@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'capybara/rspec'
 require 'selenium-webdriver'
 
@@ -29,6 +31,6 @@ Capybara.default_driver = :headless_chrome
 # Increase wait time for elements to appear (helps with async operations)
 Capybara.default_max_wait_time = 10
 
-# Note: System tests are inherently slower due to browser startup.
+# NOTE: System tests are inherently slower due to browser startup.
 # Each test takes ~30-60 seconds. Consider this when writing new tests.
 # Prefer model and request tests for faster feedback during development.

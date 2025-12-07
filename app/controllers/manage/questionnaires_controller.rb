@@ -1,273 +1,292 @@
-class Manage::QuestionnairesController < Manage::ManageController
-  before_action :set_production
-  before_action :set_questionnaire, only: [ :show, :update, :archive, :unarchive, :form, :preview, :create_question, :update_question, :destroy_question, :reorder_questions, :responses, :show_response, :invite_people ]
+# frozen_string_literal: true
 
-  def index
-    @filter = params[:filter] || "all"
+module Manage
+  class QuestionnairesController < Manage::ManageController
+    before_action :set_production
+    before_action :set_questionnaire,
+                  only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
+                           responses show_response invite_people]
 
-    case @filter
-    when "accepting"
-      @questionnaires = @production.questionnaires.where(archived_at: nil, accepting_responses: true).order(created_at: :desc)
-    when "archived"
-      @questionnaires = @production.questionnaires.where.not(archived_at: nil).order(archived_at: :desc)
-    else # 'all'
-      @questionnaires = @production.questionnaires.where(archived_at: nil).order(created_at: :desc)
-    end
-  end
+    def index
+      @filter = params[:filter] || "all"
 
-  def show
-    @questions = @questionnaire.questions.order(:position)
-  end
-
-  def new
-    @questionnaire = @production.questionnaires.new
-  end
-
-  def create
-    @questionnaire = @production.questionnaires.new(questionnaire_params)
-
-    if @questionnaire.save
-      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire created successfully"
-    else
-      render :new, status: :unprocessable_entity
-    end
-  end
-
-  def update
-    params_to_update = questionnaire_params
-
-    # Clean availability_show_ids array
-    if params_to_update[:availability_show_ids].present?
-      params_to_update[:availability_show_ids] = params_to_update[:availability_show_ids].reject(&:blank?).map(&:to_i)
-      params_to_update[:availability_show_ids] = nil if params_to_update[:availability_show_ids].empty?
+      case @filter
+      when "accepting"
+        @questionnaires = @production.questionnaires.where(archived_at: nil,
+                                                           accepting_responses: true).order(created_at: :desc)
+      when "archived"
+        @questionnaires = @production.questionnaires.where.not(archived_at: nil).order(archived_at: :desc)
+      else # 'all'
+        @questionnaires = @production.questionnaires.where(archived_at: nil).order(created_at: :desc)
+      end
     end
 
-    if @questionnaire.update(params_to_update)
-      respond_to do |format|
-        format.html do
-          # If updating from the form page (availability settings or title), redirect back to form
-          if params[:questionnaire]&.key?(:include_availability_section) ||
-             params[:questionnaire]&.key?(:availability_show_ids) ||
-             params[:questionnaire]&.key?(:title) ||
-             params[:questionnaire]&.key?(:require_all_availability) ||
-             params[:questionnaire]&.key?(:instruction_text)
-            redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire updated successfully"
-          else
-            redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire updated successfully"
+    def show
+      @questions = @questionnaire.questions.order(:position)
+    end
+
+    def new
+      @questionnaire = @production.questionnaires.new
+    end
+
+    def create
+      @questionnaire = @production.questionnaires.new(questionnaire_params)
+
+      if @questionnaire.save
+        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+                    notice: "Questionnaire created successfully"
+      else
+        render :new, status: :unprocessable_entity
+      end
+    end
+
+    def update
+      params_to_update = questionnaire_params
+
+      # Clean availability_show_ids array
+      if params_to_update[:availability_show_ids].present?
+        params_to_update[:availability_show_ids] = params_to_update[:availability_show_ids].reject(&:blank?).map(&:to_i)
+        params_to_update[:availability_show_ids] = nil if params_to_update[:availability_show_ids].empty?
+      end
+
+      if @questionnaire.update(params_to_update)
+        respond_to do |format|
+          format.html do
+            # If updating from the form page (availability settings or title), redirect back to form
+            if params[:questionnaire]&.key?(:include_availability_section) ||
+               params[:questionnaire]&.key?(:availability_show_ids) ||
+               params[:questionnaire]&.key?(:title) ||
+               params[:questionnaire]&.key?(:require_all_availability) ||
+               params[:questionnaire]&.key?(:instruction_text)
+              redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+                          notice: "Questionnaire updated successfully"
+            else
+              redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+                          notice: "Questionnaire updated successfully"
+            end
           end
+          format.json { render json: { success: true, accepting_responses: @questionnaire.accepting_responses } }
         end
-        format.json { render json: { success: true, accepting_responses: @questionnaire.accepting_responses } }
-      end
-    else
-      respond_to do |format|
-        format.html { render :edit, status: :unprocessable_entity }
-        format.json { render json: { success: false, errors: @questionnaire.errors }, status: :unprocessable_entity }
+      else
+        respond_to do |format|
+          format.html { render :edit, status: :unprocessable_entity }
+          format.json { render json: { success: false, errors: @questionnaire.errors }, status: :unprocessable_entity }
+        end
       end
     end
-  end
 
-  def archive
-    @questionnaire.update(archived_at: Time.current)
-    redirect_to manage_production_questionnaires_path(@production), notice: "Questionnaire archived successfully"
-  end
-
-  def unarchive
-    @questionnaire.update(archived_at: nil)
-    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Questionnaire unarchived successfully"
-  end
-
-  def form
-    @questions = @questionnaire.questions.order(:position)
-    @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-    # Check if we're editing a specific question
-    if params[:question_id].present?
-      @question = @questionnaire.questions.find(params[:question_id])
-    else
-      @question = @questionnaire.questions.new
+    def archive
+      @questionnaire.update(archived_at: Time.current)
+      redirect_to manage_production_questionnaires_path(@production), notice: "Questionnaire archived successfully"
     end
-  end
 
-  def preview
-    @questions = @questionnaire.questions.order(:position)
+    def unarchive
+      @questionnaire.update(archived_at: nil)
+      redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+                  notice: "Questionnaire unarchived successfully"
+    end
 
-    # Load shows for availability section if enabled
-    if @questionnaire.include_availability_section
+    def form
+      @questions = @questionnaire.questions.order(:position)
+      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+
+      # Check if we're editing a specific question
+      @question = if params[:question_id].present?
+                    @questionnaire.questions.find(params[:question_id])
+      else
+                    @questionnaire.questions.new
+      end
+    end
+
+    def preview
+      @questions = @questionnaire.questions.order(:position)
+
+      # Load shows for availability section if enabled
+      return unless @questionnaire.include_availability_section
+
       @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
       # Filter shows by selected show IDs if specified
-      if @questionnaire.availability_show_ids.present?
-        @shows = @shows.where(id: @questionnaire.availability_show_ids)
+      return unless @questionnaire.availability_show_ids.present?
+
+      @shows = @shows.where(id: @questionnaire.availability_show_ids)
+    end
+
+    def create_question
+      @question = @questionnaire.questions.new(question_params)
+
+      # Set position as the last question
+      max_position = @questionnaire.questions.maximum(:position) || 0
+      @question.position = max_position + 1
+
+      if @question.save
+        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+                    notice: "Question added successfully"
+      else
+        @questions = @questionnaire.questions.order(:position)
+        render :form, status: :unprocessable_entity
       end
     end
-  end
 
-  def create_question
-    @question = @questionnaire.questions.new(question_params)
+    def update_question
+      @question = @questionnaire.questions.find(params[:question_id])
 
-    # Set position as the last question
-    max_position = @questionnaire.questions.maximum(:position) || 0
-    @question.position = max_position + 1
+      if @question.update(question_params)
+        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+                    notice: "Question updated successfully"
+      else
+        @questions = @questionnaire.questions.order(:position)
+        render :form, status: :unprocessable_entity
+      end
+    end
 
-    if @question.save
-      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Question added successfully"
-    else
+    def destroy_question
+      @question = @questionnaire.questions.find(params[:question_id])
+      @question.destroy
+      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+                  notice: "Question deleted successfully"
+    end
+
+    def reorder_questions
+      params[:question_ids].each_with_index do |id, index|
+        @questionnaire.questions.find(id).update(position: index + 1)
+      end
+
+      head :ok
+    end
+
+    def responses
+      @responses = @questionnaire.questionnaire_responses
+                                 .includes(:respondent)
+                                 .order(created_at: :desc)
+    end
+
+    def show_response
+      @response = @questionnaire.questionnaire_responses.find(params[:response_id])
       @questions = @questionnaire.questions.order(:position)
-      render :form, status: :unprocessable_entity
-    end
-  end
-
-  def update_question
-    @question = @questionnaire.questions.find(params[:question_id])
-
-    if @question.update(question_params)
-      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Question updated successfully"
-    else
-      @questions = @questionnaire.questions.order(:position)
-      render :form, status: :unprocessable_entity
-    end
-  end
-
-  def destroy_question
-    @question = @questionnaire.questions.find(params[:question_id])
-    @question.destroy
-    redirect_to form_manage_production_questionnaire_path(@production, @questionnaire), notice: "Question deleted successfully"
-  end
-
-  def reorder_questions
-    params[:question_ids].each_with_index do |id, index|
-      @questionnaire.questions.find(id).update(position: index + 1)
-    end
-
-    head :ok
-  end
-
-  def responses
-    @responses = @questionnaire.questionnaire_responses
-                               .includes(:respondent)
-                               .order(created_at: :desc)
-  end
-
-  def show_response
-    @response = @questionnaire.questionnaire_responses.find(params[:response_id])
-    @questions = @questionnaire.questions.order(:position)
-    @answers = {}
-    @questions.each do |question|
-      answer = @response.questionnaire_answers.find_by(question: question)
-      @answers["#{question.id}"] = answer.value if answer
-    end
-
-    # Load availability data if enabled
-    if @questionnaire.include_availability_section
-      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-
-      # Filter by show ids if specified
-      if @questionnaire.availability_show_ids.present?
-        @shows = @shows.where(id: @questionnaire.availability_show_ids)
+      @answers = {}
+      @questions.each do |question|
+        answer = @response.questionnaire_answers.find_by(question: question)
+        @answers[question.id.to_s] = answer.value if answer
       end
 
-      # Load availability data for this respondent (person or group)
-      @availability = {}
-      ShowAvailability.where(available_entity: @response.respondent, show_id: @shows.pluck(:id)).each do |show_availability|
-        @availability["#{show_availability.show_id}"] = show_availability.status.to_s
-      end
-    end
+      # Load availability data if enabled
+      if @questionnaire.include_availability_section
+        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-    render :response
-  end
+        # Filter by show ids if specified
+        @shows = @shows.where(id: @questionnaire.availability_show_ids) if @questionnaire.availability_show_ids.present?
 
-  def invite_people
-    recipient_type = params[:recipient_type]
-    talent_pool_id = params[:talent_pool_id]
-    person_ids = params[:person_ids] || []
-    group_ids = params[:group_ids] || []
-    subject_template = params[:subject]
-    message_template = params[:message]
-
-    # Get IDs of already invited people and groups
-    already_invited_person_ids = @questionnaire.questionnaire_invitations
-      .where(invitee_type: "Person").pluck(:invitee_id)
-    already_invited_group_ids = @questionnaire.questionnaire_invitations
-      .where(invitee_type: "Group").pluck(:invitee_id)
-
-    # Get all people and groups in the production
-    all_people = @production.talent_pools.flat_map(&:people).uniq
-    all_groups = @production.talent_pools.flat_map(&:groups).uniq
-
-    # Filter to only those not yet invited
-    not_invited_people = all_people.reject { |p| already_invited_person_ids.include?(p.id) }
-    not_invited_groups = all_groups.reject { |g| already_invited_group_ids.include?(g.id) }
-
-    # Determine person and group recipients based on recipient_type
-    person_recipients = []
-    group_recipients = []
-
-    if recipient_type == "all"
-      # Only send to those NOT yet invited
-      person_recipients = not_invited_people
-      group_recipients = not_invited_groups
-    elsif recipient_type == "cast"
-      talent_pool = TalentPool.find(talent_pool_id)
-      # Only send to those in the talent pool who are NOT yet invited
-      person_recipients = talent_pool.people.reject { |p| already_invited_person_ids.include?(p.id) }
-      group_recipients = talent_pool.groups.reject { |g| already_invited_group_ids.include?(g.id) }
-    elsif recipient_type == "specific"
-      # For specific selection, only include those not yet invited
-      person_recipients = Person.where(id: person_ids).reject { |p| already_invited_person_ids.include?(p.id) }
-      group_recipients = Group.where(id: group_ids).reject { |g| already_invited_group_ids.include?(g.id) }
-    end
-
-    invitation_count = 0
-
-    # Create invitations for people and send emails
-    person_recipients.each do |person|
-      QuestionnaireInvitation.create!(
-        questionnaire: @questionnaire,
-        invitee: person
-      )
-      invitation_count += 1
-
-      # Send email if person has a user account
-      if person.user
-        Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template, message_template).deliver_later
-      end
-    end
-
-    # Create invitations for groups and send to members with notifications enabled
-    group_recipients.each do |group|
-      QuestionnaireInvitation.create!(
-        questionnaire: @questionnaire,
-        invitee: group
-      )
-      invitation_count += 1
-
-      # Send emails to all group members with notifications enabled
-      members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
-      members_with_notifications.each do |person|
-        if person.user
-          Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template, message_template).deliver_later
+        # Load availability data for this respondent (person or group)
+        @availability = {}
+        ShowAvailability.where(available_entity: @response.respondent,
+                               show_id: @shows.pluck(:id)).each do |show_availability|
+          @availability[show_availability.show_id.to_s] = show_availability.status.to_s
         end
       end
+
+      render :response
     end
 
-    redirect_to manage_production_questionnaire_path(@production, @questionnaire), notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
-  end
+    def invite_people
+      recipient_type = params[:recipient_type]
+      talent_pool_id = params[:talent_pool_id]
+      person_ids = params[:person_ids] || []
+      group_ids = params[:group_ids] || []
+      subject_template = params[:subject]
+      message_template = params[:message]
 
-  private
+      # Get IDs of already invited people and groups
+      already_invited_person_ids = @questionnaire.questionnaire_invitations
+                                                 .where(invitee_type: "Person").pluck(:invitee_id)
+      already_invited_group_ids = @questionnaire.questionnaire_invitations
+                                                .where(invitee_type: "Group").pluck(:invitee_id)
 
-  def set_production
-    @production = Current.organization.productions.find(params[:production_id])
-  end
+      # Get all people and groups in the production
+      all_people = @production.talent_pools.flat_map(&:people).uniq
+      all_groups = @production.talent_pools.flat_map(&:groups).uniq
 
-  def set_questionnaire
-    @questionnaire = @production.questionnaires.find(params[:id])
-  end
+      # Filter to only those not yet invited
+      not_invited_people = all_people.reject { |p| already_invited_person_ids.include?(p.id) }
+      not_invited_groups = all_groups.reject { |g| already_invited_group_ids.include?(g.id) }
 
-  def questionnaire_params
-    params.require(:questionnaire).permit(:title, :instruction_text, :accepting_responses, :include_availability_section, :require_all_availability, availability_show_ids: [])
-  end
+      # Determine person and group recipients based on recipient_type
+      person_recipients = []
+      group_recipients = []
 
-  def question_params
-    params.require(:question).permit(:text, :question_type, :required, question_options_attributes: [ :id, :text, :_destroy ])
+      case recipient_type
+      when "all"
+        # Only send to those NOT yet invited
+        person_recipients = not_invited_people
+        group_recipients = not_invited_groups
+      when "cast"
+        talent_pool = TalentPool.find(talent_pool_id)
+        # Only send to those in the talent pool who are NOT yet invited
+        person_recipients = talent_pool.people.reject { |p| already_invited_person_ids.include?(p.id) }
+        group_recipients = talent_pool.groups.reject { |g| already_invited_group_ids.include?(g.id) }
+      when "specific"
+        # For specific selection, only include those not yet invited
+        person_recipients = Person.where(id: person_ids).reject { |p| already_invited_person_ids.include?(p.id) }
+        group_recipients = Group.where(id: group_ids).reject { |g| already_invited_group_ids.include?(g.id) }
+      end
+
+      invitation_count = 0
+
+      # Create invitations for people and send emails
+      person_recipients.each do |person|
+        QuestionnaireInvitation.create!(
+          questionnaire: @questionnaire,
+          invitee: person
+        )
+        invitation_count += 1
+
+        # Send email if person has a user account
+        if person.user
+          Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
+                                                 message_template).deliver_later
+        end
+      end
+
+      # Create invitations for groups and send to members with notifications enabled
+      group_recipients.each do |group|
+        QuestionnaireInvitation.create!(
+          questionnaire: @questionnaire,
+          invitee: group
+        )
+        invitation_count += 1
+
+        # Send emails to all group members with notifications enabled
+        members_with_notifications = group.group_memberships.select(&:notifications_enabled?).map(&:person)
+        members_with_notifications.each do |person|
+          if person.user
+            Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
+                                                   message_template).deliver_later
+          end
+        end
+      end
+
+      redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+                  notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
+    end
+
+    private
+
+    def set_production
+      @production = Current.organization.productions.find(params[:production_id])
+    end
+
+    def set_questionnaire
+      @questionnaire = @production.questionnaires.find(params[:id])
+    end
+
+    def questionnaire_params
+      params.require(:questionnaire).permit(:title, :instruction_text, :accepting_responses,
+                                            :include_availability_section, :require_all_availability, availability_show_ids: [])
+    end
+
+    def question_params
+      params.require(:question).permit(:text, :question_type, :required,
+                                       question_options_attributes: %i[id text _destroy])
+    end
   end
 end

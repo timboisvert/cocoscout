@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConvertShowPersonRoleAssignmentsToPolymorphic < ActiveRecord::Migration[8.0]
   def up
     # Add polymorphic columns
@@ -12,7 +14,8 @@ class ConvertShowPersonRoleAssignmentsToPolymorphic < ActiveRecord::Migration[8.
     SQL
 
     # Add index on polymorphic columns
-    add_index :show_person_role_assignments, [ :assignable_type, :assignable_id ], name: 'index_show_role_assignments_on_assignable'
+    add_index :show_person_role_assignments, %i[assignable_type assignable_id],
+              name: 'index_show_role_assignments_on_assignable'
 
     # Remove old person_id column (but keep it for now for rollback safety)
     # We'll remove it in a separate migration after verifying everything works

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ChangeRoleAssignment < ActiveRecord::Migration[8.0]
   def change
     remove_reference :show_cast_assignments, :cast_role, foreign_key: false, index: true

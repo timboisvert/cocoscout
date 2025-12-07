@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class EmailGroup < ApplicationRecord
   belongs_to :audition_cycle
 

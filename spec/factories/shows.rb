@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :show do
     association :production
@@ -28,7 +30,7 @@ FactoryBot.define do
     trait :online do
       location { nil }
       is_online { true }
-      online_location_info { "https://zoom.us/j/1234567890" }
+      online_location_info { 'https://zoom.us/j/1234567890' }
     end
   end
 end

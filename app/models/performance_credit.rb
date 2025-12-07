@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PerformanceCredit < ApplicationRecord
   belongs_to :profileable, polymorphic: true
   belongs_to :performance_section, optional: true
@@ -32,12 +34,14 @@ class PerformanceCredit < ApplicationRecord
   def display_year_range
     return year_start.to_s if year_end.blank?
     return year_start.to_s if year_start == year_end
+
     "#{year_start}-#{year_end}"
   end
 
   def display_year_range_with_present
     return year_start.to_s if year_end.blank?
     return year_start.to_s if year_start == year_end
+
     "#{year_start}-#{year_end}"
   end
 
@@ -45,18 +49,19 @@ class PerformanceCredit < ApplicationRecord
 
   def year_end_after_year_start
     return if year_end.blank? || year_start.blank?
-    if year_end < year_start
-      errors.add(:year_end, "must be greater than or equal to start year")
-    end
+
+    return unless year_end < year_start
+
+    errors.add(:year_end, "must be greater than or equal to start year")
   end
 
   def set_default_position
     return if position.present?
 
-    if performance_section_id.present?
-      max_position = performance_section&.performance_credits&.maximum(:position) || -1
+    max_position = if performance_section_id.present?
+                     performance_section&.performance_credits&.maximum(:position) || -1
     else
-      max_position = profileable&.performance_credits&.where(section_name: section_name)&.maximum(:position) || -1
+                     profileable&.performance_credits&.where(section_name: section_name)&.maximum(:position) || -1
     end
 
     self.position = max_position + 1

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :profile do
   desc "Audit legacy headshot and resume usage vs new profile system"
   task audit: :environment do
@@ -29,13 +31,9 @@ namespace :profile do
       )
       has_profile_headshot = person.profile_headshots.any?
 
-      if has_legacy_headshot
-        people_with_legacy_headshot += 1
-      end
+      people_with_legacy_headshot += 1 if has_legacy_headshot
 
-      if has_profile_headshot
-        people_with_profile_headshot += 1
-      end
+      people_with_profile_headshot += 1 if has_profile_headshot
 
       if has_legacy_headshot && has_profile_headshot
         people_with_both_headshot += 1
@@ -51,13 +49,9 @@ namespace :profile do
       )
       has_profile_resume = person.profile_resumes.any?
 
-      if has_legacy_resume
-        people_with_legacy_resume += 1
-      end
+      people_with_legacy_resume += 1 if has_legacy_resume
 
-      if has_profile_resume
-        people_with_profile_resume += 1
-      end
+      people_with_profile_resume += 1 if has_profile_resume
 
       if has_legacy_resume && has_profile_resume
         people_with_both_resume += 1
@@ -104,13 +98,9 @@ namespace :profile do
       )
       has_profile_headshot = group.profile_headshots.any?
 
-      if has_legacy_headshot
-        groups_with_legacy_headshot += 1
-      end
+      groups_with_legacy_headshot += 1 if has_legacy_headshot
 
-      if has_profile_headshot
-        groups_with_profile_headshot += 1
-      end
+      groups_with_profile_headshot += 1 if has_profile_headshot
 
       if has_legacy_headshot && has_profile_headshot
         groups_with_both_headshot += 1
@@ -126,13 +116,9 @@ namespace :profile do
       )
       has_profile_resume = group.profile_resumes.any?
 
-      if has_legacy_resume
-        groups_with_legacy_resume += 1
-      end
+      groups_with_legacy_resume += 1 if has_legacy_resume
 
-      if has_profile_resume
-        groups_with_profile_resume += 1
-      end
+      groups_with_profile_resume += 1 if has_profile_resume
 
       if has_legacy_resume && has_profile_resume
         groups_with_both_resume += 1
@@ -164,21 +150,21 @@ namespace :profile do
     total_only_legacy = people_with_only_legacy_headshot + people_with_only_legacy_resume +
                         groups_with_only_legacy_headshot + groups_with_only_legacy_resume
 
-    if total_only_legacy == 0
+    if total_only_legacy.zero?
       puts "✅ All legacy attachments have been migrated to profile system!"
       puts "   Safe to remove legacy headshot/resume code."
     else
       puts "⚠️  WARNING: #{total_only_legacy} legacy attachments still in use:"
-      if people_with_only_legacy_headshot > 0
+      if people_with_only_legacy_headshot.positive?
         puts "   - #{people_with_only_legacy_headshot} people with ONLY legacy headshot"
       end
-      if people_with_only_legacy_resume > 0
+      if people_with_only_legacy_resume.positive?
         puts "   - #{people_with_only_legacy_resume} people with ONLY legacy resume"
       end
-      if groups_with_only_legacy_headshot > 0
+      if groups_with_only_legacy_headshot.positive?
         puts "   - #{groups_with_only_legacy_headshot} groups with ONLY legacy headshot"
       end
-      if groups_with_only_legacy_resume > 0
+      if groups_with_only_legacy_resume.positive?
         puts "   - #{groups_with_only_legacy_resume} groups with ONLY legacy resume"
       end
       puts ""
@@ -188,7 +174,7 @@ namespace :profile do
     puts ""
 
     # Show detailed list if there are only a few remaining
-    if total_only_legacy > 0 && total_only_legacy <= 20
+    if total_only_legacy.positive? && total_only_legacy <= 20
       puts "=" * 80
       puts "DETAILED LIST OF LEGACY-ONLY ATTACHMENTS"
       puts "=" * 80

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MakeAuditionRequestsPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Add polymorphic columns
@@ -10,7 +12,7 @@ class MakeAuditionRequestsPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Add index
-    add_index :audition_requests, [ :requestable_type, :requestable_id ]
+    add_index :audition_requests, %i[requestable_type requestable_id]
 
     # Remove old person_id column
     remove_column :audition_requests, :person_id
@@ -26,7 +28,7 @@ class MakeAuditionRequestsPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Remove polymorphic columns
-    remove_index :audition_requests, [ :requestable_type, :requestable_id ]
+    remove_index :audition_requests, %i[requestable_type requestable_id]
     remove_column :audition_requests, :requestable_type
     remove_column :audition_requests, :requestable_id
 

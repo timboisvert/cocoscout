@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 class RenameCallToAuditionToAuditionCycle < ActiveRecord::Migration[8.1]
   def change
     # Temporarily remove the unique constraint
-    remove_index :call_to_auditions, name: "index_call_to_auditions_on_production_id_and_active", if_exists: true
+    remove_index :call_to_auditions, name: 'index_call_to_auditions_on_production_id_and_active', if_exists: true
 
     # Rename the main table
     rename_table :call_to_auditions, :audition_cycles
@@ -15,23 +17,30 @@ class RenameCallToAuditionToAuditionCycle < ActiveRecord::Migration[8.1]
 
     # Rename other indexes (with if_exists check)
     if index_exists?(:audition_cycles, :production_id, name: 'index_call_to_auditions_on_production_id')
-      rename_index :audition_cycles, 'index_call_to_auditions_on_production_id', 'index_audition_cycles_on_production_id'
+      rename_index :audition_cycles, 'index_call_to_auditions_on_production_id',
+                   'index_audition_cycles_on_production_id'
     end
 
     if index_exists?(:audition_requests, :call_to_audition_id, name: 'index_audition_requests_on_call_to_audition_id')
-      rename_index :audition_requests, 'index_audition_requests_on_call_to_audition_id', 'index_audition_requests_on_audition_cycle_id'
+      rename_index :audition_requests, 'index_audition_requests_on_call_to_audition_id',
+                   'index_audition_requests_on_audition_cycle_id'
     end
 
     if index_exists?(:audition_sessions, :call_to_audition_id, name: 'index_audition_sessions_on_call_to_audition_id')
-      rename_index :audition_sessions, 'index_audition_sessions_on_call_to_audition_id', 'index_audition_sessions_on_audition_cycle_id'
+      rename_index :audition_sessions, 'index_audition_sessions_on_call_to_audition_id',
+                   'index_audition_sessions_on_audition_cycle_id'
     end
 
-    if index_exists?(:audition_email_assignments, :call_to_audition_id, name: 'index_audition_email_assignments_on_call_to_audition_id')
-      rename_index :audition_email_assignments, 'index_audition_email_assignments_on_call_to_audition_id', 'index_audition_email_assignments_on_audition_cycle_id'
+    if index_exists?(:audition_email_assignments, :call_to_audition_id,
+                     name: 'index_audition_email_assignments_on_call_to_audition_id')
+      rename_index :audition_email_assignments, 'index_audition_email_assignments_on_call_to_audition_id',
+                   'index_audition_email_assignments_on_audition_cycle_id'
     end
 
-    if index_exists?(:cast_assignment_stages, :call_to_audition_id, name: 'index_cast_assignment_stages_on_call_to_audition_id')
-      rename_index :cast_assignment_stages, 'index_cast_assignment_stages_on_call_to_audition_id', 'index_cast_assignment_stages_on_audition_cycle_id'
+    if index_exists?(:cast_assignment_stages, :call_to_audition_id,
+                     name: 'index_cast_assignment_stages_on_call_to_audition_id')
+      rename_index :cast_assignment_stages, 'index_cast_assignment_stages_on_call_to_audition_id',
+                   'index_cast_assignment_stages_on_audition_cycle_id'
     end
 
     if index_exists?(:email_groups, :call_to_audition_id, name: 'index_email_groups_on_call_to_audition_id')
@@ -39,6 +48,7 @@ class RenameCallToAuditionToAuditionCycle < ActiveRecord::Migration[8.1]
     end
 
     # Re-add the unique constraint with new name
-    add_index :audition_cycles, [ :production_id, :active ], unique: true, where: "active = true", name: "index_audition_cycles_on_production_id_and_active"
+    add_index :audition_cycles, %i[production_id active], unique: true, where: 'active = true',
+                                                          name: 'index_audition_cycles_on_production_id_and_active'
   end
 end

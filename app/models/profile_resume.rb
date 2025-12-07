@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ProfileResume < ApplicationRecord
   include HierarchicalStorageKey
 
@@ -17,6 +19,7 @@ class ProfileResume < ApplicationRecord
 
   def set_default_position
     return if position.present?
+
     max_position = profileable&.profile_resumes&.maximum(:position) || -1
     self.position = max_position + 1
   end
@@ -24,13 +27,15 @@ class ProfileResume < ApplicationRecord
   def set_default_name
     return if name.present?
     return unless file.attached?
+
     self.name = file.filename.to_s
   end
 
   def acceptable_file
     return unless file.attached?
-    unless file.content_type.in?(%w[application/pdf image/jpeg image/jpg image/png])
-      errors.add(:file, "must be a PDF, JPG, or PNG file")
-    end
+
+    return if file.content_type.in?(%w[application/pdf image/jpeg image/jpg image/png])
+
+    errors.add(:file, "must be a PDF, JPG, or PNG file")
   end
 end

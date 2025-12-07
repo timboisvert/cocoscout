@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PersonInvitation < ApplicationRecord
   belongs_to :organization, optional: true
 

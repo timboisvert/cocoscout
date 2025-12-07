@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DropNotifyMes < ActiveRecord::Migration[8.1]
   def up
     drop_table :notify_mes

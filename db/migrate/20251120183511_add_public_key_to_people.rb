@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddPublicKeyToPeople < ActiveRecord::Migration[8.1]
   def change
     add_column :people, :public_key, :string

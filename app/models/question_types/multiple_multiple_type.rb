@@ -19,12 +19,10 @@ module QuestionTypes
     end
 
     def self.parse_answer_value(value)
-      begin
-        parsed_value = JSON.parse(value.gsub("=>", ":"))
-        parsed_value.keys
-      rescue JSON::ParserError
-        [] # If parsing fails, return an empty array
-      end
+      parsed_value = JSON.parse(value.gsub("=>", ":"))
+      parsed_value.keys
+    rescue JSON::ParserError
+      [] # If parsing fails, return an empty array
     end
   end
 end

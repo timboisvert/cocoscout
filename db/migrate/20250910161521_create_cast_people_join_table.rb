@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateCastPeopleJoinTable < ActiveRecord::Migration[8.0]
   def change
     create_table :casts_people, id: false do |t|

@@ -1,8 +1,17 @@
+# frozen_string_literal: true
+
 class AuthController < ApplicationController
-  allow_unauthenticated_access only: %i[ signup handle_signup signin handle_signin password handle_password reset handle_reset set_password handle_set_password]
-  rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: -> { redirect_to signin_path, alert: "Try again later" }
-  rate_limit to: 5, within: 10.minutes, only: :handle_password, with: -> { redirect_to password_path, alert: "Too many requests. Please try again later." }
-  rate_limit to: 10, within: 10.minutes, only: :handle_signup, with: -> { redirect_to signup_path, alert: "Too many signup attempts. Please try again later." }
+  allow_unauthenticated_access only: %i[signup handle_signup signin handle_signin password handle_password reset
+                                        handle_reset set_password handle_set_password]
+  rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: lambda {
+    redirect_to signin_path, alert: "Try again later"
+  }
+  rate_limit to: 5, within: 10.minutes, only: :handle_password, with: lambda {
+    redirect_to password_path, alert: "Too many requests. Please try again later."
+  }
+  rate_limit to: 10, within: 10.minutes, only: :handle_signup, with: lambda {
+    redirect_to signup_path, alert: "Too many signup attempts. Please try again later."
+  }
 
   skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
@@ -93,10 +102,10 @@ class AuthController < ApplicationController
       @password_successfully_reset = true
     end
 
-    if session[:invitation_link_invalid] == true
-      session.delete(:invitation_link_invalid)
-      @invitation_link_invalid = true
-    end
+    return unless session[:invitation_link_invalid] == true
+
+    session.delete(:invitation_link_invalid)
+    @invitation_link_invalid = true
   end
 
   def handle_signin
@@ -105,7 +114,7 @@ class AuthController < ApplicationController
     credentials[:email_address] = credentials[:email_address].to_s.delete("\0") if credentials[:email_address].present?
     credentials[:password] = credentials[:password].to_s.delete("\0") if credentials[:password].present?
 
-    if user = User.authenticate_by(credentials)
+    if (user = User.authenticate_by(credentials))
 
       # Make sure we have a person for this user
       if user.person.nil?
@@ -147,10 +156,10 @@ class AuthController < ApplicationController
   end
 
   def password
-    if session[:reset_link_expired_or_invalid] == true
-      session.delete(:reset_link_expired_or_invalid)
-      @reset_link_expired_or_invalid = true
-    end
+    return unless session[:reset_link_expired_or_invalid] == true
+
+    session.delete(:reset_link_expired_or_invalid)
+    @reset_link_expired_or_invalid = true
   end
 
   def handle_password
@@ -175,10 +184,10 @@ class AuthController < ApplicationController
 
   def reset
     @user = User.find_by(password_reset_token: params[:token])
-    if @user.nil? || @user.password_reset_sent_at < 2.hours.ago
-      session[:reset_link_expired_or_invalid] = true
-      redirect_to password_path and return
-    end
+    return unless @user.nil? || @user.password_reset_sent_at < 2.hours.ago
+
+    session[:reset_link_expired_or_invalid] = true
+    redirect_to password_path and return
   end
 
   def handle_reset
@@ -240,7 +249,10 @@ class AuthController < ApplicationController
   def user_params
     permitted_params = params.require(:user).permit(:email_address, :password)
     # Remove null bytes from email and password to prevent database/BCrypt errors
-    permitted_params[:email_address] = permitted_params[:email_address].to_s.delete("\0") if permitted_params[:email_address].present?
+    if permitted_params[:email_address].present?
+      permitted_params[:email_address] =
+        permitted_params[:email_address].to_s.delete("\0")
+    end
     permitted_params[:password] = permitted_params[:password].to_s.delete("\0") if permitted_params[:password].present?
     permitted_params
   end

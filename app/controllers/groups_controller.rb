@@ -1,9 +1,15 @@
-class GroupsController < ApplicationController
-  layout "profile", except: [ :new, :index ]
+# frozen_string_literal: true
 
-  before_action :set_group, only: [ :edit, :settings, :update, :archive, :unarchive, :set_primary_headshot, :check_url_availability, :update_url, :update_visibility, :update_member_role, :remove_member, :update_member_notifications ]
-  before_action :check_group_access, only: [ :edit, :settings, :update, :check_url_availability, :update_url, :update_visibility ]
-  before_action :check_owner_access, only: [ :archive, :unarchive, :update_member_role, :remove_member, :update_member_notifications ]
+class GroupsController < ApplicationController
+  layout "profile", except: %i[new index]
+
+  before_action :set_group,
+                only: %i[edit settings update archive unarchive set_primary_headshot check_url_availability update_url
+                         update_visibility update_member_role remove_member update_member_notifications]
+  before_action :check_group_access,
+                only: %i[edit settings update check_url_availability update_url update_visibility]
+  before_action :check_owner_access,
+                only: %i[archive unarchive update_member_role remove_member update_member_notifications]
   skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
 
@@ -46,9 +52,7 @@ class GroupsController < ApplicationController
 
   def update
     # Handle virtual attribute conversion
-    if group_params[:show_contact_info].present?
-      @group.show_contact_info = group_params[:show_contact_info]
-    end
+    @group.show_contact_info = group_params[:show_contact_info] if group_params[:show_contact_info].present?
 
     if @group.update(group_params.except(:show_contact_info))
       respond_to do |format|
@@ -60,7 +64,8 @@ class GroupsController < ApplicationController
           streams = []
 
           if group_params[:profile_headshots_attributes].present?
-            streams << turbo_stream.replace("headshots", partial: "shared/profiles/headshots", locals: { entity: @group })
+            streams << turbo_stream.replace("headshots", partial: "shared/profiles/headshots",
+                                                         locals: { entity: @group })
           end
 
           if group_params[:profile_resumes_attributes].present?
@@ -72,11 +77,13 @@ class GroupsController < ApplicationController
           end
 
           if group_params[:performance_sections_attributes].present?
-            streams << turbo_stream.replace("performance-history", partial: "shared/profiles/performance_credits", locals: { entity: @group })
+            streams << turbo_stream.replace("performance-history", partial: "shared/profiles/performance_credits",
+                                                                   locals: { entity: @group })
           end
 
           if group_params[:socials_attributes].present?
-            streams << turbo_stream.replace("social-media", partial: "shared/profiles/social_media", locals: { entity: @group })
+            streams << turbo_stream.replace("social-media", partial: "shared/profiles/social_media",
+                                                            locals: { entity: @group })
           end
 
           # Always show success message using standard notice
@@ -229,23 +236,23 @@ class GroupsController < ApplicationController
   def set_group
     @group = Group.find(params[:group_id] || params[:id])
     # Check if user is a member of this group
-    unless @group.group_memberships.exists?(person: Current.user.person)
-      redirect_to root_path, alert: "You don't have access to this group."
-    end
+    return if @group.group_memberships.exists?(person: Current.user.person)
+
+    redirect_to root_path, alert: "You don't have access to this group."
   end
 
   def check_group_access
     membership = @group.group_memberships.find_by(person: Current.user.person)
-    unless membership && (membership.owner? || membership.write?)
-      redirect_to groups_path, alert: "You don't have permission to edit this group."
-    end
+    return if membership && (membership.owner? || membership.write?)
+
+    redirect_to groups_path, alert: "You don't have permission to edit this group."
   end
 
   def check_owner_access
     membership = @group.group_memberships.find_by(person: Current.user.person)
-    unless membership && membership.owner?
-      redirect_to groups_path, alert: "Only group owners can archive or unarchive groups."
-    end
+    return if membership&.owner?
+
+    redirect_to groups_path, alert: "Only group owners can archive or unarchive groups."
   end
 
   def group_params
@@ -253,17 +260,17 @@ class GroupsController < ApplicationController
       :name, :bio, :email, :phone, :public_key, :headshot, :resume,
       :hide_contact_info, :show_contact_info, :headshots_visible, :resumes_visible, :social_media_visible,
       :public_profile_enabled,
-      socials_attributes: [ :id, :platform, :handle, :name, :_destroy ],
-      profile_headshots_attributes: [ :id, :image, :category, :is_primary, :position, :_destroy ],
-      profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],
+      socials_attributes: %i[id platform handle name _destroy],
+      profile_headshots_attributes: %i[id image category is_primary position _destroy],
+      profile_videos_attributes: %i[id title url position _destroy],
       performance_sections_attributes: [
         :id, :name, :position, :_destroy,
-        performance_credits_attributes: [
-          :id, :section_name, :title, :location, :role,
-          :year_start, :year_end, :notes, :link_url, :position, :_destroy
-        ]
+        { performance_credits_attributes: %i[
+          id section_name title location role
+          year_start year_end notes link_url position _destroy
+        ] }
       ],
-      profile_resumes_attributes: [ :id, :name, :position, :file, :_destroy ]
+      profile_resumes_attributes: %i[id name position file _destroy]
     )
   end
 end

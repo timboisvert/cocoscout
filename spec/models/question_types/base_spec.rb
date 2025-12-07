@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe QuestionTypes::Base do
@@ -8,14 +10,15 @@ RSpec.describe QuestionTypes::Base do
     end
 
     it 'includes all defined question types' do
-      expect(QuestionTypes::Base.registry.keys).to include('text', 'textarea', 'yesno', 'multiple-multiple', 'multiple-single')
+      expect(QuestionTypes::Base.registry.keys).to include('text', 'textarea', 'yesno', 'multiple-multiple',
+                                                           'multiple-single')
     end
   end
 
   describe '.register' do
     it 'adds a type to the registry' do
       # Save original registry state
-      original_keys = QuestionTypes::Base.registry.keys.dup
+      QuestionTypes::Base.registry.keys.dup
 
       test_class = Class.new(QuestionTypes::Base) do
         def self.key

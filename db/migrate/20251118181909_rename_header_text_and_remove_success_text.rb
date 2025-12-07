@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RenameHeaderTextAndRemoveSuccessText < ActiveRecord::Migration[8.1]
   def change
     # Rename header_text to instruction_text for ActionText rich texts

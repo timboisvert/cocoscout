@@ -1,95 +1,108 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
-RSpec.describe "My::AuditionRequests", type: :system do
+RSpec.describe 'My::AuditionRequests', type: :system do
   let!(:user) { create(:user) }
   let!(:person) { create(:person, user: user, email: user.email_address) }
   let(:organization) { create(:organization) }
-  let(:production) { create(:production, organization: organization, name: "The Phantom of the Opera") }
+  let(:production) { create(:production, organization: organization, name: 'The Phantom of the Opera') }
 
-  describe "when user has no audition requests" do
-    it "shows no sign-ups message" do
+  describe 'when user has no audition requests' do
+    it 'shows no sign-ups message' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
       expect(page).to have_content("You haven't signed up for any auditions.")
     end
   end
 
-  describe "when user has audition requests" do
-    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
-    let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed) }
+  describe 'when user has audition requests' do
+    let!(:audition_cycle) do
+      create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true,
+                              finalize_audition_invitations: true)
+    end
+    let!(:audition_request) do
+      create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed)
+    end
 
-    it "displays the audition request" do
+    it 'displays the audition request' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
 
       expect(page).to have_content(production.name)
     end
 
-    it "shows request status" do
+    it 'shows request status' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
 
-      expect(page).to have_content("Awaiting Review")
+      expect(page).to have_content('Awaiting Review')
     end
 
-    it "shows when auditions close" do
+    it 'shows when auditions close' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
       # Should see the production name
       expect(page).to have_content(production.name)
     end
   end
 
-  describe "audition request statuses" do
-    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
+  describe 'audition request statuses' do
+    let!(:audition_cycle) do
+      create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true,
+                              finalize_audition_invitations: true)
+    end
 
-    it "shows unreviewed status" do
+    it 'shows unreviewed status' do
       create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed)
 
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
-      expect(page).to have_content("Awaiting Review")
+      visit '/my/audition_requests'
+      expect(page).to have_content('Awaiting Review')
     end
 
-    it "shows passed status" do
+    it 'shows passed status' do
       create(:audition_request, person: person, audition_cycle: audition_cycle, status: :passed)
 
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
-      expect(page).to have_content("No Audition Offered")
+      visit '/my/audition_requests'
+      expect(page).to have_content('No Audition Offered')
     end
 
-    it "shows accepted status" do
+    it 'shows accepted status' do
       create(:audition_request, person: person, audition_cycle: audition_cycle, status: :accepted)
 
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
-      expect(page).to have_content("Audition Offered")
+      visit '/my/audition_requests'
+      expect(page).to have_content('Audition Offered')
     end
   end
 
-  describe "multiple audition requests" do
-    let!(:call2) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true, finalize_audition_invitations: true) }
+  describe 'multiple audition requests' do
+    let!(:call2) do
+      create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true,
+                              finalize_audition_invitations: true)
+    end
     let!(:request1) { create(:audition_request, person: person, audition_cycle: call2) }
     let!(:request2) { create(:audition_request, person: person, audition_cycle: call2) }
 
-    it "displays all audition requests" do
+    it 'displays all audition requests' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
 
-      expect(page).to have_content(call2.closes_at.strftime("%b %d, %Y"))
+      expect(page).to have_content(call2.closes_at.strftime('%b %d, %Y'))
     end
   end
 
-  describe "with answers to questions" do
+  describe 'with answers to questions' do
     let!(:audition_cycle) { create(:audition_cycle, production: production) }
-    let!(:question) { create(:question, questionable: audition_cycle, text: "What is your favorite role?") }
+    let!(:question) { create(:question, questionable: audition_cycle, text: 'What is your favorite role?') }
     let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
-    let!(:answer) { create(:answer, audition_request: audition_request, question: question, value: "Elphaba") }
+    let!(:answer) { create(:answer, audition_request: audition_request, question: question, value: 'Elphaba') }
 
-    it "allows viewing submitted answers" do
+    it 'allows viewing submitted answers' do
       sign_in_as_person(user, person)
-      visit "/my/audition_requests"
+      visit '/my/audition_requests'
 
       expect(page).to have_content(production.name)
     end

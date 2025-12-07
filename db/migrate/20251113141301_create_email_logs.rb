@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateEmailLogs < ActiveRecord::Migration[8.1]
   def change
     create_table :email_logs do |t|
@@ -8,7 +10,7 @@ class CreateEmailLogs < ActiveRecord::Migration[8.1]
       t.string :mailer_class
       t.string :mailer_action
       t.string :message_id
-      t.string :delivery_status, default: "pending"
+      t.string :delivery_status, default: 'pending'
       t.datetime :sent_at
       t.datetime :delivered_at
       t.text :error_message

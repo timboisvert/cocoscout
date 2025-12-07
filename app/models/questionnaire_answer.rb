@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class QuestionnaireAnswer < ApplicationRecord
   belongs_to :questionnaire_response
   belongs_to :question
@@ -8,6 +10,7 @@ class QuestionnaireAnswer < ApplicationRecord
   class ValueSerializer
     def self.dump(value)
       return nil if value.nil?
+
       # For plain strings (text answers), keep as-is
       # For hashes/arrays, convert to JSON
       if value.is_a?(Hash) || value.is_a?(Array)

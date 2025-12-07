@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ShoutoutMailer < ApplicationMailer
   def shoutout_received(shoutout)
     @shoutout = shoutout

@@ -1,23 +1,27 @@
-class Manage::AuditionMailer < ApplicationMailer
-  def casting_notification(person, production, email_body)
-    @person = person
-    @production = production
-    @email_body = email_body
+# frozen_string_literal: true
 
-    mail(
-      to: person.email,
-      subject: "Audition Results for #{production.name}"
-    )
-  end
+module Manage
+  class AuditionMailer < ApplicationMailer
+    def casting_notification(person, production, email_body)
+      @person = person
+      @production = production
+      @email_body = email_body
 
-  def invitation_notification(person, production, email_body)
-    @person = person
-    @production = production
-    @email_body = email_body
+      mail(
+        to: person.email,
+        subject: "Audition Results for #{production.name}"
+      )
+    end
 
-    mail(
-      to: person.email,
-      subject: "#{production.name} Auditions"
-    )
+    def invitation_notification(person, production, email_body)
+      @person = person
+      @production = production
+      @email_body = email_body
+
+      mail(
+        to: person.email,
+        subject: "#{production.name} Auditions"
+      )
+    end
   end
 end

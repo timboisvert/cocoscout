@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Group < ApplicationRecord
   include CacheInvalidation
   invalidates_cache :group_card, :group_profile
@@ -49,7 +51,8 @@ class Group < ApplicationRecord
   validates :name, presence: true
   validates :email, presence: true
   validates :public_key, presence: true, uniqueness: true
-  validates :public_key, format: { with: /\A[a-z0-9][a-z0-9\-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
+  validates :public_key,
+            format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
 
   # Callbacks
@@ -75,6 +78,7 @@ class Group < ApplicationRecord
 
   def initials
     return "" if name.blank?
+
     name.split.map { |word| word[0] }.join.upcase
   end
 
@@ -93,7 +97,7 @@ class Group < ApplicationRecord
   def primary_headshot
     # Use in-memory filtering to leverage preloaded associations
     # instead of find_by which bypasses eager loading
-    profile_headshots.find { |hs| hs.is_primary } || profile_headshots.first
+    profile_headshots.find(&:is_primary) || profile_headshots.first
   end
 
   def headshot
@@ -103,6 +107,7 @@ class Group < ApplicationRecord
   def safe_headshot_variant(variant_name)
     hs = headshot
     return nil unless hs&.attached?
+
     hs.variant(variant_name)
   rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
     Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
@@ -152,12 +157,11 @@ class Group < ApplicationRecord
     return nil unless primary_resume&.file&.attached?
 
     # For image files (JPEG, PNG), display directly with variant
-    if primary_resume.file.content_type.start_with?("image/")
-      return primary_resume.file.variant(options)
-    end
+    return primary_resume.file.variant(options) if primary_resume.file.content_type.start_with?("image/")
 
     # For other files (PDF), generate preview
     return nil unless primary_resume.file.previewable?
+
     primary_resume.file.preview(options)
   rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
     Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
@@ -235,20 +239,20 @@ class Group < ApplicationRecord
   end
 
   def track_public_key_change
-    if public_key_changed? && !new_record?
-      # Store the old key
-      old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
-      old_key = public_key_was
+    return unless public_key_changed? && !new_record?
 
-      # Add the old key to the array if it's not already there and not nil
-      if old_key.present? && !old_keys_array.include?(old_key)
-        old_keys_array << old_key
-        self.old_keys = old_keys_array.to_json
-      end
+    # Store the old key
+    old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+    old_key = public_key_was
 
-      # Update the timestamp
-      self.public_key_changed_at = Time.current
+    # Add the old key to the array if it's not already there and not nil
+    if old_key.present? && !old_keys_array.include?(old_key)
+      old_keys_array << old_key
+      self.old_keys = old_keys_array.to_json
     end
+
+    # Update the timestamp
+    self.public_key_changed_at = Time.current
   end
 
   def public_key_not_reserved
@@ -258,8 +262,8 @@ class Group < ApplicationRecord
       permitted_symbols: [],
       aliases: true
     )
-    if reserved.include?(public_key)
-      errors.add(:public_key, "is reserved for CocoScout system pages")
-    end
+    return unless reserved.include?(public_key)
+
+    errors.add(:public_key, "is reserved for CocoScout system pages")
   end
 end

@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class PublicKeyService
-  VALID_FORMAT_REGEX = /\A[a-z0-9][a-z0-9\-]{2,29}\z/
+  VALID_FORMAT_REGEX = /\A[a-z0-9][a-z0-9-]{2,29}\z/
 
   # Generate a unique public key from a base name (for new records)
   def self.generate(base_name)

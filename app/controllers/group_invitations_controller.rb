@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 class GroupInvitationsController < ApplicationController
-  allow_unauthenticated_access only: [ :accept, :do_accept ]
-  before_action :set_group, only: [ :create, :revoke ]
-  before_action :check_group_access, only: [ :create, :revoke ]
+  allow_unauthenticated_access only: %i[accept do_accept]
+  before_action :set_group, only: %i[create revoke]
+  before_action :check_group_access, only: %i[create revoke]
 
   def create
     # Check if person already exists with this email
@@ -47,8 +49,10 @@ class GroupInvitationsController < ApplicationController
               partial: "shared/notice",
               locals: { notice: "#{existing_person.name} has been added to the group" }
             ),
-            turbo_stream.replace("members", partial: "groups/members_section", locals: { group: @group, membership: @membership }),
-            turbo_stream.append_all("body", "<script>document.querySelector('[data-group-members-target=\"inviteModal\"]').classList.add('hidden')</script>")
+            turbo_stream.replace("members", partial: "groups/members_section",
+                                            locals: { group: @group, membership: @membership }),
+            turbo_stream.append_all("body",
+                                    "<script>document.querySelector('[data-group-members-target=\"inviteModal\"]').classList.add('hidden')</script>")
           ]
         end
       end
@@ -76,7 +80,8 @@ class GroupInvitationsController < ApplicationController
                 partial: "shared/notice",
                 locals: { notice: "Invitation sent to #{params[:email]}" }
               ),
-              turbo_stream.append_all("body", "<script>document.querySelector('[data-group-members-target=\"inviteModal\"]').classList.add('hidden')</script>")
+              turbo_stream.append_all("body",
+                                      "<script>document.querySelector('[data-group-members-target=\"inviteModal\"]').classList.add('hidden')</script>")
             ]
           end
         end
@@ -103,10 +108,10 @@ class GroupInvitationsController < ApplicationController
     end
 
     # Check if user is signed in
-    if Current.user
-      # User is signed in, just show confirmation
-      @person = Current.user.person
-    end
+    return unless Current.user
+
+    # User is signed in, just show confirmation
+    @person = Current.user.person
   end
 
   def do_accept
@@ -122,7 +127,11 @@ class GroupInvitationsController < ApplicationController
     person = Person.find_by(email: @invitation.email.downcase)
 
     # If not signed in, handle password
-    unless Current.user
+    if Current.user
+      # Already signed in
+      user = Current.user
+      person = user.person
+    else
       if user && params[:password].present?
         # Existing user setting/updating password
         user.password = params[:password]
@@ -146,26 +155,22 @@ class GroupInvitationsController < ApplicationController
       end
 
       # Ensure person exists and is linked to user
-      unless person
-        person = Person.create!(
-          email: @invitation.email.downcase,
-          name: @invitation.name,
-          user: user
-        )
-      else
+      if person
         # Link existing person to user if not already linked
         unless person.user
           person.user = user
           person.save!
         end
+      else
+        person = Person.create!(
+          email: @invitation.email.downcase,
+          name: @invitation.name,
+          user: user
+        )
       end
 
       # Sign the user in
       start_new_session_for user
-    else
-      # Already signed in
-      user = Current.user
-      person = user.person
     end
 
     # Create group membership
@@ -192,7 +197,8 @@ class GroupInvitationsController < ApplicationController
             partial: "shared/notice",
             locals: { notice: "Invitation to #{invitation.email} has been revoked" }
           ),
-          turbo_stream.replace("members", partial: "groups/members_section", locals: { group: @group, membership: @membership })
+          turbo_stream.replace("members", partial: "groups/members_section",
+                                          locals: { group: @group, membership: @membership })
         ]
       end
     end
@@ -206,8 +212,8 @@ class GroupInvitationsController < ApplicationController
   end
 
   def check_group_access
-    unless @membership&.owner? || @membership&.write?
-      redirect_to root_path, alert: "You don't have permission to invite members to this group"
-    end
+    return if @membership&.owner? || @membership&.write?
+
+    redirect_to root_path, alert: "You don't have permission to invite members to this group"
   end
 end

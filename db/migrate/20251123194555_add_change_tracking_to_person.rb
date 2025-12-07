@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddChangeTrackingToPerson < ActiveRecord::Migration[8.1]
   def change
     add_column :people, :last_email_changed_at, :datetime

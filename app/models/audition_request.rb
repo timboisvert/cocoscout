@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AuditionRequest < ApplicationRecord
   belongs_to :audition_cycle
   belongs_to :requestable, polymorphic: true
@@ -14,7 +16,7 @@ class AuditionRequest < ApplicationRecord
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
   # Cache invalidation - when status changes, invalidate the counts cache
-  after_commit :invalidate_cycle_caches, on: [ :create, :update, :destroy ]
+  after_commit :invalidate_cycle_caches, on: %i[create update destroy]
 
   # Helper method for backward compatibility - auditions are always for individual people
   def person
@@ -35,15 +37,16 @@ class AuditionRequest < ApplicationRecord
 
   def scheduled_in_any?(audition_sessions)
     Audition.joins(:audition_session)
-      .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
-      .exists?
+            .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
+            .exists?
   end
 
   private
 
   def invalidate_cycle_caches
     return unless audition_cycle_id
-    # Note: audition_cycle_counts uses key versioning with audition_requests.maximum(:updated_at)
+
+    # NOTE: audition_cycle_counts uses key versioning with audition_requests.maximum(:updated_at)
     # so it auto-invalidates when this request's updated_at changes
     # Just invalidate production dashboard
     Rails.cache.delete("production_dashboard_#{audition_cycle.production_id}") if audition_cycle&.production_id

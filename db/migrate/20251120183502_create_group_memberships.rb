@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateGroupMemberships < ActiveRecord::Migration[8.1]
   def change
     create_table :group_memberships do |t|
@@ -9,6 +11,6 @@ class CreateGroupMemberships < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :group_memberships, [ :group_id, :person_id ], unique: true
+    add_index :group_memberships, %i[group_id person_id], unique: true
   end
 end

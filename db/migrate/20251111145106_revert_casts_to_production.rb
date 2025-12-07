@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RevertCastsToProduction < ActiveRecord::Migration[8.1]
   def up
     # Remove call_to_audition_id from casts

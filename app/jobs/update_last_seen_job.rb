@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UpdateLastSeenJob < ApplicationJob
   queue_as :default
 

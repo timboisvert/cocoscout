@@ -20,11 +20,11 @@ end
 class CacheDiagnostics
   class << self
     def run
-      puts "\n#{"=" * 70}"
+      puts "\n#{'=' * 70}"
       puts "CACHE DIAGNOSTICS REPORT"
       puts "Generated: #{Time.current}"
       puts "Environment: #{Rails.env}"
-      puts "#{"=" * 70}\n\n"
+      puts "#{'=' * 70}\n\n"
 
       check_cache_store_config
       check_solid_cache_stats
@@ -34,9 +34,9 @@ class CacheDiagnostics
       check_fragment_cache_usage
       provide_recommendations
 
-      puts "\n#{"=" * 70}"
+      puts "\n#{'=' * 70}"
       puts "END OF REPORT"
-      puts "#{"=" * 70}\n"
+      puts "#{'=' * 70}\n"
     end
 
     def health_check
@@ -58,7 +58,7 @@ class CacheDiagnostics
         else
           puts "⚠️  Cache write succeeded but read returned: #{result.inspect}"
         end
-      rescue => e
+      rescue StandardError => e
         puts "❌ Cache error: #{e.message}"
       end
 
@@ -197,7 +197,7 @@ class CacheDiagnostics
       end
 
       # Size distribution (only show if there are entries)
-      if stats[:entry_count] > 0
+      if stats[:entry_count].positive?
         puts "\nSize distribution:"
         distribution = cache_size_distribution
         distribution.each do |range, count|
@@ -227,7 +227,7 @@ class CacheDiagnostics
         Rails.cache.write(test_key, test_value, expires_in: 5.minutes)
         write_time = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
         tests << { name: "Write", status: "✅", time: "#{write_time.round(2)}ms" }
-      rescue => e
+      rescue StandardError => e
         tests << { name: "Write", status: "❌", time: e.message }
       end
 
@@ -237,12 +237,12 @@ class CacheDiagnostics
         result = Rails.cache.read(test_key)
         read_time = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
 
-        if result == test_value
-          tests << { name: "Read", status: "✅", time: "#{read_time.round(2)}ms" }
+        tests << if result == test_value
+                   { name: "Read", status: "✅", time: "#{read_time.round(2)}ms" }
         else
-          tests << { name: "Read", status: "⚠️", time: "Value mismatch" }
+                   { name: "Read", status: "⚠️", time: "Value mismatch" }
         end
-      rescue => e
+      rescue StandardError => e
         tests << { name: "Read", status: "❌", time: e.message }
       end
 
@@ -252,7 +252,7 @@ class CacheDiagnostics
         exists = Rails.cache.exist?(test_key)
         exist_time = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
         tests << { name: "Exist", status: exists ? "✅" : "⚠️", time: "#{exist_time.round(2)}ms" }
-      rescue => e
+      rescue StandardError => e
         tests << { name: "Exist", status: "❌", time: e.message }
       end
 
@@ -262,7 +262,7 @@ class CacheDiagnostics
         Rails.cache.delete(test_key)
         delete_time = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
         tests << { name: "Delete", status: "✅", time: "#{delete_time.round(2)}ms" }
-      rescue => e
+      rescue StandardError => e
         tests << { name: "Delete", status: "❌", time: e.message }
       end
 
@@ -275,7 +275,7 @@ class CacheDiagnostics
         incr_time = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
         Rails.cache.delete(counter_key)
         tests << { name: "Increment", status: new_val == 1 ? "✅" : "⚠️", time: "#{incr_time.round(2)}ms" }
-      rescue => e
+      rescue StandardError
         tests << { name: "Increment", status: "⚠️", time: "Not supported" }
       end
 
@@ -374,7 +374,7 @@ class CacheDiagnostics
 
       puts "Top key patterns (from sample of #{entries.size}):"
       puts ""
-      puts "#{"Pattern".ljust(40)} #{"Count".rjust(8)} #{"Size".rjust(12)}"
+      puts "#{'Pattern'.ljust(40)} #{'Count'.rjust(8)} #{'Size'.rjust(12)}"
       puts "-" * 62
 
       sorted.each do |pattern, stats|
@@ -397,7 +397,7 @@ class CacheDiagnostics
         # Match cache blocks: <% cache ... do %>
         content.scan(/<%.*?cache\s+(\[.*?\]|[^,\s]+)/).each do |match|
           fragment_caches << {
-            file: file.sub(Rails.root.to_s + "/", ""),
+            file: file.sub("#{Rails.root}/", ""),
             key: match[0]
           }
         end
@@ -456,7 +456,7 @@ class CacheDiagnostics
         end
 
         # Check entry count vs size ratio
-        if stats[:entry_count] > 0 && stats[:avg_entry_size] > 100.kilobytes
+        if stats[:entry_count].positive? && stats[:avg_entry_size] > 100.kilobytes
           recommendations << {
             priority: "MEDIUM",
             issue: "Average cache entry is large (#{format_bytes(stats[:avg_entry_size])})",
@@ -513,7 +513,7 @@ class CacheDiagnostics
 
     def solid_cache_available?
       defined?(SolidCache::Entry) && SolidCache::Entry.table_exists?
-    rescue
+    rescue StandardError
       false
     end
 
@@ -529,10 +529,10 @@ class CacheDiagnostics
       {
         entry_count: entry_count,
         total_bytes: total_bytes,
-        avg_entry_size: entry_count > 0 ? total_bytes / entry_count : 0,
+        avg_entry_size: entry_count.positive? ? total_bytes / entry_count : 0,
         oldest_entry: oldest,
         newest_entry: newest,
-        usage_percent: max_size > 0 ? (total_bytes.to_f / max_size * 100).round(1) : 0
+        usage_percent: max_size.positive? ? (total_bytes.to_f / max_size * 100).round(1) : 0
       }
     end
 
@@ -555,9 +555,9 @@ class CacheDiagnostics
       SolidCache::Entry.pluck(:byte_size).each do |size|
         case size
         when 0...1024 then ranges["< 1 KB"] += 1
-        when 1024...10240 then ranges["1-10 KB"] += 1
-        when 10240...102400 then ranges["10-100 KB"] += 1
-        when 102400...1048576 then ranges["100KB-1MB"] += 1
+        when 1024...10_240 then ranges["1-10 KB"] += 1
+        when 10_240...102_400 then ranges["10-100 KB"] += 1
+        when 102_400...1_048_576 then ranges["100KB-1MB"] += 1
         else ranges["> 1 MB"] += 1
         end
       end
@@ -610,13 +610,13 @@ class CacheDiagnostics
     end
 
     def format_bytes(bytes)
-      return "0 B" if bytes.nil? || bytes == 0
+      return "0 B" if bytes.nil? || bytes.zero?
 
       units = %w[B KB MB GB TB]
       exp = (Math.log(bytes) / Math.log(1024)).to_i
       exp = [ exp, units.size - 1 ].min
 
-      "%.1f %s" % [ bytes.to_f / 1024**exp, units[exp] ]
+      format("%.1f %s", bytes.to_f / 1024**exp, units[exp])
     end
 
     def format_number(num)
@@ -628,8 +628,8 @@ class CacheDiagnostics
       case seconds
       when 0..59 then "#{seconds} seconds"
       when 60..3599 then "#{seconds / 60} minutes"
-      when 3600..86399 then "#{seconds / 3600} hours"
-      else "#{seconds / 86400} days"
+      when 3600..86_399 then "#{seconds / 3600} hours"
+      else "#{seconds / 86_400} days"
       end
     end
   end

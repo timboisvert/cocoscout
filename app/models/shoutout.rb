@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Shoutout < ApplicationRecord
   # Polymorphic association for the recipient (person, group, and future: production, organization)
   belongs_to :shoutee, polymorphic: true

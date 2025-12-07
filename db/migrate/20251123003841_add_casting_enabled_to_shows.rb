@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddCastingEnabledToShows < ActiveRecord::Migration[8.1]
   def change
     add_column :shows, :casting_enabled, :boolean, default: true, null: false

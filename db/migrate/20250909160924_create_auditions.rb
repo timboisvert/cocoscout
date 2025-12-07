@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateAuditions < ActiveRecord::Migration[8.0]
   def change
     create_table :auditions do |t|

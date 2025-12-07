@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConvertCastAssignmentStageToPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Remove old unique index first
@@ -20,15 +22,15 @@ class ConvertCastAssignmentStageToPolymorphic < ActiveRecord::Migration[8.1]
     remove_column :cast_assignment_stages, :person_id
 
     # Add new indexes
-    add_index :cast_assignment_stages, [ :assignable_type, :assignable_id ]
-    add_index :cast_assignment_stages, [ :audition_cycle_id, :talent_pool_id, :assignable_type, :assignable_id ],
+    add_index :cast_assignment_stages, %i[assignable_type assignable_id]
+    add_index :cast_assignment_stages, %i[audition_cycle_id talent_pool_id assignable_type assignable_id],
               unique: true, name: 'index_cast_assignment_stages_unique'
   end
 
   def down
     # Remove new indexes
     remove_index :cast_assignment_stages, name: 'index_cast_assignment_stages_unique'
-    remove_index :cast_assignment_stages, [ :assignable_type, :assignable_id ]
+    remove_index :cast_assignment_stages, %i[assignable_type assignable_id]
 
     # Add back person_id column
     add_column :cast_assignment_stages, :person_id, :integer
@@ -45,7 +47,7 @@ class ConvertCastAssignmentStageToPolymorphic < ActiveRecord::Migration[8.1]
     remove_column :cast_assignment_stages, :assignable_id
 
     # Restore old unique index
-    add_index :cast_assignment_stages, [ :audition_cycle_id, :talent_pool_id, :person_id ],
+    add_index :cast_assignment_stages, %i[audition_cycle_id talent_pool_id person_id],
               unique: true, name: 'index_cast_assignment_stages_unique'
   end
 end

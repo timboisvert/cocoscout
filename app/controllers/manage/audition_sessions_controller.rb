@@ -1,79 +1,86 @@
-class Manage::AuditionSessionsController < Manage::ManageController
-  before_action :set_audition_cycle
-  before_action :set_production
-  before_action :check_production_access
-  before_action :set_audition_session_and_audition_and_audition_request, only: %i[ show edit update destroy ]
-  before_action :ensure_user_is_manager, except: %i[show summary]
+# frozen_string_literal: true
 
-  def index
-    @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
+module Manage
+  class AuditionSessionsController < Manage::ManageController
+    before_action :set_audition_cycle
+    before_action :set_production
+    before_action :check_production_access
+    before_action :set_audition_session_and_audition_and_audition_request, only: %i[show edit update destroy]
+    before_action :ensure_user_is_manager, except: %i[show summary]
 
-    if params[:filter].present?
-      cookies[:audition_request_filter] = params[:filter]
-    else
-      cookies[:audition_request_filter] ||= "to_be_scheduled"
-    end
-  end
+    def index
+      @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
 
-  def show
-    if @audition.present?
-      @requestable = @audition_request.requestable
-      @answers = @audition_request.answers.includes(:question)
-    end
-  end
-
-  def new
-    @audition_session = AuditionSession.new
-
-    # Set default location if available
-    default_location = Current.organization.locations.find_by(default: true)
-    @audition_session.location_id = default_location.id if default_location
-
-    if params[:duplicate].present?
-      original = AuditionSession.find_by(id: params[:duplicate], production: @production)
-      if original.present?
-        @audition_session.start_at = original.start_at
-        @audition_session.maximum_auditionees = original.maximum_auditionees
+      if params[:filter].present?
+        cookies[:audition_request_filter] = params[:filter]
+      else
+        cookies[:audition_request_filter] ||= "to_be_scheduled"
       end
     end
 
-    render :new, layout: request.xhr? ? false : true
-  end
+    def show
+      return unless @audition.present?
 
-  def edit
-    render :edit, layout: request.xhr? ? false : true
-  end
-
-  def create
-    @audition_session = AuditionSession.new(audition_session_params)
-    @audition_session.production = @production
-    @audition_session.audition_cycle = @audition_cycle
-
-    if @audition_session.save
-      redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully created", status: :see_other
-    else
-      render :new, status: :unprocessable_entity
+      @requestable = @audition_request.requestable
+      @answers = @audition_request.answers.includes(:question)
     end
-  end
 
-  def update
-    if @audition_session.update(audition_session_params)
-      redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully rescheduled", status: :see_other
-    else
-      render :edit, status: :unprocessable_entity
+    def new
+      @audition_session = AuditionSession.new
+
+      # Set default location if available
+      default_location = Current.organization.locations.find_by(default: true)
+      @audition_session.location_id = default_location.id if default_location
+
+      if params[:duplicate].present?
+        original = AuditionSession.find_by(id: params[:duplicate], production: @production)
+        if original.present?
+          @audition_session.start_at = original.start_at
+          @audition_session.maximum_auditionees = original.maximum_auditionees
+        end
+      end
+
+      render :new, layout: request.xhr? ? false : true
     end
-  end
 
-  def destroy
-    @audition_session.destroy!
-    redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), notice: "Audition session was successfully canceled", status: :see_other
-  end
+    def edit
+      render :edit, layout: request.xhr? ? false : true
+    end
 
-  def summary
-    @audition_sessions = @audition_cycle.audition_sessions
-  end
+    def create
+      @audition_session = AuditionSession.new(audition_session_params)
+      @audition_session.production = @production
+      @audition_session.audition_cycle = @audition_cycle
 
-  private
+      if @audition_session.save
+        redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+                    notice: "Audition session was successfully created", status: :see_other
+      else
+        render :new, status: :unprocessable_entity
+      end
+    end
+
+    def update
+      if @audition_session.update(audition_session_params)
+        redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+                    notice: "Audition session was successfully rescheduled", status: :see_other
+      else
+        render :edit, status: :unprocessable_entity
+      end
+    end
+
+    def destroy
+      @audition_session.destroy!
+      redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+                  notice: "Audition session was successfully canceled", status: :see_other
+    end
+
+    def summary
+      @audition_sessions = @audition_cycle.audition_sessions
+    end
+
+    private
+
     def set_audition_cycle
       if params[:audition_cycle_id].present?
         @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
@@ -103,6 +110,7 @@ class Manage::AuditionSessionsController < Manage::ManageController
     end
 
     def audition_session_params
-      params.expect(audition_session: [ :start_at, :end_at, :maximum_auditionees, :location_id ])
+      params.expect(audition_session: %i[start_at end_at maximum_auditionees location_id])
     end
+  end
 end

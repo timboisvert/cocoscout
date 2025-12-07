@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AuthMailer < ApplicationMailer
   def signup(user)
     @user = user

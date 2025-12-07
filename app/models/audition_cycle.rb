@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 class AuditionCycle < ApplicationRecord
   has_many :audition_requests, dependent: :destroy
   has_many :audition_sessions, dependent: :destroy
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :email_groups, dependent: :destroy
   has_many :audition_email_assignments, dependent: :destroy
-  # Note: cast_assignment_stages are deleted via Production before_destroy callback
+  # NOTE: cast_assignment_stages are deleted via Production before_destroy callback
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages
 
@@ -30,11 +32,12 @@ class AuditionCycle < ApplicationRecord
   serialize :availability_show_ids, type: Array, coder: YAML
 
   def production_name
-    self.production.name
+    production.name
   end
 
   def counts
-    Rails.cache.fetch([ "audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i ], expires_in: 2.minutes) do
+    Rails.cache.fetch([ "audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i ],
+                      expires_in: 2.minutes) do
       {
         unreviewed: audition_requests.where(status: :unreviewed).count,
         undecided: audition_requests.where(status: :undecided).count,
@@ -45,9 +48,9 @@ class AuditionCycle < ApplicationRecord
   end
 
   def timeline_status
-    if self.opens_at > Time.current
+    if opens_at > Time.current
       :upcoming
-    elsif self.closes_at.present? && self.closes_at <= Time.current
+    elsif closes_at.present? && closes_at <= Time.current
       :closed
     else
       :open
@@ -64,9 +67,9 @@ class AuditionCycle < ApplicationRecord
 
   def respond_url
     if Rails.env.development?
-      "http://localhost:3000/a/#{self.token}"
+      "http://localhost:3000/a/#{token}"
     else
-      "https://www.cocoscout.com/a/#{self.token}"
+      "https://www.cocoscout.com/a/#{token}"
     end
   end
 
@@ -77,20 +80,20 @@ class AuditionCycle < ApplicationRecord
   end
 
   def closes_at_after_opens_at
-    if opens_at.present? && closes_at.present? && closes_at <= opens_at
-      errors.add(:closes_at, "must be after the opening date and time")
-    end
+    return unless opens_at.present? && closes_at.present? && closes_at <= opens_at
+
+    errors.add(:closes_at, "must be after the opening date and time")
   end
 
   def only_one_active_per_production
-    if active && production_id.present?
-      existing = AuditionCycle.where(production_id: production_id, active: true)
-                                .where.not(id: id)
-                                .exists?
-      if existing
-        errors.add(:active, "can only have one active audition cycle per production")
-      end
-    end
+    return unless active && production_id.present?
+
+    existing = AuditionCycle.where(production_id: production_id, active: true)
+                            .where.not(id: id)
+                            .exists?
+    return unless existing
+
+    errors.add(:active, "can only have one active audition cycle per production")
   end
 
   def opening_soon?
@@ -104,7 +107,7 @@ class AuditionCycle < ApplicationRecord
   private
 
   def invalidate_caches
-    # Note: counts cache uses key versioning with audition_requests.maximum(:updated_at)
+    # NOTE: counts cache uses key versioning with audition_requests.maximum(:updated_at)
     # so it auto-invalidates when requests change. We just need to clear production dashboard.
     Rails.cache.delete("production_dashboard_#{production_id}") if production_id
   end

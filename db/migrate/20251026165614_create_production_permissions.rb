@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateProductionPermissions < ActiveRecord::Migration[8.1]
   def change
     create_table :production_permissions do |t|
@@ -8,6 +10,6 @@ class CreateProductionPermissions < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :production_permissions, [ :user_id, :production_id ], unique: true
+    add_index :production_permissions, %i[user_id production_id], unique: true
   end
 end

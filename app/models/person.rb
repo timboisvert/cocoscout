@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Person < ApplicationRecord
   include CacheInvalidation
   include SuspiciousDetection
@@ -57,7 +59,8 @@ class Person < ApplicationRecord
   validates :email, presence: true, length: { maximum: 100 }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
   validates :public_key, uniqueness: true, allow_nil: true
-  validates :public_key, format: { with: /\A[a-z0-9][a-z0-9\-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
+  validates :public_key,
+            format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
   validate :email_change_frequency
   validate :public_key_change_frequency
@@ -71,6 +74,7 @@ class Person < ApplicationRecord
 
   def initials
     return "" if name.blank?
+
     name.split.map { |word| word[0] }.join.upcase
   end
 
@@ -90,12 +94,11 @@ class Person < ApplicationRecord
     return nil unless primary_resume&.file&.attached?
 
     # For image files (JPEG, PNG), display directly with variant
-    if primary_resume.file.content_type.start_with?("image/")
-      return primary_resume.file.variant(options)
-    end
+    return primary_resume.file.variant(options) if primary_resume.file.content_type.start_with?("image/")
 
     # For other files (PDF), generate preview
     return nil unless primary_resume.file.previewable?
+
     primary_resume.file.preview(options)
   rescue ActiveStorage::PreviewError, ActiveStorage::InvariableError => e
     Rails.logger.error("Failed to generate preview for #{name}'s resume: #{e.message}")
@@ -105,6 +108,7 @@ class Person < ApplicationRecord
   def safe_headshot_variant(variant_name)
     hs = headshot
     return nil unless hs&.attached?
+
     hs.variant(variant_name)
   rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
     Rails.logger.error("Failed to generate variant for #{name}'s headshot: #{e.message}")
@@ -161,8 +165,8 @@ class Person < ApplicationRecord
 
     # Get questionnaires where person's groups are invited
     group_questionnaire_ids = QuestionnaireInvitation
-      .where(invitee_type: "Group", invitee_id: groups.pluck(:id))
-      .pluck(:questionnaire_id)
+                              .where(invitee_type: "Group", invitee_id: groups.pluck(:id))
+                              .pluck(:questionnaire_id)
 
     group_questionnaires = Questionnaire.where(id: group_questionnaire_ids)
 
@@ -194,7 +198,7 @@ class Person < ApplicationRecord
   def primary_headshot
     # Use in-memory filtering to leverage preloaded associations
     # instead of find_by which bypasses eager loading
-    profile_headshots.find { |hs| hs.is_primary } || profile_headshots.first
+    profile_headshots.find(&:is_primary) || profile_headshots.first
   end
 
   def headshot
@@ -282,9 +286,9 @@ class Person < ApplicationRecord
       permitted_symbols: [],
       aliases: true
     )
-    if reserved.include?(public_key)
-      errors.add(:public_key, "is reserved for CocoScout system pages")
-    end
+    return unless reserved.include?(public_key)
+
+    errors.add(:public_key, "is reserved for CocoScout system pages")
   end
 
   def email_change_frequency
@@ -293,10 +297,13 @@ class Person < ApplicationRecord
 
     cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["email_change_cooldown_days"]
     days_since_last_change = (Time.current - last_email_changed_at) / 1.day
-    if days_since_last_change < cooldown_days
-      days_remaining = (cooldown_days - days_since_last_change).ceil
-      errors.add(:email, "was changed too recently. Please wait #{days_remaining} more day#{'s' if days_remaining != 1} before changing it again.")
-    end
+    return unless days_since_last_change < cooldown_days
+
+    days_remaining = (cooldown_days - days_since_last_change).ceil
+    errors.add(:email,
+               "was changed too recently. Please wait #{days_remaining} more day#{if days_remaining != 1
+                                                                                    's'
+                                                                                  end} before changing it again.")
   end
 
   def public_key_change_frequency
@@ -305,31 +312,31 @@ class Person < ApplicationRecord
 
     cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["url_change_cooldown_days"]
     days_since_last_change = (Time.current - public_key_changed_at) / 1.day
-    if days_since_last_change < cooldown_days
-      errors.add(:public_key, "was changed too recently.")
-    end
+    return unless days_since_last_change < cooldown_days
+
+    errors.add(:public_key, "was changed too recently.")
   end
 
   def track_email_change
-    if email_changed? && !new_record?
-      self.last_email_changed_at = Time.current
-    end
+    return unless email_changed? && !new_record?
+
+    self.last_email_changed_at = Time.current
   end
 
   def track_public_key_change
-    if public_key_changed? && !new_record?
-      # Store the old key
-      old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
-      old_key = public_key_was
+    return unless public_key_changed? && !new_record?
 
-      # Add the old key to the array if it's not already there and not nil
-      if old_key.present? && !old_keys_array.include?(old_key)
-        old_keys_array << old_key
-        self.old_keys = old_keys_array.to_json
-      end
+    # Store the old key
+    old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+    old_key = public_key_was
 
-      # Update the timestamp
-      self.public_key_changed_at = Time.current
+    # Add the old key to the array if it's not already there and not nil
+    if old_key.present? && !old_keys_array.include?(old_key)
+      old_keys_array << old_key
+      self.old_keys = old_keys_array.to_json
     end
+
+    # Update the timestamp
+    self.public_key_changed_at = Time.current
   end
 end

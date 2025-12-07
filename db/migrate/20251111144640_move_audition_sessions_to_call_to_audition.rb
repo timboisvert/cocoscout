@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MoveAuditionSessionsToCallToAudition < ActiveRecord::Migration[8.1]
   def up
     # First, backfill call_to_audition_id for existing sessions
@@ -18,7 +20,7 @@ class MoveAuditionSessionsToCallToAudition < ActiveRecord::Migration[8.1]
 
     # Remove the production_id column
     remove_column :audition_sessions, :production_id
-    remove_index :audition_sessions, name: "index_audition_sessions_on_production_id", if_exists: true
+    remove_index :audition_sessions, name: 'index_audition_sessions_on_production_id', if_exists: true
   end
 
   def down

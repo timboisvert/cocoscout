@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ManageHelper
   def manage_signup_status_name(status)
     case status

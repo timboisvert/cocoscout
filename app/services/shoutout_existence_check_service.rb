@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ShoutoutExistenceCheckService
   def initialize(shoutee_type, shoutee_id, current_user)
     @shoutee_type = shoutee_type
@@ -27,8 +29,8 @@ class ShoutoutExistenceCheckService
 
   def check_for_existing_shoutout(shoutee)
     @current_user.person.given_shoutouts
-      .where(shoutee: shoutee)
-      .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
-      .exists?
+                 .where(shoutee: shoutee)
+                 .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+                 .exists?
   end
 end

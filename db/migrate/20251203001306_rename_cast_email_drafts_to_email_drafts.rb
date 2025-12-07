@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RenameCastEmailDraftsToEmailDrafts < ActiveRecord::Migration[8.1]
   def change
     rename_table :cast_email_drafts, :email_drafts

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConvertPeopleTalentPoolsToPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Create the new polymorphic talent_pool_memberships table
@@ -9,22 +11,22 @@ class ConvertPeopleTalentPoolsToPolymorphic < ActiveRecord::Migration[8.1]
     end
 
     # Add indexes
-    add_index :talent_pool_memberships, [ :member_type, :member_id ]
-    add_index :talent_pool_memberships, [ :talent_pool_id, :member_type, :member_id ],
+    add_index :talent_pool_memberships, %i[member_type member_id]
+    add_index :talent_pool_memberships, %i[talent_pool_id member_type member_id],
               unique: true, name: 'index_talent_pool_memberships_unique'
 
     # Migrate existing data from people_talent_pools to talent_pool_memberships
     # Only run if the old table exists
-    if table_exists?(:people_talent_pools)
-      execute <<-SQL
+    return unless table_exists?(:people_talent_pools)
+
+    execute <<-SQL
         INSERT INTO talent_pool_memberships (talent_pool_id, member_type, member_id, created_at, updated_at)
         SELECT talent_pool_id, 'Person', person_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         FROM people_talent_pools
-      SQL
+    SQL
 
-      # Drop the old HABTM join table
-      drop_table :people_talent_pools
-    end
+    # Drop the old HABTM join table
+    drop_table :people_talent_pools
   end
 
   def down
@@ -34,7 +36,7 @@ class ConvertPeopleTalentPoolsToPolymorphic < ActiveRecord::Migration[8.1]
       t.integer :person_id, null: false
     end
 
-    add_index :people_talent_pools, :talent_pool_id, name: "index_people_talent_pools_on_talent_pool_id"
+    add_index :people_talent_pools, :talent_pool_id, name: 'index_people_talent_pools_on_talent_pool_id'
     add_index :people_talent_pools, :person_id
 
     # Migrate data back (only Person records)

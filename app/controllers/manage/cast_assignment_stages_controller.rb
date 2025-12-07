@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module Manage
   class CastAssignmentStagesController < ManageController
     before_action :set_production
     before_action :set_audition_cycle
-    before_action :set_stage, only: [ :update, :destroy ]
+    before_action :set_stage, only: %i[update destroy]
 
     def create
       @stage = @audition_cycle.cast_assignment_stages.new(create_stage_params)
@@ -37,9 +39,9 @@ module Manage
 
     def set_audition_cycle
       @audition_cycle = @production.active_audition_cycle
-      unless @audition_cycle
-        redirect_to manage_production_path(@production), alert: "No active audition cycle. Please create one first."
-      end
+      return if @audition_cycle
+
+      redirect_to manage_production_path(@production), alert: "No active audition cycle. Please create one first."
     end
 
     def set_stage

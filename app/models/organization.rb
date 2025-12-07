@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :productions, dependent: :destroy
@@ -20,6 +22,7 @@ class Organization < ApplicationRecord
   # Get the user's role in this organization
   def role_for(user)
     return "owner" if owned_by?(user)
+
     organization_roles.find_by(user: user)&.company_role || "member"
   end
 
@@ -31,7 +34,8 @@ class Organization < ApplicationRecord
   # Organization stats
   def active_productions_count
     # A production is active if it has shows scheduled in the future
-    productions.joins(:shows).where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current, false).distinct.count
+    productions.joins(:shows).where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current,
+                                    false).distinct.count
   end
 
   def team_size
@@ -44,7 +48,8 @@ class Organization < ApplicationRecord
 
   # Cached directory counts for display in headers/pagination
   def cached_directory_counts
-    Rails.cache.fetch([ "org_directory_counts_v1", id, people.maximum(:updated_at), groups.maximum(:updated_at) ], expires_in: 10.minutes) do
+    Rails.cache.fetch([ "org_directory_counts_v1", id, people.maximum(:updated_at), groups.maximum(:updated_at) ],
+                      expires_in: 10.minutes) do
       {
         people: people.count,
         groups: groups.count

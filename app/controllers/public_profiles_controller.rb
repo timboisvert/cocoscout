@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 class PublicProfilesController < ApplicationController
   skip_before_action :require_authentication
   before_action :resume_session_if_present
-  before_action :find_entity, only: [ :show, :shoutouts ]
+  before_action :find_entity, only: %i[show shoutouts]
 
   def show
     # Check if profile is enabled
@@ -24,18 +26,18 @@ class PublicProfilesController < ApplicationController
   def shoutouts
     # Only show current versions (not replaced shoutouts)
     @shoutouts = @entity.received_shoutouts
-      .left_joins(:replacement)
-      .where(replacement: { id: nil })
-      .newest_first
-      .includes(:author)
+                        .left_joins(:replacement)
+                        .where(replacement: { id: nil })
+                        .newest_first
+                        .includes(:author)
 
     # Check if current user has already given this person a shoutout
-    if Current.user&.person
-      @has_given_shoutout = Current.user.person.given_shoutouts
-        .where(shoutee: @entity)
-        .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
-        .exists?
-    end
+    return unless Current.user&.person
+
+    @has_given_shoutout = Current.user.person.given_shoutouts
+                                 .where(shoutee: @entity)
+                                 .where(id: Shoutout.left_joins(:replacement).where(replacement: { id: nil }).select(:id))
+                                 .exists?
   end
 
   private
@@ -49,7 +51,11 @@ class PublicProfilesController < ApplicationController
     # If not found, check if it's an old key that was changed
     unless @person
       Person.where.not(old_keys: nil).find_each do |person|
-        old_keys_array = JSON.parse(person.old_keys) rescue []
+        old_keys_array = begin
+          JSON.parse(person.old_keys)
+        rescue StandardError
+          []
+        end
         if old_keys_array.include?(key)
           @person = person
           # Redirect to new key
@@ -65,7 +71,11 @@ class PublicProfilesController < ApplicationController
     # If not found, check if it's an old group key that was changed
     unless @group || @person
       Group.where.not(old_keys: nil).find_each do |group|
-        old_keys_array = JSON.parse(group.old_keys) rescue []
+        old_keys_array = begin
+          JSON.parse(group.old_keys)
+        rescue StandardError
+          []
+        end
         if old_keys_array.include?(key)
           @group = group
           # Redirect to new key

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ProfileSkill < ApplicationRecord
   belongs_to :profileable, polymorphic: true
 
@@ -5,7 +7,7 @@ class ProfileSkill < ApplicationRecord
   validates :category, presence: true, length: { maximum: 50 }
   validates :skill_name, presence: true, length: { maximum: 50 }
   validates :skill_name, uniqueness: {
-    scope: [ :profileable_type, :profileable_id, :category ],
+    scope: %i[profileable_type profileable_id category],
     message: "has already been added to this category"
   }
 

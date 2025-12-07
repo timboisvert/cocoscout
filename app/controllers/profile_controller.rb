@@ -1,14 +1,16 @@
+# frozen_string_literal: true
+
 class ProfileController < ApplicationController
   before_action :set_person
-  layout "profile", except: [ :preview, :welcome ]
+  layout "profile", except: %i[preview welcome]
   before_action :hide_sidebar_on_welcome, only: [ :welcome ]
 
   def index
     # Redirect to welcome screen if this is their first time
-    if @person.profile_welcomed_at.nil?
-      redirect_to profile_welcome_path
-      nil
-    end
+    return unless @person.profile_welcomed_at.nil?
+
+    redirect_to profile_welcome_path
+    nil
 
     # Edit mode - show profile edit form with left sidebar
   end
@@ -29,9 +31,7 @@ class ProfileController < ApplicationController
 
   def update
     # Handle virtual attribute conversion
-    if person_params[:show_contact_info].present?
-      @person.show_contact_info = person_params[:show_contact_info]
-    end
+    @person.show_contact_info = person_params[:show_contact_info] if person_params[:show_contact_info].present?
 
     if @person.update(person_params.except(:show_contact_info))
       respond_to do |format|
@@ -51,9 +51,11 @@ class ProfileController < ApplicationController
 
               # Generate preview URL if possible
               if resume.file.content_type == "application/pdf" && resume.file.representable?
-                response_data[:resume][:preview_url] = rails_representation_url(resume.file.representation(resize_to_limit: [ 300, 400 ]))
+                response_data[:resume][:preview_url] =
+                  rails_representation_url(resume.file.representation(resize_to_limit: [ 300, 400 ]))
               elsif resume.file.content_type.start_with?("image/")
-                response_data[:resume][:preview_url] = rails_blob_path(resume.file.variant(resize_to_fill: [ 300, 400 ]), only_path: true)
+                response_data[:resume][:preview_url] =
+                  rails_blob_path(resume.file.variant(resize_to_fill: [ 300, 400 ]), only_path: true)
               end
             end
           end
@@ -79,7 +81,8 @@ class ProfileController < ApplicationController
           streams = []
 
           if person_params[:profile_headshots_attributes].present?
-            streams << turbo_stream.replace("headshots", partial: "shared/profiles/headshots", locals: { entity: @person })
+            streams << turbo_stream.replace("headshots", partial: "shared/profiles/headshots",
+                                                         locals: { entity: @person })
           end
 
           if person_params[:profile_resumes_attributes].present?
@@ -91,7 +94,8 @@ class ProfileController < ApplicationController
           end
 
           if person_params[:training_credits_attributes].present?
-            streams << turbo_stream.replace("training", partial: "shared/profiles/training_credits", locals: { entity: @person })
+            streams << turbo_stream.replace("training", partial: "shared/profiles/training_credits",
+                                                        locals: { entity: @person })
           end
 
           if person_params[:profile_skills_attributes].present?
@@ -99,11 +103,13 @@ class ProfileController < ApplicationController
           end
 
           if person_params[:performance_sections_attributes].present?
-            streams << turbo_stream.replace("performance-history", partial: "shared/profiles/performance_credits", locals: { entity: @person })
+            streams << turbo_stream.replace("performance-history", partial: "shared/profiles/performance_credits",
+                                                                   locals: { entity: @person })
           end
 
           if person_params[:socials_attributes].present?
-            streams << turbo_stream.replace("social-media", partial: "shared/profiles/social_media", locals: { entity: @person })
+            streams << turbo_stream.replace("social-media", partial: "shared/profiles/social_media",
+                                                            locals: { entity: @person })
           end
 
           # Always show success message using standard notice
@@ -164,9 +170,7 @@ class ProfileController < ApplicationController
     result = headshot.update(is_primary: true)
     Rails.logger.info "Update result: #{result}, is_primary after: #{headshot.is_primary}"
 
-    if !result
-      Rails.logger.error "Validation errors: #{headshot.errors.full_messages.join(', ')}"
-    end
+    Rails.logger.error "Validation errors: #{headshot.errors.full_messages.join(', ')}" unless result
 
     # Reload to get fresh data
     @person.reload
@@ -224,7 +228,8 @@ class ProfileController < ApplicationController
     # Check if 30 days have passed since last change
     if @person.last_email_changed_at && @person.last_email_changed_at > 30.days.ago
       days_remaining = (30 - (Time.current - @person.last_email_changed_at).to_i / 1.day).ceil
-      redirect_to profile_path, notice: "You can only change your email once every 30 days. #{days_remaining} days remaining."
+      redirect_to profile_path,
+                  notice: "You can only change your email once every 30 days. #{days_remaining} days remaining."
       return
     end
 
@@ -249,20 +254,20 @@ class ProfileController < ApplicationController
     permitted_params = params.require(:person).permit(
       :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled,
       profile_visibility_settings: {},
-      socials_attributes: [ :id, :platform, :handle, :name, :_destroy ],
-      profile_headshots_attributes: [ :id, :category, :is_primary, :position, :image, :_destroy ],
-      profile_resumes_attributes: [ :id, :name, :position, :file, :_destroy ],
-      profile_videos_attributes: [ :id, :title, :url, :position, :_destroy ],
+      socials_attributes: %i[id platform handle name _destroy],
+      profile_headshots_attributes: %i[id category is_primary position image _destroy],
+      profile_resumes_attributes: %i[id name position file _destroy],
+      profile_videos_attributes: %i[id title url position _destroy],
       performance_sections_attributes: [
         :id, :name, :position, :_destroy,
-        performance_credits_attributes: [
-          :id, :section_name, :title, :location, :role,
-          :year_start, :year_end, :notes, :link_url, :position, :_destroy
-        ]
+        { performance_credits_attributes: %i[
+          id section_name title location role
+          year_start year_end notes link_url position _destroy
+        ] }
       ],
-      training_credits_attributes: [
-        :id, :institution, :program,
-        :year_start, :year_end, :notes, :position, :_destroy
+      training_credits_attributes: %i[
+        id institution program
+        year_start year_end notes position _destroy
       ],
       profile_skills_attributes: {}
     )
@@ -346,7 +351,8 @@ class ProfileController < ApplicationController
     if membership.owner?
       owner_count = membership.group.group_memberships.where(permission_level: :owner).count
       if owner_count <= 1
-        render json: { error: "You're the only owner. Transfer ownership before leaving." }, status: :unprocessable_entity
+        render json: { error: "You're the only owner. Transfer ownership before leaving." },
+               status: :unprocessable_entity
         return
       end
     end

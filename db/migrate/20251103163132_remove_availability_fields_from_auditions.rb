@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RemoveAvailabilityFieldsFromAuditions < ActiveRecord::Migration[8.1]
   def change
     remove_column :auditions, :include_availability_section, :boolean, default: false

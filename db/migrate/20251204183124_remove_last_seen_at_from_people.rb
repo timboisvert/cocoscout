@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RemoveLastSeenAtFromPeople < ActiveRecord::Migration[8.1]
   def change
     remove_index :people, :last_seen_at

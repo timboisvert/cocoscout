@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :production do
     association :organization
     sequence(:name) { |n| "Production #{n}" }
-    contact_email { "contact@example.com" }
+    contact_email { 'contact@example.com' }
   end
 end

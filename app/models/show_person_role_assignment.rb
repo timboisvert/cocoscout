@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ShowPersonRoleAssignment < ApplicationRecord
   belongs_to :show
   belongs_to :assignable, polymorphic: true

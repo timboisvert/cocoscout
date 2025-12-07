@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateEmailGroups < ActiveRecord::Migration[8.1]
   def change
     create_table :email_groups do |t|

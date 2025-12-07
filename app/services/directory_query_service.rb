@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Service object for handling all directory query logic
 # Centralizes filtering, searching, sorting, and segmentation
 class DirectoryQueryService

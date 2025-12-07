@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :audition_request do
     association :audition_cycle
@@ -5,7 +7,7 @@ FactoryBot.define do
     status { :unreviewed }
 
     trait :with_video do
-      video_url { "https://youtube.com/watch?v=abc123" }
+      video_url { 'https://youtube.com/watch?v=abc123' }
     end
 
     trait :undecided do

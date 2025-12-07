@@ -15,7 +15,7 @@ module HierarchicalStorageKey
   extend ActiveSupport::Concern
 
   included do
-    after_commit :migrate_blob_keys_to_hierarchical, on: [ :create, :update ]
+    after_commit :migrate_blob_keys_to_hierarchical, on: %i[create update]
   end
 
   private
@@ -30,16 +30,16 @@ module HierarchicalStorageKey
 
       # Handle both has_one_attached and has_many_attached
       blobs = if attachment.respond_to?(:blobs)
-        attachment.blobs
+                attachment.blobs
       else
-        [ attachment.blob ].compact
+                [ attachment.blob ].compact
       end
 
       blobs.each do |blob|
         migrate_blob_if_needed(blob, attachment_name)
       end
     end
-  rescue => e
+  rescue StandardError => e
     # Don't let migration errors break the application
     Rails.logger.error("[HierarchicalStorageKey] Error in migrate_blob_keys_to_hierarchical: #{e.message}")
   end
@@ -79,7 +79,7 @@ module HierarchicalStorageKey
       blob.update_column(:key, new_key)
 
       Rails.logger.info("[HierarchicalStorageKey] Migrated blob #{blob.id} from #{blob.key} to #{new_key}")
-    rescue => e
+    rescue StandardError => e
       Rails.logger.error("[HierarchicalStorageKey] Failed to migrate blob #{blob.id}: #{e.message}")
     end
   end

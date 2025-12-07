@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateQuestionnaireResponses < ActiveRecord::Migration[8.1]
   def change
     create_table :questionnaire_responses do |t|
@@ -7,6 +9,6 @@ class CreateQuestionnaireResponses < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :questionnaire_responses, [ :questionnaire_id, :person_id ], unique: true
+    add_index :questionnaire_responses, %i[questionnaire_id person_id], unique: true
   end
 end

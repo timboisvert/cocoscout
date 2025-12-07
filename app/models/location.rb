@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Location < ApplicationRecord
   belongs_to :organization
   has_many :shows, dependent: :restrict_with_error
@@ -24,15 +26,15 @@ class Location < ApplicationRecord
   private
 
   def ensure_single_default
-    if default?
-      # Unset default for all other locations in the same organization
-      Location.where(organization: organization).where.not(id: id).update_all(default: false)
-    end
+    return unless default?
+
+    # Unset default for all other locations in the same organization
+    Location.where(organization: organization).where.not(id: id).update_all(default: false)
   end
 
   def set_as_default_if_only_location
-    if organization.locations.count == 1
-      update_column(:default, true)
-    end
+    return unless organization.locations.count == 1
+
+    update_column(:default, true)
   end
 end

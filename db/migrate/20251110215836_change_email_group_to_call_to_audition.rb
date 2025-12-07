@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ChangeEmailGroupToCallToAudition < ActiveRecord::Migration[8.1]
   def change
     remove_reference :email_groups, :production, foreign_key: true, index: true

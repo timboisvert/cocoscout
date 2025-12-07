@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConvertAuditionsToPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Add polymorphic columns
@@ -14,7 +16,7 @@ class ConvertAuditionsToPolymorphic < ActiveRecord::Migration[8.1]
     end
 
     # Add index for polymorphic association
-    add_index :auditions, [ :auditionable_type, :auditionable_id ], name: 'index_auditions_on_auditionable'
+    add_index :auditions, %i[auditionable_type auditionable_id], name: 'index_auditions_on_auditionable'
 
     # Remove old person_id column and index
     remove_index :auditions, :person_id

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Question < ApplicationRecord
   belongs_to :questionable, polymorphic: true
   has_many :question_options, dependent: :destroy
@@ -20,8 +22,8 @@ class Question < ApplicationRecord
     type_class = question_type_class
     return unless type_class
 
-    if type_class.needs_options? && question_options.reject(&:marked_for_destruction?).blank?
-      errors.add(:question_options, "must have at least one option for this question type")
-    end
+    return unless type_class.needs_options? && question_options.reject(&:marked_for_destruction?).blank?
+
+    errors.add(:question_options, "must have at least one option for this question type")
   end
 end

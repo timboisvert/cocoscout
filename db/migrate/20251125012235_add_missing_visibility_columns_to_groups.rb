@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddMissingVisibilityColumnsToGroups < ActiveRecord::Migration[8.1]
   def change
     add_column :groups, :videos_visible, :boolean, default: true, null: false

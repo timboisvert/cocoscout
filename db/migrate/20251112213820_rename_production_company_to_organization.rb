@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RenameProductionCompanyToOrganization < ActiveRecord::Migration[8.1]
   def change
     # Rename the main table
@@ -25,12 +27,10 @@ class RenameProductionCompanyToOrganization < ActiveRecord::Migration[8.1]
     end
 
     # Rename join table
-    if table_exists?(:people_production_companies)
-      rename_table :people_production_companies, :organizations_people
-    end
+    rename_table :people_production_companies, :organizations_people if table_exists?(:people_production_companies)
 
-    if table_exists?(:organizations_people) && column_exists?(:organizations_people, :production_company_id)
-      rename_column :organizations_people, :production_company_id, :organization_id
-    end
+    return unless table_exists?(:organizations_people) && column_exists?(:organizations_people, :production_company_id)
+
+    rename_column :organizations_people, :production_company_id, :organization_id
   end
 end

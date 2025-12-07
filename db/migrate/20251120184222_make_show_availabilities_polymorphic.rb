@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MakeShowAvailabilitiesPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Add polymorphic columns
@@ -10,11 +12,13 @@ class MakeShowAvailabilitiesPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Add index
-    add_index :show_availabilities, [ :available_entity_type, :available_entity_id ], name: 'index_show_availabilities_on_entity'
+    add_index :show_availabilities, %i[available_entity_type available_entity_id],
+              name: 'index_show_availabilities_on_entity'
 
     # Update unique index - use the actual index name from the schema
     remove_index :show_availabilities, name: 'index_show_availabilities_on_person_id_and_show_id'
-    add_index :show_availabilities, [ :available_entity_type, :available_entity_id, :show_id ], unique: true, name: 'index_show_availabilities_unique'
+    add_index :show_availabilities, %i[available_entity_type available_entity_id show_id], unique: true,
+                                                                                           name: 'index_show_availabilities_unique'
 
     # Remove old person_id column
     remove_column :show_availabilities, :person_id
@@ -31,7 +35,8 @@ class MakeShowAvailabilitiesPolymorphic < ActiveRecord::Migration[8.1]
 
     # Remove new index and add back old one
     remove_index :show_availabilities, name: 'index_show_availabilities_unique'
-    add_index :show_availabilities, [ :person_id, :show_id ], unique: true, name: 'index_show_availabilities_on_person_id_and_show_id'
+    add_index :show_availabilities, %i[person_id show_id], unique: true,
+                                                           name: 'index_show_availabilities_on_person_id_and_show_id'
 
     # Remove polymorphic columns
     remove_index :show_availabilities, name: 'index_show_availabilities_on_entity'

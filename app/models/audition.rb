@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Audition < ApplicationRecord
   belongs_to :auditionable, polymorphic: true
   belongs_to :audition_request

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MakeQuestionnaireResponsesPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Add polymorphic columns
@@ -10,11 +12,12 @@ class MakeQuestionnaireResponsesPolymorphic < ActiveRecord::Migration[8.1]
     SQL
 
     # Add index
-    add_index :questionnaire_responses, [ :respondent_type, :respondent_id ]
+    add_index :questionnaire_responses, %i[respondent_type respondent_id]
 
     # Update unique index - use the actual index name from the schema
     remove_index :questionnaire_responses, name: 'idx_on_questionnaire_id_person_id_14b49cba13'
-    add_index :questionnaire_responses, [ :respondent_type, :respondent_id, :questionnaire_id ], unique: true, name: 'index_questionnaire_responses_unique'
+    add_index :questionnaire_responses, %i[respondent_type respondent_id questionnaire_id], unique: true,
+                                                                                            name: 'index_questionnaire_responses_unique'
 
     # Remove old person_id column
     remove_column :questionnaire_responses, :person_id
@@ -31,10 +34,11 @@ class MakeQuestionnaireResponsesPolymorphic < ActiveRecord::Migration[8.1]
 
     # Remove new index and add back old one
     remove_index :questionnaire_responses, name: 'index_questionnaire_responses_unique'
-    add_index :questionnaire_responses, [ :questionnaire_id, :person_id ], unique: true, name: 'idx_on_questionnaire_id_person_id_14b49cba13'
+    add_index :questionnaire_responses, %i[questionnaire_id person_id], unique: true,
+                                                                        name: 'idx_on_questionnaire_id_person_id_14b49cba13'
 
     # Remove polymorphic columns
-    remove_index :questionnaire_responses, [ :respondent_type, :respondent_id ]
+    remove_index :questionnaire_responses, %i[respondent_type respondent_id]
     remove_column :questionnaire_responses, :respondent_type
     remove_column :questionnaire_responses, :respondent_id
 

@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :location do
     association :organization
     sequence(:name) { |n| "Location #{n}" }
-    address1 { "123 Main Street" }
-    address2 { "Suite 100" }
-    city { "New York" }
-    state { "NY" }
-    postal_code { "10001" }
+    address1 { '123 Main Street' }
+    address2 { 'Suite 100' }
+    city { 'New York' }
+    state { 'NY' }
+    postal_code { '10001' }
     default { false }
 
     trait :default do

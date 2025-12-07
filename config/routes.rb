@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Rails.application.routes.draw do
   root "home#index"
 
@@ -38,11 +40,12 @@ Rails.application.routes.draw do
     delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
-    get "/people",            to: "superadmin#people_list",         as: "people_list"
+    get "/people", to: "superadmin#people_list", as: "people_list"
     delete "/people/bulk_destroy", to: "superadmin#bulk_destroy_people", as: "bulk_destroy_people"
-    delete "/people/suspicious/destroy_all", to: "superadmin#destroy_all_suspicious_people", as: "destroy_all_suspicious_people"
-    get "/people/:id",        to: "superadmin#person_detail",       as: "person_detail"
-    delete "/people/:id",      to: "superadmin#destroy_person",      as: "destroy_person"
+    delete "/people/suspicious/destroy_all", to: "superadmin#destroy_all_suspicious_people",
+                                             as: "destroy_all_suspicious_people"
+    get "/people/:id", to: "superadmin#person_detail", as: "person_detail"
+    delete "/people/:id", to: "superadmin#destroy_person", as: "destroy_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
     get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"
@@ -61,10 +64,13 @@ Rails.application.routes.draw do
   post "/pilot/create_producer_user", to: "pilot#create_producer_user", as: "pilot_create_producer_user"
   post "/pilot/create_producer_org", to: "pilot#create_producer_org", as: "pilot_create_producer_org"
   post "/pilot/create_producer_location", to: "pilot#create_producer_location", as: "pilot_create_producer_location"
-  post "/pilot/create_producer_production", to: "pilot#create_producer_production", as: "pilot_create_producer_production"
-  post "/pilot/create_producer_talent_pool", to: "pilot#create_producer_talent_pool", as: "pilot_create_producer_talent_pool"
+  post "/pilot/create_producer_production", to: "pilot#create_producer_production",
+                                            as: "pilot_create_producer_production"
+  post "/pilot/create_producer_talent_pool", to: "pilot#create_producer_talent_pool",
+                                             as: "pilot_create_producer_talent_pool"
   post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
-  post "/pilot/create_producer_additional", to: "pilot#create_producer_additional", as: "pilot_create_producer_additional"
+  post "/pilot/create_producer_additional", to: "pilot#create_producer_additional",
+                                            as: "pilot_create_producer_additional"
   post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"
   delete "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
   delete "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
@@ -113,8 +119,9 @@ Rails.application.routes.draw do
     # Shoutouts management
     get   "/shoutouts",                         to: "shoutouts#index",                    as: "shoutouts"
     post  "/shoutouts",                         to: "shoutouts#create",                   as: "create_shoutout"
-    get   "/shoutouts/search",                  to: "shoutouts#search_people_and_groups", as: "search_shoutout_recipients"
-    get   "/shoutouts/check_existing",          to: "shoutouts#check_existing_shoutout",  as: "check_existing_shoutout"
+    get   "/shoutouts/search",                  to: "shoutouts#search_people_and_groups",
+                                                as: "search_shoutout_recipients"
+    get   "/shoutouts/check_existing",          to: "shoutouts#check_existing_shoutout", as: "check_existing_shoutout"
   end
 
   # Management interface
@@ -124,9 +131,10 @@ Rails.application.routes.draw do
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
     # Directory - unified people and groups listing
-    get  "/directory",          to: "directory#index",        as: "directory"
+    get  "/directory",          to: "directory#index", as: "directory"
     post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
-    patch "/directory/group/:id/update_availability", to: "directory#update_group_availability", as: "update_group_availability"
+    patch "/directory/group/:id/update_availability", to: "directory#update_group_availability",
+                                                      as: "update_group_availability"
 
     resources :organizations do
       collection do
@@ -199,7 +207,7 @@ Rails.application.routes.draw do
         get :confirm_delete
       end
 
-      resources :availability, only: [ :index, :show ] do
+      resources :availability, only: %i[index show] do
         collection do
           get  :request_availability
           post :handle_request_availability
@@ -291,14 +299,16 @@ Rails.application.routes.draw do
           get    "prepare",           to: "auditions#prepare",                   as: "prepare"
           get    "publicize",         to: "auditions#publicize",                 as: "publicize"
           get    "review",            to: "auditions#review",                    as: "review"
-          patch  "finalize_invitations", to: "auditions#finalize_invitations",  as: "finalize_invitations"
+          patch  "finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations"
           get    "run",               to: "auditions#run",                       as: "run"
           get    "casting",           to: "auditions#casting",                   as: "casting"
-          get    "casting/select",    to: "auditions#casting_select",           as: "casting_select"
+          get    "casting/select",    to: "auditions#casting_select", as: "casting_select"
           post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
-          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment"
-          post   "finalize_and_notify", to: "auditions#finalize_and_notify",    as: "finalize_and_notify"
-          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations"
+          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment",
+                                                as: "remove_from_cast_assignment"
+          post   "finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify"
+          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations",
+                                                    as: "finalize_and_notify_invitations"
         end
       end
 
@@ -320,9 +330,9 @@ Rails.application.routes.draw do
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
 
-      resources :cast_assignment_stages, only: [ :create, :update, :destroy ]
-      resources :email_groups, only: [ :create, :update, :destroy ]
-      resources :audition_email_assignments, only: [ :create, :update, :destroy ]
+      resources :cast_assignment_stages, only: %i[create update destroy]
+      resources :email_groups, only: %i[create update destroy]
+      resources :audition_email_assignments, only: %i[create update destroy]
       resources :auditions
     end
 
@@ -342,10 +352,10 @@ Rails.application.routes.draw do
   get    "/profile/welcome", to: "profile#welcome", as: "profile_welcome"
   post   "/profile/dismiss_welcome", to: "profile#dismiss_welcome", as: "dismiss_profile_welcome"
   post   "/profile/mark_welcomed", to: "profile#mark_welcomed", as: "mark_profile_welcomed"
-  patch  "/profile",         to: "profile#update",  as: "update_profile"
+  patch  "/profile", to: "profile#update", as: "update_profile"
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
-  get    "/profile/public",  to: "profile#public",  as: "profile_public"
+  get    "/profile/public", to: "profile#public", as: "profile_public"
   get    "/profile/change-url", to: "profile#change_url", as: "change_url_profile"
   post   "/profile/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile"
   patch  "/profile/update-url", to: "profile#update_url", as: "update_url_profile"
@@ -359,7 +369,8 @@ Rails.application.routes.draw do
   get    "/groups",                   to: "groups#index",      as: "groups"
   get    "/groups/new",               to: "groups#new",        as: "new_group"
   post   "/groups",                   to: "groups#create",     as: "create_group"
-  patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot", as: "set_primary_group_headshot"
+  patch  "/groups/:group_id/headshots/:id/set_primary", to: "groups#set_primary_headshot",
+                                                        as: "set_primary_group_headshot"
   post   "/groups/:id/check-url-availability", to: "groups#check_url_availability", as: "check_url_availability_group"
   patch  "/groups/:id/update-url", to: "groups#update_url", as: "update_url_group"
   patch  "/groups/:id/visibility", to: "groups#update_visibility", as: "update_group_visibility"
@@ -368,7 +379,8 @@ Rails.application.routes.draw do
   patch  "/groups/:id",               to: "groups#update",     as: "update_group"
   patch  "/groups/:id/update_member_role", to: "groups#update_member_role", as: "update_member_role_group"
   delete "/groups/:id/remove_member", to: "groups#remove_member", as: "remove_member_group"
-  patch  "/groups/:id/update_member_notifications", to: "groups#update_member_notifications", as: "update_member_notifications_group"
+  patch  "/groups/:id/update_member_notifications", to: "groups#update_member_notifications",
+                                                    as: "update_member_notifications_group"
   patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
   patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
 
@@ -379,6 +391,8 @@ Rails.application.routes.draw do
   post "/group_invitations/:token/accept", to: "group_invitations#do_accept", as: "do_accept_group_invitation"
 
   # Public profiles (must be last to catch any remaining paths)
-  get "/:public_key/shoutouts", to: "public_profiles#shoutouts", as: "public_profile_shoutouts", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
-  get "/:public_key", to: "public_profiles#show", as: "public_profile", constraints: { public_key: /[a-z0-9][a-z0-9\-]{2,29}/ }
+  get "/:public_key/shoutouts", to: "public_profiles#shoutouts", as: "public_profile_shoutouts",
+                                constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/ }
+  get "/:public_key", to: "public_profiles#show", as: "public_profile",
+                      constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/ }
 end

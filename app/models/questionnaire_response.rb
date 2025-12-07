@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class QuestionnaireResponse < ApplicationRecord
   belongs_to :questionnaire
   belongs_to :respondent, polymorphic: true
@@ -5,7 +7,7 @@ class QuestionnaireResponse < ApplicationRecord
 
   validates :questionnaire, presence: true
   validates :respondent, presence: true
-  validates :respondent_id, uniqueness: { scope: [ :questionnaire_id, :respondent_type ] }
+  validates :respondent_id, uniqueness: { scope: %i[questionnaire_id respondent_type] }
 
   # Helper method for backward compatibility
   def person

@@ -21,12 +21,11 @@ module QuestionTypes
     def self.parse_answer_value(value)
       # Value is stored as JSON array of option texts in ranked order
       # e.g., '["Option A", "Option B", "Option C"]'
-      begin
-        parsed_value = JSON.parse(value)
-        parsed_value.is_a?(Array) ? parsed_value : []
-      rescue JSON::ParserError
-        []
-      end
+
+      parsed_value = JSON.parse(value)
+      parsed_value.is_a?(Array) ? parsed_value : []
+    rescue JSON::ParserError
+      []
     end
   end
 end

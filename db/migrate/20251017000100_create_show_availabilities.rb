@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateShowAvailabilities < ActiveRecord::Migration[7.0]
   def change
     create_table :show_availabilities do |t|
@@ -6,6 +8,6 @@ class CreateShowAvailabilities < ActiveRecord::Migration[7.0]
       t.integer :status, default: 0, null: false
       t.timestamps
     end
-    add_index :show_availabilities, [ :person_id, :show_id ], unique: true
+    add_index :show_availabilities, %i[person_id show_id], unique: true
   end
 end

@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module Manage
   class EmailGroupsController < ManageController
     before_action :set_production
     before_action :set_audition_cycle
-    before_action :set_email_group, only: [ :update, :destroy ]
+    before_action :set_email_group, only: %i[update destroy]
 
     def create
       @email_group = @audition_cycle.email_groups.new(email_group_params)

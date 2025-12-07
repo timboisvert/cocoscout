@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class EmailDraft < ApplicationRecord
   belongs_to :emailable, polymorphic: true, optional: true
 

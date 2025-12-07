@@ -7,9 +7,9 @@ module SuspiciousDetection
 
   # Characters that indicate injection attacks or are simply invalid for names
   MALICIOUS_PATTERNS = [
-    /[\x00-\x1f\x7f]/,                          # Control characters
-    /[<>]/,                                      # HTML/XML injection
-    %r{[|&;`$(){}\[\]]},                         # Shell injection
+    /[\x00-\x1f\x7f]/, # Control characters
+    /[<>]/, # HTML/XML injection
+    /[|&;`$(){}\[\]]/, # Shell injection
     /\$\{/,                                      # Template injection (Log4j, etc.)
     /-->/,                                       # HTML comment injection
     %r{\*/},                                     # Comment close injection
@@ -23,7 +23,7 @@ module SuspiciousDetection
     /\b(exec|eval|system|popen|spawn)\b/i,       # Code execution keywords
     /(wget|curl|bash|sh|cat|type)\s/i,           # Command execution
     /jndi:|ldap:|rmi:/i,                         # JNDI injection (Log4j)
-    %r{file://}i                                # File protocol
+    %r{file://}i # File protocol
   ].freeze
 
   # SQL patterns for finding suspicious records in the database
@@ -67,6 +67,7 @@ module SuspiciousDetection
 
     def name_looks_suspicious?(name)
       return false if name.blank?
+
       MALICIOUS_PATTERNS.any? { |pattern| name.match?(pattern) }
     end
 

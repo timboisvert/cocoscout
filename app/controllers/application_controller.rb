@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ApplicationController < ActionController::Base
   include Authentication
   include Pagy::Method
@@ -8,13 +10,13 @@ class ApplicationController < ActionController::Base
 
   def track_my_dashboard
     # Only track if user is on a My:: controller page (not AuthController or other base controllers)
-    if self.class.name.start_with?("My::") && Current.user.present?
-      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
-      # Reset if it's an old string value instead of a hash
-      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-      last_dashboard_prefs[Current.user.id.to_s] = "my"
-      cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
-    end
+    return unless self.class.name.start_with?("My::") && Current.user.present?
+
+    last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+    # Reset if it's an old string value instead of a hash
+    last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+    last_dashboard_prefs[Current.user.id.to_s] = "my"
+    cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
   end
 
   def show_my_sidebar

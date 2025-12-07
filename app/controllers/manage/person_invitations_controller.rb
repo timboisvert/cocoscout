@@ -1,28 +1,30 @@
-class Manage::PersonInvitationsController < Manage::ManageController
-  allow_unauthenticated_access only: [ :accept, :do_accept ]
+# frozen_string_literal: true
 
-  skip_before_action :require_current_organization, only: [ :accept, :do_accept ]
-  skip_before_action :show_manage_sidebar
+module Manage
+  class PersonInvitationsController < Manage::ManageController
+    allow_unauthenticated_access only: %i[accept do_accept]
 
-  before_action :set_person_invitation, only: [ :accept, :do_accept ]
+    skip_before_action :require_current_organization, only: %i[accept do_accept]
+    skip_before_action :show_manage_sidebar
 
-  def accept
-    # Renders a form for the invitee to set their password
-  end
+    before_action :set_person_invitation, only: %i[accept do_accept]
 
-  def do_accept
-    # Try and find the user accepting the invitation
-    user = User.find_by(email_address: @person_invitation.email.downcase)
-    person = Person.find_by(email: @person_invitation.email.downcase)
+    def accept
+      # Renders a form for the invitee to set their password
+    end
 
-    # If user already exists with a password, they shouldn't be here
-    # They should already be linked to the person
-    if user && user.authenticate(params[:password])
-      # User is signing in - this shouldn't normally happen for person invitations
-      # but handle it gracefully
-    else
-      # Set the password on the existing user or validate the new user
-      if user
+    def do_accept
+      # Try and find the user accepting the invitation
+      user = User.find_by(email_address: @person_invitation.email.downcase)
+      person = Person.find_by(email: @person_invitation.email.downcase)
+
+      # If user already exists with a password, they shouldn't be here
+      # They should already be linked to the person
+      if user&.authenticate(params[:password])
+        # User is signing in - this shouldn't normally happen for person invitations
+        # but handle it gracefully
+      elsif user
+        # Set the password on the existing user or validate the new user
         user.password = params[:password]
         unless user.valid?
           @user = user
@@ -38,59 +40,58 @@ class Manage::PersonInvitationsController < Manage::ManageController
           render :accept, status: :unprocessable_entity and return
         end
       end
-    end
 
-    # Ensure person exists and is linked to user
-    unless person
-      # Create a person for this invitation
-      person = Person.new(
-        email: @person_invitation.email.downcase,
-        name: @person_invitation.email.split("@").first,
-        user: user
-      )
-      person.save!
-    else
-      # Link existing person to user if not already linked
-      unless person.user
-        person.user = user
+      # Ensure person exists and is linked to user
+      if person
+        # Link existing person to user if not already linked
+        unless person.user
+          person.user = user
+          person.save!
+        end
+      else
+        # Create a person for this invitation
+        person = Person.new(
+          email: @person_invitation.email.downcase,
+          name: @person_invitation.email.split("@").first,
+          user: user
+        )
         person.save!
       end
-    end
 
-    # Ensure the person is in the organization (if invitation has one)
-    if @person_invitation.organization
-      unless person.organizations.include?(@person_invitation.organization)
+      # Ensure the person is in the organization (if invitation has one)
+      if @person_invitation.organization && !person.organizations.include?(@person_invitation.organization)
         person.organizations << @person_invitation.organization
       end
-    end
 
-    # Mark the invitation as accepted
-    @person_invitation.update(accepted_at: Time.current)
+      # Mark the invitation as accepted
+      @person_invitation.update(accepted_at: Time.current)
 
-    # Sign the user in
-    start_new_session_for user
+      # Sign the user in
+      start_new_session_for user
 
-    # Set the current production company in session (if invitation has one)
-    if @person_invitation.organization
-      user_id = user&.id
-      if user_id
-        session[:current_organization_id] ||= {}
-        session[:current_organization_id]["#{user_id}"] = @person_invitation.organization.id
+      # Set the current production company in session (if invitation has one)
+      if @person_invitation.organization
+        user_id = user&.id
+        if user_id
+          session[:current_organization_id] ||= {}
+          session[:current_organization_id][user_id.to_s] = @person_invitation.organization.id
+        end
+      end
+
+      # And redirect appropriately
+      if @person_invitation.organization
+        redirect_to manage_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
+      else
+        redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your account is ready.", status: :see_other
       end
     end
 
-    # And redirect appropriately
-    if @person_invitation.organization
-      redirect_to manage_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
-    else
-      redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your account is ready.", status: :see_other
-    end
-  end
+    private
 
-  private
-  def set_person_invitation
-    @person_invitation = PersonInvitation.find_by(token: params[:token])
-    unless @person_invitation
+    def set_person_invitation
+      @person_invitation = PersonInvitation.find_by(token: params[:token])
+      return if @person_invitation
+
       redirect_to root_path, alert: "Invalid or expired invitation"
     end
   end

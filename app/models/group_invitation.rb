@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class GroupInvitation < ApplicationRecord
   belongs_to :group
   belongs_to :invited_by, class_name: "Person", foreign_key: "invited_by_person_id", optional: true

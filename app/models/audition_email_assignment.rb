@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 class AuditionEmailAssignment < ApplicationRecord
   belongs_to :audition_cycle
   belongs_to :assignable, polymorphic: true
 
-  validates :assignable_id, uniqueness: { scope: [ :audition_cycle_id, :assignable_type ] }
+  validates :assignable_id, uniqueness: { scope: %i[audition_cycle_id assignable_type] }
 
   # Helper method for backward compatibility
   def person

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MoveCastAssignmentStagesToCallToAudition < ActiveRecord::Migration[8.1]
   def up
     # Add call_to_audition_id column
@@ -21,7 +23,7 @@ class MoveCastAssignmentStagesToCallToAudition < ActiveRecord::Migration[8.1]
 
     # Remove production_id column and its index
     remove_column :cast_assignment_stages, :production_id
-    remove_index :cast_assignment_stages, name: "index_cast_assignment_stages_on_production_id", if_exists: true
+    remove_index :cast_assignment_stages, name: 'index_cast_assignment_stages_on_production_id', if_exists: true
   end
 
   def down

@@ -5,8 +5,8 @@
 # Usage: script/generate_test_template.rb ModelName
 
 if ARGV.empty?
-  puts "Usage: script/generate_test_template.rb ModelName"
-  puts "Example: script/generate_test_template.rb User"
+  puts 'Usage: script/generate_test_template.rb ModelName'
+  puts 'Example: script/generate_test_template.rb User'
   exit 1
 end
 
@@ -76,8 +76,8 @@ RUBY
 
 File.write(spec_file, template)
 puts "✅ Created test template: #{spec_file}"
-puts ""
-puts "Next steps:"
+puts ''
+puts 'Next steps:'
 puts "1. Update spec/factories/#{model_file}s.rb if it doesn't exist"
 puts "2. Add specific test cases based on your model's validations and methods"
 puts "3. Run the tests: bundle exec rspec #{spec_file}"

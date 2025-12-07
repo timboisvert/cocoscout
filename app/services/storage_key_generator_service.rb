@@ -63,8 +63,6 @@ class StorageKeyGeneratorService
         "people/#{profileable.id}/headshots/#{blob_key}"
       when Group
         "groups/#{profileable.id}/headshots/#{blob_key}"
-      else
-        nil
       end
     end
 
@@ -76,8 +74,6 @@ class StorageKeyGeneratorService
         "people/#{profileable.id}/resumes/#{blob_key}"
       when Group
         "groups/#{profileable.id}/resumes/#{blob_key}"
-      else
-        nil
       end
     end
 
@@ -94,7 +90,7 @@ class StorageKeyGeneratorService
       return nil unless production
 
       org_id = production.organization_id
-      folder = attachment_name.to_s.pluralize  # "poster" -> "posters"
+      folder = attachment_name.to_s.pluralize # "poster" -> "posters"
       "organizations/#{org_id}/productions/#{production.id}/shows/#{show.id}/#{folder}/#{blob_key}"
     end
 

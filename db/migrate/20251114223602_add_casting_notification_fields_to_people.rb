@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddCastingNotificationFieldsToPeople < ActiveRecord::Migration[8.1]
   def change
     add_column :people, :casting_notification_sent_at, :datetime

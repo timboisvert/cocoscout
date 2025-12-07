@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ProfileHeadshot < ApplicationRecord
   include HierarchicalStorageKey
 
@@ -41,6 +43,7 @@ class ProfileHeadshot < ApplicationRecord
   # Invalidate the parent person/group cache when headshot changes
   def invalidate_profileable_cache
     return unless profileable.respond_to?(:invalidate_cache)
+
     profileable.invalidate_cache(:person_card) if profileable.is_a?(Person)
     profileable.invalidate_cache(:person_profile) if profileable.is_a?(Person)
     profileable.invalidate_cache(:group_card) if profileable.is_a?(Group)
@@ -49,15 +52,16 @@ class ProfileHeadshot < ApplicationRecord
 
   def set_default_position
     return if position.present?
+
     max_position = profileable&.profile_headshots&.maximum(:position) || -1
     self.position = max_position + 1
   end
 
   def set_as_primary_if_first
     # If this is the first headshot and no primary is set, make it primary
-    if profileable && profileable.profile_headshots.count == 1 && !is_primary
-      update_column(:is_primary, true)
-    end
+    return unless profileable && profileable.profile_headshots.count == 1 && !is_primary
+
+    update_column(:is_primary, true)
   end
 
   def set_new_primary_if_needed
@@ -66,29 +70,32 @@ class ProfileHeadshot < ApplicationRecord
     return if destroyed? # Don't try to update if already destroyed
 
     first_remaining = profileable.profile_headshots.where.not(id: id).first
-    if first_remaining
-      first_remaining.update_column(:is_primary, true)
-    end
+    return unless first_remaining
+
+    first_remaining.update_column(:is_primary, true)
   end
 
   def max_headshots_per_profileable
     return unless profileable
+
     existing_count = profileable.profile_headshots.where.not(id: id).count
-    if existing_count >= 10
-      errors.add(:base, "Cannot have more than 10 headshots per profile")
-    end
+    return unless existing_count >= 10
+
+    errors.add(:base, "Cannot have more than 10 headshots per profile")
   end
 
   def only_one_primary_per_profileable
     return unless is_primary && profileable
+
     existing_primary = profileable.profile_headshots.where(is_primary: true).where.not(id: id)
-    if existing_primary.exists?
-      errors.add(:is_primary, "There can only be one primary headshot per profile")
-    end
+    return unless existing_primary.exists?
+
+    errors.add(:is_primary, "There can only be one primary headshot per profile")
   end
 
   def clear_other_primaries
     return unless profileable
+
     Rails.logger.info "Clearing other primaries for headshot #{id}, is_primary: #{is_primary}"
     result = profileable.profile_headshots.where.not(id: id).update_all(is_primary: false)
     Rails.logger.info "Cleared #{result} other primaries"
@@ -96,8 +103,9 @@ class ProfileHeadshot < ApplicationRecord
 
   def image_content_type
     return unless image.attached?
-    unless image.content_type.in?(%w[image/jpeg image/jpg image/png])
-      errors.add(:image, "must be a JPG, JPEG, or PNG file")
-    end
+
+    return if image.content_type.in?(%w[image/jpeg image/jpg image/png])
+
+    errors.add(:image, "must be a JPG, JPEG, or PNG file")
   end
 end

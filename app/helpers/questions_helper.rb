@@ -2,7 +2,7 @@
 
 module QuestionsHelper
   def render_question_input(question, answers, options = {})
-    answer_value = answers.is_a?(Hash) ? answers["#{question.id}"] : answers[question.id]
+    answer_value = answers.is_a?(Hash) ? answers[question.id.to_s] : answers[question.id]
     missing_required = options[:missing_required_questions]&.include?(question)
 
     render(

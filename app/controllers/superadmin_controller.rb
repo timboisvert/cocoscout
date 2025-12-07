@@ -1,5 +1,9 @@
+# frozen_string_literal: true
+
 class SuperadminController < ApplicationController
-  before_action :require_superadmin, only: [ :index, :impersonate, :change_email, :queue, :queue_failed, :queue_retry, :queue_delete_job, :queue_clear_failed, :queue_clear_pending, :people_list, :person_detail, :destroy_person, :organizations_list, :organization_detail ]
+  before_action :require_superadmin,
+                only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
+                         queue_clear_pending people_list person_detail destroy_person organizations_list organization_detail]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -39,9 +43,7 @@ class SuperadminController < ApplicationController
     @people = Person.order(created_at: :desc)
 
     # Apply filter for suspicious people
-    if @filter == "suspicious"
-      @people = @people.suspicious
-    end
+    @people = @people.suspicious if @filter == "suspicious"
 
     # Filter by search term if provided (search by name or email)
     if @search.present?
@@ -103,7 +105,8 @@ class SuperadminController < ApplicationController
       end
     end
 
-    redirect_to people_list_path, notice: "Successfully deleted all #{count} suspicious #{'person'.pluralize(count)}", status: :see_other
+    redirect_to people_list_path, notice: "Successfully deleted all #{count} suspicious #{'person'.pluralize(count)}",
+                                  status: :see_other
   end
 
   def organizations_list
@@ -114,10 +117,10 @@ class SuperadminController < ApplicationController
     if @search.present?
       search_term = "%#{@search}%"
       @organizations = @organizations.joins(:owner)
-        .where("organizations.name LIKE ? OR users.email_address LIKE ? OR people.name LIKE ?",
-               search_term, search_term, search_term)
-        .joins("LEFT JOIN people ON users.person_id = people.id")
-        .distinct
+                                     .where("organizations.name LIKE ? OR users.email_address LIKE ? OR people.name LIKE ?",
+                                            search_term, search_term, search_term)
+                                     .joins("LEFT JOIN people ON users.person_id = people.id")
+                                     .distinct
     end
 
     @pagy, @organizations = pagy(@organizations, items: 25)
@@ -174,9 +177,7 @@ class SuperadminController < ApplicationController
     # Restore the original user
     if session[:user_doing_the_impersonating]
       original_user = User.find_by(id: session[:user_doing_the_impersonating])
-      if original_user
-        start_new_session_for original_user
-      end
+      start_new_session_for original_user if original_user
     end
 
     session.delete(:user_doing_the_impersonating)
@@ -215,13 +216,12 @@ class SuperadminController < ApplicationController
         updates_made << "Person email"
 
         # If person has no production companies, note that
-        if person.organizations.empty?
-          updates_made << "(Note: Person has no production company associations)"
-        end
+        updates_made << "(Note: Person has no production company associations)" if person.organizations.empty?
       end
     end
 
-    redirect_to superadmin_path, notice: "Successfully changed email from #{old_email} to #{new_email}. Updated: #{updates_made.join(', ')}"
+    redirect_to superadmin_path,
+                notice: "Successfully changed email from #{old_email} to #{new_email}. Updated: #{updates_made.join(', ')}"
   rescue ActiveRecord::RecordInvalid => e
     redirect_to superadmin_path, alert: "Failed to change email: #{e.message}"
   end
@@ -229,22 +229,20 @@ class SuperadminController < ApplicationController
   def email_logs
     # Exclude the heavy 'body' column from list queries for performance
     @email_logs = EmailLog
-      .select(:id, :user_id, :recipient, :subject, :mailer_class, :mailer_action,
-              :message_id, :delivery_status, :sent_at, :delivered_at, :error_message,
-              :created_at, :updated_at)
-      .includes(:user)
-      .order(sent_at: :desc)
-      .limit(100)
+                  .select(:id, :user_id, :recipient, :subject, :mailer_class, :mailer_action,
+                          :message_id, :delivery_status, :sent_at, :delivered_at, :error_message,
+                          :created_at, :updated_at)
+                  .includes(:user)
+                  .order(sent_at: :desc)
+                  .limit(100)
 
     # Filter by user if requested
-    if params[:user_id].present?
-      @email_logs = @email_logs.where(user_id: params[:user_id])
-    end
+    @email_logs = @email_logs.where(user_id: params[:user_id]) if params[:user_id].present?
 
     # Filter by recipient if requested
-    if params[:recipient].present?
-      @email_logs = @email_logs.where("recipient LIKE ?", "%#{params[:recipient]}%")
-    end
+    return unless params[:recipient].present?
+
+    @email_logs = @email_logs.where("recipient LIKE ?", "%#{params[:recipient]}%")
   end
 
   def email_log
@@ -261,16 +259,16 @@ class SuperadminController < ApplicationController
 
     # Recent jobs (last 50)
     @recent_jobs = SolidQueue::Job
-      .order(created_at: :desc)
-      .limit(50)
-      .select(:id, :queue_name, :class_name, :created_at, :finished_at, :scheduled_at)
+                   .order(created_at: :desc)
+                   .limit(50)
+                   .select(:id, :queue_name, :class_name, :created_at, :finished_at, :scheduled_at)
 
     # Queue breakdown
     @queue_stats = SolidQueue::Job
-      .where(finished_at: nil)
-      .group(:queue_name)
-      .count
-      .sort_by { |_, count| -count }
+                   .where(finished_at: nil)
+                   .group(:queue_name)
+                   .count
+                   .sort_by { |_, count| -count }
   rescue ActiveRecord::StatementInvalid
     # Queue database not accessible
     @total_jobs = 0
@@ -285,11 +283,11 @@ class SuperadminController < ApplicationController
 
   def queue_failed
     @failed_executions = SolidQueue::FailedExecution
-      .joins(:job)
-      .includes(:job)
-      .order(Arel.sql("solid_queue_failed_executions.created_at DESC"))
-      .limit(100)
-      .select("solid_queue_failed_executions.*, solid_queue_jobs.*")
+                         .joins(:job)
+                         .includes(:job)
+                         .order(Arel.sql("solid_queue_failed_executions.created_at DESC"))
+                         .limit(100)
+                         .select("solid_queue_failed_executions.*, solid_queue_jobs.*")
   end
 
   def queue_retry
@@ -302,7 +300,7 @@ class SuperadminController < ApplicationController
     )
 
     redirect_to queue_failed_path, notice: "Job queued for retry"
-  rescue => e
+  rescue StandardError => e
     redirect_to queue_failed_path, alert: "Failed to retry job: #{e.message}"
   end
 
@@ -310,7 +308,7 @@ class SuperadminController < ApplicationController
     job = SolidQueue::Job.find(params[:id])
     job.destroy
     redirect_to queue_monitor_path, notice: "Job deleted"
-  rescue => e
+  rescue StandardError => e
     redirect_to queue_monitor_path, alert: "Failed to delete job: #{e.message}"
   end
 
@@ -318,7 +316,7 @@ class SuperadminController < ApplicationController
     count = SolidQueue::FailedExecution.count
     SolidQueue::FailedExecution.destroy_all
     redirect_to queue_monitor_path, notice: "Cleared #{count} failed jobs"
-  rescue => e
+  rescue StandardError => e
     redirect_to queue_monitor_path, alert: "Failed to clear failed jobs: #{e.message}"
   end
 
@@ -326,7 +324,7 @@ class SuperadminController < ApplicationController
     count = SolidQueue::Job.where(finished_at: nil).count
     SolidQueue::Job.where(finished_at: nil).destroy_all
     redirect_to queue_monitor_path, notice: "Cleared #{count} pending jobs"
-  rescue => e
+  rescue StandardError => e
     redirect_to queue_monitor_path, alert: "Failed to clear pending jobs: #{e.message}"
   end
 
@@ -347,7 +345,7 @@ class SuperadminController < ApplicationController
 
     # Orphaned blobs
     @orphaned_blobs = ActiveStorage::Blob.left_joins(:attachments)
-                                          .where(active_storage_attachments: { id: nil })
+                                         .where(active_storage_attachments: { id: nil })
     @orphaned_count = @orphaned_blobs.count
     @orphaned_size = @orphaned_blobs.sum(:byte_size)
     @orphaned_by_service = @orphaned_blobs.group(:service_name).count
@@ -367,7 +365,7 @@ class SuperadminController < ApplicationController
 
   def storage_cleanup_orphans
     orphaned = ActiveStorage::Blob.left_joins(:attachments)
-                                   .where(active_storage_attachments: { id: nil })
+                                  .where(active_storage_attachments: { id: nil })
     count = orphaned.count
 
     if params[:service].present?
@@ -377,7 +375,7 @@ class SuperadminController < ApplicationController
 
     orphaned.find_each(&:purge)
     redirect_to storage_monitor_path, notice: "Purged #{count} orphaned blobs"
-  rescue => e
+  rescue StandardError => e
     redirect_to storage_monitor_path, alert: "Failed to cleanup orphans: #{e.message}"
   end
 
@@ -386,21 +384,19 @@ class SuperadminController < ApplicationController
     count = legacy.count
     legacy.delete_all
     redirect_to storage_monitor_path, notice: "Deleted #{count} legacy Person attachments"
-  rescue => e
+  rescue StandardError => e
     redirect_to storage_monitor_path, alert: "Failed to cleanup legacy attachments: #{e.message}"
   end
 
   def storage_migrate_keys
     # Auto-detect service with flat keys if not specified
     service_name = params[:service].presence
-    unless service_name
-      service_name = ActiveStorage::Blob
-        .where("key NOT LIKE '%/%'")
-        .group(:service_name)
-        .count
-        .max_by { |_, count| count }
-        &.first
-    end
+    service_name ||= ActiveStorage::Blob
+                     .where("key NOT LIKE '%/%'")
+                     .group(:service_name)
+                     .count
+                     .max_by { |_, count| count }
+                     &.first
 
     unless service_name
       redirect_to storage_monitor_path, notice: "No flat keys to migrate"
@@ -413,11 +409,11 @@ class SuperadminController < ApplicationController
 
     # Only migrate blobs with flat keys (no /)
     blobs_query = ActiveStorage::Blob
-      .where(service_name: service_name)
-      .where("key NOT LIKE '%/%'")
-      .joins(:attachments)
-      .includes(:attachments)
-      .distinct
+                  .where(service_name: service_name)
+                  .where("key NOT LIKE '%/%'")
+                  .joins(:attachments)
+                  .includes(:attachments)
+                  .distinct
 
     # Apply limit if specified (for testing migration with a small batch)
     blobs_to_migrate = limit ? blobs_query.limit(limit) : blobs_query
@@ -426,39 +422,37 @@ class SuperadminController < ApplicationController
     storage_service = ActiveStorage::Blob.services.fetch(service_name.to_sym)
 
     blobs_to_migrate.each do |blob|
-      begin
-        new_key = StorageKeyGeneratorService.generate_key_for_blob(blob)
-        next if new_key.nil? || new_key == blob.key
+      new_key = StorageKeyGeneratorService.generate_key_for_blob(blob)
+      next if new_key.nil? || new_key == blob.key
 
-        # Copy object to new key using S3 client directly
-        if storage_service.respond_to?(:bucket)
-          # S3 service - use copy_object
-          storage_service.bucket.object(new_key).copy_from(
-            copy_source: "#{storage_service.bucket.name}/#{blob.key}"
-          )
-        else
-          # Disk service - download and re-upload
-          data = blob.download
-          storage_service.upload(new_key, StringIO.new(data), checksum: blob.checksum)
-        end
-
-        # Update the blob record
-        old_key = blob.key
-        blob.update_column(:key, new_key)
-
-        # Note: Old key is preserved. Run delete_old_keys after verifying migration.
-
-        migrated += 1
-      rescue => e
-        errors << "Blob #{blob.id}: #{e.message}"
+      # Copy object to new key using S3 client directly
+      if storage_service.respond_to?(:bucket)
+        # S3 service - use copy_object
+        storage_service.bucket.object(new_key).copy_from(
+          copy_source: "#{storage_service.bucket.name}/#{blob.key}"
+        )
+      else
+        # Disk service - download and re-upload
+        data = blob.download
+        storage_service.upload(new_key, StringIO.new(data), checksum: blob.checksum)
       end
+
+      # Update the blob record
+      blob.key
+      blob.update_column(:key, new_key)
+
+      # NOTE: Old key is preserved. Run delete_old_keys after verifying migration.
+
+      migrated += 1
+    rescue StandardError => e
+      errors << "Blob #{blob.id}: #{e.message}"
     end
 
     message = "Migrated #{migrated} blobs to hierarchical keys"
     message += ". Errors: #{errors.first(3).join('; ')}" if errors.any?
 
     redirect_to storage_monitor_path, notice: message
-  rescue => e
+  rescue StandardError => e
     redirect_to storage_monitor_path, alert: "Migration failed: #{e.message}"
   end
 
@@ -501,7 +495,7 @@ class SuperadminController < ApplicationController
         deleted_size += object.size
         object.delete
         deleted_count += 1
-      rescue => e
+      rescue StandardError => e
         errors << "#{key}: #{e.message}"
       end
     end
@@ -510,7 +504,7 @@ class SuperadminController < ApplicationController
     message += ". Errors: #{errors.first(3).join('; ')}" if errors.any?
 
     redirect_to storage_monitor_path, notice: message
-  rescue => e
+  rescue StandardError => e
     redirect_to storage_monitor_path, alert: "S3 cleanup failed: #{e.message}"
   end
 
@@ -520,7 +514,7 @@ class SuperadminController < ApplicationController
       @entry_count = SolidCache::Entry.count
       @total_bytes = SolidCache::Entry.sum(:byte_size)
       @max_size = 256.megabytes
-      @usage_percent = @max_size > 0 ? (@total_bytes.to_f / @max_size * 100).round(1) : 0
+      @usage_percent = @max_size.positive? ? (@total_bytes.to_f / @max_size * 100).round(1) : 0
 
       @oldest_entry = SolidCache::Entry.minimum(:created_at)
       @newest_entry = SolidCache::Entry.maximum(:created_at)
@@ -533,10 +527,10 @@ class SuperadminController < ApplicationController
 
       # Recent entries
       @recent_entries = SolidCache::Entry
-        .order(created_at: :desc)
-        .limit(20)
-        .pluck(:key, :byte_size, :created_at)
-        .map { |k, s, t| { key: decode_key(k), size: s, created_at: t } }
+                        .order(created_at: :desc)
+                        .limit(20)
+                        .pluck(:key, :byte_size, :created_at)
+                        .map { |k, s, t| { key: decode_key(k), size: s, created_at: t } }
 
       # Cache health
       @cache_healthy = test_cache_connectivity
@@ -554,7 +548,7 @@ class SuperadminController < ApplicationController
     cleared = count_before - count_after
 
     redirect_to cache_monitor_path, notice: "Cache cleared. #{cleared} entries removed."
-  rescue => e
+  rescue StandardError => e
     redirect_to cache_monitor_path, alert: "Cache clear failed: #{e.message}"
   end
 
@@ -572,22 +566,22 @@ class SuperadminController < ApplicationController
     else
       redirect_to cache_monitor_path, alert: "Pattern clearing requires Solid Cache"
     end
-  rescue => e
+  rescue StandardError => e
     redirect_to cache_monitor_path, alert: "Pattern clear failed: #{e.message}"
   end
 
   private
 
   def require_superadmin
-    unless Current.user&.superadmin?
-      redirect_to my_dashboard_path
-    end
+    return if Current.user&.superadmin?
+
+    redirect_to my_dashboard_path
   end
 
   # Cache helper methods
   def solid_cache_available?
     defined?(SolidCache::Entry) && SolidCache::Entry.table_exists?
-  rescue
+  rescue StandardError
     false
   end
 
@@ -601,7 +595,7 @@ class SuperadminController < ApplicationController
       "100 KB - 1 MB" => SolidCache::Entry.where("byte_size >= ? AND byte_size < ?", 100.kilobytes, 1.megabyte).count,
       "> 1 MB" => SolidCache::Entry.where("byte_size >= ?", 1.megabyte).count
     }
-    ranges.reject { |_, v| v == 0 }
+    ranges.reject { |_, v| v.zero? }
   end
 
   def analyze_key_patterns
@@ -625,13 +619,13 @@ class SuperadminController < ApplicationController
     # Examples: "person_card_v1/123/1234567890" -> "person_card_v1"
     #           "views/manage/..." -> "views/manage"
     key.to_s.split("/").first(2).join("/").truncate(50)
-  rescue
+  rescue StandardError
     "unknown"
   end
 
   def decode_key(key_binary)
     key_binary.to_s.force_encoding("UTF-8")
-  rescue
+  rescue StandardError
     key_binary.to_s
   end
 
@@ -641,7 +635,7 @@ class SuperadminController < ApplicationController
     result = Rails.cache.read(test_key) == "ok"
     Rails.cache.delete(test_key)
     result
-  rescue
+  rescue StandardError
     false
   end
 

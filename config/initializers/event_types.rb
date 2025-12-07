@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Load event types configuration
 EVENT_TYPES_CONFIG = YAML.load_file(Rails.root.join("config", "event_types.yml")).freeze
 

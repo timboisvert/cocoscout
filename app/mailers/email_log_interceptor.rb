@@ -27,7 +27,7 @@ class EmailLogInterceptor
       mailer_action: message.header["X-Mailer-Action"]&.value,
       message_id: message.message_id,
       sent_at: Time.current,
-      delivery_status: "queued"  # Changed from "sent" - will be updated when actually delivered
+      delivery_status: "queued" # Changed from "sent" - will be updated when actually delivered
     )
   rescue StandardError => e
     # Log the error but don't prevent email delivery
@@ -84,8 +84,6 @@ class EmailLogInterceptor
       nil
     elsif part.content_type&.include?("text/html")
       part.decoded
-    else
-      nil
     end
   end
 
@@ -99,8 +97,6 @@ class EmailLogInterceptor
       nil
     elsif part.content_type&.include?("text/plain")
       part.decoded
-    else
-      nil
     end
   end
 end

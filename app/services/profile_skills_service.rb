@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ProfileSkillsService
   class << self
     def all_categories

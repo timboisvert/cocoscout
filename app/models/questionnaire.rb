@@ -1,8 +1,12 @@
+# frozen_string_literal: true
+
 class Questionnaire < ApplicationRecord
   belongs_to :production
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :questionnaire_invitations, dependent: :destroy
-  has_many :invited_people, -> { where(questionnaire_invitations: { invitee_type: "Person" }) }, through: :questionnaire_invitations, source: :invitee, source_type: "Person"
+  has_many :invited_people, lambda {
+    where(questionnaire_invitations: { invitee_type: "Person" })
+  }, through: :questionnaire_invitations, source: :invitee, source_type: "Person"
   has_many :questionnaire_responses, dependent: :destroy
 
   has_rich_text :instruction_text
@@ -19,28 +23,31 @@ class Questionnaire < ApplicationRecord
 
   # Cached response statistics for display
   def cached_response_stats
-    Rails.cache.fetch([ "questionnaire_stats_v1", id, questionnaire_responses.maximum(:updated_at), questionnaire_invitations.maximum(:updated_at) ], expires_in: 5.minutes) do
+    Rails.cache.fetch(
+      [ "questionnaire_stats_v1", id, questionnaire_responses.maximum(:updated_at),
+       questionnaire_invitations.maximum(:updated_at) ], expires_in: 5.minutes
+    ) do
       total_invited = questionnaire_invitations.count
       total_responded = questionnaire_responses.count
       {
         invited: total_invited,
         responded: total_responded,
-        response_rate: total_invited > 0 ? (total_responded.to_f / total_invited * 100).round(1) : 0
+        response_rate: total_invited.positive? ? (total_responded.to_f / total_invited * 100).round(1) : 0
       }
     end
   end
 
   def respond_url
     if Rails.env.development?
-      "http://localhost:3000/my/questionnaires/#{self.token}/form"
+      "http://localhost:3000/my/questionnaires/#{token}/form"
     else
-      "https://www.cocoscout.com/my/questionnaires/#{self.token}/form"
+      "https://www.cocoscout.com/my/questionnaires/#{token}/form"
     end
   end
 
   private
 
   def generate_token
-    self.token = SecureRandom.alphanumeric(6).upcase if self.token.blank?
+    self.token = SecureRandom.alphanumeric(6).upcase if token.blank?
   end
 end

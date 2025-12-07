@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ConvertAuditionEmailAssignmentsToPolymorphic < ActiveRecord::Migration[8.1]
   def up
     # Add polymorphic columns
@@ -12,11 +14,12 @@ class ConvertAuditionEmailAssignmentsToPolymorphic < ActiveRecord::Migration[8.1
     SQL
 
     # Add index on polymorphic columns
-    add_index :audition_email_assignments, [ :assignable_type, :assignable_id, :audition_cycle_id ],
+    add_index :audition_email_assignments, %i[assignable_type assignable_id audition_cycle_id],
               unique: true, name: 'index_audition_email_assignments_on_assignable_and_cycle'
 
     # Remove old person_id column and index
-    remove_index :audition_email_assignments, name: 'index_audition_email_assignments_on_person_and_cycle', if_exists: true
+    remove_index :audition_email_assignments, name: 'index_audition_email_assignments_on_person_and_cycle',
+                                              if_exists: true
     remove_column :audition_email_assignments, :person_id
   end
 
@@ -38,11 +41,12 @@ class ConvertAuditionEmailAssignmentsToPolymorphic < ActiveRecord::Migration[8.1
     SQL
 
     # Add back old index
-    add_index :audition_email_assignments, [ :person_id, :audition_cycle_id ],
+    add_index :audition_email_assignments, %i[person_id audition_cycle_id],
               unique: true, name: 'index_audition_email_assignments_on_person_and_cycle'
 
     # Remove polymorphic columns
-    remove_index :audition_email_assignments, name: 'index_audition_email_assignments_on_assignable_and_cycle', if_exists: true
+    remove_index :audition_email_assignments, name: 'index_audition_email_assignments_on_assignable_and_cycle',
+                                              if_exists: true
     remove_column :audition_email_assignments, :assignable_type
     remove_column :audition_email_assignments, :assignable_id
   end

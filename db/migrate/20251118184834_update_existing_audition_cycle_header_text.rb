@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class UpdateExistingAuditionCycleHeaderText < ActiveRecord::Migration[8.1]
   def up
     # Update any remaining AuditionCycle header_text records to instruction_text

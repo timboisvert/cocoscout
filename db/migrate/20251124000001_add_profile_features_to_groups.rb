@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddProfileFeaturesToGroups < ActiveRecord::Migration[8.0]
   def change
     add_column :groups, :headshots_visible, :boolean, default: true, null: false

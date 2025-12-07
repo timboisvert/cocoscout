@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.configure do |config|
   config.before(:suite) do
     DatabaseCleaner.strategy = :transaction
@@ -6,9 +8,9 @@ RSpec.configure do |config|
 
   config.before(:each) do
     DatabaseCleaner.strategy = if RSpec.current_example.metadata[:type] == :system
-      :deletion
+                                 :deletion
     else
-      :transaction
+                                 :transaction
     end
     DatabaseCleaner.start
   end

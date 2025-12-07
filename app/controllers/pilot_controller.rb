@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PilotController < ApplicationController
   include Authentication
 
@@ -12,19 +14,19 @@ class PilotController < ApplicationController
     @producer_state = session[:pilot_producer_state] || {}
 
     # If we have an organization but no production name in session, look it up
-    if @producer_state[:organization_id].present? && @producer_state[:production_name].blank?
-      organization = Organization.find_by(id: @producer_state[:organization_id])
-      if organization
-        first_production = organization.productions.order(created_at: :asc).first
-        if first_production
-          @producer_state[:production_id] = first_production.id
-          @producer_state[:production_name] = first_production.name
-          # Update session
-          session[:pilot_producer_state][:production_id] = first_production.id
-          session[:pilot_producer_state][:production_name] = first_production.name
-        end
-      end
-    end
+    return unless @producer_state[:organization_id].present? && @producer_state[:production_name].blank?
+
+    organization = Organization.find_by(id: @producer_state[:organization_id])
+    return unless organization
+
+    first_production = organization.productions.order(created_at: :asc).first
+    return unless first_production
+
+    @producer_state[:production_id] = first_production.id
+    @producer_state[:production_name] = first_production.name
+    # Update session
+    session[:pilot_producer_state][:production_id] = first_production.id
+    session[:pilot_producer_state][:production_name] = first_production.name
   end
 
   def reset_talent
@@ -43,10 +45,10 @@ class PilotController < ApplicationController
 
     # Find most recent invitation or create new one
     person_invitation = PersonInvitation.where(email: user.email_address)
-    if organization_id.present?
-      person_invitation = person_invitation.where(organization_id: organization_id).order(created_at: :desc).first
+    person_invitation = if organization_id.present?
+                          person_invitation.where(organization_id: organization_id).order(created_at: :desc).first
     else
-      person_invitation = person_invitation.where(organization_id: nil).order(created_at: :desc).first
+                          person_invitation.where(organization_id: nil).order(created_at: :desc).first
     end
 
     # Create new invitation if none exists
@@ -77,7 +79,7 @@ class PilotController < ApplicationController
       success: true,
       message: "Invitation email resent to #{user.email_address}"
     }
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -143,9 +145,9 @@ class PilotController < ApplicationController
       }
 
       message = if user_already_existed
-        "User already exists. Selected #{@user.email_address}"
+                  "User already exists. Selected #{@user.email_address}"
       else
-        "Pilot talent created and invitation sent to #{@user.email_address}"
+                  "Pilot talent created and invitation sent to #{@user.email_address}"
       end
 
       render json: {
@@ -156,7 +158,7 @@ class PilotController < ApplicationController
         already_existed: user_already_existed
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -221,9 +223,9 @@ class PilotController < ApplicationController
       }
 
       message = if user_already_existed
-        "User already exists. Selected #{@user.email_address}"
+                  "User already exists. Selected #{@user.email_address}"
       else
-        "Producer user created and invitation sent to #{@user.email_address}"
+                  "Producer user created and invitation sent to #{@user.email_address}"
       end
 
       render json: {
@@ -234,7 +236,7 @@ class PilotController < ApplicationController
         already_existed: user_already_existed
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -281,7 +283,7 @@ class PilotController < ApplicationController
         organization: { id: @organization.id, name: @organization.name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -315,7 +317,7 @@ class PilotController < ApplicationController
         location: { id: @location.id, name: @location.name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -345,7 +347,7 @@ class PilotController < ApplicationController
         production: { id: @production.id, name: @production.name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -388,7 +390,7 @@ class PilotController < ApplicationController
         role: { id: @role.id, name: @role.name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -421,7 +423,7 @@ class PilotController < ApplicationController
         show: { id: @show.id, name: @show.secondary_name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -447,9 +449,7 @@ class PilotController < ApplicationController
         user: @user
       )
 
-      unless @person.save
-        raise ActiveRecord::Rollback
-      end
+      raise ActiveRecord::Rollback unless @person.save
 
       # Associate person with organization
       @person.organizations << organization
@@ -485,7 +485,7 @@ class PilotController < ApplicationController
         person: { id: @person.id, name: @person.name }
       }
     end
-  rescue => e
+  rescue StandardError => e
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
@@ -497,8 +497,8 @@ class PilotController < ApplicationController
   end
 
   def require_superadmin
-    unless Current.user&.superadmin?
-      redirect_to root_path, alert: "Access denied"
-    end
+    return if Current.user&.superadmin?
+
+    redirect_to root_path, alert: "Access denied"
   end
 end

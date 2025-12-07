@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ShowLink < ApplicationRecord
   belongs_to :show
   validates :url, presence: true

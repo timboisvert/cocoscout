@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateProfileResumes < ActiveRecord::Migration[8.1]
   def change
     create_table :profile_resumes do |t|
@@ -9,6 +11,6 @@ class CreateProfileResumes < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :profile_resumes, [ :profileable_type, :profileable_id, :position ]
+    add_index :profile_resumes, %i[profileable_type profileable_id position]
   end
 end
