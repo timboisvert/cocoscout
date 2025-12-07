@@ -6,6 +6,7 @@ class ProfileHeadshot < ApplicationRecord
   belongs_to :profileable, polymorphic: true
   has_one_attached :image do |attachable|
     attachable.variant :thumb, resize_to_limit: [ 100, 100 ], preprocessed: true
+    attachable.variant :small, resize_to_limit: [ 128, 128 ], preprocessed: true
   end
 
   # Categories for headshot types
@@ -30,6 +31,16 @@ class ProfileHeadshot < ApplicationRecord
   # Scopes
   default_scope { order(:position) }
   scope :primary, -> { where(is_primary: true) }
+
+  # Safely get an image variant, returning nil if the image can't be processed
+  def safe_image_variant(variant_name)
+    return nil unless image.attached?
+
+    image.variant(variant_name)
+  rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
+    Rails.logger.error("Failed to generate variant for profile_headshot #{id} image: #{e.message}")
+    nil
+  end
 
   # Callbacks
   before_validation :set_default_position, on: :create

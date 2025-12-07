@@ -14,6 +14,9 @@ module My
 
       @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: @person.id }).distinct
 
+      # Check if user is a cast member of any productions (for showing filter bar even when filtered results are empty)
+      @has_any_productions = @productions.any? || @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
+
       # Build selected group IDs for batch queries
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
       groups_by_id = @groups.index_by(&:id)

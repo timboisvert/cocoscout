@@ -100,11 +100,13 @@ class PublicKeyService
   def taken?(key, exclude_entity: nil)
     person_query = Person.where(public_key: key)
     group_query = Group.where(public_key: key)
+    production_query = Production.where(public_key: key)
 
     person_query = person_query.where.not(id: exclude_entity.id) if @entity_type == :person && exclude_entity
     group_query = group_query.where.not(id: exclude_entity.id) if @entity_type == :group && exclude_entity
+    production_query = production_query.where.not(id: exclude_entity.id) if @entity_type == :production && exclude_entity
 
-    person_query.exists? || group_query.exists?
+    person_query.exists? || group_query.exists? || production_query.exists?
   end
 
   def cooldown_days

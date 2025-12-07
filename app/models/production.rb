@@ -24,7 +24,17 @@ class Production < ApplicationRecord
 
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
+  validates :public_key, uniqueness: true, allow_nil: true
+  validates :public_key,
+            format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
+  validate :public_key_not_reserved
+  validate :public_key_change_frequency
   validate :logo_content_type
+
+  # Callbacks
+  before_validation :generate_public_key, on: :create
+  before_validation :downcase_public_key
+  before_save :track_public_key_change
 
   # Cache invalidation
   after_commit :invalidate_caches
@@ -85,13 +95,224 @@ class Production < ApplicationRecord
   def invalidate_caches
     # Invalidate dashboard cache
     Rails.cache.delete("production_dashboard_#{id}")
+    # Invalidate public profile cache
+    Rails.cache.delete(public_profile_cache_key)
     # Invalidate roles count cache - use explicit key pattern
     # The cache key is: ["production_roles_count_v1", id, roles.maximum(:updated_at)]
     # Since we can't predict the timestamp, we need a different approach
     # Touch updated_at to invalidate via cache key versioning
   end
 
+  # Cache key for public profile - used for HTTP caching and fragment caching
+  def public_profile_cache_key
+    "production_public_profile_v1_#{id}"
+  end
+
+  # Get the last modified time for public profile caching
+  # Considers production itself, posters, shows, and cast members
+  def public_profile_last_modified
+    timestamps = [ updated_at ]
+
+    # Include poster updates
+    if posters.any?
+      timestamps << posters.maximum(:updated_at)
+    end
+
+    # Include show updates for upcoming shows
+    upcoming = shows.where("date_and_time > ?", Time.current)
+    if upcoming.any?
+      timestamps << upcoming.maximum(:updated_at)
+    end
+
+    # Include talent pool updates (affects cast members)
+    if talent_pools.any?
+      timestamps << talent_pools.maximum(:updated_at)
+    end
+
+    timestamps.compact.max || updated_at
+  end
+
+  # ETag for HTTP caching
+  def public_profile_etag
+    Digest::MD5.hexdigest([
+      id,
+      public_profile_last_modified.to_i,
+      show_cast_members,
+      show_upcoming_events,
+      public_profile_enabled
+    ].join("-"))
+  end
+
+  # Public profile methods
+  def update_public_key(new_key)
+    return false if new_key == public_key
+
+    old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+    old_keys_array << public_key unless old_keys_array.include?(public_key)
+
+    self.public_key = new_key
+    self.old_keys = old_keys_array.to_json
+    save
+  end
+
+  # Get parsed event visibility overrides hash
+  def parsed_event_visibility_overrides
+    return {} if event_visibility_overrides.blank?
+
+    JSON.parse(event_visibility_overrides)
+  rescue JSON::ParserError
+    {}
+  end
+
+  # Check if an event type is publicly visible for this production
+  # Uses the unified show_upcoming_events settings
+  def event_type_publicly_visible?(event_type)
+    # If show_upcoming_events is disabled, nothing is visible
+    return false unless show_upcoming_events?
+
+    # If mode is "all", all event types are visible
+    return true if show_all_upcoming_event_types?
+
+    # If mode is "specific", check if this event type is in the list
+    show_upcoming_event_type?(event_type)
+  end
+
+  # Get all shows that are publicly visible for this production
+  def publicly_visible_shows
+    shows.where(canceled: false).select do |show|
+      show.public_profile_visible?
+    end
+  end
+
+  # Get upcoming shows that are publicly visible
+  def publicly_visible_upcoming_shows
+    publicly_visible_shows.select { |show| show.date_and_time > Time.current }
+  end
+
+  # Get parsed cast talent pool IDs array
+  def parsed_cast_talent_pool_ids
+    return [] if cast_talent_pool_ids.blank?
+
+    JSON.parse(cast_talent_pool_ids)
+  rescue JSON::ParserError
+    []
+  end
+
+  # Set cast talent pool IDs from array
+  def cast_talent_pool_ids_array=(ids)
+    self.cast_talent_pool_ids = ids.present? ? ids.to_json : nil
+  end
+
+  # Check if all talent pools should be shown (empty means all)
+  def show_all_talent_pools?
+    parsed_cast_talent_pool_ids.empty?
+  end
+
+  # Get the talent pools to display cast from
+  def displayable_talent_pools
+    if show_all_talent_pools?
+      talent_pools
+    else
+      talent_pools.where(id: parsed_cast_talent_pool_ids)
+    end
+  end
+
+  # Get unique cast members (people and groups) from selected talent pools
+  # Returns an array of mixed Person and Group objects
+  def public_cast_members
+    return [] unless show_cast_members?
+
+    memberships = TalentPoolMembership.where(talent_pool: displayable_talent_pools).distinct
+
+    # Get unique member_type/member_id pairs
+    member_refs = memberships.pluck(:member_type, :member_id).uniq
+
+    # Group by type and fetch
+    person_ids = member_refs.select { |type, _| type == "Person" }.map(&:last)
+    group_ids = member_refs.select { |type, _| type == "Group" }.map(&:last)
+
+    people = Person.where(id: person_ids)
+    groups = Group.where(id: group_ids)
+
+    # Combine and sort by name
+    (people.to_a + groups.to_a).sort_by(&:name)
+  end
+
+  # Get parsed upcoming event types array
+  def parsed_show_upcoming_event_types
+    return [] if show_upcoming_event_types.blank?
+
+    JSON.parse(show_upcoming_event_types)
+  rescue JSON::ParserError
+    []
+  end
+
+  # Check if all event types should be shown for upcoming events (empty means all)
+  def show_all_upcoming_event_types?
+    show_upcoming_events_mode.blank? || show_upcoming_events_mode == "all"
+  end
+
+  # Check if a specific event type should be shown in upcoming events
+  def show_upcoming_event_type?(event_type)
+    return true if show_all_upcoming_event_types?
+
+    parsed_show_upcoming_event_types.include?(event_type.to_s)
+  end
+
   private
+
+  def generate_public_key
+    return if public_key.present?
+    return if name.blank? # Can't generate without a name
+
+    self.public_key = PublicKeyService.generate(name)
+  end
+
+  def downcase_public_key
+    self.public_key = public_key.downcase if public_key.present?
+  end
+
+  def public_key_not_reserved
+    return if public_key.blank?
+
+    reserved = YAML.safe_load_file(
+      Rails.root.join("config", "reserved_public_keys.yml"),
+      permitted_classes: [],
+      permitted_symbols: [],
+      aliases: true
+    )
+    return unless reserved.include?(public_key)
+
+    errors.add(:public_key, "is reserved for CocoScout system pages")
+  end
+
+  def public_key_change_frequency
+    return if public_key_was.nil? || public_key == public_key_was # No change or new record
+    return if public_key_changed_at.nil? # First time changing
+
+    cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["url_change_cooldown_days"]
+    days_since_last_change = (Time.current - public_key_changed_at) / 1.day
+    return unless days_since_last_change < cooldown_days
+
+    errors.add(:public_key, "was changed too recently.")
+  end
+
+  def track_public_key_change
+    return unless public_key_changed? && !new_record?
+
+    # Store the old key
+    old_keys_array = old_keys.present? ? JSON.parse(old_keys) : []
+    old_key = public_key_was
+
+    # Add the old key to the array if it's not already there and not nil
+    if old_key.present? && !old_keys_array.include?(old_key)
+      old_keys_array << old_key
+      self.old_keys = old_keys_array.to_json
+    end
+
+    # Update the timestamp
+    self.public_key_changed_at = Time.current
+  end
 
   def delete_cast_assignment_stages
     # Delete all cast_assignment_stages for all audition_cycles in this production

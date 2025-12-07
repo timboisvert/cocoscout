@@ -65,6 +65,21 @@ class Show < ApplicationRecord
     Show.in_recurrence_group(recurrence_group_id)
   end
 
+  # Determine if this show should be visible on the production's public profile
+  # Cascade: individual show override > production event type override > global event type default
+  def public_profile_visible?
+    # If show has explicit override, use it
+    return public_profile_visible unless public_profile_visible.nil?
+
+    # Otherwise, check production's event type override
+    production.event_type_publicly_visible?(event_type)
+  end
+
+  # Check if this show is in the past
+  def past?
+    date_and_time < Time.current
+  end
+
   def safe_poster_variant(variant_name)
     return nil unless poster.attached?
 
@@ -74,11 +89,28 @@ class Show < ApplicationRecord
     nil
   end
 
+  # Cache key for public show page
+  def public_show_cache_key
+    "show_public_page_v1_#{id}"
+  end
+
+  # ETag for HTTP caching on public show page
+  def public_show_etag
+    Digest::MD5.hexdigest([
+      id,
+      updated_at.to_i,
+      production.updated_at.to_i,
+      location&.updated_at&.to_i
+    ].compact.join("-"))
+  end
+
   private
 
   def invalidate_production_caches
     # Invalidate production dashboard cache when show changes
     Rails.cache.delete("production_dashboard_#{production_id}")
+    # Invalidate production public profile cache
+    Rails.cache.delete(production.public_profile_cache_key) if production
     # NOTE: show_info_card uses cache key versioning with updated_at,
     # so it auto-invalidates when show.updated_at changes
   end

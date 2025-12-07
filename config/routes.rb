@@ -205,6 +205,8 @@ Rails.application.routes.draw do
     resources :productions do
       member do
         get :confirm_delete
+        post :check_url_availability
+        patch :update_public_key
       end
 
       resources :availability, only: %i[index show] do
@@ -393,6 +395,8 @@ Rails.application.routes.draw do
   # Public profiles (must be last to catch any remaining paths)
   get "/:public_key/shoutouts", to: "public_profiles#shoutouts", as: "public_profile_shoutouts",
                                 constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/ }
+  get "/:public_key/:show_id", to: "public_profiles#production_show", as: "public_profile_show",
+                               constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/, show_id: /\d+/ }
   get "/:public_key", to: "public_profiles#show", as: "public_profile",
                       constraints: { public_key: /[a-z0-9][a-z0-9-]{2,29}/ }
 end

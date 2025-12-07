@@ -1,0 +1,163 @@
+<%#
+  Shared Show Row Component
+  
+  Required params:
+    - show: Show object
+  
+  Optional params:
+    - link_path: Path to link to (if nil, renders as div)
+    - show_canceled: Show canceled badge and strikethrough date (default: false)
+    - show_recurring: Show recurring event indicator (default: false)
+    - show_production: Show production name in details line (default: false)
+    - show_location: Show location/online indicator (default: true)
+    - roles: Array of role names to display (default: nil)
+    - entity_headshots: Array of entities (Person/Group) to show headshots for (default: nil)
+    - availability: Availability object for buttons (default: nil)
+    - entity_key: Entity key for Stimulus data attribute (default: nil)
+    - show_entity_headshots: Whether to show the entity headshot column (default: false)
+%>
+
+<%
+  # Set defaults for optional params
+  show_canceled = local_assigns.fetch(:show_canceled, false)
+  show_recurring = local_assigns.fetch(:show_recurring, false)
+  show_production = local_assigns.fetch(:show_production, false)
+  show_location = local_assigns.fetch(:show_location, true)
+  show_entity_headshots = local_assigns.fetch(:show_entity_headshots, false)
+  
+  is_canceled = show_canceled && show.canceled
+  has_link = local_assigns[:link_path].present?
+  has_availability = local_assigns[:entity_key].present?
+  current_status = local_assigns[:availability]&.status || 'unset'
+%>
+
+<%# Build data attributes for availability rows %>
+<% 
+  data_attrs = {}
+  if has_availability
+    data_attrs["availability-show-id-value"] = show.id
+    data_attrs["availability-status-value"] = current_status
+    data_attrs["availability-entity-key"] = local_assigns[:entity_key]
+  end
+%>
+
+<%# Row wrapper - either link or div %>
+<% row_classes = "flex bg-white items-center gap-4 px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all" %>
+<% row_classes += " group" if has_availability %>
+
+<% content = capture do %>
+  <%# Date Box %>
+  <div class="flex-shrink-0 w-14 text-center">
+    <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+    <div class="text-2xl font-bold text-gray-900 <%= 'line-through text-red-400' if is_canceled %>"><%= show.date_and_time.strftime("%-d") %></div>
+    <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+  </div>
+
+  <%# Show Details %>
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-2 flex-wrap">
+      <% if is_canceled %>
+        <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
+      <% end %>
+      <span class="font-medium text-gray-900">
+        <%= show.secondary_name.presence || show.event_type.titleize %>
+      </span>
+      <% if show_recurring && show.recurring? %>
+        <span data-controller="tooltip" data-tooltip-text="This is a recurring event">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </span>
+      <% end %>
+      <% if show_production %>
+        <span class="text-sm text-gray-600"><%= show.production.name %></span>
+      <% end %>
+      <% if local_assigns[:roles].present? %>
+        <% roles.each do |role_name| %>
+          <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= role_name %></strong></span>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="text-sm text-gray-600">
+      <%= show.date_and_time.strftime("%l:%M %p") %>
+      <% if show_location %>
+        <% if show.is_online %>
+          · Online
+        <% elsif show.location.present? %>
+          · <%= show.location.name %>
+        <% end %>
+      <% end %>
+      <% if show_production && !has_availability %>
+        · <%= show.production.name %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if has_availability %>
+    <%# Availability Buttons %>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <div class="w-6 flex justify-center">
+        <span data-availability-target="success" class="hidden text-green-600">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+            <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+          </svg>
+        </span>
+      </div>
+      <div class="flex gap-0">
+      <%
+        [:available, :unavailable].each do |status|
+          classes = "w-10 sm:w-24 text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center"
+
+          if status == :available
+            classes += " rounded-l-lg border-r-0"
+          elsif status == :unavailable
+            classes += " rounded-r-lg"
+          end
+
+          if current_status == status.to_s
+            classes += " bg-pink-500 text-white"
+          else
+            classes += " bg-white text-gray-700 hover:bg-gray-50"
+          end
+
+          desktop_content = status.to_s.humanize
+      %>
+        <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status } do %>
+          <span class="sm:hidden">
+            <% if status == :available %>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
+            <% else %>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
+            <% end %>
+          </span>
+          <span class="hidden sm:inline"><%= desktop_content %></span>
+        <% end %>
+      <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if show_entity_headshots && local_assigns[:entity_headshots].present? %>
+    <div class="flex-shrink-0 flex gap-1">
+      <% entity_headshots.each do |entity| %>
+        <%= image_tag entity.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+      <% end %>
+    </div>
+  <% elsif show_entity_headshots && local_assigns[:entity].present? %>
+    <div class="flex-shrink-0 ml-2">
+      <%= image_tag entity.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+    </div>
+  <% end %>
+<% end %>
+
+<% if has_link %>
+  <%= link_to link_path, class: "block" do %>
+    <div class="<%= row_classes %>">
+      <%= content %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="<%= row_classes %>" <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
+    <%= content %>
+  </div>
+<% end %>

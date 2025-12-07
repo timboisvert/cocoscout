@@ -12,7 +12,8 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Profile</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     </nav>
 
     <!-- Tab 1: Basic Information -->
@@ -41,66 +42,76 @@
 
     <!-- Tab 2: Visual Assets -->
     <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= create_poster_manage_production_visual_assets_path(@production) %>">
-      <!-- Logo Section -->
-      <div class="w-full pt-4">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Logo</h3>
-
-        <% logo_variant = @production.safe_logo_variant(:small) %>
-        <% if logo_variant %>
-          <%= image_tag logo_variant, class: "h-auto max-h-32" %>
-          <% if current_user_can_manage?(@production) %>
-            <div class="mt-2">
-              <button type="button" data-action="click->visual-assets-modal#openLogoModal" class="text-pink-500 underline text-sm cursor-pointer">Replace logo</button>
-            </div>
-          <% end %>
-        <% else %>
-          <span class="text-sm text-gray-500">No logo added.</span>
-        <% end %>
-      </div>
-
-      <!-- Posters Section -->
-      <div class="w-full pt-8">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Production/Season Posters</h3>
-
-        <% if @production.posters.any? %>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-            <% @production.posters.each do |poster| %>
-              <div class="bg-white rounded shadow p-4 flex flex-col <%= 'ring-2 ring-pink-500' if poster.is_primary %>">
-                <% image_variant = poster.safe_image_variant(:small) %>
-                <% if image_variant %>
-                  <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2" %>
-                <% end %>
-
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="font-semibold flex-1"><%= poster.name.presence || "Untitled Poster" %></span>
-                  <% if poster.is_primary %>
-                    <span class="inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/10">Primary</span>
-                  <% end %>
-                </div>
-
-                <% if current_user_can_manage?(@production) %>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    <% unless poster.is_primary %>
-                      <%= link_to "Set as Primary", set_primary_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :patch }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
-                    <% end %>
-                    <button type="button" data-action="click->visual-assets-modal#openEditPosterModal" data-poster-id="<%= poster.id %>" data-poster-name="<%= poster.name %>" data-poster-image-url="<%= image_variant ? url_for(image_variant) : '' %>" data-edit-poster-path="<%= update_poster_manage_production_visual_asset_path(@production, poster) %>" class="text-sm underline text-pink-500 hover:text-pink-600 cursor-pointer">Edit</button>
-                    <%= link_to "Delete", destroy_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
-                  </div>
-                <% end %>
+      <!-- Logo Card -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Logo</h3>
+        </div>
+        <div class="p-6">
+          <% logo_variant = @production.safe_logo_variant(:small) %>
+          <% if logo_variant %>
+            <%= image_tag logo_variant, class: "h-auto max-h-32" %>
+            <% if current_user_can_manage?(@production) %>
+              <div class="mt-4">
+                <%= render "shared/button", text: "Replace Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
               </div>
             <% end %>
-          </div>
-        <% else %>
-          <p class="text-gray-500 text-sm">No posters added.</p>
-        <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500 mb-4">No logo added.</p>
+            <% if current_user_can_manage?(@production) %>
+              <%= render "shared/button", text: "Upload Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
+            <% end %>
+          <% end %>
+        </div>
       </div>
 
-      <% if current_user_can_manage?(@production) %>
-        <div class="border-t border-gray-200 pt-5 mt-8 flex gap-3">
-          <%= render "shared/button", text: "Upload Logo", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openLogoModal" } %>
-          <%= render "shared/button", text: "Add Poster", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openNewPosterModal" } %>
+      <!-- Posters Card -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Posters</h3>
         </div>
-      <% end %>
+        <div class="p-6">
+          <% if @production.posters.any? %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+              <% @production.posters.each do |poster| %>
+                <div class="bg-gray-50 rounded-lg shadow p-4 flex flex-col <%= 'ring-2 ring-pink-500' if poster.is_primary %>">
+                  <% image_variant = poster.safe_image_variant(:small) %>
+                  <% if image_variant %>
+                    <%= image_tag image_variant, class: "w-full h-auto object-cover mb-2 rounded" %>
+                  <% end %>
+
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="font-semibold flex-1"><%= poster.name.presence || "Untitled Poster" %></span>
+                    <% if poster.is_primary %>
+                      <span class="inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/10">Primary</span>
+                    <% end %>
+                  </div>
+
+                  <% if current_user_can_manage?(@production) %>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      <% unless poster.is_primary %>
+                        <%= link_to "Set as Primary", set_primary_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :patch }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                      <% end %>
+                      <button type="button" data-action="click->visual-assets-modal#openEditPosterModal" data-poster-id="<%= poster.id %>" data-poster-name="<%= poster.name %>" data-poster-image-url="<%= image_variant ? url_for(image_variant) : '' %>" data-edit-poster-path="<%= update_poster_manage_production_visual_asset_path(@production, poster) %>" class="text-sm underline text-pink-500 hover:text-pink-600 cursor-pointer">Edit</button>
+                      <%= link_to "Delete", destroy_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+            <% if current_user_can_manage?(@production) %>
+              <div class="mt-4">
+                <%= render "shared/button", text: "Add Poster", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openNewPosterModal" } %>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500 mb-4">No posters added.</p>
+            <% if current_user_can_manage?(@production) %>
+              <%= render "shared/button", text: "Add Poster", variant: "secondary", size: "medium", type: :button, data: { action: "click->visual-assets-modal#openNewPosterModal" } %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
 
       <!-- Logo Modal -->
       <div data-visual-assets-modal-target="logoModal" data-action="click->visual-assets-modal#closeLogoModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -170,7 +181,177 @@
       </div>
     </div>
 
-    <!-- Tab 3: Danger Zone -->
+    <!-- Tab 3: Public Profile -->
+    <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
+      <!-- Public Profile Card -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile</h3>
+        </div>
+        <div class="p-6">
+          <div class="space-y-4">
+            <!-- Enable/Disable Toggle -->
+            <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    When enabled, this production will be visible to anyone with the profile URL
+                  </p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer ml-4">
+                  <%= f.check_box :public_profile_enabled,
+                    { class: "sr-only peer",
+                      data: {
+                        action: "change->profile-visibility#toggle",
+                        profile_visibility_target: "checkbox"
+                      }
+                    } %>
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+            <% end %>
+
+            <!-- Profile Content (shown when enabled) -->
+            <div data-profile-visibility-target="content" class="pt-4 border-t border-gray-200 <%= 'hidden' unless @production.public_profile_enabled %>">
+              <!-- URL Box -->
+              <% if @production.public_key.present? %>
+                <%= render "shared/copy_url", url: public_profile_url(@production.public_key), label: "Your Production's Public Profile URL" %>
+                <p class="mt-1 mb-4 text-xs text-gray-500">
+                  <a href="javascript:void(0)" data-action="click->production-profile-modals#openChangeUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
+                </p>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-3">
+                  <%= render "shared/button",
+                      text: "View Public Profile",
+                      variant: "primary",
+                      icon: "eye",
+                      path: public_profile_url(@production.public_key),
+                      target: "_blank",
+                      rel: "noopener" %>
+                  <%= render "shared/button",
+                      text: "Share Profile",
+                      variant: "outline",
+                      icon: "share",
+                      data: { action: "click->production-profile-modals#openShare" },
+                      type: :button %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Sections (shown when enabled) -->
+      <div data-profile-visibility-target="sections" class="<%= 'hidden' unless @production.public_profile_enabled %>">
+        <!-- Features Card -->
+        <%= turbo_frame_tag "features_frame" do %>
+          <%= render "manage/productions/features_card", production: @production %>
+        <% end %>
+      </div>
+
+      <!-- Share Modal -->
+      <div data-production-profile-modals-target="shareModal" data-action="click->production-profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-profile-modals#stopPropagation">
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Share Production Profile</h2>
+            <button type="button" data-action="click->production-profile-modals#closeModal" class="text-gray-400 hover:text-gray-500 cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="p-6 space-y-6">
+            <% profile_url = public_profile_url(@production.public_key) if @production.public_key.present? %>
+            <div data-controller="copy-url">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Production Profile URL</label>
+              <div class="flex items-center gap-2">
+                <input type="text" readonly value="<%= profile_url %>" class="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none">
+                <button type="button" data-action="click->copy-url#copy" data-url="<%= profile_url %>" class="px-4 py-2 text-sm font-medium text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors cursor-pointer">
+                  <span data-copy-url-target="buttonText">Copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-3">Share on social media</label>
+              <div class="flex items-center justify-center gap-4">
+                <a href="https://www.facebook.com/sharer/sharer.php?u=<%= CGI.escape(profile_url.to_s) %>" target="_blank" rel="noopener" class="flex items-center justify-center w-12 h-12 text-white bg-[#1877F2] hover:bg-[#0d65d9] rounded-full transition-colors">
+                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                </a>
+                <a href="https://twitter.com/intent/tweet?url=<%= CGI.escape(profile_url.to_s) %>&text=Check%20out%20this%20production%20on%20CocoScout" target="_blank" rel="noopener" class="flex items-center justify-center w-12 h-12 text-white bg-black hover:bg-gray-800 rounded-full transition-colors">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= CGI.escape(profile_url.to_s) %>" target="_blank" rel="noopener" class="flex items-center justify-center w-12 h-12 text-white bg-[#0A66C2] hover:bg-[#004182] rounded-full transition-colors">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change URL Modal -->
+      <div data-production-profile-modals-target="changeUrlModal" data-action="click->production-profile-modals#closeModal keydown.esc@window->production-profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->production-profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_manage_production_path(@production) %>">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Public Profile URL</h2>
+          </div>
+          <div class="p-6">
+            <%= form_with(model: [:manage, @production], url: update_public_key_manage_production_path(@production), method: :patch, data: { url_checker_target: "form" }) do |f| %>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Current URL</label>
+                  <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="text-sm font-mono text-gray-600"><%= public_profile_url(@production.public_key) %></div>
+                  </div>
+                </div>
+                <div>
+                  <%= f.label :public_key, "New URL", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500"><%= request.base_url %>/</span>
+                    <%= f.text_field :public_key, value: "", placeholder: "your-new-url", pattern: "[a-z0-9][a-z0-9\\-]{2,29}", class: "flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { url_checker_target: "input", action: "input->url-checker#inputChanged" } %>
+                  </div>
+                  <p class="mt-2 text-xs text-gray-500">3-30 characters: lowercase letters, numbers, hyphens only</p>
+                </div>
+
+                <!-- Status Message -->
+                <div data-url-checker-target="message" class="rounded-lg border p-3 text-sm hidden"></div>
+              </div>
+              <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                <%= render "shared/button",
+                    text: "Cancel",
+                    variant: "ghost-cancel",
+                    data: { action: "click->production-profile-modals#closeModal" },
+                    type: :button %>
+                <%= render "shared/button",
+                    text: "Check Availability",
+                    variant: "primary",
+                    size: "medium",
+                    data: { action: "click->url-checker#checkAvailability", url_checker_target: "checkButton" },
+                    type: :button %>
+                <%= render "shared/button",
+                    text: "Update URL",
+                    variant: "primary",
+                    size: "medium",
+                    data: { action: "click->url-checker#submitForm", url_checker_target: "updateButton" },
+                    style: "display: none;",
+                    type: :button %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Danger Zone -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">

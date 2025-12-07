@@ -29,6 +29,10 @@ module EventTypes
     config.dig(event_type.to_s, "casting_enabled_default") || false
   end
 
+  def self.public_visible_default(event_type)
+    config.dig(event_type.to_s, "public_visible_default") || false
+  end
+
   def self.casting_enabled_defaults
     config.select { |_, v| v["casting_enabled_default"] == true }.keys
   end

@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 # This file is auto-generated from the current state of the database. Instead
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
@@ -12,309 +10,308 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_250_828_023_243) do
-  create_table 'active_storage_attachments', force: :cascade do |t|
-    t.bigint 'blob_id', null: false
-    t.datetime 'created_at', null: false
-    t.string 'name', null: false
-    t.bigint 'record_id', null: false
-    t.string 'record_type', null: false
-    t.index ['blob_id'], name: 'index_active_storage_attachments_on_blob_id'
-    t.index %w[record_type record_id name blob_id], name: 'index_active_storage_attachments_uniqueness',
-                                                    unique: true
+ActiveRecord::Schema[8.1].define(version: 2025_08_28_023243) do
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
-  create_table 'active_storage_blobs', force: :cascade do |t|
-    t.bigint 'byte_size', null: false
-    t.string 'checksum'
-    t.string 'content_type'
-    t.datetime 'created_at', null: false
-    t.string 'filename', null: false
-    t.string 'key', null: false
-    t.text 'metadata'
-    t.string 'service_name', null: false
-    t.index ['key'], name: 'index_active_storage_blobs_on_key', unique: true
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
-  create_table 'active_storage_variant_records', force: :cascade do |t|
-    t.bigint 'blob_id', null: false
-    t.string 'variation_digest', null: false
-    t.index %w[blob_id variation_digest], name: 'index_active_storage_variant_records_uniqueness', unique: true
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
-  create_table 'answers', force: :cascade do |t|
-    t.integer 'call_to_audition_id', null: false
-    t.datetime 'created_at', null: false
-    t.integer 'question_id', null: false
-    t.datetime 'updated_at', null: false
-    t.string 'value'
-    t.index ['call_to_audition_id'], name: 'index_answers_on_call_to_audition_id'
-    t.index ['question_id'], name: 'index_answers_on_question_id'
+  create_table "answers", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "question_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "value"
+    t.index ["call_to_audition_id"], name: "index_answers_on_call_to_audition_id"
+    t.index ["question_id"], name: "index_answers_on_question_id"
   end
 
-  create_table 'audition_requests', force: :cascade do |t|
-    t.integer 'call_to_audition_id', null: false
-    t.datetime 'created_at', null: false
-    t.integer 'person_id', null: false
-    t.integer 'status', default: 0
-    t.datetime 'updated_at', null: false
-    t.index ['call_to_audition_id'], name: 'index_audition_requests_on_call_to_audition_id'
-    t.index ['person_id'], name: 'index_audition_requests_on_person_id'
+  create_table "audition_requests", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.integer "status", default: 0
+    t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_audition_requests_on_call_to_audition_id"
+    t.index ["person_id"], name: "index_audition_requests_on_person_id"
   end
 
-  create_table 'audition_sessions', force: :cascade do |t|
-    t.integer 'call_to_audition_id', null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'date_and_time'
-    t.integer 'maximum_auditionees'
-    t.datetime 'updated_at', null: false
-    t.index ['call_to_audition_id'], name: 'index_audition_sessions_on_call_to_audition_id'
+  create_table "audition_sessions", force: :cascade do |t|
+    t.integer "call_to_audition_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "date_and_time"
+    t.integer "maximum_auditionees"
+    t.datetime "updated_at", null: false
+    t.index ["call_to_audition_id"], name: "index_audition_sessions_on_call_to_audition_id"
   end
 
-  create_table 'auditions', force: :cascade do |t|
-    t.integer 'audition_request_id', null: false
-    t.integer 'audition_session_id', null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['audition_request_id'], name: 'index_auditions_on_audition_request_id'
-    t.index ['audition_session_id'], name: 'index_auditions_on_audition_session_id'
+  create_table "auditions", force: :cascade do |t|
+    t.integer "audition_request_id", null: false
+    t.integer "audition_session_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
+    t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
   end
 
-  create_table 'call_to_auditions', force: :cascade do |t|
-    t.datetime 'closes_at'
-    t.datetime 'created_at', null: false
-    t.text 'header_text'
-    t.string 'hex_code'
-    t.datetime 'opens_at'
-    t.integer 'production_id', null: false
-    t.text 'success_text'
-    t.datetime 'updated_at', null: false
-    t.index ['production_id'], name: 'index_call_to_auditions_on_production_id'
+  create_table "call_to_auditions", force: :cascade do |t|
+    t.datetime "closes_at"
+    t.datetime "created_at", null: false
+    t.text "header_text"
+    t.string "hex_code"
+    t.datetime "opens_at"
+    t.integer "production_id", null: false
+    t.text "success_text"
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_call_to_auditions_on_production_id"
   end
 
-  create_table 'cast_members', force: :cascade do |t|
-    t.integer 'cast_id', null: false
-    t.datetime 'created_at', null: false
-    t.integer 'person_id', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['cast_id'], name: 'index_cast_members_on_cast_id'
-    t.index ['person_id'], name: 'index_cast_members_on_person_id'
+  create_table "cast_members", force: :cascade do |t|
+    t.integer "cast_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cast_id"], name: "index_cast_members_on_cast_id"
+    t.index ["person_id"], name: "index_cast_members_on_person_id"
   end
 
-  create_table 'cast_roles', force: :cascade do |t|
-    t.integer 'cast_id', null: false
-    t.datetime 'created_at', null: false
-    t.string 'name'
-    t.datetime 'updated_at', null: false
-    t.index ['cast_id'], name: 'index_cast_roles_on_cast_id'
+  create_table "cast_roles", force: :cascade do |t|
+    t.integer "cast_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.datetime "updated_at", null: false
+    t.index ["cast_id"], name: "index_cast_roles_on_cast_id"
   end
 
-  create_table 'casts', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'name'
-    t.integer 'production_id', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['production_id'], name: 'index_casts_on_production_id'
+  create_table "casts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.integer "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_casts_on_production_id"
   end
 
-  create_table 'people', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'email'
-    t.string 'pronouns'
-    t.string 'socials'
-    t.string 'stage_name'
-    t.datetime 'updated_at', null: false
+  create_table "people", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.string "pronouns"
+    t.string "socials"
+    t.string "stage_name"
+    t.datetime "updated_at", null: false
   end
 
-  create_table 'production_companies', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'name'
-    t.datetime 'updated_at', null: false
+  create_table "production_companies", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.datetime "updated_at", null: false
   end
 
-  create_table 'productions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.text 'description'
-    t.string 'name'
-    t.integer 'production_company_id', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['production_company_id'], name: 'index_productions_on_production_company_id'
+  create_table "productions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name"
+    t.integer "production_company_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_company_id"], name: "index_productions_on_production_company_id"
   end
 
-  create_table 'questions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'question_type'
-    t.integer 'questionable_id', null: false
-    t.string 'questionable_type', null: false
-    t.string 'text'
-    t.datetime 'updated_at', null: false
-    t.index %w[questionable_type questionable_id], name: 'index_questions_on_questionable'
+  create_table "questions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "question_type"
+    t.integer "questionable_id", null: false
+    t.string "questionable_type", null: false
+    t.string "text"
+    t.datetime "updated_at", null: false
+    t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
   end
 
-  create_table 'show_cast_assignments', force: :cascade do |t|
-    t.integer 'cast_role_id', null: false
-    t.datetime 'created_at', null: false
-    t.integer 'person_id', null: false
-    t.integer 'show_id', null: false
-    t.datetime 'updated_at', null: false
-    t.index ['cast_role_id'], name: 'index_show_cast_assignments_on_cast_role_id'
-    t.index ['person_id'], name: 'index_show_cast_assignments_on_person_id'
-    t.index ['show_id'], name: 'index_show_cast_assignments_on_show_id'
+  create_table "show_cast_assignments", force: :cascade do |t|
+    t.integer "cast_role_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.integer "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cast_role_id"], name: "index_show_cast_assignments_on_cast_role_id"
+    t.index ["person_id"], name: "index_show_cast_assignments_on_person_id"
+    t.index ["show_id"], name: "index_show_cast_assignments_on_show_id"
   end
 
-  create_table 'shows', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.datetime 'date_and_time'
-    t.integer 'production_id', null: false
-    t.string 'secondary_name'
-    t.datetime 'updated_at', null: false
-    t.index ['production_id'], name: 'index_shows_on_production_id'
+  create_table "shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "date_and_time"
+    t.integer "production_id", null: false
+    t.string "secondary_name"
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_shows_on_production_id"
   end
 
-  create_table 'solid_queue_blocked_executions', force: :cascade do |t|
-    t.string 'concurrency_key', null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'expires_at', null: false
-    t.bigint 'job_id', null: false
-    t.integer 'priority', default: 0, null: false
-    t.string 'queue_name', null: false
-    t.index %w[concurrency_key priority job_id], name: 'index_solid_queue_blocked_executions_for_release'
-    t.index %w[expires_at concurrency_key], name: 'index_solid_queue_blocked_executions_for_maintenance'
-    t.index ['job_id'], name: 'index_solid_queue_blocked_executions_on_job_id', unique: true
+  create_table "solid_queue_blocked_executions", force: :cascade do |t|
+    t.string "concurrency_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.index ["concurrency_key", "priority", "job_id"], name: "index_solid_queue_blocked_executions_for_release"
+    t.index ["expires_at", "concurrency_key"], name: "index_solid_queue_blocked_executions_for_maintenance"
+    t.index ["job_id"], name: "index_solid_queue_blocked_executions_on_job_id", unique: true
   end
 
-  create_table 'solid_queue_claimed_executions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.bigint 'job_id', null: false
-    t.bigint 'process_id'
-    t.index ['job_id'], name: 'index_solid_queue_claimed_executions_on_job_id', unique: true
-    t.index %w[process_id job_id], name: 'index_solid_queue_claimed_executions_on_process_id_and_job_id'
+  create_table "solid_queue_claimed_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.bigint "process_id"
+    t.index ["job_id"], name: "index_solid_queue_claimed_executions_on_job_id", unique: true
+    t.index ["process_id", "job_id"], name: "index_solid_queue_claimed_executions_on_process_id_and_job_id"
   end
 
-  create_table 'solid_queue_failed_executions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.text 'error'
-    t.bigint 'job_id', null: false
-    t.index ['job_id'], name: 'index_solid_queue_failed_executions_on_job_id', unique: true
+  create_table "solid_queue_failed_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.bigint "job_id", null: false
+    t.index ["job_id"], name: "index_solid_queue_failed_executions_on_job_id", unique: true
   end
 
-  create_table 'solid_queue_jobs', force: :cascade do |t|
-    t.string 'active_job_id'
-    t.text 'arguments'
-    t.string 'class_name', null: false
-    t.string 'concurrency_key'
-    t.datetime 'created_at', null: false
-    t.datetime 'finished_at'
-    t.integer 'priority', default: 0, null: false
-    t.string 'queue_name', null: false
-    t.datetime 'scheduled_at'
-    t.datetime 'updated_at', null: false
-    t.index ['active_job_id'], name: 'index_solid_queue_jobs_on_active_job_id'
-    t.index ['class_name'], name: 'index_solid_queue_jobs_on_class_name'
-    t.index ['finished_at'], name: 'index_solid_queue_jobs_on_finished_at'
-    t.index %w[queue_name finished_at], name: 'index_solid_queue_jobs_for_filtering'
-    t.index %w[scheduled_at finished_at], name: 'index_solid_queue_jobs_for_alerting'
+  create_table "solid_queue_jobs", force: :cascade do |t|
+    t.string "active_job_id"
+    t.text "arguments"
+    t.string "class_name", null: false
+    t.string "concurrency_key"
+    t.datetime "created_at", null: false
+    t.datetime "finished_at"
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at"
+    t.datetime "updated_at", null: false
+    t.index ["active_job_id"], name: "index_solid_queue_jobs_on_active_job_id"
+    t.index ["class_name"], name: "index_solid_queue_jobs_on_class_name"
+    t.index ["finished_at"], name: "index_solid_queue_jobs_on_finished_at"
+    t.index ["queue_name", "finished_at"], name: "index_solid_queue_jobs_for_filtering"
+    t.index ["scheduled_at", "finished_at"], name: "index_solid_queue_jobs_for_alerting"
   end
 
-  create_table 'solid_queue_pauses', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'queue_name', null: false
-    t.index ['queue_name'], name: 'index_solid_queue_pauses_on_queue_name', unique: true
+  create_table "solid_queue_pauses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "queue_name", null: false
+    t.index ["queue_name"], name: "index_solid_queue_pauses_on_queue_name", unique: true
   end
 
-  create_table 'solid_queue_processes', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.string 'hostname'
-    t.string 'kind', null: false
-    t.datetime 'last_heartbeat_at', null: false
-    t.text 'metadata'
-    t.string 'name', null: false
-    t.integer 'pid', null: false
-    t.bigint 'supervisor_id'
-    t.index ['last_heartbeat_at'], name: 'index_solid_queue_processes_on_last_heartbeat_at'
-    t.index %w[name supervisor_id], name: 'index_solid_queue_processes_on_name_and_supervisor_id', unique: true
-    t.index ['supervisor_id'], name: 'index_solid_queue_processes_on_supervisor_id'
+  create_table "solid_queue_processes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "hostname"
+    t.string "kind", null: false
+    t.datetime "last_heartbeat_at", null: false
+    t.text "metadata"
+    t.string "name", null: false
+    t.integer "pid", null: false
+    t.bigint "supervisor_id"
+    t.index ["last_heartbeat_at"], name: "index_solid_queue_processes_on_last_heartbeat_at"
+    t.index ["name", "supervisor_id"], name: "index_solid_queue_processes_on_name_and_supervisor_id", unique: true
+    t.index ["supervisor_id"], name: "index_solid_queue_processes_on_supervisor_id"
   end
 
-  create_table 'solid_queue_ready_executions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.bigint 'job_id', null: false
-    t.integer 'priority', default: 0, null: false
-    t.string 'queue_name', null: false
-    t.index ['job_id'], name: 'index_solid_queue_ready_executions_on_job_id', unique: true
-    t.index %w[priority job_id], name: 'index_solid_queue_poll_all'
-    t.index %w[queue_name priority job_id], name: 'index_solid_queue_poll_by_queue'
+  create_table "solid_queue_ready_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.index ["job_id"], name: "index_solid_queue_ready_executions_on_job_id", unique: true
+    t.index ["priority", "job_id"], name: "index_solid_queue_poll_all"
+    t.index ["queue_name", "priority", "job_id"], name: "index_solid_queue_poll_by_queue"
   end
 
-  create_table 'solid_queue_recurring_executions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.bigint 'job_id', null: false
-    t.datetime 'run_at', null: false
-    t.string 'task_key', null: false
-    t.index ['job_id'], name: 'index_solid_queue_recurring_executions_on_job_id', unique: true
-    t.index %w[task_key run_at], name: 'index_solid_queue_recurring_executions_on_task_key_and_run_at', unique: true
+  create_table "solid_queue_recurring_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.datetime "run_at", null: false
+    t.string "task_key", null: false
+    t.index ["job_id"], name: "index_solid_queue_recurring_executions_on_job_id", unique: true
+    t.index ["task_key", "run_at"], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at", unique: true
   end
 
-  create_table 'solid_queue_recurring_tasks', force: :cascade do |t|
-    t.text 'arguments'
-    t.string 'class_name'
-    t.string 'command', limit: 2048
-    t.datetime 'created_at', null: false
-    t.text 'description'
-    t.string 'key', null: false
-    t.integer 'priority', default: 0
-    t.string 'queue_name'
-    t.string 'schedule', null: false
-    t.boolean 'static', default: true, null: false
-    t.datetime 'updated_at', null: false
-    t.index ['key'], name: 'index_solid_queue_recurring_tasks_on_key', unique: true
-    t.index ['static'], name: 'index_solid_queue_recurring_tasks_on_static'
+  create_table "solid_queue_recurring_tasks", force: :cascade do |t|
+    t.text "arguments"
+    t.string "class_name"
+    t.string "command", limit: 2048
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "key", null: false
+    t.integer "priority", default: 0
+    t.string "queue_name"
+    t.string "schedule", null: false
+    t.boolean "static", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_solid_queue_recurring_tasks_on_key", unique: true
+    t.index ["static"], name: "index_solid_queue_recurring_tasks_on_static"
   end
 
-  create_table 'solid_queue_scheduled_executions', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.bigint 'job_id', null: false
-    t.integer 'priority', default: 0, null: false
-    t.string 'queue_name', null: false
-    t.datetime 'scheduled_at', null: false
-    t.index ['job_id'], name: 'index_solid_queue_scheduled_executions_on_job_id', unique: true
-    t.index %w[scheduled_at priority job_id], name: 'index_solid_queue_dispatch_all'
+  create_table "solid_queue_scheduled_executions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.integer "priority", default: 0, null: false
+    t.string "queue_name", null: false
+    t.datetime "scheduled_at", null: false
+    t.index ["job_id"], name: "index_solid_queue_scheduled_executions_on_job_id", unique: true
+    t.index ["scheduled_at", "priority", "job_id"], name: "index_solid_queue_dispatch_all"
   end
 
-  create_table 'solid_queue_semaphores', force: :cascade do |t|
-    t.datetime 'created_at', null: false
-    t.datetime 'expires_at', null: false
-    t.string 'key', null: false
-    t.datetime 'updated_at', null: false
-    t.integer 'value', default: 1, null: false
-    t.index ['expires_at'], name: 'index_solid_queue_semaphores_on_expires_at'
-    t.index %w[key value], name: 'index_solid_queue_semaphores_on_key_and_value'
-    t.index ['key'], name: 'index_solid_queue_semaphores_on_key', unique: true
+  create_table "solid_queue_semaphores", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.integer "value", default: 1, null: false
+    t.index ["expires_at"], name: "index_solid_queue_semaphores_on_expires_at"
+    t.index ["key", "value"], name: "index_solid_queue_semaphores_on_key_and_value"
+    t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
-  add_foreign_key 'active_storage_attachments', 'active_storage_blobs', column: 'blob_id'
-  add_foreign_key 'active_storage_variant_records', 'active_storage_blobs', column: 'blob_id'
-  add_foreign_key 'answers', 'call_to_auditions'
-  add_foreign_key 'answers', 'questions'
-  add_foreign_key 'audition_requests', 'call_to_auditions'
-  add_foreign_key 'audition_requests', 'people'
-  add_foreign_key 'audition_sessions', 'call_to_auditions'
-  add_foreign_key 'auditions', 'audition_requests'
-  add_foreign_key 'auditions', 'audition_sessions'
-  add_foreign_key 'call_to_auditions', 'productions'
-  add_foreign_key 'cast_members', 'casts'
-  add_foreign_key 'cast_members', 'people'
-  add_foreign_key 'cast_roles', 'casts'
-  add_foreign_key 'casts', 'productions'
-  add_foreign_key 'productions', 'production_companies'
-  add_foreign_key 'show_cast_assignments', 'cast_roles'
-  add_foreign_key 'show_cast_assignments', 'people'
-  add_foreign_key 'show_cast_assignments', 'shows'
-  add_foreign_key 'shows', 'productions'
-  add_foreign_key 'solid_queue_blocked_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
-  add_foreign_key 'solid_queue_claimed_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
-  add_foreign_key 'solid_queue_failed_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
-  add_foreign_key 'solid_queue_ready_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
-  add_foreign_key 'solid_queue_recurring_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
-  add_foreign_key 'solid_queue_scheduled_executions', 'solid_queue_jobs', column: 'job_id', on_delete: :cascade
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "answers", "call_to_auditions"
+  add_foreign_key "answers", "questions"
+  add_foreign_key "audition_requests", "call_to_auditions"
+  add_foreign_key "audition_requests", "people"
+  add_foreign_key "audition_sessions", "call_to_auditions"
+  add_foreign_key "auditions", "audition_requests"
+  add_foreign_key "auditions", "audition_sessions"
+  add_foreign_key "call_to_auditions", "productions"
+  add_foreign_key "cast_members", "casts"
+  add_foreign_key "cast_members", "people"
+  add_foreign_key "cast_roles", "casts"
+  add_foreign_key "casts", "productions"
+  add_foreign_key "productions", "production_companies"
+  add_foreign_key "show_cast_assignments", "cast_roles"
+  add_foreign_key "show_cast_assignments", "people"
+  add_foreign_key "show_cast_assignments", "shows"
+  add_foreign_key "shows", "productions"
+  add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
 end

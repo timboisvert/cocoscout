@@ -1,0 +1,132 @@
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Features</h3>
+  </div>
+  <div class="p-6">
+    <p class="text-sm text-gray-600 mb-6">
+      Choose what information to display on your public profile page.
+    </p>
+
+    <%= form_with(model: [:manage, production], url: manage_production_path(production), method: :patch, data: { controller: "auto-submit" }) do |form| %>
+      <div class="space-y-6">
+        <!-- Show Cast Members Toggle -->
+        <div>
+          <div class="flex items-center justify-between py-2">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">Show Cast Members</p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Display cast members from your talent pools on the public profile
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <%= form.check_box :show_cast_members,
+                  class: "sr-only peer",
+                  data: { action: "change->auto-submit#submit" } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <% if production.show_cast_members? && production.talent_pools.count > 1 %>
+            <!-- Talent Pool Selection -->
+            <div class="ml-4 mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p class="text-sm font-medium text-gray-700 mb-3">Which talent pools should be included?</p>
+              <div class="space-y-2">
+                <label class="flex items-center cursor-pointer">
+                  <%= radio_button_tag "cast_pool_selection", "all", production.show_all_talent_pools?,
+                      class: "h-4 w-4 accent-pink-500 cursor-pointer",
+                      data: { action: "change->auto-submit#submit" } %>
+                  <span class="ml-2 text-sm text-gray-700">All talent pools</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                  <%= radio_button_tag "cast_pool_selection", "specific", !production.show_all_talent_pools?,
+                      class: "h-4 w-4 accent-pink-500 cursor-pointer",
+                      data: { action: "change->auto-submit#submit" } %>
+                  <span class="ml-2 text-sm text-gray-700">Only specific talent pools</span>
+                </label>
+              </div>
+
+              <% unless production.show_all_talent_pools? %>
+                <div class="mt-3 ml-6 space-y-2">
+                  <%# Hidden field to ensure the key is always present %>
+                  <%= hidden_field_tag "production[cast_talent_pool_ids][]", "" %>
+                  <% production.talent_pools.each do |pool| %>
+                    <label class="flex items-center cursor-pointer">
+                      <%= check_box_tag "production[cast_talent_pool_ids][]", pool.id,
+                          production.parsed_cast_talent_pool_ids.include?(pool.id),
+                          class: "h-4 w-4 rounded accent-pink-500 cursor-pointer",
+                          data: { action: "change->auto-submit#submit" } %>
+                      <span class="ml-2 text-sm text-gray-700"><%= pool.name %></span>
+                      <span class="ml-2 text-xs text-gray-500">(<%= pool.members.count %> members)</span>
+                    </label>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Show Upcoming Shows & Events Toggle -->
+        <div>
+          <div class="flex items-center justify-between py-2">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-700">Show Upcoming Shows & Events</p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Display upcoming events on the public profile and automatically generate event pages
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4">
+              <%= form.check_box :show_upcoming_events,
+                  class: "sr-only peer",
+                  data: { action: "change->auto-submit#submit" } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <% if production.show_upcoming_events? %>
+            <%# Event Type Selection - shown when enabled %>
+            <div class="ml-4 mt-3">
+              <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p class="text-sm font-medium text-gray-700 mb-3">Which event should be included?</p>
+                <div class="space-y-2">
+                  <label class="flex items-center cursor-pointer">
+                    <%= radio_button_tag "production[show_upcoming_events_mode]", "all",
+                        production.show_all_upcoming_event_types?,
+                        class: "h-4 w-4 accent-pink-500 cursor-pointer",
+                        data: { action: "change->auto-submit#submit" } %>
+                    <span class="ml-2 text-sm text-gray-700">All event types</span>
+                  </label>
+                  <label class="flex items-center cursor-pointer">
+                    <%= radio_button_tag "production[show_upcoming_events_mode]", "specific",
+                        production.show_upcoming_events_mode == "specific",
+                        class: "h-4 w-4 accent-pink-500 cursor-pointer",
+                        data: { action: "change->auto-submit#submit" } %>
+                    <span class="ml-2 text-sm text-gray-700">Only specific event types</span>
+                  </label>
+                </div>
+
+                <%# Specific Event Types - shown when in specific mode %>
+                <% if production.show_upcoming_events_mode == "specific" %>
+                  <div class="mt-3 ml-6 space-y-1">
+                    <%# Hidden field to ensure the key is always present, allowing distinction between
+                        "no checkboxes checked" and "checkboxes section not rendered" %>
+                    <%= hidden_field_tag "production[show_upcoming_event_types][]", "" %>
+                    <% EventTypes.config.each do |event_type, config| %>
+                      <label class="flex items-center cursor-pointer py-1">
+                        <%= check_box_tag "production[show_upcoming_event_types][]", event_type,
+                            production.parsed_show_upcoming_event_types.include?(event_type),
+                            class: "h-4 w-4 rounded accent-pink-500 cursor-pointer",
+                            data: { action: "change->auto-submit#submit" } %>
+                        <span class="ml-2 text-sm text-gray-700"><%= config["label"] %></span>
+                      </label>
+                    <% end %>
+                    <p class="text-xs text-gray-500 mt-2 italic">Check at least one event type to save.</p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

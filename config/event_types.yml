@@ -5,15 +5,20 @@ event_types:
   show:
     label: "Show"
     casting_enabled_default: true
+    public_visible_default: true
   rehearsal:
     label: "Rehearsal"
     casting_enabled_default: false
+    public_visible_default: false
   meeting:
     label: "Meeting"
     casting_enabled_default: false
+    public_visible_default: false
   class:
     label: "Class"
     casting_enabled_default: true
+    public_visible_default: true
   workshop:
     label: "Workshop"
     casting_enabled_default: true
+    public_visible_default: true

@@ -461,6 +461,7 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
+                                               :public_profile_visible,
                                                show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info
@@ -470,6 +471,13 @@ module Manage
       else
         permitted[:online_location_info] = nil
         permitted[:is_online] = false
+      end
+
+      # Handle public_profile_visible: empty string means nil (use default), otherwise convert to boolean
+      if permitted[:public_profile_visible].present?
+        permitted[:public_profile_visible] = permitted[:public_profile_visible] == "true"
+      else
+        permitted[:public_profile_visible] = nil
       end
 
       permitted

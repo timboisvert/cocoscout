@@ -15,6 +15,17 @@ module My
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
       @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
 
+      # Check if user has ANY shows at all (before filtering) for showing filter bar
+      person_has_shows = Show.joins(production: { talent_pools: :people })
+                             .where(people: { id: @person.id })
+                             .where("date_and_time >= ?", Time.current)
+                             .exists?
+      groups_have_shows = group_ids.any? && Show.joins(production: { talent_pools: :groups })
+                                                .where(groups: { id: group_ids })
+                                                .where("date_and_time >= ?", Time.current)
+                                                .exists?
+      @has_any_shows = person_has_shows || groups_have_shows
+
       include_person = @entity_filter.include?("person")
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
 
@@ -52,9 +63,6 @@ module My
       @shows = shows_with_source.map do |item|
         item[:show]
       end.uniq.select { |show| @event_type_filter.include?(show.event_type) }
-
-      # Store whether there are ANY shows available (before filtering by assignments)
-      @has_any_shows = @shows.any?
 
       # Get productions from shows
       production_ids = @shows.map(&:production_id).uniq

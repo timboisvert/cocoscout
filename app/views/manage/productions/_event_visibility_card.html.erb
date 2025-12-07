@@ -1,0 +1,76 @@
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6"
+     data-controller="event-pages"
+     data-event-pages-enabled-value="<%= production.auto_create_event_pages? %>"
+     data-event-pages-mode-value="<%= production.auto_create_event_pages_mode || 'all' %>">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Event Pages</h3>
+  </div>
+  <div class="p-6">
+    <%= form_with(model: [:manage, production], url: manage_production_path(production), method: :patch, data: { turbo_frame: "event_visibility_frame" }) do |form| %>
+      <%# Main Toggle %>
+      <div class="flex items-center justify-between py-2 mb-4">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-700">Automatically create event pages</p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            When enabled, public pages will be automatically created for shows and events.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer ml-4">
+          <%= check_box_tag "production[auto_create_event_pages]", "1", production.auto_create_event_pages?,
+              class: "sr-only peer",
+              id: "auto_create_event_pages",
+              data: { action: "change->event-pages#toggleEnabled" } %>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <%# Mode Section - shown when enabled %>
+      <div class="<%= 'hidden' unless production.auto_create_event_pages? %>" data-event-pages-target="modeSection">
+        <div class="border-t border-gray-100 pt-4">
+          <label class="block font-semibold mb-3 text-sm text-gray-700">
+            Create pages for:
+          </label>
+          <div class="space-y-2 mb-4">
+            <div>
+              <label class="flex items-center cursor-pointer">
+                <%= radio_button_tag "production[auto_create_event_pages_mode]", "all",
+                    production.auto_create_event_pages_mode == "all" || production.auto_create_event_pages_mode.blank?,
+                    class: "mr-2 accent-pink-500 cursor-pointer",
+                    data: { action: "change->event-pages#changeMode" } %>
+                <span class="text-sm">All event types</span>
+              </label>
+            </div>
+
+            <div>
+              <label class="flex items-center cursor-pointer">
+                <%= radio_button_tag "production[auto_create_event_pages_mode]", "specific",
+                    production.auto_create_event_pages_mode == "specific",
+                    class: "mr-2 accent-pink-500 cursor-pointer",
+                    data: { action: "change->event-pages#changeMode" } %>
+                <span class="text-sm">Only specific event types</span>
+              </label>
+            </div>
+          </div>
+
+          <%# Specific Event Types - shown when mode is "specific" %>
+          <div class="<%= 'hidden' unless production.auto_create_event_pages_mode == 'specific' %> ml-6" data-event-pages-target="specificSection">
+            <div class="space-y-1 border border-gray-200 rounded-lg p-3 bg-gray-50">
+              <% EventTypes.config.each do |event_type, config| %>
+                <%
+                  overrides = production.parsed_event_visibility_overrides
+                  current_value = overrides.key?(event_type) ? overrides[event_type] : config["public_visible_default"]
+                %>
+                <label class="flex items-center cursor-pointer py-1">
+                  <%= check_box_tag "production[event_visibility][#{event_type}]", "1", current_value,
+                      class: "mr-2 accent-pink-500 cursor-pointer",
+                      data: { action: "change->event-pages#toggleEventType" } %>
+                  <span class="text-sm"><%= config["label"] %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

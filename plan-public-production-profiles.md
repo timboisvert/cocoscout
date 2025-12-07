@@ -704,30 +704,21 @@ end
 
 ---
 
-## Further Considerations
+## Decisions Made
 
 ### 1. Show ID in URL Format
-**Decision needed:** Use raw show ID (`/:public_key/153`) or slugified show name/date (`/:public_key/opening-night-2025-03-15`)?
-
-**Recommendation:** Use ID for simplicity. Slugs would require:
-- Additional column on shows table
-- Slug generation/uniqueness logic
-- Handling slug changes
+**Decision:** Use raw show ID (`/:public_key/153`) for simplicity.
 
 ### 2. Past Shows Visibility
-**Decision needed:** Should past shows still be visible on public pages, or only upcoming?
-
-**Recommendation:** Show all non-canceled shows but:
+**Decision:** Show all non-canceled shows:
 - Highlight upcoming shows prominently
 - Show past shows in a separate, less prominent section
-- Limit past shows displayed (e.g., last 10)
+- Mark past shows appropriately
 
 ### 3. Production Poster vs Logo
-**Decision needed:** The public production page could show the primary poster as hero image, or the production logo. Which is preferred?
-
-**Recommendation:** Priority order:
+**Decision:** Display in priority order:
 1. Primary poster (if exists)
-2. Production logo (fallback)
+2. Production logo (fallback if no poster)
 3. Initials placeholder (last resort)
 
 ---

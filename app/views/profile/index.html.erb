@@ -60,7 +60,6 @@
                 type: :button %>
           </div>
         </div>
-        </div>
       </div>
     </div>
   </div>
@@ -152,19 +151,19 @@
   </div>
   <!-- End Profile Sections -->
 
-<!-- Image Modal -->
-<div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">
-  <div class="relative max-w-6xl max-h-full" data-action="click->modal#stopPropagation">
-    <button type="button" data-action="click->modal#close" class="absolute -top-12 right-0 text-white hover:text-pink-300 transition-colors cursor-pointer">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-    <img id="modalImage" src="" alt="Full size" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+  <!-- Image Modal -->
+  <div id="imageModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#close">
+    <div class="relative max-w-6xl max-h-full" data-action="click->modal#stopPropagation">
+      <button type="button" data-action="click->modal#close" class="absolute -top-12 right-0 text-white hover:text-pink-300 transition-colors cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <img id="modalImage" src="" alt="Full size" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+    </div>
   </div>
-</div>
 
-<!-- Profile Modals -->
+  <!-- Profile Modals -->
   <!-- Change URL Modal -->
   <div data-profile-modals-target="changeUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_profile_path %>">
@@ -361,5 +360,4 @@
     </div>
   </div>
 
-</div>
 </div>
