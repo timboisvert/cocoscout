@@ -245,6 +245,47 @@
       </div>
     </div>
 
+    <!-- Public Visibility Settings -->
+    <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile Visibility</h3>
+      </div>
+      <div class="p-4">
+        <%
+          # Determine current visibility status
+          event_type = @show.event_type || 'show'
+          event_type_default = @production.event_type_publicly_visible?(event_type)
+          using_default = @show.public_profile_visible.nil?
+        %>
+
+        <div class="space-y-2">
+          <label class="flex items-center gap-2">
+            <%= form.radio_button :public_profile_visible, "", checked: @show.public_profile_visible.nil?, class: "accent-pink-500" %>
+            <span class="text-sm text-gray-700">
+              Use production default for <span data-show-edit-target="eventTypeLabel"><%= event_type %></span> events
+              (<%= event_type_default ? "visible" : "hidden" %>)
+            </span>
+          </label>
+          <label class="flex items-center gap-2">
+            <%= form.radio_button :public_profile_visible, "true", checked: @show.public_profile_visible == true, class: "accent-pink-500" %>
+            <span class="text-sm text-gray-700">Show on public profile (override)</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <%= form.radio_button :public_profile_visible, "false", checked: @show.public_profile_visible == false, class: "accent-pink-500" %>
+            <span class="text-sm text-gray-700">Hide from public profile (override)</span>
+          </label>
+        </div>
+
+        <% if @production.public_profile_enabled && @production.public_key.present? %>
+          <div class="mt-4 text-sm">
+            <a href="<%= public_profile_path(@production.public_key) %>" target="_blank" class="text-pink-500 underline">
+              View production's public profile →
+            </a>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
     <div data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular" data-show-edit-target="sectionTitle">Optional <%= (@show.event_type || 'Show').titleize %> Settings</h3>

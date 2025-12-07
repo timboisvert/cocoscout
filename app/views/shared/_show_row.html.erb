@@ -1,9 +1,9 @@
 <%#
   Shared Show Row Component
-  
+
   Required params:
     - show: Show object
-  
+
   Optional params:
     - link_path: Path to link to (if nil, renders as div)
     - show_canceled: Show canceled badge and strikethrough date (default: false)
@@ -24,7 +24,7 @@
   show_production = local_assigns.fetch(:show_production, false)
   show_location = local_assigns.fetch(:show_location, true)
   show_entity_headshots = local_assigns.fetch(:show_entity_headshots, false)
-  
+
   is_canceled = show_canceled && show.canceled
   has_link = local_assigns[:link_path].present?
   has_availability = local_assigns[:entity_key].present?
@@ -32,7 +32,7 @@
 %>
 
 <%# Build data attributes for availability rows %>
-<% 
+<%
   data_attrs = {}
   if has_availability
     data_attrs["availability-show-id-value"] = show.id
