@@ -7,10 +7,15 @@ RSpec.describe Show, type: :model do
       expect(show).to be_valid
     end
 
-    it "is invalid without a location" do
-      show = build(:show, location: nil)
+    it "is invalid without a location or is_online" do
+      show = build(:show, location: nil, is_online: false)
       expect(show).not_to be_valid
-      expect(show.errors[:location]).to include("can't be blank")
+      expect(show.errors[:base]).to include("Please select a location or mark this event as online")
+    end
+
+    it "is valid when is_online is true and location is nil" do
+      show = build(:show, location: nil, is_online: true)
+      expect(show).to be_valid
     end
 
     it "is invalid without an event_type" do

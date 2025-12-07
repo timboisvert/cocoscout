@@ -119,7 +119,7 @@
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-2 text-sm text-gray-500">
+          <div class="flex items-center gap-3 text-sm text-gray-500">
             <% role_display = case organization_role&.company_role
                  when 'manager' then 'Manager'
                  when 'viewer' then 'Viewer'
@@ -129,6 +129,16 @@
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold <%= organization_role&.company_role == 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-500 text-white' %>">
               <%= role_display %>
             </span>
+            <% if (@is_owner || @role == "manager") && member != Current.user && member.id != @organization.owner_id %>
+              <button type="button"
+                data-action="click->org-team-modals#openPermissionsModal"
+                data-member-id="<%= member.id %>"
+                data-member-name="<%= member.person&.name || member.email_address %>"
+                data-permissions-url="<%= permissions_manage_team_path(id: member.id) %>"
+                class="text-xs text-pink-500 underline cursor-pointer hover:text-pink-600">
+                Manage Permissions
+              </button>
+            <% end %>
           </div>
         </div>
       <% end %>
@@ -151,7 +161,7 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">Pending</span>
-              <%= button_to "Revoke", revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, confirm: "Are you sure?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
+              <%= button_to "Revoke", revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, confirm: "Are you sure you want to revoke this invitation?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
             </div>
           </div>
         <% end %>
@@ -193,6 +203,21 @@
                 <%= render "shared/button", text: "Send Invitation", variant: "primary", size: "medium", type: :submit %>
               </div>
             <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Permissions Modal -->
+      <div data-org-team-modals-target="permissionsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->org-team-modals#closePermissionsModal">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" data-action="click->org-team-modals#stopPropagation">
+          <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <h2 data-org-team-modals-target="permissionsTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Manage Permissions</h2>
+          </div>
+          <div data-org-team-modals-target="permissionsContent" class="p-6 overflow-y-auto">
+            <p class="text-gray-500 text-center py-8">Loading...</p>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+            <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#closePermissionsModal" } %>
           </div>
         </div>
       </div>

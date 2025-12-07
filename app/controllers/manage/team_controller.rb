@@ -2,12 +2,8 @@
   before_action :ensure_user_is_global_manager, except: %i[index]
 
   def index
-    # Redirect to production settings page with team tab
-    if Current.production
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3")
-    else
-      redirect_to manage_path
-    end
+    # Redirect to organization settings page with team tab
+    redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
   end
 
   def invite
@@ -20,9 +16,9 @@
     if @team_invitation.save
       expire_team_cache
       Manage::TeamMailer.invite(@team_invitation, invitation_subject, invitation_message).deliver_later
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Invitation sent"
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Invitation sent"
     else
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not send invitation. Please check the email address."
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Could not send invitation. Please check the email address."
     end
   end
 
@@ -50,9 +46,9 @@
     if team_invitation
       team_invitation.destroy
       expire_team_cache
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Invitation revoked"
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Invitation revoked"
     else
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Invitation not found or already accepted"
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Invitation not found or already accepted"
     end
   end
 
@@ -65,18 +61,18 @@
         expire_team_cache
         respond_to do |format|
           format.json { render json: { success: true } }
-          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Team member removed" }
+          format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Team member removed" }
         end
       else
         respond_to do |format|
           format.json { render json: { success: false }, status: :unprocessable_entity }
-          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not remove Team member" }
+          format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Could not remove Team member" }
         end
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Unable to remove team member" }
+        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Unable to remove team member" }
       end
     end
   end
@@ -86,7 +82,7 @@
 
     # Don't let users access their own permissions page
     if @user == Current.user
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "You cannot manage your own permissions."
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "You cannot manage your own permissions."
       return
     end
 
@@ -97,8 +93,8 @@
     if request.xhr? || request.headers["X-Requested-With"] == "XMLHttpRequest"
       render partial: "manage/productions/permissions_content", locals: { user: @user, productions: @productions, organization_role: @organization_role }, layout: false
     else
-      # Redirect to production edit page with team tab for direct access
-      redirect_to edit_manage_production_path(Current.production, anchor: "tab-3")
+      # Redirect to organization settings with team tab for direct access
+      redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
     end
   end
 
@@ -121,14 +117,14 @@
       else
         respond_to do |format|
           format.json { render json: { success: false, error: permission.errors.full_messages.join(", ") }, status: :unprocessable_entity }
-          format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not update role" }
+          format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Could not update role" }
         end
         return
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Invalid role" }
+        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Invalid role" }
       end
       return
     end
@@ -136,7 +132,7 @@
     expire_team_cache
     respond_to do |format|
       format.json { render json: { success: true } }
-      format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: message }
+      format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: message }
     end
   end
 
@@ -155,12 +151,12 @@
       end
       respond_to do |format|
         format.json { render json: { success: true } }
-        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), notice: "Global role updated to #{role_display}" }
+        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Global role updated to #{role_display}" }
       end
     else
       respond_to do |format|
         format.json { render json: { success: false }, status: :unprocessable_entity }
-        format.html { redirect_to edit_manage_production_path(Current.production, anchor: "tab-3"), alert: "Could not update global role" }
+        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), alert: "Could not update global role" }
       end
     end
   end

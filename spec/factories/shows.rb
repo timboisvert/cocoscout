@@ -24,5 +24,11 @@ FactoryBot.define do
     trait :workshop do
       event_type { :workshop }
     end
+
+    trait :online do
+      location { nil }
+      is_online { true }
+      online_location_info { "https://zoom.us/j/1234567890" }
+    end
   end
 end

@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "locationSelect", "form", "errorContainer", "errorCount", "errorList"]
+    static targets = ["modal", "locationSelect", "form", "errorContainer", "errorCount", "errorList", "inPersonContainer", "onlineContainer", "isOnlineField", "toggleLink", "toggleLinkText"]
+    static values = { eventType: String }
 
     connect() {
         // Add escape key listener
@@ -9,6 +10,79 @@ export default class extends Controller {
             if (e.key === "Escape") {
                 this.closeModal()
             }
+        }
+
+        // Initialize location type visibility based on current selection
+        this.initializeLocationType()
+    }
+
+    initializeLocationType() {
+        // Check if we have the necessary targets
+        if (!this.hasIsOnlineFieldTarget || !this.hasInPersonContainerTarget) {
+            return
+        }
+
+        // Show/hide based on the hidden field value
+        if (this.isOnlineFieldTarget.value === "true" || this.isOnlineFieldTarget.value === "1") {
+            this.showOnlineFields()
+        } else {
+            this.showInPersonFields()
+        }
+    }
+
+    toggleLocationType(event) {
+        event.preventDefault()
+
+        // Toggle the hidden field value
+        const currentValue = this.isOnlineFieldTarget.value === "true" || this.isOnlineFieldTarget.value === "1"
+
+        if (currentValue) {
+            // Currently online, switch to in-person
+            this.isOnlineFieldTarget.value = "false"
+            this.showInPersonFields()
+        } else {
+            // Currently in-person, switch to online
+            this.isOnlineFieldTarget.value = "true"
+            this.showOnlineFields()
+        }
+    }
+
+    showInPersonFields() {
+        if (this.hasInPersonContainerTarget) {
+            this.inPersonContainerTarget.classList.remove("hidden")
+        }
+        if (this.hasOnlineContainerTarget) {
+            this.onlineContainerTarget.classList.add("hidden")
+        }
+        // Update link text
+        if (this.hasToggleLinkTextTarget) {
+            const eventType = this.eventTypeValue || "event"
+            this.toggleLinkTextTarget.textContent = `Host ${eventType} online`
+        }
+    }
+
+    showOnlineFields() {
+        if (this.hasInPersonContainerTarget) {
+            this.inPersonContainerTarget.classList.add("hidden")
+        }
+        if (this.hasOnlineContainerTarget) {
+            this.onlineContainerTarget.classList.remove("hidden")
+        }
+        // Update link text
+        if (this.hasToggleLinkTextTarget) {
+            const eventType = this.eventTypeValue || "event"
+            this.toggleLinkTextTarget.textContent = `Host ${eventType} in person`
+        }
+    }
+
+    // Called when event type changes to update the link text
+    updateEventType(event) {
+        this.eventTypeValue = event.target.options[event.target.selectedIndex].text.toLowerCase()
+        // Re-render the current state to update link text
+        if (this.isOnlineFieldTarget.value === "true" || this.isOnlineFieldTarget.value === "1") {
+            this.showOnlineFields()
+        } else {
+            this.showInPersonFields()
         }
     }
 

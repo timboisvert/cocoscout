@@ -1,6 +1,6 @@
 <% content_for :title, "Edit #{ @show.event_type.titleize }: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
 
-<div class="w-full mb-10" data-controller="location-modal">
+<div class="w-full mb-10" data-controller="location-modal" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -33,24 +33,48 @@
             data: {
               recurring_edit_target: "eventTypeSelect",
               show_edit_target: "eventTypeSelect",
-              action: "change->recurring-edit#updateButtonText change->show-edit#updateTitle"
+              action: "change->recurring-edit#updateButtonText change->show-edit#updateTitle change->location-modal#updateEventType"
             }
           }
       %>
     </div>
 
     <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
-      <%= form.label :location_id, "Location" %>
-      <%= form.collection_select :location_id, Current.organization.locations.all, :id, :name, { prompt: "Select a location" }, {
-        class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )],
-        required: true,
-        data: {
-          "location-modal-target": "locationSelect",
-          action: "change->location-modal#handleLocationChange"
-        }
-      } %>
-      <div class="mt-1 ml-1">
-        <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
+      <label class="block text-sm font-medium text-gray-700">Location</label>
+
+      <!-- Hidden field for is_online -->
+      <%= form.hidden_field :is_online, value: @show.is_online, data: { "location-modal-target": "isOnlineField" } %>
+
+      <!-- In-Person Location Container -->
+      <div data-location-modal-target="inPersonContainer" class="<%= @show.is_online ? 'hidden' : '' %>">
+        <%= form.collection_select :location_id, Current.organization.locations.order(:created_at), :id, :name, { prompt: "Select a location" }, {
+          class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )],
+          data: {
+            "location-modal-target": "locationSelect",
+            action: "change->location-modal#handleLocationChange"
+          }
+        } %>
+        <div class="mt-1 ml-1 flex gap-2">
+          <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
+          <span class="text-gray-400">|</span>
+          <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
+            <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> online</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Online Location Container -->
+      <div data-location-modal-target="onlineContainer" class="<%= @show.is_online ? '' : 'hidden' %>">
+        <%= form.text_field :online_location_info,
+          placeholder: "e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'",
+          class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full" %>
+        <div class="mt-1 ml-1">
+          <p class="text-xs text-gray-500 inline">Optional: Add a URL or instructions for joining online</p>
+          <span class="text-gray-400 mx-1">|</span>
+          <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
+            <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> in person</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>

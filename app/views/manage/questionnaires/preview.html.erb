@@ -73,7 +73,9 @@
                         <% if show.secondary_name.present? %>
                           <span class="text-xs text-gray-600"><%= show.secondary_name %></span>
                         <% end %>
-                        <% if show.location.present? %>
+                        <% if show.is_online %>
+                          <span class="text-xs text-gray-500">Online</span>
+                        <% elsif show.location.present? %>
                           <span class="text-xs text-gray-500"><%= show.location.name %></span>
                         <% end %>
                       </div>

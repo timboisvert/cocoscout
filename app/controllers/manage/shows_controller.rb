@@ -457,9 +457,20 @@ class Manage::ShowsController < Manage::ManageController
 
     # Only allow a list of trusted parameters through.
     def show_params
-      params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
+      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
         :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
-        :recurrence_edit_scope, :recurrence_group_id, :casting_enabled,
+        :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
         show_links_attributes: [ :id, :url, :text, :_destroy ])
+
+      # If is_online is true, clear location_id; if false, clear online_location_info
+      if permitted[:is_online] == "1" || permitted[:is_online] == "true" || permitted[:is_online] == true
+        permitted[:location_id] = nil
+        permitted[:is_online] = true
+      else
+        permitted[:online_location_info] = nil
+        permitted[:is_online] = false
+      end
+
+      permitted
     end
 end

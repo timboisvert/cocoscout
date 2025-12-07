@@ -185,7 +185,7 @@ class Manage::ManageController < ActionController::Base
   # Shared data fetchers for use across controllers
   def fetch_locations
     Rails.cache.fetch(locations_cache_key, expires_in: 10.minutes) do
-      Current.organization.locations.order(:name).to_a
+      Current.organization.locations.order(:created_at).to_a
     end
   end
 

@@ -2,7 +2,7 @@ class Show < ApplicationRecord
   include HierarchicalStorageKey
 
   belongs_to :production
-  belongs_to :location
+  belongs_to :location, optional: true
 
   has_many :show_person_role_assignments, -> { joins(:role).order(Arel.sql("roles.position ASC, roles.created_at ASC")) }, dependent: :destroy
 
@@ -27,10 +27,10 @@ class Show < ApplicationRecord
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
-  validates :location, presence: true
   validates :event_type, presence: true
   validates :date_and_time, presence: true
   validate :poster_content_type
+  validate :location_or_online_required
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
@@ -75,6 +75,12 @@ class Show < ApplicationRecord
   def poster_content_type
     if poster.attached? && !poster.content_type.in?(%w[image/jpeg image/jpg image/png])
       errors.add(:poster, "Poster must be a JPEG, JPG, or PNG file")
+    end
+  end
+
+  def location_or_online_required
+    unless location.present? || location_id.present? || is_online?
+      errors.add(:base, "Please select a location or mark this event as online")
     end
   end
 end

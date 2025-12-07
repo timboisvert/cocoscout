@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_04_185324) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_06_235739) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -606,7 +606,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_04_185324) do
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
     t.string "event_type"
+    t.boolean "is_online", default: false, null: false
     t.integer "location_id"
+    t.string "online_location_info"
     t.integer "production_id", null: false
     t.string "recurrence_group_id"
     t.string "secondary_name"
