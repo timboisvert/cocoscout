@@ -65,6 +65,11 @@ class Production < ApplicationRecord
         end
     end
 
+    # Count of unique members across all talent pools in this production
+    def talent_pool_member_count
+        TalentPoolMembership.where(talent_pool_id: talent_pools.select(:id)).distinct.count(:member_id)
+    end
+
     def safe_logo_variant(variant_name)
         return nil unless logo.attached?
         logo.variant(variant_name)

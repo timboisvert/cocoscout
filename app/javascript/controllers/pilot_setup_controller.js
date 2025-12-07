@@ -11,12 +11,13 @@ export default class extends Controller {
         "producerOrgModal", "producerOrgForm", "producerOrgErrors", "producerOrgInfo", "producerOrgButton", "producerOrgCard",
         "producerLocationModal", "producerLocationForm", "producerLocationErrors", "producerLocationInfo", "producerLocationButton", "producerLocationCard",
         "producerProductionModal", "producerProductionForm", "producerProductionErrors", "producerProductionInfo", "producerProductionButton", "producerProductionCard",
+        "producerTalentPoolModal", "producerTalentPoolForm", "producerTalentPoolErrors", "producerTalentPoolInfo", "producerTalentPoolButton", "producerTalentPoolCard",
         "producerShowModal", "producerShowForm", "producerShowErrors", "producerShowInfo", "producerShowButton", "producerShowCard",
         "producerAdditionalModal", "producerAdditionalForm", "producerAdditionalErrors", "producerAdditionalInfo", "producerAdditionalButton", "producerAdditionalCard",
         "producerSuccess",
 
         // Complete Setup Modal targets
-        "completeSetupModal", "completeSetupUser", "completeSetupOrg", "completeSetupLocation", "completeSetupProduction", "completeSetupAdditional", "completeSetupAdditionalSection"
+        "completeSetupModal", "completeSetupUser", "completeSetupOrg", "completeSetupLocation", "completeSetupProduction", "completeSetupTalentPool", "completeSetupAdditional", "completeSetupAdditionalSection"
     ]
 
     static values = {
@@ -32,6 +33,8 @@ export default class extends Controller {
             orgId: null,
             locationId: null,
             productionId: null,
+            talentPoolId: null,
+            roleId: null,
             showId: null
         }
 
@@ -97,9 +100,23 @@ export default class extends Controller {
                 this.producerProductionButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
                 this.producerProductionButtonTarget.classList.add('bg-green-500')
                 this.enableStep(5)
+            }
 
-                // Show success banner only if all steps 1-4 are completed
-                if (state.user_id && state.organization_id && state.location_id && state.production_id) {
+            if (state.talent_pool_id) {
+                this.producerState.talentPoolId = state.talent_pool_id
+                this.producerState.roleId = state.role_id
+
+                const talentPoolText = state.talent_pool_name && state.role_name
+                    ? `Pool: ${state.talent_pool_name}, Role: ${state.role_name}`
+                    : 'Talent pool created'
+                this.producerTalentPoolInfoTarget.textContent = talentPoolText
+                this.producerTalentPoolButtonTarget.textContent = 'Created ✓'
+                this.producerTalentPoolButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
+                this.producerTalentPoolButtonTarget.classList.add('bg-green-500')
+                this.enableStep(6)
+
+                // Show success banner only if all steps 1-5 are completed
+                if (state.user_id && state.organization_id && state.location_id && state.production_id && state.talent_pool_id) {
                     this.producerSuccessTarget.classList.remove('hidden')
                 }
             }
@@ -444,9 +461,8 @@ export default class extends Controller {
                 this.producerProductionButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
                 this.producerProductionButtonTarget.classList.add('bg-green-500')
 
-                // Enable step 5 (Additional Producers) and show success
+                // Enable step 5 (Talent Pool)
                 this.enableStep(5)
-                this.producerSuccessTarget.classList.remove('hidden')
             } else {
                 this.producerProductionErrorsTarget.classList.remove('hidden')
                 this.producerProductionErrorsTarget.querySelector('p').textContent = result.errors.join(', ')
@@ -457,7 +473,69 @@ export default class extends Controller {
         }
     }
 
-    // ==== PRODUCER SETUP - STEP 5: SHOW ====
+    // ==== PRODUCER SETUP - STEP 5: TALENT POOL ====
+    openProducerTalentPoolModal(event) {
+        event.preventDefault()
+        if (this.producerTalentPoolButtonTarget.textContent.includes('✓')) return
+        this.producerTalentPoolModalTarget.classList.remove('hidden')
+        this.producerTalentPoolFormTarget.reset()
+        this.producerTalentPoolErrorsTarget.classList.add('hidden')
+    }
+
+    closeProducerTalentPoolModal(event) {
+        if (event) event.preventDefault()
+        this.producerTalentPoolModalTarget.classList.add('hidden')
+    }
+
+    async submitProducerTalentPool(event) {
+        event.preventDefault()
+
+        const formData = new FormData(this.producerTalentPoolFormTarget)
+        const data = {
+            production_id: this.producerState.productionId,
+            talent_pool_name: formData.get('talent_pool_name'),
+            role_name: formData.get('role_name')
+        }
+
+        try {
+            const response = await fetch('/pilot/create_producer_talent_pool', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                this.closeProducerTalentPoolModal()
+
+                // Store IDs
+                this.producerState.talentPoolId = result.talent_pool.id
+                this.producerState.roleId = result.role.id
+
+                // Update step 5 UI
+                this.producerTalentPoolInfoTarget.textContent = `Pool: ${result.talent_pool.name}, Role: ${result.role.name}`
+                this.producerTalentPoolButtonTarget.textContent = 'Created ✓'
+                this.producerTalentPoolButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
+                this.producerTalentPoolButtonTarget.classList.add('bg-green-500')
+
+                // Enable step 6 (Additional Collaborators) and show success
+                this.enableStep(6)
+                this.producerSuccessTarget.classList.remove('hidden')
+            } else {
+                this.producerTalentPoolErrorsTarget.classList.remove('hidden')
+                this.producerTalentPoolErrorsTarget.querySelector('p').textContent = result.errors.join(', ')
+            }
+        } catch (error) {
+            this.producerTalentPoolErrorsTarget.classList.remove('hidden')
+            this.producerTalentPoolErrorsTarget.querySelector('p').textContent = 'An error occurred. Please try again.'
+        }
+    }
+
+    // ==== PRODUCER SETUP - STEP 6: SHOW ====
     openProducerShowModal(event) {
         event.preventDefault()
         if (this.producerShowButtonTarget.disabled) return
@@ -585,28 +663,32 @@ export default class extends Controller {
             2: this.producerOrgCardTarget,
             3: this.producerLocationCardTarget,
             4: this.producerProductionCardTarget,
-            5: this.producerAdditionalCardTarget
+            5: this.producerTalentPoolCardTarget,
+            6: this.producerAdditionalCardTarget
         }
 
         const buttonMap = {
             2: this.producerOrgButtonTarget,
             3: this.producerLocationButtonTarget,
             4: this.producerProductionButtonTarget,
-            5: this.producerAdditionalButtonTarget
+            5: this.producerTalentPoolButtonTarget,
+            6: this.producerAdditionalButtonTarget
         }
 
         const infoMap = {
             2: this.producerOrgInfoTarget,
             3: this.producerLocationInfoTarget,
             4: this.producerProductionInfoTarget,
-            5: this.producerAdditionalInfoTarget
+            5: this.producerTalentPoolInfoTarget,
+            6: this.producerAdditionalInfoTarget
         }
 
         const infoText = {
             2: 'Click "Create Organization" to continue',
             3: 'Click "Create Location" to continue',
             4: 'Click "Create Production" to continue',
-            5: 'Click to add initial collaborators, colleagues, or co-producers'
+            5: 'Click "Create Talent Pool" to continue',
+            6: 'Click to add initial collaborators, colleagues, or co-producers'
         }
 
         if (cardMap[step]) {

@@ -62,6 +62,7 @@ Rails.application.routes.draw do
   post "/pilot/create_producer_org", to: "pilot#create_producer_org", as: "pilot_create_producer_org"
   post "/pilot/create_producer_location", to: "pilot#create_producer_location", as: "pilot_create_producer_location"
   post "/pilot/create_producer_production", to: "pilot#create_producer_production", as: "pilot_create_producer_production"
+  post "/pilot/create_producer_talent_pool", to: "pilot#create_producer_talent_pool", as: "pilot_create_producer_talent_pool"
   post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
   post "/pilot/create_producer_additional", to: "pilot#create_producer_additional", as: "pilot_create_producer_additional"
   post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"

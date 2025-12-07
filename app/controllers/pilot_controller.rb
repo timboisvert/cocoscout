@@ -349,6 +349,49 @@ class PilotController < ApplicationController
     render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
   end
 
+  def create_producer_talent_pool
+    ActiveRecord::Base.transaction do
+      production = Production.find(params[:production_id])
+
+      # Create talent pool
+      @talent_pool = TalentPool.new(
+        name: params[:talent_pool_name],
+        production: production
+      )
+
+      unless @talent_pool.save
+        render json: { success: false, errors: @talent_pool.errors.full_messages }, status: :unprocessable_entity
+        return
+      end
+
+      # Create role
+      @role = Role.new(
+        name: params[:role_name],
+        production: production
+      )
+
+      unless @role.save
+        render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+        return
+      end
+
+      # Update session
+      session[:pilot_producer_state][:talent_pool_id] = @talent_pool.id
+      session[:pilot_producer_state][:talent_pool_name] = @talent_pool.name
+      session[:pilot_producer_state][:role_id] = @role.id
+      session[:pilot_producer_state][:role_name] = @role.name
+
+      render json: {
+        success: true,
+        message: "Talent pool and role created successfully",
+        talent_pool: { id: @talent_pool.id, name: @talent_pool.name },
+        role: { id: @role.id, name: @role.name }
+      }
+    end
+  rescue => e
+    render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
+  end
+
   def create_producer_show
     ActiveRecord::Base.transaction do
       production = Production.find(params[:production_id])
