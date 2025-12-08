@@ -40,7 +40,7 @@
   <!-- Upcoming Shows & Availability -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows & Events</h3>
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows & Events (Next 45 Days)</h3>
       <% if current_user_can_manage?(@production) %>
         <div class="flex gap-4">
           <%= link_to "All Shows", manage_production_shows_path(@production), class: "text-pink-500 text-xs underline" %>
@@ -50,68 +50,69 @@
     </div>
     <div class="p-4">
       <% if @dashboard[:upcoming_shows].any? %>
-        <div class="space-y-3">
+        <div class="space-y-1">
           <% @dashboard[:upcoming_shows].each do |show_data| %>
             <% show = show_data[:show] %>
             <%= link_to manage_production_show_path(@production, show), class: "block no-underline" do %>
-              <div class="flex items-center gap-4 px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
-                <%# Date Box %>
-                <div class="flex-shrink-0 w-14 text-center">
-                  <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-                  <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-                  <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
-                </div>
+              <div class="px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
+                <div class="flex items-stretch gap-4">
+                  <%# Left Third: Date & Show Details %>
+                  <div class="flex-1 flex items-center gap-4">
+                    <%# Date Box %>
+                    <div class="flex-shrink-0 w-14 text-center">
+                      <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                      <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                      <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                    </div>
 
-                <%# Show Details %>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium text-gray-900">
-                      <%= show.secondary_name.presence || show.event_type.titleize %>
-                    </span>
-                    <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-                      <%= show.event_type.titleize %>
-                    </span>
+                    <%# Show Details %>
+                    <div class="min-w-0">
+                      <div class="font-medium text-gray-900">
+                        <%= show.secondary_name.presence || show.event_type.titleize %>
+                      </div>
+                      <div class="text-sm text-gray-600">
+                        <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                        <% if show.location.present? %>
+                          · <%= show.location.name %>
+                        <% end %>
+                        · <span class="text-gray-500"><%= show_data[:days_until] %></span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="text-sm text-gray-600">
-                    <%= show.date_and_time.strftime("%l:%M %p").strip %>
-                    <% if show.location.present? %>
-                      · <%= show.location.name %>
-                    <% end %>
-                    · <span class="text-gray-500"><%= show_data[:days_until] %></span>
-                  </div>
-                </div>
 
-                <%# Status Badges %>
-                <div class="flex-shrink-0 flex flex-col sm:flex-row gap-2">
-                  <%# Casting Status %>
-                  <% if show_data[:cast_percentage] == 100 %>
-                    <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-800">
-                      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                      Cast
-                    </span>
-                  <% else %>
-                    <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-orange-800">
-                      <%= show_data[:cast_percentage] %>% cast
-                    </span>
-                  <% end %>
-
-                  <%# Availability Status %>
+                  <%# Middle Third: Availability %>
                   <% if show_data[:total_cast_count] > 0 %>
-                    <% if show_data[:availability_percentage] == 100 %>
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-800">
-                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        Avail
-                      </span>
-                    <% elsif show_data[:availability_percentage] >= 75 %>
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                        <%= show_data[:availability_percentage] %>% avail
-                      </span>
-                    <% else %>
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-800">
-                        <%= show_data[:availability_percentage] %>% avail
-                      </span>
-                    <% end %>
+                    <div class="flex-1 border-l border-gray-200 pl-4 flex flex-col justify-center">
+                      <div class="text-xs font-semibold text-gray-700 mb-1">Availability</div>
+                      <% all_submitted = show_data[:availability_count] == show_data[:total_cast_count] %>
+                      <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1">
+                        <div class="h-full rounded-full <%= all_submitted ? 'bg-green-500' : 'bg-pink-500' %>" style="width: <%= show_data[:availability_percentage] %>%"></div>
+                      </div>
+                      <div class="text-xs <%= all_submitted ? 'text-green-600' : 'text-gray-500' %>">
+                        <% if all_submitted %>
+                          All talent pool members have provided availability
+                        <% else %>
+                          <%= show_data[:availability_count] %>/<%= show_data[:total_cast_count] %> talent pool members have provided availability
+                        <% end %>
+                      </div>
+                    </div>
                   <% end %>
+
+                  <%# Right Third: Casting %>
+                  <div class="flex-1 border-l border-gray-200 pl-4 flex flex-col justify-center">
+                    <div class="text-xs font-semibold text-gray-700 mb-1">Casting</div>
+                    <% fully_cast = show_data[:cast_percentage] == 100 %>
+                    <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1">
+                      <div class="h-full rounded-full <%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %>" style="width: <%= show_data[:cast_percentage] %>%"></div>
+                    </div>
+                    <div class="text-xs <%= fully_cast ? 'text-green-600' : 'text-gray-500' %>">
+                      <% if fully_cast %>
+                        Fully cast
+                      <% else %>
+                        <%= show_data[:cast_count] %>/<%= show_data[:roles_count] %> roles have been cast
+                      <% end %>
+                    </div>
+                  </div>
                 </div>
               </div>
             <% end %>

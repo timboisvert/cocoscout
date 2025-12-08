@@ -43,7 +43,7 @@
             <div class="font-semibold text-sm">Cast Member</div>
             </th>
             <% @shows.each_with_index do |show, col_index| %>
-              <th class="border-b-2 border-gray-300 px-2 py-3 text-center bg-white cursor-pointer hover:bg-gray-50" data-col="<%= col_index %>">
+              <th class="border-b-2 border-gray-300 px-2 py-3 text-center bg-white cursor-pointer hover:bg-gray-50 align-top" data-col="<%= col_index %>">
                 <%= link_to manage_production_availability_path(@production, show), class: "block no-underline" do %>
                   <div class="text-xs font-medium text-pink-600 uppercase tracking-wide">
                     <%= show.date_and_time.strftime("%a, %b %-d") %>

@@ -16,7 +16,7 @@ class DashboardService
   end
 
   def self.invalidate(production)
-    Rails.cache.delete([ "dashboard_v1", production.id ])
+    Rails.cache.delete([ "dashboard_v2", production.id ])
   end
 
   private
@@ -26,7 +26,7 @@ class DashboardService
     max_show_updated = @production.shows.maximum(:updated_at)
     max_request_updated = @production.audition_cycle&.audition_requests&.maximum(:updated_at)
     [
-      "dashboard_v1",
+      "dashboard_v2",
       @production.id,
       @production.updated_at.to_i,
       max_show_updated&.to_i,
@@ -101,6 +101,8 @@ class DashboardService
         show: show,
         uncast_count: uncast_count,
         days_until: days_label,
+        cast_count: assignments_count,
+        roles_count: roles_count,
         cast_percentage: cast_percentage,
         total_cast_count: total_cast_count,
         availability_count: people_with_availability,
