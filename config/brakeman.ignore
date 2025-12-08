@@ -7,7 +7,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/profile_controller.rb",
-      "line": 272,
+      "line": 277,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params[:person][:profile_skills_attributes].permit!",
       "render_path": null,
@@ -30,7 +30,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/my/questionnaires_controller.rb",
-      "line": 169,
+      "line": 180,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "params[:respondent_type].constantize",
       "render_path": null,
@@ -53,7 +53,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/shows/edit.html.erb",
-      "line": 277,
+      "line": 351,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Update #{Show.includes(:location, :show_person_role_assignments, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :data => ({ :show_edit_target => \"submitButton\", :recurring_edit_target => \"submitButton\" }) })",
       "render_path": [
@@ -61,7 +61,7 @@
           "type": "controller",
           "class": "Manage::ShowsController",
           "method": "edit",
-          "line": 95,
+          "line": 103,
           "file": "app/controllers/manage/shows_controller.rb",
           "rendered": {
             "name": "manage/shows/edit",
@@ -81,47 +81,13 @@
       "note": ""
     },
     {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 4,
-      "fingerprint": "7a84727dca2f511ba11c1b900174689b7fa4e7345188062db04d8ecb69c82145",
-      "check_name": "LinkToHref",
-      "message": "Potentially unsafe model attribute in `link_to` href",
-      "file": "app/views/manage/groups/show.html.erb",
-      "line": 61,
-      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
-      "code": "link_to((Unresolved Model).new.handle, (Unresolved Model).new.url, :class => \"text-pink-500 text-sm hover:underline\", :target => \"_blank\", :rel => \"noopener\")",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::GroupsController",
-          "method": "show",
-          "line": 19,
-          "file": "app/controllers/manage/groups_controller.rb",
-          "rendered": {
-            "name": "manage/groups/show",
-            "file": "app/views/manage/groups/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/groups/show"
-      },
-      "user_input": "(Unresolved Model).new.url",
-      "confidence": "Weak",
-      "cwe_id": [
-        79
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Remote Code Execution",
       "warning_code": 24,
       "fingerprint": "82ff9dc34686e29768c6dd065ef5404fccd44d4824fedaf7b43d20bd66cfc385",
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/superadmin_controller.rb",
-      "line": 221,
+      "line": 299,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "SolidQueue::FailedExecution.find(params[:id]).job.class_name.constantize",
       "render_path": null,
@@ -144,7 +110,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/my/questionnaires_controller.rb",
-      "line": 88,
+      "line": 95,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "params[:respondent_type].constantize",
       "render_path": null,
@@ -175,7 +141,7 @@
           "type": "controller",
           "class": "Manage::TeamInvitationsController",
           "method": "accept",
-          "line": 11,
+          "line": 14,
           "file": "app/controllers/manage/team_invitations_controller.rb",
           "rendered": {
             "name": "manage/team_invitations/accept",
@@ -189,6 +155,40 @@
       },
       "user_input": "TeamInvitation.find_by(:token => params[:token]).organization.name",
       "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "fdbc52f20a657ea0a155476eb417c81ed1e632f16ee0cef697086d677c1ddaab",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/my/shows/show.html.erb",
+      "line": 109,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to((Unresolved Model).new.url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 rounded-md hover:bg-pink-100 transition-colors\")",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "My::ShowsController",
+          "method": "show",
+          "line": 155,
+          "file": "app/controllers/my/shows_controller.rb",
+          "rendered": {
+            "name": "my/shows/show",
+            "file": "app/views/my/shows/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "my/shows/show"
+      },
+      "user_input": "(Unresolved Model).new.url",
+      "confidence": "Weak",
       "cwe_id": [
         79
       ],
