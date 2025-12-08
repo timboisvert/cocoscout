@@ -24,6 +24,8 @@ class Person < ApplicationRecord
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
 
+  has_many :role_eligibilities, as: :member, dependent: :destroy
+
   has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
 

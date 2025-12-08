@@ -27,6 +27,7 @@ class Group < ApplicationRecord
   has_many :show_person_role_assignments, as: :assignable, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
   has_many :roles, through: :show_person_role_assignments
+  has_many :role_eligibilities, as: :member, dependent: :destroy
 
   # Shoutout associations
   has_many :received_shoutouts, as: :shoutee, class_name: "Shoutout", dependent: :destroy

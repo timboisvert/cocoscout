@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_07_182257) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_08_173713) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -545,11 +545,24 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_07_182257) do
     t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
   end
 
+  create_table "role_eligibilities", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "member_id", null: false
+    t.string "member_type", null: false
+    t.integer "role_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["member_id"], name: "index_role_eligibilities_on_member_id"
+    t.index ["role_id", "member_id"], name: "index_role_eligibilities_on_role_id_and_member_id", unique: true
+    t.index ["role_id", "member_type", "member_id"], name: "index_role_eligibilities_on_role_and_member", unique: true
+    t.index ["role_id"], name: "index_role_eligibilities_on_role_id"
+  end
+
   create_table "roles", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
     t.integer "position"
     t.integer "production_id", null: false
+    t.boolean "restricted", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["production_id"], name: "index_roles_on_production_id"
   end
@@ -745,6 +758,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_07_182257) do
   add_foreign_key "questionnaire_invitations", "questionnaires"
   add_foreign_key "questionnaire_responses", "questionnaires"
   add_foreign_key "questionnaires", "productions"
+  add_foreign_key "role_eligibilities", "roles"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"

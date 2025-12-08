@@ -52,4 +52,105 @@ RSpec.describe Role, type: :model do
       expect(role).to respond_to(:shows)
     end
   end
+
+  describe 'role eligibility' do
+    it 'has many role_eligibilities' do
+      role = create(:role)
+      expect(role).to respond_to(:role_eligibilities)
+    end
+
+    it 'responds to eligible_members' do
+      role = create(:role)
+      expect(role).to respond_to(:eligible_members)
+    end
+
+    it 'responds to eligible_people' do
+      role = create(:role)
+      expect(role).to respond_to(:eligible_people)
+    end
+
+    it 'responds to eligible_groups' do
+      role = create(:role)
+      expect(role).to respond_to(:eligible_groups)
+    end
+
+    it 'defaults restricted to false' do
+      role = create(:role)
+      expect(role.restricted?).to be false
+    end
+
+    describe '#eligible?' do
+      let(:role) { create(:role, restricted: true) }
+      let(:person) { create(:person) }
+      let(:group) { create(:group) }
+
+      it 'returns true for eligible person' do
+        create(:role_eligibility, role: role, member: person)
+        expect(role.eligible?(person)).to be true
+      end
+
+      it 'returns true for eligible group' do
+        create(:role_eligibility, role: role, member: group)
+        expect(role.eligible?(group)).to be true
+      end
+
+      it 'returns false for ineligible member' do
+        expect(role.eligible?(person)).to be false
+      end
+
+      it 'returns true for any member when role is not restricted' do
+        role.update!(restricted: false)
+        expect(role.eligible?(person)).to be true
+      end
+    end
+
+    describe '#eligible_assignees' do
+      let(:organization) { create(:organization) }
+      let(:production) { create(:production, organization: organization) }
+      let(:talent_pool) { create(:talent_pool, production: production) }
+      let(:role) { create(:role, production: production) }
+
+      let(:person1) { create(:person, organizations: [ organization ]) }
+      let(:person2) { create(:person, organizations: [ organization ]) }
+      let(:person3) { create(:person, organizations: [ organization ]) }
+      let(:group1) { create(:group, organizations: [ organization ]) }
+
+      before do
+        # Add all members to the talent pool
+        create(:talent_pool_membership, talent_pool: talent_pool, member: person1)
+        create(:talent_pool_membership, talent_pool: talent_pool, member: person2)
+        create(:talent_pool_membership, talent_pool: talent_pool, member: person3)
+        create(:talent_pool_membership, talent_pool: talent_pool, member: group1)
+      end
+
+      context 'when role is not restricted' do
+        it 'returns all talent pool members including groups' do
+          eligible = role.eligible_assignees([ talent_pool.id ])
+          expect(eligible).to include(person1, person2, person3, group1)
+        end
+      end
+
+      context 'when role is restricted' do
+        before do
+          role.update!(restricted: true)
+          create(:role_eligibility, role: role, member: person1)
+          create(:role_eligibility, role: role, member: group1)
+        end
+
+        it 'returns only eligible members who are also in the talent pool' do
+          eligible = role.eligible_assignees([ talent_pool.id ])
+          expect(eligible).to include(person1, group1)
+          expect(eligible).not_to include(person2, person3)
+        end
+
+        it 'does not return eligible members who are not in the talent pool' do
+          person_not_in_pool = create(:person, organizations: [ organization ])
+          create(:role_eligibility, role: role, member: person_not_in_pool)
+
+          eligible = role.eligible_assignees([ talent_pool.id ])
+          expect(eligible).not_to include(person_not_in_pool)
+        end
+      end
+    end
+  end
 end

@@ -45,71 +45,167 @@
       <%
         assignments = assignments_by_role_id[role.id] || []
         has_assignment = assignments.any?
+        is_restricted = role.restricted?
+        eligible_members = is_restricted ? role.eligible_members : []
+        eligible_member_keys = eligible_members.map { |m| "#{m.class.name}_#{m.id}" }
       %>
 
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-all"
-          data-drop-role-target="role"
-          data-role-id="<%= role.id %>"
-          data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave">
+      <% if is_restricted %>
+        <%# Restricted role - show clickable headshots instead of drag-drop %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-all"
+            data-role-id="<%= role.id %>">
 
-        <div class="p-3">
-          <div class="grid grid-cols-[140px_1fr] gap-4 items-center">
-            <div class="font-semibold text-sm text-gray-900">
-              <%= role.name %>
-            </div>
+          <div class="p-3">
+            <div class="grid grid-cols-[140px_1fr] gap-4 items-start">
+              <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
+                <%= role.name %>
+                <span class="text-pink-500" title="Restricted role">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                  </svg>
+                </span>
+              </div>
 
-            <div>
-              <% if has_assignment %>
-                <div class="space-y-2">
-                  <% assignments.each do |assignment| %>
-                    <%
-                      # Get assignable from preloaded hash
-                      assignable = if assignment.assignable_type == "Person"
-                        people_by_id[assignment.assignable_id] || assignment.assignable
-                      else
-                        groups_by_id[assignment.assignable_id] || assignment.assignable
-                      end
-                    %>
-                    <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
-                        draggable="true"
-                        data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
-                        data-assignable-type="<%= assignable.class.name %>"
-                        data-assignable-id="<%= assignable.id %>"
-                        data-assignment-id="<%= assignment.id %>"
-                        data-source-role-id="<%= role.id %>">
-                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
-                      <% else %>
-                        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
-                          <%= assignable.initials %>
-                        </div>
+              <div>
+                <% if has_assignment %>
+                  <%# Show the currently cast member with option to change %>
+                  <% assignment = assignments.first %>
+                  <%
+                    assignable = if assignment.assignable_type == "Person"
+                      people_by_id[assignment.assignable_id] || assignment.assignable
+                    else
+                      groups_by_id[assignment.assignable_id] || assignment.assignable
+                    end
+                  %>
+                  <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-white group">
+                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                        <%= assignable.initials %>
+                      </div>
+                    <% end %>
+
+                    <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
+                    <button type="button"
+                      class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                      data-action="click->drop-role#removeAssignment"
+                      data-assignment-id="<%= assignment.id %>"
+                      data-assignable-type="<%= assignable.class.name %>"
+                      data-assignable-id="<%= assignable.id %>"
+                      title="Remove assignment"
+                    >
+                      Change
+                    </button>
+                  </div>
+                <% else %>
+                  <%# Show eligible members as clickable options %>
+                  <% if eligible_members.any? %>
+                    <div class="flex flex-wrap gap-2">
+                      <% eligible_members.each do |member| %>
+                        <%
+                          # Check if this member is already assigned to another role in this show
+                          member_key = "#{member.class.name}_#{member.id}"
+                          is_assigned_elsewhere = (local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new).include?(member_key)
+                        %>
+                        <button type="button"
+                          class="flex items-center gap-2 p-2 border rounded-lg transition-all cursor-pointer <%= is_assigned_elsewhere ? 'border-gray-200 bg-gray-50 opacity-50' : 'border-gray-200 hover:border-pink-400 hover:bg-pink-50' %>"
+                          data-action="click->drop-role#assignFromClick"
+                          data-role-id="<%= role.id %>"
+                          data-assignable-type="<%= member.class.name %>"
+                          data-assignable-id="<%= member.id %>"
+                          title="<%= is_assigned_elsewhere ? "#{member.name} is assigned to another role" : "Cast #{member.name}" %>"
+                          <%= 'disabled' if is_assigned_elsewhere %>
+                        >
+                          <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                          <% else %>
+                            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                              <%= member.initials %>
+                            </div>
+                          <% end %>
+                          <span class="text-xs font-medium text-gray-700 max-w-20 truncate"><%= member.name %></span>
+                        </button>
                       <% end %>
-
-                      <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
-                      <button type="button"
-                        class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-                        data-action="click->drop-role#removeAssignment"
-                        data-assignment-id="<%= assignment.id %>"
-                        data-assignable-type="<%= assignable.class.name %>"
-                        data-assignable-id="<%= assignable.id %>"
-                        title="Remove assignment"
-                      >
-                        Remove
-                      </button>
                     </div>
+                  <% else %>
+                    <p class="text-sm text-gray-500 italic">No eligible cast members configured for this role.</p>
                   <% end %>
-                </div>
-              <% else %>
-                <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
-                  <span>Drag a talent pool member here</span>
-                </div>
-              <% end %>
+                <% end %>
+              </div>
             </div>
           </div>
-        </div>
 
-      </div>
+        </div>
+      <% else %>
+        <%# Non-restricted role - use drag-drop as before %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-all"
+            data-drop-role-target="role"
+            data-role-id="<%= role.id %>"
+            data-role-restricted="false"
+            data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave">
+
+          <div class="p-3">
+            <div class="grid grid-cols-[140px_1fr] gap-4 items-center">
+              <div class="font-semibold text-sm text-gray-900">
+                <%= role.name %>
+              </div>
+
+              <div>
+                <% if has_assignment %>
+                  <div class="space-y-2">
+                    <% assignments.each do |assignment| %>
+                      <%
+                        # Get assignable from preloaded hash
+                        assignable = if assignment.assignable_type == "Person"
+                          people_by_id[assignment.assignable_id] || assignment.assignable
+                        else
+                          groups_by_id[assignment.assignable_id] || assignment.assignable
+                        end
+                      %>
+                      <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
+                          draggable="true"
+                          data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
+                          data-assignable-type="<%= assignable.class.name %>"
+                          data-assignable-id="<%= assignable.id %>"
+                          data-assignment-id="<%= assignment.id %>"
+                          data-source-role-id="<%= role.id %>">
+                        <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                        <% else %>
+                          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                            <%= assignable.initials %>
+                          </div>
+                        <% end %>
+
+                        <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
+                        <button type="button"
+                          class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                          data-action="click->drop-role#removeAssignment"
+                          data-assignment-id="<%= assignment.id %>"
+                          data-assignable-type="<%= assignable.class.name %>"
+                          data-assignable-id="<%= assignable.id %>"
+                          title="Remove assignment"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
+                    <span>Drag a talent pool member here</span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      <% end %>
     <% end %>
   </div>
 

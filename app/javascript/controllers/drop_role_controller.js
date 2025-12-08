@@ -5,13 +5,39 @@ export default class extends Controller {
 
     allowDrop(event) {
         event.preventDefault();
-        // Add visual feedback when dragging over a role
-        event.currentTarget.classList.add('ring-2', 'ring-pink-400', 'bg-pink-50');
+
+        // Check if this is a restricted role
+        const roleElement = event.currentTarget;
+        const isRestricted = roleElement.dataset.roleRestricted === "true";
+
+        if (isRestricted) {
+            // For restricted roles, show a different visual indicator
+            // We can't check eligibility here because dataTransfer data isn't available in dragover
+            // The actual validation happens in assign()
+            roleElement.classList.add('ring-2', 'ring-amber-400', 'bg-amber-50');
+        } else {
+            // Add visual feedback when dragging over a role
+            roleElement.classList.add('ring-2', 'ring-pink-400', 'bg-pink-50');
+        }
     }
 
     dragLeave(event) {
         // Remove visual feedback when drag leaves the role
-        event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50');
+        event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50', 'ring-amber-400', 'bg-amber-50');
+    }
+
+    isEligibleForRole(roleElement, assignableType, assignableId) {
+        const isRestricted = roleElement.dataset.roleRestricted === "true";
+
+        // If role is not restricted, anyone can be assigned
+        if (!isRestricted) return true;
+
+        // Groups are not supported for restricted roles (only people)
+        if (assignableType === "Group") return false;
+
+        // Check if the person is in the eligible list
+        const eligiblePersonIds = JSON.parse(roleElement.dataset.eligiblePersonIds || "[]");
+        return eligiblePersonIds.includes(parseInt(assignableId));
     }
 
     dragStartAssignment(event) {
@@ -39,9 +65,10 @@ export default class extends Controller {
 
     assign(event) {
         event.preventDefault();
-        event.currentTarget.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50');
+        const roleElement = event.currentTarget;
+        roleElement.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50', 'ring-amber-400', 'bg-amber-50');
 
-        const roleId = event.currentTarget.dataset.roleId;
+        const roleId = roleElement.dataset.roleId;
         let assignableType = event.dataTransfer.getData("assignableType");
         let assignableId = event.dataTransfer.getData("assignableId");
         let personId = event.dataTransfer.getData("personId");
@@ -56,6 +83,16 @@ export default class extends Controller {
         if (!assignableType) {
             assignableType = "Person";
             assignableId = personId;
+        }
+
+        // Check eligibility for restricted roles
+        if (!this.isEligibleForRole(roleElement, assignableType, assignableId)) {
+            // Show a brief visual indicator that the drop was rejected
+            roleElement.classList.add('ring-2', 'ring-red-400', 'bg-red-50');
+            setTimeout(() => {
+                roleElement.classList.remove('ring-2', 'ring-red-400', 'bg-red-50');
+            }, 500);
+            return;
         }
 
         const showId = this.element.dataset.showId;
@@ -127,6 +164,50 @@ export default class extends Controller {
                     this.updateProgressBar(data.progress);
                 });
         }
+    }
+
+    // Handle click-to-assign for restricted roles
+    assignFromClick(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const roleId = button.dataset.roleId;
+        const assignableType = button.dataset.assignableType;
+        const assignableId = button.dataset.assignableId;
+        const showId = this.element.dataset.showId;
+        const productionId = this.element.dataset.productionId;
+
+        const requestBody = { role_id: roleId };
+        if (assignableType === "Person") {
+            requestBody.person_id = assignableId;
+        } else if (assignableType === "Group") {
+            requestBody.group_id = assignableId;
+        }
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(data => {
+                // Find the entity element and add opacity-50
+                const targetType = assignableType === "Person" ? "person" : "group";
+                const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
+                if (entityElement) {
+                    entityElement.classList.add('opacity-50');
+                }
+
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update progress bar
+                this.updateProgressBar(data.progress);
+            });
     }
 
     moveAssignment(productionId, showId, assignableId, sourceRoleId, targetRoleId, assignableType) {

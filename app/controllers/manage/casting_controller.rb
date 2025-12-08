@@ -217,6 +217,14 @@ module Manage
 
       role = Role.find(params[:role_id])
 
+      # Validate eligibility for restricted roles
+      if role.restricted?
+        unless role.eligible?(assignable)
+          render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_entity
+          return
+        end
+      end
+
       # If this role already has someone in it for this show, remove the assignment
       existing_assignments = @show.show_person_role_assignments.where(role: role)
       existing_assignments.destroy_all if existing_assignments.any?
