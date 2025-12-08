@@ -5,6 +5,8 @@
   # - production: the Production object
   # - roles: (optional) preloaded roles array
   # - roles_count: (optional) preloaded roles count
+  # - roles_max_updated_at: (optional) precomputed max updated_at for roles
+  # - assignments_max_updated_at_by_show: (optional) hash of show_id => max updated_at for assignments
   # - people_by_id: (optional) preloaded people hash
   # - groups_by_id: (optional) preloaded groups hash
 
@@ -18,13 +20,21 @@
   percentage = roles_count > 0 ? (cast_count.to_f / roles_count * 100).round : 0
   fully_cast = percentage == 100
 
+  # Use precomputed timestamps if available, otherwise query (for backward compatibility)
+  assignments_max = if @assignments_max_updated_at_by_show
+    @assignments_max_updated_at_by_show[show.id]
+  else
+    show.show_person_role_assignments.maximum(:updated_at)
+  end
+  roles_max = @roles_max_updated_at || production.roles.maximum(:updated_at)
+
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v2",
+    "cast_card_v3",
     show.id,
     show.updated_at.to_i,
-    show.show_person_role_assignments.maximum(:updated_at)&.to_i,
-    production.roles.maximum(:updated_at)&.to_i,
+    assignments_max&.to_i,
+    roles_max&.to_i,
     title.presence || "default"
   ]
 %>

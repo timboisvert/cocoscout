@@ -17,6 +17,14 @@ module Manage
       # Eager load roles for the production (used in cast_card partial)
       @roles = @production.roles.order(:position).to_a
       @roles_count = @roles.size
+      @roles_max_updated_at = @roles.map(&:updated_at).compact.max
+
+      # Precompute max assignment updated_at per show to avoid N+1 in cache key
+      show_ids = @upcoming_shows.map(&:id)
+      @assignments_max_updated_at_by_show = ShowPersonRoleAssignment
+        .where(show_id: show_ids)
+        .group(:show_id)
+        .maximum(:updated_at)
 
       # Preload assignables (people and groups) with their headshots
       all_assignments = @upcoming_shows.flat_map(&:show_person_role_assignments)
