@@ -12,7 +12,7 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Profile</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
       <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     </nav>
 
@@ -186,7 +186,7 @@
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile</h3>
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Listing</h3>
         </div>
         <div class="p-6">
           <div class="space-y-4">
@@ -194,9 +194,9 @@
             <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
+                  <p class="text-sm font-medium text-gray-700">Enable Public Listing</p>
                   <p class="text-xs text-gray-500 mt-1">
-                    When enabled, this production will be visible to anyone with the profile URL
+                    When enabled, this production will be visible to anyone with the listing URL
                   </p>
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer ml-4">
@@ -216,7 +216,7 @@
             <div data-profile-visibility-target="content" class="pt-4 border-t border-gray-200 <%= 'hidden' unless @production.public_profile_enabled %>">
               <!-- URL Box -->
               <% if @production.public_key.present? %>
-                <%= render "shared/copy_url", url: public_profile_url(@production.public_key), label: "Your Production's Public Profile URL" %>
+                <%= render "shared/copy_url", url: public_profile_url(@production.public_key), label: "#{@production.name}'s Public Listing URL" %>
                 <p class="mt-1 mb-4 text-xs text-gray-500">
                   <a href="javascript:void(0)" data-action="click->production-profile-modals#openChangeUrl" class="text-pink-500 hover:text-pink-600 underline">Change URL</a>
                 </p>
@@ -224,14 +224,14 @@
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap gap-3">
                   <%= render "shared/button",
-                      text: "View Public Profile",
+                      text: "View Public Listing",
                       variant: "primary",
                       icon: "eye",
                       path: public_profile_url(@production.public_key),
                       target: "_blank",
                       rel: "noopener" %>
                   <%= render "shared/button",
-                      text: "Share Profile",
+                      text: "Share Listing",
                       variant: "outline",
                       icon: "share",
                       data: { action: "click->production-profile-modals#openShare" },
@@ -255,7 +255,7 @@
       <div data-production-profile-modals-target="shareModal" data-action="click->production-profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-profile-modals#stopPropagation">
           <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Share Production Profile</h2>
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Share Production Listing</h2>
             <button type="button" data-action="click->production-profile-modals#closeModal" class="text-gray-400 hover:text-gray-500 cursor-pointer">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -265,7 +265,7 @@
           <div class="p-6 space-y-6">
             <% profile_url = public_profile_url(@production.public_key) if @production.public_key.present? %>
             <div data-controller="copy-url">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Production Profile URL</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Production Listing URL</label>
               <div class="flex items-center gap-2">
                 <input type="text" readonly value="<%= profile_url %>" class="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none">
                 <button type="button" data-action="click->copy-url#copy" data-url="<%= profile_url %>" class="px-4 py-2 text-sm font-medium text-pink-500 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors cursor-pointer">

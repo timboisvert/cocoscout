@@ -4,7 +4,7 @@
   </div>
   <div class="p-6">
     <p class="text-sm text-gray-600 mb-6">
-      Choose what information to display on your public profile page.
+      Choose what information to display on your public listing page.
     </p>
 
     <%= form_with(model: [:manage, production], url: manage_production_path(production), method: :patch, data: { controller: "auto-submit" }) do |form| %>
@@ -15,7 +15,7 @@
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-700">Show Cast Members</p>
               <p class="text-xs text-gray-500 mt-0.5">
-                Display cast members from your talent pools on the public profile
+                Display cast members from your talent pool on the public listing
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-4">
@@ -71,7 +71,7 @@
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-700">Show Upcoming Shows & Events</p>
               <p class="text-xs text-gray-500 mt-0.5">
-                Display upcoming events on the public profile and automatically generate event pages
+                Display upcoming events on the public listing and automatically generate event pages
               </p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer ml-4">

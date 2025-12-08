@@ -72,7 +72,9 @@
                       </div>
                       <div class="text-sm text-gray-600">
                         <%= show.date_and_time.strftime("%l:%M %p").strip %>
-                        <% if show.location.present? %>
+                        <% if show.is_online %>
+                          · Online
+                        <% elsif show.location.present? %>
                           · <%= show.location.name %>
                         <% end %>
                         · <span class="text-gray-500"><%= show_data[:days_until] %></span>
