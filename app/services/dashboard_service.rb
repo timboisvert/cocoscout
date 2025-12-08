@@ -57,10 +57,19 @@ class DashboardService
     # Pre-fetch roles count once (not per show)
     roles_count = @production.roles.count
 
-    # Eager load location and assignments in a single query
+    # Get all people in the production's talent pools in a single query
+    all_cast_person_ids = Person
+                          .joins(:talent_pool_memberships)
+                          .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
+                          .distinct
+                          .pluck(:id)
+
+    total_cast_count = all_cast_person_ids.size
+
+    # Eager load location, assignments, and availabilities in a single query
     shows = @production.shows
                        .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-                       .includes(:location, :show_person_role_assignments)
+                       .includes(:location, :show_person_role_assignments, :show_availabilities)
                        .order(date_and_time: :asc)
                        .limit(5)
 
@@ -82,11 +91,20 @@ class DashboardService
                           100 # If there are no roles, consider it 100% cast
       end
 
+      # Availability data
+      people_with_availability = show.show_availabilities.count do |avail|
+        avail.available_entity_type == "Person" && all_cast_person_ids.include?(avail.available_entity_id)
+      end
+      availability_percentage = total_cast_count.positive? ? ((people_with_availability.to_f / total_cast_count) * 100).round : 0
+
       {
         show: show,
         uncast_count: uncast_count,
         days_until: days_label,
-        cast_percentage: cast_percentage
+        cast_percentage: cast_percentage,
+        total_cast_count: total_cast_count,
+        availability_count: people_with_availability,
+        availability_percentage: availability_percentage
       }
     end
   end

@@ -39,12 +39,26 @@ export default class extends Controller {
         const frequencySelect = this.element.querySelector('select[name="show[event_frequency]"]')
         const isRecurring = frequencySelect && frequencySelect.value === "recurring"
 
+        let buttonText
         if (isRecurring) {
             // Pluralize the event type
             const plural = this.pluralize(eventTypeLabel)
-            this.submitButtonTarget.value = `Schedule ${plural}`
+            buttonText = `Schedule ${plural}`
         } else {
-            this.submitButtonTarget.value = `Schedule ${eventTypeLabel}`
+            buttonText = `Schedule ${eventTypeLabel}`
+        }
+
+        // Support both <input type="submit"> and <button> elements
+        if (this.submitButtonTarget.tagName === 'INPUT') {
+            this.submitButtonTarget.value = buttonText
+        } else {
+            // For <button> elements, find the inner span or set textContent directly
+            const span = this.submitButtonTarget.querySelector('span')
+            if (span) {
+                span.textContent = buttonText
+            } else {
+                this.submitButtonTarget.textContent = buttonText
+            }
         }
     }
 

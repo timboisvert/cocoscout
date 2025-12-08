@@ -1,6 +1,6 @@
 <% content_for :title, "Edit #{ @show.event_type.titleize }: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
 
-<div class="w-full mb-10" data-controller="location-modal" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>">
+<div class="w-full mb-10" data-controller="location-modal tabs" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -22,336 +22,330 @@
 
 <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
 
-  <div class="w-full sm:flex sm:space-x-5">
-    <div class="w-full sm:w-1/2">
-      <%= form.label :event_type, "Event Type" %>
-      <%= form.select :event_type,
-          EventTypes.for_select,
-          { include_blank: false },
-          {
-            class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
-            data: {
-              recurring_edit_target: "eventTypeSelect",
-              show_edit_target: "eventTypeSelect",
-              action: "change->recurring-edit#updateButtonText change->show-edit#updateTitle change->location-modal#updateEventType"
+  <!-- Tabs Navigation -->
+  <nav class="flex space-x-2 border-b border-gray-200 mt-6 mb-4 overflow-x-auto">
+    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Schedule</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Poster & Links</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+  </nav>
+
+  <!-- Tab 1: Basic Information -->
+  <div data-tabs-target="panel">
+    <!-- Event Type and Location -->
+    <div class="w-full sm:flex sm:space-x-5">
+      <div class="w-full sm:w-1/2">
+        <%= form.label :event_type, "Event Type" %>
+        <%= form.select :event_type,
+            EventTypes.for_select,
+            { include_blank: false },
+            {
+              class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @show.errors[:event_type].none?, "border-pink-500": @show.errors[:event_type].any?}],
+              data: {
+                recurring_edit_target: "eventTypeSelect",
+                show_edit_target: "eventTypeSelect",
+                action: "change->recurring-edit#updateButtonText change->show-edit#updateTitle change->location-modal#updateEventType"
+              }
             }
-          }
-      %>
+        %>
+      </div>
+
+      <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+        <label class="">Location</label>
+
+        <!-- Hidden field for is_online -->
+        <%= form.hidden_field :is_online, value: @show.is_online, data: { "location-modal-target": "isOnlineField" } %>
+
+        <!-- In-Person Location Container -->
+        <div data-location-modal-target="inPersonContainer" class="<%= @show.is_online ? 'hidden' : '' %>">
+          <%= form.collection_select :location_id, Current.organization.locations.order(:created_at), :id, :name, { prompt: "Select a location" }, {
+            class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )],
+            data: {
+              "location-modal-target": "locationSelect",
+              action: "change->location-modal#handleLocationChange"
+            }
+          } %>
+          <div class="mt-1 ml-1 flex gap-2">
+            <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
+            <span class="text-gray-400">|</span>
+            <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
+              <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> online</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Online Location Container -->
+        <div data-location-modal-target="onlineContainer" class="<%= @show.is_online ? '' : 'hidden' %>">
+          <%= form.text_field :online_location_info,
+            placeholder: "e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'",
+            class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full" %>
+          <div class="mt-1 ml-1">
+            <p class="text-xs text-gray-500 inline">Optional: Add a URL or instructions for joining online</p>
+            <span class="text-gray-400 mx-1">|</span>
+            <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
+              <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> in person</span>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
-      <label class="">Location</label>
-
-      <!-- Hidden field for is_online -->
-      <%= form.hidden_field :is_online, value: @show.is_online, data: { "location-modal-target": "isOnlineField" } %>
-
-      <!-- In-Person Location Container -->
-      <div data-location-modal-target="inPersonContainer" class="<%= @show.is_online ? 'hidden' : '' %>">
-        <%= form.collection_select :location_id, Current.organization.locations.order(:created_at), :id, :name, { prompt: "Select a location" }, {
-          class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", ( @show.errors[:location_id].any? ? "border-pink-500" : "border-gray-400" )],
-          data: {
-            "location-modal-target": "locationSelect",
-            action: "change->location-modal#handleLocationChange"
-          }
-        } %>
-        <div class="mt-1 ml-1 flex gap-2">
-          <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm">Add a Location</a>
-          <span class="text-gray-400">|</span>
-          <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
-            <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> online</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Online Location Container -->
-      <div data-location-modal-target="onlineContainer" class="<%= @show.is_online ? '' : 'hidden' %>">
-        <%= form.text_field :online_location_info,
-          placeholder: "e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'",
-          class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full" %>
-        <div class="mt-1 ml-1">
-          <p class="text-xs text-gray-500 inline">Optional: Add a URL or instructions for joining online</p>
-          <span class="text-gray-400 mx-1">|</span>
-          <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
-            <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> in person</span>
-          </a>
-        </div>
-      </div>
+    <!-- Secondary Name -->
+    <div class="mt-5">
+      <%= form.label :secondary_name %>
+      <div class="text-sm text-gray-500">(eg. If the event on this particular date has a sub-name or special name to go along with the Production name)</div>
+      <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
     </div>
   </div>
 
-  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule</h3>
-    </div>
-    <div class="p-4">
+  <!-- Tab 2: Schedule -->
+  <div data-tabs-target="panel" class="hidden">
 
-      <% if @show.recurring? %>
-        <div class="w-full mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
-          <div class="flex items-center mb-2">
-            <svg class="w-5 h-5 text-pink-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            <span class="font-medium text-pink-900">This is a recurring event</span>
-          </div>
-          <p class="text-sm text-pink-700 mb-3">This event is part of a series of <%= @show.recurrence_group.count %> events.</p>
-
-          <%= form.label :recurrence_edit_scope, "What would you like to edit?", class: "block text-sm font-medium text-gray-700 mb-2" %>
-          <div class="space-y-2">
-            <label class="flex items-center">
-              <%= form.radio_button :recurrence_edit_scope, "this", checked: true, class: "accent-pink-500 mr-2",
-                  data: { recurring_edit_target: "editScopeThis", action: "change->recurring-edit#toggleFields" } %>
-              <span class="text-sm">Only this occurrence (<%= @show.date_and_time.strftime("%B %-d, %Y at %-l:%M %p") %>)</span>
-            </label>
-            <label class="flex items-center">
-              <%= form.radio_button :recurrence_edit_scope, "all", class: "accent-pink-500 mr-2",
-                  data: { recurring_edit_target: "editScopeAll", action: "change->recurring-edit#toggleFields" } %>
-              <span class="text-sm">All <%= @show.recurrence_group.count %> occurrences in this series</span>
-            </label>
-          </div>
-        </div>
-      <% end %>
-
-      <!-- Single Event Fields (shown when editing just this occurrence) -->
-      <div data-recurring-edit-target="singleFields" class="<%= @show.recurring? ? '' : '' %>">
-        <div class="w-full">
-          <%= form.label :date_and_time, "Date and Time" %>
-          <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
-        </div>
-      </div>
-
-      <!-- Recurring Event Fields (shown when editing all occurrences) -->
-      <% if @show.recurring? %>
-        <div data-recurring-edit-target="recurringFields" class="hidden space-y-4">
-          <div>
-            <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
-            <%= form.datetime_field :recurrence_start_datetime,
-                value: @show.recurrence_group.order(:date_and_time).first.date_and_time,
-                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
-                data: {
-                  recurring_edit_target: "startDatetime",
-                  action: "change->recurring-edit#updatePatternOptions"
-                } %>
-            <p class="text-sm text-gray-500 mt-1">This will become the new first event in the series</p>
-          </div>
-
-          <div>
-            <%= form.label :recurrence_pattern, "Repeat Pattern" %>
-            <%= form.select :recurrence_pattern,
-                [
-                  ["Weekly (same day each week)", "weekly"],
-                  ["Every other week", "biweekly"],
-                  ["Monthly (same date each month)", "monthly_date"],
-                  ["Monthly (same week and day)", "monthly_week"]
-                ],
-                { include_blank: "Select pattern" },
-                {
-                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-                  data: { recurring_edit_target: "patternSelect" }
-                }
-            %>
-          </div>
-
-          <div>
-            <%= form.label :recurrence_end_type, "Duration" %>
-            <%= form.select :recurrence_end_type,
-                [
-                  ["3 Months", "3_months"],
-                  ["6 Months", "6_months"],
-                  ["12 Months", "12_months"],
-                  ["Until End of #{Date.current.year}", "end_of_year"],
-                  ["Until Specific Date", "custom"]
-                ],
-                { include_blank: "Select duration" },
-                {
-                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
-                  data: { action: "change->recurring-edit#toggleCustomEndDate" }
-                }
-            %>
-          </div>
-
-          <div data-recurring-edit-target="customEndDateField" class="hidden">
-            <%= form.label :recurrence_custom_end_date, "End Date" %>
-            <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
-          </div>
-
-          <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div class="flex items-start">
-              <svg class="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        <% if @show.recurring? %>
+          <div class="w-full mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
+            <div class="flex items-center mb-2">
+              <svg class="w-5 h-5 text-pink-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
               </svg>
-              <div>
-                <p class="text-sm font-medium text-yellow-900">Important</p>
-                <p class="text-sm text-yellow-700 mt-1">Changing the recurrence pattern will delete all existing events in this series and create new ones based on the new pattern. Any cast assignments or customizations will be lost.</p>
+              <span class="font-medium text-pink-900">This is a recurring event</span>
+            </div>
+            <p class="text-sm text-pink-700 mb-3">This event is part of a series of <%= @show.recurrence_group.count %> events.</p>
+
+            <%= form.label :recurrence_edit_scope, "What would you like to edit?", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <%= form.radio_button :recurrence_edit_scope, "this", checked: true, class: "accent-pink-500 mr-2",
+                    data: { recurring_edit_target: "editScopeThis", action: "change->recurring-edit#toggleFields" } %>
+                <span class="text-sm">Only this occurrence (<%= @show.date_and_time.strftime("%B %-d, %Y at %-l:%M %p") %>)</span>
+              </label>
+              <label class="flex items-center">
+                <%= form.radio_button :recurrence_edit_scope, "all", class: "accent-pink-500 mr-2",
+                    data: { recurring_edit_target: "editScopeAll", action: "change->recurring-edit#toggleFields" } %>
+                <span class="text-sm">All <%= @show.recurrence_group.count %> occurrences in this series</span>
+              </label>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Single Event Fields (shown when editing just this occurrence) -->
+        <div data-recurring-edit-target="singleFields" class="<%= @show.recurring? ? '' : '' %>">
+          <div class="w-full">
+            <%= form.label :date_and_time, "Date and Time" %>
+            <%= form.datetime_field :date_and_time, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full sm:w-64", {"border-gray-400": @show.errors[:date_and_time].none?, "border-pink-500": @show.errors[:date_and_time].any?}] %>
+          </div>
+        </div>
+
+        <!-- Recurring Event Fields (shown when editing all occurrences) -->
+        <% if @show.recurring? %>
+          <div data-recurring-edit-target="recurringFields" class="hidden space-y-4">
+            <div>
+              <%= form.label :recurrence_start_datetime, "Start Date and Time" %>
+              <%= form.datetime_field :recurrence_start_datetime,
+                  value: @show.recurrence_group.order(:date_and_time).first.date_and_time,
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64",
+                  data: {
+                    recurring_edit_target: "startDatetime",
+                    action: "change->recurring-edit#updatePatternOptions"
+                  } %>
+              <p class="text-sm text-gray-500 mt-1">This will become the new first event in the series</p>
+            </div>
+
+            <div>
+              <%= form.label :recurrence_pattern, "Repeat Pattern" %>
+              <%= form.select :recurrence_pattern,
+                  [
+                    ["Weekly (same day each week)", "weekly"],
+                    ["Every other week", "biweekly"],
+                    ["Monthly (same date each month)", "monthly_date"],
+                    ["Monthly (same week and day)", "monthly_week"]
+                  ],
+                  { include_blank: "Select pattern" },
+                  {
+                    class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                    data: { recurring_edit_target: "patternSelect" }
+                  }
+              %>
+            </div>
+
+            <div>
+              <%= form.label :recurrence_end_type, "Duration" %>
+              <%= form.select :recurrence_end_type,
+                  [
+                    ["3 Months", "3_months"],
+                    ["6 Months", "6_months"],
+                    ["12 Months", "12_months"],
+                    ["Until End of #{Date.current.year}", "end_of_year"],
+                    ["Until Specific Date", "custom"]
+                  ],
+                  { include_blank: "Select duration" },
+                  {
+                    class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-96",
+                    data: { action: "change->recurring-edit#toggleCustomEndDate" }
+                  }
+              %>
+            </div>
+
+            <div data-recurring-edit-target="customEndDateField" class="hidden">
+              <%= form.label :recurrence_custom_end_date, "End Date" %>
+              <%= form.date_field :recurrence_custom_end_date, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-64" %>
+            </div>
+
+            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div class="flex items-start">
+                <svg class="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-yellow-900">Important</p>
+                  <p class="text-sm text-yellow-700 mt-1">Changing the recurrence pattern will delete all existing events in this series and create new ones based on the new pattern. Any cast assignments or customizations will be lost.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      <% end %>
-    </div>
+        <% end %>
   </div>
 
-  <!-- Casting Settings -->
-  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Settings</h3>
-    </div>
-    <div class="p-4">
-      <label class="flex items-start gap-3 cursor-pointer">
-        <%= form.check_box :casting_enabled,
-          class: "mt-1 rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500",
-          data: {
-            show_edit_target: "castingEnabledCheckbox",
-            action: "change->show-edit#castingCheckboxChanged"
-          } %>
-        <div>
-          <div class="font-medium text-gray-900">Enable casting for this event</div>
-          <div class="text-sm text-gray-500">When enabled, you can assign cast members to roles for this event. Shows, classes, and workshops default to enabled, while rehearsals and meetings default to disabled.</div>
-        </div>
-      </label>
-    </div>
-  </div>
-
-  <!-- Public Visibility Settings -->
-  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile Visibility</h3>
-    </div>
-    <div class="p-4">
-      <%
-        # Determine current visibility status
-        event_type_default = @production.event_type_publicly_visible?(@show.event_type)
-        using_default = @show.public_profile_visible.nil?
-        is_visible = @show.public_profile_visible?
-      %>
-      <div class="mb-3">
-        <p class="text-sm text-gray-600">
-          <strong>Current status:</strong>
-          <% if is_visible %>
-            <span class="text-green-600">Visible on public profile</span>
-          <% else %>
-            <span class="text-gray-500">Hidden from public profile</span>
-          <% end %>
-          <% if using_default %>
-            <span class="text-gray-400">(using <%= @show.event_type %> default)</span>
-          <% else %>
-            <span class="text-gray-400">(custom override)</span>
-          <% end %>
-        </p>
-      </div>
-
-      <div class="space-y-2">
-        <label class="flex items-center gap-2">
-          <%= form.radio_button :public_profile_visible, "", checked: @show.public_profile_visible.nil?, class: "accent-pink-500" %>
-          <span class="text-sm text-gray-700">
-            Use production default for <%= @show.event_type %> events
-            (<%= event_type_default ? "visible" : "hidden" %>)
-          </span>
-        </label>
-        <label class="flex items-center gap-2">
-          <%= form.radio_button :public_profile_visible, "true", checked: @show.public_profile_visible == true, class: "accent-pink-500" %>
-          <span class="text-sm text-gray-700">Show on public profile (override)</span>
-        </label>
-        <label class="flex items-center gap-2">
-          <%= form.radio_button :public_profile_visible, "false", checked: @show.public_profile_visible == false, class: "accent-pink-500" %>
-          <span class="text-sm text-gray-700">Hide from public profile (override)</span>
-        </label>
-      </div>
-
-      <% if @production.public_profile_enabled && @production.public_key.present? %>
-        <div class="mt-4 text-sm">
-          <a href="<%= public_profile_path(@production.public_key) %>" target="_blank" class="text-pink-500 underline">
-            View production's public profile →
-          </a>
-        </div>
-      <% end %>
-    </div>
-  </div>
-
-  <div data-controller="show-toggle" data-show-toggle-initial-open-value="false" class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular" data-show-edit-target="sectionTitle">Optional <%= @show.event_type.titleize %> Settings</h3>
-        <div data-show-toggle-target="icon"></div>
-    </div>
-    <div data-show-toggle-target="content" class="p-4">
-      <div>
-        <%= form.label :secondary_name %>
-        <div class="text-sm text-gray-500">(eg. If the show on this particular date has a sub-name or special name to go along with the Production name)</div>
-        <%= form.text_field :secondary_name, class: ["w-full shadow-sm rounded-lg border px-3 py-2 mt-2", {"border-gray-400": @show.errors[:secondary_name].none?, "border-pink-500": @show.errors[:secondary_name].any?}] %>
-      </div>
-
-      <% if @show.poster.attached? && @show.poster.blob&.persisted? %>
-        <div class="text-md mt-5 flex items-center">
-          <span>Show/Event Poster</span>
-          <%= render "shared/button", text: "Remove Poster", variant: "danger", size: "small", type: :button, data: { action: "click->show-edit#removePoster" }, class: "ml-3" %>
-        </div>
-        <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
+  <!-- Tab 3: Poster & Links -->
+  <div data-tabs-target="panel" class="hidden">
+        <% if @show.poster.attached? && @show.poster.blob&.persisted? %>
+          <div class="text-md flex items-center">
+            <span>Show/Event Poster</span>
+            <%= render "shared/button", text: "Remove Poster", variant: "danger", size: "small", type: :button, data: { action: "click->show-edit#removePoster" }, class: "ml-3" %>
+          </div>
+          <div class="my-2 flex p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:shadow-sm transition-all items-top max-w-md poster-container">
             <div class="w-full">
+              <div class="mb-4 poster-image">
+                <%= image_tag url_for(@show.poster), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
+              </div>
 
-                <div class="mb-4 poster-image">
-                    <%= image_tag url_for(@show.poster), class: "rounded shadow w-full max-w-72 rounded-lg border border-gray-200" %>
-                </div>
+              <div class="flex items-center justify-between">
+                <%= form.label :image, "Update Show/Event Poster:", class: "text-sm" %>
+                <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
+              </div>
 
-                <div class="flex items-center justify-between">
-                  <%= form.label :image, "Update Show/Event Poster:", class: "text-sm" %>
-                  <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
-                </div>
+              <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
+                <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+              </div>
 
-                <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                    <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
-                </div>
-
-                <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
-
+              <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
             </div>
-        </div>
-      <% else %>
-        <div class="text-md mt-5">Show/Event Poster</div>
-        <div class="mr-5 inline-block">
-
+          </div>
+        <% else %>
+          <div class="text-md">Show/Event Poster</div>
+          <div class="mr-5 inline-block">
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-500">(JPEG, JPG, or PNG)</span>
             </div>
 
             <div class="block shadow-sm rounded-lg border px-3 py-2 mt-2 border-gray-400">
-                <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+              <%= form.file_field :poster, class: "w-64 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
             </div>
-
-        </div>
-      <% end %>
-
-      <div class="mt-5" data-controller="show-links">
-        <label>Show/Event Links</label>
-        <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
-        <div id="show-links-fields" data-show-links-target="list" class="mt-1">
-          <%= form.fields_for :show_links do |show_link_form| %>
-            <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
-              <%= show_link_form.hidden_field :id %>
-              <%= show_link_form.hidden_field :_destroy, value: 0, class: "destroy-flag" %>
-              <div class="flex-1 flex flex-col sm:flex-row gap-2">
-                <%= show_link_form.text_field :text, placeholder: "Link Text (e.g. Buy Tickets, Event Page)", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
-                <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
-              </div>
-              <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2", data: { action: "show-links#remove" } %>
-            </div>
-          <% end %>
-        </div>
-        <%= link_to "Add Show/Event Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
-        <template data-show-links-target="template">
-          <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
-            <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
-            <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
-            <div class="flex-1 flex flex-col sm:flex-row gap-2">
-              <input type="text" name="show[show_links_attributes][new_show_links][text]" placeholder="Link Text (e.g. Buy Tickets, Event Page)" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
-              <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
-            </div>
-            <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2" data-action="show-links#remove">Remove</a>
           </div>
-        </template>
+        <% end %>
+
+        <div class="mt-5" data-controller="show-links">
+          <label>Show/Event Links</label>
+          <div class="text-sm text-gray-500 mb-2">Add links related to this show (e.g. ticketing, event page, social media posts, etc.)</div>
+          <div id="show-links-fields" data-show-links-target="list" class="mt-1">
+            <%= form.fields_for :show_links do |show_link_form| %>
+              <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+                <%= show_link_form.hidden_field :id %>
+                <%= show_link_form.hidden_field :_destroy, value: 0, class: "destroy-flag" %>
+                <div class="flex-1 flex flex-col sm:flex-row gap-2">
+                  <%= show_link_form.text_field :text, placeholder: "Link Text (e.g. Buy Tickets, Event Page)", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+                  <%= show_link_form.text_field :url, placeholder: "URL", class: "flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" %>
+                </div>
+                <%= link_to "Remove", '#', class: "remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2", data: { action: "show-links#remove" } %>
+              </div>
+            <% end %>
+          </div>
+          <%= link_to "Add Show/Event Link", '#', class: "text-pink-500 underline text-sm", data: { action: "show-links#add" } %>
+          <template data-show-links-target="template">
+            <div class="flex items-start gap-2 mb-2 show-links-fields-row" data-show-links-target="row">
+              <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
+              <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
+              <div class="flex-1 flex flex-col sm:flex-row gap-2">
+                <input type="text" name="show[show_links_attributes][new_show_links][text]" placeholder="Link Text (e.g. Buy Tickets, Event Page)" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+                <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="URL" class="flex-1 shadow-sm rounded-lg border px-3 py-2 border-gray-400" />
+              </div>
+              <a href="#" class="remove-show-link text-pink-500 underline text-sm whitespace-nowrap mt-2" data-action="show-links#remove">Remove</a>
+            </div>
+          </template>
+        </div>
+  </div>
+
+  <!-- Tab 4: Casting -->
+  <div data-tabs-target="panel" class="hidden">
+    <div class="flex items-center justify-between">
+      <div class="flex-1">
+        <p class="text-sm font-medium text-gray-700">Enable casting for this event</p>
+        <p class="text-xs text-gray-500 mt-1">
+          When enabled, you can assign cast members to roles for this event.
+          Shows, classes, and workshops default to enabled, while rehearsals and meetings default to disabled.
+        </p>
       </div>
+      <label class="relative inline-flex items-center cursor-pointer ml-4">
+        <%= form.check_box :casting_enabled,
+          {
+            class: "sr-only peer",
+            data: {
+              show_edit_target: "castingEnabledCheckbox",
+              action: "change->show-edit#castingCheckboxChanged"
+            }
+          } %>
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+      </label>
     </div>
   </div>
 
+  <!-- Tab 5: Public Listing -->
+  <div data-tabs-target="panel" class="hidden">
+    <%
+      event_type_default = @production.event_type_publicly_visible?(@show.event_type)
+      will_be_visible = @show.public_profile_visible.nil? ? event_type_default : @show.public_profile_visible
+    %>
 
+    <!-- Toggle Row -->
+    <div class="flex items-center justify-between">
+      <div class="flex-1">
+        <p class="text-sm font-medium text-gray-700">Include this show/event on <%= @production.name %>'s public listing</p>
+        <p class="text-xs text-gray-500 mt-1">
+          When enabled, this event will be visible to anyone viewing your public profile.
+          By default, <strong><%= @show.event_type %></strong> events are <strong><%= event_type_default ? "visible" : "hidden" %></strong>.
+        </p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer ml-4">
+        <%= form.hidden_field :public_profile_visible, value: "false", id: "public_profile_visible_hidden" %>
+        <%= form.check_box :public_profile_visible,
+          {
+            checked: will_be_visible,
+            class: "sr-only peer",
+            data: {
+              show_edit_target: "publicProfileCheckbox",
+              action: "change->show-edit#publicProfileToggled"
+            }
+          },
+          true,
+          false %>
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+      </label>
+    </div>
+
+    <% if @production.public_profile_enabled && @production.public_key.present? %>
+      <div class="mt-5 pt-5 border-t border-gray-200 <%= 'hidden' unless will_be_visible %>" data-show-edit-target="publicProfileContent">
+        <%= render "shared/copy_url", url: public_profile_show_url(@production.public_key, @show), label: "This event's public listing URL:" %>
+      </div>
+    <% else %>
+      <div class="mt-5 pt-5 border-t border-gray-200">
+        <p class="text-sm text-gray-500">
+          Public listing is not enabled for <%= @production.name %>.
+          <a href="<%= edit_manage_production_path(@production) %>#tab-2" class="text-pink-500 hover:text-pink-600 underline">Enable it in production settings</a>
+          to share your schedule publicly.
+        </p>
+      </div>
+    <% end %>
+  </div>
 
   <div class="border-t border-gray-200 pt-5 mt-5">
     <%= render "shared/button", text: "Update #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, data: { show_edit_target: "submitButton", recurring_edit_target: "submitButton" } %>

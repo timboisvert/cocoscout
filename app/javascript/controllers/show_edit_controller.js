@@ -1,11 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["eventTypeSelect", "sectionTitle", "castingEnabledCheckbox"]
+    static targets = ["eventTypeSelect", "sectionTitle", "castingEnabledCheckbox", "publicProfileCheckbox", "publicProfileContent"]
     static values = { castingDefaults: Array }
 
     connect() {
         this.updateTitle()
+        this.updatePublicProfileVisibility()
         // Don't update casting default on connect for edit forms - the value is already set from the database
     }
 
@@ -16,6 +17,21 @@ export default class extends Controller {
         const eventTypeLabel = this.eventTypeSelectTarget.options[this.eventTypeSelectTarget.selectedIndex].text
 
         this.sectionTitleTarget.textContent = `Optional ${eventTypeLabel} Settings`
+    }
+
+    updatePublicProfileVisibility() {
+        if (!this.hasPublicProfileCheckboxTarget || !this.hasPublicProfileContentTarget) return
+
+        const enabled = this.publicProfileCheckboxTarget.checked
+        if (enabled) {
+            this.publicProfileContentTarget.classList.remove('hidden')
+        } else {
+            this.publicProfileContentTarget.classList.add('hidden')
+        }
+    }
+
+    publicProfileToggled() {
+        this.updatePublicProfileVisibility()
     }
 
     updateCastingDefault() {

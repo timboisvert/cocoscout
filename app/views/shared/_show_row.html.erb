@@ -72,11 +72,6 @@
       <% if show_production %>
         <span class="text-sm text-gray-600"><%= show.production.name %></span>
       <% end %>
-      <% if local_assigns[:roles].present? %>
-        <% roles.each do |role_name| %>
-          <span class="text-xs text-gray-600">Role: <strong class="text-pink-500"><%= role_name %></strong></span>
-        <% end %>
-      <% end %>
     </div>
     <div class="text-sm text-gray-600">
       <%= show.date_and_time.strftime("%l:%M %p") %>
@@ -89,6 +84,11 @@
       <% end %>
       <% if show_production && !has_availability %>
         · <%= show.production.name %>
+      <% end %>
+      <% if local_assigns[:roles].present? %>
+        <% roles.each do |role_name| %>
+          · Role: <strong class="text-pink-500"><%= role_name %></strong>
+        <% end %>
       <% end %>
     </div>
   </div>

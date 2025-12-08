@@ -252,7 +252,7 @@ module Manage
             updated_count += 1 if show.update(update_params)
           end
 
-          redirect_to manage_production_shows_path(@production),
+          redirect_to manage_production_show_path(@production, @show),
                       notice: "Successfully updated #{updated_count} events in the series",
                       status: :see_other
         end
@@ -273,7 +273,7 @@ module Manage
         update_params.delete(:remove_poster)
 
         if @show.update(update_params)
-          redirect_to manage_production_shows_path(@production),
+          redirect_to manage_production_show_path(@production, @show),
                       notice: "#{@show.event_type.titleize} was successfully updated",
                       status: :see_other
         else
