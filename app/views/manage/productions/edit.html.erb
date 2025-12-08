@@ -251,6 +251,7 @@
         <% end %>
       </div>
 
+      <% if @production.public_key.present? %>
       <!-- Share Modal -->
       <div data-production-profile-modals-target="shareModal" data-action="click->production-profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-profile-modals#stopPropagation">

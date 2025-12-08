@@ -148,7 +148,9 @@ module My
                   )
                   .first!
       @production = @show.production
-      @show_person_role_assignments = @show.show_person_role_assignments.includes(:role).to_a
+      @show_person_role_assignments = @show.show_person_role_assignments
+                                           .includes(:role, assignable: { profile_headshots: { image_attachment: :blob } })
+                                           .to_a
 
       # Get my assignment for this show (check both person and group assignments) - use preloaded group_ids
       @my_assignment = @show_person_role_assignments.find do |a|
