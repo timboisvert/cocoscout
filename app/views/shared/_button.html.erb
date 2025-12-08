@@ -119,9 +119,17 @@
 
   # Build data attributes string
   data_attrs = data.map { |k, v| "data-#{k.to_s.dasherize}=\"#{v}\"" }.join(' ')
+
+  # HTTP method for links (default GET, can be :post, :patch, :delete, etc.)
+  http_method = local_assigns[:method]
 %>
 
-<% if path.present? %>
+<% if path.present? && http_method.present? %>
+  <%= button_to path, method: http_method, class: all_classes, data: data do %>
+    <%= icon_html if icon_html %>
+    <span><%= text %></span>
+  <% end %>
+<% elsif path.present? %>
   <%= link_to path, class: all_classes, data: data, target: target, rel: rel, onclick: onclick do %>
     <%= icon_html if icon_html %>
     <span><%= text %></span>

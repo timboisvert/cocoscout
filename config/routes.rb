@@ -255,8 +255,10 @@ Rails.application.routes.draw do
         member do
           # These are used when dragging and dropping on the talent pool members list or adding from search
           post :add_person
+          get "confirm-remove-person/:person_id", action: :confirm_remove_person, as: :confirm_remove_person
           post :remove_person
           post :add_group
+          get "confirm-remove-group/:group_id", action: :confirm_remove_group, as: :confirm_remove_group
           post :remove_group
         end
       end

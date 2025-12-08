@@ -38,35 +38,13 @@ export default class extends Controller {
         event.preventDefault();
 
         const memberType = event.currentTarget.dataset.memberType;
-        const memberLabel = memberType === "Person" ? "person" : "group";
-
-        if (!confirm(`Are you sure you want to remove this ${memberLabel} from the pool?`)) {
-            return;
-        }
-
         const personId = event.currentTarget.dataset.personId;
         const productionId = this.productionIdValue;
         const talentPoolId = this.talentPoolIdValue;
 
-        // Determine endpoint and parameter based on member type
-        const endpoint = memberType === "Person" ? "remove_person" : "remove_group";
-        const paramKey = memberType === "Person" ? "person_id" : "group_id";
-
-        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/${endpoint}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content,
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify({ [paramKey]: personId })
-        })
-            .then(r => r.text())
-            .then(html => {
-                // Replace the talent pool members list with the new HTML
-                const poolList = document.getElementById(`talent-pool-members-list-${talentPoolId}`);
-                if (poolList) poolList.innerHTML = html;
-            });
+        // Navigate to confirmation page
+        const endpoint = memberType === "Person" ? "confirm-remove-person" : "confirm-remove-group";
+        window.location.href = `/manage/productions/${productionId}/talent-pools/${talentPoolId}/${endpoint}/${personId}`;
     }
 
     dragStart(event) {

@@ -1,0 +1,98 @@
+<% member = @member_type == "person" ? @person : @group %>
+<% content_for :title, "Remove #{member.name} from #{@talent_pool.name}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting & Roles", manage_production_casting_path(@production)],
+      ["Talent Pools", manage_production_talent_pools_path(@production)],
+      [@talent_pool.name, manage_production_talent_pools_path(@production)]
+    ],
+    text: "Remove from Talent Pool",
+    links: []
+  } %>
+
+  <% if @upcoming_assignments.any? %>
+    <div class="bg-white border border-amber-200 rounded-lg shadow-sm overflow-hidden mt-6">
+      <!-- Warning Header -->
+      <div class="bg-amber-50 px-6 py-4 border-b border-amber-200">
+        <div class="flex items-center gap-3">
+          <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <div>
+            <h1 class="text-xl font-bold text-amber-800 coustard-regular">Remove "<%= member.name %>" from <%= @talent_pool.name %>?</h1>
+            <p class="text-sm text-amber-600"><%= member.name %> has upcoming cast assignments that will also be removed.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- What Will Happen -->
+      <div class="px-6 py-5">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">The following cast assignments will be removed:</h2>
+
+        <div class="space-y-2">
+          <% @upcoming_assignments.each do |assignment| %>
+            <%= render "shared/show_row",
+                show: assignment.show,
+                show_location: true,
+                roles: assignment.role.present? ? [assignment.role.name] : nil %>
+          <% end %>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p class="text-sm text-blue-800">
+            <strong>Note:</strong> Past cast assignments will not be affected. Only upcoming shows (from today forward) will have their cast assignments removed.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+        <%= render "shared/button",
+            text: "Cancel",
+            variant: "ghost-cancel",
+            path: manage_production_talent_pools_path(@production) %>
+        <%= render "shared/button",
+            text: "Remove from Talent Pool",
+            variant: "danger",
+            path: @member_type == "person" ?
+              remove_person_manage_production_talent_pool_path(@production, @talent_pool, person_id: member.id) :
+              remove_group_manage_production_talent_pool_path(@production, @talent_pool, group_id: member.id),
+            method: :post %>
+      </div>
+    </div>
+  <% else %>
+    <!-- No upcoming assignments - simple confirmation -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
+      <div class="px-6 py-5">
+        <div class="flex items-center gap-3 mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <h1 class="text-xl font-bold text-gray-900 coustard-regular">Remove "<%= member.name %>" from <%= @talent_pool.name %>?</h1>
+            <p class="text-sm text-gray-600"><%= member.name %> has no upcoming cast assignments for this production.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+        <%= render "shared/button",
+            text: "Cancel",
+            variant: "ghost-cancel",
+            path: manage_production_talent_pools_path(@production) %>
+        <%= render "shared/button",
+            text: "Remove from Talent Pool",
+            variant: "danger",
+            path: @member_type == "person" ?
+              remove_person_manage_production_talent_pool_path(@production, @talent_pool, person_id: member.id) :
+              remove_group_manage_production_talent_pool_path(@production, @talent_pool, group_id: member.id),
+            method: :post %>
+      </div>
+    </div>
+  <% end %>
+</div>

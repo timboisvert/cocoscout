@@ -1,6 +1,6 @@
 <%# Renders the list of people in a talent pool, for AJAX refresh %>
 <% can_manage = current_user_can_manage?(talent_pool.production) %>
-<% cache ["talent_pool_members_v1", talent_pool.id, talent_pool.updated_at.to_i, talent_pool.talent_pool_memberships.maximum(:updated_at)&.to_i, can_manage] do %>
+<% cache ["talent_pool_members_v2", talent_pool.id, talent_pool.updated_at.to_i, talent_pool.talent_pool_memberships.maximum(:updated_at)&.to_i, can_manage] do %>
   <div class="flex flex-wrap gap-2 w-full"
       data-talent-pool-id="<%= talent_pool.id %>"
       data-droppable-talent-pool

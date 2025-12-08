@@ -127,8 +127,9 @@ module My
 
       # Find the show if user has access via:
       # 1. Person is in the production's talent pool
-      # 2. Person has a direct role assignment
-      # 3. Person's group has a role assignment
+      # 2. Person's group is in the production's talent pool
+      # 3. Person has a direct role assignment
+      # 4. Person's group has a role assignment
       @show = Show.where(id: params[:id])
                   .where(
                     "EXISTS (SELECT 1 FROM talent_pools
@@ -136,6 +137,11 @@ module My
                              WHERE talent_pools.production_id = shows.production_id
                              AND talent_pool_memberships.member_type = 'Person'
                              AND talent_pool_memberships.member_id = ?) OR
+                     EXISTS (SELECT 1 FROM talent_pools
+                             INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
+                             WHERE talent_pools.production_id = shows.production_id
+                             AND talent_pool_memberships.member_type = 'Group'
+                             AND talent_pool_memberships.member_id IN (?)) OR
                      EXISTS (SELECT 1 FROM show_person_role_assignments
                              WHERE show_person_role_assignments.show_id = shows.id
                              AND show_person_role_assignments.assignable_type = 'Person'
@@ -144,7 +150,7 @@ module My
                              WHERE show_person_role_assignments.show_id = shows.id
                              AND show_person_role_assignments.assignable_type = 'Group'
                              AND show_person_role_assignments.assignable_id IN (?))",
-                    @person.id, @person.id, group_ids.presence || [ 0 ]
+                    @person.id, group_ids.presence || [ 0 ], @person.id, group_ids.presence || [ 0 ]
                   )
                   .first!
       @production = @show.production
