@@ -14,7 +14,7 @@
   <!-- Show Cast Assignments Section -->
   <div>
     <% if @upcoming_shows.any? %>
-      <div class="space-y-4">
+      <div class="space-y-1">
         <% @upcoming_shows.each do |show| %>
           <%= render "manage/casting/cast_card", show: show, production: @production, title: nil, roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
         <% end %>

@@ -23,9 +23,9 @@
   ] %>
 
   <% if @questionnaires.any? %>
-    <div class="space-y-4">
+    <div class="space-y-1">
       <% @questionnaires.each do |questionnaire| %>
-        <%= link_to manage_production_questionnaire_path(@production, questionnaire), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+        <%= link_to manage_production_questionnaire_path(@production, questionnaire), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 bg-white transition-colors no-underline" do %>
           <div class="flex items-center justify-between">
             <div class="flex-1">
               <h3 class="text-md font-semibold text-gray-900"><%= questionnaire.title %></h3>

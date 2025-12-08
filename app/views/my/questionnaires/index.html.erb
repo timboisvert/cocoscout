@@ -45,7 +45,7 @@
     %>
 
     <% if @questionnaire_entity_pairs.any? %>
-      <div class="grid grid-cols-1 gap-2">
+      <div class="grid grid-cols-1 gap-1">
         <% @questionnaire_entity_pairs.each do |pair| %>
           <% questionnaire = pair[:questionnaire] %>
           <% entity = pair[:entity] %>

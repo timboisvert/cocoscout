@@ -10,7 +10,7 @@
     </div>
     <div class="p-4">
       <% if @upcoming_show_entities.any? %>
-        <div class="space-y-3">
+        <div class="space-y-1">
           <% @upcoming_show_entities.each do |item| %>
             <% show = item[:show] %>
             <% entity = item[:entity] %>
@@ -43,7 +43,7 @@
     </div>
     <div class="p-4">
       <% if @upcoming_audition_entities.any? %>
-        <div class="space-y-3">
+        <div class="space-y-1">
           <% @upcoming_audition_entities.each do |item| %>
             <% audition_session = item[:audition_session] %>
             <% entity = item[:entity] %>
@@ -70,7 +70,7 @@
     </div>
     <div class="p-4">
       <% if @open_audition_request_entities.any? %>
-        <div class="space-y-3">
+        <div class="space-y-1">
           <% @open_audition_request_entities.each do |item| %>
             <% audition_request = item[:audition_request] %>
             <% entity = item[:entity] %>
@@ -123,7 +123,7 @@
     </div>
     <div class="p-4">
       <% if @pending_questionnaire_entities.any? %>
-        <div class="space-y-3">
+        <div class="space-y-1">
           <% @pending_questionnaire_entities.each do |item| %>
             <% questionnaire = item[:questionnaire] %>
             <% entity = item[:entity] %>
