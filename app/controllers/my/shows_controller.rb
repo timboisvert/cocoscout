@@ -149,8 +149,18 @@ module My
                   .first!
       @production = @show.production
       @show_person_role_assignments = @show.show_person_role_assignments
-                                           .includes(:role, assignable: { profile_headshots: { image_attachment: :blob } })
+                                           .includes(:role)
                                            .to_a
+
+      # Preload polymorphic assignables with headshots
+      ActiveRecord::Associations::Preloader.new(
+        records: @show_person_role_assignments.select { |a| a.assignable_type == "Person" },
+        associations: { assignable: { profile_headshots: { image_attachment: :blob } } }
+      ).call
+      ActiveRecord::Associations::Preloader.new(
+        records: @show_person_role_assignments.select { |a| a.assignable_type == "Group" },
+        associations: :assignable
+      ).call
 
       # Get my assignment for this show (check both person and group assignments) - use preloaded group_ids
       @my_assignment = @show_person_role_assignments.find do |a|
