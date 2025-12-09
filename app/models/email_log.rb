@@ -2,6 +2,7 @@
 
 class EmailLog < ApplicationRecord
   belongs_to :user
+  belongs_to :recipient, polymorphic: true, optional: true
 
   validates :recipient, presence: true
 
@@ -10,6 +11,7 @@ class EmailLog < ApplicationRecord
   scope :failed, -> { where(delivery_status: "failed") }
   scope :for_user, ->(user) { where(user: user) }
   scope :recent, -> { order(sent_at: :desc) }
+  scope :for_recipient, ->(recipient) { where(recipient_type: recipient.class.name, recipient_id: recipient.id) }
 
   def delivered?
     delivery_status == "delivered"

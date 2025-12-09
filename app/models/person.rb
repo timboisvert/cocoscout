@@ -61,6 +61,8 @@ class Person < ApplicationRecord
 
   belongs_to :user, optional: true
 
+  has_many :email_logs, as: :recipient, dependent: :nullify
+
   # Validations
   validates :name, presence: true, length: { minimum: 2, maximum: 100 }
   validates :email, presence: true, length: { maximum: 100 }

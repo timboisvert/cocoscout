@@ -1,0 +1,90 @@
+<div class="w-full">
+  <div class="mb-6">
+    <%= form_with url: manage_person_email_logs_path(@person), method: :get, class: "flex gap-2" do |f| %>
+      <%= f.text_field :search, 
+          value: @search,
+          placeholder: "Search emails...",
+          class: "flex-1 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm" %>
+      <%= f.submit "Search", class: "px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 text-sm font-medium" %>
+    <% end %>
+  </div>
+
+  <% if @email_logs.any? %>
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul role="list" class="divide-y divide-gray-200">
+        <% @email_logs.each do |email_log| %>
+          <%= link_to manage_person_email_log_path(@person, email_log), class: "block hover:bg-gray-50" do %>
+            <div class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">
+                    <%= email_log.subject || "(No subject)" %>
+                  </p>
+                  <p class="mt-1 text-sm text-gray-500">
+                    From: <%= email_log.user&.email_address || "Unknown" %>
+                  </p>
+                </div>
+                <div class="ml-4 flex-shrink-0 flex items-center space-x-2">
+                  <% if email_log.delivery_status == "delivered" %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Delivered
+                    </span>
+                  <% elsif email_log.delivery_status == "failed" %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Failed
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <%= email_log.delivery_status.titleize %>
+                    </span>
+                  <% end %>
+                  <span class="text-sm text-gray-500">
+                    <%= email_log.sent_at&.strftime("%b %d, %Y") || email_log.created_at.strftime("%b %d, %Y") %>
+                  </span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+
+    <!-- Pagination -->
+    <% if @pagy.pages > 1 %>
+      <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <% if @pagy.page > 1 %>
+            <%= link_to "Previous", manage_person_email_logs_path(@person, page: @pagy.page - 1, search: @search), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <% else %>
+            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">Previous</span>
+          <% end %>
+          <% if @pagy.page < @pagy.pages %>
+            <%= link_to "Next", manage_person_email_logs_path(@person, page: @pagy.page + 1, search: @search), class: "ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <% else %>
+            <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">Next</span>
+          <% end %>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Showing page
+              <span class="font-medium"><%= @pagy.page %></span>
+              of
+              <span class="font-medium"><%= @pagy.pages %></span>
+            </p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="text-center py-12">
+      <p class="text-gray-500 text-sm">
+        <% if @search.present? %>
+          No emails found matching "<%= @search %>"
+        <% else %>
+          No emails sent to this person yet.
+        <% end %>
+      </p>
+    </div>
+  <% end %>
+</div>

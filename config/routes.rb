@@ -186,6 +186,7 @@ Rails.application.routes.draw do
         post :send_contact_email
         patch :update_availability
       end
+      resources :email_logs, only: [ :index, :show ], module: :people
     end
 
     resources :groups, only: %i[show destroy] do
@@ -195,6 +196,7 @@ Rails.application.routes.draw do
         post :remove_from_organization
         patch :update_availability
       end
+      resources :email_logs, only: [ :index, :show ], module: :groups
     end
 
     resources :locations do

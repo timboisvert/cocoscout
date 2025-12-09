@@ -17,10 +17,18 @@ class EmailLogInterceptor
       return
     end
 
+    # Extract recipient email address
+    recipient_email = Array(message.to).first
+
+    # Try to find the recipient (Person or Group) based on email
+    recipient_record = Person.find_by(email: recipient_email) || Group.find_by(email: recipient_email)
+
     # Create the email log
     EmailLog.create!(
       user: user,
       recipient: Array(message.to).join(", "),
+      recipient_type: recipient_record&.class&.name,
+      recipient_id: recipient_record&.id,
       subject: message.subject,
       body: extract_body_with_inline_images(message),
       mailer_class: message.header["X-Mailer-Class"]&.value,
