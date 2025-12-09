@@ -52,7 +52,7 @@ module Manage
         is_already_cast = member.is_a?(Person) ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id)
         is_already_invited = member.is_a?(Person) && @already_invited_person_ids.include?(member.id)
         is_unavailable = is_vacated || is_already_cast || is_already_invited
-        [is_unavailable ? 1 : 0, member.name.downcase]
+        [ is_unavailable ? 1 : 0, member.name.downcase ]
       end
 
       # Members who can actually be invited (excludes already cast, already invited, and vacated)
@@ -79,7 +79,7 @@ module Manage
                                       .where(assignable_type: "Person")
                                       .pluck(:assignable_id)
       vacated_by_id = @vacancy.vacated_by_id
-      excluded_ids = (already_invited_ids + already_cast_ids + [vacated_by_id].compact).uniq
+      excluded_ids = (already_invited_ids + already_cast_ids + [ vacated_by_id ].compact).uniq
 
       # Determine which people to invite based on mode
       person_ids = case invite_mode

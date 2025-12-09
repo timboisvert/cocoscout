@@ -1,4 +1,4 @@
-<header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
+<header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-50">
   <div class="flex items-center">
     <%= render "shared/navigation/dashboard_selector", current_dashboard: "production" %>
 
@@ -11,7 +11,7 @@
         has_dropdown_content = other_productions.any? || Current.user.manager?
       %>
       <% if has_dropdown_content %>
-        <div class="relative" data-controller="dropdown">
+        <div class="relative z-50" data-controller="dropdown">
           <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-r border-slate-200">
             <% if Current.production.present? && !Current.production.new_record? %>
               <% logo_variant = Current.production.safe_logo_variant(:small) %>
@@ -58,7 +58,7 @@
 
       <% if has_dropdown_content %>
 
-        <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+        <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
           <!-- Current Production Section -->
           <% if Current.production.present? && !Current.production.new_record? %>
             <%= link_to edit_manage_production_path(Current.production), data: { turbo: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" do %>

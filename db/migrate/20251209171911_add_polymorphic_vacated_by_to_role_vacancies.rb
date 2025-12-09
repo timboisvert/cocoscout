@@ -10,6 +10,6 @@ class AddPolymorphicVacatedByToRoleVacancies < ActiveRecord::Migration[8.1]
     end
 
     # Add index for polymorphic lookup
-    add_index :role_vacancies, [:vacated_by_type, :vacated_by_id], name: "index_role_vacancies_on_vacated_by"
+    add_index :role_vacancies, [ :vacated_by_type, :vacated_by_id ], name: "index_role_vacancies_on_vacated_by"
   end
 end

@@ -16,7 +16,7 @@ class CreateRoleVacancies < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :role_vacancies, [:show_id, :role_id, :status]
+    add_index :role_vacancies, [ :show_id, :role_id, :status ]
     add_index :role_vacancies, :status
   end
 end

@@ -24,7 +24,7 @@ class VacancyController < ApplicationController
 
     if @all_assignments.empty?
       redirect_to root_path, alert: "You don't have any assignments for this show."
-      return
+      nil
     end
   end
 

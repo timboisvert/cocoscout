@@ -13,6 +13,6 @@ class CreateRoleVacancyInvitations < ActiveRecord::Migration[8.1]
     end
 
     add_index :role_vacancy_invitations, :token, unique: true
-    add_index :role_vacancy_invitations, [:role_vacancy_id, :person_id], unique: true, name: "idx_vacancy_invitations_on_vacancy_and_person"
+    add_index :role_vacancy_invitations, [ :role_vacancy_id, :person_id ], unique: true, name: "idx_vacancy_invitations_on_vacancy_and_person"
   end
 end

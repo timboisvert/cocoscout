@@ -29,7 +29,7 @@
     </div>
   </div>
 <% else %>
-  <div class="mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-200px)]" data-controller="availability-grid">
+  <div class="mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-200px)] relative z-0" data-controller="availability-grid">
     <table class="border-collapse table-fixed" style="table-layout: fixed;">
       <colgroup>
         <col style="width: 250px; min-width: 250px; max-width: 250px;">
@@ -39,7 +39,7 @@
       </colgroup>
       <thead class="sticky top-0 z-30">
         <tr>
-          <th class="sticky left-0 bg-white z-40 border-b-2 border-r-2 border-gray-300 px-4 py-3 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+          <th class="sticky left-0 bg-white z-20 border-b-2 border-r-2 border-gray-300 px-4 py-3 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
             <div class="font-semibold text-sm">Cast Member</div>
             </th>
             <% @shows.each_with_index do |show, col_index| %>
