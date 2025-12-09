@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :show_availability do
-    association :person
+    association :available_entity, factory: :person
     association :show
     status { :unset }
 

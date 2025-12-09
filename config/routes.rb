@@ -156,6 +156,7 @@ Rails.application.routes.draw do
       member do
         get :permissions
         patch :update_production_permission
+        patch :update_production_notifications
         patch :update_global_role
       end
     end
@@ -278,6 +279,21 @@ Rails.application.routes.draw do
       post "casting/shows/:show_id/contact", to: "casting#send_cast_email", as: "send_cast_email"
       post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
       post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
+      post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
+
+      # Vacancies management (detail and actions only - no index)
+      resources :vacancies, only: %i[show] do
+        member do
+          post :send_invitations
+          post :cancel
+          post :fill
+        end
+        resources :invitations, only: [], controller: "vacancy_invitations" do
+          member do
+            post :resend
+          end
+        end
+      end
 
       resources :audition_cycles do
         resources :audition_requests do
@@ -350,6 +366,21 @@ Rails.application.routes.draw do
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
+
+  # Vacancy flow (cast member can't make it to a show)
+  scope "/vacancy/:show_id" do
+    get "/",        to: "vacancy#show",    as: "vacancy"
+    post "/confirm", to: "vacancy#confirm", as: "vacancy_confirm"
+    get "/success",  to: "vacancy#success", as: "vacancy_success"
+  end
+
+  # Claim vacancy flow (invited person claims a role)
+  scope "/claim/:token" do
+    get "/",        to: "claim_vacancy#show",    as: "claim_vacancy"
+    post "/claim",  to: "claim_vacancy#claim",   as: "do_claim_vacancy"
+    post "/decline", to: "claim_vacancy#decline", as: "decline_claim_vacancy"
+    get "/success", to: "claim_vacancy#success", as: "claim_vacancy_success"
+  end
 
   # Profile routes (top-level)
   get    "/profile",         to: "profile#index",   as: "profile"

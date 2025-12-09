@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_08_173713) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_09_144726) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -395,6 +395,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_08_173713) do
 
   create_table "production_permissions", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.boolean "notifications_enabled"
     t.integer "production_id", null: false
     t.string "role", null: false
     t.datetime "updated_at", null: false
@@ -555,6 +556,42 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_08_173713) do
     t.index ["role_id", "member_id"], name: "index_role_eligibilities_on_role_id_and_member_id", unique: true
     t.index ["role_id", "member_type", "member_id"], name: "index_role_eligibilities_on_role_and_member", unique: true
     t.index ["role_id"], name: "index_role_eligibilities_on_role_id"
+  end
+
+  create_table "role_vacancies", force: :cascade do |t|
+    t.datetime "closed_at"
+    t.integer "closed_by_id"
+    t.datetime "created_at", null: false
+    t.integer "created_by_id"
+    t.datetime "filled_at"
+    t.integer "filled_by_id"
+    t.integer "role_id", null: false
+    t.integer "show_id", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "vacated_at"
+    t.integer "vacated_by_id"
+    t.index ["role_id"], name: "index_role_vacancies_on_role_id"
+    t.index ["show_id", "role_id", "status"], name: "index_role_vacancies_on_show_id_and_role_id_and_status"
+    t.index ["show_id"], name: "index_role_vacancies_on_show_id"
+    t.index ["status"], name: "index_role_vacancies_on_status"
+  end
+
+  create_table "role_vacancy_invitations", force: :cascade do |t|
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.datetime "declined_at"
+    t.text "email_body"
+    t.string "email_subject"
+    t.datetime "invited_at"
+    t.integer "person_id", null: false
+    t.integer "role_vacancy_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_role_vacancy_invitations_on_person_id"
+    t.index ["role_vacancy_id", "person_id"], name: "idx_vacancy_invitations_on_vacancy_and_person", unique: true
+    t.index ["role_vacancy_id"], name: "index_role_vacancy_invitations_on_role_vacancy_id"
+    t.index ["token"], name: "index_role_vacancy_invitations_on_token", unique: true
   end
 
   create_table "roles", force: :cascade do |t|
@@ -759,6 +796,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_08_173713) do
   add_foreign_key "questionnaire_responses", "questionnaires"
   add_foreign_key "questionnaires", "productions"
   add_foreign_key "role_eligibilities", "roles"
+  add_foreign_key "role_vacancies", "roles"
+  add_foreign_key "role_vacancies", "shows"
+  add_foreign_key "role_vacancy_invitations", "people"
+  add_foreign_key "role_vacancy_invitations", "role_vacancies"
   add_foreign_key "roles", "productions"
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"

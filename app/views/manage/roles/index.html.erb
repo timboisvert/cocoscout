@@ -39,9 +39,9 @@
                     <% role.eligible_members.first(5).each do |member| %>
                       <% headshot_variant = member.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: member.name, title: member.name, class: "w-8 h-8 rounded-lg object-cover" %>
+                        <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover", data: { controller: "tooltip", tooltip_text: member.name } %>
                       <% else %>
-                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs" title="<%= member.name %>">
+                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs" data-controller="tooltip" data-tooltip-text="<%= member.name %>">
                           <%= member.initials %>
                         </div>
                       <% end %>

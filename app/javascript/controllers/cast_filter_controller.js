@@ -77,17 +77,17 @@ export default class extends Controller {
             member.style.display = shouldShow ? '' : 'none'
         })
 
-        // Hide cast headers if all their people are hidden (only relevant for multi-cast)
+        // Hide cast headers if all their members are hidden (only relevant for multi-cast)
         castHeaders.forEach((header, index) => {
             const container = castContainers[index]
             if (container) {
-                const visibleMembers = container.querySelectorAll('[data-drag-cast-member-target="person"]:not([style*="display: none"])')
+                const visibleMembers = container.querySelectorAll('[data-drag-cast-member-target="person"]:not([style*="display: none"]), [data-drag-cast-member-target="group"]:not([style*="display: none"])')
                 container.style.display = visibleMembers.length > 0 ? '' : 'none'
             }
         })
 
-        // Check if there are any visible people
-        const visibleMembers = listContainer.querySelectorAll('[data-drag-cast-member-target="person"]:not([style*="display: none"])')
+        // Check if there are any visible members (people OR groups)
+        const visibleMembers = listContainer.querySelectorAll('[data-drag-cast-member-target="person"]:not([style*="display: none"]), [data-drag-cast-member-target="group"]:not([style*="display: none"])')
         const emptyState = document.getElementById('cast-members-empty-state')
         const messageElement = document.getElementById('empty-state-message')
 
@@ -106,7 +106,7 @@ export default class extends Controller {
                 } else if (hasMultipleCasts) {
                     message = "No one in any cast is available for this show."
                 } else {
-                    message = "No one in this cast is available for this show."
+                    message = "No one in this talent pool is available for this show."
                 }
 
                 messageElement.textContent = message

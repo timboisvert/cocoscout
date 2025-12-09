@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static values = { showId: Number, status: String }
-    static targets = ["success"]
+    static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText"]
 
     connect() {
         // Only update buttons if this is a show row (has showIdValue)
@@ -37,12 +37,30 @@ export default class extends Controller {
                     showRow.dataset.availabilityStatusValue = data.status;
                     // Update the buttons in this row
                     this.updateButtonsForRow(showRow, data.status);
-                    // Show success checkmark
-                    this.showSuccessForRow(showRow);
+                    // Show check icon in the selected button
+                    this.showCheckForStatus(showRow, data.status);
                 } else if (data.error) {
                     alert(data.error);
                 }
             });
+    }
+
+    showCheckForStatus(row, status) {
+        // Find the check and text elements for the selected status
+        const checkEl = row.querySelector(`[data-availability-target="${status}Check"]`);
+        const textEl = row.querySelector(`[data-availability-target="${status}Text"]`);
+
+        if (checkEl && textEl) {
+            // Hide text, show check
+            textEl.classList.add('hidden');
+            checkEl.classList.remove('hidden');
+
+            // After 2 seconds, show text and hide check
+            setTimeout(() => {
+                checkEl.classList.add('hidden');
+                textEl.classList.remove('hidden');
+            }, 2000);
+        }
     }
 
     updateStatus(status) {
@@ -87,17 +105,5 @@ export default class extends Controller {
                 link.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-50');
             }
         });
-    }
-
-    showSuccessForRow(row) {
-        const successIcon = row.querySelector('[data-availability-target="success"]');
-        if (successIcon) {
-            setTimeout(() => {
-                successIcon.classList.remove('hidden');
-                setTimeout(() => {
-                    successIcon.classList.add('hidden');
-                }, 2000);
-            }, 200);
-        }
     }
 }

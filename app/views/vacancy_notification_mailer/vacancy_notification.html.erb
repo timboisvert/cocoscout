@@ -1,0 +1,50 @@
+<p>Hi <%= @user.person.name || @user.email_address %>,</p>
+
+<% if @event == "created" %>
+  <p>A new vacancy has been created for <strong><%= @production.name %></strong>.</p>
+
+  <table style="border-collapse: collapse; margin: 20px 0;">
+    <tr>
+      <td style="padding: 8px 16px 8px 0; color: #666;">Role:</td>
+      <td style="padding: 8px 0; font-weight: bold;"><%= @role.name %></td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 16px 8px 0; color: #666;">Show:</td>
+      <td style="padding: 8px 0;"><%= @show.date_and_time.strftime("%A, %B %-d at %l:%M %p") %></td>
+    </tr>
+    <% if @vacancy.vacated_by %>
+      <tr>
+        <td style="padding: 8px 16px 8px 0; color: #666;">Vacated by:</td>
+        <td style="padding: 8px 0;"><%= @vacancy.vacated_by.name %></td>
+      </tr>
+    <% end %>
+  </table>
+
+  <p>You can manage this vacancy and send invitations from the production dashboard.</p>
+<% elsif @event == "filled" %>
+  <p>A vacancy has been filled for <strong><%= @production.name %></strong>.</p>
+
+  <table style="border-collapse: collapse; margin: 20px 0;">
+    <tr>
+      <td style="padding: 8px 16px 8px 0; color: #666;">Role:</td>
+      <td style="padding: 8px 0; font-weight: bold;"><%= @role.name %></td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 16px 8px 0; color: #666;">Show:</td>
+      <td style="padding: 8px 0;"><%= @show.date_and_time.strftime("%A, %B %-d at %l:%M %p") %></td>
+    </tr>
+    <% if @vacancy.filled_by %>
+      <tr>
+        <td style="padding: 8px 16px 8px 0; color: #666;">Filled by:</td>
+        <td style="padding: 8px 0; font-weight: bold; color: #16a34a;"><%= @vacancy.filled_by.name %></td>
+      </tr>
+    <% end %>
+  </table>
+
+  <p>The role has been assigned and the vacancy is now closed.</p>
+<% end %>
+
+<p style="margin-top: 30px; color: #666; font-size: 12px;">
+  You're receiving this because you have notifications enabled for <%= @production.name %>.
+  You can manage your notification preferences in your team settings.
+</p>

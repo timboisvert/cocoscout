@@ -170,7 +170,7 @@
 
       <% if session[:impersonate_user_id] %>
         <div class="my-4">
-          <%= button_to "Stop Impersonating", stop_impersonating_user_path, method: :post, class: "px-3 py-1 rounded bg-gray-500 text-white" %>
+          <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small" %>
         </div>
       <% end %>
     </div>

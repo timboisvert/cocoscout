@@ -76,6 +76,7 @@ module My
       assignments = ShowPersonRoleAssignment.where(show_id: show_ids)
                                             .where("(assignable_type = ? AND assignable_id = ?) OR (assignable_type = ? AND assignable_id IN (?))",
                                                    "Person", @person.id, "Group", group_ids)
+                                            .includes(:role)
                                             .to_a
       @assignments_by_show = assignments.index_by(&:show_id)
 
@@ -84,10 +85,10 @@ module My
       assignments.each do |assignment|
         @show_assignments[assignment.show_id] ||= []
         if assignment.assignable_type == "Person" && assignment.assignable_id == @person.id
-          @show_assignments[assignment.show_id] << { type: "person", entity: @person }
+          @show_assignments[assignment.show_id] << { type: "person", entity: @person, assignment: assignment }
         elsif assignment.assignable_type == "Group"
           group = groups_by_id[assignment.assignable_id]
-          @show_assignments[assignment.show_id] << { type: "group", entity: group } if group
+          @show_assignments[assignment.show_id] << { type: "group", entity: group, assignment: assignment } if group
         end
       end
 
@@ -97,6 +98,45 @@ module My
         production_ids = @shows.map(&:production_id).uniq
         @productions = Production.where(id: production_ids).order(:name)
       end
+
+      # Build show-entity rows: one row per entity-show combination
+      # This is the primary data structure for rendering - each row is a show for a specific entity
+      shows_by_id = @shows.index_by(&:id)
+      @show_entity_rows = []
+
+      shows_with_source.each do |item|
+        show = shows_by_id[item[:show].id]
+        next unless show # Skip if filtered out
+        next unless @event_type_filter.include?(show.event_type)
+
+        entity = item[:entity]
+        entity_type = item[:entity_key] == "person" ? "Person" : "Group"
+
+        # Find assignments for this entity on this show
+        entity_assignments = (@show_assignments[show.id] || []).select do |a|
+          if entity_type == "Person"
+            a[:type] == "person"
+          else
+            a[:type] == "group" && a[:entity]&.id == entity.id
+          end
+        end
+
+        # For "my_assignments" filter, only show rows where entity has an assignment
+        next if @filter == "my_assignments" && entity_assignments.empty?
+
+        @show_entity_rows << {
+          show: show,
+          entity: entity,
+          entity_type: entity_type,
+          assignments: entity_assignments
+        }
+      end
+
+      # Sort by show date, then by entity type (person first, then groups)
+      @show_entity_rows.sort_by! { |row| [row[:show].date_and_time, row[:entity_type] == "Person" ? 0 : 1, row[:entity].name] }
+
+      # Remove duplicate show-entity pairs (same show might appear from multiple talent pools)
+      @show_entity_rows.uniq! { |row| [row[:show].id, row[:entity_type], row[:entity].id] }
 
       # Build a mapping of shows to their entities using preloaded data (no additional queries)
       shows_by_entity_key = Hash.new { |h, k| h[k] = Set.new }
@@ -118,6 +158,13 @@ module My
           end
         end
       end
+
+      # Unresolved vacancy invitations for the person (not claimed, vacancy still open)
+      @pending_vacancy_invitations = RoleVacancyInvitation
+                                      .unresolved
+                                      .where(person: @person)
+                                      .includes(role_vacancy: [ :role, { show: :production } ])
+                                      .order("shows.date_and_time ASC")
     end
 
     def show

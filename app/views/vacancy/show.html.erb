@@ -1,0 +1,80 @@
+<% content_for :title, "I Can't Make It" %>
+
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">Can't Make It?</h1>
+      <p class="mt-2 text-sm text-gray-600">
+        We're sorry to hear that! Let us know which of your cast assignments you're no longer able to fulfill.
+      </p>
+    </div>
+
+    <!-- Show Info -->
+    <div class="bg-white shadow rounded-lg p-4 mb-6">
+      <div class="flex items-center gap-4">
+        <% poster_url = safe_poster_url(@show) %>
+        <% if poster_url %>
+          <%= image_tag poster_url,
+              alt: @show.production.name,
+              class: "w-16 h-24 object-cover rounded-lg" %>
+        <% end %>
+        <div>
+          <h2 class="font-semibold text-gray-900"><%= @show.production.name %></h2>
+          <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %></p>
+          <% if @show.location %>
+            <p class="text-xs text-gray-500"><%= @show.location.name %></p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <% if flash[:alert] %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p class="text-sm text-red-600"><%= flash[:alert] %></p>
+      </div>
+    <% end %>
+
+    <!-- Role Selection Form -->
+    <%= form_with url: vacancy_confirm_path(@show, token: @token), method: :post, class: "space-y-6" do %>
+      <div class="bg-white shadow rounded-lg divide-y divide-gray-200">
+        <div class="p-4">
+          <p class="text-sm font-medium text-gray-700 mb-3">Select the cast assignment you're no longer able to fulfill:</p>
+
+          <% @all_assignments.each_with_index do |assignment, index| %>
+            <label class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+              <input type="radio"
+                     name="role_ids[]"
+                     value="<%= "#{assignment.role.id}:#{assignment.assignable_type}:#{assignment.assignable_id}" %>"
+                     class="h-4 w-4 border-gray-300 accent-pink-500 focus:ring-pink-500"
+                     <%= "checked" if @all_assignments.size == 1 %>>
+              <div>
+                <span class="text-sm font-medium text-gray-900"><%= assignment.role.name %></span>
+                <% if assignment.assignable_type == "Group" %>
+                  <% group = @groups_by_id[assignment.assignable_id] %>
+                  <span class="text-xs text-gray-500 ml-1">(as <%= group.name %>)</span>
+                <% end %>
+              </div>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <%= render "shared/button",
+            text: "I confirm that I can't make it",
+            variant: "primary",
+            type: :submit,
+            classes: "w-full" %>
+
+        <%= render "shared/button",
+            text: "Nevermind, I can make it!",
+            variant: "secondary",
+            type: :link,
+            path: root_path,
+            classes: "w-full" %>
+      </div>
+    <% end %>
+  </div>
+</div>

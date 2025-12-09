@@ -59,7 +59,8 @@
               availability: availability,
               entity_key: entity_key,
               entity: entity_info[:entity],
-              show_entity_headshots: @groups.any?
+              has_groups: @groups.any?,
+              right_panel: :availability
             } %>
           <% end %>
         <% end %>
@@ -82,7 +83,8 @@
               availability: availability,
               entity_key: entity_key,
               entity: entity_info[:entity],
-              show_entity_headshots: @groups.any?
+              has_groups: @groups.any?,
+              right_panel: :availability
             } %>
           <% end %>
         <% end %>
@@ -114,7 +116,8 @@
                       availability: availability,
                       entity_key: entity_key,
                       entity: entity_info[:entity],
-                      show_entity_headshots: @groups.any?
+                      has_groups: @groups.any?,
+                      right_panel: :availability
                     } %>
                   <% end %>
                 <% end %>
@@ -147,7 +150,8 @@
                   availability: availability,
                   entity_key: entity_key,
                   entity: data[:entity],
-                  show_entity_headshots: @groups.any?
+                  has_groups: @groups.any?,
+                  right_panel: :availability
                 } %>
               <% end %>
             </div>

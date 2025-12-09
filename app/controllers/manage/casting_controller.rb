@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role]
+                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy]
 
     def index
       @upcoming_shows = @production.shows
@@ -303,6 +303,64 @@ module Manage
           percentage: percentage
         }
       }
+    end
+
+    # Create a vacancy from an existing role assignment
+    # This removes the assignment and creates an open vacancy
+    def create_vacancy
+      role = @production.roles.find(params[:role_id])
+      assignment = @show.show_person_role_assignments.find_by(role: role)
+
+      unless assignment
+        render json: { error: "No assignment found for this role" }, status: :unprocessable_entity
+        return
+      end
+
+      # Only Person assignables can be tracked as vacated_by
+      vacated_by = assignment.assignable_type == "Person" ? assignment.assignable : nil
+      reason = params[:reason]
+
+      ActiveRecord::Base.transaction do
+        # Create the vacancy
+        @vacancy = RoleVacancy.create!(
+          show: @show,
+          role: role,
+          vacated_by: vacated_by,
+          vacated_at: Time.current,
+          reason: reason,
+          status: :open,
+          created_by_id: Current.person&.id
+        )
+
+        # Remove the assignment
+        assignment.destroy!
+      end
+
+      # Re-render the UI
+      @availability = build_availability_hash(@show)
+      cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
+                                           locals: { show: @show,
+                                                     availability: @availability })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
+
+      # Calculate progress
+      assignment_count = @show.show_person_role_assignments.count
+      role_count = @show.production.roles.count
+      percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
+
+      render json: {
+        success: true,
+        vacancy_id: @vacancy.id,
+        cast_members_html: cast_members_html,
+        roles_html: roles_html,
+        progress: {
+          assignment_count: assignment_count,
+          role_count: role_count,
+          percentage: percentage
+        }
+      }
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.message }, status: :unprocessable_entity
     end
 
     private

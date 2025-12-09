@@ -190,4 +190,10 @@ module ApplicationHelper
   def event_type_label(event_type)
     EventTypes.labels[event_type.to_s] || event_type.to_s.titleize
   end
+
+  # Generate a vacancy link for a person/show combination
+  def vacancy_link_for(person, show)
+    token = VacancyController.generate_token(person)
+    vacancy_url(show, token: token)
+  end
 end

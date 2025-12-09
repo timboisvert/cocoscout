@@ -32,6 +32,8 @@ class Show < ApplicationRecord
   has_many :show_availabilities, dependent: :destroy
   has_many :available_people, through: :show_availabilities, source: :person
 
+  has_many :role_vacancies, dependent: :destroy
+
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 

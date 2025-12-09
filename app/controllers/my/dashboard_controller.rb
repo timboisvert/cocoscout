@@ -158,6 +158,13 @@ module My
       end
 
       @pending_questionnaire_entities = @pending_questionnaire_entities.first(5)
+
+      # Unresolved vacancy invitations for the person (not claimed, vacancy still open)
+      @pending_vacancy_invitations = RoleVacancyInvitation
+                                      .unresolved
+                                      .where(person: @person)
+                                      .includes(role_vacancy: [ :role, { show: :production } ])
+                                      .order("shows.date_and_time ASC")
     end
 
     def welcome

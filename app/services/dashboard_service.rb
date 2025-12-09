@@ -10,7 +10,8 @@ class DashboardService
       {
         open_calls: open_calls_summary,
         upcoming_shows: upcoming_shows,
-        availability_summary: availability_summary
+        availability_summary: availability_summary,
+        open_vacancies: open_vacancies
       }
     end
   end
@@ -25,12 +26,14 @@ class DashboardService
     # Cache key includes production ID and relevant timestamps
     max_show_updated = @production.shows.maximum(:updated_at)
     max_request_updated = @production.audition_cycle&.audition_requests&.maximum(:updated_at)
+    max_vacancy_updated = RoleVacancy.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)
     [
       "dashboard_v2",
       @production.id,
       @production.updated_at.to_i,
       max_show_updated&.to_i,
-      max_request_updated&.to_i
+      max_request_updated&.to_i,
+      max_vacancy_updated&.to_i
     ]
   end
 
@@ -150,5 +153,23 @@ class DashboardService
       total_shows: shows_with_availability.count,
       fully_responded: shows_with_availability.select { |s| s[:without_availability].zero? }.count
     }
+  end
+
+  def open_vacancies
+    RoleVacancy.open
+               .joins(:show)
+               .where(shows: { production_id: @production.id })
+               .where("shows.date_and_time >= ?", Time.current)
+               .includes(:role, :show, :vacated_by, invitations: :person)
+               .order("shows.date_and_time ASC")
+               .map do |vacancy|
+                 {
+                   vacancy: vacancy,
+                   show: vacancy.show,
+                   role: vacancy.role,
+                   invitations_count: vacancy.invitations.size,
+                   pending_invitations_count: vacancy.invitations.count(&:pending?)
+                 }
+               end
   end
 end

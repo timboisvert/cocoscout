@@ -154,7 +154,14 @@
                 end %>
                 <div class="text-xs p-2 rounded border <%= event_type_badge_classes %> <%= 'opacity-50 line-through' if show.canceled %> relative">
                   <div class="absolute top-1 right-1 flex gap-0.5">
-                    <%= image_tag entity.safe_headshot_variant(:thumb), class: "w-5 h-5 rounded object-cover", title: entity.name %>
+                    <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, class: "w-5 h-5 rounded object-cover", title: entity.name %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-[8px]" title="<%= entity.name %>">
+                        <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
+                      </div>
+                    <% end %>
                   </div>
                   <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
                   <div class="text-[10px] mb-1"><%= show.production.name %></div>
@@ -248,7 +255,14 @@
                         end %>
                         <div class="text-sm p-3 rounded border <%= event_type_badge_classes %> <%= 'opacity-50 line-through' if show.canceled %> relative">
                           <div class="absolute top-2 right-2">
-                            <%= image_tag entity.safe_headshot_variant(:thumb), class: "w-6 h-6 rounded object-cover", title: entity.name %>
+                            <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+                            <% if headshot_variant %>
+                              <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover", title: entity.name %>
+                            <% else %>
+                              <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-[9px]" title="<%= entity.name %>">
+                                <%= entity.respond_to?(:initials) ? entity.initials : entity.name[0..1].upcase %>
+                              </div>
+                            <% end %>
                           </div>
                           <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
                           <div class="text-xs mb-1"><%= show.production.name %></div>

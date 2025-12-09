@@ -351,4 +351,49 @@ export default class extends Controller {
             barElement.classList.add(percentage === 100 ? 'bg-green-500' : 'bg-pink-500');
         }
     }
+
+    // Create a vacancy from an existing assignment
+    createVacancy(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const roleId = button.dataset.roleId;
+        const showId = this.element.dataset.showId;
+        const productionId = this.element.dataset.productionId;
+
+        // Optional: prompt for reason
+        const reason = prompt("Reason for vacancy (optional):");
+        if (reason === null) return; // User cancelled
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/create_vacancy`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({ role_id: roleId, reason: reason || null })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
+                }
+
+                // Update progress bar
+                this.updateProgressBar(data.progress);
+            });
+    }
 }

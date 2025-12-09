@@ -1,0 +1,14 @@
+<%= @invitation.email_body || "You've been invited to fill a role." %>
+
+---
+
+Role: <%= @role.name %>
+Show: <%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %>
+<% if @show.location %>
+Location: <%= @show.location.name %>
+<% end %>
+
+Claim this role: <%= @claim_url %>
+
+---
+This email was sent using CocoScout.

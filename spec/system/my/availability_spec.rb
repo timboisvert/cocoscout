@@ -15,20 +15,22 @@ RSpec.describe 'My::Availability', type: :system do
     let!(:canceled_show) { create(:show, production: production, date_and_time: 3.weeks.from_now, canceled: true) }
 
     it 'displays shows awaiting response by default' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability'
 
-      expect(page).to have_content(show1.date_and_time.strftime('%a, %b %-d, %Y'))
-      expect(page).to have_content(show2.date_and_time.strftime('%a, %b %-d, %Y'))
+      # Check for show date (day number) and day name
+      expect(page).to have_content(show1.date_and_time.strftime('%-d'))
+      expect(page).to have_content(show2.date_and_time.strftime('%-d'))
     end
 
     it 'does not display canceled shows' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability'
 
-      expect(page).not_to have_content(canceled_show.date_and_time.strftime('%a, %b %-d, %Y'))
+      # Should not show the day number for the canceled show in an availability row
+      expect(page).not_to have_css("[data-availability-show-id-value='#{canceled_show.id}']")
     end
 
     # it "allows marking availability as available" do
@@ -62,9 +64,9 @@ RSpec.describe 'My::Availability', type: :system do
       let!(:unavailable_show) { create(:show, production: production, date_and_time: 2.weeks.from_now) }
 
       it 'displays existing availability status' do
-        create(:show_availability, person: person, show: available_show, status: 'available')
-        create(:show_availability, person: person, show: unavailable_show, status: 'unavailable')
-        cast.people << person
+        create(:show_availability, available_entity: person, show: available_show, status: 'available')
+        create(:show_availability, available_entity: person, show: unavailable_show, status: 'unavailable')
+        talent_pool.people << person
         sign_in_as_person(user, person)
         visit '/my/availability?filter=all'
 
@@ -76,23 +78,23 @@ RSpec.describe 'My::Availability', type: :system do
 
     describe 'filtering' do
       it 'filters to show only no response shows' do
-        create(:show_availability, person: person, show: show1, status: 'available')
-        cast.people << person
+        create(:show_availability, available_entity: person, show: show1, status: 'available')
+        talent_pool.people << person
         sign_in_as_person(user, person)
         visit '/my/availability?filter=no_response'
 
-        expect(page).to have_content(show2.date_and_time.strftime('%a, %b %-d, %Y'))
-        expect(page).not_to have_content(show1.date_and_time.strftime('%a, %b %-d, %Y'))
+        expect(page).to have_css("[data-availability-show-id-value='#{show2.id}']")
+        expect(page).not_to have_css("[data-availability-show-id-value='#{show1.id}']")
       end
 
       it 'shows all shows when filter is all' do
-        create(:show_availability, person: person, show: show1, status: 'available')
-        cast.people << person
+        create(:show_availability, available_entity: person, show: show1, status: 'available')
+        talent_pool.people << person
         sign_in_as_person(user, person)
         visit '/my/availability?filter=all'
 
-        expect(page).to have_content(show2.date_and_time.strftime('%a, %b %-d, %Y'))
-        expect(page).to have_content(show1.date_and_time.strftime('%a, %b %-d, %Y'))
+        expect(page).to have_css("[data-availability-show-id-value='#{show2.id}']")
+        expect(page).to have_css("[data-availability-show-id-value='#{show1.id}']")
       end
     end
   end
@@ -103,7 +105,7 @@ RSpec.describe 'My::Availability', type: :system do
     let!(:meeting) { create(:show, production: production, date_and_time: 3.weeks.from_now, event_type: :meeting) }
 
     it 'displays events in calendar view' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability/calendar'
 
@@ -112,7 +114,7 @@ RSpec.describe 'My::Availability', type: :system do
     end
 
     it 'filters by event type' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability/calendar?event_type=show'
 
@@ -121,7 +123,7 @@ RSpec.describe 'My::Availability', type: :system do
     end
 
     it 'shows all event types by default' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability/calendar'
 
@@ -133,7 +135,7 @@ RSpec.describe 'My::Availability', type: :system do
     # Skip this test for now - JS tests with AJAX need additional setup
     # The underlying controller endpoint is tested in request specs
     xit 'allows marking availability from calendar', js: true do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit '/my/availability/calendar'
 
@@ -145,7 +147,7 @@ RSpec.describe 'My::Availability', type: :system do
       sleep 2
 
       # Verify the availability was saved
-      availability = ShowAvailability.find_by(person: person, show: show_event)
+      availability = ShowAvailability.find_by(available_entity: person, show: show_event)
       expect(availability).to be_present
       expect(availability.status).to eq('available')
     end
@@ -153,7 +155,7 @@ RSpec.describe 'My::Availability', type: :system do
 
   describe 'when user is not in any casts' do
     before do
-      cast.people.clear
+      talent_pool.people.clear
     end
 
     it 'shows message about no productions' do

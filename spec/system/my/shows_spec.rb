@@ -14,9 +14,9 @@ RSpec.describe 'My::Shows', type: :system do
     let!(:show1) { create(:show, production: production, date_and_time: 2.days.from_now, event_type: :show) }
 
     it 'displays productions the user is cast in' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
-      visit '/my/shows'
+      visit '/my/shows?filter=all'
       expect(page).to have_content('Hamilton')
     end
 
@@ -35,7 +35,7 @@ RSpec.describe 'My::Shows', type: :system do
     let!(:assignment2) { create(:show_person_role_assignment, show: show, person: other_person, role: other_role) }
 
     it 'displays show details' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit "/my/shows/#{show.id}"
 
@@ -44,7 +44,7 @@ RSpec.describe 'My::Shows', type: :system do
     end
 
     it 'displays all cast members for the show' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
       visit "/my/shows/#{show.id}"
 
@@ -61,9 +61,9 @@ RSpec.describe 'My::Shows', type: :system do
     let!(:meeting) { create(:show, production: production, date_and_time: 3.weeks.from_now, event_type: :meeting) }
 
     it 'displays different event types' do
-      cast.people << person
+      talent_pool.people << person
       sign_in_as_person(user, person)
-      visit '/my/shows'
+      visit '/my/shows?filter=all'
 
       expect(page).to have_content('Show')
       expect(page).to have_content('Rehearsal')

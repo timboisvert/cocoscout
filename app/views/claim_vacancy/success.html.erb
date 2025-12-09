@@ -1,0 +1,52 @@
+<% content_for :title, "Role Claimed!" %>
+
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto text-center">
+    <!-- Success Icon -->
+    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+      <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+      </svg>
+    </div>
+
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">You're In!</h1>
+
+    <p class="text-gray-600 mb-6">
+      You've successfully claimed the role of <strong><%= @role.name %></strong>.
+    </p>
+
+    <!-- Show Details -->
+    <div class="bg-white shadow rounded-lg p-4 mb-6">
+      <div class="flex items-center justify-center gap-4">
+        <% poster_url = safe_poster_url(@show) %>
+        <% if poster_url %>
+          <%= image_tag poster_url,
+              alt: @production.name,
+              class: "w-12 h-18 object-cover rounded-lg" %>
+        <% end %>
+        <div class="text-left">
+          <h2 class="font-semibold text-gray-900"><%= @production.name %></h2>
+          <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %d, %Y") %></p>
+          <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%l:%M %p") %></p>
+          <% if @show.location %>
+            <p class="text-xs text-gray-500"><%= @show.location.name %></p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-pink-50 rounded-lg p-4 mb-6">
+      <p class="text-sm text-pink-800">
+        <strong>Your Role:</strong> <%= @role.name %>
+      </p>
+    </div>
+
+    <p class="text-sm text-gray-500">
+      We've added you to the cast. You may receive additional information from the production team.
+    </p>
+
+    <div class="mt-6">
+      <%= render "shared/button", text: "Done", path: my_dashboard_path, variant: "primary" %>
+    </div>
+  </div>
+</div>

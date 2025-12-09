@@ -159,6 +159,37 @@ module Manage
       end
     end
 
+    def update_production_notifications
+      user = Current.organization.users.find(params[:id])
+      production = Current.organization.productions.find(params[:production_id])
+      notifications_enabled = params[:notifications_enabled] == "1"
+
+      # Find or create the production permission
+      permission = ProductionPermission.find_by(user: user, production: production)
+
+      if permission
+        # Update existing permission
+        permission.update!(notifications_enabled: notifications_enabled)
+      else
+        # User has access via global role, create a permission record just for notifications
+        effective_role = user.role_for_production(production)
+        if effective_role.present? && effective_role != "none"
+          ProductionPermission.create!(
+            user: user,
+            production: production,
+            role: effective_role,
+            notifications_enabled: notifications_enabled
+          )
+        end
+      end
+
+      expire_team_cache
+      respond_to do |format|
+        format.json { render json: { success: true } }
+        format.html { redirect_to manage_organization_path(Current.organization, anchor: "tab-1"), notice: "Notification preference updated" }
+      end
+    end
+
     def update_global_role
       user = Current.organization.users.find(params[:id])
       role = params[:global_role]

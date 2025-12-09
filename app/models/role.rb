@@ -7,6 +7,7 @@ class Role < ApplicationRecord
   has_many :shows, through: :show_person_role_assignments
 
   has_many :role_eligibilities, dependent: :destroy
+  has_many :vacancies, class_name: "RoleVacancy", dependent: :destroy
 
   validates :name, presence: true, uniqueness: { scope: :production_id, message: "already exists for this production" }
 
