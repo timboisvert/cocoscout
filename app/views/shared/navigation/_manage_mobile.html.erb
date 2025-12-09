@@ -65,6 +65,9 @@
             <%= link_to "Questionnaires", manage_production_questionnaires_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
             <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
             <%= link_to "Directory", manage_directory_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% if current_user_can_manage? %>
+              <%= link_to "Production Settings", edit_manage_production_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% end %>
           </div>
         </div>
       <% end %>

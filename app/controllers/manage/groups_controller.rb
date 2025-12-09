@@ -24,13 +24,18 @@ module Manage
 
     def update_availability
       updated_count = 0
+      last_status = nil
 
-      # Loop through all parameters looking for availability_Group_* keys
+      # Loop through all parameters looking for availability_* keys
       params.each do |key, value|
-        next unless key.start_with?("availability_Group_")
+        next unless key.start_with?("availability_") && key != "availability"
 
         show_id = key.split("_").last.to_i
-        show = Show.find(show_id)
+        next if show_id.zero?
+
+        show = Show.find_by(id: show_id)
+        next unless show
+
         availability = @group.show_availabilities.find_or_initialize_by(show: show)
 
         # Only update if the status has changed
@@ -52,13 +57,25 @@ module Manage
 
         availability.save
         updated_count += 1
+        last_status = new_status
       end
 
-      if updated_count.positive?
-        redirect_to manage_group_path(@group),
-                    notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
-      else
-        redirect_to manage_group_path(@group), alert: "No availability changes were made"
+      respond_to do |format|
+        format.json do
+          if updated_count.positive?
+            render json: { status: last_status }
+          else
+            render json: { error: "No changes made" }, status: :unprocessable_entity
+          end
+        end
+        format.html do
+          if updated_count.positive?
+            redirect_to manage_group_path(@group),
+                        notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+          else
+            redirect_to manage_group_path(@group), alert: "No availability changes were made"
+          end
+        end
       end
     end
 

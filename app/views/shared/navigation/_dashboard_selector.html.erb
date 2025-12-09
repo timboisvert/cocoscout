@@ -1,0 +1,51 @@
+<%# Dashboard Selector Dropdown %>
+<%# Required local: current_dashboard - one of "production", "talent", "profile", "group_profile", "group_settings" %>
+<%
+  dashboard_labels = {
+    "production" => "Production Dashboard",
+    "talent" => "Talent Dashboard",
+    "profile" => "My Profile",
+    "group_profile" => "Group Profile",
+    "group_settings" => "Group Settings"
+  }
+  current_label = dashboard_labels[current_dashboard] || "Dashboard"
+%>
+
+<div class="relative" data-controller="dropdown">
+  <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-2 hover:bg-slate-50 px-3 py-2 ml-1 transition cursor-pointer h-12 border-r border-slate-200">
+    <span class="text-xl font-semibold coustard-regular text-pink-500"><%= current_label %></span>
+    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+    <% unless current_dashboard == "talent" %>
+      <%= link_to my_dashboard_path, data: { turbo: false }, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
+        <div class="text-base font-semibold coustard-regular text-slate-800">Talent Dashboard</div>
+        <div class="text-xs text-slate-500">Manage your availability, auditions, and profile</div>
+      <% end %>
+      <div class="border-t border-slate-200"></div>
+    <% end %>
+    <% unless current_dashboard == "production" %>
+      <%= link_to manage_path, data: { turbo: false }, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
+        <div class="text-base font-semibold coustard-regular text-slate-800">Production Dashboard</div>
+        <div class="text-xs text-slate-500">Manage shows, casting, and availability</div>
+      <% end %>
+      <div class="border-t border-slate-200"></div>
+    <% end %>
+    <% unless current_dashboard == "profile" %>
+      <%= link_to profile_path, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
+        <div class="text-base font-semibold coustard-regular text-slate-800">My Profile</div>
+        <div class="text-xs text-slate-500">Edit your headshots, resume, and settings</div>
+      <% end %>
+      <div class="border-t border-slate-200"></div>
+    <% end %>
+    <% if Current.user.person&.groups&.any? %>
+      <%= link_to groups_path, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
+        <div class="text-base font-semibold coustard-regular text-slate-800">My Groups</div>
+        <div class="text-xs text-slate-500">Manage your group profiles</div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

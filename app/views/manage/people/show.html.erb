@@ -41,90 +41,22 @@
         <div class="space-y-4">
           <% @shows.group_by(&:production).each do |production, shows| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
                 <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
-                <% if current_user_can_manage?(production) %>
-                  <% if @edit_mode %>
-                    <%= link_to "Done", manage_person_path(@person, tab: 2), class: "text-pink-500 text-xs underline" %>
-                  <% else %>
-                    <%= link_to "Edit Availability", manage_person_path(@person, edit: 'true', tab: 2), class: "text-pink-500 text-xs underline" %>
-                  <% end %>
+              </div>
+              <div class="p-2 space-y-1">
+                <% shows.each do |show| %>
+                  <% availability = @availabilities[show.id] %>
+                  <%= render "shared/show_row",
+                      show: show,
+                      show_location: true,
+                      right_panel: :availability,
+                      availability: availability,
+                      entity_key: "person",
+                      entity: @person,
+                      has_groups: false %>
                 <% end %>
               </div>
-              <% if @edit_mode && current_user_can_manage?(production) %>
-                <%= form_with url: update_availability_manage_person_path(@person), method: :patch, local: true do |f| %>
-                  <div class="divide-y divide-gray-200">
-                    <% shows.each do |show| %>
-                      <% availability = @availabilities[show.id] %>
-                      <div class="px-4 py-3">
-                        <div class="flex items-start justify-between">
-                          <div class="flex-1">
-                            <div class="text-sm text-gray-600 font-semibold">
-                              <%= show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %>
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-                                <%= show.event_type.titleize %>
-                              </span>
-                              <% if show.secondary_name.present? %>
-                                <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
-                              <% end %>
-                            </div>
-                          </div>
-                          <div class="ml-4 flex gap-0 flex-shrink-0">
-                            <%= f.radio_button "availability_#{show.id}", 'available', { checked: availability&.available?, class: "sr-only peer/available", id: "availability_#{show.id}_available" } %>
-                            <%= label_tag "availability_#{show.id}_available", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500" do %>
-                              Available
-                            <% end %>
-
-                            <%= f.radio_button "availability_#{show.id}", 'unavailable', { checked: availability&.unavailable?, class: "sr-only peer/unavailable", id: "availability_#{show.id}_unavailable" } %>
-                            <%= label_tag "availability_#{show.id}_unavailable", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500" do %>
-                              Unavailable
-                            <% end %>
-                          </div>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                  <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    <%= render "shared/button", text: "Update Availability", variant: "primary", type: :submit %>
-                  </div>
-                <% end %>
-              <% else %>
-                <div class="divide-y divide-gray-200">
-                  <% shows.each do |show| %>
-                    <% availability = @availabilities[show.id] %>
-                    <div class="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                      <div class="flex-1">
-                        <div class="text-sm text-gray-600 font-semibold">
-                          <%= show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1">
-                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-                            <%= show.event_type.titleize %>
-                          </span>
-                          <% if show.secondary_name.present? %>
-                            <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
-                          <% end %>
-                        </div>
-                      </div>
-                      <div class="ml-4">
-                        <% if availability %>
-                          <% if availability.available? %>
-                            <span class="text-sm font-medium text-pink-500">Available</span>
-                          <% elsif availability.unavailable? %>
-                            <span class="text-sm font-medium text-gray-900">Unavailable</span>
-                          <% else %>
-                            <span class="text-sm text-gray-400">No response</span>
-                          <% end %>
-                        <% else %>
-                          <span class="text-sm text-gray-400">No response</span>
-                        <% end %>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
             </div>
           <% end %>
         </div>

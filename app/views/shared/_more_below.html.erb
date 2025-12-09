@@ -1,0 +1,28 @@
+<%#
+  Scroll Indicator Component - "More Below"
+
+  Shows a bouncing chevron at the bottom of the viewport to indicate there's more content below.
+  Automatically hides when the user scrolls.
+
+  Usage:
+    render "shared/more_below"
+     render "shared/more_below", text: "Fill out form below"
+
+  Required: The parent element must have data-controller="scroll-indicator"
+
+  Optional params:
+    - text: Custom text to display above the arrow (default: "More below")
+%>
+
+<% text = local_assigns.fetch(:text, "More below") %>
+
+<div data-scroll-indicator-target="indicator"
+     data-action="click->scroll-indicator#scrollDown"
+     class="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center cursor-pointer transition-opacity duration-300 z-50">
+  <span class="text-xs text-pink-600 font-medium mb-1"><%= text %></span>
+  <div class="animate-bounce">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-8 h-8 text-pink-500">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  </div>
+</div>

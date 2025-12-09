@@ -107,40 +107,17 @@
                   </div>
                   <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
                     <%= render "shared/button", text: "Update Availability", variant: "primary", type: :submit %>
-                  </div>
+                </div>
                 <% end %>
               <% else %>
-                <div class="divide-y divide-gray-200">
+                <div class="p-2 space-y-1">
                   <% shows.each do |show| %>
                     <% availability = @availabilities[show.id] %>
-                    <div class="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                      <div class="flex-1">
-                        <div class="text-sm text-gray-600 font-semibold">
-                          <%= show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1">
-                          <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-                            <%= show.event_type.titleize %>
-                          </span>
-                          <% if show.secondary_name.present? %>
-                            <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
-                          <% end %>
-                        </div>
-                      </div>
-                      <div class="ml-4">
-                        <% if availability %>
-                          <% if availability.available? %>
-                            <span class="text-sm font-medium text-pink-500">Available</span>
-                          <% elsif availability.unavailable? %>
-                            <span class="text-sm font-medium text-gray-900">Unavailable</span>
-                          <% else %>
-                            <span class="text-sm text-gray-400">No response</span>
-                          <% end %>
-                        <% else %>
-                          <span class="text-sm text-gray-400">No response</span>
-                        <% end %>
-                      </div>
-                    </div>
+                    <%= render "shared/show_row",
+                        show: show,
+                        show_location: true,
+                        right_panel: :availability_status,
+                        availability: availability %>
                   <% end %>
                 </div>
               <% end %>

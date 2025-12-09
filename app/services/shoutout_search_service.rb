@@ -19,16 +19,18 @@ class ShoutoutSearchService
   private
 
   def search_people
-    Person.where("name LIKE ?", "%#{@query}%")
+    query = "%#{@query.downcase}%"
+    Person.where("LOWER(name) LIKE ?", query)
           .where.not(id: @current_user.person.id)
           .limit(10)
           .map { |person| person_to_json(person) }
   end
 
   def search_groups
+    query = "%#{@query.downcase}%"
     member_group_ids = @current_user.person.groups.pluck(:id)
 
-    Group.where("name LIKE ?", "%#{@query}%")
+    Group.where("LOWER(name) LIKE ?", query)
          .where(archived_at: nil)
          .where.not(id: member_group_ids)
          .limit(10)

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "form", "list"]
+    static targets = ["modal", "form", "list", "ongoingCheckbox", "yearEndContainer"]
 
     connect() {
         this.keyHandler = this.handleKeydown.bind(this)
@@ -24,6 +24,20 @@ export default class extends Controller {
         editingId: String
     }
 
+    toggleOngoing() {
+        if (this.hasOngoingCheckboxTarget && this.hasYearEndContainerTarget) {
+            const isOngoing = this.ongoingCheckboxTarget.checked
+            if (isOngoing) {
+                this.yearEndContainerTarget.classList.add('opacity-50')
+                this.yearEndContainerTarget.querySelector('input').disabled = true
+                this.yearEndContainerTarget.querySelector('input').value = ''
+            } else {
+                this.yearEndContainerTarget.classList.remove('opacity-50')
+                this.yearEndContainerTarget.querySelector('input').disabled = false
+            }
+        }
+    }
+
     openModal(event) {
         event.preventDefault()
         this.editingIdValue = ''
@@ -31,9 +45,15 @@ export default class extends Controller {
         // Manually clear fields since formTarget is now a div
         this.formTarget.querySelector('[data-field="institution"]').value = ''
         this.formTarget.querySelector('[data-field="program"]').value = ''
-        this.formTarget.querySelector('[data-field="year_start"]').value = ''
+        this.formTarget.querySelector('[data-field="year_start"]').value = new Date().getFullYear()
         this.formTarget.querySelector('[data-field="year_end"]').value = ''
         this.formTarget.querySelector('[data-field="notes"]').value = ''
+
+        // Reset ongoing checkbox
+        if (this.hasOngoingCheckboxTarget) {
+            this.ongoingCheckboxTarget.checked = false
+            this.toggleOngoing()
+        }
 
         // Update modal title
         const modalTitle = this.modalTarget.querySelector('h3')
@@ -60,6 +80,12 @@ export default class extends Controller {
         this.formTarget.querySelector('[data-field="year_end"]').value = ''
         this.formTarget.querySelector('[data-field="notes"]').value = ''
 
+        // Reset ongoing checkbox
+        if (this.hasOngoingCheckboxTarget) {
+            this.ongoingCheckboxTarget.checked = false
+            this.toggleOngoing()
+        }
+
         document.removeEventListener('keydown', this.keyHandler)
     }
 
@@ -81,6 +107,13 @@ export default class extends Controller {
         this.formTarget.querySelector('[data-field="year_start"]').value = trainingEl.dataset.yearStart || ''
         this.formTarget.querySelector('[data-field="year_end"]').value = trainingEl.dataset.yearEnd || ''
         this.formTarget.querySelector('[data-field="notes"]').value = trainingEl.dataset.notes || ''
+
+        // Set ongoing checkbox state
+        if (this.hasOngoingCheckboxTarget) {
+            this.ongoingCheckboxTarget.checked = trainingEl.dataset.ongoing === 'true'
+            this.toggleOngoing()
+        }
+
         this.modalTarget.classList.remove("hidden")
     }
 
@@ -108,7 +141,8 @@ export default class extends Controller {
         const institution = institutionField.value
         const program = programField.value
         const yearStart = yearStartField.value
-        const yearEnd = yearEndField.value
+        const isOngoing = this.hasOngoingCheckboxTarget && this.ongoingCheckboxTarget.checked
+        const yearEnd = isOngoing ? '' : yearEndField.value
         const notes = notesField.value
 
         if (!institution || !program || !yearStart) {
@@ -117,9 +151,9 @@ export default class extends Controller {
         }
 
         if (this.editingIdValue && this.editingIdValue !== '') {
-            this.updateTrainingInDOM(this.editingIdValue, institution, program, yearStart, yearEnd, notes)
+            this.updateTrainingInDOM(this.editingIdValue, institution, program, yearStart, yearEnd, isOngoing, notes)
         } else {
-            this.addTrainingToDOM(institution, program, yearStart, yearEnd, notes)
+            this.addTrainingToDOM(institution, program, yearStart, yearEnd, isOngoing, notes)
         }
 
         // Submit the main profile form to save changes
@@ -159,10 +193,14 @@ export default class extends Controller {
         }
     }
 
-    addTrainingToDOM(institution, program, yearStart, yearEnd, notes) {
+    addTrainingToDOM(institution, program, yearStart, yearEnd, ongoing, notes) {
         const timestamp = new Date().getTime()
-        const displayParts = [program, institution, yearStart ? (yearEnd ? `${yearStart}-${yearEnd}` : yearStart) : null].filter(v => v)
+        const yearDisplay = ongoing ? `${yearStart}-Present` : (yearEnd ? `${yearStart}-${yearEnd}` : yearStart)
+        const displayParts = [program, institution, yearStart ? yearDisplay : null].filter(v => v)
         const displayText = displayParts.join(' • ')
+        // Get the inner reorderable list container, or fall back to listTarget
+        const listContainer = this.listTarget.querySelector('[data-reorderable-target="list"]') || this.listTarget
+        const position = listContainer.querySelectorAll('[data-training-id]').length
 
         const html = `
       <div class="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
@@ -171,40 +209,48 @@ export default class extends Controller {
            data-program="${this.escapeHtml(program)}"
            data-year-start="${yearStart}"
            data-year-end="${yearEnd}"
-           data-notes="${this.escapeHtml(notes)}">
+           data-ongoing="${ongoing}"
+           data-notes="${this.escapeHtml(notes)}"
+           data-position="${position}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][institution]" value="${this.escapeHtml(institution)}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][program]" value="${this.escapeHtml(program)}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][year_start]" value="${yearStart}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][year_end]" value="${yearEnd}">
+        <input type="hidden" name="person[training_credits_attributes][${timestamp}][ongoing]" value="${ongoing}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][notes]" value="${this.escapeHtml(notes)}">
-        <input type="hidden" name="person[training_credits_attributes][${timestamp}][position]" value="0">
+        <input type="hidden" name="person[training_credits_attributes][${timestamp}][position]" value="${position}">
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][_destroy]" value="0" class="destroy-field">
 
-        <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="training-drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </div>
           <div class="text-sm font-medium text-gray-900">${displayText}</div>
         </div>
 
-        <div class="flex gap-3 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="flex gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button"
-                  class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                  class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap text-gray-700 hover:bg-gray-100 px-3 py-1.5 text-sm"
                   data-action="click->profile-training#edit"
                   data-training-id="new-${timestamp}">
-            Edit
+            <span>Edit Training/Education</span>
           </button>
           <button type="button"
-                  class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
+                  class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap text-gray-700 hover:bg-gray-100 px-3 py-1.5 text-sm"
                   data-action="click->profile-training#remove"
                   data-training-id="new-${timestamp}">
-            Remove
+            <span>Remove Training/Education</span>
           </button>
         </div>
       </div>
     `
 
-        this.listTarget.insertAdjacentHTML('beforeend', html)
+        listContainer.insertAdjacentHTML('beforeend', html)
     }
 
-    updateTrainingInDOM(trainingId, institution, program, yearStart, yearEnd, notes) {
+    updateTrainingInDOM(trainingId, institution, program, yearStart, yearEnd, ongoing, notes) {
         const trainingEl = document.querySelector(`[data-training-id="${trainingId}"]`)
         if (!trainingEl) return
 
@@ -212,15 +258,18 @@ export default class extends Controller {
         trainingEl.dataset.program = program
         trainingEl.dataset.yearStart = yearStart
         trainingEl.dataset.yearEnd = yearEnd
+        trainingEl.dataset.ongoing = ongoing
         trainingEl.dataset.notes = notes
 
         trainingEl.querySelector('input[name*="[institution]"]').value = institution
         trainingEl.querySelector('input[name*="[program]"]').value = program
         trainingEl.querySelector('input[name*="[year_start]"]').value = yearStart
         trainingEl.querySelector('input[name*="[year_end]"]').value = yearEnd
+        trainingEl.querySelector('input[name*="[ongoing]"]').value = ongoing
         trainingEl.querySelector('input[name*="[notes]"]').value = notes
 
-        const displayParts = [program, institution, yearStart ? (yearEnd ? `${yearStart}-${yearEnd}` : yearStart) : null].filter(v => v)
+        const yearDisplay = ongoing ? `${yearStart}-Present` : (yearEnd ? `${yearStart}-${yearEnd}` : yearStart)
+        const displayParts = [program, institution, yearStart ? yearDisplay : null].filter(v => v)
         const displayText = displayParts.join(' • ')
 
         const displayDiv = trainingEl.querySelector('.flex-1 .text-sm')

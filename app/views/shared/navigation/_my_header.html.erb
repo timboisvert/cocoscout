@@ -1,13 +1,6 @@
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
-  <div class="flex items-center gap-8 pl-4">
-    <%= link_to my_dashboard_path, class: "mt-2 ml-" do %>
-      <span class="text-3xl font-semibold coustard-regular text-pink-500">CocoScout</span>
-    <% end %>
-
-    <div class="flex items-center gap-4 mt-2 ml-10">
-      <span class="text-2xl font-semibold coustard-regular text-slate-800">Talent Dashboard</span>
-      <%= link_to "Switch to Production Dashboard", manage_path, data: { turbo: false }, class: "text-xs text-pink-500 hover:text-pink-600 transition font-medium mt-1" %>
-    </div>
+  <div class="flex items-center">
+    <%= render "shared/navigation/dashboard_selector", current_dashboard: "talent" %>
   </div>
 
   <div class="flex items-center gap-3 mr-4">
@@ -39,18 +32,10 @@
       </button>
 
       <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-        <%= link_to "My Profile", profile_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-        <% if Current.user.person&.groups&.any? %>
-          <%= link_to "My Groups", groups_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <% if Current.user.superadmin? %>
+          <%= link_to "Superadmin", superadmin_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+          <div class="border-t border-slate-200 my-1"></div>
         <% end %>
-
-         <% if Current.user.superadmin? %>
-            <div class="border-t border-slate-200 my-1"></div>
-            <%= link_to "Superadmin", superadmin_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-          <% end %>
-
-        <div class="border-t border-slate-200 my-1"></div>
-
         <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
       </div>
     </div>

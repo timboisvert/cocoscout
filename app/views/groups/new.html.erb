@@ -1,6 +1,6 @@
 <% content_for :title, "Create a Group Profile" %>
 
-<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50">
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50" data-controller="scroll-indicator">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
     <!-- Header with Logo -->
@@ -149,4 +149,6 @@
     <% end %>
 
   </div>
+
+  <%= render "shared/more_below" %>
 </div>

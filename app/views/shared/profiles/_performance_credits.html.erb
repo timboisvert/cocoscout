@@ -6,7 +6,7 @@
   form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
 %>
 
-<div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section">
+<div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section reorderable" data-reorderable-handle-value=".section-drag-handle">
 <%= form_with(model: entity, scope: entity_name, url: form_url, method: :patch, id: "performance-history-form", data: { turbo: true, controller: "profile-auto-save" }) do |entity_form| %>
     <%= render "shared/section_header",
       entity: entity,
@@ -18,37 +18,44 @@
 
     <div class="p-6 space-y-4" data-profile-section-target="content">
       <p class="text-sm text-gray-600 mb-4">
-        Organize your performance credits into sections (Improv, TV, Dance, Sketch, etc.), then add credits within each section.
+        Organize your performance credits into sections (Improv, TV, Dance, Sketch, etc.), then add credits within each section. Drag to reorder.
       </p>
 
-      <div id="performance-sections-container" data-performance-credits-target="sectionsList">
+      <div id="performance-sections-container" class="space-y-4" data-performance-credits-target="sectionsList" data-reorderable-target="list">
       <%= entity_form.fields_for :performance_sections do |section_form| %>
-        <div class="border border-gray-200 rounded-lg p-5 mb-4 bg-white shadow-sm" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+        <div class="border border-gray-200 rounded-lg p-5 mb-4 bg-white shadow-sm group/section" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>" data-position="<%= section_form.index %>">
           <%= section_form.hidden_field :id %>
           <%= section_form.hidden_field :name %>
           <%= section_form.hidden_field :position %>
           <%= section_form.hidden_field :_destroy, value: "0", class: "section-destroy-field" %>
 
           <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-            <h4 class="text-lg font-semibold text-gray-900 coustard-regular"><%= section_form.object.name %></h4>
-            <div class="flex gap-3">
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                      data-action="click->performance-credits#editSection"
-                      data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>"
-                      data-section-name="<%= section_form.object.name %>">
-                Edit
-              </button>
-              <button type="button"
-                      class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                      data-action="click->performance-credits#removeSection"
-                      data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
-                Remove
-              </button>
+            <div class="flex items-center gap-3">
+              <div class="section-drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 opacity-0 group-hover/section:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              </div>
+              <h4 class="text-lg font-semibold text-gray-900 coustard-regular"><%= section_form.object.name %></h4>
+            </div>
+            <div class="flex gap-2 opacity-0 group-hover/section:opacity-100 transition-opacity">
+              <%= render "shared/button",
+                  text: "Edit Section",
+                  variant: "ghost",
+                  size: "small",
+                  data: { action: "click->performance-credits#editSection", section_id: (section_form.object.id || "new-#{section_form.object.object_id}"), section_name: section_form.object.name },
+                  type: :button %>
+              <%= render "shared/button",
+                  text: "Remove Section",
+                  variant: "ghost",
+                  size: "small",
+                  data: { action: "click->performance-credits#removeSection", section_id: (section_form.object.id || "new-#{section_form.object.object_id}") },
+                  type: :button %>
             </div>
           </div>
 
-          <div class="space-y-3 credits-list mb-4" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
+          <div class="credits-list mb-4" data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>" data-controller="reorderable" data-reorderable-handle-value=".credit-drag-handle">
+            <div class="space-y-2" data-reorderable-target="list">
             <%= section_form.fields_for :performance_credits do |credit_form| %>
               <div class="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors credit-item group"
                    data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>"
@@ -56,41 +63,49 @@
                    data-title="<%= credit_form.object.title %>"
                    data-year-start="<%= credit_form.object.year_start %>"
                    data-year-end="<%= credit_form.object.year_end %>"
+                   data-ongoing="<%= credit_form.object.ongoing? %>"
                    data-link-url="<%= credit_form.object.link_url %>"
-                   data-notes="<%= credit_form.object.notes %>">
+                   data-notes="<%= credit_form.object.notes %>"
+                   data-position="<%= credit_form.index %>">
                 <%= credit_form.hidden_field :id %>
                 <%= credit_form.hidden_field :title %>
                 <%= credit_form.hidden_field :role %>
                 <%= credit_form.hidden_field :year_start %>
                 <%= credit_form.hidden_field :year_end %>
+                <%= credit_form.hidden_field :ongoing %>
                 <%= credit_form.hidden_field :link_url %>
                 <%= credit_form.hidden_field :notes %>
                 <%= credit_form.hidden_field :position %>
                 <%= credit_form.hidden_field :_destroy, value: "0", class: "credit-destroy-field" %>
 
-                <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <div class="credit-drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                  </div>
                   <div class="text-sm font-medium text-gray-900">
                     <%= [credit_form.object.title, credit_form.object.role, credit_form.object.year_start ? credit_form.object.display_year_range_with_present : nil].compact.reject(&:blank?).join(' • ') %>
                   </div>
                 </div>
 
-                <div class="flex gap-3 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button type="button"
-                          class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                          data-action="click->performance-credits#editCredit"
-                          data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>"
-                          data-section-id="<%= section_form.object.id || "new-#{section_form.object.object_id}" %>">
-                    Edit
-                  </button>
-                  <button type="button"
-                          class="text-xs text-pink-500 hover:text-pink-700 underline cursor-pointer"
-                          data-action="click->performance-credits#removeCredit"
-                          data-credit-id="<%= credit_form.object.id || "new-#{credit_form.object.object_id}" %>">
-                    Remove
-                  </button>
+                <div class="flex gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <%= render "shared/button",
+                      text: "Edit Credit",
+                      variant: "ghost",
+                      size: "small",
+                      data: { action: "click->performance-credits#editCredit", credit_id: (credit_form.object.id || "new-#{credit_form.object.object_id}"), section_id: (section_form.object.id || "new-#{section_form.object.object_id}") },
+                      type: :button %>
+                  <%= render "shared/button",
+                      text: "Remove Credit",
+                      variant: "ghost",
+                      size: "small",
+                      data: { action: "click->performance-credits#removeCredit", credit_id: (credit_form.object.id || "new-#{credit_form.object.object_id}") },
+                      type: :button %>
                 </div>
               </div>
             <% end %>
+            </div>
           </div>
 
           <%= render "shared/button",
@@ -189,7 +204,7 @@
                        name="year_start"
                        data-field="year_start"
                        data-action="keydown->performance-credits#handleKeydown"
-                       placeholder="2024"
+                       placeholder="<%= Time.current.year %>"
                        min="1900"
                        max="2100"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
@@ -198,15 +213,24 @@
                 <input type="number"
                        name="year_end"
                        data-field="year_end"
+                       data-performance-credits-target="yearEndInput"
                        data-action="keydown->performance-credits#handleKeydown"
                        placeholder="To (optional)"
                        min="1900"
                        max="2100"
-                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <label class="flex items-center gap-2 mt-1.5 cursor-pointer">
+                  <input type="checkbox"
+                         name="ongoing"
+                         data-field="ongoing"
+                         data-performance-credits-target="ongoingCheckbox"
+                         data-action="change->performance-credits#toggleOngoing"
+                         class="rounded border-gray-300 text-pink-500 accent-pink-500 focus:ring-pink-500">
+                  <span class="text-xs text-gray-600">Present (ongoing)</span>
+                </label>
               </div>
             </div>
           </div>
-
           <div class="pt-4 border-t border-gray-200">
             <p class="text-xs text-gray-500 mb-3">Optional Information</p>
 

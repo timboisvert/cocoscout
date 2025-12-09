@@ -267,7 +267,7 @@ class GroupsController < ApplicationController
         :id, :name, :position, :_destroy,
         { performance_credits_attributes: %i[
           id section_name title location role
-          year_start year_end notes link_url position _destroy
+          year_start year_end ongoing notes link_url position _destroy
         ] }
       ],
       profile_resumes_attributes: %i[id name position file _destroy]

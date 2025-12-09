@@ -1,17 +1,8 @@
 <!-- Profile Header Navigation -->
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
-  <div class="flex items-center gap-8 pl-4">
-    <%= link_to my_dashboard_path, class: "mt-2 ml-" do %>
-      <span class="text-3xl font-semibold coustard-regular text-pink-500">CocoScout</span>
-    <% end %>
-
-    <div class="flex items-center gap-4 mt-2 ml-10">
-      <% if controller_name == 'groups' && action_name == 'settings' %>
-        <span class="text-2xl font-semibold coustard-regular text-slate-800">Group Settings</span>
-      <% else %>
-        <span class="text-2xl font-semibold coustard-regular text-slate-800">Group Profile</span>
-      <% end %>
-    </div>
+  <div class="flex items-center">
+    <% current_dashboard = (controller_name == 'groups' && action_name == 'settings') ? "group_settings" : "group_profile" %>
+    <%= render "shared/navigation/dashboard_selector", current_dashboard: current_dashboard %>
   </div>
 
   <div class="flex items-center gap-3 mr-4">
@@ -45,27 +36,6 @@
       <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
         <%= link_to "Group Profile", edit_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
         <%= link_to "Group Settings", settings_group_path(@group), class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-
-        <div class="border-t border-slate-200 my-1"></div>
-
-        <%= link_to "My Groups", groups_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
-
-        <div class="border-t border-slate-200 my-1"></div>
-
-        <%= link_to profile_path, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
-          <div class="flex items-center gap-3">
-            <% if Current.user.person&.headshot&.attached? %>
-              <%= image_tag Current.user.person.headshot, class: "w-8 h-8 rounded-lg object-cover" %>
-            <% else %>
-              <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-sm">
-                <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
-              </div>
-            <% end %>
-            <div>
-              <div class="text-sm font-medium text-slate-700">My Profile</div>
-            </div>
-          </div>
-        <% end %>
 
         <div class="border-t border-slate-200 my-1"></div>
 

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static values = { showId: Number, status: String }
+    static values = { showId: Number, status: String, personId: Number, updateUrl: String }
     static targets = ["success", "availableCheck", "availableText", "unavailableCheck", "unavailableText"]
 
     connect() {
@@ -25,10 +25,25 @@ export default class extends Controller {
     }
 
     updateStatusForShow(showId, status, showRow, entityKey) {
-        fetch(`/my/availability/${showId}`, {
+        // Check for custom update URL (used on manage pages)
+        const updateUrl = showRow.dataset.availabilityUpdateUrlValue;
+        const personId = showRow.dataset.availabilityPersonIdValue;
+
+        let url, body;
+        if (updateUrl && personId) {
+            // Admin updating someone else's availability
+            url = updateUrl;
+            body = { [`availability_${showId}`]: status };
+        } else {
+            // User updating their own availability
+            url = `/my/availability/${showId}`;
+            body = { status, entity_key: entityKey };
+        }
+
+        fetch(url, {
             method: "PATCH",
             headers: { "Content-Type": "application/json", "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content },
-            body: JSON.stringify({ status, entity_key: entityKey })
+            body: JSON.stringify(body)
         })
             .then(r => r.json())
             .then(data => {

@@ -45,9 +45,16 @@
 <%
   data_attrs = {}
   if has_availability
+    data_attrs["controller"] = "availability"
     data_attrs["availability-show-id-value"] = show.id
     data_attrs["availability-status-value"] = current_status
     data_attrs["availability-entity-key"] = local_assigns[:entity_key]
+
+    # For manage context (when entity is a Person but not the current user), use the manage endpoint
+    if local_assigns[:entity].is_a?(Person) && local_assigns[:entity] != Current.user&.person
+      data_attrs["availability-person-id-value"] = local_assigns[:entity].id
+      data_attrs["availability-update-url-value"] = update_availability_manage_person_path(local_assigns[:entity])
+    end
   end
 %>
 
@@ -124,6 +131,23 @@
           </div>
         <% end %>
       </div>
+    </div>
+
+  <% elsif right_panel == :availability_status %>
+    <%# Right Section: Availability Status (read-only text display) %>
+    <% availability_obj = local_assigns[:availability] %>
+    <div class="flex-shrink-0 ml-4">
+      <% if availability_obj %>
+        <% if availability_obj.available? %>
+          <span class="text-sm font-medium text-pink-500">Available</span>
+        <% elsif availability_obj.unavailable? %>
+          <span class="text-sm font-medium text-gray-900">Unavailable</span>
+        <% else %>
+          <span class="text-sm text-gray-400">No response</span>
+        <% end %>
+      <% else %>
+        <span class="text-sm text-gray-400">No response</span>
+      <% end %>
     </div>
 
   <% elsif right_panel == :availability && local_assigns[:entity].present? %>

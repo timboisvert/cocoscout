@@ -35,10 +35,20 @@
 
         <div class="space-y-2">
           <% @upcoming_assignments.each do |assignment| %>
+            <%
+              role_assignments = [{
+                role_name: assignment.role.name,
+                entity_type: member.class.name,
+                entity_id: member.id,
+                entity_name: member.name
+              }]
+            %>
             <%= render "shared/show_row",
                 show: assignment.show,
                 show_location: true,
-                roles: assignment.role.present? ? [assignment.role.name] : nil %>
+                role_assignments: role_assignments,
+                entity: member,
+                right_panel: :cast_assignment %>
           <% end %>
         </div>
 

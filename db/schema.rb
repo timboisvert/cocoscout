@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_09_144726) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_09_154325) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -346,6 +346,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_144726) do
     t.string "link_url"
     t.string "location", limit: 100
     t.text "notes", limit: 1000
+    t.boolean "ongoing", default: false, null: false
     t.integer "performance_section_id"
     t.integer "position", default: 0, null: false
     t.integer "profileable_id", null: false
@@ -728,6 +729,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_144726) do
     t.string "institution", limit: 200, null: false
     t.string "location", limit: 100
     t.text "notes", limit: 1000
+    t.boolean "ongoing", default: false, null: false
     t.integer "person_id", null: false
     t.integer "position", default: 0, null: false
     t.string "program", limit: 200, null: false

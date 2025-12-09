@@ -1,13 +1,6 @@
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
-  <div class="flex items-center gap-8 pl-4">
-    <%= link_to manage_path, class:"mt-2" do %>
-      <span class="text-3xl font-semibold coustard-regular text-pink-500">CocoScout</span>
-    <% end %>
-
-    <div class="flex items-center gap-4 mt-2 ml-10">
-      <span class="text-2xl font-semibold coustard-regular text-slate-800">Production Dashboard</span>
-      <%= link_to "Switch to Talent Dashboard", my_dashboard_path, data: { turbo: false }, class: "text-xs text-pink-500 hover:text-pink-600 transition font-medium mt-1" %>
-    </div>
+  <div class="flex items-center">
+    <%= render "shared/navigation/dashboard_selector", current_dashboard: "production" %>
   </div>
 
   <div class="flex items-center mr-2">
@@ -55,7 +48,12 @@
                 <%= Current.production.initials %>
               </div>
             <% end %>
-            <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= Current.production.name %></div>
+            <div class="flex flex-col">
+              <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= Current.production.name %></div>
+              <% if current_user_can_manage? %>
+                <%= link_to "Production Settings", edit_manage_production_path(Current.production), class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
+              <% end %>
+            </div>
           <% end %>
         </div>
       <% end %>
@@ -79,7 +77,7 @@
                 <% end %>
                 <div class="flex flex-col">
                   <span class="text-sm text-slate-900 font-medium"><%= Current.production.name %></span>
-                  <% if current_user_is_global_manager? %>
+                  <% if current_user_can_manage? %>
                     <span class="text-xs text-pink-500 hover:text-pink-600 underline">Production Settings</span>
                   <% end %>
                 </div>

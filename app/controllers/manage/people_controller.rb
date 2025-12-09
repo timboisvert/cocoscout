@@ -110,6 +110,7 @@ module Manage
     def update_availability
       # Update availabilities for each show
       updated_count = 0
+      last_status = nil
       params.each do |key, value|
         next unless key.start_with?("availability_") && key != "availability"
 
@@ -140,13 +141,25 @@ module Manage
 
         availability.save
         updated_count += 1
+        last_status = new_status
       end
 
-      if updated_count.positive?
-        redirect_to manage_person_path(@person, tab: 2),
-                    notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
-      else
-        redirect_to manage_person_path(@person, tab: 2), alert: "No availability changes were made"
+      respond_to do |format|
+        format.json do
+          if updated_count.positive?
+            render json: { status: last_status }
+          else
+            render json: { error: "No changes made" }, status: :unprocessable_entity
+          end
+        end
+        format.html do
+          if updated_count.positive?
+            redirect_to manage_person_path(@person, tab: 2),
+                        notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
+          else
+            redirect_to manage_person_path(@person, tab: 2), alert: "No availability changes were made"
+          end
+        end
       end
     end
 

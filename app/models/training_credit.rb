@@ -26,22 +26,28 @@ class TrainingCredit < ApplicationRecord
 
   # Callbacks
   before_validation :set_default_position, on: :create
+  before_validation :clear_year_end_if_ongoing
 
   def display_year_range
+    return year_start.to_s if year_end.blank? && !ongoing?
+    return year_start.to_s if year_start == year_end && !ongoing?
+
+    "#{year_start}-#{year_end}"
+  end
+
+  def display_year_range_with_present
+    return "#{year_start}-Present" if ongoing?
     return year_start.to_s if year_end.blank?
     return year_start.to_s if year_start == year_end
 
     "#{year_start}-#{year_end}"
   end
 
-  def display_year_range_with_present
-    return year_start.to_s if year_end.present? && year_start == year_end
-    return "#{year_start}-Present" if year_end.blank?
-
-    "#{year_start}-#{year_end}"
-  end
-
   private
+
+  def clear_year_end_if_ongoing
+    self.year_end = nil if ongoing?
+  end
 
   def year_end_after_year_start
     return if year_end.blank? || year_start.blank?
