@@ -117,7 +117,10 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting</h3>
-            <%= link_to "Manage Cast", manage_production_show_cast_path(@production, @show), class: "text-pink-500 text-xs underline" %>
+            <div class="space-x-1">
+              <%= link_to "Contact Cast", manage_production_show_contact_cast_path(@production, @show), class: "text-pink-500 text-xs underline" %>
+              <%= link_to "Manage Cast", manage_production_show_cast_path(@production, @show), class: "text-pink-500 text-xs underline" %>
+            </div>
           </div>
           <div class="p-4">
             <%
@@ -213,8 +216,7 @@
         <!-- In-Person Location Card -->
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-left">
-            <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
-            <h3 class="ml-1 text-sm font-semibold text-gray-900"><%= @show.location.name %></h3>
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= @show.location.name %></h3>
           </div>
           <div class="p-4 flex flex-col lg:flex-row gap-4">
             <% loc = @show.location %>
