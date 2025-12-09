@@ -9,9 +9,14 @@
         <%
         links = [
           {
+            label: "Home",
+            path: manage_path(Current.production),
+            active: controller_name == "productions"
+          },
+          {
             label: "Shows & Events",
             path: manage_production_shows_path(Current.production),
-            active: controller_name == "shows"
+            active: ["shows", "vacancies"].include?(controller_name)
           },
           {
             label: "Availability",

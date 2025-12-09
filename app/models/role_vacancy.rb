@@ -1,7 +1,7 @@
 class RoleVacancy < ApplicationRecord
   belongs_to :show
   belongs_to :role
-  belongs_to :vacated_by, class_name: "Person", optional: true
+  belongs_to :vacated_by, polymorphic: true, optional: true
   belongs_to :filled_by, class_name: "Person", optional: true
   belongs_to :closed_by, class_name: "User", optional: true
   belongs_to :created_by, class_name: "User", optional: true
@@ -23,10 +23,10 @@ class RoleVacancy < ApplicationRecord
 
   def fill!(person, by: nil)
     transaction do
-      # Remove the old cast assignment for the person who vacated
+      # Remove the old cast assignment for the entity who vacated (Person or Group)
       if vacated_by.present?
         show.show_person_role_assignments
-            .where(role: role, assignable_type: "Person", assignable_id: vacated_by_id)
+            .where(role: role, assignable_type: vacated_by_type, assignable_id: vacated_by_id)
             .destroy_all
       end
 

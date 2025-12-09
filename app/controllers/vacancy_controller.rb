@@ -63,11 +63,11 @@ class VacancyController < ApplicationController
 
         next unless assignment
 
-        # Create the vacancy
+        # Create the vacancy with the actual assignable (Person or Group)
         vacancy = RoleVacancy.create!(
           show: @show,
           role: assignment.role,
-          vacated_by: @person,
+          vacated_by: assignment.assignable,
           vacated_at: Time.current,
           status: :open
         )

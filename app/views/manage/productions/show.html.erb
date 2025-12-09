@@ -39,9 +39,9 @@
 
   <!-- Open Vacancies -->
   <% if @dashboard[:open_vacancies].any? %>
-    <div class="border border-amber-200 rounded-lg overflow-hidden mb-8 bg-amber-50">
-      <div class="bg-amber-100 px-4 py-3 border-b border-amber-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-amber-900 coustard-regular flex items-center gap-2">
+    <div class="border border-pink-200 rounded-lg overflow-hidden mb-8 bg-pink-50">
+      <div class="bg-pink-100 px-4 py-3 border-b border-pink-200 flex items-center justify-between">
+        <h3 class="text-md font-semibold text-pink-900 coustard-regular flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
           </svg>
@@ -53,7 +53,7 @@
           <% vacancy = vacancy_data[:vacancy] %>
           <% show = vacancy_data[:show] %>
           <% vacated_by = vacancy.vacated_by %>
-          <div class="group flex items-stretch bg-white border border-amber-200 rounded-lg hover:border-amber-400 transition-colors overflow-hidden">
+          <div class="group flex items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
             <%# Left half: Same as Upcoming Shows %>
             <div class="w-1/2 px-3 py-2 flex items-center gap-4">
               <%# Date Box %>
@@ -80,7 +80,7 @@
             </div>
 
             <%# Right half: Vacated by entity with role %>
-            <div class="w-1/2 border-l border-amber-200 px-3 py-2 flex items-center gap-3">
+            <div class="w-1/2 border-l border-pink-200 px-3 py-2 flex items-center gap-3">
               <% if vacated_by %>
                 <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>

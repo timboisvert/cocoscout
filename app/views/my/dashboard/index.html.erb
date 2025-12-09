@@ -59,20 +59,18 @@
       </div>
     </div>
     <div class="p-4">
-      <% if @upcoming_show_entities.any? %>
+      <% if @upcoming_show_rows.any? %>
         <div class="space-y-1">
-          <% @upcoming_show_entities.each do |item| %>
-            <% show = item[:show] %>
-            <% entity = item[:entity] %>
-            <% assignment = show.show_person_role_assignments.find { |a| a.assignable == entity } %>
+          <% @upcoming_show_rows.each do |row| %>
+            <% show = row[:show] %>
             <%
-              role_assignments = []
-              if assignment
-                role_assignments << {
-                  role_name: assignment.role.name,
-                  entity_type: entity.class.name,
-                  entity_id: entity.id,
-                  entity_name: entity.name
+              # Group assignments by entity for stacked right panels
+              assignments_by_entity = row[:assignments].group_by { |a| [a[:type], a[:entity]&.id] }
+              entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
+                entity = assignments.first[:entity]
+                {
+                  entity: entity,
+                  role_assignments: assignments.map { |a| { role_name: a[:assignment].role.name, entity_name: entity.name } }
                 }
               end
             %>
@@ -82,11 +80,10 @@
               show_canceled: true,
               show_production: true,
               show_location: true,
-              role_assignments: role_assignments,
-              entity: entity,
+              entity_assignments: entity_assignments,
               has_groups: @groups.any?,
-              right_panel: role_assignments.any? ? :cast_assignment : nil,
-              show_cant_make_it: role_assignments.any?,
+              right_panel: entity_assignments.any? ? :cast_assignment : nil,
+              show_cant_make_it: entity_assignments.any?,
               cant_make_it_person: @person %>
           <% end %>
         </div>

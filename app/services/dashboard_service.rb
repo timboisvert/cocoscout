@@ -160,7 +160,7 @@ class DashboardService
                .joins(:show)
                .where(shows: { production_id: @production.id })
                .where("shows.date_and_time >= ?", Time.current)
-               .includes(:role, :show, :vacated_by, invitations: :person)
+               .includes(:role, :show, invitations: :person)
                .order("shows.date_and_time ASC")
                .map do |vacancy|
                  {

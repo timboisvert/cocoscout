@@ -243,7 +243,7 @@
                     <div class="space-y-1">
                       <% @all_potential_members.each do |member| %>
                         <% is_person = member.is_a?(Person) %>
-                        <% is_vacated = is_person && member.id == @vacated_by_id %>
+                        <% is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id %>
                         <% is_already_cast = is_person ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id) %>
                         <% is_already_invited = is_person && @already_invited_person_ids.include?(member.id) %>
                         <% is_unavailable = is_vacated || is_already_cast || is_already_invited %>
@@ -291,7 +291,7 @@
                     <% @all_potential_members.each do |member| %>
                       <% is_person = member.is_a?(Person) %>
                       <% member_talent_pools = @talent_pools.select { |tp| is_person ? tp.people.include?(member) : tp.talent_pool_memberships.exists?(member: member) } %>
-                      <% is_vacated = is_person && member.id == @vacated_by_id %>
+                      <% is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id %>
                       <% is_already_cast = is_person ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id) %>
                       <% is_already_invited = is_person && @already_invited_person_ids.include?(member.id) %>
                       <% is_unavailable = is_vacated || is_already_cast || is_already_invited %>
@@ -333,7 +333,7 @@
                 <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
                   <% @all_potential_members.each do |member| %>
                     <% is_person = member.is_a?(Person) %>
-                    <% is_vacated = is_person && member.id == @vacated_by_id %>
+                    <% is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id %>
                     <% is_already_cast = is_person ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id) %>
                     <% is_already_invited = is_person && @already_invited_person_ids.include?(member.id) %>
                     <% is_unavailable = is_vacated || is_already_cast || is_already_invited %>

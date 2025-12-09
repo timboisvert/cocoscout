@@ -1,9 +1,7 @@
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
   <div class="flex items-center">
     <%= render "shared/navigation/dashboard_selector", current_dashboard: "production" %>
-  </div>
 
-  <div class="flex items-center mr-2">
     <!-- Production Selector -->
     <% if Current.organization.present? %>
       <%
@@ -14,7 +12,7 @@
       %>
       <% if has_dropdown_content %>
         <div class="relative" data-controller="dropdown">
-          <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-l border-r border-slate-200">
+          <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-r border-slate-200">
             <% if Current.production.present? && !Current.production.new_record? %>
               <% logo_variant = Current.production.safe_logo_variant(:small) %>
               <% if logo_variant %>
@@ -36,7 +34,7 @@
           </button>
       <% else %>
         <!-- Single production, no dropdown - just show the production info -->
-        <div class="flex items-center gap-3 px-3 py-2 h-12 border-l border-r border-slate-200">
+        <div class="flex items-center gap-3 px-3 py-2 h-12 border-r border-slate-200">
           <% if Current.production.present? && !Current.production.new_record? %>
             <% logo_variant = Current.production.safe_logo_variant(:small) %>
             <% if logo_variant %>
@@ -60,7 +58,7 @@
 
       <% if has_dropdown_content %>
 
-        <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+        <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
           <!-- Current Production Section -->
           <% if Current.production.present? && !Current.production.new_record? %>
             <%= link_to edit_manage_production_path(Current.production), data: { turbo: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" do %>
@@ -123,7 +121,9 @@
       </div>
       <% end %> <%# end has_dropdown_content %>
     <% end %>
+  </div>
 
+  <div class="flex items-center mr-2 border-l border-slate-200 h-12">
     <!-- User Profile and Impersonation Banner -->
     <div class="flex items-center gap-3">
       <% if impersonating? %>

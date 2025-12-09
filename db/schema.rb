@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_09_154325) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_09_171911) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -572,10 +572,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_154325) do
     t.datetime "updated_at", null: false
     t.datetime "vacated_at"
     t.integer "vacated_by_id"
+    t.string "vacated_by_type"
     t.index ["role_id"], name: "index_role_vacancies_on_role_id"
     t.index ["show_id", "role_id", "status"], name: "index_role_vacancies_on_show_id_and_role_id_and_status"
     t.index ["show_id"], name: "index_role_vacancies_on_show_id"
     t.index ["status"], name: "index_role_vacancies_on_status"
+    t.index ["vacated_by_type", "vacated_by_id"], name: "index_role_vacancies_on_vacated_by"
   end
 
   create_table "role_vacancy_invitations", force: :cascade do |t|

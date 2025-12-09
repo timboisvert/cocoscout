@@ -16,8 +16,9 @@ module My
       @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
 
       # Get upcoming shows where user or their groups have a role assignment (next 45 days)
-      @upcoming_show_entities = []
+      # Consolidate by show - one row per show with all entity assignments
       end_date = 45.days.from_now
+      show_data_by_id = {}
 
       # Person shows
       person_shows = Show
@@ -28,7 +29,11 @@ module My
                      .order(:date_and_time)
 
       person_shows.each do |show|
-        @upcoming_show_entities << { show: show, entity_type: "person", entity: @person }
+        assignment = show.show_person_role_assignments.find { |a| a.assignable_type == "Person" && a.assignable_id == @person.id }
+        if assignment
+          show_data_by_id[show.id] ||= { show: show, assignments: [] }
+          show_data_by_id[show.id][:assignments] << { type: "person", entity: @person, assignment: assignment }
+        end
       end
 
       # Group shows
@@ -47,12 +52,15 @@ module My
           assignment = show.show_person_role_assignments.find do |a|
             a.assignable_type == "Group" && group_ids.include?(a.assignable_id)
           end
-          group = groups_by_id[assignment.assignable_id]
-          @upcoming_show_entities << { show: show, entity_type: "group", entity: group }
+          if assignment
+            group = groups_by_id[assignment.assignable_id]
+            show_data_by_id[show.id] ||= { show: show, assignments: [] }
+            show_data_by_id[show.id][:assignments] << { type: "group", entity: group, assignment: assignment }
+          end
         end
       end
 
-      @upcoming_show_entities = @upcoming_show_entities.sort_by { |item| item[:show].date_and_time }
+      @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
       # Upcoming audition sessions for person and groups - batch query
       @upcoming_audition_entities = []

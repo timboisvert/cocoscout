@@ -53,6 +53,9 @@ module Manage
                       .where(id: group_ids)
                       .includes(profile_headshots: { image_attachment: :blob })
                       .index_by(&:id)
+
+      # Load open vacancies for this show
+      @open_vacancies = @show.role_vacancies.open.includes(:role).order("roles.position ASC").to_a
     end
 
     def calendar

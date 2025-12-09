@@ -99,10 +99,10 @@ module My
         @productions = Production.where(id: production_ids).order(:name)
       end
 
-      # Build show-entity rows: one row per entity-show combination
-      # This is the primary data structure for rendering - each row is a show for a specific entity
+      # Build show-entity rows: one row per show with all entity assignments consolidated
+      # This is the primary data structure for rendering - each row is a show with all its assignments
       shows_by_id = @shows.index_by(&:id)
-      @show_entity_rows = []
+      show_rows_by_id = {}
 
       shows_with_source.each do |item|
         show = shows_by_id[item[:show].id]
@@ -121,22 +121,29 @@ module My
           end
         end
 
-        # For "my_assignments" filter, only show rows where entity has an assignment
+        # For "my_assignments" filter, only include if entity has an assignment
         next if @filter == "my_assignments" && entity_assignments.empty?
 
-        @show_entity_rows << {
-          show: show,
-          entity: entity,
-          entity_type: entity_type,
-          assignments: entity_assignments
-        }
+        # Consolidate by show - add to existing row or create new one
+        if show_rows_by_id[show.id]
+          # Add this entity's assignments to the existing row
+          entity_assignments.each do |ea|
+            # Avoid duplicates
+            unless show_rows_by_id[show.id][:assignments].any? { |a| a[:assignment].id == ea[:assignment].id }
+              show_rows_by_id[show.id][:assignments] << ea
+            end
+          end
+        else
+          show_rows_by_id[show.id] = {
+            show: show,
+            assignments: entity_assignments.dup
+          }
+        end
       end
 
-      # Sort by show date, then by entity type (person first, then groups)
-      @show_entity_rows.sort_by! { |row| [row[:show].date_and_time, row[:entity_type] == "Person" ? 0 : 1, row[:entity].name] }
-
-      # Remove duplicate show-entity pairs (same show might appear from multiple talent pools)
-      @show_entity_rows.uniq! { |row| [row[:show].id, row[:entity_type], row[:entity].id] }
+      # Convert to array and sort by show date
+      @show_entity_rows = show_rows_by_id.values
+      @show_entity_rows.sort_by! { |row| row[:show].date_and_time }
 
       # Build a mapping of shows to their entities using preloaded data (no additional queries)
       shows_by_entity_key = Hash.new { |h, k| h[k] = Set.new }

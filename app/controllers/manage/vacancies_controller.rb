@@ -32,7 +32,7 @@ module Manage
 
       # Track the member who vacated the role (to show grayed out)
       @vacated_by_id = @vacancy.vacated_by_id
-      @vacated_by_type = "Person" # Currently vacated_by is always a Person
+      @vacated_by_type = @vacancy.vacated_by_type
 
       # Track members who have already been invited (to show grayed out)
       # Note: Currently invitations only support people, not groups
@@ -48,7 +48,7 @@ module Manage
 
       # Sort so unavailable members appear at the bottom
       @all_potential_members = all_members.sort_by do |member|
-        is_vacated = member.is_a?(Person) && member.id == @vacated_by_id
+        is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id
         is_already_cast = member.is_a?(Person) ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id)
         is_already_invited = member.is_a?(Person) && @already_invited_person_ids.include?(member.id)
         is_unavailable = is_vacated || is_already_cast || is_already_invited
@@ -57,7 +57,7 @@ module Manage
 
       # Members who can actually be invited (excludes already cast, already invited, and vacated)
       @eligible_members = @all_potential_members.reject do |member|
-        is_vacated = member.is_a?(Person) && member.id == @vacated_by_id
+        is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id
         is_already_cast = member.is_a?(Person) ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id)
         is_already_invited = member.is_a?(Person) && @already_invited_person_ids.include?(member.id)
         is_vacated || is_already_cast || is_already_invited
