@@ -20,6 +20,9 @@ module Manage
 
       # Track edit mode
       @edit_mode = params[:edit] == "true"
+
+      # Load email logs for the Emails tab
+      @email_logs = @person.email_logs.recent.limit(10)
     end
 
     def new

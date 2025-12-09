@@ -20,6 +20,9 @@ module Manage
 
       # Check for edit mode
       @edit_mode = params[:edit] == "true"
+
+      # Load email logs for the Emails tab
+      @email_logs = @group.email_logs.recent.limit(10)
     end
 
     def update_availability
