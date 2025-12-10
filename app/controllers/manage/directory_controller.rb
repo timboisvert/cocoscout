@@ -146,9 +146,20 @@ module Manage
       # Remove duplicates
       people_to_email.uniq!
 
+      # Create email batch if sending to multiple people
+      email_batch = nil
+      if people_to_email.size > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: subject,
+          recipient_count: people_to_email.size,
+          sent_at: Time.current
+        )
+      end
+
       # Send emails
       people_to_email.each do |person|
-        Manage::ContactMailer.send_message(person, subject, body_html, Current.user).deliver_later
+        Manage::ContactMailer.send_message(person, subject, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
       end
 
       redirect_to manage_directory_path,

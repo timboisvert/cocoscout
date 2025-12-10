@@ -20,6 +20,15 @@ module Manage
 
       # Check for edit mode
       @edit_mode = params[:edit] == "true"
+
+      # Load email logs for this group (paginated, with search)
+      email_logs_query = EmailLog.for_recipient_entity(@group).recent
+      if params[:search_messages].present?
+        search_term = "%#{params[:search_messages]}%"
+        email_logs_query = email_logs_query.where("subject LIKE ? OR body LIKE ?", search_term, search_term)
+      end
+      @email_logs_pagy, @email_logs = pagy(email_logs_query, items: 20, page_param: :messages_page)
+      @search_messages_query = params[:search_messages]
     end
 
     def update_availability

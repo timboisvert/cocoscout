@@ -29,6 +29,21 @@ class ApplicationMailer < ActionMailer::Base
       headers["X-Mailer-Action"] = action_name
     end
 
+    # Add recipient entity tracking for email logs
+    recipient_entity = find_recipient_entity
+    if recipient_entity
+      headers["X-Recipient-Entity-Type"] = recipient_entity.class.name
+      headers["X-Recipient-Entity-ID"] = recipient_entity.id.to_s
+    end
+
+    # Add email batch ID if set via params, instance method, or thread-local storage
+    batch_id = params[:email_batch_id] ||
+               (respond_to?(:find_email_batch_id, true) ? find_email_batch_id : nil) ||
+               Thread.current[:email_batch_id]
+    if batch_id
+      headers["X-Email-Batch-ID"] = batch_id.to_s
+    end
+
     super(headers, &block)
   end
 
@@ -41,5 +56,11 @@ class ApplicationMailer < ActionMailer::Base
       (@team_invitation && User.find_by(email_address: @team_invitation.email)) ||
       (@person_invitation && Person.find_by(email: @person_invitation.email)&.user) ||
       @sender
+  end
+
+  def find_recipient_entity
+    # Find the recipient entity (Person or Group) from instance variables
+    # Check @user.person as fallback for mailers that only set @user
+    @person || @group || @recipient || @user&.person
   end
 end

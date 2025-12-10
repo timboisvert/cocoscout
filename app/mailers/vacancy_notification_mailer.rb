@@ -4,6 +4,7 @@ class VacancyNotificationMailer < ApplicationMailer
   def vacancy_notification
     @vacancy = params[:vacancy]
     @user = params[:user]
+    @person = @user.person # For recipient entity tracking
     @event = params[:event]
     @role = @vacancy.role
     @show = @vacancy.show

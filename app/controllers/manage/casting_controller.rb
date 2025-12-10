@@ -195,9 +195,20 @@ module Manage
       # Convert rich text to HTML string for serialization in background jobs
       body_html = @email_draft.body.to_s
 
+      # Create email batch if sending to multiple people
+      email_batch = nil
+      if people_to_email.size > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: @email_draft.title,
+          recipient_count: people_to_email.size,
+          sent_at: Time.current
+        )
+      end
+
       # Send email to each person
       people_to_email.each do |person|
-        Manage::CastingMailer.cast_email(person, @show, @email_draft.title, body_html, Current.user).deliver_later
+        Manage::CastingMailer.cast_email(person, @show, @email_draft.title, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
       end
 
       redirect_to manage_production_show_path(@production, @show),

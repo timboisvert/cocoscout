@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_09_171911) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -147,6 +147,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_171911) do
     t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
   end
 
+  create_table "email_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "mailer_action"
+    t.string "mailer_class"
+    t.integer "recipient_count"
+    t.datetime "sent_at"
+    t.string "subject"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_email_batches_on_user_id"
+  end
+
   create_table "email_drafts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "emailable_id"
@@ -174,17 +186,22 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_171911) do
     t.datetime "created_at", null: false
     t.datetime "delivered_at"
     t.string "delivery_status", default: "pending"
+    t.integer "email_batch_id"
     t.text "error_message"
     t.string "mailer_action"
     t.string "mailer_class"
     t.string "message_id"
     t.string "recipient", null: false
+    t.integer "recipient_entity_id"
+    t.string "recipient_entity_type"
     t.datetime "sent_at"
     t.string "subject"
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
+    t.index ["email_batch_id"], name: "index_email_logs_on_email_batch_id"
     t.index ["message_id"], name: "index_email_logs_on_message_id"
     t.index ["recipient"], name: "index_email_logs_on_recipient"
+    t.index ["recipient_entity_type", "recipient_entity_id"], name: "index_email_logs_on_recipient_entity"
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
     t.index ["sent_at"], name: "index_email_logs_on_sent_at"
     t.index ["user_id"], name: "index_email_logs_on_user_id"
@@ -774,8 +791,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_171911) do
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "cast_assignment_stages", "talent_pools"
+  add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
+  add_foreign_key "email_logs", "email_batches"
   add_foreign_key "email_logs", "users"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"

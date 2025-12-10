@@ -197,6 +197,8 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :email_logs, only: [:show]
+
     resources :locations do
       member do
         get :cannot_delete

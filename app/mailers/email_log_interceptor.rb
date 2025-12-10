@@ -17,6 +17,18 @@ class EmailLogInterceptor
       return
     end
 
+    # Extract recipient entity if provided
+    recipient_entity = nil
+    recipient_entity_type = message.header["X-Recipient-Entity-Type"]&.value
+    recipient_entity_id = message.header["X-Recipient-Entity-ID"]&.value
+    if recipient_entity_type.present? && recipient_entity_id.present?
+      recipient_entity = recipient_entity_type.constantize.find_by(id: recipient_entity_id)
+    end
+
+    # Extract email batch if provided
+    email_batch_id = message.header["X-Email-Batch-ID"]&.value
+    email_batch = EmailBatch.find_by(id: email_batch_id) if email_batch_id.present?
+
     # Create the email log
     EmailLog.create!(
       user: user,
@@ -27,7 +39,9 @@ class EmailLogInterceptor
       mailer_action: message.header["X-Mailer-Action"]&.value,
       message_id: message.message_id,
       sent_at: Time.current,
-      delivery_status: "queued" # Changed from "sent" - will be updated when actually delivered
+      delivery_status: "queued",
+      recipient_entity: recipient_entity,
+      email_batch: email_batch
     )
   rescue StandardError => e
     # Log the error but don't prevent email delivery

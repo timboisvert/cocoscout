@@ -232,6 +232,23 @@ module Manage
 
       invitation_count = 0
 
+      # Calculate total email recipients for batch creation
+      email_recipients_count = person_recipients.count { |p| p.user.present? }
+      group_recipients.each do |group|
+        email_recipients_count += group.group_memberships.select(&:notifications_enabled?).count { |m| m.person.user.present? }
+      end
+
+      # Create email batch if sending to multiple people
+      email_batch = nil
+      if email_recipients_count > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: subject_template,
+          recipient_count: email_recipients_count,
+          sent_at: Time.current
+        )
+      end
+
       # Create invitations for people and send emails
       person_recipients.each do |person|
         QuestionnaireInvitation.create!(
@@ -243,7 +260,7 @@ module Manage
         # Send email if person has a user account
         if person.user
           Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
-                                                 message_template).deliver_later
+                                                 message_template, email_batch_id: email_batch&.id).deliver_later
         end
       end
 
@@ -260,7 +277,7 @@ module Manage
         members_with_notifications.each do |person|
           if person.user
             Manage::QuestionnaireMailer.invitation(person, @questionnaire, @production, subject_template,
-                                                   message_template).deliver_later
+                                                   message_template, email_batch_id: email_batch&.id).deliver_later
           end
         end
       end

@@ -6,7 +6,8 @@ class VacancyNotificationJob < ApplicationJob
   # Notify team members about a vacancy event
   # @param vacancy_id [Integer] The ID of the RoleVacancy
   # @param event [String] The type of event: "created" or "filled"
-  def perform(vacancy_id, event)
+  # @param sender_user_id [Integer, nil] The ID of the user who triggered the event (for batch tracking)
+  def perform(vacancy_id, event, sender_user_id = nil)
     vacancy = RoleVacancy.find_by(id: vacancy_id)
     return unless vacancy
 
@@ -15,9 +16,38 @@ class VacancyNotificationJob < ApplicationJob
 
     # Find all team members with notifications enabled for this production
     recipients = find_notifiable_users(production)
+    return if recipients.empty?
+
+    # Create an email batch if we have multiple recipients and a sender
+    sender_user = User.find_by(id: sender_user_id) if sender_user_id
+    sender_user ||= vacancy.closed_by || vacancy.created_by # Fallback to vacancy user
+
+    email_batch = nil
+    if recipients.size > 1 && sender_user
+      role = vacancy.role
+      show = vacancy.show
+      subject = case event
+      when "created"
+        "[#{production.name}] New vacancy: #{role.name} for #{show.date_and_time.strftime('%b %-d')}"
+      when "filled"
+        "[#{production.name}] Vacancy filled: #{role.name} for #{show.date_and_time.strftime('%b %-d')}"
+      else
+        "[#{production.name}] Vacancy update: #{role.name}"
+      end
+
+      email_batch = EmailBatch.create!(
+        user: sender_user,
+        subject: subject,
+        recipient_count: recipients.size,
+        sent_at: Time.current
+      )
+    end
 
     recipients.each do |user|
-      VacancyNotificationMailer.with(vacancy: vacancy, user: user, event: event)
+      mailer_params = { vacancy: vacancy, user: user, event: event }
+      mailer_params[:email_batch_id] = email_batch.id if email_batch
+
+      VacancyNotificationMailer.with(mailer_params)
                                .vacancy_notification
                                .deliver_later
     end
