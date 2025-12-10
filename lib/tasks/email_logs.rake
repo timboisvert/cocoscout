@@ -8,13 +8,20 @@ namespace :email_logs do
     # Group by recipient + subject + approximate sent_at (within same second)
     duplicates_deleted = 0
 
-    EmailLog.select(:recipient, :subject, "strftime('%Y-%m-%d %H:%M:%S', sent_at) as sent_second")
-            .group(:recipient, :subject, "strftime('%Y-%m-%d %H:%M:%S', sent_at)")
+    # Use database-agnostic date truncation
+    date_trunc_sql = if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgresql")
+      "date_trunc('second', sent_at)"
+    else
+      "strftime('%Y-%m-%d %H:%M:%S', sent_at)"
+    end
+
+    EmailLog.select(:recipient, :subject, Arel.sql("#{date_trunc_sql} as sent_second"))
+            .group(:recipient, :subject, Arel.sql(date_trunc_sql))
             .having("COUNT(*) > 1")
             .each do |group|
       # Find all records matching this group
       records = EmailLog.where(recipient: group.recipient, subject: group.subject)
-                        .where("strftime('%Y-%m-%d %H:%M:%S', sent_at) = ?", group.sent_second)
+                        .where("#{date_trunc_sql} = ?", group.sent_second)
                         .order(:id)
 
       # Keep the first, delete the rest
@@ -99,17 +106,24 @@ namespace :email_logs do
     batches_created = 0
     logs_updated = 0
 
+    # Use database-agnostic date truncation
+    date_trunc_sql = if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgresql")
+      "date_trunc('minute', sent_at)"
+    else
+      "strftime('%Y-%m-%d %H:%M', sent_at)"
+    end
+
     # Find potential batch groups: same subject, within same minute
     EmailLog.where(email_batch_id: nil)
             .where.not(subject: nil)
-            .group(:subject, Arel.sql("strftime('%Y-%m-%d %H:%M', sent_at)"))
+            .group(:subject, Arel.sql(date_trunc_sql))
             .having("COUNT(*) > 1")
-            .pluck(:subject, Arel.sql("strftime('%Y-%m-%d %H:%M', sent_at)"))
+            .pluck(:subject, Arel.sql(date_trunc_sql))
             .each do |subject, sent_minute|
       # Find all records in this group
       records = EmailLog.where(email_batch_id: nil)
                         .where(subject: subject)
-                        .where("strftime('%Y-%m-%d %H:%M', sent_at) = ?", sent_minute)
+                        .where("#{date_trunc_sql} = ?", sent_minute)
 
       count = records.count
       next if count <= 1
@@ -125,7 +139,7 @@ namespace :email_logs do
       end
 
       # Parse the sent_minute back to a time
-      sent_at = Time.zone.parse(sent_minute) rescue Time.current
+      sent_at = sent_minute.is_a?(Time) ? sent_minute : (Time.zone.parse(sent_minute.to_s) rescue Time.current)
 
       # Create a batch for this group
       batch = EmailBatch.create!(
