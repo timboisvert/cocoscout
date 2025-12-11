@@ -33,6 +33,20 @@ export default class extends Controller {
     select(e) {
         e.preventDefault();
         const idx = parseInt(e.target.dataset.index, 10);
+
+        // Check if we need to reload the page to clear pagination
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasMessagesPage = urlParams.has('messages_page');
+
+        // If we have pagination params and are switching tabs, reload without them
+        if (hasMessagesPage) {
+            const url = new URL(window.location.href);
+            url.search = '';
+            url.hash = `tab-${idx}`;
+            window.location.href = url.toString();
+            return;
+        }
+
         this.show(idx);
 
         // Update the hidden field if it exists
@@ -40,7 +54,7 @@ export default class extends Controller {
             this.hiddenFieldTarget.value = idx;
         }
 
-        // Update the URL hash without triggering a page scroll
+        // Update the URL hash
         history.replaceState(null, '', `#tab-${idx}`);
     } show(idx) {
         this.tabTargets.forEach((tab, i) => {

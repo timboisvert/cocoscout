@@ -44,6 +44,12 @@ class ApplicationMailer < ActionMailer::Base
       headers["X-Email-Batch-ID"] = batch_id.to_s
     end
 
+    # Add organization ID for scoping email logs
+    organization = find_organization
+    if organization
+      headers["X-Organization-ID"] = organization.id.to_s
+    end
+
     super(headers, &block)
   end
 
@@ -62,5 +68,17 @@ class ApplicationMailer < ActionMailer::Base
     # Find the recipient entity (Person or Group) from instance variables
     # Check @user.person as fallback for mailers that only set @user
     @person || @group || @recipient || @user&.person
+  end
+
+  def find_organization
+    # Find the organization from instance variables or through associations
+    # Check direct instance variable first, then look through related objects
+    @organization ||
+      @show&.organization ||
+      @production&.organization ||
+      @person&.organizations&.first ||
+      @group&.organization ||
+      @team_invitation&.organization ||
+      Current.organization
   end
 end

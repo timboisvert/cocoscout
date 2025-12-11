@@ -29,6 +29,10 @@ class EmailLogInterceptor
     email_batch_id = message.header["X-Email-Batch-ID"]&.value
     email_batch = EmailBatch.find_by(id: email_batch_id) if email_batch_id.present?
 
+    # Extract organization if provided
+    organization_id = message.header["X-Organization-ID"]&.value
+    organization = Organization.find_by(id: organization_id) if organization_id.present?
+
     # Create the email log
     EmailLog.create!(
       user: user,
@@ -41,7 +45,8 @@ class EmailLogInterceptor
       sent_at: Time.current,
       delivery_status: "queued",
       recipient_entity: recipient_entity,
-      email_batch: email_batch
+      email_batch: email_batch,
+      organization: organization
     )
   rescue StandardError => e
     # Log the error but don't prevent email delivery

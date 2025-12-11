@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_11_010000) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -191,6 +191,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_010000) do
     t.string "mailer_action"
     t.string "mailer_class"
     t.string "message_id"
+    t.integer "organization_id"
     t.string "recipient", null: false
     t.integer "recipient_entity_id"
     t.string "recipient_entity_type"
@@ -200,6 +201,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_010000) do
     t.integer "user_id", null: false
     t.index ["email_batch_id"], name: "index_email_logs_on_email_batch_id"
     t.index ["message_id"], name: "index_email_logs_on_message_id"
+    t.index ["organization_id"], name: "index_email_logs_on_organization_id"
     t.index ["recipient"], name: "index_email_logs_on_recipient"
     t.index ["recipient_entity_type", "recipient_entity_id"], name: "index_email_logs_on_recipient_entity"
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
@@ -815,6 +817,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_010000) do
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
   add_foreign_key "email_logs", "email_batches"
+  add_foreign_key "email_logs", "organizations"
   add_foreign_key "email_logs", "users"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"

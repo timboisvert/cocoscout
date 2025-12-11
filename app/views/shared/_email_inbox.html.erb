@@ -95,12 +95,12 @@
         </div>
         <div class="flex gap-2">
           <% if email_logs_pagy.previous %>
-            <%= link_to "← Previous", url_for(messages_page: email_logs_pagy.previous, tab: 3, search_messages: local_assigns[:search_query]), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+            <%= link_to "← Previous", url_for(messages_page: email_logs_pagy.previous, tab: 3, search_messages: local_assigns[:search_query]), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
           <% else %>
             <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">← Previous</span>
           <% end %>
           <% if email_logs_pagy.next %>
-            <%= link_to "Next →", url_for(messages_page: email_logs_pagy.next, tab: 3, search_messages: local_assigns[:search_query]), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+            <%= link_to "Next →", url_for(messages_page: email_logs_pagy.next, tab: 3, search_messages: local_assigns[:search_query]), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
           <% else %>
             <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Next →</span>
           <% end %>

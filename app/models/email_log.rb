@@ -4,6 +4,7 @@ class EmailLog < ApplicationRecord
   belongs_to :user
   belongs_to :recipient_entity, polymorphic: true, optional: true
   belongs_to :email_batch, optional: true
+  belongs_to :organization, optional: true
 
   validates :recipient, presence: true
 
@@ -12,6 +13,7 @@ class EmailLog < ApplicationRecord
   scope :failed, -> { where(delivery_status: "failed") }
   scope :for_user, ->(user) { where(user: user) }
   scope :for_recipient_entity, ->(entity) { where(recipient_entity: entity) }
+  scope :for_organization, ->(org) { where(organization: org) }
   scope :recent, -> { order(sent_at: :desc) }
 
   def delivered?
