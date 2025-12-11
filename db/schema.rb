@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_11_002853) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_11_010000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -662,6 +662,22 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_002853) do
     t.index ["show_id"], name: "index_show_availabilities_on_show_id"
   end
 
+  create_table "show_cast_notifications", force: :cascade do |t|
+    t.integer "assignable_id", null: false
+    t.string "assignable_type", null: false
+    t.datetime "created_at", null: false
+    t.text "email_body"
+    t.integer "notification_type", default: 0, null: false
+    t.datetime "notified_at", null: false
+    t.integer "role_id", null: false
+    t.integer "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignable_type", "assignable_id"], name: "index_show_cast_notifications_on_assignable"
+    t.index ["role_id"], name: "index_show_cast_notifications_on_role_id"
+    t.index ["show_id", "assignable_type", "assignable_id", "role_id"], name: "idx_show_cast_notifications_unique", unique: true
+    t.index ["show_id"], name: "index_show_cast_notifications_on_show_id"
+  end
+
   create_table "show_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "show_id", null: false
@@ -688,6 +704,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_002853) do
   create_table "shows", force: :cascade do |t|
     t.boolean "canceled", default: false, null: false
     t.boolean "casting_enabled", default: true, null: false
+    t.datetime "casting_finalized_at"
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
     t.string "event_type"
@@ -831,6 +848,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_002853) do
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_availabilities", "shows"
+  add_foreign_key "show_cast_notifications", "roles"
+  add_foreign_key "show_cast_notifications", "shows"
   add_foreign_key "show_links", "shows"
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"

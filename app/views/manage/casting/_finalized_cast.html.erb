@@ -1,0 +1,76 @@
+<%# Finalized cast view - read-only compact display %>
+<%
+  roles ||= show.available_roles.to_a
+  assignments_by_role_id ||= show.show_person_role_assignments.group_by(&:role_id)
+  people_by_id ||= {}
+  groups_by_id ||= {}
+%>
+
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-800">Casting Finalized</h2>
+    <span class="text-xs text-gray-500">
+      Finalized <%= time_ago_in_words(show.casting_finalized_at) %> ago
+    </span>
+  </div>
+
+  <div class="p-4">
+    <p class="text-sm text-gray-600 mb-4">
+      The cast for this show has been finalized and notifications have been sent.
+    </p>
+
+    <%# Compact cast list %>
+    <div class="space-y-2 mb-6">
+      <% roles.each do |role| %>
+        <%
+          assignments = assignments_by_role_id[role.id] || []
+          assignment = assignments.first
+        %>
+        <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+          <% if assignment %>
+            <%
+              assignable = if assignment.assignable_type == "Person"
+                people_by_id[assignment.assignable_id] || assignment.assignable
+              else
+                groups_by_id[assignment.assignable_id] || assignment.assignable
+              end
+            %>
+            <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                <%= assignable.initials %>
+              </div>
+            <% end %>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm truncate"><%= assignable.name %></div>
+              <div class="text-xs text-gray-500"><%= role.name %></div>
+            </div>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">
+              ?
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-400 text-sm">Not assigned</div>
+              <div class="text-xs text-gray-400"><%= role.name %></div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Make Changes button %>
+    <div class="flex items-center gap-3">
+      <%= button_to manage_production_reopen_casting_path(production, show.id),
+          method: :patch,
+          data: { turbo_confirm: "Are you sure you want to reopen casting for this show? You can make changes and finalize again when ready." },
+          form: { class: "inline" } do %>
+        <%= render "shared/button", text: "Make Changes", variant: "primary", size: "medium", type: :submit %>
+      <% end %>
+      <span class="text-xs text-gray-500">
+        You'll need to finalize again after making changes.
+      </span>
+    </div>
+  </div>
+</div>

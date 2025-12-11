@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy]
+                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting]
 
     def index
       @upcoming_shows = @production.shows
@@ -108,6 +108,18 @@ module Manage
 
       # Build set of assigned member keys for quick lookup
       @assigned_member_keys = Set.new(@assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
+
+      # Create email drafts for finalization section
+      if @show.fully_cast? && !@show.casting_finalized?
+        @cast_email_draft = EmailDraft.new(
+          title: default_cast_email_subject,
+          body: default_cast_email_body
+        )
+        @removed_email_draft = EmailDraft.new(
+          title: default_removed_email_subject,
+          body: default_removed_email_body
+        )
+      end
     end
 
     def contact_cast
@@ -256,9 +268,16 @@ module Manage
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
+      # Render finalize section if fully cast
+      finalize_section_html = nil
+      if percentage == 100
+        finalize_section_html = render_finalize_section_html
+      end
+
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        finalize_section_html: finalize_section_html,
         progress: {
           assignment_count: assignment_count,
           role_count: role_count,
@@ -302,9 +321,16 @@ module Manage
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
+      # Render finalize section if fully cast
+      finalize_section_html = nil
+      if percentage == 100
+        finalize_section_html = render_finalize_section_html
+      end
+
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        finalize_section_html: finalize_section_html,
         assignable_type: removed_assignable_type,
         assignable_id: removed_assignable_id,
         person_id: removed_assignable_id, # Backward compatibility
@@ -345,6 +371,9 @@ module Manage
 
         # Remove the assignment
         assignment.destroy!
+
+        # Unfinalize casting since we now have an open role
+        @show.reopen_casting! if @show.casting_finalized?
       end
 
       # Re-render the UI
@@ -359,11 +388,18 @@ module Manage
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
+      # Render finalize section if fully cast
+      finalize_section_html = nil
+      if percentage == 100
+        finalize_section_html = render_finalize_section_html
+      end
+
       render json: {
         success: true,
         vacancy_id: @vacancy.id,
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        finalize_section_html: finalize_section_html,
         progress: {
           assignment_count: assignment_count,
           role_count: role_count,
@@ -372,6 +408,66 @@ module Manage
       }
     rescue ActiveRecord::RecordInvalid => e
       render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    def finalize_casting
+      unless @show.fully_cast?
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    alert: "Cannot finalize casting until all roles are filled."
+        return
+      end
+
+      # Get email content from form params (rich text uses email_draft nested params)
+      cast_draft_params = params[:cast_email_draft] || {}
+      removed_draft_params = params[:removed_email_draft] || {}
+
+      cast_subject = cast_draft_params[:title].presence || default_cast_email_subject
+      cast_body = cast_draft_params[:body].to_s.presence || default_cast_email_body
+      removed_subject = removed_draft_params[:title].presence || default_removed_email_subject
+      removed_body = removed_draft_params[:body].to_s.presence || default_removed_email_body
+
+      # Get current cast members who need notification
+      unnotified_assignments = @show.unnotified_cast_members
+      cast_to_notify = unnotified_assignments.map { |a| [ a.assignable, a.role ] }
+
+      # Get removed cast members who need notification
+      removed_members = @show.removed_cast_members
+      # For removed members, we need to find what role they were previously notified for
+      removed_to_notify = removed_members.map do |assignable|
+        # Find the most recent cast notification for this assignable
+        prev_notification = @show.show_cast_notifications
+                                  .cast_notifications
+                                  .where(assignable: assignable)
+                                  .order(notified_at: :desc)
+                                  .first
+        [ assignable, prev_notification&.role ]
+      end.compact
+
+      # Send cast notification emails
+      if cast_to_notify.any?
+        send_casting_emails(cast_to_notify, cast_body, cast_subject, :cast)
+      end
+
+      # Send removed notification emails
+      if removed_to_notify.any?
+        send_casting_emails(removed_to_notify, removed_body, removed_subject, :removed)
+      end
+
+      # Close any open vacancies since all roles are now filled
+      @show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
+
+      # Mark casting as finalized
+      @show.finalize_casting!
+
+      redirect_to manage_production_show_cast_path(@production, @show),
+                  notice: "Casting finalized and notifications sent!"
+    end
+
+    def reopen_casting
+      @show.reopen_casting!
+
+      redirect_to manage_production_show_cast_path(@production, @show),
+                  notice: "Casting reopened. You can now make changes."
     end
 
     private
@@ -397,8 +493,101 @@ module Manage
       availability
     end
 
+    def render_finalize_section_html
+      # Create email drafts for the finalize section
+      cast_email_draft = EmailDraft.new(
+        title: default_cast_email_subject,
+        body: default_cast_email_body
+      )
+      removed_email_draft = EmailDraft.new(
+        title: default_removed_email_subject,
+        body: default_removed_email_body
+      )
+
+      render_to_string(
+        partial: "manage/casting/finalize_section",
+        locals: {
+          show: @show,
+          production: @production,
+          cast_email_draft: cast_email_draft,
+          removed_email_draft: removed_email_draft
+        }
+      )
+    end
+
     def email_draft_params
       params.require(:email_draft).permit(:title, :body)
+    end
+
+    def send_casting_emails(assignables_with_roles, email_body, subject, notification_type)
+      assignables_with_roles.each do |assignable, role|
+        # For groups, email all members with notifications enabled
+        recipients = if assignable.is_a?(Group)
+                       assignable.group_memberships.select(&:notifications_enabled?).map(&:person)
+        else
+                       [ assignable ]
+        end
+
+        recipients.each do |person|
+          next unless person.email.present?
+
+          # Personalize the email body
+          personalized_body = email_body.gsub("[Name]", person.name)
+                                         .gsub("[Role]", role.name)
+                                         .gsub("[Show]", @show.secondary_name.presence || @show.event_type.titleize)
+                                         .gsub("[Date]", @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"))
+                                         .gsub("[Production]", @production.name)
+
+          if notification_type == :cast
+            Manage::CastingMailer.cast_notification(person, @show, personalized_body, subject).deliver_later
+          else
+            Manage::CastingMailer.removed_notification(person, @show, personalized_body, subject).deliver_later
+          end
+        end
+
+        # Record the notification (update existing or create new)
+        notification = @show.show_cast_notifications.find_or_initialize_by(
+          assignable: assignable,
+          role: role
+        )
+        notification.update!(
+          notification_type: notification_type,
+          notified_at: Time.current,
+          email_body: email_body
+        )
+      end
+    end
+
+    def default_cast_email_subject
+      "Cast Confirmation: #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+    end
+
+    def default_cast_email_body
+      show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+      <<~BODY
+        <p>You have been cast as [Role] for #{@production.name}.</p>
+
+        <p><strong>Show Details:</strong><br>
+        Date: #{show_date}<br>
+        Role: [Role]</p>
+
+        <p>Please confirm your availability for this show. If you have any scheduling conflicts or questions, contact us as soon as possible.</p>
+      BODY
+    end
+
+    def default_removed_email_subject
+      "Casting Update - #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+    end
+
+    def default_removed_email_body
+      show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+      <<~BODY
+        <p>There has been a change to the casting for #{@production.name} on #{show_date}.</p>
+
+        <p>You are no longer cast for this show.</p>
+
+        <p>If you have any questions, please contact us.</p>
+      BODY
     end
   end
 end

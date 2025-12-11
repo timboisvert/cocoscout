@@ -11,6 +11,15 @@ trix-editor {
   outline: none;
 }
 
+/* Add spacing between paragraphs */
+trix-editor p {
+  margin-bottom: 0.75em;
+}
+
+trix-editor p:last-child {
+  margin-bottom: 0;
+}
+
 /* Restore list styles inside Trix editor (Tailwind resets these) */
 trix-editor ul {
   list-style-type: disc;

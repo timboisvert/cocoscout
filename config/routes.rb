@@ -293,6 +293,8 @@ Rails.application.routes.draw do
       post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
       post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
       post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
+      post "casting/shows/:show_id/finalize", to: "casting#finalize_casting", as: "finalize_casting"
+      patch "casting/shows/:show_id/reopen", to: "casting#reopen_casting", as: "reopen_casting"
 
       # Vacancies management (detail and actions only - no index)
       resources :vacancies, only: %i[show] do

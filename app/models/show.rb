@@ -35,6 +35,8 @@ class Show < ApplicationRecord
 
   has_many :role_vacancies, dependent: :destroy
 
+  has_many :show_cast_notifications, dependent: :destroy
+
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
@@ -81,6 +83,72 @@ class Show < ApplicationRecord
   # Check if this show is in the past
   def past?
     date_and_time < Time.current
+  end
+
+  # Check if casting has been finalized for this show
+  def casting_finalized?
+    casting_finalized_at.present?
+  end
+
+  # Reopen casting for this show (clears finalization date)
+  def reopen_casting!
+    update!(casting_finalized_at: nil)
+  end
+
+  # Finalize casting and record the timestamp
+  def finalize_casting!
+    update!(casting_finalized_at: Time.current)
+  end
+
+  # Check if show is fully cast (all roles have assignments)
+  def fully_cast?
+    available_roles.count == show_person_role_assignments.count
+  end
+
+  # Get assignables that were previously notified as cast but are no longer in current cast
+  def removed_cast_members
+    # Get all assignables from previous cast notifications
+    previously_notified = show_cast_notifications.cast_notifications
+                                                  .pluck(:assignable_type, :assignable_id)
+                                                  .map { |type, id| [ type, id ] }
+                                                  .to_set
+
+    # Get current cast assignments
+    current_cast = show_person_role_assignments
+                     .pluck(:assignable_type, :assignable_id)
+                     .map { |type, id| [ type, id ] }
+                     .to_set
+
+    # Find who was previously notified but is no longer in current cast
+    removed = previously_notified - current_cast
+
+    # Load the actual assignable objects
+    removed.map do |type, id|
+      type.constantize.find_by(id: id)
+    end.compact
+  end
+
+  # Get current cast members who haven't been notified yet
+  def unnotified_cast_members
+    # Get all assignables from current cast
+    current_cast = show_person_role_assignments
+                     .pluck(:assignable_type, :assignable_id)
+                     .map { |type, id| [ type, id ] }
+                     .to_set
+
+    # Get all assignables already notified as cast
+    already_notified = show_cast_notifications.cast_notifications
+                                               .pluck(:assignable_type, :assignable_id)
+                                               .map { |type, id| [ type, id ] }
+                                               .to_set
+
+    # Find who is in current cast but hasn't been notified
+    unnotified = current_cast - already_notified
+
+    # Load the actual assignable objects with their assignments
+    show_person_role_assignments.select do |assignment|
+      unnotified.include?([ assignment.assignable_type, assignment.assignable_id ])
+    end
   end
 
   def safe_poster_variant(variant_name)

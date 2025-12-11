@@ -74,6 +74,9 @@ class VacancyController < ApplicationController
 
         # Remove the assignment
         assignment.destroy!
+
+        # Unfinalize casting since we now have an open role
+        @show.reopen_casting! if @show.casting_finalized?
       end
     end
 

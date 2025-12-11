@@ -12,6 +12,32 @@ module Manage
       mail(to: person.email, subject: title)
     end
 
+    # Notification when someone is cast in a show
+    def cast_notification(person, show, email_body, subject)
+      @person = person
+      @show = show
+      @production = show.production
+      @email_body = email_body
+
+      mail(
+        to: person.email,
+        subject: subject
+      )
+    end
+
+    # Notification when someone is removed from a cast
+    def removed_notification(person, show, email_body, subject)
+      @person = person
+      @show = show
+      @production = show.production
+      @email_body = email_body
+
+      mail(
+        to: person.email,
+        subject: subject
+      )
+    end
+
     private
 
     # Override to include email_batch_id from instance variable

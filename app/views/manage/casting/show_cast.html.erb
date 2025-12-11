@@ -7,114 +7,130 @@
       ["Casting & Roles", manage_production_casting_path(@production)],
       [@show.date_and_time.strftime("%A, %b %d, %Y"), manage_production_show_path(@production, @show)]
     ],
-    text: "Edit Cast",
+    text: @show.casting_finalized? ? "Finalized Cast" : "Edit Cast",
     links: []
   } %>
 
   <%= render "manage/shows/show_info_card", show: @show %>
 
-  <%= render "shared/help_section",
-    title: "How to assign talent pool members to roles",
-    initial_state: "closed",
-    storage_key: "casting_help_collapsed",
-    steps: [
-      { text: "<strong>Drag to assign:</strong> Drag a talent pool member from the right panel onto a role box on the left." },
-      { text: "<strong>Swap roles:</strong> Drag a person from one role to another to swap their assignments." },
-      { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the × button to remove them." },
-      { text: "<strong>Filter by availability:</strong> Use the \"Available\" button to see only people who've marked themselves available for this show." }
-    ] %>
+  <% if @show.casting_finalized? %>
+    <%# ===== FINALIZED STATE ===== %>
+    <%= render "manage/casting/finalized_cast", show: @show, production: @production, roles: @roles, assignments_by_role_id: @assignments_by_role_id, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
+  <% else %>
+    <%# ===== EDITING STATE ===== %>
+    <%= render "shared/help_section",
+      title: "How to assign talent pool members to roles",
+      initial_state: "closed",
+      storage_key: "casting_help_collapsed",
+      steps: [
+        { text: "<strong>Drag to assign:</strong> Drag a talent pool member from the right panel onto a role box on the left." },
+        { text: "<strong>Swap roles:</strong> Drag a person from one role to another to swap their assignments." },
+        { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the × button to remove them." },
+        { text: "<strong>Filter by availability:</strong> Use the \"Available\" button to see only people who've marked themselves available for this show." }
+      ] %>
 
-  <%
-    assignment_count = @assignments.size
-    role_count = @roles_count
-    percentage = role_count > 0 ? (assignment_count.to_f / role_count * 100).round : 0
-  %>
+    <%
+      assignment_count = @assignments.size
+      role_count = @roles_count
+      percentage = role_count > 0 ? (assignment_count.to_f / role_count * 100).round : 0
+      fully_cast = percentage == 100
+    %>
 
-  <% if role_count > 0 %>
-    <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="p-4">
-        <div class="flex items-center justify-between mb-3">
-          <span id="progress-label" class="text-sm font-semibold text-gray-900">
-            <% if percentage == 100 %>
-              This show is 100% cast
-            <% else %>
-              <%= assignment_count %> of <%= role_count %> roles have been cast
-            <% end %>
-          </span>
-          <span id="progress-fraction" class="text-sm font-bold <%= percentage == 100 ? 'text-green-600' : 'text-pink-600' %>">
-            <%= assignment_count %>/<%= role_count %> roles cast
-          </span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div id="progress-bar" class="<%= percentage == 100 ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
-        </div>
-      </div>
-    </div>
-  <% end %>
-
-  <div class="flex gap-8">
-
-    <!-- Roles on the left - flexible width -->
-    <div class="flex-1">
-      <%= render partial: "manage/casting/roles_list", locals: {
-        show: @show,
-        roles: @roles,
-        assignments_by_role_id: @assignments_by_role_id,
-        people_by_id: @people_by_id,
-        groups_by_id: @groups_by_id
-      } %>
-    </div>
-
-    <!-- Cast Members on the right - fixed width and sticky -->
-    <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
-        </div>
-        <div class="p-4 border-b border-gray-200" data-controller="cast-filter">
-          <!-- Availability Filter -->
-          <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-            {
-              filters: [
-                {
-                  text: "Available",
-                  path: "#",
-                  active: true,
-                  data: {
-                    action: "cast-filter#filterByAvailability",
-                    value: "available"
-                  }
-                },
-                {
-                  text: "All Talent Pool Members",
-                  path: "#",
-                  active: false,
-                  data: {
-                    action: "cast-filter#filterByAvailability",
-                    value: "all"
-                  }
-                }
-              ]
-            }
-          ] %>
-
-          <!-- View Availability Matrix link (shown when Available filter is active) -->
-          <div id="availability-matrix-link" class="mt-1">
-            <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
+    <% if role_count > 0 %>
+      <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span id="progress-label" class="text-sm font-semibold text-gray-900">
+              <% if fully_cast %>
+                This show is 100% cast
+              <% else %>
+                <%= assignment_count %> of <%= role_count %> roles have been cast
+              <% end %>
+            </span>
+            <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
+              <%= assignment_count %>/<%= role_count %> roles cast
+            </span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div id="progress-bar" class="<%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
           </div>
         </div>
-        <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto" data-cast-filter-target="list">
-          <%= render partial: "manage/casting/cast_members_list", locals: {
-            show: @show,
-            availability: @availability,
-            talent_pools: @talent_pools,
-            members_by_pool_id: @members_by_pool_id,
-            assigned_member_keys: @assigned_member_keys
-          } %>
+
+        <%# Finalize section - shown/hidden dynamically via JS based on cast percentage %>
+        <div id="finalize-section-wrapper" class="<%= fully_cast ? '' : 'hidden' %>">
+          <%= render "manage/casting/finalize_section",
+              show: @show,
+              production: @production,
+              cast_email_draft: @cast_email_draft,
+              removed_email_draft: @removed_email_draft %>
         </div>
       </div>
-    </div>
+    <% end %>
 
-  </div>
+    <div class="flex gap-8">
+
+      <!-- Roles on the left - flexible width -->
+      <div class="flex-1">
+        <%= render partial: "manage/casting/roles_list", locals: {
+          show: @show,
+          roles: @roles,
+          assignments_by_role_id: @assignments_by_role_id,
+          people_by_id: @people_by_id,
+          groups_by_id: @groups_by_id
+        } %>
+      </div>
+
+      <!-- Cast Members on the right - fixed width and sticky -->
+      <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
+          </div>
+          <div class="p-4 border-b border-gray-200" data-controller="cast-filter">
+            <!-- Availability Filter -->
+            <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+              {
+                filters: [
+                  {
+                    text: "Available",
+                    path: "#",
+                    active: true,
+                    data: {
+                      action: "cast-filter#filterByAvailability",
+                      value: "available"
+                    }
+                  },
+                  {
+                    text: "All Talent Pool Members",
+                    path: "#",
+                    active: false,
+                    data: {
+                      action: "cast-filter#filterByAvailability",
+                      value: "all"
+                    }
+                  }
+                ]
+              }
+            ] %>
+
+            <!-- View Availability Matrix link (shown when Available filter is active) -->
+            <div id="availability-matrix-link" class="mt-1">
+              <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
+            </div>
+          </div>
+          <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto" data-cast-filter-target="list">
+            <%= render partial: "manage/casting/cast_members_list", locals: {
+              show: @show,
+              availability: @availability,
+              talent_pools: @talent_pools,
+              members_by_pool_id: @members_by_pool_id,
+              assigned_member_keys: @assigned_member_keys
+            } %>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  <% end %>
 
 </div>

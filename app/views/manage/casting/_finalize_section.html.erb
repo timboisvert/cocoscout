@@ -1,0 +1,150 @@
+<%# Finalize section - shown when 100% cast but not yet finalized %>
+<%
+  # Get unnotified cast members and removed members
+  unnotified_assignments = show.unnotified_cast_members
+  removed_members = show.removed_cast_members
+  has_removed = removed_members.any?
+  has_previous_notifications = show.show_cast_notifications.any?
+%>
+
+<div class="border-t border-gray-200 p-4 bg-gray-50" data-controller="tabs">
+  <div class="flex items-center gap-2 mb-3">
+    <h3 class="text-sm font-semibold text-gray-800">Ready to Finalize</h3>
+  </div>
+
+  <p class="text-sm text-gray-600 mb-4">
+    <% if has_previous_notifications %>
+      <% if unnotified_assignments.any? || has_removed %>
+        There are cast changes since last notification. Review and send notifications to affected cast members.
+      <% else %>
+        All current cast members have already been notified. Click below to finalize casting.
+      <% end %>
+    <% else %>
+      All roles are filled! Review the notification email below and click "Finalize and Notify" to lock in the cast and send emails.
+    <% end %>
+  </p>
+
+  <%= form_with url: manage_production_finalize_casting_path(production, show.id), method: :post, class: "space-y-4" do |f| %>
+
+    <% if has_removed %>
+      <%# Tabs for multiple email types %>
+      <div class="border-b border-gray-200 mb-4">
+        <nav class="flex gap-4" aria-label="Tabs">
+          <button type="button"
+                  class="py-2 px-1 text-sm font-medium border-b-2 border-pink-500 text-pink-600 cursor-pointer"
+                  data-tabs-target="tab"
+                  data-action="click->tabs#select"
+                  data-index="0">
+            Cast Notification
+            <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-pink-100 text-pink-600">
+              <%= unnotified_assignments.size %>
+            </span>
+          </button>
+          <button type="button"
+                  class="py-2 px-1 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
+                  data-tabs-target="tab"
+                  data-action="click->tabs#select"
+                  data-index="1">
+            Removed Notification
+            <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
+              <%= removed_members.size %>
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      <%# Cast Email Tab %>
+      <div data-tabs-target="panel">
+        <% if unnotified_assignments.any? %>
+          <div class="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p class="text-xs font-medium text-gray-700 mb-2">Added to cast:</p>
+            <div class="flex flex-wrap gap-2">
+              <% unnotified_assignments.each do |assignment| %>
+                <% member = assignment.assignable %>
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded">
+                  <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= member.name.first.upcase %></div>
+                  <% end %>
+                  <span class="text-sm text-gray-700"><%= member.name %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          <%= fields_for :cast_email_draft, cast_email_draft do |cast_form| %>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                <%= cast_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>
+                <%= cast_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-gray-500 italic">All current cast members have already been notified.</p>
+        <% end %>
+      </div>
+
+      <%# Removed Email Tab %>
+      <div data-tabs-target="panel" class="hidden">
+        <div class="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <p class="text-xs font-medium text-gray-700 mb-2">Removed from cast:</p>
+          <div class="flex flex-wrap gap-2">
+            <% removed_members.each do |member| %>
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded">
+                <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                <% else %>
+                  <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= member.name.first.upcase %></div>
+                <% end %>
+                <span class="text-sm text-gray-700"><%= member.name %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <%= fields_for :removed_email_draft, removed_email_draft do |removed_form| %>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+              <%= removed_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>
+              <%= removed_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    <% else %>
+      <%# Single email editor when no removed members %>
+      <% if unnotified_assignments.any? %>
+        <%= fields_for :cast_email_draft, cast_email_draft do |cast_form| %>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+              <%= cast_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>
+              <%= cast_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <div class="flex items-center gap-3">
+      <%= render "shared/button", text: "Finalize and Notify", variant: "primary", size: "medium", type: :submit %>
+      <span class="text-xs text-gray-500">
+        This will send emails and lock the cast. You can reopen later if needed.
+      </span>
+    </div>
+  <% end %>
+</div>

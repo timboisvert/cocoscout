@@ -163,8 +163,11 @@ export default class extends Controller {
                         document.getElementById("show-roles").outerHTML = data.roles_html;
                     }
 
-                    // Update progress bar
+                    // Update progress bar and finalize section
                     this.updateProgressBar(data.progress);
+                    if (data.finalize_section_html) {
+                        this.updateFinalizeSection(data.finalize_section_html);
+                    }
                 });
         }
     }
@@ -208,8 +211,11 @@ export default class extends Controller {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
                 }
 
-                // Update progress bar
+                // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
+                if (data.finalize_section_html) {
+                    this.updateFinalizeSection(data.finalize_section_html);
+                }
             });
     }
 
@@ -282,8 +288,11 @@ export default class extends Controller {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
                 }
 
-                // Update progress bar
+                // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
+                if (data.finalize_section_html) {
+                    this.updateFinalizeSection(data.finalize_section_html);
+                }
             });
     }
 
@@ -320,8 +329,11 @@ export default class extends Controller {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
                 }
 
-                // Update progress bar
+                // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
+                if (data.finalize_section_html) {
+                    this.updateFinalizeSection(data.finalize_section_html);
+                }
             });
     }
 
@@ -356,6 +368,24 @@ export default class extends Controller {
             // Update color
             barElement.classList.remove('bg-green-500', 'bg-pink-500');
             barElement.classList.add(percentage === 100 ? 'bg-green-500' : 'bg-pink-500');
+        }
+
+        // Show/hide finalize section based on whether fully cast
+        const finalizeSection = document.getElementById('finalize-section-wrapper');
+        if (finalizeSection) {
+            if (percentage === 100) {
+                finalizeSection.classList.remove('hidden');
+            } else {
+                finalizeSection.classList.add('hidden');
+            }
+        }
+    }
+
+    // Update the finalize section with fresh HTML from the server
+    updateFinalizeSection(finalizeSectionHtml) {
+        const finalizeWrapper = document.getElementById('finalize-section-wrapper');
+        if (finalizeWrapper && finalizeSectionHtml) {
+            finalizeWrapper.innerHTML = finalizeSectionHtml;
         }
     }
 
@@ -399,8 +429,11 @@ export default class extends Controller {
                     }
                 }
 
-                // Update progress bar
+                // Update progress bar and finalize section
                 this.updateProgressBar(data.progress);
+                if (data.finalize_section_html) {
+                    this.updateFinalizeSection(data.finalize_section_html);
+                }
             });
     }
 }
