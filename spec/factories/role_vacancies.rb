@@ -11,10 +11,6 @@ FactoryBot.define do
       vacated_at { Time.current }
     end
 
-    trait :with_reason do
-      reason { "Personal conflict with schedule" }
-    end
-
     trait :filled do
       status { "filled" }
       association :filled_by, factory: :person

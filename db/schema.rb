@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_11_002853) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -583,7 +583,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
     t.integer "created_by_id"
     t.datetime "filled_at"
     t.integer "filled_by_id"
-    t.integer "role_id", null: false
+    t.integer "role_id"
     t.integer "show_id", null: false
     t.string "status", default: "open", null: false
     t.datetime "updated_at", null: false
@@ -620,8 +620,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
     t.integer "position"
     t.integer "production_id", null: false
     t.boolean "restricted", default: false, null: false
+    t.integer "show_id"
     t.datetime "updated_at", null: false
-    t.index ["production_id"], name: "index_roles_on_production_id"
+    t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name", unique: true
+    t.index ["show_id"], name: "index_roles_on_show_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -674,7 +676,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
     t.string "assignable_type"
     t.datetime "created_at", null: false
     t.integer "person_id"
-    t.integer "role_id", null: false
+    t.integer "role_id"
     t.integer "show_id", null: false
     t.datetime "updated_at", null: false
     t.index ["assignable_type", "assignable_id"], name: "index_show_role_assignments_on_assignable"
@@ -697,6 +699,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
     t.string "recurrence_group_id"
     t.string "secondary_name"
     t.datetime "updated_at", null: false
+    t.boolean "use_custom_roles", default: false, null: false
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
@@ -824,6 +827,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_09_214352) do
   add_foreign_key "role_vacancy_invitations", "people"
   add_foreign_key "role_vacancy_invitations", "role_vacancies"
   add_foreign_key "roles", "productions"
+  add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_availabilities", "shows"

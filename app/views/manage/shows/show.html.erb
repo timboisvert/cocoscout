@@ -29,17 +29,19 @@
               uncancel_label = "Uncancel #{event_label}"
               is_past = @show.date_and_time <= Time.current
             %>
-            <% if is_past %>
-              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "text-xs text-pink-500 underline" %>
-              <%= link_to delete_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
-            <% elsif @show.canceled %>
-              <%= link_to uncancel_label, uncancel_manage_production_show_path(@production, @show), data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"}, class: "text-xs text-pink-500 underline" %>
-              <%= link_to delete_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
-            <% else %>
-              <%= link_to edit_label, edit_manage_production_show_path(@production, @show), class: "text-xs text-pink-500 underline" %>
-              <%= link_to duplicate_label, new_manage_production_show_path(@production, duplicate: @show.id), class: "ml-1 text-xs text-pink-500 underline" %>
-              <%= link_to cancel_label, cancel_manage_production_show_path(@production, @show), class: "ml-1 text-xs text-pink-500 underline" %>
-            <% end %>
+            <div class="flex flex-wrap gap-2">
+              <% if is_past %>
+                <%= render "shared/button", text: duplicate_label, path: new_manage_production_show_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
+                <%= render "shared/button", text: delete_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+              <% elsif @show.canceled %>
+                <%= render "shared/button", text: uncancel_label, path: uncancel_manage_production_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
+                <%= render "shared/button", text: delete_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+              <% else %>
+                <%= render "shared/button", text: edit_label, path: edit_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+                <%= render "shared/button", text: duplicate_label, path: new_manage_production_show_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
+                <%= render "shared/button", text: cancel_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+              <% end %>
+            </div>
           </div>
         </div>
       <% end %>
@@ -117,10 +119,6 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting</h3>
-            <div class="space-x-1">
-              <%= link_to "Contact Cast", manage_production_show_contact_cast_path(@production, @show), class: "text-pink-500 text-xs underline" %>
-              <%= link_to "Manage Cast", manage_production_show_cast_path(@production, @show), class: "text-pink-500 text-xs underline" %>
-            </div>
           </div>
           <div class="p-4">
             <%
@@ -132,7 +130,7 @@
             <%# Progress bar %>
             <div class="mb-3">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-semibold text-gray-700">Progress</span>
+                <span class="text-xs font-semibold text-gray-700">Casting Progress</span>
                 <span class="text-xs font-medium <%= fully_cast ? 'text-green-600' : 'text-gray-500' %>">
                   <% if fully_cast %>
                     Fully cast
@@ -150,7 +148,9 @@
             <% if @roles.any? %>
               <div class="flex flex-wrap gap-1.5">
                 <% @roles.each do |role| %>
-                  <% assignment = @show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
+                  <%
+                    assignment = @show.show_person_role_assignments.find { |a| a.role_id == role.id }
+                  %>
                   <% if assignment %>
                     <%
                       assignable = if assignment.assignable_type == "Person"
@@ -186,6 +186,12 @@
             <% else %>
               <p class="text-xs text-gray-400 italic">No roles defined yet</p>
             <% end %>
+
+            <%# Casting action buttons %>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <%= render "shared/button", text: "Manage Cast", path: manage_production_show_cast_path(@production, @show), variant: "primary", size: "small" %>
+              <%= render "shared/button", text: "Contact Cast", path: manage_production_show_contact_cast_path(@production, @show), variant: "primary", size: "small" %>
+            </div>
           </div>
         </div>
       <% end %>

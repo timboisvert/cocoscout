@@ -10,7 +10,8 @@ class Production < ApplicationRecord
   has_many :audition_cycles, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles
   has_many :talent_pools, dependent: :delete_all
-  has_many :roles, dependent: :delete_all
+  has_many :roles, -> { where(show_id: nil) }, dependent: :delete_all  # Production-level roles only
+  has_many :all_roles, class_name: "Role", dependent: false  # All roles including show-specific
   has_many :show_person_role_assignments, through: :shows
   has_many :production_permissions, dependent: :delete_all
   has_many :questionnaires, dependent: :destroy

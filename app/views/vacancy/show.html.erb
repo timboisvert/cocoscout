@@ -46,7 +46,7 @@
             <label class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
               <input type="radio"
                      name="role_ids[]"
-                     value="<%= "#{assignment.role.id}:#{assignment.assignable_type}:#{assignment.assignable_id}" %>"
+                     value="<%= "#{assignment.role_id}:#{assignment.assignable_type}:#{assignment.assignable_id}" %>"
                      class="h-4 w-4 border-gray-300 accent-pink-500 focus:ring-pink-500"
                      <%= "checked" if @all_assignments.size == 1 %>>
               <div>

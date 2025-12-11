@@ -35,7 +35,8 @@ module Manage
 
     def show
       # Preload data for the cast_card partial to avoid N+1 queries
-      @roles = @production.roles.order(:position).to_a
+      # Use available_roles which respects show.use_custom_roles
+      @roles = @show.available_roles.to_a
       @roles_count = @roles.size
 
       # Preload assignables (people and groups) with their headshots
@@ -55,7 +56,7 @@ module Manage
                       .index_by(&:id)
 
       # Load open vacancies for this show
-      @open_vacancies = @show.role_vacancies.open.includes(:role).order("roles.position ASC").to_a
+      @open_vacancies = @show.role_vacancies.open.includes(:role).to_a
     end
 
     def calendar
@@ -100,6 +101,7 @@ module Manage
       @show.secondary_name = @original_show.secondary_name
       @show.location = @original_show.location
       @show.casting_enabled = @original_show.casting_enabled
+      @show.use_custom_roles = @original_show.use_custom_roles
     end
 
     def edit; end
@@ -138,6 +140,14 @@ module Manage
         @show.production = @production
 
         if @show.save
+          # If duplicating from a show with custom roles, copy the roles
+          if params[:duplicate_from_id].present?
+            original_show = @production.shows.find_by(id: params[:duplicate_from_id])
+            if original_show&.use_custom_roles? && original_show.custom_roles.any?
+              copy_custom_roles_from(original_show, @show)
+            end
+          end
+
           redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
         else
           render :new, status: :unprocessable_entity
@@ -452,7 +462,8 @@ module Manage
       @show = Show
               .includes(
                 :location,
-                :show_person_role_assignments,
+                :custom_roles,
+                show_person_role_assignments: :role,
                 poster_attachment: :blob,
                 production: { posters: { image_attachment: :blob } }
               )
@@ -464,7 +475,7 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
-                                               :public_profile_visible,
+                                               :public_profile_visible, :use_custom_roles,
                                                show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info
@@ -484,6 +495,28 @@ module Manage
       end
 
       permitted
+    end
+
+    # Copy custom roles from one show to another (used when duplicating shows with custom roles)
+    def copy_custom_roles_from(source_show, target_show)
+      source_show.custom_roles.each do |source_role|
+        new_role = target_show.custom_roles.create!(
+          name: source_role.name,
+          position: source_role.position,
+          restricted: source_role.restricted,
+          production: @production
+        )
+
+        # Copy eligibilities if the role is restricted
+        if source_role.restricted?
+          source_role.role_eligibilities.each do |eligibility|
+            new_role.role_eligibilities.create!(
+              member_type: eligibility.member_type,
+              member_id: eligibility.member_id
+            )
+          end
+        end
+      end
     end
   end
 end

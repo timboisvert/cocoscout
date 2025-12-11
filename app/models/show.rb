@@ -6,9 +6,7 @@ class Show < ApplicationRecord
   belongs_to :production
   belongs_to :location, optional: true
 
-  has_many :show_person_role_assignments, lambda {
-    joins(:role).order(Arel.sql("roles.position ASC, roles.created_at ASC"))
-  }, dependent: :destroy
+  has_many :show_person_role_assignments, dependent: :destroy
 
   # Polymorphic associations for cast members (people or groups)
   has_many :cast_people, lambda {
@@ -21,6 +19,9 @@ class Show < ApplicationRecord
   # Convenience methods for backward compatibility
   has_many :people, through: :show_person_role_assignments, source: :assignable, source_type: "Person"
   has_many :roles, through: :show_person_role_assignments
+
+  # Show-specific roles (roles where show_id = this show's id)
+  has_many :custom_roles, -> { where.not(show_id: nil) }, class_name: "Role", dependent: :destroy
 
   has_many :show_links, dependent: :destroy
   accepts_nested_attributes_for :show_links, allow_destroy: true
@@ -104,6 +105,39 @@ class Show < ApplicationRecord
       production.updated_at.to_i,
       location&.updated_at&.to_i
     ].compact.join("-"))
+  end
+
+  # Returns the roles available for this show.
+  # If use_custom_roles is true, returns show-specific roles.
+  # Otherwise, returns the production's roles.
+  def available_roles
+    if use_custom_roles?
+      custom_roles
+    else
+      production.roles.production_roles
+    end
+  end
+
+  # Copy all production roles to this show's custom roles
+  def copy_roles_from_production!
+    production.roles.production_roles.each do |role|
+      new_role = custom_roles.create!(
+        name: role.name,
+        position: role.position,
+        restricted: role.restricted,
+        production: production
+      )
+
+      # Copy role eligibilities if restricted
+      if role.restricted?
+        role.role_eligibilities.each do |eligibility|
+          new_role.role_eligibilities.create!(
+            member_type: eligibility.member_type,
+            member_id: eligibility.member_id
+          )
+        end
+      end
+    end
   end
 
   private

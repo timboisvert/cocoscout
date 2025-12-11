@@ -50,7 +50,7 @@ export default class extends Controller {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("assignableType", assignableType);
         event.dataTransfer.setData("assignableId", assignableId);
-        event.dataTransfer.setData("sourceRoleId", sourceRoleId);
+        event.dataTransfer.setData("sourceRoleId", sourceRoleId || "");
         // Backward compatibility
         event.dataTransfer.setData("personId", assignableId);
 
@@ -68,6 +68,7 @@ export default class extends Controller {
         const roleElement = event.currentTarget;
         roleElement.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50', 'ring-amber-400', 'bg-amber-50');
 
+        // All roles now use role-id (both production and show-specific roles)
         const roleId = roleElement.dataset.roleId;
         let assignableType = event.dataTransfer.getData("assignableType");
         let assignableId = event.dataTransfer.getData("assignableId");
@@ -105,13 +106,15 @@ export default class extends Controller {
         } else {
             // Dragging from cast members list (cast-person drag)
             // First, remove anyone from the target role
+            const removeBody = { role_id: roleId };
+
             fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
                 },
-                body: JSON.stringify({ role_id: roleId })
+                body: JSON.stringify(removeBody)
             })
                 .then(r => r.json())
                 .then(data => {
@@ -211,6 +214,10 @@ export default class extends Controller {
     }
 
     moveAssignment(productionId, showId, assignableId, sourceRoleId, targetRoleId, assignableType) {
+        // All roles now use role_id
+        const sourceRemoveBody = { role_id: sourceRoleId };
+        const targetRemoveBody = { role_id: targetRoleId };
+
         // First, remove the entity from the source role
         fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
             method: "POST",
@@ -218,7 +225,7 @@ export default class extends Controller {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify({ role_id: sourceRoleId })
+            body: JSON.stringify(sourceRemoveBody)
         })
             .then(r => r.json())
             .then(data => {
@@ -229,7 +236,7 @@ export default class extends Controller {
                         "Content-Type": "application/json",
                         "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
                     },
-                    body: JSON.stringify({ role_id: targetRoleId })
+                    body: JSON.stringify(targetRemoveBody)
                 });
             })
             .then(r => r.json())

@@ -197,7 +197,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :email_logs, only: [:show]
+    resources :email_logs, only: [ :show ]
 
     resources :locations do
       member do
@@ -248,6 +248,17 @@ Rails.application.routes.draw do
           patch :cancel_show
           delete :delete_show
           patch :uncancel
+        end
+
+        # Show-specific custom roles
+        resources :show_roles, only: [ :index, :create, :update, :destroy ] do
+          collection do
+            post :reorder
+            post :copy_from_production
+            get :talent_pool_members
+            get :check_assignments
+            post :clear_assignments
+          end
         end
       end
 

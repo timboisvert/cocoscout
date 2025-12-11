@@ -50,10 +50,10 @@ namespace :email_logs do
     # Build lookup hashes for faster matching
     puts "Building email lookup tables..."
 
-    person_emails = Person.where.not(email: [nil, ""]).pluck(:email, :id).to_h
+    person_emails = Person.where.not(email: [ nil, "" ]).pluck(:email, :id).to_h
     puts "  - #{person_emails.size} people with emails"
 
-    group_emails = Group.where.not(email: [nil, ""]).pluck(:email, :id).to_h
+    group_emails = Group.where.not(email: [ nil, "" ]).pluck(:email, :id).to_h
     puts "  - #{group_emails.size} groups with emails"
 
     # Process in batches

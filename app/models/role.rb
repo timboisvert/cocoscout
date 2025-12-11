@@ -2,6 +2,7 @@
 
 class Role < ApplicationRecord
   belongs_to :production
+  belongs_to :show, optional: true  # nil for production-level roles, set for show-specific roles
 
   has_many :show_person_role_assignments, dependent: :destroy
   has_many :shows, through: :show_person_role_assignments
@@ -9,9 +10,25 @@ class Role < ApplicationRecord
   has_many :role_eligibilities, dependent: :destroy
   has_many :vacancies, class_name: "RoleVacancy", dependent: :destroy
 
-  validates :name, presence: true, uniqueness: { scope: :production_id, message: "already exists for this production" }
+  # Scopes for production vs show-specific roles
+  scope :production_roles, -> { where(show_id: nil) }
+  scope :show_roles, -> { where.not(show_id: nil) }
+  scope :for_show, ->(show) { where(show_id: show.id) }
+
+  validates :name, presence: true
+  validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
 
   default_scope { order(position: :asc, created_at: :asc) }
+
+  # Check if this is a show-specific role
+  def show_role?
+    show_id.present?
+  end
+
+  # Check if this is a production-level role
+  def production_role?
+    show_id.nil?
+  end
 
   # Returns all eligible members (people and groups) for this role
   def eligible_members

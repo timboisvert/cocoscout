@@ -19,11 +19,11 @@ module Manage
       # Determine back path based on recipient entity type
       @back_path = if @recipient_entity.is_a?(Person)
                      manage_person_path(@recipient_entity, tab: 3)
-                   elsif @recipient_entity.is_a?(Group)
+      elsif @recipient_entity.is_a?(Group)
                      manage_group_path(@recipient_entity, tab: 3)
-                   else
+      else
                      manage_directory_path
-                   end
+      end
     end
   end
 end

@@ -14,9 +14,9 @@ module Manage
       talent_pool_ids = @talent_pools.map(&:id)
 
       # Get all potential members (people and groups) based on role restrictions
-      if @vacancy.role.restricted?
+      if @vacancy.restricted?
         # For restricted roles, use eligible_members which includes both people and groups
-        all_members = @vacancy.role.eligible_members
+        all_members = @vacancy.eligible_members
       else
         # For unrestricted roles, get all talent pool members (people and groups)
         people = Person.joins(:talent_pool_memberships)
@@ -163,14 +163,8 @@ module Manage
       person_id = params[:person_id]
       person = Person.find(person_id)
 
+      # The fill! method handles removing old assignment, creating new assignment, and updating vacancy status
       @vacancy.fill!(person, by: Current.person)
-
-      # Assign the person to the role for the show
-      assignment = @vacancy.show.show_person_role_assignments.find_or_initialize_by(
-        role: @vacancy.role,
-        assignable: person
-      )
-      assignment.save!
 
       redirect_to manage_production_path(@production),
                   notice: "Vacancy filled by #{person.name}."
@@ -184,6 +178,7 @@ module Manage
 
     def set_vacancy
       @vacancy = RoleVacancy.joins(:show)
+                            .includes(:role)
                             .where(shows: { production_id: @production.id })
                             .find(params[:id])
     end

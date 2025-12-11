@@ -46,14 +46,14 @@ module Manage
     def show_cast
       @availability = build_availability_hash(@show)
 
-      # Preload roles for the production
-      @roles = @production.roles.order(:position).to_a
+      # Use available_roles which respects show.use_custom_roles
+      @roles = @show.available_roles.to_a
       @roles_count = @roles.size
 
       # Preload all assignments for this show with their roles
       @assignments = @show.show_person_role_assignments.includes(:role).to_a
 
-      # Build assignment lookup by role_id for the roles_list partial
+      # Build assignment lookup by role_id
       @assignments_by_role_id = @assignments.group_by(&:role_id)
 
       # Get assignable IDs for preloading
@@ -226,22 +226,22 @@ module Manage
         return
       end
 
+      # Find the role - all roles are now unified in the Role model
       role = Role.find(params[:role_id])
 
       # Validate eligibility for restricted roles
-      if role.restricted?
-        unless role.eligible?(assignable)
-          render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_entity
-          return
-        end
+      if role.restricted? && !role.eligible?(assignable)
+        render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_entity
+        return
       end
 
-      # If this role already has someone in it for this show, remove the assignment
+      # Remove existing assignment for this role
       existing_assignments = @show.show_person_role_assignments.where(role: role)
       existing_assignments.destroy_all if existing_assignments.any?
 
       # Make the assignment
       assignment = @show.show_person_role_assignments.find_or_initialize_by(assignable: assignable, role: role)
+
       assignment.save!
 
       # Generate the HTML to return - pass availability data
@@ -253,7 +253,7 @@ module Manage
 
       # Calculate progress for the progress bar
       assignment_count = @show.show_person_role_assignments.count
-      role_count = @show.production.roles.count
+      role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
       render json: {
@@ -268,7 +268,7 @@ module Manage
     end
 
     def remove_person_from_role
-      # Support both assignment_id and role_id for removal
+      # Support assignment_id or role_id for removal
       removed_assignable_type = nil
       removed_assignable_id = nil
 
@@ -299,7 +299,7 @@ module Manage
 
       # Calculate progress for the progress bar
       assignment_count = @show.show_person_role_assignments.count
-      role_count = @show.production.roles.count
+      role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
       render json: {
@@ -356,7 +356,7 @@ module Manage
 
       # Calculate progress
       assignment_count = @show.show_person_role_assignments.count
-      role_count = @show.production.roles.count
+      role_count = @show.available_roles.count
       percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
 
       render json: {

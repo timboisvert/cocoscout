@@ -14,6 +14,11 @@ class RoleVacancy < ApplicationRecord
   scope :for_role, ->(role) { where(role: role) }
 
   validates :status, presence: true
+  validates :role, presence: true
+
+  # Delegate to role for convenience
+  delegate :name, to: :role, prefix: true
+  delegate :restricted?, :eligible_members, :eligible?, to: :role
 
   # Invalidate production dashboard cache when vacancy changes
   after_commit :invalidate_dashboard_cache
@@ -26,7 +31,7 @@ class RoleVacancy < ApplicationRecord
       # Remove the old cast assignment for the entity who vacated (Person or Group)
       if vacated_by.present?
         show.show_person_role_assignments
-            .where(role: role, assignable_type: vacated_by_type, assignable_id: vacated_by_id)
+            .where(role_id: role_id, assignable_type: vacated_by_type, assignable_id: vacated_by_id)
             .destroy_all
       end
 

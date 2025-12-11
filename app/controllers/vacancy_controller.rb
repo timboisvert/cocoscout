@@ -10,7 +10,6 @@ class VacancyController < ApplicationController
     @person_assignments = @show.show_person_role_assignments
                                .where(assignable: @person)
                                .includes(:role)
-                               .order("roles.position ASC")
 
     # Get group assignments for groups the person is a member of
     @groups = @person.groups.active.to_a
@@ -18,9 +17,8 @@ class VacancyController < ApplicationController
     @group_assignments = @show.show_person_role_assignments
                               .where(assignable_type: "Group", assignable_id: @groups.map(&:id))
                               .includes(:role)
-                              .order("roles.position ASC")
 
-    @all_assignments = @person_assignments + @group_assignments
+    @all_assignments = (@person_assignments + @group_assignments).sort_by { |a| a.role&.position || 0 }
 
     if @all_assignments.empty?
       redirect_to root_path, alert: "You don't have any assignments for this show."
@@ -45,6 +43,7 @@ class VacancyController < ApplicationController
       role_ids.each do |assignment_key|
         # Parse the assignment key (format: "role_id:assignable_type:assignable_id")
         role_id, assignable_type, assignable_id = assignment_key.split(":")
+        role_id = role_id.to_i
 
         # Find the assignment, validating the person has access
         assignment = if assignable_type == "Person" && assignable_id.to_i == @person.id
@@ -63,15 +62,14 @@ class VacancyController < ApplicationController
 
         next unless assignment
 
-        # Create the vacancy with the actual assignable (Person or Group)
+        # Create the vacancy
         vacancy = RoleVacancy.create!(
           show: @show,
-          role: assignment.role,
+          role_id: role_id,
           vacated_by: assignment.assignable,
           vacated_at: Time.current,
           status: :open
         )
-
         @vacancies_created << vacancy
 
         # Remove the assignment

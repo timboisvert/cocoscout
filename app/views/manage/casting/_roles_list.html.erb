@@ -5,8 +5,12 @@
   show = local_assigns[:show] || @show
   production = show.production
 
-  # Use preloaded data if available, otherwise fall back to queries
-  roles = local_assigns[:roles] || @roles || production.roles.order(:position).to_a
+  # Use preloaded data if available, otherwise fall back to show.available_roles
+  # This supports both production roles and show-specific custom roles
+  roles = local_assigns[:roles] || @roles || show.available_roles.to_a
+
+  # Determine if we're using show-specific custom roles
+  using_custom_roles = show.use_custom_roles?
 
   # If assignments_by_role_id not provided, build it from the show's assignments
   assignments_by_role_id = local_assigns[:assignments_by_role_id] || @assignments_by_role_id
@@ -33,14 +37,21 @@
   # Build vacancies lookup by role_id
   vacancies_by_role_id = local_assigns[:vacancies_by_role_id] || @vacancies_by_role_id
   unless vacancies_by_role_id
-    vacancies_by_role_id = show.role_vacancies.open.group_by(&:role_id)
+    all_vacancies = show.role_vacancies.open.includes(:role).to_a
+    vacancies_by_role_id = all_vacancies.group_by(&:role_id)
   end
 %>
 <div id="show-roles" data-controller="drop-role" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>">
 
   <% if role_count == 0 %>
     <div class="text-sm text-gray-500">
-      You haven't added any roles to this production yet. <%= link_to "Add Roles", manage_production_roles_path(production), class: "text-pink-500 underline" %>
+      <% if using_custom_roles %>
+        No custom roles defined for this event yet.
+        <%= link_to "Manage Custom Roles", edit_manage_production_show_path(production, show, anchor: "tab-3"), class: "text-pink-500 underline" %>
+      <% else %>
+        You haven't added any roles to this production yet.
+        <%= link_to "Add Roles", manage_production_roles_path(production), class: "text-pink-500 underline" %>
+      <% end %>
     </div>
   <% end %>
 
@@ -56,12 +67,15 @@
         eligible_member_keys = eligible_members.map { |m| "#{m.class.name}_#{m.id}" }
         open_vacancies = vacancies_by_role_id[role.id] || []
         has_open_vacancy = open_vacancies.any?
+
+        # All roles now use role-id (both production and show-specific are in Role model)
+        role_data_attrs = { "role-id": role.id }
       %>
 
       <% if is_restricted %>
         <%# Restricted role - show clickable headshots instead of drag-drop %>
         <div class="bg-white border <%= has_open_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200' %> rounded-lg overflow-hidden hover:border-gray-300 transition-all"
-            data-role-id="<%= role.id %>">
+            <%= role_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
 
           <div class="p-3">
             <div class="grid grid-cols-[140px_1fr] gap-4 items-center">
@@ -129,7 +143,7 @@
                         <button type="button"
                           class="flex items-center gap-2 p-2 border rounded-lg transition-all cursor-pointer <%= is_assigned_elsewhere ? 'border-gray-200 bg-gray-50 opacity-50' : 'border-gray-200 hover:border-pink-400 hover:bg-pink-50' %>"
                           data-action="click->drop-role#assignFromClick"
-                          data-role-id="<%= role.id %>"
+                          <%= role_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>
                           data-assignable-type="<%= member.class.name %>"
                           data-assignable-id="<%= member.id %>"
                           title="<%= is_assigned_elsewhere ? "#{member.name} is assigned to another role" : "Cast #{member.name}" %>"
@@ -160,7 +174,7 @@
         <%# Non-restricted role - use drag-drop as before %>
         <div class="bg-white border <%= has_open_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200' %> rounded-lg overflow-hidden hover:border-gray-300 transition-all"
             data-drop-role-target="role"
-            data-role-id="<%= role.id %>"
+            <%= role_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>
             data-role-restricted="false"
             data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave">
 

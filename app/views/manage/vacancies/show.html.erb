@@ -193,7 +193,7 @@
         </h3>
       </div>
       <div class="p-6">
-        <% if @vacancy.role.restricted? %>
+        <% if @vacancy.restricted? %>
           <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <div class="flex items-start gap-2">
               <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +203,7 @@
                 <p class="text-sm font-medium text-amber-800">Restricted Role</p>
                 <p class="text-xs text-amber-700 mt-0.5">
                   Only cast members marked as eligible for "<%= @vacancy.role.name %>" can be invited.
-                  <% eligible_count = @vacancy.role.eligible_members.count %>
+                  <% eligible_count = @vacancy.eligible_members.count %>
                   <span class="font-semibold"><%= pluralize(eligible_count, "cast member") %></span> eligible total.
                 </p>
               </div>
@@ -215,7 +215,7 @@
 
         <% if @eligible_people.any? || @all_potential_people.any? %>
           <%= form_with url: send_invitations_manage_production_vacancy_path(@production, @vacancy), method: :post, class: "space-y-6", data: { controller: "invite-mode" } do %>
-            <% unless @vacancy.role.restricted? %>
+            <% unless @vacancy.restricted? %>
               <!-- Selection Mode (unrestricted roles only) -->
               <div class="mb-4">
                 <label class="block font-semibold mb-2 text-sm">

@@ -1,0 +1,169 @@
+<%# Modal for managing show-specific custom roles %>
+<div data-show-roles-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" data-action="click->show-roles-modal#stopPropagation">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-xl font-semibold">Manage Custom Roles</h2>
+      <button type="button" data-action="click->show-roles-modal#closeModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="px-6 py-6">
+      <!-- Loading State -->
+      <div data-show-roles-modal-target="loading" class="hidden text-center py-8">
+        <svg class="animate-spin h-8 w-8 text-pink-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-2 text-gray-500">Loading...</p>
+      </div>
+
+      <!-- Empty State (no roles yet) -->
+      <div data-show-roles-modal-target="emptyState" class="<%= show.custom_roles.any? ? 'hidden' : '' %>">
+        <div class="text-center py-8">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No custom roles yet</h3>
+          <p class="mt-1 text-sm text-gray-500">Get started by copying roles from your production or adding a new role.</p>
+          <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <%= render "shared/button",
+                text: "Copy Production Roles",
+                variant: "primary",
+                size: "small",
+                type: :button,
+                data: { action: "click->show-roles-modal#copyFromProduction" } %>
+            <%= render "shared/button",
+                text: "Start Fresh",
+                variant: "secondary",
+                size: "small",
+                type: :button,
+                data: { action: "click->show-roles-modal#showAddForm" } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles List -->
+      <div data-show-roles-modal-target="rolesListSection" class="<%= show.custom_roles.any? ? '' : 'hidden' %>">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500">Drag to reorder roles</p>
+          <%= render "shared/button",
+              text: "Add Role",
+              variant: "ghost",
+              size: "small",
+              type: :button,
+              classes: "text-pink-600 hover:text-pink-700",
+              data: { action: "click->show-roles-modal#showAddForm" } %>
+        </div>
+
+        <div data-show-roles-modal-target="rolesList" class="space-y-2">
+          <!-- Roles will be rendered here dynamically -->
+        </div>
+      </div>
+
+      <!-- Add/Edit Role Form -->
+      <div data-show-roles-modal-target="roleForm" class="hidden">
+        <div class="border-b border-gray-200 pb-4 mb-4">
+          <h3 data-show-roles-modal-target="formTitle" class="text-lg font-medium text-gray-900">Add Role</h3>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Role Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
+            <input type="text" data-show-roles-modal-target="roleNameInput"
+                   placeholder="e.g., Host, Comic 1"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <p data-show-roles-modal-target="roleNameError" class="hidden mt-1 text-sm text-red-600"></p>
+          </div>
+
+          <!-- Restricted Toggle -->
+          <div>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" data-show-roles-modal-target="restrictedCheckbox"
+                     data-action="change->show-roles-modal#toggleRestricted"
+                     class="sr-only peer">
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              <span class="text-sm font-medium text-gray-700">Restrict who can be cast</span>
+            </label>
+            <p class="text-xs text-gray-500 mt-1 ml-14">When enabled, only selected cast members will be eligible for this role</p>
+          </div>
+
+          <!-- Eligible Members Section -->
+          <div data-show-roles-modal-target="eligibleMembersSection" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Eligible Cast Members</label>
+            <input type="text" data-show-roles-modal-target="memberSearchInput"
+                   data-action="input->show-roles-modal#filterMembers"
+                   placeholder="Search cast members..."
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 mb-2">
+            <div data-show-roles-modal-target="membersList" class="max-h-48 overflow-y-auto border border-gray-200 rounded-md">
+              <!-- Members will be loaded via AJAX -->
+              <div class="px-3 py-4 text-center text-gray-500 text-sm">Loading members...</div>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="flex justify-end gap-2 pt-4 border-t border-gray-200">
+            <%= render "shared/button",
+                text: "Cancel",
+                variant: "secondary",
+                size: "small",
+                type: :button,
+                data: { action: "click->show-roles-modal#cancelForm" } %>
+            <button type="button" data-action="click->show-roles-modal#saveRole"
+                    class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">
+              <span data-show-roles-modal-target="saveButtonText">Add Role</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4" data-show-roles-modal-target="modalFooter">
+      <div class="flex justify-end">
+        <%= render "shared/button",
+            text: "Done",
+            variant: "secondary",
+            size: "small",
+            type: :button,
+            data: { action: "click->show-roles-modal#closeModal" } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div data-show-roles-modal-target="deleteConfirmModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+    <div class="flex items-start">
+      <div class="flex-shrink-0">
+        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div class="ml-3">
+        <h3 class="text-lg font-medium text-gray-900">Delete Role?</h3>
+        <p data-show-roles-modal-target="deleteConfirmMessage" class="mt-2 text-sm text-gray-500">
+          Are you sure you want to delete this role?
+        </p>
+      </div>
+    </div>
+    <div class="mt-6 flex justify-end gap-3">
+      <%= render "shared/button",
+          text: "Cancel",
+          variant: "secondary",
+          size: "small",
+          type: :button,
+          data: { action: "click->show-roles-modal#cancelDelete" } %>
+      <%= render "shared/button",
+          text: "Delete Role",
+          variant: "danger",
+          size: "small",
+          type: :button,
+          data: { action: "click->show-roles-modal#confirmDelete" } %>
+    </div>
+  </div>
+</div>
