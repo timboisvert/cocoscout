@@ -28,7 +28,8 @@
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Schedule</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Poster & Links</button>
     <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting & Roles</button>
-    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Linked Events</button>
+    <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
   </nav>
 
   <!-- Tab 1: Basic Information -->
@@ -409,7 +410,12 @@
     </div>
   </div>
 
-  <!-- Tab 5: Public Listing -->
+  <!-- Tab 5: Linked Events -->
+  <div data-tabs-target="panel" class="hidden">
+    <%= render "manage/shows/linked_events", show: @show, production: @production %>
+  </div>
+
+  <!-- Tab 6: Public Listing -->
   <div data-tabs-target="panel" class="hidden">
     <%
       event_type_default = @production.event_type_publicly_visible?(@show.event_type)

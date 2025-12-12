@@ -44,7 +44,7 @@ module My
                            .where(people: { id: @person.id })
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
-                           .includes(:production, :location)
+                           .includes(:production, :location, :event_linkage)
                            .distinct
                            .to_a
         person_shows.each { |s| all_shows_with_source << { show: s, entity_key: "person", entity: @person } }
@@ -58,7 +58,7 @@ module My
                                  .where(groups: { id: selected_group_ids })
                                  .where.not(canceled: true)
                                  .where("date_and_time > ?", Time.current)
-                                 .includes(:production, :location)
+                                 .includes(:production, :location, :event_linkage)
                                  .distinct
                                  .to_a
 

@@ -7,6 +7,7 @@ class Production < ApplicationRecord
 
   has_many :posters, dependent: :destroy
   has_many :shows, dependent: :destroy
+  has_many :event_linkages, dependent: :destroy
   has_many :audition_cycles, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles
   has_many :talent_pools, dependent: :delete_all

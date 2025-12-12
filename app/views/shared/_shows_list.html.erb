@@ -1,0 +1,128 @@
+<%#
+  Renders a list of shows with event linkage awareness.
+  Linked shows are grouped together using _linked_shows_toggle.
+  Unlinked shows render individually using _show_row.
+  
+  Required params:
+    - show_rows: Array of row hashes with { show:, assignments: [...] }
+  
+  Optional params:
+    - show_production: Show production name (default: false)
+    - show_location: Show location (default: true)
+    - has_groups: Whether user has groups (default: false)
+    - show_cant_make_it: Show "Can't make it" link (default: false)
+    - cant_make_it_person: Person for vacancy token (default: nil)
+    - link_path_helper: Lambda to generate link path for a show (default: nil)
+%>
+
+<%
+  show_production = local_assigns.fetch(:show_production, false)
+  show_location = local_assigns.fetch(:show_location, true)
+  has_groups = local_assigns.fetch(:has_groups, false)
+  show_cant_make_it = local_assigns.fetch(:show_cant_make_it, false)
+  cant_make_it_person = local_assigns.fetch(:cant_make_it_person, nil)
+  link_path_helper = local_assigns.fetch(:link_path_helper, nil)
+  
+  # Group show_rows by event linkage
+  result = []
+  seen_linkage_ids = Set.new
+  
+  # Sort rows by show date first
+  sorted_rows = show_rows.sort_by { |row| row[:show].date_and_time }
+  
+  sorted_rows.each do |row|
+    show = row[:show]
+    
+    if show.event_linkage_id.present?
+      # Skip if we've already added this linkage
+      next if seen_linkage_ids.include?(show.event_linkage_id)
+      
+      seen_linkage_ids.add(show.event_linkage_id)
+      
+      # Find all rows for shows in this linkage
+      linkage_rows = sorted_rows.select { |r| r[:show].event_linkage_id == show.event_linkage_id }
+      
+      # Merge all assignments from all linked shows
+      all_assignments = linkage_rows.flat_map { |r| r[:assignments] }
+      
+      result << {
+        type: :linkage,
+        event_linkage: show.event_linkage,
+        rows: linkage_rows,
+        assignments: all_assignments,
+        first_date: linkage_rows.map { |r| r[:show].date_and_time }.min
+      }
+    else
+      # Standalone show
+      result << {
+        type: :show,
+        row: row,
+        first_date: show.date_and_time
+      }
+    end
+  end
+  
+  # Sort by first date
+  grouped_items = result.sort_by { |item| item[:first_date] }
+%>
+
+<div class="space-y-1">
+  <% grouped_items.each do |item| %>
+    <% if item[:type] == :linkage %>
+      <%# Render linked shows toggle for grouped shows %>
+      <%
+        # Build entity_assignments from all assignments
+        all_assignments = item[:assignments]
+        assignments_by_entity = all_assignments.group_by { |a| [a[:type], a[:entity]&.id] }
+        entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
+          entity = assignments.first[:entity]
+          {
+            entity: entity,
+            role_assignments: assignments.map { |a| { role_name: a[:assignment].role.name, entity_name: entity.name } }.uniq
+          }
+        end
+        
+        primary_show = item[:event_linkage].resolved_primary_show
+        row_link_path = link_path_helper ? link_path_helper.call(primary_show) : nil
+      %>
+      <%= render "shared/linked_shows_toggle",
+                 event_linkage: item[:event_linkage],
+                 entity_assignments: entity_assignments,
+                 show_production: show_production,
+                 show_location: show_location,
+                 link_path: row_link_path,
+                 has_groups: has_groups,
+                 show_cant_make_it: show_cant_make_it,
+                 cant_make_it_person: cant_make_it_person %>
+    <% else %>
+      <%# Render regular show row for standalone shows %>
+      <% row = item[:row] %>
+      <% show = row[:show] %>
+      <%
+        # Group assignments by entity for stacked right panels
+        assignments_by_entity = row[:assignments].group_by { |a| [a[:type], a[:entity]&.id] }
+        entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
+          entity = assignments.first[:entity]
+          {
+            entity: entity,
+            role_assignments: assignments.map { |a| { role_name: a[:assignment].role.name, entity_name: entity.name } }
+          }
+        end
+        
+        row_link_path = link_path_helper ? link_path_helper.call(show) : nil
+      %>
+      <%= render partial: "shared/show_row", locals: {
+        show: show,
+        link_path: row_link_path,
+        show_canceled: true,
+        show_production: show_production,
+        show_location: show_location,
+        entity_assignments: entity_assignments,
+        has_groups: has_groups,
+        right_panel: entity_assignments.any? ? :cast_assignment : nil,
+        show_cant_make_it: show_cant_make_it,
+        cant_make_it_person: cant_make_it_person
+      } %>
+    <% end %>
+  <% end %>
+</div>

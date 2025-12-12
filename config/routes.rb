@@ -210,6 +210,7 @@ Rails.application.routes.draw do
         get :confirm_delete
         post :check_url_availability
         patch :update_public_key
+        get :linkage_demo
       end
 
       resources :availability, only: %i[index show] do
@@ -248,6 +249,8 @@ Rails.application.routes.draw do
           patch :cancel_show
           delete :delete_show
           patch :uncancel
+          post :link_show
+          delete :unlink_show
         end
 
         # Show-specific custom roles

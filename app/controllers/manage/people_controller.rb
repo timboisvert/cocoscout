@@ -10,6 +10,7 @@ module Manage
       production_ids = @person.talent_pools.pluck(:production_id).uniq
       @shows = Show.where(production_id: production_ids, canceled: false)
                    .where("date_and_time >= ?", Time.current)
+                   .includes(:event_linkage)
                    .order(:date_and_time)
 
       # Build a hash of availabilities: { show_id => show_availability }

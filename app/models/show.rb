@@ -5,6 +5,7 @@ class Show < ApplicationRecord
 
   belongs_to :production
   belongs_to :location, optional: true
+  belongs_to :event_linkage, optional: true
 
   has_many :show_person_role_assignments, dependent: :destroy
 
@@ -37,6 +38,9 @@ class Show < ApplicationRecord
 
   has_many :show_cast_notifications, dependent: :destroy
 
+  # Linkage roles
+  enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
+
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
@@ -68,6 +72,41 @@ class Show < ApplicationRecord
     return Show.none unless recurring?
 
     Show.in_recurrence_group(recurrence_group_id)
+  end
+
+  # Event Linkage methods
+
+  # Check if this show is linked to other shows
+  def linked?
+    event_linkage_id.present?
+  end
+
+  # Get all other shows in the same linkage (excluding self)
+  def linked_shows
+    return Show.none unless linked?
+
+    event_linkage.shows.where.not(id: id).order(:date_and_time)
+  end
+
+  # Get sibling shows in the same linkage (excluding self if sibling)
+  def linked_siblings
+    return Show.none unless linked?
+
+    event_linkage.sibling_shows.where.not(id: id).order(:date_and_time)
+  end
+
+  # Get child shows in the same linkage
+  def linked_children
+    return Show.none unless linked?
+
+    event_linkage.child_shows.order(:date_and_time)
+  end
+
+  # Check if this show is the primary (first sibling)
+  def primary_linked_show?
+    return false unless linked? && linkage_sibling?
+
+    event_linkage.sibling_shows.order(:date_and_time).first == self
   end
 
   # Determine if this show should be visible on the production's public profile

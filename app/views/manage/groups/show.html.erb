@@ -111,16 +111,11 @@
                 </div>
                 <% end %>
               <% else %>
-                <div class="p-2 space-y-1">
-                  <% shows.each do |show| %>
-                    <% availability = @availabilities[show.id] %>
-                    <%= render "shared/show_row",
-                        show: show,
-                        show_location: true,
-                        right_panel: :availability_status,
-                        availability: availability %>
-                  <% end %>
-                </div>
+                <%= render "shared/availability_list",
+                    shows: shows,
+                    entity_key: "Group",
+                    entity: @group,
+                    availabilities: @availabilities %>
               <% end %>
             </div>
           <% end %>

@@ -1,0 +1,113 @@
+<%#
+  Event Linkage Display - Accordion Card
+  
+  Shows linked events as a collapsible card. Header shows date range with stacked date boxes,
+  clicking expands to reveal all events in chronological order.
+  
+  Required params:
+    - event_linkage: EventLinkage object
+  
+  Optional params:
+    - show_production: Show production name (default: false)
+    - expanded: Start expanded (default: false)
+%>
+
+<%
+  show_production = local_assigns.fetch(:show_production, false)
+  expanded = local_assigns.fetch(:expanded, false)
+  
+  # Get all shows sorted by date
+  siblings = event_linkage.sibling_shows.respond_to?(:order) ? event_linkage.sibling_shows.order(:date_and_time).to_a : event_linkage.sibling_shows.sort_by(&:date_and_time)
+  children = event_linkage.child_shows.respond_to?(:order) ? event_linkage.child_shows.order(:date_and_time).to_a : event_linkage.child_shows.sort_by(&:date_and_time)
+  all_shows = (siblings + children).sort_by(&:date_and_time)
+  
+  first_show = all_shows.first
+  last_show = all_shows.last
+  
+  # Determine if we span multiple months
+  spans_months = first_show && last_show && first_show.date_and_time.month != last_show.date_and_time.month
+%>
+
+<div data-controller="accordion" 
+     data-accordion-expanded-value="<%= expanded %>"
+     class="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-all bg-white">
+  
+  <%# Collapsed Header - clickable %>
+  <button type="button" 
+          data-action="accordion#toggle"
+          class="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-gray-50 transition cursor-pointer">
+    <div class="flex items-center gap-4">
+      <%# Date Box(es) - show_row style %>
+      <% if spans_months %>
+        <%# Two date boxes for different months %>
+        <div class="flex items-center gap-1">
+          <div class="flex-shrink-0 w-12 text-center">
+            <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
+            <div class="text-xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></div>
+          </div>
+          <span class="text-gray-400 text-sm">–</span>
+          <div class="flex-shrink-0 w-12 text-center">
+            <div class="text-xs font-semibold text-pink-600 uppercase"><%= last_show.date_and_time.strftime("%b") %></div>
+            <div class="text-xl font-bold text-gray-900"><%= last_show.date_and_time.strftime("%-d") %></div>
+          </div>
+        </div>
+      <% elsif first_show.date_and_time.to_date == last_show.date_and_time.to_date %>
+        <%# Single day - one date box %>
+        <div class="flex-shrink-0 w-14 text-center">
+          <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
+          <div class="text-2xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %></div>
+          <div class="text-xs text-gray-500"><%= first_show.date_and_time.strftime("%a") %></div>
+        </div>
+      <% else %>
+        <%# Same month, different days - combined date box %>
+        <div class="flex-shrink-0 w-14 text-center">
+          <div class="text-xs font-semibold text-pink-600 uppercase"><%= first_show.date_and_time.strftime("%b") %></div>
+          <div class="text-xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %>-<%= last_show.date_and_time.strftime("%-d") %></div>
+        </div>
+      <% end %>
+      
+      <%# Event Info %>
+      <div class="text-left">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span class="text-sm font-medium text-gray-900"><%= event_linkage.display_name %></span>
+        </div>
+        <div class="text-xs text-gray-500">
+          <%= all_shows.count %> linked events
+          <% if show_production && first_show&.respond_to?(:production) && first_show&.production %>
+            · <%= first_show.production.name %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <%# Expand/Collapse Icon %>
+    <svg data-accordion-target="icon" 
+         class="w-5 h-5 text-gray-400 transition-transform <%= 'rotate-180' if expanded %>" 
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+  
+  <%# Expanded Content - all events in date order %>
+  <div data-accordion-target="content" class="<%= 'hidden' unless expanded %> border-t border-gray-200">
+    <% all_shows.each do |show| %>
+      <div class="flex items-center px-3 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition">
+        <%# Date Box %>
+        <div class="flex-shrink-0 w-14 text-center">
+          <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+          <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+          <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+        </div>
+        
+        <%# Show Details %>
+        <div class="flex-1 ml-4">
+          <div class="text-sm font-medium text-gray-900"><%= show.event_type.titleize %></div>
+          <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%-I:%M %p") %></div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

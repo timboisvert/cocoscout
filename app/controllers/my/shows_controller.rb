@@ -37,7 +37,7 @@ module My
         person_shows = Show.joins(production: { talent_pools: :people })
                            .where(people: { id: @person.id })
                            .where("date_and_time >= ?", Time.current)
-                           .includes(:production, :location)
+                           .includes(:production, :location, :event_linkage)
                            .select("shows.*")
                            .distinct
                            .to_a
@@ -50,7 +50,7 @@ module My
                           .joins(production: { talent_pools: :groups })
                           .where(groups: { id: selected_group_ids })
                           .where("date_and_time >= ?", Time.current)
-                          .includes(:production, :location)
+                          .includes(:production, :location, :event_linkage)
                           .distinct
                           .to_a
         group_shows.each do |show|

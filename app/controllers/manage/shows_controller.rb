@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show]
     before_action :ensure_user_is_manager, except: %i[index show]
 
     def index
@@ -440,6 +440,75 @@ module Manage
                     notice: "#{event_label} was successfully uncanceled",
                     status: :see_other
       end
+    end
+
+    # Link another show to this show's event linkage
+    def link_show
+      target_show = @production.shows.find(params[:target_show_id])
+      linkage_role = params[:linkage_role] || "sibling"
+
+      # Validate role
+      unless %w[sibling child].include?(linkage_role)
+        return render json: { error: "Invalid linkage role" }, status: :unprocessable_entity
+      end
+
+      # Create or get the event linkage
+      if @show.event_linkage.present?
+        event_linkage = @show.event_linkage
+      else
+        # Create new linkage with this show as the primary (the one the user started from)
+        event_linkage = EventLinkage.create!(production: @production, primary_show: @show)
+        @show.update!(event_linkage: event_linkage, linkage_role: :sibling)
+      end
+
+      # Check if target show is already linked elsewhere
+      if target_show.event_linkage.present? && target_show.event_linkage != event_linkage
+        return render json: { error: "That event is already part of another linkage" }, status: :unprocessable_entity
+      end
+
+      # Link the target show
+      target_show.update!(event_linkage: event_linkage, linkage_role: linkage_role)
+
+      # If target show has a poster and this show doesn't, copy it
+      if target_show.poster.attached? && !@show.poster.attached?
+        @show.poster.attach(target_show.poster.blob)
+      # Or if this show has a poster and target doesn't, copy to target
+      elsif @show.poster.attached? && !target_show.poster.attached?
+        target_show.poster.attach(@show.poster.blob)
+      end
+
+      render json: {
+        success: true,
+        message: "Event linked successfully",
+        redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+      }
+    end
+
+    # Remove this show from its event linkage
+    def unlink_show
+      event_linkage = @show.event_linkage
+
+      unless event_linkage
+        return render json: { error: "This event is not linked" }, status: :unprocessable_entity
+      end
+
+      # Remove this show from the linkage
+      @show.update!(event_linkage: nil, linkage_role: nil)
+
+      # If only one show remains in the linkage, unlink it too and delete the linkage
+      remaining_shows = event_linkage.shows.reload
+      if remaining_shows.count == 1
+        remaining_shows.first.update!(event_linkage: nil, linkage_role: nil)
+        event_linkage.destroy
+      elsif remaining_shows.count == 0
+        event_linkage.destroy
+      end
+
+      render json: {
+        success: true,
+        message: "Event unlinked successfully",
+        redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+      }
     end
 
     def destroy

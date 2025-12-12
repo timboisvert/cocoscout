@@ -103,32 +103,14 @@
         <% if production_rows.any? %>
           <div class="mb-6">
             <h2 class="text-lg font-bold mb-2"><%= production.name %></h2>
-            <div class="space-y-1">
-              <% production_rows.each do |row| %>
-                <%
-                  # Group assignments by entity for stacked right panels
-                  assignments_by_entity = row[:assignments].group_by { |a| [a[:type], a[:entity]&.id] }
-                  entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
-                    entity = assignments.first[:entity]
-                    {
-                      entity: entity,
-                      role_assignments: assignments.map { |a| { role_name: a[:assignment].role.name, entity_name: entity.name } }
-                    }
-                  end
-                %>
-                <%= render partial: "shared/show_row", locals: {
-                  show: row[:show],
-                  link_path: my_show_path(row[:show]),
-                  show_canceled: true,
-                  show_location: true,
-                  entity_assignments: entity_assignments,
-                  has_groups: @groups.any?,
-                  right_panel: entity_assignments.any? ? :cast_assignment : nil,
-                  show_cant_make_it: entity_assignments.any?,
-                  cant_make_it_person: @person
-                } %>
-              <% end %>
-            </div>
+            <%= render "shared/shows_list",
+                       show_rows: production_rows,
+                       show_production: false,
+                       show_location: true,
+                       has_groups: @groups.any?,
+                       show_cant_make_it: true,
+                       cant_make_it_person: @person,
+                       link_path_helper: ->(show) { my_show_path(show) } %>
           </div>
         <% end %>
       <% end %>
@@ -140,33 +122,14 @@
   <% else %>
     <!-- All Shows / My Assignments View -->
     <% if @show_entity_rows.any? %>
-      <div class="space-y-1">
-        <% @show_entity_rows.each do |row| %>
-          <%
-            # Group assignments by entity for stacked right panels
-            assignments_by_entity = row[:assignments].group_by { |a| [a[:type], a[:entity]&.id] }
-            entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
-              entity = assignments.first[:entity]
-              {
-                entity: entity,
-                role_assignments: assignments.map { |a| { role_name: a[:assignment].role.name, entity_name: entity.name } }
-              }
-            end
-          %>
-          <%= render partial: "shared/show_row", locals: {
-            show: row[:show],
-            link_path: my_show_path(row[:show]),
-            show_canceled: true,
-            show_production: true,
-            show_location: true,
-            entity_assignments: entity_assignments,
-            has_groups: @groups.any?,
-            right_panel: entity_assignments.any? ? :cast_assignment : nil,
-            show_cant_make_it: entity_assignments.any?,
-            cant_make_it_person: @person
-          } %>
-        <% end %>
-      </div>
+      <%= render "shared/shows_list",
+                 show_rows: @show_entity_rows,
+                 show_production: true,
+                 show_location: true,
+                 has_groups: @groups.any?,
+                 show_cant_make_it: true,
+                 cant_make_it_person: @person,
+                 link_path_helper: ->(show) { my_show_path(show) } %>
     <% else %>
       <div class="text-sm text-gray-500">
         No upcoming shows or events found for the selected filters.

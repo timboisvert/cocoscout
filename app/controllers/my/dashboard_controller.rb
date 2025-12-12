@@ -25,7 +25,7 @@ module My
                      .joins(:show_person_role_assignments)
                      .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: @person.id })
                      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
-                     .includes(:production, :location, show_person_role_assignments: :role)
+                     .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
                      .order(:date_and_time)
 
       person_shows.each do |show|
@@ -42,7 +42,7 @@ module My
                       .joins(:show_person_role_assignments)
                       .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: group_ids })
                       .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
-                      .includes(:production, :location, show_person_role_assignments: :role)
+                      .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
                       .order(:date_and_time)
 
         # Build groups_by_id lookup for O(1) access

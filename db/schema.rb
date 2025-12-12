@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_11_224721) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -207,6 +207,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
     t.index ["sent_at"], name: "index_email_logs_on_sent_at"
     t.index ["user_id"], name: "index_email_logs_on_user_id"
+  end
+
+  create_table "event_linkages", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.integer "primary_show_id"
+    t.integer "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["primary_show_id"], name: "index_event_linkages_on_primary_show_id"
+    t.index ["production_id"], name: "index_event_linkages_on_production_id"
   end
 
   create_table "group_invitations", force: :cascade do |t|
@@ -709,8 +719,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
     t.datetime "casting_finalized_at"
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
+    t.integer "event_linkage_id"
     t.string "event_type"
     t.boolean "is_online", default: false, null: false
+    t.string "linkage_role"
     t.integer "location_id"
     t.string "online_location_info"
     t.integer "production_id", null: false
@@ -719,6 +731,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
     t.string "secondary_name"
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
+    t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
   end
@@ -819,6 +832,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
   add_foreign_key "email_logs", "email_batches"
   add_foreign_key "email_logs", "organizations"
   add_foreign_key "email_logs", "users"
+  add_foreign_key "event_linkages", "productions"
+  add_foreign_key "event_linkages", "shows", column: "primary_show_id"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
@@ -857,6 +872,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_11_154543) do
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "talent_pool_memberships", "talent_pools"

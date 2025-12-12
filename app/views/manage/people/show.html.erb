@@ -45,18 +45,15 @@
               <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
                 <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
               </div>
-              <div class="p-2 space-y-1">
-                <% shows.each do |show| %>
-                  <% availability = @availabilities[show.id] %>
-                  <%= render "shared/show_row",
-                      show: show,
-                      show_location: true,
-                      right_panel: :availability,
-                      availability: availability,
-                      entity_key: "person",
-                      entity: @person,
-                      has_groups: false %>
-                <% end %>
+              <div class="p-2">
+                <%= render "shared/availability_list",
+                           shows: shows,
+                           entity_key: "person",
+                           entity: @person,
+                           availabilities: @availabilities,
+                           show_production: false,
+                           show_location: true,
+                           has_groups: false %>
               </div>
             </div>
           <% end %>
