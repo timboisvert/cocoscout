@@ -477,11 +477,30 @@ module Manage
         target_show.poster.attach(@show.poster.blob)
       end
 
-      render json: {
-        success: true,
-        message: "Event linked successfully",
-        redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
-      }
+      respond_to do |format|
+        format.turbo_stream {
+          @show.reload
+          render turbo_stream: [
+            turbo_stream.replace(
+              "linked-events-modal-body",
+              partial: "manage/shows/linked_events_modal_body",
+              locals: { show: @show, production: @production }
+            ),
+            turbo_stream.replace(
+              "linked-events-list",
+              partial: "manage/shows/linked_events_list",
+              locals: { show: @show, production: @production }
+            )
+          ]
+        }
+        format.json {
+          render json: {
+            success: true,
+            message: "Event linked successfully",
+            redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+          }
+        }
+      end
     end
 
     # Remove this show from its event linkage
@@ -491,6 +510,10 @@ module Manage
       unless event_linkage
         return render json: { error: "This event is not linked" }, status: :unprocessable_entity
       end
+
+      # Get the requesting show (the one whose view needs to be refreshed)
+      requesting_show_id = params[:requesting_show_id]
+      requesting_show = requesting_show_id ? @production.shows.find_by(id: requesting_show_id) : nil
 
       # Remove this show from the linkage
       @show.update!(event_linkage: nil, linkage_role: nil)
@@ -504,9 +527,51 @@ module Manage
         event_linkage.destroy
       end
 
+      respond_to do |format|
+        format.turbo_stream {
+          # Refresh the requesting show's view, not this show's view
+          show_to_render = requesting_show || @show
+          show_to_render.reload
+          render turbo_stream: [
+            turbo_stream.replace(
+              "linked-events-modal-body",
+              partial: "manage/shows/linked_events_modal_body",
+              locals: { show: show_to_render, production: @production }
+            ),
+            turbo_stream.replace(
+              "linked-events-list",
+              partial: "manage/shows/linked_events_list",
+              locals: { show: show_to_render, production: @production }
+            )
+          ]
+        }
+        format.json {
+          render json: {
+            success: true,
+            message: "Event unlinked successfully",
+            redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+          }
+        }
+      end
+    end
+
+    # Delete the entire event linkage (unlinks all shows)
+    def delete_linkage
+      event_linkage = @show.event_linkage
+
+      unless event_linkage
+        return render json: { error: "This event is not linked" }, status: :unprocessable_entity
+      end
+
+      # Unlink all shows from this linkage
+      event_linkage.shows.update_all(event_linkage_id: nil, linkage_role: nil)
+
+      # Delete the linkage
+      event_linkage.destroy
+
       render json: {
         success: true,
-        message: "Event unlinked successfully",
+        message: "All events unlinked successfully",
         redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
       }
     end

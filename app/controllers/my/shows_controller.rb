@@ -185,6 +185,7 @@ module My
       # 3. Person has a direct role assignment
       # 4. Person's group has a role assignment
       @show = Show.where(id: params[:id])
+                  .includes(event_linkage: :shows)
                   .where(
                     "EXISTS (SELECT 1 FROM talent_pools
                              INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id

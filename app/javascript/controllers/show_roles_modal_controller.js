@@ -488,7 +488,8 @@ export default class extends Controller {
                 }
                 this.hideForm()
             } else {
-                this.showRoleNameError(data.errors.join(", "))
+                const errorMsg = data.errors ? data.errors.join(", ") : "Failed to save role"
+                this.showRoleNameError(errorMsg)
             }
         } catch (error) {
             console.error("Failed to save role:", error)

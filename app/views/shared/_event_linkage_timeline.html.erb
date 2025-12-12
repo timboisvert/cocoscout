@@ -1,12 +1,12 @@
 <%#
   Event Linkage Display - Option C: Timeline Style
-  
+
   Shows linked events as a vertical timeline with connector lines.
   Siblings have large dots, children have smaller indented dots.
-  
+
   Required params:
     - event_linkage: EventLinkage object
-  
+
   Optional params:
     - show_production: Show production name (default: false)
 %>
@@ -30,18 +30,18 @@
       <%= all_events.count %> linked events
     </span>
   </div>
-  
+
   <%# Timeline %>
   <div class="relative px-4 py-3">
     <%# Vertical line %>
     <div class="absolute left-8 top-3 bottom-3 w-0.5 bg-gray-200"></div>
-    
+
     <div class="space-y-0">
       <% all_events.each_with_index do |show, index| %>
         <% is_sibling = show.linkage_sibling? %>
         <% is_first = index == 0 %>
         <% is_last = index == all_events.length - 1 %>
-        
+
         <a href="#" class="relative flex items-start py-2 hover:bg-pink-50 -mx-4 px-4 transition group <%= 'pl-8' unless is_sibling %>">
           <%# Timeline dot %>
           <div class="relative z-10 flex-shrink-0 <%= is_sibling ? 'ml-0' : 'ml-4' %>">
@@ -53,7 +53,7 @@
               <div class="w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-white shadow-sm ml-0.5 mt-0.5"></div>
             <% end %>
           </div>
-          
+
           <%# Event Content %>
           <div class="ml-4 flex-1 min-w-0">
             <div class="flex items-center justify-between">
@@ -71,12 +71,12 @@
                   </span>
                 <% end %>
               </div>
-              
+
               <svg class="w-4 h-4 text-gray-400 group-hover:text-pink-500 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>
-            
+
             <div class="text-xs text-gray-500 mt-0.5">
               <%= show.date_and_time.strftime("%A, %B %-d") %> @ <%= show.date_and_time.strftime("%-I:%M %p") %>
               <% if show.location %>
@@ -90,7 +90,7 @@
       <% end %>
     </div>
   </div>
-  
+
   <%# Footer with summary %>
   <div class="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
     <div class="text-xs text-gray-500">
@@ -106,7 +106,7 @@
         </span>
       <% end %>
     </div>
-    
+
     <% if show_production && primary&.production %>
       <span class="text-xs text-gray-500"><%= primary.production.name %></span>
     <% end %>

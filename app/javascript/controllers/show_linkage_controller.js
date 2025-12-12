@@ -1,16 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "showSelect"]
+    static targets = ["modal", "showSelect", "deleteConfirmModal"]
     static values = { showId: Number, productionId: Number }
 
     connect() {
-        console.log("show-linkage controller connected", {
-            showId: this.showIdValue,
-            productionId: this.productionIdValue,
-            hasModalTarget: this.hasModalTarget,
-            hasShowSelectTarget: this.hasShowSelectTarget
-        })
         this.boundHandleKeydown = this.handleKeydown.bind(this)
         document.addEventListener("keydown", this.boundHandleKeydown)
     }
@@ -20,8 +14,12 @@ export default class extends Controller {
     }
 
     handleKeydown(event) {
-        if (event.key === "Escape" && this.hasModalTarget && !this.modalTarget.classList.contains("hidden")) {
-            this.closeModal()
+        if (event.key === "Escape") {
+            if (this.hasDeleteConfirmModalTarget && !this.deleteConfirmModalTarget.classList.contains("hidden")) {
+                this.cancelDeleteLinkage()
+            } else if (this.hasModalTarget && !this.modalTarget.classList.contains("hidden")) {
+                this.closeModal()
+            }
         }
     }
 
@@ -43,7 +41,6 @@ export default class extends Controller {
 
     linkShow(event) {
         event.preventDefault()
-        console.log("linkShow called", { hasShowSelectTarget: this.hasShowSelectTarget })
 
         if (!this.hasShowSelectTarget) {
             alert("No events available to link")
@@ -52,7 +49,6 @@ export default class extends Controller {
 
         const showSelect = this.showSelectTarget
         const targetShowId = showSelect.value
-        console.log("Selected show ID:", targetShowId)
 
         if (!targetShowId) {
             alert("Please select an event to link")
@@ -75,6 +71,7 @@ export default class extends Controller {
         fetch(url, {
             method: "POST",
             headers: {
+                "Accept": "text/vnd.turbo-stream.html",
                 "Content-Type": "application/json",
                 "X-CSRF-Token": csrfToken
             },
@@ -83,61 +80,22 @@ export default class extends Controller {
                 linkage_role: linkageRole
             })
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || `Server error: ${response.status}`)
-                })
-            }
-            return response.json()
-        })
-        .then(data => {
-            if (data.success) {
-                // Reload the page to show updated linkage
-                window.location.href = data.redirect_url
-            } else if (data.error) {
-                alert(data.error)
-            }
-        })
-        .catch(error => {
-            console.error("Error linking show:", error)
-            alert(error.message || "An error occurred while linking the event")
-        })
-    }
-
-    unlinkShow(event) {
-        event.preventDefault()
-
-        if (!confirm("Are you sure you want to remove this event from the linkage?")) {
-            return
-        }
-
-        // Get CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content
-
-        // Build URL
-        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/unlink_show`
-
-        fetch(url, {
-            method: "DELETE",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-Token": csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Reload the page to show updated state
-                window.location.href = data.redirect_url
-            } else if (data.error) {
-                alert(data.error)
-            }
-        })
-        .catch(error => {
-            console.error("Error unlinking show:", error)
-            alert("An error occurred while unlinking the event")
-        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server error: ${response.status}`)
+                    })
+                }
+                return response.text()
+            })
+            .then(html => {
+                // Turbo will process the stream - updates just the modal body and list
+                Turbo.renderStreamMessage(html)
+            })
+            .catch(error => {
+                console.error("Error linking show:", error)
+                alert(error.message || "An error occurred while linking the event")
+            })
     }
 
     removeFromLinkage(event) {
@@ -145,15 +103,61 @@ export default class extends Controller {
 
         const targetShowId = event.currentTarget.dataset.showId
 
-        if (!confirm("Are you sure you want to remove this event from the linkage?")) {
-            return
-        }
-
         // Get CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content
 
         // Build URL - we're removing another show from the linkage
-        const url = `/manage/productions/${this.productionIdValue}/shows/${targetShowId}/unlink_show`
+        // Pass requesting_show_id so the server knows which show's view to refresh
+        const url = `/manage/productions/${this.productionIdValue}/shows/${targetShowId}/unlink_show?requesting_show_id=${this.showIdValue}`
+
+        fetch(url, {
+            method: "DELETE",
+            headers: {
+                "Accept": "text/vnd.turbo-stream.html",
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server error: ${response.status}`)
+                    })
+                }
+                return response.text()
+            })
+            .then(html => {
+                // Turbo will process the stream - updates just the modal body and list
+                Turbo.renderStreamMessage(html)
+            })
+            .catch(error => {
+                console.error("Error removing show from linkage:", error)
+                alert("An error occurred while removing the event from linkage")
+            })
+    }
+
+    deleteLinkage(event) {
+        event.preventDefault()
+        if (this.hasDeleteConfirmModalTarget) {
+            this.deleteConfirmModalTarget.classList.remove("hidden")
+        }
+    }
+
+    cancelDeleteLinkage(event) {
+        if (event) event.preventDefault()
+        if (this.hasDeleteConfirmModalTarget) {
+            this.deleteConfirmModalTarget.classList.add("hidden")
+        }
+    }
+
+    confirmDeleteLinkage(event) {
+        event.preventDefault()
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content
+
+        // Build URL
+        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/delete_linkage`
 
         fetch(url, {
             method: "DELETE",
@@ -162,18 +166,25 @@ export default class extends Controller {
                 "X-CSRF-Token": csrfToken
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Reload the current page (not the target's redirect)
-                window.location.reload()
-            } else if (data.error) {
-                alert(data.error)
-            }
-        })
-        .catch(error => {
-            console.error("Error removing show from linkage:", error)
-            alert("An error occurred while removing the event from linkage")
-        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `Server error: ${response.status}`)
+                    })
+                }
+                return response.json()
+            })
+            .then(data => {
+                if (data.success) {
+                    // Full page reload since linkage is completely deleted
+                    window.location.reload()
+                } else if (data.error) {
+                    alert(data.error)
+                }
+            })
+            .catch(error => {
+                console.error("Error deleting linkage:", error)
+                alert("An error occurred while deleting the linkage")
+            })
     }
 }

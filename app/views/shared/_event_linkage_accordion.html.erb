@@ -1,12 +1,12 @@
 <%#
   Event Linkage Display - Accordion Card
-  
+
   Shows linked events as a collapsible card. Header shows date range with stacked date boxes,
   clicking expands to reveal all events in chronological order.
-  
+
   Required params:
     - event_linkage: EventLinkage object
-  
+
   Optional params:
     - show_production: Show production name (default: false)
     - expanded: Start expanded (default: false)
@@ -15,25 +15,25 @@
 <%
   show_production = local_assigns.fetch(:show_production, false)
   expanded = local_assigns.fetch(:expanded, false)
-  
+
   # Get all shows sorted by date
   siblings = event_linkage.sibling_shows.respond_to?(:order) ? event_linkage.sibling_shows.order(:date_and_time).to_a : event_linkage.sibling_shows.sort_by(&:date_and_time)
   children = event_linkage.child_shows.respond_to?(:order) ? event_linkage.child_shows.order(:date_and_time).to_a : event_linkage.child_shows.sort_by(&:date_and_time)
   all_shows = (siblings + children).sort_by(&:date_and_time)
-  
+
   first_show = all_shows.first
   last_show = all_shows.last
-  
+
   # Determine if we span multiple months
   spans_months = first_show && last_show && first_show.date_and_time.month != last_show.date_and_time.month
 %>
 
-<div data-controller="accordion" 
+<div data-controller="accordion"
      data-accordion-expanded-value="<%= expanded %>"
      class="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-all bg-white">
-  
+
   <%# Collapsed Header - clickable %>
-  <button type="button" 
+  <button type="button"
           data-action="accordion#toggle"
           class="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-gray-50 transition cursor-pointer">
     <div class="flex items-center gap-4">
@@ -65,7 +65,7 @@
           <div class="text-xl font-bold text-gray-900"><%= first_show.date_and_time.strftime("%-d") %>-<%= last_show.date_and_time.strftime("%-d") %></div>
         </div>
       <% end %>
-      
+
       <%# Event Info %>
       <div class="text-left">
         <div class="flex items-center gap-2">
@@ -82,15 +82,15 @@
         </div>
       </div>
     </div>
-    
+
     <%# Expand/Collapse Icon %>
-    <svg data-accordion-target="icon" 
-         class="w-5 h-5 text-gray-400 transition-transform <%= 'rotate-180' if expanded %>" 
+    <svg data-accordion-target="icon"
+         class="w-5 h-5 text-gray-400 transition-transform <%= 'rotate-180' if expanded %>"
          fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
     </svg>
   </button>
-  
+
   <%# Expanded Content - all events in date order %>
   <div data-accordion-target="content" class="<%= 'hidden' unless expanded %> border-t border-gray-200">
     <% all_shows.each do |show| %>
@@ -101,7 +101,7 @@
           <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
           <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
         </div>
-        
+
         <%# Show Details %>
         <div class="flex-1 ml-4">
           <div class="text-sm font-medium text-gray-900"><%= show.event_type.titleize %></div>

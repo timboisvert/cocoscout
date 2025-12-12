@@ -27,22 +27,36 @@ module Manage
       max_position = @show.custom_roles.maximum(:position) || -1
       @role.position = max_position + 1
 
-      if @role.save
-        update_eligible_members(@role)
-        render json: { success: true, role: role_json(@role) }
-      else
-        render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+      ActiveRecord::Base.transaction do
+        if @role.save
+          update_eligible_members(@role)
+          render json: { success: true, role: role_json(@role) }
+        else
+          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+        end
       end
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
+    rescue => e
+      Rails.logger.error "Error creating role: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
+      render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
     end
 
     # PATCH /manage/productions/:production_id/shows/:show_id/show_roles/:id
     def update
-      if @role.update(role_params)
-        update_eligible_members(@role)
-        render json: { success: true, role: role_json(@role) }
-      else
-        render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+      ActiveRecord::Base.transaction do
+        if @role.update(role_params)
+          update_eligible_members(@role)
+          render json: { success: true, role: role_json(@role) }
+        else
+          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+        end
       end
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
+    rescue => e
+      Rails.logger.error "Error updating role: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
+      render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
     end
 
     # DELETE /manage/productions/:production_id/shows/:show_id/show_roles/:id

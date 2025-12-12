@@ -263,10 +263,10 @@ module Manage
                                                      availability: @availability })
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
 
-      # Calculate progress for the progress bar
-      assignment_count = @show.show_person_role_assignments.count
+      # Calculate progress for the progress bar - count roles with at least one assignment
+      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
+      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
 
       # Render finalize section if fully cast
       finalize_section_html = nil
@@ -279,7 +279,7 @@ module Manage
         roles_html: roles_html,
         finalize_section_html: finalize_section_html,
         progress: {
-          assignment_count: assignment_count,
+          assignment_count: roles_with_assignments,
           role_count: role_count,
           percentage: percentage
         }
@@ -316,10 +316,10 @@ module Manage
                                                      availability: @availability })
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
 
-      # Calculate progress for the progress bar
-      assignment_count = @show.show_person_role_assignments.count
+      # Calculate progress for the progress bar - count roles with at least one assignment
+      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
+      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
 
       # Render finalize section if fully cast
       finalize_section_html = nil
@@ -335,7 +335,7 @@ module Manage
         assignable_id: removed_assignable_id,
         person_id: removed_assignable_id, # Backward compatibility
         progress: {
-          assignment_count: assignment_count,
+          assignment_count: roles_with_assignments,
           role_count: role_count,
           percentage: percentage
         }
@@ -383,10 +383,10 @@ module Manage
                                                      availability: @availability })
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
 
-      # Calculate progress
-      assignment_count = @show.show_person_role_assignments.count
+      # Calculate progress - count roles with at least one assignment
+      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (assignment_count.to_f / role_count * 100).round : 0
+      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
 
       # Render finalize section if fully cast
       finalize_section_html = nil
@@ -401,7 +401,7 @@ module Manage
         roles_html: roles_html,
         finalize_section_html: finalize_section_html,
         progress: {
-          assignment_count: assignment_count,
+          assignment_count: roles_with_assignments,
           role_count: role_count,
           percentage: percentage
         }
@@ -428,20 +428,22 @@ module Manage
 
       # Get current cast members who need notification
       unnotified_assignments = @show.unnotified_cast_members
-      cast_to_notify = unnotified_assignments.map { |a| [ a.assignable, a.role ] }
+      # Filter out any orphaned assignments (where role was deleted)
+      cast_to_notify = unnotified_assignments.filter_map { |a| a.role ? [ a.assignable, a.role ] : nil }
 
       # Get removed cast members who need notification
       removed_members = @show.removed_cast_members
       # For removed members, we need to find what role they were previously notified for
-      removed_to_notify = removed_members.map do |assignable|
+      removed_to_notify = removed_members.filter_map do |assignable|
         # Find the most recent cast notification for this assignable
         prev_notification = @show.show_cast_notifications
                                   .cast_notifications
                                   .where(assignable: assignable)
                                   .order(notified_at: :desc)
                                   .first
-        [ assignable, prev_notification&.role ]
-      end.compact
+        # Only include if we have a valid role (role might have been deleted)
+        prev_notification&.role ? [ assignable, prev_notification.role ] : nil
+      end
 
       # Send cast notification emails
       if cast_to_notify.any?

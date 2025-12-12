@@ -17,7 +17,7 @@ export default class extends Controller {
         if (this.hasContentTarget) {
             this.contentTarget.classList.toggle("hidden", !this.expandedValue)
         }
-        
+
         if (this.hasIconTarget) {
             this.iconTarget.classList.toggle("rotate-180", this.expandedValue)
         }

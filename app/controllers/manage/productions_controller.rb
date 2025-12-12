@@ -91,42 +91,6 @@ module Manage
       end
     end
 
-    def linkage_demo
-      @production = Current.organization.productions.find_by(id: params[:id])
-      return redirect_to manage_productions_path, alert: "Production not found" unless @production
-
-      # Find or create an event linkage for demo purposes
-      @event_linkage = @production.event_linkages.includes(:shows).first
-
-      if @event_linkage.nil?
-        # Create sample linkage from first few shows
-        shows = @production.shows.order(:date_and_time).limit(5)
-        if shows.count >= 2
-          @event_linkage = @production.event_linkages.create!(name: "Demo Weekend Series")
-          shows.each_with_index do |show, index|
-            role = index < 3 ? "sibling" : "child"
-            show.update!(event_linkage: @event_linkage, linkage_role: role)
-          end
-          @event_linkage.reload
-        end
-      end
-
-      # For availability demo, use a sample person from the organization
-      @sample_person = Current.organization.people.first
-      @sample_entity_key = @sample_person ? "person_#{@sample_person.id}" : "person_demo"
-
-      # Build availabilities hash for the demo
-      @availabilities = {}
-      if @event_linkage && @sample_person
-        @event_linkage.shows.each do |show|
-          @availabilities[show.id] = show.show_availabilities.find_by(
-            available_entity_type: "Person",
-            available_entity_id: @sample_person.id
-          )
-        end
-      end
-    end
-
     def destroy
       return unless Current.organization && Current.user
 

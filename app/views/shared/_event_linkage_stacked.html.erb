@@ -1,12 +1,12 @@
 <%#
   Event Linkage Display - Option B: Stacked Card
-  
+
   Shows linked events as a single card with all siblings listed vertically,
   and children in a gray inset section below. Always expanded.
-  
+
   Required params:
     - event_linkage: EventLinkage object
-  
+
   Optional params:
     - show_production: Show production name (default: false)
 %>
@@ -29,7 +29,7 @@
       <span class="text-xs text-gray-500">• <%= primary.production.name %></span>
     <% end %>
   </div>
-  
+
   <%# Sibling Shows - Full rows %>
   <div class="divide-y divide-gray-100">
     <% siblings.each_with_index do |show, index| %>
@@ -41,7 +41,7 @@
             <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
             <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
           </div>
-          
+
           <%# Show Details %>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
@@ -64,14 +64,14 @@
             </div>
           </div>
         </div>
-        
+
         <svg class="w-4 h-4 text-gray-400 group-hover:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
       </a>
     <% end %>
   </div>
-  
+
   <%# Child Shows (Rehearsals) - Inset Section %>
   <% if children.any? %>
     <div class="bg-gray-50 border-t border-gray-200">
@@ -83,7 +83,7 @@
           Rehearsals & Prep (<%= children.count %>)
         </span>
       </div>
-      
+
       <div class="divide-y divide-gray-100">
         <% children.each do |show| %>
           <a href="#" class="flex items-center px-4 py-2 pl-8 hover:bg-gray-100 transition group">
@@ -93,7 +93,7 @@
                 <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%b %-d") %></div>
                 <div class="text-xs text-gray-400"><%= show.date_and_time.strftime("%a") %></div>
               </div>
-              
+
               <%# Details %>
               <div class="flex-1 min-w-0">
                 <span class="text-sm text-gray-700 group-hover:text-gray-900">
@@ -104,7 +104,7 @@
                 </span>
               </div>
             </div>
-            
+
             <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>

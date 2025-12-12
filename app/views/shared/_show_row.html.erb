@@ -8,6 +8,7 @@
     - link_path: Path to link to (if nil, renders as div)
     - show_canceled: Show canceled badge and strikethrough date (default: false)
     - show_recurring: Show recurring event indicator (default: false)
+    - show_linked: Show linked event indicator with tooltip (default: false)
     - show_production: Show production name in details line (default: false)
     - show_location: Show location/online indicator (default: true)
     - roles: Array of role names to display (default: nil) - legacy, use role_assignments instead
@@ -26,6 +27,7 @@
   # Set defaults for optional params
   show_canceled = local_assigns.fetch(:show_canceled, false)
   show_recurring = local_assigns.fetch(:show_recurring, false)
+  show_linked = local_assigns.fetch(:show_linked, false)
   show_production = local_assigns.fetch(:show_production, false)
   show_location = local_assigns.fetch(:show_location, true)
   show_cant_make_it = local_assigns.fetch(:show_cant_make_it, false)
@@ -34,6 +36,7 @@
   role_assignments = local_assigns.fetch(:role_assignments, [])
   entity_assignments = local_assigns.fetch(:entity_assignments, [])
   right_panel = local_assigns.fetch(:right_panel, nil)
+  wrapper_classes = local_assigns.fetch(:wrapper_classes, nil)
 
   is_canceled = show_canceled && show.canceled
   has_link = local_assigns[:link_path].present?
@@ -58,10 +61,20 @@
       data_attrs["availability-update-url-value"] = update_availability_manage_person_path(local_assigns[:entity])
     end
   end
+
+  # Add linkage data for linked highlight feature
+  if show.linked?
+    data_attrs["linked-highlight-target"] = "row"
+    data_attrs["linkage-id"] = show.event_linkage_id
+  end
 %>
 
 <%# Row wrapper - either link or div %>
-<% row_classes = "flex bg-white items-stretch px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all group" %>
+<%
+  base_row_classes = "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group"
+  default_classes = "bg-white border-gray-200"
+  row_classes = "#{base_row_classes} #{wrapper_classes.present? ? wrapper_classes : default_classes}"
+%>
 
 <% content = capture do %>
   <%# Left Section: Date & Show Details %>
@@ -86,6 +99,20 @@
           <span data-controller="tooltip" data-tooltip-text="This is a recurring event">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+          </span>
+        <% end %>
+        <% if show_linked && show.linked? %>
+          <%
+            other_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time)
+            linked_tooltip = "Linked with: " + other_shows.map { |s|
+              name = s.secondary_name.presence || s.event_type.titleize
+              "#{s.date_and_time.strftime('%b %-d')} #{name}"
+            }.join(", ")
+          %>
+          <span data-controller="tooltip" data-tooltip-text="<%= linked_tooltip %>">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
             </svg>
           </span>
         <% end %>
@@ -128,12 +155,6 @@
                 <span class="text-gray-700"><%= ra[:entity_name] %></span>
                 <span class="text-gray-400">as</span>
                 <strong class="text-pink-500"><%= ra[:role_name] %></strong>
-                <% if can_show_vacancy %>
-                  <span class="text-xs text-pink-500 underline cursor-pointer whitespace-nowrap hidden group-hover:inline"
-                        onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
-                    Can't make it?
-                  </span>
-                <% end %>
               </div>
             <% end %>
           </div>
@@ -159,12 +180,6 @@
             <span class="text-gray-700"><%= ra[:entity_name] %></span>
             <span class="text-gray-400">as</span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
-            <% if can_show_vacancy %>
-              <span class="text-xs text-pink-500 underline cursor-pointer whitespace-nowrap hidden group-hover:inline"
-                    onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
-                Can't make it?
-              </span>
-            <% end %>
           </div>
         <% end %>
       </div>
@@ -252,12 +267,6 @@
             <% if ra[:entity_type] == "Group" %>
               <span class="text-gray-400">(as <%= ra[:entity_name] %>)</span>
             <% end %>
-            <% if can_show_vacancy %>
-              <span class="hidden group-hover:inline-block text-pink-500 underline cursor-pointer whitespace-nowrap"
-                    onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
-                Can't make it?
-              </span>
-            <% end %>
           </div>
         <% end %>
       </div>
@@ -344,13 +353,29 @@
 <% end %>
 
 <% if has_link %>
+  <%
+    # Build data attributes string for linked rows
+    link_data_attrs_str = data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ")
+  %>
   <%= link_to link_path, class: "block" do %>
-    <div class="<%= row_classes %>">
+    <div class="<%= row_classes %> relative" <%= link_data_attrs_str.html_safe %>>
       <%= content %>
+      <% if can_show_vacancy %>
+        <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:block"
+             onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
+          <%= render "shared/button", text: "Can't make it?", variant: "primary", size: "small" %>
+        </div>
+      <% end %>
     </div>
   <% end %>
 <% else %>
-  <div class="<%= row_classes %>" <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
+  <div class="<%= row_classes %> relative" <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
     <%= content %>
+    <% if can_show_vacancy %>
+      <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:block"
+           onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
+        <%= render "shared/button", text: "Can't make it?", variant: "primary", size: "small" %>
+      </div>
+    <% end %>
   </div>
 <% end %>

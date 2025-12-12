@@ -13,11 +13,12 @@ export default class extends Controller {
         this.contentTarget.classList.toggle("hidden")
 
         if (this.hasIconTarget) {
-            // Rotate the icon when open
+            // Rotate the icon when open (180 for down arrows, 90 for right arrows)
             if (this.contentTarget.classList.contains("hidden")) {
-                this.iconTarget.classList.remove("rotate-90")
+                this.iconTarget.classList.remove("rotate-180", "rotate-90")
             } else {
-                this.iconTarget.classList.add("rotate-90")
+                // Use rotate-180 for down chevrons, rotate-90 for right chevrons
+                this.iconTarget.classList.add("rotate-180")
             }
         }
     }

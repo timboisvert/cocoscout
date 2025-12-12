@@ -1,25 +1,7 @@
 <%# Modal for managing linked events %>
-<%# Contains: add new linkages, remove existing linkages, remove this show from linkage %>
+<%# Contains: current show display, linked events with remove on hover, add new linkages, delete linkage %>
 
-<%
-  linkable_shows = production.shows
-    .where.not(id: show.id)
-    .where(event_linkage_id: nil)
-    .where("date_and_time >= ?", Time.current)
-    .order(:date_and_time)
-    .limit(50)
-  
-  # Get other linked shows (excluding current show)
-  other_linked_shows = show.linked? ? show.event_linkage.shows.where.not(id: show.id).order(:date_and_time) : []
-  
-  # Determine the primary show (first by date)
-  primary_show = show.linked? ? show.event_linkage.resolved_primary_show : nil
-  
-  # Event name helper
-  show_event_name = show.secondary_name.presence || show.event_type.titleize
-%>
-
-<div data-show-linkage-target="modal" 
+<div data-show-linkage-target="modal"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
     <%# Modal Header %>
@@ -27,7 +9,7 @@
       <h2 class="text-lg font-semibold text-gray-900 coustard-regular">
         <%= show.linked? ? "Manage Linked Events" : "Link Events" %>
       </h2>
-      <button type="button" 
+      <button type="button"
               data-action="click->show-linkage#closeModal"
               class="text-gray-400 hover:text-gray-500">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,144 +20,55 @@
 
     <%# Modal Body - scrollable %>
     <div class="flex-1 overflow-y-auto px-6 py-4">
-      <%# Primary Show Card %>
-      <div class="mb-6">
-        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Linking events to</div>
-        <div class="bg-gradient-to-r from-pink-50 to-white border border-pink-200 rounded-lg p-4">
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-14 text-center bg-white rounded-lg border border-pink-100 py-2 px-1">
-              <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-              <div class="text-xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
-              <div class="text-[10px] text-gray-500 uppercase"><%= show.date_and_time.strftime("%a") %></div>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-base font-semibold text-gray-900"><%= show_event_name %></span>
-                <% if show.id == primary_show&.id %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Primary</span>
-                <% end %>
-              </div>
-              <div class="text-sm text-gray-600 mt-0.5">
-                <%= show.date_and_time.strftime("%-I:%M %p") %>
-                <% if show.location.present? %>
-                  <span class="mx-1">·</span>
-                  <%= show.location.name %>
-                <% end %>
-                <% if show.secondary_name.present? %>
-                  <span class="mx-1">·</span>
-                  <span class="text-gray-400"><%= show.event_type.titleize %></span>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <% if other_linked_shows.any? %>
-        <%# Current Linkage Section - only shows OTHER linked events %>
-        <div class="mb-6">
-          <h3 class="text-sm font-medium text-gray-900 mb-3">Currently Linked Events</h3>
-          <div class="border border-gray-200 rounded-lg divide-y divide-gray-100">
-            <% other_linked_shows.each do |linked_show| %>
-              <% is_primary = linked_show.id == primary_show&.id %>
-              <% linked_event_name = linked_show.secondary_name.presence || linked_show.event_type.titleize %>
-              <div class="flex items-center justify-between px-3 py-2">
-                <div class="flex items-center gap-3">
-                  <div class="flex-shrink-0 w-10 text-center">
-                    <div class="text-[10px] font-semibold text-pink-600 uppercase"><%= linked_show.date_and_time.strftime("%b") %></div>
-                    <div class="text-sm font-bold text-gray-900"><%= linked_show.date_and_time.strftime("%-d") %></div>
-                  </div>
-                  <div>
-                    <div class="text-sm font-medium text-gray-900">
-                      <%= linked_event_name %>
-                      <% if is_primary %>
-                        <span class="inline-flex items-center ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Primary</span>
-                      <% end %>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      <%= linked_show.date_and_time.strftime("%-I:%M %p") %>
-                      <% if linked_show.secondary_name.present? %>
-                        <span class="mx-1">·</span>
-                        <span class="text-gray-400"><%= linked_show.event_type.titleize %></span>
-                      <% end %>
-                    </div>
-                  </div>
-                </div>
-                <%= render "shared/button",
-                        text: "Remove",
-                        variant: "ghost",
-                        size: "small",
-                        type: :button,
-                        classes: "text-red-600 hover:text-red-800 hover:bg-red-50",
-                        data: { action: "click->show-linkage#removeFromLinkage", "show-id": linked_show.id } %>
-              </div>
-            <% end %>
-          </div>
-          
-          <%# Remove this event from linkage %>
-          <div class="mt-3 flex justify-end">
-            <%= render "shared/button",
-                    text: "Remove this event from linkage",
-                    variant: "ghost",
-                    size: "small",
-                    type: :button,
-                    classes: "text-red-600 hover:text-red-800",
-                    data: { action: "click->show-linkage#unlinkShow" } %>
-          </div>
-        </div>
-
-        <hr class="my-6 border-gray-200">
-      <% end %>
-
-      <%# Add Events Section %>
-      <div>
-        <h3 class="text-sm font-medium text-gray-900 mb-3">
-          <%= show.linked? ? "Add More Events" : "Select Events to Link" %>
-        </h3>
-        
-        <% if linkable_shows.any? %>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm text-gray-700 mb-1">Select an event</label>
-              <select data-show-linkage-target="showSelect" 
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                <option value="">Choose an event...</option>
-                <% linkable_shows.each do |linkable_show| %>
-                  <% linkable_event_name = linkable_show.secondary_name.presence || linkable_show.event_type.titleize %>
-                  <option value="<%= linkable_show.id %>">
-                    <%= linkable_show.date_and_time.strftime("%b %-d, %Y @ %-I:%M %p") %> - <%= linkable_event_name %>
-                    <% if linkable_show.secondary_name.present? %>
-                      (<%= linkable_show.event_type.titleize %>)
-                    <% end %>
-                  </option>
-                <% end %>
-              </select>
-            </div>
-
-            <%= render "shared/button", 
-                    text: "Add to Linkage", 
-                    variant: "primary", 
-                    icon: "plus",
-                    type: :button,
-                    data: { action: "click->show-linkage#linkShow" } %>
-          </div>
-        <% else %>
-          <div class="text-center py-4 bg-gray-50 rounded-lg">
-            <p class="text-sm text-gray-500">No available events to link.</p>
-            <p class="text-xs text-gray-400 mt-1">Create more events first, or all events are already linked.</p>
-          </div>
-        <% end %>
-      </div>
+      <%= render "manage/shows/linked_events_modal_body", show: show, production: production %>
     </div>
 
     <%# Modal Footer %>
-    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-end">
-      <%= render "shared/button", 
-              text: "Done", 
-              variant: "secondary", 
+    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-between" data-show-linkage-target="footer">
+      <% if show.linked? %>
+        <%= render "shared/button",
+                text: "Delete this linkage",
+                variant: "outline",
+                size: "small",
+                type: :button,
+                classes: "text-red-600 border-red-300 hover:bg-red-50",
+                data: { action: "click->show-linkage#deleteLinkage" } %>
+      <% else %>
+        <div></div>
+      <% end %>
+
+      <%= render "shared/button",
+              text: "Done",
+              variant: "secondary",
               size: "small",
               type: :button,
               data: { action: "click->show-linkage#closeModal" } %>
+    </div>
+  </div>
+</div>
+
+<%# Confirmation dialog for delete %>
+<div data-show-linkage-target="deleteConfirmModal"
+     class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete this linkage?</h3>
+    <p class="text-sm text-gray-600 mb-6">
+      This will unlink all <%= show.linked? ? show.event_linkage.shows.count : 0 %> events. The events themselves will not be deleted.
+    </p>
+    <div class="flex justify-end gap-3">
+      <%= render "shared/button",
+              text: "Cancel",
+              variant: "secondary",
+              size: "small",
+              type: :button,
+              data: { action: "click->show-linkage#cancelDeleteLinkage" } %>
+      <%= render "shared/button",
+              text: "Delete Linkage",
+              variant: "primary",
+              size: "small",
+              type: :button,
+              classes: "bg-red-600 hover:bg-red-700",
+              data: { action: "click->show-linkage#confirmDeleteLinkage" } %>
     </div>
   </div>
 </div>

@@ -10,3 +10,9 @@ select:focus {
 [data-form-toggle-target="section"][hidden] {
     display: none;
 }
+
+/* Linked show highlight - left border accent when hovering over linked shows */
+.linked-highlight {
+    @apply border-l-4 border-l-pink-400 bg-pink-50/50;
+    transition: all 0.15s ease-in-out;
+}

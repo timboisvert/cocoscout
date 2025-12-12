@@ -30,9 +30,10 @@
       ] %>
 
     <%
-      assignment_count = @assignments.size
+      # Count roles that have at least one assignment
+      roles_with_assignments = @assignments_by_role_id.keys.count
       role_count = @roles_count
-      percentage = role_count > 0 ? (assignment_count.to_f / role_count * 100).round : 0
+      percentage = role_count > 0 ? (roles_with_assignments.to_f / role_count * 100).round : 0
       fully_cast = percentage == 100
     %>
 
@@ -44,11 +45,11 @@
               <% if fully_cast %>
                 This show is 100% cast
               <% else %>
-                <%= assignment_count %> of <%= role_count %> roles have been cast
+                <%= roles_with_assignments %> of <%= role_count %> roles have been cast
               <% end %>
             </span>
             <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
-              <%= assignment_count %>/<%= role_count %> roles cast
+              <%= roles_with_assignments %>/<%= role_count %> roles cast
             </span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-2">

@@ -36,13 +36,14 @@
   ] %>
 
   <% if @shows.any? %>
-    <div class="space-y-1">
+    <div class="space-y-1" data-controller="linked-highlight">
       <% @shows.each do |show| %>
         <%= render partial: "shared/show_row", locals: {
           show: show,
           link_path: manage_production_show_path(@production, show),
           show_canceled: true,
           show_recurring: true,
+          show_linked: true,
           show_location: true
         } %>
       <% end %>

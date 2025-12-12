@@ -1,0 +1,90 @@
+<%# Modal body content for linked events - refreshable via Turbo %>
+<%
+  linkable_shows = production.shows
+    .where.not(id: show.id)
+    .where(event_linkage_id: nil)
+    .where("date_and_time >= ?", Time.current)
+    .order(:date_and_time)
+    .limit(50)
+
+  # Get other linked shows (excluding current show)
+  other_linked_shows = show.linked? ? show.event_linkage.shows.where.not(id: show.id).order(:date_and_time) : []
+%>
+
+<%= turbo_frame_tag "linked-events-modal-body", target: "_top" do %>
+  <%# Current Show Card - pink background %>
+  <div class="mb-6">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Linking events to</div>
+    <%= render partial: "shared/show_row", locals: {
+      show: show,
+      show_location: true,
+      show_production: false,
+      right_panel: nil,
+      wrapper_classes: "bg-pink-50 border-pink-200"
+    } %>
+  </div>
+
+  <% if other_linked_shows.any? %>
+    <%# Current Linkage Section - shows with remove on hover %>
+    <div class="mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Currently Linked Events</h3>
+      <div class="space-y-1">
+        <% other_linked_shows.each do |linked_show| %>
+          <div class="group relative">
+            <%= render partial: "shared/show_row", locals: {
+              show: linked_show,
+              show_location: true,
+              show_production: false,
+              right_panel: nil
+            } %>
+            <%# Remove button - shows on hover %>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden group-hover:block">
+              <%= render "shared/button",
+                      text: "Remove",
+                      variant: "primary",
+                      size: "small",
+                      type: :button,
+                      data: { action: "click->show-linkage#removeFromLinkage", "show-id": linked_show.id } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <hr class="my-6 border-gray-200">
+  <% end %>
+
+  <%# Add Events Section %>
+  <div>
+    <h3 class="text-sm font-medium text-gray-900 mb-3">Link another event</h3>
+
+    <% if linkable_shows.any? %>
+      <div class="flex items-center gap-3">
+        <select data-show-linkage-target="showSelect"
+                class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+          <option value="">Choose an event...</option>
+          <% linkable_shows.each do |linkable_show| %>
+            <% linkable_event_name = linkable_show.secondary_name.presence || linkable_show.event_type.titleize %>
+            <option value="<%= linkable_show.id %>">
+              <%= linkable_show.date_and_time.strftime("%b %-d, %Y @ %-I:%M %p") %> - <%= linkable_event_name %>
+              <% if linkable_show.secondary_name.present? %>
+                (<%= linkable_show.event_type.titleize %>)
+              <% end %>
+            </option>
+          <% end %>
+        </select>
+
+        <%= render "shared/button",
+                text: "+ Link Event",
+                variant: "primary",
+                type: :button,
+                data: { action: "click->show-linkage#linkShow" } %>
+      </div>
+    <% else %>
+      <div class="text-center py-4 bg-gray-50 rounded-lg">
+        <p class="text-sm text-gray-500">No available events to link.</p>
+        <p class="text-xs text-gray-400 mt-1">Create more events first, or all events are already linked.</p>
+      </div>
+    <% end %>
+  </div>
+<% end %>

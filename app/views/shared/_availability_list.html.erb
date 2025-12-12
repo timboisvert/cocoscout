@@ -1,14 +1,13 @@
 <%#
-  Renders a list of shows with event linkage awareness.
-  Linked shows are grouped together using _linked_availability_toggle.
-  Unlinked shows render individually using _show_row.
-  
+  Renders a list of shows for availability.
+  Each show is rendered individually using _show_row.
+
   Required params:
     - shows: Array of Show objects
     - entity_key: String key for entity (e.g., "person" or "group_123")
     - entity: Person or Group object
     - availabilities: Hash of { show_id => ShowAvailability }
-  
+
   Optional params:
     - show_production: Show production name (default: false)
     - show_location: Show location (default: true)
@@ -19,36 +18,21 @@
   show_production = local_assigns.fetch(:show_production, false)
   show_location = local_assigns.fetch(:show_location, true)
   has_groups = local_assigns.fetch(:has_groups, false)
-  
-  # Group shows by event linkage
-  grouped_items = group_shows_with_linkages(shows, entity_key: entity_key, entity: entity)
 %>
 
-<div class="space-y-1">
-  <% grouped_items.each do |item| %>
-    <% if item[:type] == :linkage %>
-      <%# Render linked availability toggle for grouped shows %>
-      <%= render "shared/linked_availability_toggle",
-                 event_linkage: item[:event_linkage],
-                 entity: item[:entity],
-                 entity_key: item[:entity_key],
-                 availabilities: linkage_availabilities(item[:shows], availabilities),
-                 show_production: show_production,
-                 show_location: show_location %>
-    <% else %>
-      <%# Render regular show row for standalone shows %>
-      <% show = item[:show] %>
-      <% availability = availabilities[show.id] %>
-      <%= render partial: "shared/show_row", locals: {
-        show: show,
-        show_location: show_location,
-        show_production: show_production,
-        availability: availability,
-        entity_key: item[:entity_key],
-        entity: item[:entity],
-        has_groups: has_groups,
-        right_panel: :availability
-      } %>
-    <% end %>
+<div class="space-y-1" data-controller="linked-highlight">
+  <% shows.each do |show| %>
+    <% availability = availabilities[show.id] %>
+    <%= render partial: "shared/show_row", locals: {
+      show: show,
+      show_location: show_location,
+      show_production: show_production,
+      show_linked: true,
+      availability: availability,
+      entity_key: entity_key,
+      entity: entity,
+      has_groups: has_groups,
+      right_panel: :availability
+    } %>
   <% end %>
 </div>
