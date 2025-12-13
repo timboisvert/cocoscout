@@ -172,9 +172,11 @@ module Manage
         checkboxes_were_rendered = params[:production].key?(:cast_talent_pool_ids)
 
         if !checkboxes_were_rendered && @production.parsed_cast_talent_pool_ids.empty?
-          # First time switching to specific mode - initialize with all talent pool ids
-          all_pool_ids = @production.talent_pools.pluck(:id)
-          params[:production][:cast_talent_pool_ids] = all_pool_ids.to_json if all_pool_ids.any?
+          # First time switching to specific mode - initialize with talent pool id
+          talent_pool = @production.talent_pool
+          if talent_pool
+            params[:production][:cast_talent_pool_ids] = [ talent_pool.id ].to_json
+          end
           return
         end
       end

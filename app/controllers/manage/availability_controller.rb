@@ -108,29 +108,17 @@ module Manage
                           .to_a
       show_ids = @shows.map(&:id)
 
-      # Get all talent pools for this production
-      @talent_pools = @production.talent_pools.order(:name).to_a
-      talent_pool_ids = @talent_pools.map(&:id)
+      # Get the single talent pool for this production
+      @talent_pool = @production.talent_pool
 
       # Get all talent pool memberships in one query
       all_memberships = TalentPoolMembership
-                        .where(talent_pool_id: talent_pool_ids)
+                        .where(talent_pool_id: @talent_pool.id)
                         .pluck(:member_id, :member_type, :talent_pool_id)
 
-      # Build lookups for memberships
-      person_talent_pool_ids = all_memberships
-                               .select { |_, type, _| type == "Person" }
-                               .group_by(&:first)
-                               .transform_values { |rows| rows.map(&:last) }
-
-      group_talent_pool_ids = all_memberships
-                              .select { |_, type, _| type == "Group" }
-                              .group_by(&:first)
-                              .transform_values { |rows| rows.map(&:last) }
-
       # Get unique person IDs and group IDs from memberships
-      person_ids_in_pools = person_talent_pool_ids.keys
-      group_ids_in_pools = group_talent_pool_ids.keys
+      person_ids_in_pools = all_memberships.select { |_, type, _| type == "Person" }.map(&:first).uniq
+      group_ids_in_pools = all_memberships.select { |_, type, _| type == "Group" }.map(&:first).uniq
 
       # Load people and groups in bulk (no headshots needed - we just need name)
       @cast_members = Person.where(id: person_ids_in_pools).order(:name).to_a
@@ -162,7 +150,7 @@ module Manage
           name: person.name,
           type: "Person",
           submitted_show_ids: person_availabilities[person.id] || [],
-          talent_pool_ids: person_talent_pool_ids[person.id] || []
+          talent_pool_ids: [ @talent_pool.id ]
         }
       end
 
@@ -172,15 +160,12 @@ module Manage
           name: group.name,
           type: "Group",
           submitted_show_ids: group_availabilities[group.id] || [],
-          talent_pool_ids: group_talent_pool_ids[group.id] || []
+          talent_pool_ids: [ @talent_pool.id ]
         }
       end
 
       # Sort by name for consistent ordering
       @availability_data.sort_by! { |m| m[:name].downcase }
-
-      # Build talent pool data for JavaScript
-      @talent_pool_data = @talent_pools.map { |tp| { id: tp.id, name: tp.name } }
 
       # Determine which members are up to date (for initial render)
       sorted_show_ids = show_ids.sort
@@ -215,12 +200,12 @@ module Manage
       end
       show_ids_sorted = shows.pluck(:id).sort
 
-      # Get all talent pool IDs for this production
-      talent_pool_ids = @production.talent_pools.pluck(:id)
+      # Get the talent pool for this production
+      talent_pool = @production.talent_pool
 
       # Determine recipient IDs based on recipient_type
-      if recipient_type == "all"
-        memberships = TalentPoolMembership.where(talent_pool_id: talent_pool_ids)
+      if recipient_type == "all" && talent_pool
+        memberships = TalentPoolMembership.where(talent_pool_id: talent_pool.id)
         recipient_person_ids = memberships.where(member_type: "Person").pluck(:member_id).uniq
         recipient_group_ids = memberships.where(member_type: "Group").pluck(:member_id).uniq
       elsif recipient_type == "cast" && talent_pool_id.present?

@@ -6,10 +6,9 @@ export default class extends Controller {
     open(event) {
         const button = event.currentTarget;
         const talentPoolId = button.dataset.talentPoolId;
-        const talentPoolName = button.dataset.talentPoolName;
 
-        // Update the panel title
-        this.titleTarget.textContent = `Add to ${talentPoolName}`;
+        // Update the panel title - now just "Add to Talent Pool"
+        this.titleTarget.textContent = "Add to Talent Pool";
 
         // Set the talent pool ID in the search controller
         this.searchControllerTarget.setAttribute("data-people-search-talent-pool-id-value", talentPoolId);
@@ -68,10 +67,11 @@ export default class extends Controller {
         }
 
         // Determine endpoint and parameter based on member type
+        // Routes are now collection routes (no talent pool id in URL)
         const endpoint = memberType === "Person" ? "add_person" : "add_group";
         const paramKey = memberType === "Person" ? "person_id" : "group_id";
 
-        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/${endpoint}`, {
+        fetch(`/manage/productions/${productionId}/talent-pools/${endpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

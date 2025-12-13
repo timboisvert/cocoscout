@@ -13,13 +13,13 @@ export default class extends Controller {
     openWithDetails(details) {
         const { talentPoolId, talentPoolName } = details;
 
-        // Update the modal title
+        // Update the modal title - now just "Add Person or Group to Talent Pool"
         const modalTitle = this.element.querySelector("#modal-title");
         if (modalTitle) {
-            modalTitle.textContent = `Add Person or Group to ${talentPoolName}`;
+            modalTitle.textContent = "Add Person or Group to Talent Pool";
         }
 
-        // Set the talent pool ID in the search controller
+        // Set the talent pool ID in the search controller (still needed for excluding existing members)
         this.searchControllerTarget.setAttribute("data-people-search-talent-pool-id-value", talentPoolId);
 
         // Show the modal
@@ -62,10 +62,11 @@ export default class extends Controller {
         }
 
         // Determine endpoint and parameter based on member type
+        // Routes are now collection routes (no talent pool id in URL)
         const endpoint = memberType === "Person" ? "add_person" : "add_group";
         const paramKey = memberType === "Person" ? "person_id" : "group_id";
 
-        fetch(`/manage/productions/${productionId}/talent-pools/${talentPoolId}/${endpoint}`, {
+        fetch(`/manage/productions/${productionId}/talent-pools/${endpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

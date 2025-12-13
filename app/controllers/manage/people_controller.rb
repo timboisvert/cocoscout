@@ -7,7 +7,9 @@ module Manage
 
     def show
       # Get all future shows for productions this person is a cast member of
-      production_ids = @person.talent_pools.pluck(:production_id).uniq
+      production_ids = TalentPool.joins(:talent_pool_memberships)
+                                 .where(talent_pool_memberships: { member: @person })
+                                 .pluck(:production_id).uniq
       @shows = Show.where(production_id: production_ids, canceled: false)
                    .where("date_and_time >= ?", Time.current)
                    .includes(:event_linkage)

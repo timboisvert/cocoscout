@@ -13,6 +13,15 @@
 
   <%= render "manage/shows/show_info_card", show: @show %>
 
+  <%# Linkage sync status bar for linked shows %>
+  <% if @show.linked? && @linkage_sync_info.present? %>
+    <%= render "manage/casting/linkage_sync_bar",
+        show: @show,
+        linked_shows: @linked_shows,
+        sync_info: @linkage_sync_info,
+        production: @production %>
+  <% end %>
+
   <% if @show.casting_finalized? %>
     <%# ===== FINALIZED STATE ===== %>
     <%= render "manage/casting/finalized_cast", show: @show, production: @production, roles: @roles, assignments_by_role_id: @assignments_by_role_id, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
@@ -123,8 +132,7 @@
             <%= render partial: "manage/casting/cast_members_list", locals: {
               show: @show,
               availability: @availability,
-              talent_pools: @talent_pools,
-              members_by_pool_id: @members_by_pool_id,
+              pool_members: @pool_members,
               assigned_member_keys: @assigned_member_keys
             } %>
           </div>

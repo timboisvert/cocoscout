@@ -10,8 +10,7 @@ module Manage
       @invitations = @vacancy.invitations.includes(:person).order(created_at: :desc)
 
       # Get eligible members (people and groups) to invite
-      @talent_pools = @production.talent_pools.includes(talent_pool_memberships: :member)
-      talent_pool_ids = @talent_pools.map(&:id)
+      @talent_pool = @production.talent_pool
 
       # Get all potential members (people and groups) based on role restrictions
       if @vacancy.restricted?
@@ -19,14 +18,8 @@ module Manage
         all_members = @vacancy.eligible_members
       else
         # For unrestricted roles, get all talent pool members (people and groups)
-        people = Person.joins(:talent_pool_memberships)
-                       .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                       .includes(profile_headshots: { image_attachment: :blob })
-                       .distinct
-        groups = Group.joins(:talent_pool_memberships)
-                      .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                      .includes(profile_headshots: { image_attachment: :blob })
-                      .distinct
+        people = @talent_pool.people.includes(profile_headshots: { image_attachment: :blob })
+        groups = @talent_pool.groups.includes(profile_headshots: { image_attachment: :blob })
         all_members = (people.to_a + groups.to_a)
       end
 
@@ -85,17 +78,7 @@ module Manage
       person_ids = case invite_mode
       when "all"
         # All talent pool members (not restricted role)
-        talent_pool_ids = @production.talent_pools.pluck(:id)
-        Person.joins(:talent_pool_memberships)
-              .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-              .where.not(id: excluded_ids)
-              .distinct
-              .pluck(:id)
-      when "pool"
-        # Specific talent pool from dropdown
-        pool_id = params[:talent_pool_id].to_i
-        Person.joins(:talent_pool_memberships)
-              .where(talent_pool_memberships: { talent_pool_id: pool_id })
+        @production.talent_pool.people
               .where.not(id: excluded_ids)
               .pluck(:id)
       else

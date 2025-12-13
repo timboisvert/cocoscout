@@ -254,26 +254,6 @@
                     </div>
                   </div>
 
-                  <% if @talent_pools.count > 1 %>
-                    <label class="flex items-center cursor-pointer">
-                      <input type="radio"
-                             name="invite_mode"
-                             value="pool"
-                             data-invite-mode-target="modeRadio"
-                             data-action="change->invite-mode#updateMode"
-                             class="mr-2 accent-pink-500 cursor-pointer">
-                      <span class="text-sm mr-3">Specific talent pool</span>
-                      <span class="hidden" data-invite-mode-target="poolDropdown">
-                        <select name="talent_pool_id" class="shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500">
-                          <% @talent_pools.each do |pool| %>
-                            <% pool_people_count = @eligible_people.joins(:talent_pool_memberships).where(talent_pool_memberships: { talent_pool_id: pool.id }).count %>
-                            <option value="<%= pool.id %>"><%= pool.name %> (<%= pool_people_count %> not yet invited)</option>
-                          <% end %>
-                        </select>
-                      </span>
-                    </label>
-                  <% end %>
-
                   <label class="flex items-center cursor-pointer">
                     <input type="radio"
                            name="invite_mode"
@@ -290,7 +270,6 @@
                   <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
                     <% @all_potential_members.each do |member| %>
                       <% is_person = member.is_a?(Person) %>
-                      <% member_talent_pools = @talent_pools.select { |tp| is_person ? tp.people.include?(member) : tp.talent_pool_memberships.exists?(member: member) } %>
                       <% is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id %>
                       <% is_already_cast = is_person ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id) %>
                       <% is_already_invited = is_person && @already_invited_person_ids.include?(member.id) %>
@@ -309,8 +288,6 @@
                             <span class="text-gray-400">(Already cast in this show)</span>
                           <% elsif is_already_invited %>
                             <span class="text-gray-400">(Already invited)</span>
-                          <% else %>
-                            <span class="text-gray-500">- <%= member_talent_pools.map(&:name).join(", ") %></span>
                           <% end %>
                         </span>
                       </label>

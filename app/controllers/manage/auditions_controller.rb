@@ -44,7 +44,7 @@ module Manage
     def casting
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-      @talent_pools = @production.talent_pools
+      @talent_pool = @production.talent_pool
       # Get all auditionees (people and groups) who actually auditioned
       audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
       auditions = Audition.where(audition_session_id: audition_session_ids)
@@ -58,7 +58,7 @@ module Manage
     def casting_select
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-      @talent_pools = @production.talent_pools
+      @talent_pool = @production.talent_pool
       # Get all auditionees (people and groups) who actually auditioned
       audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
       auditions = Audition.where(audition_session_id: audition_session_ids)
@@ -306,7 +306,7 @@ module Manage
 
     # POST /auditions/add_to_cast_assignment
     def add_to_cast_assignment
-      talent_pool = @production.talent_pools.find(params[:talent_pool_id])
+      talent_pool = @production.talent_pool
       auditionee_type = params[:auditionee_type]
       auditionee_id = params[:auditionee_id]
 
@@ -322,7 +322,7 @@ module Manage
 
     # POST /auditions/remove_from_cast_assignment
     def remove_from_cast_assignment
-      talent_pool = @production.talent_pools.find(params[:talent_pool_id])
+      talent_pool = @production.talent_pool
       CastAssignmentStage.where(
         audition_cycle_id: @audition_cycle.id,
         talent_pool_id: talent_pool.id,
@@ -381,8 +381,9 @@ module Manage
           (assignable.is_a?(Person) && assignable.casting_notification_sent_at.present? && assignable.notified_for_audition_cycle_id == audition_cycle.id)
       end
 
-      # Get default email templates from the view (we'll need to pass these or store them)
-      talent_pools_by_id = @production.talent_pools.index_by(&:id)
+      # Get the talent pool for this production
+      talent_pool = @production.talent_pool
+      talent_pools_by_id = talent_pool ? { talent_pool.id => talent_pool } : {}
 
       emails_sent = 0
       auditionees_added_to_casts = 0

@@ -1,5 +1,4 @@
 <% pending_stages_local = @cast_assignment_stages.where(status: :pending) %>
-<% staged_casts = @talent_pools.select { |talent_pool| pending_stages_local.any? { |stage| stage.talent_pool_id == talent_pool.id } } %>
 <% # Get assignable [type, id] tuples to exclude: pending, finalized stages, and people already notified for rejections %>
 <% assigned_assignable_ids = pending_stages_local.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
 <% notified_assignable_ids = notified_stages.map { |s| [s.assignable_type, s.assignable_id] }.uniq %>
@@ -40,6 +39,7 @@
             </div>
           </div>
         <% end %>
+        <% staged_casts = pending_stages_local.any? ? [@production.talent_pool] : [] %>
         <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
       <% elsif has_sent_notifications %>
         <%# After notifications sent and no new changes - show finalized message with toggle %>
@@ -69,6 +69,7 @@
           </div>
 
           <div data-show-toggle-target="content" class="hidden">
+            <% staged_casts = pending_stages_local.any? ? [@production.talent_pool] : [] %>
             <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
           </div>
         </div>
@@ -84,7 +85,7 @@
             <div class="flex-1">
               <h4 class="text-sm font-semibold text-blue-900 mb-1">Ready to Select Cast Members</h4>
               <p class="text-sm text-blue-800">
-                Click "Select New Cast Members" above to choose people from your auditions to add to your cast(s). Once you've made your selections, you'll be able to send notification emails from this section.
+                Click "Select New Cast Members" above to choose people from your auditions to add to your talent pool. Once you've made your selections, you'll be able to send notification emails from this section.
               </p>
             </div>
           </div>

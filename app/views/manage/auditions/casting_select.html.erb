@@ -19,80 +19,68 @@
     </div>
   <% else %>
     <div class="flex gap-8" data-controller="casting-drag" data-casting-drag-production-id-value="<%= @production.id %>" data-casting-drag-audition-cycle-id-value="<%= @audition_cycle.id %>">
-      <!-- Left side: Casts (flex-1) -->
+      <!-- Left side: Talent Pool (flex-1) -->
       <div class="flex-1">
         <div class="space-y-4">
-          <% @talent_pools.each do |talent_pool| %>
-            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all"
-                data-casting-drag-target="dropZone"
-                data-drag-drop-type="cast"
-                data-talent-pool-id="<%= talent_pool.id %>"
-                data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
-              <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == talent_pool.id } %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all"
+              data-casting-drag-target="dropZone"
+              data-drag-drop-type="cast"
+              data-talent-pool-id="<%= @talent_pool.id %>"
+              data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
+            <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == @talent_pool.id } %>
 
-              <div class="flex items-center gap-4">
-                <div class="font-bold text-md flex-shrink-0">
-                  <%= talent_pool.name %>
-                </div>
+            <div class="flex items-center gap-4">
+              <div class="font-bold text-md flex-shrink-0">
+                Talent Pool
+              </div>
 
-                <div class="flex-1">
-                  <% if cast_stages.any? %>
-                    <div class="space-y-2">
-                      <% cast_stages.each do |stage| %>
-                        <% assignable = stage.assignable %>
-                        <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
-                            draggable="true"
-                            data-casting-drag-target="person"
-                            data-auditionee-type="<%= assignable.class.name %>"
-                            data-auditionee-id="<%= assignable.id %>"
-                            data-auditionee-name="<%= assignable.name %>"
-                            data-source-talent-pool-id="<%= talent_pool.id %>"
-                            data-action="dragstart->casting-drag#dragStartPerson dragend->casting-drag#dragEnd">
-                          <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
-                          <% else %>
-                            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                              <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-gray-600"></i>') %>
-                            </div>
-                          <% end %>
+              <div class="flex-1">
+                <% if cast_stages.any? %>
+                  <div class="space-y-2">
+                    <% cast_stages.each do |stage| %>
+                      <% assignable = stage.assignable %>
+                      <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
+                          draggable="true"
+                          data-casting-drag-target="person"
+                          data-auditionee-type="<%= assignable.class.name %>"
+                          data-auditionee-id="<%= assignable.id %>"
+                          data-auditionee-name="<%= assignable.name %>"
+                          data-source-talent-pool-id="<%= @talent_pool.id %>"
+                          data-action="dragstart->casting-drag#dragStartPerson dragend->casting-drag#dragEnd">
+                        <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                        <% else %>
+                          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                            <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-gray-600"></i>') %>
+                          </div>
+                        <% end %>
 
-                          <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
-                          <button type="button"
-                            class="text-pink-500 hover:bg-pink-100 rounded px-2 py-1 text-xs font-bold transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            data-action="click->casting-drag#removePerson"
-                            data-talent-pool-id="<%= talent_pool.id %>"
-                            data-auditionee-type="<%= assignable.class.name %>"
-                            data-auditionee-id="<%= assignable.id %>">
-                            Remove
-                          </button>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% else %>
-                    <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm min-h-12">
-                      <span>Drag auditionees here to add to <%= talent_pool.name %></span>
-                    </div>
-                  <% end %>
-                </div>
+                        <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
+                        <button type="button"
+                          class="text-pink-500 hover:bg-pink-100 rounded px-2 py-1 text-xs font-bold transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                          data-action="click->casting-drag#removePerson"
+                          data-talent-pool-id="<%= @talent_pool.id %>"
+                          data-auditionee-type="<%= assignable.class.name %>"
+                          data-auditionee-id="<%= assignable.id %>">
+                          Remove
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm min-h-12">
+                    <span>Drag auditionees here to add to the talent pool</span>
+                  </div>
+                <% end %>
               </div>
             </div>
-          <% end %>
-
-          <% if @talent_pools.empty? %>
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-              <p class="text-gray-700 text-sm font-medium mb-2">No talent pools available for this production</p>
-              <p class="text-gray-600 text-sm mb-4">You need to create at least one talent pool before you can add cast members.</p>
-              <%= link_to "Create Talent Pool", new_manage_production_talent_pool_path(@production), class: "inline-block rounded-lg px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white font-medium text-sm" %>
-            </div>
-          <% end %>
+          </div>
         </div>
 
-        <% if @talent_pools.any? %>
-          <div class="mt-4">
-            <%= render partial: "shared/button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
-          </div>
-        <% end %>
+        <div class="mt-4">
+          <%= render partial: "shared/button", locals: { text: "Done Selecting New Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+        </div>
       </div>      <!-- Right side: Auditionees (fixed width, sticky) -->
       <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">

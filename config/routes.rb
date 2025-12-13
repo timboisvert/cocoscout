@@ -265,12 +265,10 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :talent_pools, path: "talent-pools" do
+      # Single talent pool per production - no CRUD, just member management
+      resources :talent_pools, path: "talent-pools", only: %i[index] do
         collection do
           get :search_people
-        end
-        member do
-          # These are used when dragging and dropping on the talent pool members list or adding from search
           post :add_person
           get "confirm-remove-person/:person_id", action: :confirm_remove_person, as: :confirm_remove_person
           post :remove_person
@@ -298,6 +296,7 @@ Rails.application.routes.draw do
       post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
       post "casting/shows/:show_id/finalize", to: "casting#finalize_casting", as: "finalize_casting"
       patch "casting/shows/:show_id/reopen", to: "casting#reopen_casting", as: "reopen_casting"
+      post "casting/shows/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "copy_cast_to_linked"
 
       # Vacancies management (detail and actions only - no index)
       resources :vacancies, only: %i[show] do

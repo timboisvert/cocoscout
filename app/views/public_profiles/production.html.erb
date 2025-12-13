@@ -64,7 +64,7 @@
 
     <%# Cast Members Section (People and Groups) %>
     <% if @cast_members.present? %>
-      <% cast_cache_key = ["production_cast_v2", @production.id, @production.talent_pools.maximum(:updated_at), @cast_members.map(&:updated_at).max] %>
+      <% cast_cache_key = ["production_cast_v2", @production.id, @production.talent_pool&.updated_at, @cast_members.map(&:updated_at).max] %>
       <% cache cast_cache_key do %>
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
           <div class="px-6 py-4 border-b border-gray-100">

@@ -1,100 +1,48 @@
 <div id="show-cast-members" data-controller="drag-cast-member" class="space-y-1">
     <%
       # Use preloaded data if available, otherwise fall back to queries
-      talent_pools = local_assigns[:talent_pools] || @talent_pools || show.production.talent_pools.to_a
-      members_by_pool_id = local_assigns[:members_by_pool_id] || @members_by_pool_id || {}
+      pool_members = local_assigns[:pool_members] || @pool_members || show.production.talent_pool.members.to_a
       assigned_member_keys = local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new
-      has_multiple_pools = talent_pools.size > 1
       availability ||= {}
       has_visible_people = false
+      talent_pool = show.production.talent_pool
     %>
 
-    <% talent_pools.each do |talent_pool| %>
+    <% if pool_members.any? %>
+      <div class="space-y-1">
+        <% pool_members.each do |member| %>
+          <% is_person = member.is_a?(Person) %>
+          <%
+            # Use preloaded set for assignment check instead of DB query
+            member_key = "#{member.class.name}_#{member.id}"
+            has_show_person_role_assignment = assigned_member_keys.include?(member_key)
+          %>
+          <% availability_key = "#{member.class.name}_#{member.id}" %>
+          <% member_availability = availability[availability_key] || availability[member.id] %>
+          <% is_available = member_availability&.available? %>
 
-        <%
-          # Use preloaded members if available
-          pool_members = members_by_pool_id[talent_pool.id] || (talent_pool.people.to_a + talent_pool.groups.to_a)
-        %>
+          <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
+              data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
+              data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
+              data-talent-pool-id="<%= talent_pool.id %>"
+              data-availability-status="<%= member_availability&.status || 'unset' %>"
+              data-is-available="<%= is_available ? 'true' : 'false' %>"
+              draggable="true">
 
-        <% if pool_members.any? %>
-            <% if has_multiple_pools %>
-                <div class="mb-3">
-                    <h3 class="font-semibold text-sm text-gray-700 mb-2"><%= talent_pool.name %></h3>
+              <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
+              <% else %>
+                  <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
+                      <%= member.initials %>
+                  </div>
+              <% end %>
 
-                    <div class="space-y-1">
-                    <% pool_members.each do |member| %>
-                        <% is_person = member.is_a?(Person) %>
-                        <%
-                          # Use preloaded set for assignment check instead of DB query
-                          member_key = "#{member.class.name}_#{member.id}"
-                          has_show_person_role_assignment = assigned_member_keys.include?(member_key)
-                        %>
-                        <% availability_key = "#{member.class.name}_#{member.id}" %>
-                        <% member_availability = availability[availability_key] || availability[member.id] %>
-                        <% is_available = member_availability&.available? %>
-
-                        <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
-                            data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
-                            data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
-                            data-talent-pool-id="<%= talent_pool.id %>"
-                            data-availability-status="<%= member_availability&.status || 'unset' %>"
-                            data-is-available="<%= is_available ? 'true' : 'false' %>"
-                            draggable="true">
-
-                            <% headshot_variant = member.safe_headshot_variant(:thumb) %>
-                            <% if headshot_variant %>
-                                <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
-                            <% else %>
-                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
-                                    <%= member.initials %>
-                                </div>
-                            <% end %>
-
-                            <span class="font-medium text-xs flex-1 truncate"><%= member.name %></span>
-                        </div>
-                        <% has_visible_people = true %>
-                    <% end %>
-                    </div>
-                </div>
-            <% else %>
-                <!-- Single cast - no cast name header -->
-                <div class="space-y-1">
-                <% pool_members.each do |member| %>
-                    <% is_person = member.is_a?(Person) %>
-                    <%
-                      # Use preloaded set for assignment check instead of DB query
-                      member_key = "#{member.class.name}_#{member.id}"
-                      has_show_person_role_assignment = assigned_member_keys.include?(member_key)
-                    %>
-                    <% availability_key = "#{member.class.name}_#{member.id}" %>
-                    <% member_availability = availability[availability_key] || availability[member.id] %>
-                    <% is_available = member_availability&.available? %>
-
-                    <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
-                        data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
-                        data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
-                        data-talent-pool-id="<%= talent_pool.id %>"
-                        data-availability-status="<%= member_availability&.status || 'unset' %>"
-                        data-is-available="<%= is_available ? 'true' : 'false' %>"
-                        draggable="true">
-
-                        <% headshot_variant = member.safe_headshot_variant(:thumb) %>
-                        <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
-                        <% else %>
-                            <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
-                                <%= member.initials %>
-                            </div>
-                        <% end %>
-
-                        <span class="font-medium text-xs flex-1 truncate"><%= member.name %></span>
-                    </div>
-                    <% has_visible_people = true %>
-                <% end %>
-                </div>
-            <% end %>
+              <span class="font-medium text-xs flex-1 truncate"><%= member.name %></span>
+          </div>
+          <% has_visible_people = true %>
         <% end %>
-
+      </div>
     <% end %>
 
     <!-- Empty state message (shown by JavaScript when filtered list is empty) -->

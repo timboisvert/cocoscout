@@ -95,8 +95,8 @@
     <% other_linked_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time) %>
     <% if other_linked_shows.any? %>
       <div class="border-t border-gray-200 bg-gray-50" data-controller="disclosure">
-        <button type="button" 
-                data-action="click->disclosure#toggle" 
+        <button type="button"
+                data-action="click->disclosure#toggle"
                 class="w-full px-4 py-2 flex items-center justify-between text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer">
           <span class="flex items-center gap-2">
             <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -106,17 +106,11 @@ module Manage
 
     # GET /manage/productions/:production_id/shows/:show_id/show_roles/talent_pool_members
     def talent_pool_members
-      talent_pool_ids = @production.talent_pools.select(:id)
+      talent_pool = @production.talent_pool
 
-      people = Person.joins(:talent_pool_memberships)
-                     .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                     .includes(profile_headshots: { image_attachment: :blob })
-                     .distinct
+      people = talent_pool.people.includes(profile_headshots: { image_attachment: :blob })
 
-      groups = Group.joins(:talent_pool_memberships)
-                    .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                    .includes(profile_headshots: { image_attachment: :blob })
-                    .distinct
+      groups = talent_pool.groups.includes(profile_headshots: { image_attachment: :blob })
 
       members = (people.to_a + groups.to_a).sort_by(&:name)
 

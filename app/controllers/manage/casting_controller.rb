@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting]
+                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
     def index
       @upcoming_shows = @production.shows
@@ -72,39 +72,17 @@ module Manage
                       .index_by(&:id)
 
       # For cast_members_list: preload talent pool members with headshots
-      @talent_pools = @production.talent_pools.to_a
-      talent_pool_ids = @talent_pools.map(&:id)
+      @talent_pool = @production.talent_pool
 
-      @pool_people = Person
-                     .joins(:talent_pool_memberships)
-                     .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      @pool_people = @talent_pool.people
                      .includes(profile_headshots: { image_attachment: :blob })
-                     .distinct
                      .to_a
 
-      @pool_groups = Group
-                     .joins(:talent_pool_memberships)
-                     .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+      @pool_groups = @talent_pool.groups
                      .includes(profile_headshots: { image_attachment: :blob })
-                     .distinct
                      .to_a
 
-      # Build lookup for talent pool memberships
-      memberships = TalentPoolMembership.where(talent_pool_id: talent_pool_ids).to_a
-      @members_by_pool_id = {}
-      @talent_pools.each { |tp| @members_by_pool_id[tp.id] = [] }
-
-      people_by_id_for_pools = @pool_people.index_by(&:id)
-      groups_by_id_for_pools = @pool_groups.index_by(&:id)
-
-      memberships.each do |m|
-        member = if m.member_type == "Person"
-                   people_by_id_for_pools[m.member_id]
-        else
-                   groups_by_id_for_pools[m.member_id]
-        end
-        @members_by_pool_id[m.talent_pool_id] << member if member
-      end
+      @pool_members = @pool_people + @pool_groups
 
       # Build set of assigned member keys for quick lookup
       @assigned_member_keys = Set.new(@assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
@@ -119,6 +97,12 @@ module Manage
           title: default_removed_email_subject,
           body: default_removed_email_body
         )
+      end
+
+      # Build linkage sync info for linked shows
+      if @show.linked?
+        @linked_shows = @show.linked_shows.includes(:show_person_role_assignments).to_a
+        @linkage_sync_info = build_linkage_sync_info(@show, @linked_shows)
       end
     end
 
@@ -417,6 +401,24 @@ module Manage
         return
       end
 
+      # For linked shows, gather all shows to finalize together
+      shows_to_finalize = [ @show ]
+      if @show.linked?
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+
+        unless sync_info[:all_in_sync]
+          redirect_to manage_production_show_cast_path(@production, @show),
+                      alert: "Cannot finalize casting: linked events are not in sync. Please copy cast to linked events first."
+          return
+        end
+
+        # Add linked shows that aren't already finalized
+        linked_shows.each do |linked_show|
+          shows_to_finalize << linked_show unless linked_show.casting_finalized?
+        end
+      end
+
       # Get email content from form params (rich text uses email_draft nested params)
       cast_draft_params = params[:cast_email_draft] || {}
       removed_draft_params = params[:removed_email_draft] || {}
@@ -426,43 +428,87 @@ module Manage
       removed_subject = removed_draft_params[:title].presence || default_removed_email_subject
       removed_body = removed_draft_params[:body].to_s.presence || default_removed_email_body
 
-      # Get current cast members who need notification
-      unnotified_assignments = @show.unnotified_cast_members
-      # Filter out any orphaned assignments (where role was deleted)
-      cast_to_notify = unnotified_assignments.filter_map { |a| a.role ? [ a.assignable, a.role ] : nil }
+      # Collect all unique assignables across all shows to finalize
+      # Each person should only get ONE email listing ALL their assignments across linked shows
+      cast_notifications_by_person = {}  # person => [{show:, role:, assignable:}, ...]
+      removed_notifications_by_person = {} # person => [{show:, role:, assignable:}, ...]
 
-      # Get removed cast members who need notification
-      removed_members = @show.removed_cast_members
-      # For removed members, we need to find what role they were previously notified for
-      removed_to_notify = removed_members.filter_map do |assignable|
-        # Find the most recent cast notification for this assignable
-        prev_notification = @show.show_cast_notifications
+      shows_to_finalize.each do |show|
+        # Get current cast members who need notification
+        unnotified_assignments = show.unnotified_cast_members
+        unnotified_assignments.each do |a|
+          next unless a.role  # Skip orphaned assignments
+
+          # For groups, get all members; for people, just the person
+          recipients = a.assignable.is_a?(Group) ? a.assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ a.assignable ]
+
+          recipients.each do |person|
+            next unless person.email.present?
+            cast_notifications_by_person[person] ||= []
+            cast_notifications_by_person[person] << { show: show, role: a.role, assignable: a.assignable }
+          end
+        end
+
+        # Get removed cast members who need notification
+        removed_members = show.removed_cast_members
+        removed_members.each do |assignable|
+          prev_notification = show.show_cast_notifications
                                   .cast_notifications
                                   .where(assignable: assignable)
                                   .order(notified_at: :desc)
                                   .first
-        # Only include if we have a valid role (role might have been deleted)
-        prev_notification&.role ? [ assignable, prev_notification.role ] : nil
+          next unless prev_notification&.role
+
+          recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
+
+          recipients.each do |person|
+            next unless person.email.present?
+            removed_notifications_by_person[person] ||= []
+            removed_notifications_by_person[person] << { show: show, role: prev_notification.role, assignable: assignable }
+          end
+        end
       end
 
-      # Send cast notification emails
-      if cast_to_notify.any?
-        send_casting_emails(cast_to_notify, cast_body, cast_subject, :cast)
+      # Send consolidated emails for cast members
+      cast_notifications_by_person.each do |person, assignments|
+        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast)
       end
 
-      # Send removed notification emails
-      if removed_to_notify.any?
-        send_casting_emails(removed_to_notify, removed_body, removed_subject, :removed)
+      # Send consolidated emails for removed members
+      removed_notifications_by_person.each do |person, assignments|
+        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed)
       end
 
-      # Close any open vacancies since all roles are now filled
-      @show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
+      # Finalize all shows and record notifications
+      shows_to_finalize.each do |show|
+        # Close any open vacancies
+        show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
 
-      # Mark casting as finalized
-      @show.finalize_casting!
+        # Record notifications for this show
+        show.unnotified_cast_members.each do |a|
+          next unless a.role
+          show.show_cast_notifications.find_or_initialize_by(
+            assignable: a.assignable,
+            role: a.role
+          ).update!(
+            notification_type: :cast,
+            notified_at: Time.current,
+            email_body: cast_body
+          )
+        end
 
-      redirect_to manage_production_show_cast_path(@production, @show),
-                  notice: "Casting finalized and notifications sent!"
+        # Mark casting as finalized
+        show.finalize_casting!
+      end
+
+      finalized_count = shows_to_finalize.count
+      if finalized_count > 1
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    notice: "Casting finalized for #{finalized_count} linked events and notifications sent!"
+      else
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    notice: "Casting finalized and notifications sent!"
+      end
     end
 
     def reopen_casting
@@ -470,6 +516,66 @@ module Manage
 
       redirect_to manage_production_show_cast_path(@production, @show),
                   notice: "Casting reopened. You can now make changes."
+    end
+
+    def copy_cast_to_linked
+      unless @show.linked?
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    alert: "This event is not linked to any other events."
+        return
+      end
+
+      linked_shows = @show.linked_shows.to_a
+      if linked_shows.empty?
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    alert: "No linked events found."
+        return
+      end
+
+      # Get this show's assignments
+      source_assignments = @show.show_person_role_assignments.includes(:role).to_a
+
+      copied_count = 0
+      errors = []
+
+      ActiveRecord::Base.transaction do
+        linked_shows.each do |target_show|
+          # Get target show's roles by name
+          target_roles = target_show.available_roles.index_by(&:name)
+
+          # Clear existing assignments on target show
+          target_show.show_person_role_assignments.destroy_all
+
+          # Copy assignments from source to target
+          source_assignments.each do |source_assignment|
+            source_role_name = source_assignment.role&.name
+            next unless source_role_name
+
+            target_role = target_roles[source_role_name]
+            if target_role
+              target_show.show_person_role_assignments.create!(
+                role: target_role,
+                assignable_type: source_assignment.assignable_type,
+                assignable_id: source_assignment.assignable_id
+              )
+              copied_count += 1
+            else
+              errors << "Role '#{source_role_name}' not found on #{target_show.date_and_time.strftime('%b %-d')}"
+            end
+          end
+        end
+      end
+
+      if errors.any?
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    alert: "Cast copied with warnings: #{errors.join(', ')}"
+      else
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    notice: "Cast successfully copied to #{linked_shows.count} linked #{'event'.pluralize(linked_shows.count)}."
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to manage_production_show_cast_path(@production, @show),
+                  alert: "Failed to copy cast: #{e.message}"
     end
 
     private
@@ -560,6 +666,73 @@ module Manage
       end
     end
 
+    # Send a single consolidated email to a person with all their assignments across linked shows
+    def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type)
+      # Build a list of all shows and roles for this person
+      shows_info = assignments.map do |a|
+        show = a[:show]
+        role = a[:role]
+        {
+          show_name: show.secondary_name.presence || show.event_type.titleize,
+          show_date: show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
+          role_name: role.name
+        }
+      end
+
+      # For the personalized body, if there are multiple shows, create a list
+      if shows_info.size == 1
+        # Single show - use the standard replacement
+        info = shows_info.first
+        personalized_body = email_body.gsub("[Name]", person.name)
+                                       .gsub("[Role]", info[:role_name])
+                                       .gsub("[Show]", info[:show_name])
+                                       .gsub("[Date]", info[:show_date])
+                                       .gsub("[Production]", @production.name)
+      else
+        # Multiple shows - build a consolidated message
+        shows_list = shows_info.map do |info|
+          "<li><strong>#{info[:show_date]}</strong> - #{info[:show_name]} as <strong>#{info[:role_name]}</strong></li>"
+        end.join("\n")
+
+        personalized_body = <<~BODY
+          <p>Hi #{person.name},</p>
+
+          <p>You have been cast for the following linked events for #{@production.name}:</p>
+
+          <ul>
+          #{shows_list}
+          </ul>
+
+          <p>Please confirm your availability for these shows. If you have any scheduling conflicts or questions, contact us as soon as possible.</p>
+        BODY
+
+        if notification_type == :removed
+          personalized_body = <<~BODY
+            <p>Hi #{person.name},</p>
+
+            <p>There has been a change to the casting for #{@production.name}.</p>
+
+            <p>You are no longer cast for the following events:</p>
+
+            <ul>
+            #{shows_list}
+            </ul>
+
+            <p>If you have any questions, please contact us.</p>
+          BODY
+        end
+      end
+
+      # Use the first show as the primary for the mailer (it needs a show reference)
+      primary_show = assignments.first[:show]
+
+      if notification_type == :cast
+        Manage::CastingMailer.cast_notification(person, primary_show, personalized_body, subject).deliver_later
+      else
+        Manage::CastingMailer.removed_notification(person, primary_show, personalized_body, subject).deliver_later
+      end
+    end
+
     def default_cast_email_subject
       "Cast Confirmation: #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
     end
@@ -590,6 +763,67 @@ module Manage
 
         <p>If you have any questions, please contact us.</p>
       BODY
+    end
+
+    # Build sync info comparing this show's cast with linked shows
+    def build_linkage_sync_info(show, linked_shows)
+      current_roles = show.available_roles.pluck(:id, :name).to_h
+
+      sync_info = {
+        all_in_sync: true,
+        roles_match: true,
+        casts_match: true,
+        linked_shows_info: [],
+        current_role_names: current_roles.values.sort
+      }
+
+      linked_shows.each do |linked_show|
+        linked_roles = linked_show.available_roles.pluck(:id, :name).to_h
+
+        # Check if roles match (by name, since IDs will differ for custom roles)
+        roles_match = current_roles.values.sort == linked_roles.values.sort
+
+        # Check if casts match (comparing assignable keys, normalized by role name)
+        # Build a map of role_name => [assignable_key, ...] for comparison
+        current_cast_by_role = {}
+        show.show_person_role_assignments.each do |a|
+          role_name = current_roles[a.role_id]
+          next unless role_name
+          current_cast_by_role[role_name] ||= []
+          current_cast_by_role[role_name] << "#{a.assignable_type}_#{a.assignable_id}"
+        end
+
+        linked_cast_by_role = {}
+        linked_show.show_person_role_assignments.each do |a|
+          role_name = linked_roles[a.role_id]
+          next unless role_name
+          linked_cast_by_role[role_name] ||= []
+          linked_cast_by_role[role_name] << "#{a.assignable_type}_#{a.assignable_id}"
+        end
+
+        # Normalize for comparison (sort the arrays)
+        current_cast_by_role.transform_values!(&:sort)
+        linked_cast_by_role.transform_values!(&:sort)
+
+        casts_match = current_cast_by_role == linked_cast_by_role
+
+        show_info = {
+          show: linked_show,
+          roles_match: roles_match,
+          casts_match: casts_match,
+          in_sync: roles_match && casts_match,
+          role_names: linked_roles.values.sort,
+          cast_count: linked_show.show_person_role_assignments.count,
+          fully_cast: linked_show.fully_cast?
+        }
+
+        sync_info[:linked_shows_info] << show_info
+        sync_info[:all_in_sync] = false unless show_info[:in_sync]
+        sync_info[:roles_match] = false unless roles_match
+        sync_info[:casts_match] = false unless casts_match
+      end
+
+      sync_info
     end
   end
 end

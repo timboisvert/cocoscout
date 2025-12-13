@@ -12,58 +12,50 @@
         <% if notified_stages.any? || pending_stages.any? %>
           <%# Show finalized (notified) people %>
           <% if notified_stages.any? %>
-            <% notified_by_cast = notified_stages.group_by(&:talent_pool_id) %>
-            <% notified_by_cast.each do |talent_pool_id, stages| %>
-              <% talent_pool = @talent_pools.find { |c| c.id == talent_pool_id } %>
-              <div class="border-l-4 border-green-500 pl-4">
-                <h4 class="text-sm font-semibold text-gray-900 mb-2">Notified - <%= talent_pool.name %></h4>
-                <div class="flex flex-wrap gap-2">
-                  <% stages.each do |stage| %>
-                    <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
-                    <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
-                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                      <% else %>
-                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                          <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
-                        </div>
-                      <% end %>
-                      <%= assignable.name %>
+            <div class="border-l-4 border-green-500 pl-4">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Notified - Talent Pool</h4>
+              <div class="flex flex-wrap gap-2">
+                <% notified_stages.each do |stage| %>
+                  <% assignable = stage.assignable %>
+                  <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
+                  <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                        <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
+                      </div>
                     <% end %>
+                    <%= assignable.name %>
                   <% end %>
-                </div>
+                <% end %>
               </div>
-            <% end %>
+            </div>
           <% end %>
 
           <%# Show pending (newly added) people %>
           <% if pending_stages.any? %>
-            <% pending_by_cast = pending_stages.group_by(&:talent_pool_id) %>
-            <% pending_by_cast.each do |talent_pool_id, stages| %>
-              <% talent_pool = @talent_pools.find { |c| c.id == talent_pool_id } %>
-              <div class="border-l-4 border-pink-500 pl-4">
-                <h4 class="text-sm font-semibold text-gray-900 mb-2">Newly Added - <%= talent_pool.name %></h4>
-                <div class="flex flex-wrap gap-2">
-                  <% stages.each do |stage| %>
-                    <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
-                    <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
-                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                      <% else %>
-                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                          <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
-                        </div>
-                      <% end %>
-                      <%= assignable.name %>
+            <div class="border-l-4 border-pink-500 pl-4">
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Newly Added - Talent Pool</h4>
+              <div class="flex flex-wrap gap-2">
+                <% pending_stages.each do |stage| %>
+                  <% assignable = stage.assignable %>
+                  <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
+                  <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                        <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
+                      </div>
                     <% end %>
+                    <%= assignable.name %>
                   <% end %>
-                </div>
+                <% end %>
               </div>
-            <% end %>
+            </div>
           <% end %>
         <% else %>
           <p class="text-sm text-gray-500 italic">No cast members have been added yet.</p>
@@ -73,37 +65,31 @@
       <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     <% else %>
       <%# Before notifications sent - show pending changes %>
-      <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your cast(s).</p>
+      <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your talent pool.</p>
 
-      <% has_any_changes = @cast_assignment_stages.where(status: :pending).any? %>
-      <% if has_any_changes %>
+      <% pending_cast_stages = @cast_assignment_stages.where(status: :pending) %>
+      <% if pending_cast_stages.any? %>
         <div class="space-y-4 mb-6">
-          <!-- People being added to casts -->
-          <% @talent_pools.each do |talent_pool| %>
-            <% cast_stages = @cast_assignment_stages.where(status: :pending).select { |stage| stage.talent_pool_id == talent_pool.id } %>
-            <% if cast_stages.any? %>
-              <div class="border-l-4 border-pink-500 pl-4">
-                <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to <%= talent_pool.name %></h4>
-                <div class="flex flex-wrap gap-2">
-                  <% cast_stages.each do |stage| %>
-                    <% assignable = stage.assignable %>
-                    <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
-                    <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
-                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
-                      <% else %>
-                        <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-                          <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
-                        </div>
-                      <% end %>
-                      <%= assignable.name %>
-                    <% end %>
+          <div class="border-l-4 border-pink-500 pl-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to Talent Pool</h4>
+            <div class="flex flex-wrap gap-2">
+              <% pending_cast_stages.each do |stage| %>
+                <% assignable = stage.assignable %>
+                <% path = assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable) %>
+                <%= link_to path, class: "inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all" do %>
+                  <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: assignable.name, class: "w-5 h-5 rounded object-cover flex-shrink-0", draggable: false %>
+                  <% else %>
+                    <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
+                      <%= assignable.is_a?(Person) ? assignable.initials : raw('<i class="fa-solid fa-users text-xs"></i>') %>
+                    </div>
                   <% end %>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
+                  <%= assignable.name %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
         </div>
       <% end %>
 

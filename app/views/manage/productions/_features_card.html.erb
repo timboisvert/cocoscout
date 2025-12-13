@@ -26,7 +26,7 @@
             </label>
           </div>
 
-          <% if production.show_cast_members? && production.talent_pools.count > 1 %>
+          <% if false # Only one talent pool per production now %>
             <!-- Talent Pool Selection -->
             <div class="ml-4 mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <p class="text-sm font-medium text-gray-700 mb-3">Which talent pools should be included?</p>
@@ -46,20 +46,21 @@
               </div>
 
               <% unless production.show_all_talent_pools? %>
+                <% talent_pool = production.talent_pool %>
+                <% if talent_pool %>
                 <div class="mt-3 ml-6 space-y-2">
                   <%# Hidden field to ensure the key is always present %>
                   <%= hidden_field_tag "production[cast_talent_pool_ids][]", "" %>
-                  <% production.talent_pools.each do |pool| %>
                     <label class="flex items-center cursor-pointer">
-                      <%= check_box_tag "production[cast_talent_pool_ids][]", pool.id,
-                          production.parsed_cast_talent_pool_ids.include?(pool.id),
+                      <%= check_box_tag "production[cast_talent_pool_ids][]", talent_pool.id,
+                          production.parsed_cast_talent_pool_ids.include?(talent_pool.id),
                           class: "h-4 w-4 rounded accent-pink-500 cursor-pointer",
                           data: { action: "change->auto-submit#submit" } %>
-                      <span class="ml-2 text-sm text-gray-700"><%= pool.name %></span>
-                      <span class="ml-2 text-xs text-gray-500">(<%= pool.members.count %> members)</span>
+                      <span class="ml-2 text-sm text-gray-700"><%= talent_pool.name %></span>
+                      <span class="ml-2 text-xs text-gray-500">(<%= talent_pool.members.count %> members)</span>
                     </label>
-                  <% end %>
                 </div>
+                <% end %>
               <% end %>
             </div>
           <% end %>

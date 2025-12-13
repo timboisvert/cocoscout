@@ -68,19 +68,23 @@ module Manage
     end
 
     def load_talent_pool_members
-      talent_pool_ids = @production.talent_pools.select(:id)
+      talent_pool = @production.talent_pool
 
-      people = Person.joins(:talent_pool_memberships)
-                     .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                     .includes(profile_headshots: { image_attachment: :blob })
-                     .distinct
+      if talent_pool
+        people = Person.joins(:talent_pool_memberships)
+                       .where(talent_pool_memberships: { talent_pool_id: talent_pool.id })
+                       .includes(profile_headshots: { image_attachment: :blob })
+                       .distinct
 
-      groups = Group.joins(:talent_pool_memberships)
-                    .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
-                    .includes(profile_headshots: { image_attachment: :blob })
-                    .distinct
+        groups = Group.joins(:talent_pool_memberships)
+                      .where(talent_pool_memberships: { talent_pool_id: talent_pool.id })
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .distinct
 
-      @talent_pool_members = (people.to_a + groups.to_a).sort_by(&:name)
+        @talent_pool_members = (people.to_a + groups.to_a).sort_by(&:name)
+      else
+        @talent_pool_members = []
+      end
     end
 
     def update_eligible_members(role)

@@ -203,8 +203,9 @@ module Manage
                                                 .where(invitee_type: "Group").pluck(:invitee_id)
 
       # Get all people and groups in the production
-      all_people = @production.talent_pools.flat_map(&:people).uniq
-      all_groups = @production.talent_pools.flat_map(&:groups).uniq
+      talent_pool = @production.talent_pool
+      all_people = talent_pool&.people&.to_a || []
+      all_groups = talent_pool&.groups&.to_a || []
 
       # Filter to only those not yet invited
       not_invited_people = all_people.reject { |p| already_invited_person_ids.include?(p.id) }

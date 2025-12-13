@@ -3,7 +3,7 @@
 class Production < ApplicationRecord
   # Delete cast_assignment_stages first since they reference both audition_cycles and talent_pools
   before_destroy :delete_cast_assignment_stages
-  before_destroy :delete_people_talent_pools_joins
+  before_destroy :delete_talent_pool_memberships
 
   has_many :posters, dependent: :destroy
   has_many :shows, dependent: :destroy
@@ -37,9 +37,16 @@ class Production < ApplicationRecord
   before_validation :generate_public_key, on: :create
   before_validation :downcase_public_key
   before_save :track_public_key_change
+  after_create :create_default_talent_pool
 
   # Cache invalidation
   after_commit :invalidate_caches
+
+  # Each production has exactly one talent pool
+  # This is the canonical way to access it
+  def talent_pool
+    talent_pools.first || create_default_talent_pool
+  end
 
   def active_audition_cycle
     audition_cycles.find_by(active: true)
@@ -80,9 +87,9 @@ class Production < ApplicationRecord
     end
   end
 
-  # Count of unique members across all talent pools in this production
+  # Count of unique members in the talent pool
   def talent_pool_member_count
-    TalentPoolMembership.where(talent_pool_id: talent_pools.select(:id)).distinct.count(:member_id)
+    talent_pool&.members&.count || 0
   end
 
   def safe_logo_variant(variant_name)
@@ -127,8 +134,8 @@ class Production < ApplicationRecord
     end
 
     # Include talent pool updates (affects cast members)
-    if talent_pools.any?
-      timestamps << talent_pools.maximum(:updated_at)
+    if talent_pool
+      timestamps << talent_pool.updated_at
     end
 
     timestamps.compact.max || updated_at
@@ -205,26 +212,23 @@ class Production < ApplicationRecord
     self.cast_talent_pool_ids = ids.present? ? ids.to_json : nil
   end
 
-  # Check if all talent pools should be shown (empty means all)
+  # Check if the talent pool should be shown (for backwards compatibility)
   def show_all_talent_pools?
-    parsed_cast_talent_pool_ids.empty?
+    true
   end
 
-  # Get the talent pools to display cast from
+  # Get the talent pool to display cast from
   def displayable_talent_pools
-    if show_all_talent_pools?
-      talent_pools
-    else
-      talent_pools.where(id: parsed_cast_talent_pool_ids)
-    end
+    talent_pool ? [ talent_pool ] : []
   end
 
-  # Get unique cast members (people and groups) from selected talent pools
+  # Get unique cast members (people and groups) from the talent pool
   # Returns an array of mixed Person and Group objects
   def public_cast_members
     return [] unless show_cast_members?
+    return [] unless talent_pool
 
-    memberships = TalentPoolMembership.where(talent_pool: displayable_talent_pools).distinct
+    memberships = talent_pool.talent_pool_memberships
 
     # Get unique member_type/member_id pairs
     member_refs = memberships.pluck(:member_type, :member_id).uniq
@@ -321,11 +325,9 @@ class Production < ApplicationRecord
     CastAssignmentStage.where(audition_cycle_id: audition_cycles.pluck(:id)).delete_all
   end
 
-  def delete_people_talent_pools_joins
-    # Delete all entries in the people_talent_pools join table for this production's talent pools
-    ActiveRecord::Base.connection.execute(
-      "DELETE FROM people_talent_pools WHERE talent_pool_id IN (SELECT id FROM talent_pools WHERE production_id = #{id})"
-    )
+  def delete_talent_pool_memberships
+    # Delete all talent_pool_memberships for this production's talent pool
+    TalentPoolMembership.joins(:talent_pool).where(talent_pools: { production_id: id }).delete_all
 
     # Delete all auditions before deleting audition_requests or audition_sessions
     # Auditions reference both audition_requests and audition_sessions
@@ -337,5 +339,9 @@ class Production < ApplicationRecord
     return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png])
 
     errors.add(:logo, "Logo must be a JPEG, JPG, or PNG file")
+  end
+
+  def create_default_talent_pool
+    talent_pools.create!(name: "Talent Pool")
   end
 end

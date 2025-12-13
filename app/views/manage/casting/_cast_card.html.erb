@@ -47,8 +47,17 @@
 %>
 
 <% cache cast_card_cache_key do %>
+<%
+  # Build data attributes for linked highlight
+  card_data_attrs = {}
+  if show.linked?
+    card_data_attrs["linked-highlight-target"] = "row"
+    card_data_attrs["linkage-id"] = show.event_linkage_id
+  end
+  card_data_attrs_str = card_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ")
+%>
 <%= link_to manage_production_show_cast_path(production, show), class: "block no-underline" do %>
-  <div class="px-3 py-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
+  <div class="px-3 py-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group" <%= card_data_attrs_str.html_safe %>>
     <div class="flex items-stretch gap-4">
       <%# Left Third: Date & Show Details %>
       <div class="flex-1 flex items-center gap-4">
@@ -61,8 +70,22 @@
 
         <%# Show Details %>
         <div class="min-w-0">
-          <div class="font-medium text-gray-900">
+          <div class="font-medium text-gray-900 flex items-center gap-1.5">
             <%= show.secondary_name.presence || show.event_type.titleize %>
+            <% if show.linked? %>
+              <%
+                other_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time)
+                linked_tooltip = "Linked with: " + other_shows.map { |s|
+                  name = s.secondary_name.presence || s.event_type.titleize
+                  "#{s.date_and_time.strftime('%b %-d')} #{name}"
+                }.join(", ")
+              %>
+              <span data-controller="tooltip" data-tooltip-text="<%= linked_tooltip %>">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
+              </span>
+            <% end %>
           </div>
           <div class="text-sm text-gray-600">
             <%= show.date_and_time.strftime("%l:%M %p").strip %>

@@ -114,15 +114,7 @@
           </div>
         </div>
 
-        <% if @production.talent_pools.count > 1 %>
-          <label class="flex items-center cursor-pointer">
-            <%= radio_button_tag :recipient_type, "cast", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->availability-request#toggleCastDropdown" } %>
-            <span class="text-sm mr-3">Specific cast</span>
-            <span class="hidden" data-availability-request-target="castDropdown">
-              <%= select_tag :talent_pool_id, options_for_select([]), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500", data: { availability_request_target: "talentPoolSelect" } %>
-            </span>
-          </label>
-        <% end %>
+        <%# Only one talent pool per production now, no need for pool selection %>
 
         <label class="flex items-center cursor-pointer">
           <%= radio_button_tag :recipient_type, "specific", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->availability-request#toggleSpecific" } %>
@@ -138,13 +130,10 @@
           <% if @members_needing_update.any? %>
             <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Needs Update</div>
             <% @members_needing_update.each do |member| %>
-              <% member_talent_pools = @talent_pools.select { |tp| member[:talent_pool_ids].include?(tp.id) } %>
               <% field_name = member[:type] == "Group" ? "group_ids[]" : "person_ids[]" %>
               <label class="flex items-center cursor-pointer" data-member-id="<%= member[:id] %>" data-member-type="<%= member[:type] %>">
                 <%= check_box_tag field_name, member[:id], false, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                <span class="text-sm flex items-center gap-1">
-                  <%= member[:name] %> <span class="text-gray-500">- <%= member_talent_pools.map(&:name).join(", ") %></span>
-                </span>
+                <span class="text-sm"><%= member[:name] %></span>
               </label>
             <% end %>
           <% end %>
@@ -152,13 +141,10 @@
           <% if @members_up_to_date.any? %>
             <div class="text-xs font-semibold text-gray-700 uppercase mb-2 <%= 'mt-4' if @members_needing_update.any? %>">Up to Date</div>
             <% @members_up_to_date.each do |member| %>
-              <% member_talent_pools = @talent_pools.select { |tp| member[:talent_pool_ids].include?(tp.id) } %>
               <% field_name = member[:type] == "Group" ? "group_ids[]" : "person_ids[]" %>
               <div class="flex items-center opacity-50" data-member-id="<%= member[:id] %>" data-member-type="<%= member[:type] %>">
                 <%= check_box_tag field_name, member[:id], false, disabled: true, class: "mr-2 cursor-not-allowed" %>
-                <span class="text-sm flex items-center gap-1">
-                 <%= member[:name] %> <span class="text-gray-500">- <%= member_talent_pools.map(&:name).join(", ") %></span>
-                </span>
+                <span class="text-sm"><%= member[:name] %></span>
                 <span class="ml-2 text-xs text-green-600">✓</span>
               </div>
             <% end %>

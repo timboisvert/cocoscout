@@ -190,8 +190,9 @@
           </div>
         <% end %>
 
-        <% all_people = @production.talent_pools.flat_map(&:people).uniq.sort_by(&:name) %>
-        <% all_groups = @production.talent_pools.flat_map(&:groups).uniq.sort_by(&:name) %>
+        <% talent_pool = @production.talent_pool %>
+        <% all_people = talent_pool&.people&.to_a&.sort_by(&:name) || [] %>
+        <% all_groups = talent_pool&.groups&.to_a&.sort_by(&:name) || [] %>
         <% invited_person_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Person').pluck(:invitee_id) %>
         <% invited_group_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Group').pluck(:invitee_id) %>
         <% not_invited_people = all_people.reject { |p| invited_person_ids.include?(p.id) } %>
@@ -231,22 +232,6 @@
                   </div>
                 </div>
 
-                <% if @production.talent_pools.count > 1 %>
-                  <label class="flex items-center cursor-pointer">
-                    <%= radio_button_tag :recipient_type, "cast", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleCastDropdown" } %>
-                    <span class="text-sm mr-3">Specific talent pool</span>
-                    <span class="hidden" data-questionnaire-invitation-target="castDropdown">
-                      <% talent_pool_options = @production.talent_pools.map do |cast|
-                        not_invited_people_in_cast = cast.people.select { |p| not_invited_people.include?(p) }.count
-                        not_invited_groups_in_cast = cast.groups.select { |g| not_invited_groups.include?(g) }.count
-                        not_invited_total = not_invited_people_in_cast + not_invited_groups_in_cast
-                        ["#{cast.name} (#{not_invited_total} not yet invited)", cast.id]
-                      end %>
-                      <%= select_tag :talent_pool_id, options_for_select(talent_pool_options, @production.talent_pools.first&.id), class: "shadow-sm rounded-lg border border-gray-400 px-3 py-1.5 text-sm focus:border-pink-500 focus:ring-pink-500" %>
-                    </span>
-                  </label>
-                <% end %>
-
                 <label class="flex items-center cursor-pointer">
                   <%= radio_button_tag :recipient_type, "specific", false, class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->questionnaire-invitation#toggleSpecific" } %>
                   <span class="text-sm">Specific talent</span>
@@ -259,17 +244,15 @@
                 </label>
                 <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
                   <% not_invited_people.each do |person| %>
-                    <% person_talent_pools = @production.talent_pools.select { |c| c.people.include?(person) } %>
                     <label class="flex items-center cursor-pointer">
                       <%= check_box_tag "person_ids[]", person.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                      <span class="text-sm"><%= person.name %> <span class="text-gray-500">- <%= person_talent_pools.map(&:name).join(", ") %></span></span>
+                      <span class="text-sm"><%= person.name %></span>
                     </label>
                   <% end %>
                   <% not_invited_groups.each do |group| %>
-                    <% group_talent_pools = @production.talent_pools.select { |c| c.groups.include?(group) } %>
                     <label class="flex items-center cursor-pointer">
                       <%= check_box_tag "group_ids[]", group.id, false, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                      <span class="text-sm"><%= group.name %> <span class="text-gray-500">- <%= group_talent_pools.map(&:name).join(", ") %></span></span>
+                      <span class="text-sm"><%= group.name %></span>
                     </label>
                   <% end %>
                 </div>
