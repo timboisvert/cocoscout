@@ -355,16 +355,8 @@ class PilotController < ApplicationController
     ActiveRecord::Base.transaction do
       production = Production.find(params[:production_id])
 
-      # Create talent pool
-      @talent_pool = TalentPool.new(
-        name: params[:talent_pool_name],
-        production: production
-      )
-
-      unless @talent_pool.save
-        render json: { success: false, errors: @talent_pool.errors.full_messages }, status: :unprocessable_entity
-        return
-      end
+      # Get the automatically-created talent pool
+      @talent_pool = production.talent_pool
 
       # Create role
       @role = Role.new(
@@ -385,7 +377,7 @@ class PilotController < ApplicationController
 
       render json: {
         success: true,
-        message: "Talent pool and role created successfully",
+        message: "Role created successfully",
         talent_pool: { id: @talent_pool.id, name: @talent_pool.name },
         role: { id: @role.id, name: @role.name }
       }

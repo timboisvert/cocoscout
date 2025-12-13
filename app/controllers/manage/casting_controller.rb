@@ -87,6 +87,18 @@ module Manage
       # Build set of assigned member keys for quick lookup
       @assigned_member_keys = Set.new(@assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
 
+      # Build linkage sync info for linked shows (do this before email drafts so they can reference linked shows)
+      if @show.linked?
+        @linked_shows = @show.linked_shows.includes(:show_person_role_assignments).to_a
+        @linkage_sync_info = build_linkage_sync_info(@show, @linked_shows)
+
+        # Build availability for all linked shows (for filtering)
+        @linked_availability = build_linked_availability_hash(@linked_shows)
+      else
+        @linked_shows = []
+        @linked_availability = {}
+      end
+
       # Create email drafts for finalization section
       if @show.fully_cast? && !@show.casting_finalized?
         @cast_email_draft = EmailDraft.new(
@@ -97,12 +109,6 @@ module Manage
           title: default_removed_email_subject,
           body: default_removed_email_body
         )
-      end
-
-      # Build linkage sync info for linked shows
-      if @show.linked?
-        @linked_shows = @show.linked_shows.includes(:show_person_role_assignments).to_a
-        @linkage_sync_info = build_linkage_sync_info(@show, @linked_shows)
       end
     end
 
@@ -242,25 +248,55 @@ module Manage
 
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
+
+      # Build linkage sync info for linked shows
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
 
       # Calculate progress for the progress bar - count roles with at least one assignment
       roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
+      fully_cast = percentage == 100
 
-      # Render finalize section if fully cast
+      # Render linkage sync section if this is a linked show
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
+      # Render finalize section if fully cast AND (not linked OR in sync)
       finalize_section_html = nil
-      if percentage == 100
-        finalize_section_html = render_finalize_section_html
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
       end
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
         finalize_section_html: finalize_section_html,
         progress: {
           assignment_count: roles_with_assignments,
@@ -295,25 +331,55 @@ module Manage
 
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
+
+      # Build linkage sync info for linked shows
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
 
       # Calculate progress for the progress bar - count roles with at least one assignment
       roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
+      fully_cast = percentage == 100
 
-      # Render finalize section if fully cast
+      # Render linkage sync section if this is a linked show
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
+      # Render finalize section if fully cast AND (not linked OR in sync)
       finalize_section_html = nil
-      if percentage == 100
-        finalize_section_html = render_finalize_section_html
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
       end
 
       render json: {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
         finalize_section_html: finalize_section_html,
         assignable_type: removed_assignable_type,
         assignable_id: removed_assignable_id,
@@ -362,20 +428,49 @@ module Manage
 
       # Re-render the UI
       @availability = build_availability_hash(@show)
+
+      # Build linkage sync info for linked shows
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
 
       # Calculate progress - count roles with at least one assignment
       roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
       role_count = @show.available_roles.count
       percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
+      fully_cast = percentage == 100
 
-      # Render finalize section if fully cast
+      # Render linkage sync section if this is a linked show
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
+      # Render finalize section if fully cast AND (not linked OR in sync)
       finalize_section_html = nil
-      if percentage == 100
-        finalize_section_html = render_finalize_section_html
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
       end
 
       render json: {
@@ -383,6 +478,7 @@ module Manage
         vacancy_id: @vacancy.id,
         cast_members_html: cast_members_html,
         roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
         finalize_section_html: finalize_section_html,
         progress: {
           assignment_count: roles_with_assignments,
@@ -484,7 +580,7 @@ module Manage
         # Close any open vacancies
         show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
 
-        # Record notifications for this show
+        # Record notifications for current cast members
         show.unnotified_cast_members.each do |a|
           next unless a.role
           show.show_cast_notifications.find_or_initialize_by(
@@ -495,6 +591,15 @@ module Manage
             notified_at: Time.current,
             email_body: cast_body
           )
+        end
+
+        # Remove notification records for people who are no longer in the cast
+        # This prevents them from showing up as "removed" again after reopening
+        show.removed_cast_members.each do |assignable|
+          show.show_cast_notifications.where(
+            assignable: assignable,
+            notification_type: :cast
+          ).destroy_all
         end
 
         # Mark casting as finalized
@@ -512,10 +617,21 @@ module Manage
     end
 
     def reopen_casting
-      @show.reopen_casting!
+      # Reopen this show and all linked shows
+      shows_to_reopen = [ @show ]
+      if @show.linked?
+        shows_to_reopen += @show.linked_shows.select(&:casting_finalized?)
+      end
 
-      redirect_to manage_production_show_cast_path(@production, @show),
-                  notice: "Casting reopened. You can now make changes."
+      shows_to_reopen.each(&:reopen_casting!)
+
+      if shows_to_reopen.count > 1
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    notice: "Casting reopened for #{shows_to_reopen.count} linked events. You can now make changes."
+      else
+        redirect_to manage_production_show_cast_path(@production, @show),
+                    notice: "Casting reopened. You can now make changes."
+      end
     end
 
     def copy_cast_to_linked
@@ -532,16 +648,20 @@ module Manage
         return
       end
 
-      # Get this show's assignments
+      # Get source show's roles and assignments
+      source_roles = @show.available_roles.to_a
       source_assignments = @show.show_person_role_assignments.includes(:role).to_a
+      source_using_custom = @show.use_custom_roles?
 
       copied_count = 0
-      errors = []
 
       ActiveRecord::Base.transaction do
         linked_shows.each do |target_show|
-          # Get target show's roles by name
-          target_roles = target_show.available_roles.index_by(&:name)
+          # First, sync roles
+          sync_roles_to_show(target_show, source_roles, source_using_custom)
+
+          # Get target show's roles by name (after syncing)
+          target_roles = target_show.available_roles.reload.index_by(&:name)
 
           # Clear existing assignments on target show
           target_show.show_person_role_assignments.destroy_all
@@ -559,26 +679,84 @@ module Manage
                 assignable_id: source_assignment.assignable_id
               )
               copied_count += 1
-            else
-              errors << "Role '#{source_role_name}' not found on #{target_show.date_and_time.strftime('%b %-d')}"
             end
           end
         end
       end
 
-      if errors.any?
-        redirect_to manage_production_show_cast_path(@production, @show),
-                    alert: "Cast copied with warnings: #{errors.join(', ')}"
-      else
-        redirect_to manage_production_show_cast_path(@production, @show),
-                    notice: "Cast successfully copied to #{linked_shows.count} linked #{'event'.pluralize(linked_shows.count)}."
-      end
+      redirect_to manage_production_show_cast_path(@production, @show),
+                  notice: "Roles and cast successfully synced to #{linked_shows.count} linked #{'event'.pluralize(linked_shows.count)}."
     rescue ActiveRecord::RecordInvalid => e
       redirect_to manage_production_show_cast_path(@production, @show),
-                  alert: "Failed to copy cast: #{e.message}"
+                  alert: "Failed to sync: #{e.message}"
     end
 
     private
+
+    # Sync roles from source to target show
+    def sync_roles_to_show(target_show, source_roles, source_using_custom)
+      # If source uses production roles and target also uses production roles, they're already in sync
+      if !source_using_custom && !target_show.use_custom_roles?
+        return
+      end
+
+      # Target needs to use custom roles to match source
+      target_show.update!(use_custom_roles: true)
+
+      # Get existing custom roles on target
+      existing_roles = target_show.custom_roles.index_by(&:name)
+      source_role_names = source_roles.map(&:name).to_set
+
+      # Remove custom roles that don't exist in source (and their assignments)
+      existing_roles.each do |name, role|
+        unless source_role_names.include?(name)
+          role.destroy!
+        end
+      end
+
+      # Add or update roles to match source
+      source_roles.each do |source_role|
+        target_role = existing_roles[source_role.name]
+        if target_role
+          # Update existing role
+          target_role.update!(
+            position: source_role.position,
+            restricted: source_role.restricted
+          )
+
+          # Sync eligibilities if restricted
+          if source_role.restricted?
+            target_role.role_eligibilities.destroy_all
+            source_role.role_eligibilities.each do |eligibility|
+              target_role.role_eligibilities.create!(
+                member_type: eligibility.member_type,
+                member_id: eligibility.member_id
+              )
+            end
+          else
+            target_role.role_eligibilities.destroy_all
+          end
+        else
+          # Create new role
+          new_role = target_show.custom_roles.create!(
+            name: source_role.name,
+            position: source_role.position,
+            restricted: source_role.restricted,
+            production: target_show.production
+          )
+
+          # Copy eligibilities if restricted
+          if source_role.restricted?
+            source_role.role_eligibilities.each do |eligibility|
+              new_role.role_eligibilities.create!(
+                member_type: eligibility.member_type,
+                member_id: eligibility.member_id
+              )
+            end
+          end
+        end
+      end
+    end
 
     def set_production
       @production = Current.organization.productions.find(params.require(:production_id))
@@ -601,7 +779,36 @@ module Manage
       availability
     end
 
-    def render_finalize_section_html
+    # Build a hash of availability across all linked shows
+    # Returns { "Person_123" => { total: 3, available: 2, shows: [{ show_id: 1, available: true }, ...] } }
+    def build_linked_availability_hash(linked_shows)
+      return {} if linked_shows.empty?
+
+      result = {}
+      show_ids = linked_shows.map(&:id)
+
+      # Load all availability records for linked shows
+      ShowAvailability.where(show_id: show_ids).each do |avail|
+        key = "#{avail.available_entity_type}_#{avail.available_entity_id}"
+        result[key] ||= { total: linked_shows.count, available: 0, shows: [] }
+        result[key][:shows] << { show_id: avail.show_id, available: avail.available? }
+        result[key][:available] += 1 if avail.available?
+      end
+
+      # Ensure all members have entries even if they have no availability records
+      linked_shows.count.tap do |total|
+        result.each do |_key, data|
+          data[:total] = total
+        end
+      end
+
+      result
+    end
+
+    def render_finalize_section_html(linked_shows = nil)
+      # Set @linked_shows so email methods can use it
+      @linked_shows = linked_shows || []
+
       # Create email drafts for the finalize section
       cast_email_draft = EmailDraft.new(
         title: default_cast_email_subject,
@@ -617,6 +824,7 @@ module Manage
         locals: {
           show: @show,
           production: @production,
+          linked_shows: @linked_shows,
           cast_email_draft: cast_email_draft,
           removed_email_draft: removed_email_draft
         }
@@ -691,28 +899,24 @@ module Manage
       else
         # Multiple shows - build a consolidated message
         shows_list = shows_info.map do |info|
-          "<li><strong>#{info[:show_date]}</strong> - #{info[:show_name]} as <strong>#{info[:role_name]}</strong></li>"
+          "<li>#{info[:show_date]}: #{info[:show_name]}</li>"
         end.join("\n")
 
         personalized_body = <<~BODY
-          <p>Hi #{person.name},</p>
-
-          <p>You have been cast for the following linked events for #{@production.name}:</p>
+          <p>You have been cast as #{shows_info.first[:role_name]} in the following shows/events for #{@production.name}:</p>
 
           <ul>
           #{shows_list}
           </ul>
 
-          <p>Please confirm your availability for these shows. If you have any scheduling conflicts or questions, contact us as soon as possible.</p>
+          <p>Please let us know if you have any scheduling conflicts or questions.</p>
         BODY
 
         if notification_type == :removed
           personalized_body = <<~BODY
-            <p>Hi #{person.name},</p>
-
             <p>There has been a change to the casting for #{@production.name}.</p>
 
-            <p>You are no longer cast for the following events:</p>
+            <p>You are no longer cast in the following shows/events:</p>
 
             <ul>
             #{shows_list}
@@ -734,35 +938,101 @@ module Manage
     end
 
     def default_cast_email_subject
-      "Cast Confirmation: #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+      if @show.linked? && @linked_shows.present? && @linked_shows.any?
+        all_shows = [ @show ] + @linked_shows
+        dates = all_shows.sort_by(&:date_and_time).map { |s| s.date_and_time.strftime("%B %-d") }.uniq
+        if dates.count > 2
+          "Cast Confirmation: #{@production.name} - #{dates.first} - #{dates.last}"
+        else
+          "Cast Confirmation: #{@production.name} - #{dates.join(' & ')}"
+        end
+      else
+        "Cast Confirmation: #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+      end
     end
 
     def default_cast_email_body
-      show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-      <<~BODY
-        <p>You have been cast as [Role] for #{@production.name}.</p>
+      if @show.linked? && @linked_shows.present? && @linked_shows.any?
+        all_shows = [ @show ] + @linked_shows
+        sorted_shows = all_shows.sort_by(&:date_and_time)
+        show_list = sorted_shows.map do |s|
+          show_name = s.secondary_name.presence || s.event_type.titleize
+          date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+          "<li>#{date}: #{show_name}</li>"
+        end.join("\n")
 
-        <p><strong>Show Details:</strong><br>
-        Date: #{show_date}<br>
-        Role: [Role]</p>
+        <<~BODY
+          <p>You have been cast in the following shows/events for #{@production.name}:</p>
 
-        <p>Please confirm your availability for this show. If you have any scheduling conflicts or questions, contact us as soon as possible.</p>
-      BODY
+          <ul>
+          #{show_list}
+          </ul>
+
+          <p>Please let us know if you have any scheduling conflicts or questions.</p>
+        BODY
+      else
+        show_name = @show.secondary_name.presence || @show.event_type.titleize
+        show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+        <<~BODY
+          <p>You have been cast for #{@production.name}:</p>
+
+          <ul>
+          <li>#{show_date}: #{show_name}</li>
+          </ul>
+
+          <p>Please let us know if you have any scheduling conflicts or questions.</p>
+        BODY
+      end
     end
 
     def default_removed_email_subject
-      "Casting Update - #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+      if @show.linked? && @linked_shows.present? && @linked_shows.any?
+        all_shows = [ @show ] + @linked_shows
+        dates = all_shows.sort_by(&:date_and_time).map { |s| s.date_and_time.strftime("%B %-d") }.uniq
+        if dates.count > 2
+          "Casting Update - #{@production.name} - #{dates.first} - #{dates.last}"
+        else
+          "Casting Update - #{@production.name} - #{dates.join(' & ')}"
+        end
+      else
+        "Casting Update - #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
+      end
     end
 
     def default_removed_email_body
-      show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-      <<~BODY
-        <p>There has been a change to the casting for #{@production.name} on #{show_date}.</p>
+      if @show.linked? && @linked_shows.present? && @linked_shows.any?
+        all_shows = [ @show ] + @linked_shows
+        sorted_shows = all_shows.sort_by(&:date_and_time)
+        show_list = sorted_shows.map do |s|
+          show_name = s.secondary_name.presence || s.event_type.titleize
+          date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+          "<li>#{date}: #{show_name}</li>"
+        end.join("\n")
 
-        <p>You are no longer cast for this show.</p>
+        <<~BODY
+          <p>There has been a change to the casting for #{@production.name}.</p>
 
-        <p>If you have any questions, please contact us.</p>
-      BODY
+          <p>You are no longer cast in the following shows/events:</p>
+          <ul>
+          #{show_list}
+          </ul>
+
+          <p>If you have any questions, please contact us.</p>
+        BODY
+      else
+        show_name = @show.secondary_name.presence || @show.event_type.titleize
+        show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+        <<~BODY
+          <p>There has been a change to the casting for #{@production.name}.</p>
+
+          <p>You are no longer cast for:</p>
+          <ul>
+          <li>#{show_date}: #{show_name}</li>
+          </ul>
+
+          <p>If you have any questions, please contact us.</p>
+        BODY
+      end
     end
 
     # Build sync info comparing this show's cast with linked shows

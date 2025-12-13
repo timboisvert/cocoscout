@@ -18,8 +18,8 @@ export default class extends Controller {
         if (!this.hasInputTarget || !this.hasButtonTarget) return
 
         // Check for custom expected value, otherwise use "DELETE"
-        const expected = this.inputTarget.dataset.expected || "DELETE"
-        const value = this.inputTarget.value
+        const expected = (this.inputTarget.dataset.expected || "DELETE").trim().toLowerCase()
+        const value = this.inputTarget.value.trim().toLowerCase()
 
         if (value === expected) {
             this.buttonTarget.disabled = false

@@ -2,9 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["list"]
+    static values = {
+        isLinked: Boolean,
+        linkedCount: Number
+    }
 
     connect() {
-        this.availabilityFilter = "available"
+        // Default filter depends on whether this is a linked show
+        this.availabilityFilter = this.isLinkedValue ? "fully-available" : "available"
         this.castFilter = ""
         this.updateActiveButton()
         this.applyFilters()
@@ -35,16 +40,6 @@ export default class extends Controller {
                 btn.classList.add('bg-white', 'text-gray-700', 'border-gray-200', 'hover:border-gray-300')
             }
         })
-
-        // Show/hide availability matrix link based on filter
-        const matrixLink = document.getElementById('availability-matrix-link')
-        if (matrixLink) {
-            if (this.availabilityFilter === "available") {
-                matrixLink.classList.remove('hidden')
-            } else {
-                matrixLink.classList.add('hidden')
-            }
-        }
     }
 
     applyFilters() {
@@ -63,10 +58,18 @@ export default class extends Controller {
             // Check availability filter
             if (this.availabilityFilter === "available") {
                 // Only show if entity marked themselves as available (data-is-available="true")
-                // This will show them whether or not they're assigned (opacity-50 handles assignment styling)
                 const isAvailable = member.dataset.isAvailable === 'true'
                 shouldShow = isAvailable
+            } else if (this.availabilityFilter === "fully-available") {
+                // Only show if available for this show AND all linked shows
+                const isFullyAvailable = member.dataset.isFullyAvailable === 'true'
+                shouldShow = isFullyAvailable
+            } else if (this.availabilityFilter === "partially-available") {
+                // Show if available for this show OR any linked shows
+                const isPartiallyAvailable = member.dataset.isPartiallyAvailable === 'true'
+                shouldShow = isPartiallyAvailable
             }
+            // else: "all" - show everyone
 
             // Check cast filter
             if (this.castFilter && shouldShow) {
@@ -75,6 +78,17 @@ export default class extends Controller {
             }
 
             member.style.display = shouldShow ? '' : 'none'
+
+            // Show/hide availability text based on filter
+            const availabilityText = member.querySelector('[data-availability-text]')
+            if (availabilityText) {
+                // Show the availability text for fully-available and partially-available filters
+                if ((this.availabilityFilter === "fully-available" || this.availabilityFilter === "partially-available") && shouldShow) {
+                    availabilityText.classList.remove('hidden')
+                } else {
+                    availabilityText.classList.add('hidden')
+                }
+            }
         })
 
         // Hide cast headers if all their members are hidden (only relevant for multi-cast)
@@ -91,20 +105,15 @@ export default class extends Controller {
         const emptyState = document.getElementById('cast-members-empty-state')
         const messageElement = document.getElementById('empty-state-message')
 
-        if (visibleMembers.length === 0 && this.availabilityFilter === "available") {
+        if (visibleMembers.length === 0 && this.availabilityFilter !== "all") {
             // Show empty state
             if (emptyState && messageElement) {
-                // Determine the message
-                const hasMultipleCasts = castHeaders.length > 1
+                // Determine the message based on filter type
                 let message = ""
-
-                if (hasMultipleCasts && this.castFilter) {
-                    // Get the cast name
-                    const selectedCast = document.querySelector(`select option[value="${this.castFilter}"]`)
-                    const castName = selectedCast ? selectedCast.textContent : "this cast"
-                    message = `No one in the ${castName} cast is available for this show.`
-                } else if (hasMultipleCasts) {
-                    message = "No one in any cast is available for this show."
+                if (this.availabilityFilter === "fully-available") {
+                    message = "No one in the talent pool is available for all linked events."
+                } else if (this.availabilityFilter === "partially-available") {
+                    message = "No one in the talent pool is available for any linked events."
                 } else {
                     message = "No one in this talent pool is available for this show."
                 }

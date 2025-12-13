@@ -13,15 +13,6 @@
 
   <%= render "manage/shows/show_info_card", show: @show %>
 
-  <%# Linkage sync status bar for linked shows %>
-  <% if @show.linked? && @linkage_sync_info.present? %>
-    <%= render "manage/casting/linkage_sync_bar",
-        show: @show,
-        linked_shows: @linked_shows,
-        sync_info: @linkage_sync_info,
-        production: @production %>
-  <% end %>
-
   <% if @show.casting_finalized? %>
     <%# ===== FINALIZED STATE ===== %>
     <%= render "manage/casting/finalized_cast", show: @show, production: @production, roles: @roles, assignments_by_role_id: @assignments_by_role_id, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
@@ -44,6 +35,12 @@
       role_count = @roles_count
       percentage = role_count > 0 ? (roles_with_assignments.to_f / role_count * 100).round : 0
       fully_cast = percentage == 100
+
+      # Linkage sync status
+      is_linked = @show.linked?
+      sync_info = @linkage_sync_info
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
     %>
 
     <% if role_count > 0 %>
@@ -66,11 +63,22 @@
           </div>
         </div>
 
-        <%# Finalize section - shown/hidden dynamically via JS based on cast percentage %>
-        <div id="finalize-section-wrapper" class="<%= fully_cast ? '' : 'hidden' %>">
+        <%# Linkage sync section - always shown for linked shows %>
+        <% if is_linked && sync_info.present? %>
+          <%= render "manage/casting/linkage_sync_section",
+              show: @show,
+              linked_shows: @linked_shows,
+              sync_info: sync_info,
+              production: @production,
+              fully_cast: fully_cast %>
+        <% end %>
+
+        <%# Finalize section - shown when fully cast AND (not linked OR in sync) %>
+        <div id="finalize-section-wrapper" class="<%= can_finalize ? '' : 'hidden' %>">
           <%= render "manage/casting/finalize_section",
               show: @show,
               production: @production,
+              linked_shows: is_linked ? @linked_shows : [],
               cast_email_draft: @cast_email_draft,
               removed_email_draft: @removed_email_draft %>
         </div>
@@ -79,61 +87,101 @@
 
     <div class="flex gap-8">
 
-      <!-- Roles on the left - flexible width -->
-      <div class="flex-1">
+      <!-- Roles on the left - equal width -->
+      <div class="w-1/2">
         <%= render partial: "manage/casting/roles_list", locals: {
           show: @show,
           roles: @roles,
           assignments_by_role_id: @assignments_by_role_id,
           people_by_id: @people_by_id,
-          groups_by_id: @groups_by_id
+          groups_by_id: @groups_by_id,
+          sync_info: @linkage_sync_info
         } %>
       </div>
 
-      <!-- Cast Members on the right - fixed width and sticky -->
-      <div class="w-100 lg:sticky lg:top-4 lg:h-fit">
+      <!-- Cast Members on the right - equal width and sticky -->
+      <div class="w-1/2 lg:sticky lg:top-4 lg:h-fit">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
           </div>
-          <div class="p-4 border-b border-gray-200" data-controller="cast-filter">
+          <%
+            is_linked = @show.linked?
+            linked_count = is_linked ? @linked_shows.count : 0
+          %>
+          <div class="p-4 border-b border-gray-200" data-controller="cast-filter" data-cast-filter-is-linked-value="<%= is_linked %>" data-cast-filter-linked-count-value="<%= linked_count %>">
             <!-- Availability Filter -->
-            <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-              {
-                filters: [
-                  {
-                    text: "Available",
-                    path: "#",
-                    active: true,
-                    data: {
-                      action: "cast-filter#filterByAvailability",
-                      value: "available"
+            <% if is_linked && linked_count > 0 %>
+              <%# Linked shows: Show Fully Available / Partially Available / All filters %>
+              <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+                {
+                  filters: [
+                    {
+                      text: "Fully Available",
+                      path: "#",
+                      active: true,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "fully-available"
+                      }
+                    },
+                    {
+                      text: "Partially Available",
+                      path: "#",
+                      active: false,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "partially-available"
+                      }
+                    },
+                    {
+                      text: "All Talent Pool Members",
+                      path: "#",
+                      active: false,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "all"
+                      }
                     }
-                  },
-                  {
-                    text: "All Talent Pool Members",
-                    path: "#",
-                    active: false,
-                    data: {
-                      action: "cast-filter#filterByAvailability",
-                      value: "all"
+                  ]
+                }
+              ] %>
+            <% else %>
+              <%# Non-linked shows: Show Available / All filters %>
+              <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+                {
+                  filters: [
+                    {
+                      text: "Available",
+                      path: "#",
+                      active: true,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "available"
+                      }
+                    },
+                    {
+                      text: "All Talent Pool Members",
+                      path: "#",
+                      active: false,
+                      data: {
+                        action: "cast-filter#filterByAvailability",
+                        value: "all"
+                      }
                     }
-                  }
-                ]
-              }
-            ] %>
-
-            <!-- View Availability Matrix link (shown when Available filter is active) -->
-            <div id="availability-matrix-link" class="mt-1">
-              <%= link_to "View Availability Matrix", manage_production_availability_index_path(@production), class: "text-xs text-pink-500 underline" %>
-            </div>
+                  ]
+                }
+              ] %>
+            <% end %>
           </div>
           <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto" data-cast-filter-target="list">
             <%= render partial: "manage/casting/cast_members_list", locals: {
               show: @show,
               availability: @availability,
               pool_members: @pool_members,
-              assigned_member_keys: @assigned_member_keys
+              assigned_member_keys: @assigned_member_keys,
+              linked_availability: @linked_availability || {},
+              linked_shows: @linked_shows || []
             } %>
           </div>
         </div>

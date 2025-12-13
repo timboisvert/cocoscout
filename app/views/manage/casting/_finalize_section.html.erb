@@ -5,12 +5,22 @@
   removed_members = show.removed_cast_members
   has_removed = removed_members.any?
   has_previous_notifications = show.show_cast_notifications.any?
+  linked_shows = local_assigns[:linked_shows] || []
+  has_linked_shows = linked_shows.any?
+  total_shows_count = 1 + linked_shows.count
 %>
 
 <div class="border-t border-gray-200 p-4 bg-gray-50" data-controller="tabs">
-  <div class="flex items-center gap-2 mb-3">
-    <h3 class="text-sm font-semibold text-gray-800">Ready to Finalize</h3>
-  </div>
+  <% if has_linked_shows %>
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Ready to finalize <%= total_shows_count %> events together. Cast members will receive one email listing all of the linked shows & events.</h3>
+  <% else %>
+    <div class="flex items-center gap-2 mb-3">
+      <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+      <h3 class="text-sm font-semibold text-gray-800">Ready to Finalize</h3>
+    </div>
+  <% end %>
 
   <p class="text-sm text-gray-600 mb-4">
     <% if has_previous_notifications %>
@@ -141,9 +151,14 @@
     <% end %>
 
     <div class="flex items-center gap-3">
-      <%= render "shared/button", text: "Finalize and Notify", variant: "primary", size: "medium", type: :submit %>
+      <% button_text = has_linked_shows ? "Finalize #{total_shows_count} Events and Notify" : "Finalize and Notify" %>
+      <%= render "shared/button", text: button_text, variant: "primary", size: "medium", type: :submit %>
       <span class="text-xs text-gray-500">
-        This will send emails and lock the cast. You can reopen later if needed.
+        <% if has_linked_shows %>
+          This will finalize all <%= total_shows_count %> linked events together.
+        <% else %>
+          This will send emails and lock the cast. You can reopen later if needed.
+        <% end %>
       </span>
     </div>
   <% end %>

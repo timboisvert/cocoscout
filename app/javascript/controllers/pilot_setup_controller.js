@@ -106,10 +106,10 @@ export default class extends Controller {
                 this.producerState.talentPoolId = state.talent_pool_id
                 this.producerState.roleId = state.role_id
 
-                const talentPoolText = state.talent_pool_name && state.role_name
-                    ? `Pool: ${state.talent_pool_name}, Role: ${state.role_name}`
-                    : 'Talent pool created'
-                this.producerTalentPoolInfoTarget.textContent = talentPoolText
+                const roleText = state.role_name
+                    ? `Role: ${state.role_name}`
+                    : 'Role created'
+                this.producerTalentPoolInfoTarget.textContent = roleText
                 this.producerTalentPoolButtonTarget.textContent = 'Created ✓'
                 this.producerTalentPoolButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
                 this.producerTalentPoolButtonTarget.classList.add('bg-green-500')
@@ -473,7 +473,7 @@ export default class extends Controller {
         }
     }
 
-    // ==== PRODUCER SETUP - STEP 5: TALENT POOL ====
+    // ==== PRODUCER SETUP - STEP 5: ROLE ====
     openProducerTalentPoolModal(event) {
         event.preventDefault()
         if (this.producerTalentPoolButtonTarget.textContent.includes('✓')) return
@@ -493,7 +493,6 @@ export default class extends Controller {
         const formData = new FormData(this.producerTalentPoolFormTarget)
         const data = {
             production_id: this.producerState.productionId,
-            talent_pool_name: formData.get('talent_pool_name'),
             role_name: formData.get('role_name')
         }
 
@@ -517,7 +516,7 @@ export default class extends Controller {
                 this.producerState.roleId = result.role.id
 
                 // Update step 5 UI
-                this.producerTalentPoolInfoTarget.textContent = `Pool: ${result.talent_pool.name}, Role: ${result.role.name}`
+                this.producerTalentPoolInfoTarget.textContent = `Role: ${result.role.name}`
                 this.producerTalentPoolButtonTarget.textContent = 'Created ✓'
                 this.producerTalentPoolButtonTarget.classList.remove('bg-pink-500', 'hover:bg-pink-600')
                 this.producerTalentPoolButtonTarget.classList.add('bg-green-500')

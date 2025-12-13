@@ -40,8 +40,13 @@
     all_vacancies = show.role_vacancies.open.includes(:role).to_a
     vacancies_by_role_id = all_vacancies.group_by(&:role_id)
   end
+
+  # Linkage info for JS finalize logic
+  is_linked = show.linked?
+  sync_info = local_assigns[:sync_info]
+  all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
 %>
-<div id="show-roles" data-controller="drop-role" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>">
+<div id="show-roles" data-controller="drop-role" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>" data-is-linked="<%= is_linked %>" data-all-in-sync="<%= all_in_sync %>">
 
   <% if role_count == 0 %>
     <div class="text-sm text-gray-500">

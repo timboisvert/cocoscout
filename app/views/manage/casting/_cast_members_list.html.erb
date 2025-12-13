@@ -4,8 +4,12 @@
       pool_members = local_assigns[:pool_members] || @pool_members || show.production.talent_pool.members.to_a
       assigned_member_keys = local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new
       availability ||= {}
+      linked_availability = local_assigns[:linked_availability] || {}
+      linked_shows = local_assigns[:linked_shows] || []
       has_visible_people = false
       talent_pool = show.production.talent_pool
+      is_linked = linked_shows.any?
+      total_linked_shows = linked_shows.count
     %>
 
     <% if pool_members.any? %>
@@ -21,12 +25,34 @@
           <% member_availability = availability[availability_key] || availability[member.id] %>
           <% is_available = member_availability&.available? %>
 
+          <%# Linked availability data %>
+          <%
+            linked_data = linked_availability[member_key] || { total: total_linked_shows, available: 0, shows: [] }
+            linked_available_count = linked_data[:available]
+            # Fully available = available for this show + all linked shows
+            is_fully_available = is_available && linked_available_count == total_linked_shows
+            # Partially available = available for this show OR some linked shows
+            is_partially_available = is_available || linked_available_count > 0
+          %>
+
+          <%
+            # Calculate total events (current show + linked shows)
+            total_events = total_linked_shows + 1
+            # Count how many events they're available for (current + linked)
+            events_available_for = (is_available ? 1 : 0) + linked_available_count
+          %>
           <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
               data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
               data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
               data-talent-pool-id="<%= talent_pool.id %>"
               data-availability-status="<%= member_availability&.status || 'unset' %>"
               data-is-available="<%= is_available ? 'true' : 'false' %>"
+              data-is-fully-available="<%= is_fully_available ? 'true' : 'false' %>"
+              data-is-partially-available="<%= is_partially_available ? 'true' : 'false' %>"
+              data-linked-available-count="<%= linked_available_count %>"
+              data-linked-total="<%= total_linked_shows %>"
+              data-events-available-for="<%= events_available_for %>"
+              data-total-events="<%= total_events %>"
               draggable="true">
 
               <% headshot_variant = member.safe_headshot_variant(:thumb) %>
@@ -38,7 +64,18 @@
                   </div>
               <% end %>
 
-              <span class="font-medium text-xs flex-1 truncate"><%= member.name %></span>
+              <div class="flex-1 min-w-0">
+                <span class="font-medium text-sm block truncate"><%= member.name %></span>
+                <% if is_linked %>
+                  <span class="text-xs text-gray-400 block hidden" data-availability-text>
+                    <% if is_fully_available %>
+                      Available for all <%= total_events %> events
+                    <% elsif is_partially_available %>
+                      Available for <%= events_available_for %> of <%= total_events %> events
+                    <% end %>
+                  </span>
+                <% end %>
+              </div>
           </div>
           <% has_visible_people = true %>
         <% end %>
