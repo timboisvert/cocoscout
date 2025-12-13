@@ -24,9 +24,9 @@ class AddOrganizationToEmailLogs < ActiveRecord::Migration[8.1]
         execute <<-SQL
           UPDATE email_logs
           SET organization_id = (
-            SELECT og.organization_id
-            FROM organizations_groups og
-            WHERE og.group_id = email_logs.recipient_entity_id
+            SELECT go.organization_id
+            FROM groups_organizations go
+            WHERE go.group_id = email_logs.recipient_entity_id
             LIMIT 1
           )
           WHERE email_logs.recipient_entity_type = 'Group'
