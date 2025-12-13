@@ -9,6 +9,7 @@ class Role < ApplicationRecord
 
   has_many :role_eligibilities, dependent: :destroy
   has_many :vacancies, class_name: "RoleVacancy", dependent: :destroy
+  has_many :show_cast_notifications, dependent: :destroy
 
   # Scopes for production vs show-specific roles
   scope :production_roles, -> { where(show_id: nil) }

@@ -7,6 +7,11 @@ class Show < ApplicationRecord
   belongs_to :location, optional: true
   belongs_to :event_linkage, optional: true
 
+  # A show may be referenced as the primary_show in an EventLinkage
+  has_one :primary_event_linkage, class_name: "EventLinkage", foreign_key: :primary_show_id, dependent: :nullify
+
+  has_many :email_drafts, dependent: :nullify
+
   has_many :show_person_role_assignments, dependent: :destroy
 
   # Polymorphic associations for cast members (people or groups)
@@ -51,6 +56,9 @@ class Show < ApplicationRecord
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
+
+  # Nullify primary_show_id references before destruction to avoid FK constraint errors
+  before_destroy :nullify_primary_show_references
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
@@ -256,6 +264,12 @@ class Show < ApplicationRecord
     Rails.cache.delete(production.public_profile_cache_key) if production
     # NOTE: show_info_card uses cache key versioning with updated_at,
     # so it auto-invalidates when show.updated_at changes
+  end
+
+  def nullify_primary_show_references
+    # Explicitly nullify any event linkages that reference this show as primary_show
+    # This is needed because dependent: :nullify on has_one may not work with destroy_all
+    EventLinkage.where(primary_show_id: id).update_all(primary_show_id: nil)
   end
 
   def poster_content_type

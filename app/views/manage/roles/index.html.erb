@@ -12,6 +12,16 @@
     ] : []
   } %>
 
+  <%= render "shared/help_section",
+    title: "How Production Roles Work",
+    initial_state: "closed",
+    storage_key: "production_roles_help_collapsed",
+    steps: [
+      { text: "<strong>Default Roles:</strong> Roles defined here are the standard defaults for your production. They will be automatically applied to new shows and events." },
+      { text: "<strong>Per-Event Customization:</strong> You can customize roles for individual shows or events by editing them in the event's settings. Changes at the event level won't affect these production defaults." },
+      { text: "<strong>Role Eligibility:</strong> Use restricted roles to limit which talent pool members can be assigned. Unrestricted roles are available to everyone in the talent pool." }
+    ] %>
+
   <p class="text-sm text-gray-500 pb-4">Roles represent the parts within your production. For example, "Host" or "Comic 1"</p>
 
   <div class="space-y-2">
