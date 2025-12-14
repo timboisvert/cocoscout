@@ -1,71 +1,82 @@
 <div class="flex-1 space-y-3" id="audition_sessions_list">
   <% if audition_sessions.any? %>
     <% audition_sessions.each do |session| %>
-      <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-        <!-- Session Info -->
-        <div class="mb-4 flex justify-between items-center">
-          <p class="font-semibold text-gray-900"><%= session.start_at.strftime("%A, %b %-d, %Y at %-l:%M %p") %></p>
-          <% if session.maximum_auditionees %>
-            <span class="text-xs <%= session.is_overbooked? ? 'text-red-500' : (session.is_full? ? 'text-pink-500' : 'text-gray-500') %>">
-              <%= session.auditions.count %>/<%= session.maximum_auditionees %> scheduled
-            </span>
-          <% else %>
-            <span class="text-xs text-gray-500">
-              <%= session.auditions.count %>/∞ scheduled
-            </span>
-          <% end %>
-        </div>
-
-        <!-- Dropzone -->
-        <%
-          if session.is_full?
-            border_color = "border-pink-500 border-solid"
-          elsif session.is_overbooked?
-            border_color = "border-red-500 border-solid"
-          else
-            border_color = "border-gray-300 border-dashed"
-          end
-        %>
-        <div class="border-2 <%= border_color %> p-4 min-h-24 flex flex-col items-center justify-center rounded-lg"
-             data-drag-target="dropzone"
-             data-id="<%= session.id %>"
-             data-action="dragover->drag-audition#dragOver dragleave->drag-audition#dragLeave drop->drag-audition#drop">
-          <% if session.auditions.any? %>
-            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-2 w-full">
-              <% session.auditions.each do |audition| %>
-                <% auditionable = audition.auditionable %>
-                <div class="flex flex-col items-center p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group cursor-move"
-                     draggable="true"
-                     data-audition-id="<%= audition.id %>"
-                     data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
-                  <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
-                  <% if headshot_url %>
-                    <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 rounded-lg object-cover mb-1 pointer-events-none" %>
-                  <% elsif auditionable.is_a?(Person) %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-xs pointer-events-none">
-                      <%= auditionable.initials %>
-                    </div>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-1 text-black font-bold text-xs pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                      </svg>
-                    </div>
-                  <% end %>
-                  <span class="font-medium text-xs text-center pointer-events-none"><%= auditionable.name.truncate(20, omission: '...') %></span>
-                  <button type="button"
-                    class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
-                    data-action="click->drag-audition#removeAudition"
-                    data-audition-id="<%= audition.id %>"
-                    data-session-id="<%= session.id %>">
-                    Remove
-                  </button>
-                </div>
-              <% end %>
+      <div class="flex flex-col bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all overflow-hidden">
+        <div class="flex items-stretch">
+          <%# Left Section: Date & Session Details %>
+          <div class="w-32 flex-shrink-0 bg-gray-50 border-r border-gray-200 p-4 flex flex-col items-center justify-center">
+            <%# Date Box %>
+            <div class="text-center">
+              <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+              <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+              <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
+              <div class="text-xs text-gray-600 mt-2">
+                <%= session.start_at.strftime("%l:%M %p") %>
+              </div>
             </div>
-          <% else %>
-            <span class="text-xs text-gray-500">Drag an Auditionee here to schedule them in this session</span>
-          <% end %>
+          </div>
+
+          <%# Right Section: Dropzone %>
+          <div class="flex-1 p-4 transition-colors"
+               data-drag-target="dropzone"
+               data-id="<%= session.id %>"
+               data-action="dragover->drag-audition#dragOver dragleave->drag-audition#dragLeave drop->drag-audition#drop">
+            <% if session.auditions.any? %>
+              <div class="flex flex-wrap gap-3">
+                <% session.auditions.each do |audition| %>
+                  <% auditionable = audition.auditionable %>
+                  <div class="flex flex-col items-center relative group cursor-move w-20"
+                       draggable="true"
+                       data-audition-id="<%= audition.id %>"
+                       data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
+                    <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
+                    <% if headshot_url %>
+                      <%= image_tag headshot_url, alt: auditionable.name, class: "w-20 h-20 rounded-lg object-cover pointer-events-none" %>
+                    <% elsif auditionable.is_a?(Person) %>
+                      <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-base pointer-events-none">
+                        <%= auditionable.initials %>
+                      </div>
+                    <% else %>
+                      <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                        </svg>
+                      </div>
+                    <% end %>
+                    <span class="text-xs text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= auditionable.name %></span>
+                    <button type="button"
+                      class="absolute bottom-6 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                      data-action="click->drag-audition#removeAudition"
+                      data-audition-id="<%= audition.id %>"
+                      data-session-id="<%= session.id %>">
+                      Remove
+                    </button>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="flex items-center justify-center h-20 text-xs text-gray-400">
+                Drag people here to schedule them
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+        <%# Bottom Bar: Capacity Status %>
+        <div class="border-t border-gray-200 px-4 py-2 bg-gray-50">
+          <div class="text-xs <%= session.is_overbooked? ? 'text-red-600' : (session.is_full? ? 'text-pink-600' : 'text-gray-600') %>">
+            <% if session.maximum_auditionees %>
+              <% if session.auditions.count == session.maximum_auditionees %>
+                <%= pluralize(session.auditions.count, 'audition slot') %> filled. This session is full.
+              <% elsif session.is_overbooked? %>
+                <%= session.auditions.count %> out of <%= pluralize(session.maximum_auditionees, 'audition slot') %> filled. This session is overbooked.
+              <% else %>
+                <%= session.auditions.count %> out of <%= pluralize(session.maximum_auditionees, 'audition slot') %> filled.
+              <% end %>
+            <% else %>
+              <%= pluralize(session.auditions.count, 'audition slot') %> filled. This session has no slot limit.
+            <% end %>
+          </div>
         </div>
       </div>
     <% end %>

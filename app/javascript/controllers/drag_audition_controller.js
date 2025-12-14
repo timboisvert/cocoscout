@@ -22,10 +22,14 @@ export default class extends Controller {
   dragOver(event) {
     event.preventDefault(); // Allow dropping
     event.dataTransfer.dropEffect = "move";
+    // Add visual feedback
+    event.currentTarget.classList.add('bg-pink-50');
   }
 
   dragLeave(event) {
     event.preventDefault();
+    // Remove visual feedback
+    event.currentTarget.classList.remove('bg-pink-50');
   }
 
   removeAudition(event) {
@@ -78,6 +82,9 @@ export default class extends Controller {
 
   drop(event) {
     event.preventDefault();
+    // Remove visual feedback
+    event.currentTarget.classList.remove('bg-pink-50');
+    
     const draggedAuditionId = event.dataTransfer.getData("audition-id");
     const draggedItemId = event.dataTransfer.getData("text/plain");
     const droppedOnElement = event.target.closest("[data-drag-target='dropzone']");
