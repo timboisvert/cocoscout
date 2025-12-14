@@ -56,7 +56,14 @@ module Manage
                       .index_by(&:id)
 
       # Load open vacancies for this show
-      @open_vacancies = @show.role_vacancies.open.includes(:role).to_a
+      # Include vacancies where this show is the primary show OR in the affected_shows
+      @open_vacancies = RoleVacancy
+                          .open
+                          .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
+                          .where("role_vacancies.show_id = ? OR role_vacancy_shows.show_id = ?", @show.id, @show.id)
+                          .distinct
+                          .includes(:role, :affected_shows)
+                          .to_a
     end
 
     def calendar

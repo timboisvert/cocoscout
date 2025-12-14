@@ -304,6 +304,38 @@ class SuperadminController < ApplicationController
     redirect_to queue_failed_path, alert: "Failed to retry job: #{e.message}"
   end
 
+  def queue_retry_all_failed
+    failed_executions = SolidQueue::FailedExecution.includes(:job).all
+    retry_count = 0
+    error_count = 0
+
+    failed_executions.each do |failed_execution|
+      begin
+        job = failed_execution.job
+
+        # Parse the serialized arguments
+        arguments = JSON.parse(job.arguments)
+
+        # Recreate and enqueue the job
+        job_class = job.class_name.constantize
+        new_job = job_class.new(*arguments)
+        new_job.enqueue(queue: job.queue_name)
+
+        retry_count += 1
+      rescue StandardError => e
+        Rails.logger.error "Failed to retry job #{failed_execution.id}: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        error_count += 1
+      end
+    end
+
+    if error_count.zero?
+      redirect_to queue_monitor_path, notice: "Successfully queued #{retry_count} failed job(s) for retry"
+    else
+      redirect_to queue_monitor_path, alert: "Queued #{retry_count} job(s) for retry, #{error_count} failed. Check logs for details."
+    end
+  end
+
   def queue_delete_job
     job = SolidQueue::Job.find(params[:id])
     job.destroy

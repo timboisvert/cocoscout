@@ -60,30 +60,60 @@
             <div class="p-4 space-y-1">
               <% @open_vacancies.each do |vacancy| %>
                 <% vacated_by = vacancy.vacated_by %>
+                <% is_linked = @show.linked? %>
+                <% affected_shows = is_linked ? vacancy.affected_shows.order(:date_and_time) : [@show] %>
                 <div class="group flex items-stretch bg-white border border-pink-200 rounded-lg hover:border-pink-400 transition-colors overflow-hidden">
-                  <%# Left half: Same as Upcoming Shows %>
-                  <div class="w-1/2 px-3 py-2 flex items-center gap-4">
-                    <%# Date Box %>
-                    <div class="flex-shrink-0 w-14 text-center">
-                      <div class="text-xs font-semibold text-pink-600 uppercase"><%= @show.date_and_time.strftime("%b") %></div>
-                      <div class="text-2xl font-bold text-gray-900"><%= @show.date_and_time.strftime("%-d") %></div>
-                      <div class="text-xs text-gray-500"><%= @show.date_and_time.strftime("%a") %></div>
-                    </div>
-
-                    <%# Show Details %>
-                    <div class="min-w-0">
-                      <div class="font-medium text-gray-900">
-                        <%= @show.secondary_name.presence || @show.event_type.titleize %>
-                      </div>
-                      <div class="text-sm text-gray-600">
-                        <%= @show.date_and_time.strftime("%l:%M %p").strip %>
-                        <% if @show.is_online %>
-                          · Online
-                        <% elsif @show.location.present? %>
-                          · <%= @show.location.name %>
+                  <%# Left half: Show dates %>
+                  <div class="w-1/2 px-3 py-2">
+                    <% if affected_shows.size > 1 %>
+                      <%# Multiple shows stacked vertically %>
+                      <div class="space-y-2">
+                        <% affected_shows.each do |affected_show| %>
+                          <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 w-14 text-center">
+                              <div class="text-xs font-semibold text-pink-600 uppercase"><%= affected_show.date_and_time.strftime("%b") %></div>
+                              <div class="text-2xl font-bold text-gray-900"><%= affected_show.date_and_time.strftime("%-d") %></div>
+                              <div class="text-xs text-gray-500"><%= affected_show.date_and_time.strftime("%a") %></div>
+                            </div>
+                            <div class="min-w-0">
+                              <div class="font-medium text-gray-900">
+                                <%= affected_show.secondary_name.presence || affected_show.event_type.titleize %>
+                              </div>
+                              <div class="text-sm text-gray-600">
+                                <%= affected_show.date_and_time.strftime("%l:%M %p").strip %>
+                                <% if affected_show.is_online %>
+                                  · Online
+                                <% elsif affected_show.location.present? %>
+                                  · <%= affected_show.location.name %>
+                                <% end %>
+                              </div>
+                            </div>
+                          </div>
                         <% end %>
                       </div>
-                    </div>
+                    <% else %>
+                      <%# Single show %>
+                      <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0 w-14 text-center">
+                          <div class="text-xs font-semibold text-pink-600 uppercase"><%= @show.date_and_time.strftime("%b") %></div>
+                          <div class="text-2xl font-bold text-gray-900"><%= @show.date_and_time.strftime("%-d") %></div>
+                          <div class="text-xs text-gray-500"><%= @show.date_and_time.strftime("%a") %></div>
+                        </div>
+                        <div class="min-w-0">
+                          <div class="font-medium text-gray-900">
+                            <%= @show.secondary_name.presence || @show.event_type.titleize %>
+                          </div>
+                          <div class="text-sm text-gray-600">
+                            <%= @show.date_and_time.strftime("%l:%M %p").strip %>
+                            <% if @show.is_online %>
+                              · Online
+                            <% elsif @show.location.present? %>
+                              · <%= @show.location.name %>
+                            <% end %>
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
                   </div>
 
                   <%# Right half: Vacated by entity with role %>
@@ -107,7 +137,11 @@
                       </div>
                     </div>
                     <div class="flex-shrink-0 hidden group-hover:block">
-                      <%= render "shared/button", text: "Find a replacement", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
+                      <% if is_linked %>
+                        <%= render "shared/button", text: "Review", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
+                      <% else %>
+                        <%= render "shared/button", text: "Find a Replacement", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
+                      <% end %>
                     </div>
                   </div>
                 </div>

@@ -37,29 +37,102 @@
     <% end %>
 
     <!-- Role Selection Form -->
-    <%= form_with url: vacancy_confirm_path(@show, token: @token), method: :post, class: "space-y-6" do %>
-      <div class="bg-white shadow rounded-lg divide-y divide-gray-200">
-        <div class="p-4">
-          <p class="text-sm font-medium text-gray-700 mb-3">Select the cast assignment you're no longer able to fulfill:</p>
+    <%= form_with url: vacancy_confirm_path(@show, token: @token), method: :post, class: "space-y-6", data: { controller: "vacancy-form" } do %>
+      <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+          <p class="text-sm font-medium text-gray-700">Select the role you can't fulfill:</p>
+        </div>
 
+        <div class="divide-y divide-gray-100">
           <% @all_assignments.each_with_index do |assignment, index| %>
-            <label class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+            <%
+              assignment_key = "#{assignment.role_id}:#{assignment.assignable_type}:#{assignment.assignable_id}"
+              assignable = assignment.assignable_type == "Group" ? @groups_by_id[assignment.assignable_id] : @person
+              is_auto_selected = @all_assignments.size == 1
+            %>
+            <label class="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                   data-vacancy-form-target="assignmentRow"
+                   data-action="click->vacancy-form#selectAssignment">
               <input type="radio"
                      name="role_ids[]"
-                     value="<%= "#{assignment.role_id}:#{assignment.assignable_type}:#{assignment.assignable_id}" %>"
-                     class="h-4 w-4 border-gray-300 accent-pink-500 focus:ring-pink-500"
-                     <%= "checked" if @all_assignments.size == 1 %>>
-              <div>
-                <span class="text-sm font-medium text-gray-900"><%= assignment.role.name %></span>
-                <% if assignment.assignable_type == "Group" %>
-                  <% group = @groups_by_id[assignment.assignable_id] %>
-                  <span class="text-xs text-gray-500 ml-1">(as <%= group.name %>)</span>
-                <% end %>
+                     value="<%= assignment_key %>"
+                     class="sr-only"
+                     data-vacancy-form-target="assignmentInput"
+                     <%= "checked" if is_auto_selected %>>
+
+              <!-- Headshot -->
+              <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant,
+                    alt: assignable.name,
+                    class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                  <%= assignable.respond_to?(:initials) ? assignable.initials : assignable.name[0] %>
+                </div>
+              <% end %>
+
+              <!-- Name and Role -->
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  <%= assignable.name %>
+                </p>
+                <p class="text-xs text-gray-500">as <span class="font-medium"><%= assignment.role.name %></span></p>
+              </div>
+
+              <!-- Selection indicator -->
+              <div class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                   data-vacancy-form-target="indicator"
+                   data-selected-class="border-pink-500 bg-pink-500"
+                   data-unselected-class="border-gray-300">
+                <svg class="w-3 h-3 text-white hidden" data-vacancy-form-target="checkmark" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
               </div>
             </label>
           <% end %>
         </div>
       </div>
+
+      <% if @show.linked? %>
+        <% @linked_future_shows = @show.linked_shows.where("date_and_time > ?", Time.current).to_a %>
+        <% if @linked_future_shows.any? %>
+          <%# Combine current show with linked shows and sort by date %>
+          <% all_affected_shows = ([@show] + @linked_future_shows).sort_by(&:date_and_time) %>
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+              <p class="text-sm font-medium text-gray-700">This event is linked to other events. Which ones can't you make?</p>
+              <p class="text-xs text-gray-500 mt-1">Select all that apply. We'll let the team know.</p>
+            </div>
+
+            <div class="divide-y divide-gray-100">
+              <!-- Hidden field to ensure the current show is always included -->
+              <input type="hidden" name="affected_show_ids[]" value="<%= @show.id %>">
+
+              <% all_affected_shows.each do |event_show| %>
+                <% is_current = event_show.id == @show.id %>
+                <label class="flex items-center gap-3 p-4 <%= is_current ? 'bg-gray-50' : 'hover:bg-gray-50 cursor-pointer' %> transition-colors">
+                  <input type="checkbox"
+                         name="affected_show_ids[]"
+                         value="<%= event_show.id %>"
+                         <%= "checked disabled" if is_current %>
+                         class="h-4 w-4 rounded border-gray-300 accent-pink-500">
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900">
+                      <%= event_show.date_and_time.strftime("%A, %B %d") %>
+                      <span class="text-gray-500 font-normal">at <%= event_show.date_and_time.strftime("%l:%M %p").strip %></span>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      <%= event_show.secondary_name.presence || event_show.event_type.titleize %>
+                      <%= "(this event)" if is_current %>
+                    </p>
+                  </div>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
 
       <div class="flex flex-col gap-3">
         <%= render "shared/button",

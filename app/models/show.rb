@@ -40,6 +40,7 @@ class Show < ApplicationRecord
   has_many :available_people, through: :show_availabilities, source: :person
 
   has_many :role_vacancies, dependent: :destroy
+  has_many :role_vacancy_shows, dependent: :destroy
 
   has_many :show_cast_notifications, dependent: :destroy
 
@@ -59,6 +60,9 @@ class Show < ApplicationRecord
 
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
+
+  # Clear assignments when toggling custom roles
+  before_save :clear_assignments_on_custom_roles_toggle, if: :use_custom_roles_changed?
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
@@ -282,5 +286,37 @@ class Show < ApplicationRecord
     return if location.present? || location_id.present? || is_online?
 
     errors.add(:base, "Please select a location or mark this event as online")
+  end
+
+  def clear_assignments_on_custom_roles_toggle
+    # Get all shows that need to be cleared (this show + linked shows)
+    shows_to_clear = if linked?
+      event_linkage.shows.to_a
+    else
+      [ self ]
+    end
+
+    # Determine if we're toggling OFF (switching to production roles)
+    toggling_off = !use_custom_roles?
+
+    shows_to_clear.each do |show_to_clear|
+      # Clear all assignments for the show
+      show_to_clear.show_person_role_assignments.destroy_all
+
+      # Update linked shows (but not this show - it will be saved with the record)
+      if show_to_clear != self
+        # Delete custom roles if toggling OFF
+        show_to_clear.custom_roles.destroy_all if toggling_off
+
+        # Sync the use_custom_roles flag and clear finalized status
+        show_to_clear.update_columns(
+          use_custom_roles: use_custom_roles?,
+          casting_finalized_at: nil
+        )
+      end
+    end
+
+    # Also unmark this show as finalized (will be saved with the record)
+    self.casting_finalized_at = nil
   end
 end

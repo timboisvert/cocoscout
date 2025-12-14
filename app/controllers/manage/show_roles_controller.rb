@@ -154,12 +154,27 @@ module Manage
         }
       end
 
+      # Get linked shows if this show is linked
+      linked_shows_data = if @show.linked?
+        @show.event_linkage.shows.where.not(id: @show.id).order(:event_date).map do |show|
+          {
+            id: show.id,
+            title: show.title,
+            event_date: show.event_date.strftime("%B %-d, %Y")
+          }
+        end
+      else
+        []
+      end
+
       render json: {
         has_assignments: assignments.any?,
         count: assignments.count,
         assignments: assignments_data,
         currently_using_custom_roles: @show.use_custom_roles?,
-        switching_to: params[:switching_to] || (@show.use_custom_roles? ? "production" : "custom")
+        switching_to: params[:switching_to] || (@show.use_custom_roles? ? "production" : "custom"),
+        is_linked: @show.linked?,
+        linked_shows: linked_shows_data
       }
     end
 

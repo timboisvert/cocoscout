@@ -1,20 +1,7 @@
-<%= @invitation.email_body || "You've been invited to fill a role." %>
+<%= simple_format(@invitation.email_body || "You've been invited to fill a role.") %>
 
 <p style="margin-top: 24px;">
-  <a href="<%= @claim_url %>" style="display: inline-block; background-color: #ec4899; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+  <a href="<%= @claim_url %>" style="display: inline-block; background-color: #ec4899; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; line-height: 1.25rem;">
     Claim This Role
   </a>
-</p>
-
-<p style="margin-top: 24px; color: #666; font-size: 14px;">
-  <strong>Role:</strong> <%= @role.name %><br>
-  <strong>Show:</strong> <%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %><br>
-  <% if @show.location %>
-    <strong>Location:</strong> <%= @show.location.name %>
-  <% end %>
-</p>
-
-<hr style="margin-top: 24px; border: none; border-top: 1px solid #e5e7eb;">
-<p style="color: #999; font-size: 12px;">
-  This email was sent using CocoScout.
 </p>

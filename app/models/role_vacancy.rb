@@ -7,6 +7,8 @@ class RoleVacancy < ApplicationRecord
   belongs_to :created_by, class_name: "User", optional: true
 
   has_many :invitations, class_name: "RoleVacancyInvitation", dependent: :destroy
+  has_many :role_vacancy_shows, dependent: :destroy
+  has_many :affected_shows, through: :role_vacancy_shows, source: :show
 
   enum :status, { open: "open", filled: "filled", cancelled: "cancelled" }
 
@@ -28,18 +30,30 @@ class RoleVacancy < ApplicationRecord
 
   def fill!(person, by: nil)
     transaction do
-      # Remove the old cast assignment for the entity who vacated (Person or Group)
-      if vacated_by.present?
-        show.show_person_role_assignments
-            .where(role_id: role_id, assignable_type: vacated_by_type, assignable_id: vacated_by_id)
-            .destroy_all
+      # Get all shows in the linkage or just the primary show
+      if show.linked?
+        shows_to_update = show.event_linkage.shows.to_a
+      else
+        shows_to_update = [ show ]
       end
 
-      # Create a new cast assignment for the person filling the vacancy
-      show.show_person_role_assignments.create!(
-        role: role,
-        assignable: person
-      )
+      shows_to_update.each do |affected_show|
+        # Remove the old cast assignment for the entity who vacated (Person or Group)
+        if vacated_by.present?
+          affected_show.show_person_role_assignments
+              .where(role_id: role_id, assignable_type: vacated_by_type, assignable_id: vacated_by_id)
+              .destroy_all
+        end
+
+        # Create a new cast assignment for the person filling the vacancy
+        affected_show.show_person_role_assignments.create!(
+          role: role,
+          assignable: person
+        )
+
+        # Unmark the show as finalized since the cast changed
+        affected_show.update!(casting_finalized_at: nil)
+      end
 
       # Update the vacancy status
       update!(

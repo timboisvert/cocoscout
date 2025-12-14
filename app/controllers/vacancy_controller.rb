@@ -18,7 +18,9 @@ class VacancyController < ApplicationController
                               .where(assignable_type: "Group", assignable_id: @groups.map(&:id))
                               .includes(:role)
 
-    @all_assignments = (@person_assignments + @group_assignments).sort_by { |a| a.role&.position || 0 }
+    # Person assignments first, then group assignments, each sorted by role position
+    @all_assignments = @person_assignments.sort_by { |a| a.role&.position || 0 } +
+                       @group_assignments.sort_by { |a| a.role&.position || 0 }
 
     if @all_assignments.empty?
       redirect_to root_path, alert: "You don't have any assignments for this show."
@@ -28,6 +30,7 @@ class VacancyController < ApplicationController
 
   def confirm
     role_ids = params[:role_ids] || []
+    affected_show_ids = params[:affected_show_ids] || [ @show.id ]
 
     if role_ids.empty?
       redirect_to vacancy_path(@show, token: @token), alert: "Please select at least one role."
@@ -38,6 +41,15 @@ class VacancyController < ApplicationController
 
     # Get groups the person can act on behalf of
     group_ids = @person.groups.active.pluck(:id)
+
+    # Validate affected shows are linked to this show
+    is_linked = @show.linked?
+    valid_affected_show_ids = if is_linked
+      linked_show_ids = @show.linked_shows.pluck(:id) + [ @show.id ]
+      affected_show_ids.map(&:to_i) & linked_show_ids
+    else
+      [ @show.id ]
+    end
 
     ActiveRecord::Base.transaction do
       role_ids.each do |assignment_key|
@@ -70,23 +82,35 @@ class VacancyController < ApplicationController
           vacated_at: Time.current,
           status: :open
         )
+
+        # Add affected shows to the vacancy
+        valid_affected_show_ids.each do |show_id|
+          vacancy.role_vacancy_shows.create!(show_id: show_id)
+        end
+
         @vacancies_created << vacancy
 
-        # Remove the assignment
-        assignment.destroy!
+        # Only remove the assignment for non-linked shows
+        # For linked shows, the producer decides what to do
+        unless is_linked
+          assignment.destroy!
 
-        # Unfinalize casting since we now have an open role
-        @show.reopen_casting! if @show.casting_finalized?
+          # Unfinalize casting since we now have an open role
+          @show.reopen_casting! if @show.casting_finalized?
+        end
       end
     end
 
-    redirect_to vacancy_success_path(@show, token: @token, count: @vacancies_created.count)
+    redirect_to vacancy_success_path(@show, token: @token, count: @vacancies_created.count, affected_show_ids: valid_affected_show_ids.join(","), linked: is_linked ? "1" : "0")
   rescue ActiveRecord::RecordInvalid => e
     redirect_to vacancy_path(@show, token: @token), alert: "Something went wrong: #{e.message}"
   end
 
   def success
     @count = params[:count].to_i
+    @is_linked = params[:linked] == "1"
+    affected_show_ids = params[:affected_show_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
+    @affected_shows = Show.where(id: affected_show_ids).order(:date_and_time).to_a
   end
 
   private

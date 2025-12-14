@@ -165,15 +165,24 @@
               <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Cast Assignment</h3>
             </div>
             <div class="p-4">
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <% my_assignments.each do |assignment| %>
-                  <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-3 <%= 'pb-3 border-b border-gray-200' if my_assignments.size > 1 && assignment != my_assignments.last %>">
                     <% if assignment.assignable_type == "Group" %>
                       <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
                         <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
                       <% else %>
                         <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          <%= assignment.assignable.initials %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
                           <%= assignment.assignable.initials %>
                         </div>
                       <% end %>

@@ -74,7 +74,7 @@ class ApplicationMailer < ActionMailer::Base
     # Find the organization from instance variables or through associations
     # Check direct instance variable first, then look through related objects
     @organization ||
-      @show&.organization ||
+      @show&.production&.organization ||
       @production&.organization ||
       @person&.organizations&.first ||
       @group&.organization ||

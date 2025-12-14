@@ -37,6 +37,7 @@ Rails.application.routes.draw do
     get  "/queue",              to: "superadmin#queue",               as: "queue_monitor"
     get  "/queue/failed",       to: "superadmin#queue_failed",        as: "queue_failed"
     post "/queue/retry/:id",    to: "superadmin#queue_retry",         as: "queue_retry"
+    post "/queue/retry_all_failed", to: "superadmin#queue_retry_all_failed", as: "queue_retry_all_failed"
     delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"

@@ -161,15 +161,19 @@ class DashboardService
                .joins(:show)
                .where(shows: { production_id: @production.id })
                .where("shows.date_and_time >= ?", Time.current)
-               .includes(:role, :show, invitations: :person)
+               .includes(:role, :show, :affected_shows, invitations: :person)
                .order("shows.date_and_time ASC")
                .map do |vacancy|
+                 affected = vacancy.affected_shows.order(:date_and_time).to_a
+                 is_linked = affected.size > 1
                  {
                    vacancy: vacancy,
                    show: vacancy.show,
                    role: vacancy.role,
                    invitations_count: vacancy.invitations.size,
-                   pending_invitations_count: vacancy.invitations.count(&:pending?)
+                   pending_invitations_count: vacancy.invitations.count(&:pending?),
+                   affected_shows: affected,
+                   is_linked: is_linked
                  }
                end
   end

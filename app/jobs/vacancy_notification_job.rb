@@ -16,6 +16,18 @@ class VacancyNotificationJob < ApplicationJob
 
     # Find all team members with notifications enabled for this production
     recipients = find_notifiable_users(production)
+
+    # If the vacancy was created by someone in a group being vacated, also notify group members
+    if event == "created" && vacancy.vacated_by.is_a?(Group)
+      group_member_users = vacancy.vacated_by.group_memberships
+                                  .includes(person: :user)
+                                  .select(&:notifications_enabled?)
+                                  .map { |gm| gm.person.user }
+                                  .compact
+      recipients.concat(group_member_users)
+    end
+
+    recipients.uniq!
     return if recipients.empty?
 
     # Create an email batch if we have multiple recipients and a sender

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_13_144205) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_13_201103) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -626,6 +626,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_13_144205) do
     t.index ["token"], name: "index_role_vacancy_invitations_on_token", unique: true
   end
 
+  create_table "role_vacancy_shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "role_vacancy_id", null: false
+    t.integer "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["role_vacancy_id", "show_id"], name: "index_role_vacancy_shows_on_role_vacancy_id_and_show_id", unique: true
+    t.index ["role_vacancy_id"], name: "index_role_vacancy_shows_on_role_vacancy_id"
+    t.index ["show_id"], name: "index_role_vacancy_shows_on_show_id"
+  end
+
   create_table "roles", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
@@ -861,6 +871,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_13_144205) do
   add_foreign_key "role_vacancies", "shows"
   add_foreign_key "role_vacancy_invitations", "people"
   add_foreign_key "role_vacancy_invitations", "role_vacancies"
+  add_foreign_key "role_vacancy_shows", "role_vacancies"
+  add_foreign_key "role_vacancy_shows", "shows"
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"

@@ -63,7 +63,8 @@ export default class extends Controller {
                 })
                 const data = await response.json()
 
-                if (data.has_assignments) {
+                // Show modal if there are assignments OR if this is a linked show (affects other shows)
+                if (data.has_assignments || (data.is_linked && data.linked_shows.length > 0)) {
                     // Store the intended state for after confirmation
                     this.pendingToggleTo = enabled
 
@@ -98,15 +99,41 @@ export default class extends Controller {
 
         // Set the message
         const direction = data.switching_to === 'custom' ? 'custom roles' : 'production roles'
-        this.toggleConfirmMessageTarget.textContent = `Switching to ${direction} will clear ${data.assignments.length} existing role assignment(s). This cannot be undone.`
+        let message = ''
+
+        if (data.assignments.length > 0) {
+            message = `Switching to ${direction} will clear ${data.assignments.length} existing role assignment(s). This cannot be undone.`
+
+            // Add linked shows warning if applicable
+            if (data.is_linked && data.linked_shows.length > 0) {
+                message += ` This will also affect the following linked events:`
+            }
+        } else if (data.is_linked && data.linked_shows.length > 0) {
+            // No assignments but there are linked shows
+            message = `Switching to ${direction} will affect the following linked events:`
+        }
+
+        this.toggleConfirmMessageTarget.textContent = message
 
         // Build the assignment list with headshots
-        const listHtml = data.assignments.map(a => {
+        let listHtml = data.assignments.map(a => {
             const avatar = a.headshot_url
                 ? `<img src="${a.headshot_url}" alt="${a.assignable_name}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">`
                 : `<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">${a.initials}</div>`
             return `<li class="py-2 flex items-center gap-3">${avatar}<span>${a.assignable_name} as <span class="font-medium">${a.role_name}</span></span></li>`
         }).join("")
+
+        // Add linked shows section if applicable
+        if (data.is_linked && data.linked_shows.length > 0) {
+            const separator = data.assignments.length > 0 ? `<li class="pt-4 mt-4 border-t border-gray-200">` : `<li>`
+            listHtml += `${separator}
+                <div class="font-medium text-gray-900 mb-2">Linked Events That Will Be Affected:</div>
+                <ul class="space-y-1 text-sm text-gray-700">
+                    ${data.linked_shows.map(show => `<li>• ${show.title} (${show.event_date})</li>`).join("")}
+                </ul>
+            </li>`
+        }
+
         this.toggleConfirmListTarget.innerHTML = listHtml
 
         this.toggleConfirmModalTarget.classList.remove("hidden")

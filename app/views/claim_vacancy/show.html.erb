@@ -42,40 +42,82 @@
       </div>
 
     <% else %>
-      <!-- Role Details Card -->
-      <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
-        <div class="p-4 border-b border-gray-100">
-          <div class="flex items-center gap-4">
-            <% poster_url = safe_poster_url(@show) %>
-            <% if poster_url %>
-              <%= image_tag poster_url,
-                  alt: @production.name,
-                  class: "w-16 h-24 object-cover rounded-lg" %>
-            <% end %>
-            <div>
-              <h2 class="font-semibold text-gray-900"><%= @production.name %></h2>
-              <p class="text-sm text-gray-600 mt-1"><%= @show.date_and_time.strftime("%A, %B %d, %Y") %></p>
-              <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%l:%M %p") %></p>
+      <!-- Show Info -->
+      <div class="bg-white shadow rounded-lg p-4 mb-6">
+        <div class="flex items-center gap-4">
+          <% poster_url = safe_poster_url(@show) %>
+          <% if poster_url %>
+            <%= image_tag poster_url,
+                alt: @production.name,
+                class: "w-16 h-24 object-cover rounded-lg" %>
+          <% end %>
+          <div>
+            <h2 class="font-semibold text-gray-900"><%= @production.name %></h2>
+            <% unless @show.linked? %>
+              <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %></p>
               <% if @show.location %>
-                <p class="text-xs text-gray-500 mt-1"><%= @show.location.name %></p>
+                <p class="text-xs text-gray-500"><%= @show.location.name %></p>
               <% end %>
-            </div>
+            <% end %>
           </div>
         </div>
+      </div>
 
+      <!-- Role Card -->
+      <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
         <div class="p-4 bg-pink-50">
           <div class="text-xs text-pink-600 uppercase tracking-wide font-semibold mb-1">Role</div>
           <div class="text-xl font-bold text-gray-900"><%= @role.name %></div>
         </div>
       </div>
 
-      <!-- Claim Button -->
-      <%= form_with url: do_claim_vacancy_path(@invitation.token), method: :post, class: "space-y-4" do %>
-        <%= render "shared/button", text: "Claim This Role", variant: "primary", size: "jumbo", type: :submit %>
+      <% if @show.linked? %>
+        <% linked_shows = @show.event_linkage.shows.order(:date_and_time).to_a %>
+        <% if linked_shows.any? %>
+          <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <p class="text-sm font-medium text-gray-700">This event is linked to other events</p>
+              <p class="text-xs text-gray-500 mt-1">By claiming this role, you're confirming availability for all of these events:</p>
+            </div>
+
+            <div class="divide-y divide-gray-100">
+              <% linked_shows.each do |event_show| %>
+                <% is_past = event_show.date_and_time < Time.current %>
+                <div class="flex items-center gap-3 p-4 <%= 'opacity-50' if is_past %>">
+                  <div class="flex-shrink-0 w-5 h-5 rounded-full <%= is_past ? 'bg-gray-300' : 'bg-pink-500' %> flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium <%= is_past ? 'text-gray-400' : 'text-gray-900' %>">
+                      <%= event_show.date_and_time.strftime("%A, %B %d") %>
+                      <span class="<%= is_past ? 'text-gray-400' : 'text-gray-500' %> font-normal">at <%= event_show.date_and_time.strftime("%l:%M %p").strip %></span>
+                    </p>
+                    <p class="text-xs <%= is_past ? 'text-gray-400' : 'text-gray-500' %>">
+                      <%= event_show.secondary_name.presence || event_show.event_type.titleize %>
+                    </p>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       <% end %>
 
+      <!-- Action Buttons -->
+      <div class="space-y-3">
+        <%= form_with url: do_claim_vacancy_path(@invitation.token), method: :post do %>
+          <%= render "shared/button", text: "Claim This Role", variant: "primary", size: "jumbo", type: :submit %>
+        <% end %>
+
+        <%= form_with url: decline_claim_vacancy_path(@invitation.token), method: :post do %>
+          <%= render "shared/button", text: "Decline", variant: "secondary", size: "jumbo", type: :submit %>
+        <% end %>
+      </div>
+
       <p class="text-center text-xs text-gray-500 mt-4">
-        By claiming this role, you're confirming your availability for this show.
+        By claiming this role, you're confirming your availability for <%= @show.linked? ? "all of these events" : "this show" %>.
       </p>
     <% end %>
   </div>

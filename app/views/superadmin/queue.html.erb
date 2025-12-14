@@ -14,6 +14,10 @@
   <!-- Bulk Actions -->
   <div class="mt-4 flex gap-3">
     <% if @failed_jobs > 0 %>
+      <%= button_to "Retry All Failed Jobs (#{@failed_jobs})", queue_retry_all_failed_path,
+          method: :post,
+          class: "px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm",
+          data: { confirm: "Are you sure you want to retry all #{@failed_jobs} failed jobs?" } %>
       <%= button_to "Clear All Failed Jobs (#{@failed_jobs})", queue_clear_failed_path,
           method: :delete,
           class: "px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm",
