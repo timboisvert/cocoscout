@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_13_201103) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -69,9 +69,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_13_201103) do
     t.boolean "finalize_audition_invitations", default: false
     t.boolean "form_reviewed", default: false
     t.text "header_text"
+    t.boolean "include_audition_availability_section", default: false
     t.boolean "include_availability_section", default: false
     t.datetime "opens_at"
     t.integer "production_id", null: false
+    t.boolean "require_all_audition_availability", default: false
     t.boolean "require_all_availability", default: false
     t.text "success_text"
     t.string "token"
@@ -105,6 +107,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_13_201103) do
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
     t.index ["requestable_type", "requestable_id", "created_at"], name: "index_ar_on_requestable_and_created"
     t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"
+  end
+
+  create_table "audition_session_availabilities", force: :cascade do |t|
+    t.integer "audition_session_id", null: false
+    t.integer "available_entity_id", null: false
+    t.string "available_entity_type", null: false
+    t.datetime "created_at", null: false
+    t.integer "status", default: 0
+    t.datetime "updated_at", null: false
+    t.index ["audition_session_id"], name: "index_audition_session_availabilities_on_audition_session_id"
+    t.index ["available_entity_id", "available_entity_type", "audition_session_id"], name: "index_audition_session_avail_on_entity_and_session", unique: true
+    t.index ["available_entity_type", "available_entity_id"], name: "index_audition_session_availabilities_on_available_entity"
   end
 
   create_table "audition_sessions", force: :cascade do |t|
@@ -831,6 +845,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_13_201103) do
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_requests", "audition_cycles"
+  add_foreign_key "audition_session_availabilities", "audition_sessions"
   add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
   add_foreign_key "auditions", "audition_requests"

@@ -98,6 +98,7 @@ Rails.application.routes.draw do
     get   "/availability",                  to: "availability#index",       as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
+    patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
@@ -319,6 +320,7 @@ Rails.application.routes.draw do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
             get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
             post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
+            patch "update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_audition_session_availability"
           end
         end
         resources :audition_sessions do

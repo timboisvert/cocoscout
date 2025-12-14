@@ -28,16 +28,27 @@ export default class extends Controller {
         // Check for custom update URL (used on manage pages)
         const updateUrl = showRow.dataset.availabilityUpdateUrlValue;
         const personId = showRow.dataset.availabilityPersonIdValue;
+        const entityType = showRow.dataset.availabilityEntityTypeValue;
 
         let url, body;
         if (updateUrl && personId) {
             // Admin updating someone else's availability
             url = updateUrl;
-            body = { [`availability_${showId}`]: status };
+            // For audition sessions, use different parameter names
+            if (entityKey === "audition_session") {
+                body = { availability_session_id: showId, [`availability_${showId}`]: status };
+            } else {
+                body = { [`availability_${showId}`]: status };
+            }
         } else {
             // User updating their own availability
-            url = `/my/availability/${showId}`;
-            body = { status, entity_key: entityKey };
+            // Check if this is an audition session (entityKey will be "audition_session")
+            if (entityKey === "audition_session") {
+                url = `/my/audition_availability/${showId}`;
+            } else {
+                url = `/my/availability/${showId}`;
+            }
+            body = { status, entity_key: entityKey, entity_type: entityType };
         }
 
         fetch(url, {

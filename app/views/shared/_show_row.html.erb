@@ -55,10 +55,14 @@
     data_attrs["availability-status-value"] = current_status
     data_attrs["availability-entity-key"] = local_assigns[:entity_key]
 
-    # For manage context (when entity is a Person but not the current user), use the manage endpoint
-    if local_assigns[:entity].is_a?(Person) && local_assigns[:entity] != Current.user&.person
+    # For manage context, use the manage endpoint
+    if local_assigns[:manage_context] && local_assigns[:entity].is_a?(Person)
       data_attrs["availability-person-id-value"] = local_assigns[:entity].id
+      data_attrs["availability-entity-type-value"] = local_assigns[:entity].class.name
       data_attrs["availability-update-url-value"] = update_availability_manage_person_path(local_assigns[:entity])
+    else
+      # For user's own availability, still need entity type
+      data_attrs["availability-entity-type-value"] = local_assigns[:entity]&.class&.name || "Person"
     end
   end
 

@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy set_status]
+    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy set_status update_audition_session_availability]
     before_action :ensure_user_is_manager, except: %i[index show]
 
     def index
@@ -42,14 +42,26 @@ module Manage
       @status_counts = @audition_cycle.audition_requests.group(:status).count
 
       # Load availability data if enabled
-      return unless @audition_cycle.include_availability_section
+      if @audition_cycle.include_availability_section
+        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
 
-      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
-      @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
+        @availability = {}
+        @show_availabilities = {}
+        ShowAvailability.where(available_entity: @requestable, show_id: @shows.pluck(:id)).each do |show_availability|
+          @availability[show_availability.show_id.to_s] = show_availability.status.to_s
+          @show_availabilities[show_availability.show_id] = show_availability
+        end
+      end
 
-      @availability = {}
-      ShowAvailability.where(available_entity: @requestable, show_id: @shows.pluck(:id)).each do |show_availability|
-        @availability[show_availability.show_id.to_s] = show_availability.status.to_s
+      # Load audition session availability data if enabled
+      if @audition_cycle.include_audition_availability_section
+        @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+
+        @audition_availability = {}
+        AuditionSessionAvailability.where(available_entity: @requestable, audition_session_id: @audition_sessions.pluck(:id)).each do |session_availability|
+          @audition_availability[session_availability.audition_session_id.to_s] = session_availability.status.to_s
+        end
       end
     end
 
@@ -128,6 +140,33 @@ module Manage
         redirect_back_or_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)
       else
         render :show, status: :unprocessable_entity
+      end
+    end
+
+    def update_audition_session_availability
+      requestable = @audition_request.requestable
+
+      # Extract session_id from params - it could be in availability_session_id or embedded in the key
+      session_id = params[:availability_session_id]
+
+      # If not found, look for the availability_X parameter
+      if session_id.blank?
+        availability_param = params.keys.find { |k| k.to_s.start_with?("availability_") && k.to_s != "availability_session_id" }
+        session_id = availability_param.to_s.sub("availability_", "") if availability_param
+      end
+
+      status = params["availability_#{session_id}"]
+      session = AuditionSession.find(session_id)
+      availability = AuditionSessionAvailability.find_or_initialize_by(
+        available_entity: requestable,
+        audition_session: session
+      )
+
+      availability.status = status
+      if availability.save
+        render json: { status: availability.status }
+      else
+        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
     end
 

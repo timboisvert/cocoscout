@@ -84,21 +84,29 @@ module Manage
         # Check if this is from the form page (availability, text sections, or form_reviewed)
         if params[:audition_cycle]&.key?(:include_availability_section) ||
            params[:audition_cycle]&.key?(:availability_show_ids) ||
+           params[:audition_cycle]&.key?(:include_audition_availability_section) ||
+           params[:audition_cycle]&.key?(:require_all_audition_availability) ||
            params[:audition_cycle]&.key?(:instruction_text) ||
            params[:audition_cycle]&.key?(:video_field_text) ||
            params[:audition_cycle]&.key?(:success_text) ||
            params[:audition_cycle]&.keys == [ "form_reviewed" ]
 
-          # Determine the appropriate notice message
+          # Determine the appropriate notice message and accordion state
+          redirect_params = {}
           if params[:audition_cycle]&.key?(:include_availability_section) || params[:audition_cycle]&.key?(:availability_show_ids)
             notice_message = "Availability settings successfully updated"
+            redirect_params[:availability_open] = true
+          elsif params[:audition_cycle]&.key?(:include_audition_availability_section) || params[:audition_cycle]&.key?(:require_all_audition_availability)
+            notice_message = "Audition availability settings successfully updated"
+            redirect_params[:audition_availability_open] = true
           elsif params[:audition_cycle]&.key?(:instruction_text) || params[:audition_cycle]&.key?(:video_field_text) || params[:audition_cycle]&.key?(:success_text)
             notice_message = "Text successfully updated"
+            redirect_params[:text_open] = true
           else
             notice_message = "Form review status successfully updated"
           end
 
-          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle),
+          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, redirect_params),
                       notice: notice_message,
                       status: :see_other
         else
@@ -145,15 +153,23 @@ module Manage
       @answers = {}
 
       # Load shows for availability section if enabled
-      return unless @audition_cycle.include_availability_section
+      if @audition_cycle.include_availability_section
+        @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
 
-      @shows = @production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+        # Filter shows by selected show ids if specified
+        @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
 
-      # Filter shows by selected show ids if specified
-      @shows = @shows.where(id: @audition_cycle.availability_show_ids) if @audition_cycle.availability_show_ids.present?
+        # Initialize empty availability data for preview
+        @availability = {}
+      end
 
-      # Initialize empty availability data for preview
-      @availability = {}
+      # Load audition sessions for audition availability section if enabled
+      if @audition_cycle.include_audition_availability_section
+        @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+
+        # Initialize empty audition availability data for preview
+        @audition_availability = {}
+      end
     end
 
     # POST /audition_cycles/:id/create_question
@@ -241,7 +257,7 @@ module Manage
 
     def audition_cycle_params
       params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :instruction_text,
-                                             :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :form_reviewed, availability_show_ids: [])
+                                             :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :include_audition_availability_section, :require_all_audition_availability, :form_reviewed, availability_show_ids: [])
     end
 
     def question_params

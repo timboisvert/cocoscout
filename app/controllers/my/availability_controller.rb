@@ -338,5 +338,27 @@ module My
         render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
     end
+
+    def update_audition_session
+      @session = AuditionSession.find(params[:session_id])
+
+      # Determine the entity based on entity_key parameter
+      entity_key = params[:entity_key] || "person"
+      if entity_key == "person"
+        entity = Current.user.person
+      else
+        # Extract group ID from "group_123" format
+        group_id = entity_key.sub(/^group_/, "").to_i
+        entity = Current.user.person.groups.find(group_id)
+      end
+
+      @availability = AuditionSessionAvailability.find_or_initialize_by(available_entity: entity, audition_session: @session)
+      @availability.status = params[:status]
+      if @availability.save
+        render json: { status: @availability.status }
+      else
+        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
+    end
   end
 end

@@ -23,6 +23,10 @@ class Location < ApplicationRecord
     upcoming_shows.exists? || upcoming_audition_sessions.exists?
   end
 
+  def has_any_events?
+    shows.exists? || audition_sessions.exists?
+  end
+
   private
 
   def ensure_single_default

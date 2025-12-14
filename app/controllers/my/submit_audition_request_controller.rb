@@ -52,6 +52,17 @@ module My
         end
       end
 
+      # Load audition sessions for audition availability section if enabled
+      if @audition_cycle.include_audition_availability_section
+        @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+
+        # Load existing audition availability data
+        @audition_availability = {}
+        AuditionSessionAvailability.where(available_entity: @requestable, audition_session_id: @audition_sessions.pluck(:id)).each do |session_availability|
+          @audition_availability[session_availability.audition_session_id.to_s] = session_availability.status.to_s
+        end
+      end
+
       # First we'll check if they've already responded to this audition cycle
       if @audition_cycle.audition_requests.exists?(requestable: @requestable)
 
@@ -149,8 +160,23 @@ module My
         end
       end
 
+      # Validate required audition availability if enabled
+      @missing_audition_availability = false
+      if @audition_cycle.include_audition_availability_section && @audition_cycle.require_all_audition_availability
+        # Load audition sessions to check (only future dates)
+        @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+
+        # Check if all audition sessions have a response
+        @audition_sessions.each do |session|
+          if params[:audition_availability].blank? || params[:audition_availability][session.id.to_s].blank?
+            @missing_audition_availability = true
+            break
+          end
+        end
+      end
+
       # Validate and save
-      if @missing_required_questions.any? || @missing_availability
+      if @missing_required_questions.any? || @missing_availability || @missing_audition_availability
         render :form, status: :unprocessable_entity
       elsif @audition_request.valid?
 
@@ -176,6 +202,28 @@ module My
                                          :unset
             end
             show_availability.save!
+          end
+        end
+
+        # Save audition availability data if included
+        if @audition_cycle.include_audition_availability_section && params[:audition_availability].present?
+          params[:audition_availability].each do |session_id, status|
+            next if status.blank?
+
+            session_availability = AuditionSessionAvailability.find_or_initialize_by(
+              available_entity: @requestable,
+              audition_session_id: session_id
+            )
+
+            # Map the status values to the enum
+            session_availability.status = if status == "available"
+                                            :available
+            elsif status == "unavailable"
+                                            :unavailable
+            else
+                                            :unset
+            end
+            session_availability.save!
           end
         end
 

@@ -1,5 +1,5 @@
 <% audition_session ||= AuditionSession.new %>
-<%= form_with(model: [:manage, @production, @audition_cycle, audition_session], local: true, class: "contents") do |form| %>
+<%= form_with(model: [:manage, @production, @audition_cycle, audition_session], class: "contents") do |form| %>
   <% if audition_session.errors.any? %>
     <div id="error_explanation" class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg mb-3">
       <h2><%= pluralize(audition_session.errors.count, "error") %> prohibited this audition_session from being saved:</h2>
@@ -33,9 +33,7 @@
     <% button_text = audition_session.persisted? ? "Update Session" : "Schedule Session" %>
     <div class="flex gap-2">
       <%= render "shared/button", text: button_text, variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
-      <% if audition_session.persisted? %>
-        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->audition-session-form#resetForm" }, class: "flex-1" %>
-      <% end %>
+      <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", type: :button, data: { action: "click->audition-session-modal#close" }, class: "flex-1" %>
     </div>
   </div>
 <% end %>

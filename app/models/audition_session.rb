@@ -4,6 +4,7 @@ class AuditionSession < ApplicationRecord
   belongs_to :audition_cycle
   has_one :production, through: :audition_cycle
   has_many :auditions, dependent: :destroy
+  has_many :audition_session_availabilities, dependent: :destroy
   belongs_to :location
 
   validates :start_at, presence: true

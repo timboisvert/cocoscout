@@ -15,14 +15,15 @@
 
   <%= render partial: "manage/auditions/lifecycle_panel", locals: { current_step: :prepare } %>
 
-  <!-- Section 1: Availability -->
-  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].blank? && params[:questions_open].blank? && @question_error.blank? %>">
+  <!-- Section 1: Show & Event Availability -->
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:availability_open].present? || (params[:question_id].blank? && params[:questions_open].blank? && params[:audition_availability_open].blank? && params[:text_open].blank? && @question_error.blank?) %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Availability</h3>
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
       <div data-show-toggle-target="icon"></div>
     </div>
     <div data-show-toggle-target="content">
       <%= form_with model: [:manage, @production, @audition_cycle], class: "contents" do |form| %>
+        <%= hidden_field_tag :availability_open, "true" %>
         <div class="p-4" data-controller="availability-filter">
           <p class="text-sm text-gray-500 mb-4">Include a section on the sign-up form where auditionees can indicate their availability for scheduled events.</p>
 
@@ -92,14 +93,40 @@
                 </div>
               <% end %>
             </div>
-
-            <div class="mt-2">
-              <%= link_to "Manage Shows & Events", manage_production_shows_path(@production), class: "text-xs text-pink-500 underline" %>
-            </div>
           </div>
 
           <div class="border-t border-gray-200 pt-4 mt-4">
             <%= render "shared/button", text: "Save Availability Settings", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Section 1.5: Audition Availability -->
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:audition_availability_open].present? %>">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Availability</h3>
+      <div data-show-toggle-target="icon"></div>
+    </div>
+    <div data-show-toggle-target="content">
+      <%= form_with model: [:manage, @production, @audition_cycle], class: "contents" do |form| %>
+        <%= hidden_field_tag :audition_availability_open, "true" %>
+        <div class="p-4">
+          <p class="text-sm text-gray-500 mb-4">Include a section on the sign-up form where auditionees can indicate their availability for scheduled audition sessions.</p>
+
+          <div class="mb-1">
+            <%= form.check_box :include_audition_availability_section, class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" %>
+            <%= form.label :include_audition_availability_section, "Request audition availability in sign-up form", class: "ml-2 text-sm text-gray-700" %>
+          </div>
+
+          <div class="mb-4">
+            <%= form.check_box :require_all_audition_availability, class: "rounded accent-pink-500 border-gray-300 text-pink-600 focus:ring-pink-500" %>
+            <%= form.label :require_all_audition_availability, "Require auditionees to enter audition availability in order to submit sign-up form", class: "ml-2 text-sm text-gray-700" %>
+          </div>
+
+          <div class="border-t border-gray-200 pt-4 mt-4">
+            <%= render "shared/button", text: "Save Audition Availability Settings", variant: "primary", size: "medium", type: :submit %>
           </div>
         </div>
       <% end %>
@@ -121,13 +148,14 @@
   </div>
 
   <!-- Section 3: Text and Instructions -->
-  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle">
+  <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:text_open].present? %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Text and Instructions</h3>
       <div data-show-toggle-target="icon"></div>
     </div>
-    <div data-show-toggle-target="content" class="hidden">
+    <div data-show-toggle-target="content">
       <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
+        <%= hidden_field_tag :text_open, "true" %>
         <div class="p-4 overflow-x-hidden">
           <div class="w-full max-w-4xl overflow-x-auto" data-controller="tabs">
       <nav class="flex space-x-2 border-b border-gray-200 mb-4">
