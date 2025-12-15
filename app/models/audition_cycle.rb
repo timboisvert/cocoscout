@@ -6,6 +6,8 @@ class AuditionCycle < ApplicationRecord
   has_many :questions, as: :questionable, dependent: :destroy
   has_many :email_groups, dependent: :destroy
   has_many :audition_email_assignments, dependent: :destroy
+  has_many :audition_reviewers, dependent: :destroy
+  has_many :reviewer_people, through: :audition_reviewers, source: :person
   # NOTE: cast_assignment_stages are deleted via Production before_destroy callback
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages

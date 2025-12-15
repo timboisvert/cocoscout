@@ -1,0 +1,8 @@
+You've been invited to join <%= @production.name %>
+
+You've been invited to join the production team for <%= @production.name %> on CocoScout.
+
+As a team member, you'll be able to help manage this production.
+
+Accept the invitation here:
+<%= accept_manage_team_invitations_url(@team_invitation.token) %>

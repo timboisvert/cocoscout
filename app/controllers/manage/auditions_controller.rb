@@ -19,6 +19,26 @@ module Manage
     # GET /auditions/prepare
     def prepare
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
+      @talent_pool_people = @production.talent_pool.people.order(:name)
+    end
+
+    # PATCH /auditions/update_reviewers
+    def update_reviewers
+      reviewer_access_type = params[:reviewer_access_type]
+      person_ids = params[:person_ids] || []
+
+      @audition_cycle.update!(reviewer_access_type: reviewer_access_type)
+
+      # Update reviewers
+      @audition_cycle.audition_reviewers.destroy_all
+      if reviewer_access_type == "specific"
+        person_ids.each do |person_id|
+          @audition_cycle.audition_reviewers.create!(person_id: person_id) if person_id.present?
+        end
+      end
+
+      redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
+                  notice: "Audition review team updated successfully."
     end
 
     # GET /auditions/publicize

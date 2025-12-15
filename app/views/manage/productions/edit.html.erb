@@ -12,8 +12,9 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     </nav>
 
     <!-- Tab 1: Basic Information -->
@@ -181,7 +182,12 @@
       </div>
     </div>
 
-    <!-- Tab 3: Public Profile -->
+    <!-- Tab 3: Team -->
+    <div data-tabs-target="panel" class="hidden">
+      <%= render "team_permissions" %>
+    </div>
+
+    <!-- Tab 4: Public Profile -->
     <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -353,7 +359,7 @@
       <% end %>
     </div>
 
-    <!-- Tab 4: Danger Zone -->
+    <!-- Tab 5: Danger Zone -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">

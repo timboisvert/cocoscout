@@ -15,6 +15,7 @@ class Production < ApplicationRecord
   has_many :all_roles, class_name: "Role", dependent: false  # All roles including show-specific
   has_many :show_person_role_assignments, through: :shows
   has_many :production_permissions, dependent: :delete_all
+  has_many :team_invitations, dependent: :destroy
   has_many :questionnaires, dependent: :destroy
   belongs_to :organization
 

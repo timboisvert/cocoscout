@@ -166,6 +166,128 @@
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Pick your Audition Review Team</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-500 mb-4">Identify who will get access to view and assess sign-ups and auditions.</p>
+
+        <%= form_with url: update_reviewers_manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
+          <div class="mb-4">
+            <label class="block font-semibold mb-2 text-sm">Who can review auditions?</label>
+            <div class="space-y-2">
+              <div>
+                <div class="flex items-center">
+                  <label class="flex items-center cursor-pointer">
+                    <%= form.radio_button :reviewer_access_type, 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <span class="text-sm">Production Team (Managers Only)</span>
+                  </label>
+                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleManagersList">
+                    Show
+                  </button>
+                </div>
+                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs" data-reviewer-selector-target="managersList">
+                  <div class="space-y-1">
+                    <% global_managers = Current.organization.organization_roles.where(company_role: 'manager').includes(user: :person).map(&:user) %>
+                    <% production_managers = @production.production_permissions.where(role: 'manager').includes(user: :person).map(&:user) %>
+                    <% all_managers = (global_managers + production_managers).uniq %>
+                    <% all_managers.each do |user| %>
+                      <% next unless user.person %>
+                      <div class="text-gray-600 flex items-center gap-2">
+                        <% headshot_url = user.person.safe_headshot_variant(:thumb) %>
+                        <% if headshot_url %>
+                          <%= image_tag headshot_url, class: "w-5 h-5 rounded object-cover" %>
+                        <% else %>
+                          <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold" style="font-size: 8px;">
+                            <%= user.person.initials %>
+                          </div>
+                        <% end %>
+                        <%= user.person.name %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex items-center">
+                  <label class="flex items-center cursor-pointer">
+                    <%= form.radio_button :reviewer_access_type, 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <span class="text-sm">Entire Talent Pool</span>
+                  </label>
+                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleTalentPoolList">
+                    Show
+                  </button>
+                </div>
+                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg max-h-96 overflow-y-auto" data-reviewer-selector-target="talentPoolList">
+                  <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+                    <% @talent_pool_people.each do |person| %>
+                      <div class="relative group">
+                        <%= link_to manage_person_path(person), data: { turbo_frame: "_top" }, class: "block" do %>
+                          <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+                            <% if person.headshot&.attached? %>
+                              <%= image_tag person.safe_headshot_variant(:thumb),
+                                    class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
+                                    loading: "lazy",
+                                    alt: person.name %>
+                            <% else %>
+                              <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                <div class="text-2xl font-bold text-gray-500">
+                                  <%= person.name.split.map(&:first).join.upcase %>
+                                </div>
+                              </div>
+                            <% end %>
+                          </div>
+                          <div class="text-xs font-medium text-gray-900 group-hover:text-pink-600 transition-colors truncate" title="<%= person.name %>">
+                            <%= person.name %>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <%= form.radio_button :reviewer_access_type, 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <span class="text-sm">Specific People</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="<%= @audition_cycle.reviewer_access_type == 'specific' ? '' : 'hidden' %> ml-6" data-reviewer-selector-target="specificSection">
+            <label class="block font-semibold mb-2 text-sm">Select Reviewers</label>
+            <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
+              <% @talent_pool_people.each do |person| %>
+                <% is_selected = @audition_cycle.reviewer_people.include?(person) %>
+                <label class="flex items-center cursor-pointer py-1">
+                  <%= check_box_tag 'person_ids[]', person.id, is_selected, class: "mr-2 accent-pink-500 cursor-pointer" %>
+                  <% headshot_url = person.safe_headshot_variant(:thumb) %>
+                  <% if headshot_url %>
+                    <%= image_tag headshot_url, class: "w-6 h-6 rounded object-cover mr-2" %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs mr-2">
+                      <%= person.initials %>
+                    </div>
+                  <% end %>
+                  <span class="text-sm"><%= person.name %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <% if current_user_can_manage?(@production) %>
+            <div class="mt-4">
+              <%= render partial: "shared/button", locals: { text: "Save Review Team", variant: "primary", type: "submit" } %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
       </div>
       <div class="p-6">

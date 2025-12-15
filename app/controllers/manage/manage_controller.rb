@@ -205,7 +205,7 @@ module Manage
                          .joins(:organization_roles)
                          .includes(:person, :organization_roles)
                          .where(organization_roles: { organization_id: Current.organization.id,
-                                                      company_role: %w[manager viewer none] })
+                                                      company_role: %w[manager viewer member] })
                          .distinct
         members.sort_by { |user| user == Current.user ? [ 0, "" ] : [ 1, user.email_address.downcase ] }
       end

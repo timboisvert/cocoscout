@@ -4,6 +4,6 @@ class OrganizationRole < ApplicationRecord
   belongs_to :user
   belongs_to :organization
 
-  validates :company_role, presence: true, inclusion: { in: %w[manager viewer none] }
+  validates :company_role, presence: true, inclusion: { in: %w[manager viewer member] }
   validates :user_id, uniqueness: { scope: :organization_id }
 end

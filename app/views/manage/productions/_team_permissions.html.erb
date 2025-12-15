@@ -1,0 +1,244 @@
+<div data-controller="production-team-modals">
+  <%= render "shared/help_section",
+    title: "About Production Team",
+    initial_state: "open",
+    storage_key: "production_team_help_collapsed",
+    steps: [
+      { text: "Add team members who need <strong>Manager</strong> or <strong>Viewer</strong> access to this production only." },
+      { text: "<strong>Managers</strong> can edit this production's settings, shows, and cast. <strong>Viewers</strong> have read-only access." },
+      { text: "Organization team members with global access are shown at the bottom for reference." }
+    ] %>
+
+  <div class="mt-4">
+    <% production_permissions = @production.production_permissions.includes(user: :person) %>
+    <% if production_permissions.any? %>
+      <div class="space-y-1 mb-1">
+        <% production_permissions.each do |permission| %>
+          <% user = permission.user %>
+          <div class="group flex items-stretch px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <%# Left Section: Person Info %>
+            <div class="w-1/2 flex items-center gap-3">
+              <% if user.person&.headshot&.attached? %>
+                <%= image_tag user.person.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-semibold text-gray-600">
+                    <%= (user.person&.name || user.email_address).first.upcase %>
+                  </span>
+                </div>
+              <% end %>
+              <div class="min-w-0">
+                <div class="font-medium text-sm text-gray-900 truncate"><%= user.person&.name || user.email_address %></div>
+                <div class="text-xs text-gray-500 truncate"><%= user.email_address %></div>
+              </div>
+            </div>
+            <%# Right Section: Role & Status %>
+            <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+              <div>
+                <div class="text-[10px] text-gray-400 uppercase tracking-wide">Role</div>
+                <div class="text-sm font-medium text-pink-500"><%= permission.role.capitalize %></div>
+                <div class="text-xs text-gray-500">
+                  Notifications <%= permission.notifications_enabled? ? "on" : "off" %>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <%= render "shared/button",
+                    text: "Edit",
+                    variant: "primary",
+                    size: "small",
+                    type: :button,
+                    data: {
+                      action: "click->production-team-modals#openEditModal",
+                      "user-id": user.id,
+                      "user-name": user.person&.name || user.email_address,
+                      "role": permission.role,
+                      "notifications": permission.notifications_enabled? ? "1" : "0"
+                    } %>
+                <%= render "shared/button",
+                    text: "Remove",
+                    variant: "danger",
+                    size: "small",
+                    type: :button,
+                    data: {
+                      action: "click->production-team-modals#confirmRemove",
+                      "user-id": user.id,
+                      "user-name": user.person&.name || user.email_address
+                    } %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-400 mb-4">No production team members added yet.</p>
+    <% end %>
+
+    <%# Pending invitations for this production %>
+    <% pending_invitations = @production.team_invitations.where(accepted_at: nil) %>
+    <% if pending_invitations.any? %>
+      <div class="space-y-1 mb-4">
+        <% pending_invitations.each do |invite| %>
+          <div class="group flex items-stretch px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <div class="w-1/2 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-semibold text-yellow-600">
+                  <%= invite.email.first.upcase %>
+                </span>
+              </div>
+              <div class="min-w-0">
+                <div class="font-medium text-sm text-gray-900 truncate"><%= invite.email %></div>
+                <div class="text-xs text-gray-500">Invited <%= time_ago_in_words(invite.created_at) %> ago</div>
+              </div>
+            </div>
+            <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+              <div>
+                <div class="text-[10px] text-gray-400 uppercase tracking-wide">Status</div>
+                <div class="text-sm font-medium text-yellow-600">Pending</div>
+                <div class="text-xs text-gray-500"><%= invite.invitation_role&.capitalize || "Viewer" %></div>
+              </div>
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <%= form_with url: revoke_production_invite_manage_production_path(@production, invite_id: invite.id), method: :delete, data: { turbo: false, turbo_confirm: "Are you sure you want to revoke this invitation?" } do %>
+                  <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :submit %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="mb-6">
+      <%= render "shared/button",
+          text: "Add Production Team Member",
+          variant: "primary",
+          size: "medium",
+          type: :button,
+          data: { action: "click->production-team-modals#openAddModal" } %>
+    </div>
+  </div>
+
+  <!-- Organization Team Members Reference -->
+  <div class="mt-8 pt-6 border-t border-gray-200">
+    <p class="text-xs text-gray-500 mb-3">
+      <strong>Organization team members with global access:</strong> These people already have access to all productions.
+    </p>
+    <% org_managers_viewers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :person) %>
+    <% if org_managers_viewers.any? %>
+      <div class="flex flex-wrap gap-2">
+        <% org_managers_viewers.each do |org_role| %>
+          <% user = org_role.user %>
+          <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">
+            <%= user.person&.name || user.email_address %>
+            <span class="text-pink-500">(<%= org_role.company_role.capitalize %>)</span>
+          </span>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-xs text-gray-400">No organization-level team members.</p>
+    <% end %>
+  </div>
+
+  <!-- Add Team Member Modal -->
+  <div data-production-team-modals-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->production-team-modals#closeAddModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-team-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add Production Team Member</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with url: add_team_member_manage_production_path(@production), method: :post, data: { turbo: false } do |f| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <%= email_field_tag :email, nil,
+                  placeholder: "email@example.com",
+                  autocapitalize: "none",
+                  class: "w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
+                  required: true
+              %>
+              <p class="text-xs text-gray-500 mt-1">If this person isn't a CocoScout user yet, they'll receive an invitation email.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+              <%= select_tag :role,
+                  options_for_select([["Manager", "manager"], ["Viewer", "viewer"]], "manager"),
+                  class: "w-full text-sm rounded-lg border border-gray-300 px-3 py-2"
+              %>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <%= check_box_tag :notifications_enabled, "1", true, class: "accent-pink-500 cursor-pointer" %>
+                <span class="text-sm text-gray-700">Enable email notifications</span>
+              </label>
+              <p class="text-xs text-gray-500 mt-1">Receive emails about audition requests, show updates, and other production activity.</p>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeAddModal" } %>
+            <%= render "shared/button", text: "Add Production Team Member", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Team Member Modal -->
+  <div data-production-team-modals-target="editModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->production-team-modals#closeEditModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-team-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Team Member</h2>
+      </div>
+      <div class="p-6">
+        <%= form_with url: update_team_permission_manage_production_path(@production), method: :patch, data: { turbo: false, "production-team-modals-target": "editForm" } do |f| %>
+          <input type="hidden" name="user_id" data-production-team-modals-target="editUserId">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Team Member</label>
+              <p class="text-sm text-gray-900" data-production-team-modals-target="editUserName"></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+              <%= select_tag :role,
+                  options_for_select([["Manager", "manager"], ["Viewer", "viewer"]]),
+                  class: "w-full text-sm rounded-lg border border-gray-300 px-3 py-2",
+                  data: { "production-team-modals-target": "editRole" }
+              %>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <%= check_box_tag :notifications_enabled, "1", true, class: "accent-pink-500 cursor-pointer", data: { "production-team-modals-target": "editNotifications" } %>
+                <span class="text-sm text-gray-700">Enable email notifications</span>
+              </label>
+              <p class="text-xs text-gray-500 mt-1">Receive emails about audition requests, show updates, and other production activity.</p>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeEditModal" } %>
+            <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Confirmation Modal -->
+  <div data-production-team-modals-target="removeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->production-team-modals#closeRemoveModal">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" data-action="click->production-team-modals#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Remove Team Member</h2>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">
+          Are you sure you want to remove <strong data-production-team-modals-target="removeUserName"></strong> from this production?
+        </p>
+        <p class="text-xs text-gray-500 mb-6">They will no longer have access to manage or view this production.</p>
+        <%= form_with url: remove_team_member_manage_production_path(@production), method: :delete, data: { turbo: false, "production-team-modals-target": "removeForm" } do |f| %>
+          <input type="hidden" name="user_id" data-production-team-modals-target="removeUserId">
+          <div class="flex justify-end gap-3">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->production-team-modals#closeRemoveModal" } %>
+            <%= render "shared/button", text: "Remove", variant: "danger", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

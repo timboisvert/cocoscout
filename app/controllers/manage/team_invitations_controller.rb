@@ -60,7 +60,15 @@ module Manage
 
       # Set a role and the organization
       unless OrganizationRole.exists?(user: user, organization: @team_invitation.organization)
-        OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "none")
+        OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "member")
+      end
+
+      # If this is a production-specific invitation, create the production permission
+      if @team_invitation.production_invite?
+        ProductionPermission.find_or_create_by!(user: user, production: @team_invitation.production) do |perm|
+          perm.role = @team_invitation.invitation_role || "viewer"
+          perm.notifications_enabled = @team_invitation.invitation_notifications_enabled.nil? ? true : @team_invitation.invitation_notifications_enabled
+        end
       end
 
       # Mark the invitation as accepted

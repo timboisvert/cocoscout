@@ -84,7 +84,7 @@ export default class extends Controller {
     event.preventDefault();
     // Remove visual feedback
     event.currentTarget.classList.remove('bg-pink-50');
-    
+
     const draggedAuditionId = event.dataTransfer.getData("audition-id");
     const draggedItemId = event.dataTransfer.getData("text/plain");
     const droppedOnElement = event.target.closest("[data-drag-target='dropzone']");

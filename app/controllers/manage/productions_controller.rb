@@ -2,10 +2,10 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member]
     before_action :ensure_user_is_global_manager, only: %i[new create]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member]
     skip_before_action :show_manage_sidebar, only: %i[index new create]
 
     def index
@@ -97,6 +97,115 @@ module Manage
       session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = nil
       @production.destroy!
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
+    end
+
+    # Production Team Management Actions
+    def add_team_member
+      email = params[:email]&.strip&.downcase
+      role = params[:role]
+      notifications_enabled = params[:notifications_enabled] == "1"
+
+      unless email.present? && %w[manager viewer].include?(role)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"), alert: "Email and role are required" and return
+      end
+
+      # Check if user already exists
+      user = User.find_by(email_address: email)
+
+      if user
+        # Check if user already has access to this production
+        if user.role_for_production(@production).present?
+          redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                      alert: "#{email} already has access to this production" and return
+        end
+
+        # User exists - add them directly
+        # First ensure they have an org role (member if they don't have one)
+        org_role = OrganizationRole.find_or_create_by!(user: user, organization: Current.organization) do |r|
+          r.company_role = "member"
+        end
+
+        # Create production permission
+        permission = ProductionPermission.create!(
+          user: user,
+          production: @production,
+          role: role,
+          notifications_enabled: notifications_enabled
+        )
+
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    notice: "#{user.person&.name || user.email_address} added to production team"
+      else
+        # User doesn't exist - create invitation
+        # Check for existing pending invitation
+        existing_invite = TeamInvitation.find_by(email: email, organization: Current.organization, production: @production)
+        if existing_invite
+          redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                      alert: "An invitation has already been sent to #{email}" and return
+        end
+
+        invitation = TeamInvitation.create!(
+          email: email,
+          organization: Current.organization,
+          production: @production,
+          invitation_role: role,
+          invitation_notifications_enabled: notifications_enabled
+        )
+
+        # Send production-specific invitation email
+        Manage::TeamMailer.production_invite(invitation).deliver_later
+
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    notice: "Invitation sent to #{email}"
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                  alert: "Could not add team member: #{e.message}"
+    end
+
+    def update_team_permission
+      user = Current.organization.users.find_by(id: params[:user_id])
+      role = params[:role]
+      notifications_enabled = params[:notifications_enabled] == "1"
+
+      unless user && %w[manager viewer].include?(role)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"), alert: "Invalid user or role" and return
+      end
+
+      permission = ProductionPermission.find_by(user: user, production: @production)
+
+      if permission&.update(role: role, notifications_enabled: notifications_enabled)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    notice: "Permission updated for #{user.person&.name || user.email_address}"
+      else
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    alert: "Could not update permission"
+      end
+    end
+
+    def remove_team_member
+      user = Current.organization.users.find_by(id: params[:user_id])
+      permission = ProductionPermission.find_by(user: user, production: @production)
+
+      if permission&.destroy
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    notice: "#{user.person&.name || user.email_address} removed from production team"
+      else
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    alert: "Could not remove team member"
+      end
+    end
+
+    def revoke_production_invite
+      invite = @production.team_invitations.find_by(id: params[:invite_id])
+
+      if invite&.destroy
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    notice: "Invitation to #{invite.email} has been revoked"
+      else
+        redirect_to edit_manage_production_path(@production, anchor: "tab-2"),
+                    alert: "Could not revoke invitation"
+      end
     end
 
     private

@@ -14,7 +14,7 @@
   <!-- Tabs Navigation -->
   <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto mt-4">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
-    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Team Members</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Organization Team Members</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
     <% if @is_owner %>
       <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
@@ -82,62 +82,66 @@
     </div>
   </div>
 
-  <!-- Tab 2: Team Members -->
+  <!-- Tab 2: Organization Team Members -->
   <div data-tabs-target="panel" class="hidden">
     <%= render "shared/help_section",
-      title: "About Team Members",
+      title: "About Organization Team Members",
       initial_state: "open",
       storage_key: "org_team_help_collapsed",
       steps: [
-        { text: "Team members are users who can access and manage your organization in CocoScout." },
-        { text: "Managers can manage all productions and settings. Viewers have read-only access." },
-        { text: "After inviting someone, you can adjust their role and permissions." }
+        { text: "Organization team members have global access to <strong>all productions</strong> in this organization." },
+        { text: "<strong>Managers</strong> can create, edit, and manage all productions and settings. <strong>Viewers</strong> have read-only access." },
+        { text: "For production-specific access, use the <strong>Team tab</strong> on individual production settings pages." }
       ] %>
 
-    <div class="mt-4 space-y-2">
+    <div class="mt-4 space-y-1">
       <% @team_members.each do |member| %>
         <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
-        <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex">
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+        <% next unless organization_role&.company_role.in?(%w[manager viewer]) %>
+        <div class="group flex items-stretch px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+          <%# Left Section: Person Info %>
+          <div class="w-1/2 flex items-center gap-3">
+            <% if member.person&.headshot&.attached? %>
+              <%= image_tag member.person.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
                 <span class="text-sm font-semibold text-gray-600">
                   <%= (member.person&.name || member.email_address).first.upcase %>
                 </span>
               </div>
-              <div>
-                <div class="font-bold text-md">
-                  <%= member.person&.name || member.email_address %>
-                  <% if member == Current.user %>
-                    <span class="ml-1 text-sm text-gray-500">(Me)</span>
-                  <% end %>
-                  <% if member.id == @organization.owner_id %>
-                    <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-pink-500 text-white">Owner</span>
-                  <% end %>
-                </div>
-                <div class="text-sm text-gray-500"><%= member.email_address %></div>
+            <% end %>
+            <div class="min-w-0">
+              <div class="font-medium text-sm text-gray-900 truncate">
+                <%= member.person&.name || member.email_address %>
+                <% if member == Current.user %>
+                  <span class="text-gray-500">(Me)</span>
+                <% end %>
               </div>
+              <div class="text-xs text-gray-500 truncate"><%= member.email_address %></div>
             </div>
           </div>
-          <div class="flex items-center gap-3 text-sm text-gray-500">
-            <% role_display = case organization_role&.company_role
-                 when 'manager' then 'Manager'
-                 when 'viewer' then 'Viewer'
-                 when 'none' then 'Per-production access'
-                 else 'Member'
-                 end %>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold <%= organization_role&.company_role == 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-500 text-white' %>">
-              <%= role_display %>
-            </span>
+          <%# Right Section: Role %>
+          <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] text-gray-400 uppercase tracking-wide">Global Role</div>
+              <div class="text-sm font-medium text-pink-500">
+                <% if member.id == @organization.owner_id %>Owner, <% end %><%= organization_role&.company_role&.capitalize %>
+              </div>
+            </div>
             <% if (@is_owner || @role == "manager") && member != Current.user && member.id != @organization.owner_id %>
-              <button type="button"
-                data-action="click->org-team-modals#openPermissionsModal"
-                data-member-id="<%= member.id %>"
-                data-member-name="<%= member.person&.name || member.email_address %>"
-                data-permissions-url="<%= permissions_manage_team_path(id: member.id) %>"
-                class="text-xs text-pink-500 underline cursor-pointer hover:text-pink-600">
-                Manage Permissions
-              </button>
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <%= render "shared/button",
+                    text: "Manage",
+                    variant: "primary",
+                    size: "small",
+                    type: :button,
+                    data: {
+                      action: "click->org-team-modals#openPermissionsModal",
+                      "member-id": member.id,
+                      "member-name": member.person&.name || member.email_address,
+                      "permissions-url": permissions_manage_team_path(id: member.id)
+                    } %>
+              </div>
             <% end %>
           </div>
         </div>
@@ -145,23 +149,31 @@
 
       <% if @is_owner || @role == "manager" %>
         <% @team_invitations.each do |invite| %>
-          <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex">
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-semibold text-yellow-600">
-                    <%= invite.email.first.upcase %>
-                  </span>
-                </div>
-                <div>
-                  <div class="font-medium text-md"><%= invite.email %></div>
-                  <div class="text-sm text-gray-500">Invited <%= time_ago_in_words(invite.created_at) %> ago</div>
-                </div>
+          <div class="group flex items-stretch px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
+            <%# Left Section: Person Info %>
+            <div class="w-1/2 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-semibold text-yellow-600">
+                  <%= invite.email.first.upcase %>
+                </span>
+              </div>
+              <div class="min-w-0">
+                <div class="font-medium text-sm text-gray-900 truncate"><%= invite.email %></div>
+                <div class="text-xs text-gray-500">Invited <%= time_ago_in_words(invite.created_at) %> ago</div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">Pending</span>
-              <%= button_to "Revoke", revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, confirm: "Are you sure you want to revoke this invitation?" }, class: "text-xs text-pink-500 underline cursor-pointer" %>
+            <%# Right Section: Status %>
+            <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
+              <div>
+                <div class="text-[10px] text-gray-400 uppercase tracking-wide">Status</div>
+                <div class="text-sm font-medium text-yellow-600">Pending</div>
+                <div class="text-xs text-gray-500">Awaiting response</div>
+              </div>
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <%= form_with url: revoke_invite_manage_team_index_path(id: invite.id), method: :delete, data: { turbo: false, turbo_confirm: "Are you sure you want to revoke this invitation?" } do %>
+                  <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :submit %>
+                <% end %>
+              </div>
             </div>
           </div>
         <% end %>
@@ -170,18 +182,18 @@
 
     <% if @is_owner || @role == "manager" %>
       <div class="border-t border-gray-200 pt-5 mt-8">
-        <%= render "shared/button", text: "Invite Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
+        <%= render "shared/button", text: "Invite Organization Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
       </div>
 
-      <!-- Invite Team Member Modal -->
+      <!-- Invite Organization Team Member Modal -->
       <div data-org-team-modals-target="inviteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->org-team-modals#stopPropagation">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite a Team Member</h2>
+            <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite an Organization Team Member</h2>
           </div>
           <div class="p-6">
             <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
-              <div class="space-y-4">
+              <div class="space-y-1">
                 <div>
                   <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
                   <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>

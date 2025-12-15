@@ -212,6 +212,11 @@ Rails.application.routes.draw do
         get :confirm_delete
         post :check_url_availability
         patch :update_public_key
+        # Production team management
+        post :add_team_member
+        patch :update_team_permission
+        delete :remove_team_member
+        delete :revoke_production_invite
       end
 
       resources :availability, only: %i[index show] do
@@ -337,6 +342,7 @@ Rails.application.routes.draw do
           patch  "archive",           to: "audition_cycles#archive",           as: "archive"
           get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
           get    "prepare",           to: "auditions#prepare",                   as: "prepare"
+          patch  "update_reviewers",  to: "auditions#update_reviewers",          as: "update_reviewers"
           get    "publicize",         to: "auditions#publicize",                 as: "publicize"
           get    "review",            to: "auditions#review",                    as: "review"
           patch  "finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations"

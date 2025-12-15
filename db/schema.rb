@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_15_162718) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -75,6 +75,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
     t.integer "production_id", null: false
     t.boolean "require_all_audition_availability", default: false
     t.boolean "require_all_availability", default: false
+    t.string "reviewer_access_type", default: "managers", null: false
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false
@@ -107,6 +108,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
     t.index ["audition_cycle_id"], name: "index_audition_requests_on_audition_cycle_id"
     t.index ["requestable_type", "requestable_id", "created_at"], name: "index_ar_on_requestable_and_created"
     t.index ["requestable_type", "requestable_id"], name: "index_audition_requests_on_requestable_type_and_requestable_id"
+  end
+
+  create_table "audition_reviewers", force: :cascade do |t|
+    t.integer "audition_cycle_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "person_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audition_cycle_id"], name: "index_audition_reviewers_on_audition_cycle_id"
+    t.index ["person_id"], name: "index_audition_reviewers_on_person_id"
   end
 
   create_table "audition_session_availabilities", force: :cascade do |t|
@@ -795,10 +805,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
+    t.boolean "invitation_notifications_enabled", default: true
+    t.string "invitation_role", default: "viewer"
     t.integer "organization_id", null: false
+    t.integer "production_id"
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
+    t.index ["production_id"], name: "index_team_invitations_on_production_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
@@ -845,6 +859,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_requests", "audition_cycles"
+  add_foreign_key "audition_reviewers", "audition_cycles"
+  add_foreign_key "audition_reviewers", "people"
   add_foreign_key "audition_session_availabilities", "audition_sessions"
   add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
@@ -905,6 +921,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_14_165134) do
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
+  add_foreign_key "team_invitations", "productions"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
 end
