@@ -47,12 +47,12 @@ class User < ApplicationRecord
     return false unless Current.organization
 
     role = default_role
-    # User has access if they have manager/viewer role, OR if they have "none" but have per-production permissions
+    # User has access if they have manager/viewer role, OR if they have "member" role with per-production permissions
     return true if %w[manager viewer].include?(role)
     return false if role.nil?
 
-    # If role is "none", check if they have any production-specific permissions
-    if role == "none"
+    # If role is "member", check if they have any production-specific permissions
+    if role == "member"
       production_permissions.joins(:production)
                             .where(productions: { organization_id: Current.organization.id })
                             .exists?
@@ -70,9 +70,9 @@ class User < ApplicationRecord
     production_permission = production_permissions.find_by(production_id: production.id)
     return production_permission.role if production_permission
 
-    # Fall back to default role if not 'none'
+    # Fall back to default role if not 'member'
     default = default_role
-    default == "none" ? nil : default
+    default == "member" ? nil : default
   end
 
   # Check if user is manager for a specific production

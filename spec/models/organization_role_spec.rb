@@ -29,7 +29,7 @@ RSpec.describe OrganizationRole, type: :model do
       expect(organization_role.errors[:company_role]).to include("can't be blank")
     end
 
-    it 'only allows manager, viewer, or none roles' do
+    it 'only allows manager, viewer, or member roles' do
       organization_role = build(:organization_role, company_role: 'invalid_role')
       expect(organization_role).not_to be_valid
       expect(organization_role.errors[:company_role]).to include('is not included in the list')
