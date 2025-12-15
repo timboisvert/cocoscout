@@ -226,7 +226,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
-    json (2.17.1)
+    json (2.18.0)
     kamal (2.9.0)
       activesupport (>= 7.0)
       base64 (~> 0.2)
@@ -306,7 +306,7 @@ GEM
     nokogiri (1.18.10-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (43.1.8)
+    pagy (43.2.1)
       json
       yaml
     parallel (1.27.0)
@@ -575,7 +575,7 @@ DEPENDENCIES
   letter_opener
   mail (~> 2.9.0)
   mailgun-ruby (~> 1.2)
-  pagy (~> 43.1.6)
+  pagy (~> 43.2.1)
   pg
   poppler
   propshaft
