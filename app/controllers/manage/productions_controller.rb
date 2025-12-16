@@ -14,7 +14,17 @@ module Manage
     end
 
     def show
+      # Redirect reviewer-only users to the auditions page (check before set_production_in_session)
+      unless Current.user.role_for_production(@production).present?
+        # Still set the production in session, but don't allow the redirect within it
+        session[:current_production_id_for_organization] ||= {}
+        session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
+        return redirect_to manage_production_auditions_path(@production)
+      end
+
       set_production_in_session
+      return if performed?
+
       @dashboard = DashboardService.new(@production).generate
     end
 

@@ -178,30 +178,42 @@
               <div>
                 <div class="flex items-center">
                   <label class="flex items-center cursor-pointer">
-                    <%= form.radio_button :reviewer_access_type, 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
-                    <span class="text-sm">Production Team (Managers Only)</span>
+                    <%= radio_button_tag :reviewer_access_type, 'managers', @audition_cycle.reviewer_access_type == 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <span class="text-sm">Production Team</span>
                   </label>
-                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleManagersList">
+                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleManagersList" data-reviewer-selector-target="managersToggle">
                     Show
                   </button>
                 </div>
-                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs" data-reviewer-selector-target="managersList">
-                  <div class="space-y-1">
-                    <% global_managers = Current.organization.organization_roles.where(company_role: 'manager').includes(user: :person).map(&:user) %>
-                    <% production_managers = @production.production_permissions.where(role: 'manager').includes(user: :person).map(&:user) %>
-                    <% all_managers = (global_managers + production_managers).uniq %>
-                    <% all_managers.each do |user| %>
+                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg" data-reviewer-selector-target="managersList">
+                  <% global_managers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :person).map { |r| { user: r.user, role: "#{r.company_role.capitalize} (Global)" } } %>
+                  <% production_team = @production.production_permissions.where(role: %w[manager viewer]).includes(user: :person).map { |p| { user: p.user, role: p.role.capitalize } } %>
+                  <% all_team = (global_managers + production_team).uniq { |t| t[:user].id } %>
+                  <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+                    <% all_team.each do |team_member| %>
+                      <% user = team_member[:user] %>
                       <% next unless user.person %>
-                      <div class="text-gray-600 flex items-center gap-2">
-                        <% headshot_url = user.person.safe_headshot_variant(:thumb) %>
-                        <% if headshot_url %>
-                          <%= image_tag headshot_url, class: "w-5 h-5 rounded object-cover" %>
-                        <% else %>
-                          <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold" style="font-size: 8px;">
-                            <%= user.person.initials %>
-                          </div>
-                        <% end %>
-                        <%= user.person.name %>
+                      <div class="relative group">
+                        <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+                          <% if user.person.headshot&.attached? %>
+                            <%= image_tag user.person.safe_headshot_variant(:thumb),
+                                  class: "w-full h-full object-cover",
+                                  loading: "lazy",
+                                  alt: user.person.name %>
+                          <% else %>
+                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                              <div class="text-2xl font-bold text-gray-500">
+                                <%= user.person.name.split.map(&:first).join.upcase %>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                        <div class="text-xs font-medium text-gray-900 truncate" title="<%= user.person.name %>">
+                          <%= user.person.name %>
+                        </div>
+                        <div class="text-[10px] text-gray-500 truncate">
+                          <%= team_member[:role] %>
+                        </div>
                       </div>
                     <% end %>
                   </div>
@@ -211,10 +223,10 @@
               <div>
                 <div class="flex items-center">
                   <label class="flex items-center cursor-pointer">
-                    <%= form.radio_button :reviewer_access_type, 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <%= radio_button_tag :reviewer_access_type, 'all', @audition_cycle.reviewer_access_type == 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
                     <span class="text-sm">Entire Talent Pool</span>
                   </label>
-                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleTalentPoolList">
+                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleTalentPoolList" data-reviewer-selector-target="talentPoolToggle">
                     Show
                   </button>
                 </div>
@@ -249,7 +261,7 @@
 
               <div>
                 <label class="flex items-center cursor-pointer">
-                  <%= form.radio_button :reviewer_access_type, 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <%= radio_button_tag :reviewer_access_type, 'specific', @audition_cycle.reviewer_access_type == 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
                   <span class="text-sm">Specific People</span>
                 </label>
               </div>
@@ -257,23 +269,35 @@
           </div>
 
           <div class="<%= @audition_cycle.reviewer_access_type == 'specific' ? '' : 'hidden' %> ml-6" data-reviewer-selector-target="specificSection">
-            <label class="block font-semibold mb-2 text-sm">Select Reviewers</label>
-            <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
-              <% @talent_pool_people.each do |person| %>
-                <% is_selected = @audition_cycle.reviewer_people.include?(person) %>
-                <label class="flex items-center cursor-pointer py-1">
-                  <%= check_box_tag 'person_ids[]', person.id, is_selected, class: "mr-2 accent-pink-500 cursor-pointer" %>
-                  <% headshot_url = person.safe_headshot_variant(:thumb) %>
-                  <% if headshot_url %>
-                    <%= image_tag headshot_url, class: "w-6 h-6 rounded object-cover mr-2" %>
-                  <% else %>
-                    <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs mr-2">
-                      <%= person.initials %>
+            <div class="border border-gray-300 rounded-lg p-3 bg-gray-50 max-h-96 overflow-y-auto">
+              <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+                <% @talent_pool_people.each do |person| %>
+                  <% is_selected = @audition_cycle.reviewer_people.include?(person) %>
+                  <label class="relative group cursor-pointer">
+                    <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
+                      <%# Checkbox in top right corner %>
+                      <div class="absolute top-1 right-1 z-10">
+                        <%= check_box_tag 'person_ids[]', person.id, is_selected, class: "w-5 h-5 accent-pink-500 cursor-pointer rounded" %>
+                      </div>
+                      <% if person.headshot&.attached? %>
+                        <%= image_tag person.safe_headshot_variant(:thumb),
+                              class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
+                              loading: "lazy",
+                              alt: person.name %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <div class="text-2xl font-bold text-gray-500">
+                            <%= person.name.split.map(&:first).join.upcase %>
+                          </div>
+                        </div>
+                      <% end %>
                     </div>
-                  <% end %>
-                  <span class="text-sm"><%= person.name %></span>
-                </label>
-              <% end %>
+                    <div class="text-xs font-medium text-gray-900 truncate" title="<%= person.name %>">
+                      <%= person.name %>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
             </div>
           </div>
 

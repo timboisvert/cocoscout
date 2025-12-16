@@ -59,12 +59,17 @@
           <% end %>
 
           <div class="space-y-2">
-            <%= link_to "Shows", manage_production_shows_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <%= link_to "Casting & Roles", manage_production_casting_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% has_team_access = Current.user.role_for_production(Current.production).present? %>
+            <% if has_team_access %>
+              <%= link_to "Shows", manage_production_shows_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+              <%= link_to "Casting & Roles", manage_production_casting_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% end %>
             <%= link_to "Auditions", manage_production_auditions_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <%= link_to "Questionnaires", manage_production_questionnaires_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <%= link_to "Directory", manage_directory_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% if has_team_access %>
+              <%= link_to "Questionnaires", manage_production_questionnaires_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+              <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+              <%= link_to "Directory", manage_directory_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+            <% end %>
             <% if current_user_can_manage? %>
               <%= link_to "Production Settings", edit_manage_production_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
             <% end %>

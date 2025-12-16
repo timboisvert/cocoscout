@@ -30,31 +30,27 @@
         </h3>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500 mb-6">Review and decide on each auditionee's application.</p>
+        <p class="text-sm text-gray-500 mb-6">Review and vote on each auditionee's application.</p>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :unreviewed) do %>
+        <% vote_summary = @audition_cycle.vote_summary %>
+
+        <div class="grid grid-cols-3 gap-2 mb-6">
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:unreviewed] %></p>
-              <p class="text-xs text-center">Unreviewed</p>
+              <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_requests] %></p>
+              <p class="text-xs text-center text-gray-500">Total Sign-ups</p>
             </div>
           <% end %>
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :undecided) do %>
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:undecided] %></p>
-              <p class="text-xs text-center">Revisit</p>
+              <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_votes] %></p>
+              <p class="text-xs text-center text-gray-500">Votes Cast</p>
             </div>
           <% end %>
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :accepted) do %>
+          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:accepted] %></p>
-              <p class="text-xs text-center">Yes</p>
-            </div>
-          <% end %>
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :passed) do %>
-            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
-              <p class="font-bold text-5xl text-center"><%= @audition_cycle.counts[:passed] %></p>
-              <p class="text-xs text-center">No</p>
+              <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_comments] %></p>
+              <p class="text-xs text-center text-gray-500">Comments</p>
             </div>
           <% end %>
         </div>
@@ -62,11 +58,11 @@
         <%
           button_text = @audition_cycle.audition_type == "video_upload" ? "View all Video Auditions" : "View all Sign-ups"
         %>
-        <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle, filter: :all), variant: "primary"} %>
+        <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
       </div>
     </div>
 
-    <% if @audition_cycle.audition_type == "in_person" %>
+    <% if @audition_cycle.audition_type == "in_person" && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule Auditions</h3>
@@ -77,65 +73,7 @@
         <% if @audition_cycle.audition_sessions.any? %>
           <div class="space-y-3">
             <% @audition_cycle.audition_sessions.order(:start_at).each do |session| %>
-              <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200">
-                <%# Left Section: Date & Session Details %>
-                <div class="w-1/2 flex items-center gap-4">
-                  <%# Date Box %>
-                  <div class="flex-shrink-0 w-14 text-center">
-                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                    <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                    <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                  </div>
-
-                  <%# Session Details %>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-900">Audition Session</div>
-                    <div class="text-sm text-gray-600">
-                      <%= session.start_at.strftime("%l:%M %p") %>
-                      <% if session.location.present? %>
-                        · <%= session.location.name %>
-                      <% end %>
-                    </div>
-                  </div>
-                </div>
-
-                <%# Right Section: People %>
-                <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
-                  <div class="flex-1">
-                    <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Scheduled</div>
-                    <% if session.auditions.any? %>
-                      <div class="flex flex-wrap gap-1">
-                        <% session.auditions.limit(10).each do |audition| %>
-                          <% auditionable = audition.auditionable %>
-                          <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
-                          <span data-controller="tooltip" data-tooltip-text="<%= auditionable.name %>">
-                            <% if headshot_url %>
-                              <%= image_tag headshot_url, alt: auditionable.name, class: "w-8 h-8 rounded-lg object-cover" %>
-                            <% elsif auditionable.is_a?(Person) %>
-                              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
-                                <%= auditionable.initials %>
-                              </div>
-                            <% else %>
-                              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                                </svg>
-                              </div>
-                            <% end %>
-                          </span>
-                        <% end %>
-                        <% if session.auditions.count > 10 %>
-                          <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-medium">
-                            +<%= session.auditions.count - 10 %>
-                          </div>
-                        <% end %>
-                      </div>
-                    <% else %>
-                      <p class="text-gray-500 text-sm">None</p>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
+              <%= render partial: "manage/audition_sessions/session_row", locals: { session: session, production: @production, audition_cycle: @audition_cycle } %>
             <% end %>
           </div>
 
@@ -150,7 +88,7 @@
     </div>
     <% end %>
 
-    <% if @audition_cycle.audition_type == "in_person" %>
+    <% if @audition_cycle.audition_type == "in_person" && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>

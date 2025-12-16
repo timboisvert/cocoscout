@@ -6,9 +6,10 @@ module Manage
     before_action :check_production_access, except: %i[add_to_session remove_from_session move_to_session]
     before_action :set_audition_cycle,
                   except: %i[index schedule_auditions add_to_session remove_from_session move_to_session]
-    before_action :set_audition, only: %i[show edit update destroy]
+    before_action :set_audition, only: %i[show edit update destroy cast_audition_vote]
     before_action :ensure_user_is_manager,
-                  except: %i[index show prepare publicize review run casting casting_select schedule_auditions]
+                  except: %i[index show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
+    before_action :ensure_user_has_role, only: %i[prepare publicize]
 
     # GET /auditions
     def index
@@ -101,20 +102,14 @@ module Manage
       @audition_cycle = AuditionCycle.find(params[:id])
       @audition_sessions = @audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
 
-      filter = params[:filter]
-      audition_requests = @audition_cycle.audition_requests
+      # Show all sign-ups ordered by yes vote count descending
+      @available_people = @audition_cycle.audition_requests
+        .includes(:requestable, :audition_request_votes)
+        .left_joins(:audition_request_votes)
+        .select("audition_requests.*, COUNT(CASE WHEN audition_request_votes.vote = 0 THEN 1 END) AS yes_count")
+        .group("audition_requests.id")
+        .order("yes_count DESC, audition_requests.created_at ASC")
 
-      if filter == "all"
-        audition_requests = audition_requests.where(status: %i[unreviewed undecided passed accepted])
-      elsif filter == "accepted"
-        audition_requests = audition_requests.where(status: :accepted)
-      else
-        # "to_be_scheduled" (default)
-        audition_requests = audition_requests.where(status: :accepted)
-        audition_requests = audition_requests.where.not(id: Audition.where(audition_session: @audition_sessions).select(:audition_request_id))
-      end
-
-      @available_people = audition_requests.includes(:requestable).order(created_at: :asc)
       @scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(
         :auditionable_type, :auditionable_id
       ).to_set
@@ -123,6 +118,29 @@ module Manage
 
     # GET /auditions/1
     def show; end
+
+    # POST /auditions/:id/cast_audition_vote
+    def cast_audition_vote
+      vote = @audition.audition_votes.find_or_initialize_by(user: Current.user)
+      vote.vote = params[:vote] if params[:vote].present?
+      vote.comment = params[:comment] if params.key?(:comment)
+
+      if vote.save
+        respond_to do |format|
+          redirect_url = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
+          redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
+          format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
+          format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
+        end
+      else
+        respond_to do |format|
+          redirect_url = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
+          redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
+          format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
+          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
+        end
+      end
+    end
 
     # GET /auditions/new
     def new
@@ -179,23 +197,13 @@ module Manage
       production = audition_session.production
       audition_cycle = audition_request.audition_cycle
 
-      # Get the filter from params
-      filter = params[:filter] || "to_be_scheduled"
-
-      # Determine which audition_requests to show
+      # Show all sign-ups ordered by yes vote count descending
       available_people = audition_cycle.audition_requests
-
-      if filter == "all"
-        available_people = available_people.where(status: %i[unreviewed undecided passed accepted])
-      elsif filter == "accepted"
-        available_people = available_people.where(status: :accepted)
-      else
-        # "to_be_scheduled" (default)
-        available_people = available_people.where(status: :accepted)
-        available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
-      end
-
-      available_people = available_people.includes(:requestable).order(created_at: :asc)
+        .includes(:requestable, :audition_request_votes)
+        .left_joins(:audition_request_votes)
+        .select("audition_requests.*, COUNT(CASE WHEN audition_request_votes.vote = 0 THEN 1 END) AS yes_count")
+        .group("audition_requests.id")
+        .order("yes_count DESC, audition_requests.created_at ASC")
 
       # Get list of already scheduled auditionables for this audition cycle
       audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -206,7 +214,7 @@ module Manage
 
       # Re-render the right list and the dropzone
       right_list_html = render_to_string(partial: "manage/auditions/right_list",
-                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter,
+                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle,
                                                    scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
       dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone",
                                        locals: { audition_session: audition_session })
@@ -229,23 +237,13 @@ module Manage
       production = audition_session.production
       audition_cycle = audition.audition_request.audition_cycle
 
-      # Get the filter from params
-      filter = params[:filter] || "to_be_scheduled"
-
-      # Determine which audition_requests to show
+      # Show all sign-ups ordered by yes vote count descending
       available_people = audition_cycle.audition_requests
-
-      if filter == "all"
-        available_people = available_people.where(status: %i[unreviewed undecided passed accepted])
-      elsif filter == "accepted"
-        available_people = available_people.where(status: :accepted)
-      else
-        # "to_be_scheduled" (default)
-        available_people = available_people.where(status: :accepted)
-        available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
-      end
-
-      available_people = available_people.includes(:requestable).order(created_at: :asc)
+        .includes(:requestable, :audition_request_votes)
+        .left_joins(:audition_request_votes)
+        .select("audition_requests.*, COUNT(CASE WHEN audition_request_votes.vote = 0 THEN 1 END) AS yes_count")
+        .group("audition_requests.id")
+        .order("yes_count DESC, audition_requests.created_at ASC")
 
       # Get list of already scheduled auditionables and audition request IDs for this audition cycle
       audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -255,7 +253,7 @@ module Manage
       scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: audition_cycle.id }).pluck(:audition_request_id).uniq
 
       right_list_html = render_to_string(partial: "manage/auditions/right_list",
-                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter,
+                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle,
                                                    scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
       dropzone_html = render_to_string(partial: "manage/audition_sessions/dropzone",
                                        locals: { audition_session: audition_session })
@@ -288,23 +286,13 @@ module Manage
       production = new_audition_session.production
       audition_cycle = audition.audition_request.audition_cycle
 
-      # Get the filter from params
-      filter = params[:filter] || "to_be_scheduled"
-
-      # Determine which audition_requests to show
+      # Show all sign-ups ordered by yes vote count descending
       available_people = audition_cycle.audition_requests
-
-      if filter == "all"
-        available_people = available_people.where(status: %i[unreviewed undecided passed accepted])
-      elsif filter == "accepted"
-        available_people = available_people.where(status: :accepted)
-      else
-        # "to_be_scheduled" (default)
-        available_people = available_people.where(status: :accepted)
-        available_people = available_people.where.not(id: Audition.where(audition_session: audition_cycle.audition_sessions).select(:audition_request_id))
-      end
-
-      available_people = available_people.includes(:requestable).order(created_at: :asc)
+        .includes(:requestable, :audition_request_votes)
+        .left_joins(:audition_request_votes)
+        .select("audition_requests.*, COUNT(CASE WHEN audition_request_votes.vote = 0 THEN 1 END) AS yes_count")
+        .group("audition_requests.id")
+        .order("yes_count DESC, audition_requests.created_at ASC")
 
       # Get list of already scheduled auditionables and audition request IDs for this audition cycle
       audition_sessions = audition_cycle.audition_sessions.includes(:location).order(start_at: :asc)
@@ -314,7 +302,7 @@ module Manage
       scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: audition_cycle.id }).pluck(:audition_request_id).uniq
 
       right_list_html = render_to_string(partial: "manage/auditions/right_list",
-                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle, filter: filter,
+                                         locals: { available_people: available_people, production: production, audition_cycle: audition_cycle,
                                                    scheduled_request_ids: scheduled_request_ids, scheduled_auditionables: scheduled_auditionables })
 
       # Also re-render the sessions list to update all dropzones
@@ -647,9 +635,16 @@ module Manage
     end
 
     def set_audition_cycle
-      if params[:id].present?
-        # When coming from /audition_cycles/:id/prepare (or other workflow steps)
-        @audition_cycle = @production.audition_cycles.find(params[:id])
+      # Check for audition_cycle_id in nested routes first
+      cycle_id = params[:audition_cycle_id] || params[:id]
+
+      if cycle_id.present?
+        # When coming from /audition_cycles/:id or /audition_cycles/:audition_cycle_id/*
+        @audition_cycle = @production.audition_cycles.find_by(id: cycle_id)
+        unless @audition_cycle
+          redirect_to manage_production_auditions_path(@production), alert: "Audition cycle not found."
+          nil
+        end
       else
         # Default to active audition cycle (for legacy routes or index page)
         @audition_cycle = @production.active_audition_cycle
@@ -677,6 +672,13 @@ module Manage
 
     def redirect_to_archived_summary
       redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+    end
+
+    def ensure_user_has_role
+      return if Current.user.role_for_production(@production).present?
+
+      redirect_to review_manage_production_audition_cycle_path(@production, @audition_cycle),
+                  alert: "You don't have permission to access this page."
     end
   end
 end

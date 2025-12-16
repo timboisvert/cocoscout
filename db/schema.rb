@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_15_162718) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_15_200002) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -94,6 +94,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_15_162718) do
     t.index ["audition_cycle_id"], name: "index_audition_email_assignments_on_audition_cycle_id"
   end
 
+  create_table "audition_request_votes", force: :cascade do |t|
+    t.integer "audition_request_id", null: false
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.integer "vote", default: 0, null: false
+    t.index ["audition_request_id", "user_id"], name: "index_audition_request_votes_unique", unique: true
+    t.index ["audition_request_id"], name: "index_audition_request_votes_on_audition_request_id"
+    t.index ["user_id"], name: "index_audition_request_votes_on_user_id"
+  end
+
   create_table "audition_requests", force: :cascade do |t|
     t.integer "audition_cycle_id", null: false
     t.datetime "created_at", null: false
@@ -141,6 +153,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_15_162718) do
     t.datetime "updated_at", null: false
     t.index ["audition_cycle_id"], name: "index_audition_sessions_on_audition_cycle_id"
     t.index ["location_id"], name: "index_audition_sessions_on_location_id"
+  end
+
+  create_table "audition_votes", force: :cascade do |t|
+    t.integer "audition_id", null: false
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.integer "vote", default: 0, null: false
+    t.index ["audition_id", "user_id"], name: "index_audition_votes_unique", unique: true
+    t.index ["audition_id"], name: "index_audition_votes_on_audition_id"
+    t.index ["user_id"], name: "index_audition_votes_on_user_id"
   end
 
   create_table "auditions", force: :cascade do |t|
@@ -858,12 +882,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_15_162718) do
   add_foreign_key "answers", "questions"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
+  add_foreign_key "audition_request_votes", "audition_requests"
+  add_foreign_key "audition_request_votes", "users"
   add_foreign_key "audition_requests", "audition_cycles"
   add_foreign_key "audition_reviewers", "audition_cycles"
   add_foreign_key "audition_reviewers", "people"
   add_foreign_key "audition_session_availabilities", "audition_sessions"
   add_foreign_key "audition_sessions", "audition_cycles"
   add_foreign_key "audition_sessions", "locations"
+  add_foreign_key "audition_votes", "auditions"
+  add_foreign_key "audition_votes", "users"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
   add_foreign_key "cast_assignment_stages", "talent_pools"

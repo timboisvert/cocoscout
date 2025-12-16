@@ -28,15 +28,15 @@
 
       <div class="space-y-4">
         <div class="p-4 bg-gray-50 rounded-lg">
-          <h3 class="font-semibold text-gray-900 mb-2">Accepted Candidates</h3>
-          <p class="text-2xl font-bold text-pink-500 mb-2"><%= audition_cycle.counts[:accepted] %></p>
+          <h3 class="font-semibold text-gray-900 mb-2">Approved Candidates</h3>
+          <p class="text-2xl font-bold text-pink-500 mb-2"><%= audition_cycle.counts[:approved] %></p>
           <p class="text-sm text-gray-600 mb-3">Ready to send callback notifications</p>
           <%= render "shared/button", text: "Send Callbacks (Coming Soon)", variant: "primary", size: "small", type: :button, disabled: true %>
         </div>
 
         <div class="p-4 bg-gray-50 rounded-lg">
-          <h3 class="font-semibold text-gray-900 mb-2">Declined Candidates</h3>
-          <p class="text-2xl font-bold text-gray-400 mb-2"><%= audition_cycle.counts[:passed] %></p>
+          <h3 class="font-semibold text-gray-900 mb-2">Rejected Candidates</h3>
+          <p class="text-2xl font-bold text-gray-400 mb-2"><%= audition_cycle.counts[:rejected] %></p>
           <p class="text-sm text-gray-600 mb-3">Ready to send thank you/rejection messages</p>
           <%= render "shared/button", text: "Send Messages (Coming Soon)", variant: "primary", size: "small", type: :button, disabled: true %>
         </div>

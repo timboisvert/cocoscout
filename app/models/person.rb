@@ -262,6 +262,18 @@ class Person < ApplicationRecord
     read_attribute(:bio_visible)
   end
 
+  # Check if person is in the talent pool for a specific production
+  def in_talent_pool_for?(production)
+    return false unless production
+
+    talent_pools.where(production: production).exists?
+  end
+
+  # Returns all productions where this person is in the talent pool
+  def talent_pool_productions
+    Production.joins(:talent_pools).where(talent_pools: { id: talent_pools.select(:id) })
+  end
+
   # Virtual attribute for inverted contact info visibility logic
   def show_contact_info
     !hide_contact_info

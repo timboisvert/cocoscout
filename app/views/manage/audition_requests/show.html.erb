@@ -1,5 +1,5 @@
 <% content_for :title, "Sign-ups" %>
-<div class="w-full pb-24 lg:pb-24">
+<div class="w-full pb-48 lg:pb-40">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -11,10 +11,46 @@
     links: []
   } %>
 
+  <%# Hero Section with Headshot, Name, Email, Profile Link %>
+  <% if @requestable.present? %>
+    <div class="flex items-center gap-4 mb-6">
+      <% if @requestable.respond_to?(:safe_headshot_variant) %>
+        <% headshot_variant = @requestable.safe_headshot_variant(:thumb) %>
+        <% if headshot_variant %>
+          <%= image_tag headshot_variant, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold flex-shrink-0">
+            <%= @requestable.respond_to?(:initials) ? @requestable.initials : @requestable.name[0..1].upcase %>
+          </div>
+        <% end %>
+      <% end %>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-baseline gap-2 min-w-0">
+          <div class="font-bold text-xl text-gray-900 truncate flex-shrink"><%= @requestable.name %></div>
+          <% if @requestable.respond_to?(:pronouns) && @requestable.pronouns.present? %>
+            <div class="text-sm text-gray-500 flex-shrink-0">(<%= @requestable.pronouns %>)</div>
+          <% end %>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+          <% if @requestable.respond_to?(:email) && @requestable.email.present? %>
+            <%= link_to @requestable.email, "mailto:#{@requestable.email}", class: "text-pink-500 hover:underline" %>
+          <% end %>
+        </div>
+      </div>
+      <% if @requestable.respond_to?(:public_key) && @requestable.public_key.present? %>
+        <div class="flex-shrink-0">
+          <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@requestable.public_key), variant: "primary", target: "_blank" } %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
   <div class="w-full" data-controller="tabs">
     <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
       <% idx = 0 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Profile</button>
+      <% idx += 1 %>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Headshots</button>
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
       <% idx += 1 %>
@@ -26,22 +62,45 @@
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
       <% idx += 1 %>
-
+      <% if current_user_can_review?(@production) %>
+        <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Votes</button>
+        <% idx += 1 %>
+      <% end %>
     </nav>
 
+    <%# Profile Tab %>
     <div data-tabs-target="panel">
       <% if @requestable.is_a?(Person) %>
-        <%= render "shared/person_card", person: @requestable, show_delete_signup: true, show_public_profile_link: false %>
-      <% else %>
+        <%= render "manage/audition_requests/profile_tab", person: @requestable %>
+      <% elsif @requestable.present? %>
         <%= render "shared/group_card", group: @requestable, show_delete_signup: true, show_public_profile_link: false %>
+      <% else %>
+        <p class="text-gray-500">This person/group is no longer available.</p>
       <% end %>
     </div>
 
+    <%# Headshots Tab %>
+    <div data-tabs-target="panel" class="hidden">
+      <% if @requestable.nil? %>
+        <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
+      <% elsif @requestable.respond_to?(:profile_headshots) && @requestable.profile_headshots.any? %>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <% @requestable.profile_headshots.each do |headshot| %>
+            <% if headshot.image.attached? %>
+              <%= image_tag url_for(headshot.image), class: "rounded-lg w-full object-cover" %>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-left text-gray-500 text-sm">No headshots uploaded</p>
+      <% end %>
+    </div>
+
+    <%# Resume Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% if @requestable.nil? %>
         <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
       <% else %>
-        <%# Use ProfileResume for both Person and Group %>
         <% resume = @requestable.profile_resumes.first %>
         <% if resume&.file&.attached? %>
           <% if resume.file.content_type == 'application/pdf' && resume.file.representable? %>
@@ -61,6 +120,7 @@
       <% end %>
     </div>
 
+    <%# Video Tab (conditional) %>
     <% if @audition_cycle.audition_type == "video_upload" %>
       <div data-tabs-target="panel" class="hidden">
         <% if @audition_request.video_url.present? %>
@@ -79,118 +139,182 @@
       </div>
     <% end %>
 
+    <%# Availability Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if @audition_cycle.include_availability_section && @shows.present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
-          </div>
-          <div class="p-2">
-            <div class="space-y-1">
-              <% @shows.each do |show| %>
-                <% availability = @show_availabilities[show.id] %>
-                <%= render partial: "shared/show_row", locals: {
-                  show: show,
-                  show_location: true,
-                  show_production: false,
-                  show_linked: false,
-                  availability: availability,
-                  entity_key: "show_#{show.id}",
-                  entity: @requestable,
-                  has_groups: false,
-                  right_panel: :availability,
-                  manage_context: true
-                } %>
-              <% end %>
+      <% if current_user_can_manage?(@production) %>
+        <%# Manager view: availability with edit buttons %>
+        <% if @audition_cycle.include_availability_section && @shows.present? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
+            </div>
+            <div class="p-2">
+              <div class="space-y-1">
+                <% @shows.each do |show| %>
+                  <% availability = @show_availabilities[show.id] %>
+                  <%= render partial: "shared/show_row", locals: {
+                    show: show,
+                    show_location: true,
+                    show_production: false,
+                    show_linked: false,
+                    availability: availability,
+                    entity_key: "show_#{show.id}",
+                    entity: @requestable,
+                    has_groups: false,
+                    right_panel: :availability,
+                    manage_context: true
+                  } %>
+                <% end %>
+              </div>
             </div>
           </div>
-        </div>
-      <% end %>
+        <% end %>
 
-      <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
-          </div>
-          <div class="p-2">
-            <div class="space-y-1">
-              <% @audition_sessions.each do |session| %>
-                <% current_status = @audition_availability&.dig("#{session.id}") %>
-                <div class="group relative flex items-stretch gap-0 px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200"
-                     data-controller="availability"
-                     data-availability-show-id-value="<%= session.id %>"
-                     data-availability-status-value="<%= current_status || 'unset' %>"
-                     data-availability-entity-key="audition_session"
-                     data-availability-entity-id="<%= @requestable.id %>"
-                     data-availability-entity-type="<%= @requestable.class.name %>"
-                     data-availability-update-url-value="<%= update_audition_session_availability_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                     data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>">
-                  <%# Left Section: Date & Details %>
-                  <div class="w-1/2 flex items-center gap-4">
-                    <%# Date Box %>
-                    <div class="flex-shrink-0 w-14 text-center">
-                      <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                      <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                      <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                    </div>
-
-                    <%# Session Details %>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium text-gray-900">Audition Session</div>
-                      <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
-                    </div>
-                  </div>
-
-                  <%# Right Panel: Availability Buttons %>
-                  <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center gap-3">
-                    <% headshot_variant = @requestable.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
-                        <%= @requestable.respond_to?(:initials) ? @requestable.initials : @requestable.name[0..1].upcase %>
+        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
+            </div>
+            <div class="p-2">
+              <div class="space-y-1">
+                <% @audition_sessions.each do |session| %>
+                  <% current_status = @audition_availability&.dig("#{session.id}") %>
+                  <div class="group relative flex items-stretch gap-0 px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200"
+                       data-controller="availability"
+                       data-availability-show-id-value="<%= session.id %>"
+                       data-availability-status-value="<%= current_status || 'unset' %>"
+                       data-availability-entity-key="audition_session"
+                       data-availability-entity-id="<%= @requestable.id %>"
+                       data-availability-entity-type="<%= @requestable.class.name %>"
+                       data-availability-update-url-value="<%= update_audition_session_availability_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                       data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>">
+                    <div class="w-1/2 flex items-center gap-4">
+                      <div class="flex-shrink-0 w-14 text-center">
+                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+                        <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+                        <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
                       </div>
-                    <% end %>
-                    <div class="flex-1 min-w-0">
-                      <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
-                      <div class="flex gap-0">
-                        <% [:available, :unavailable].each do |status| %>
-                          <% classes = "w-8 sm:w-20 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center" %>
-                          <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
-                          <% classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50" %>
-                          <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
-                            <span data-availability-target="<%= status %>Check" class="hidden">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
-                              </svg>
-                            </span>
-                            <span data-availability-target="<%= status %>Text">
-                              <span class="sm:hidden">
-                                <% if status == :available %>
-                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"/></svg>
-                                <% else %>
-                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54"/></svg>
-                                <% end %>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900">Audition Session</div>
+                        <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
+                      </div>
+                    </div>
+                    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center gap-3">
+                      <div class="flex-1 min-w-0">
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
+                        <div class="flex gap-0">
+                          <% [:available, :unavailable].each do |status| %>
+                            <% classes = "w-8 sm:w-20 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center" %>
+                            <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
+                            <% classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50" %>
+                            <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
+                              <span data-availability-target="<%= status %>Check" class="hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                                </svg>
                               </span>
-                              <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
-                            </span>
+                              <span data-availability-target="<%= status %>Text">
+                                <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
+                                <span class="sm:hidden"><%= status == :available ? '✓' : '✗' %></span>
+                              </span>
+                            <% end %>
                           <% end %>
-                        <% end %>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              <% end %>
+                <% end %>
+              </div>
             </div>
           </div>
-        </div>
-      <% end %>
+        <% end %>
 
-      <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
-        <p class="text-center mt-10 text-gray-500">No availability entered</p>
+        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
+          <p class="text-center mt-10 text-gray-500">No availability entered</p>
+        <% end %>
+      <% else %>
+        <%# Reviewer view: read-only availability display %>
+        <% if @audition_cycle.include_availability_section && @shows.present? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
+            </div>
+            <div class="p-2">
+              <div class="space-y-1">
+                <% @shows.each do |show| %>
+                  <% availability = @show_availabilities[show.id] %>
+                  <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200">
+                    <div class="w-1/2 flex items-center gap-4">
+                      <div class="flex-shrink-0 w-14 text-center">
+                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                        <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                        <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900"><%= show.secondary_name.presence || show.event_type.titleize %></div>
+                        <div class="text-sm text-gray-600"><%= show.date_and_time.strftime("%l:%M %p") %></div>
+                      </div>
+                    </div>
+                    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+                      <% if availability %>
+                        <span class="px-2 py-1 text-xs rounded <%= availability.status == 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
+                          <%= availability.status.humanize %>
+                        </span>
+                      <% else %>
+                        <span class="text-xs text-gray-400">Not set</span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
+            </div>
+            <div class="p-2">
+              <div class="space-y-1">
+                <% @audition_sessions.each do |session| %>
+                  <% current_status = @audition_availability&.dig("#{session.id}") %>
+                  <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200">
+                    <div class="w-1/2 flex items-center gap-4">
+                      <div class="flex-shrink-0 w-14 text-center">
+                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+                        <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+                        <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900">Audition Session</div>
+                        <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
+                      </div>
+                    </div>
+                    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+                      <% if current_status.present? %>
+                        <span class="px-2 py-1 text-xs rounded <%= current_status == 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
+                          <%= current_status.humanize %>
+                        </span>
+                      <% else %>
+                        <span class="text-xs text-gray-400">Not set</span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
+          <p class="text-center mt-10 text-gray-500">No availability entered</p>
+        <% end %>
       <% end %>
     </div>
 
+    <%# Sign-up Questions Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% if @answers&.any? %>
         <div class="mt-2">
@@ -210,59 +334,248 @@
       <% end %>
     </div>
 
+    <%# Votes Tab (for reviewers only) %>
+    <% if current_user_can_review?(@production) %>
+      <div data-tabs-target="panel" class="hidden">
+        <% votes = @audition_request.audition_request_votes.includes(user: :person).order(created_at: :desc) %>
+        <% vote_counts = @audition_request.vote_counts %>
+
+        <%# Vote count boxes spanning full width %>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
+            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:yes] %></div>
+            <div class="text-xs text-gray-500">Yes</div>
+          </div>
+          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
+            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:no] %></div>
+            <div class="text-xs text-gray-500">No</div>
+          </div>
+          <div class="p-3 bg-white border border-gray-200 rounded-lg text-center">
+            <div class="text-2xl font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
+            <div class="text-xs text-gray-500">Not Sure</div>
+          </div>
+        </div>
+
+        <%# Two column layout: Reviewers on left, Comments on right %>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <%# Left side: Reviewers list %>
+          <div>
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <h3 class="text-md font-semibold text-gray-900 coustard-regular">Reviewers</h3>
+              </div>
+              <div class="divide-y divide-gray-200">
+                <% if votes.any? %>
+                  <% votes.each do |vote| %>
+                    <div class="flex items-center px-4 py-3">
+                      <div class="w-1/2 flex items-center gap-2">
+                        <% if vote.user&.person %>
+                          <% headshot = vote.user.person.safe_headshot_variant(:thumb) %>
+                          <% if headshot %>
+                            <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                          <% else %>
+                            <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                              <%= vote.user.person.initials %>
+                            </div>
+                          <% end %>
+                          <span class="text-sm text-gray-900 truncate"><%= vote.user.person.name %></span>
+                        <% else %>
+                          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">?</div>
+                          <span class="text-sm text-gray-500">Unknown</span>
+                        <% end %>
+                      </div>
+                      <div class="w-1/2 text-right">
+                        <% vote_label = case vote.vote
+                           when "yes" then "Yes"
+                           when "no" then "No"
+                           when "maybe" then "Not Sure"
+                           else "—"
+                           end %>
+                        <% vote_class = case vote.vote
+                           when "yes" then "bg-green-100 text-green-700"
+                           when "no" then "bg-red-100 text-red-700"
+                           when "maybe" then "bg-yellow-100 text-yellow-700"
+                           else "bg-gray-100 text-gray-500"
+                           end %>
+                        <span class="px-2 py-1 text-xs rounded font-medium <%= vote_class %>"><%= vote_label %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <p class="px-4 py-3 text-sm text-gray-500">No votes yet</p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <%# Right side: Comments %>
+          <div>
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <h3 class="text-md font-semibold text-gray-900 coustard-regular">Comments</h3>
+              </div>
+              <div class="divide-y divide-gray-200">
+                <% votes_with_comments = votes.select { |v| v.comment.present? } %>
+                <% if votes_with_comments.any? %>
+                  <% votes_with_comments.each do |vote| %>
+                    <div class="px-4 py-3">
+                      <p class="text-sm text-gray-900 mb-2"><%= vote.comment %></p>
+                      <div class="flex items-center gap-2">
+                        <% if vote.user&.person %>
+                          <% headshot = vote.user.person.safe_headshot_variant(:thumb) %>
+                          <% if headshot %>
+                            <%= image_tag headshot, class: "w-5 h-5 rounded-lg object-cover flex-shrink-0" %>
+                          <% else %>
+                            <div class="w-5 h-5 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-[8px] flex-shrink-0">
+                              <%= vote.user.person.initials %>
+                            </div>
+                          <% end %>
+                          <span class="text-xs text-gray-500"><%= vote.user.person.name %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <p class="px-4 py-3 text-sm text-gray-500">No comments yet</p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
   </div>
 </div>
 
 
-<% if current_user_can_manage?(@production) %>
-  <div class="fixed bottom-0 left-0 w-full lg:h-[84px] bg-white text-pink-500 p-2 border-t-4 border-pink-500 lg:pl-56">
-    <div class="flex items-center gap-1 lg:gap-0">
+<%# Fade overlay for bottom of content %>
+<div class="fixed bottom-0 left-0 right-0 lg:left-56 h-48 bg-gradient-to-t from-gray-100 via-gray-100/80 to-transparent pointer-events-none z-10"></div>
 
+<% if current_user_can_review?(@production) %>
+  <% current_vote = @audition_request.vote_for(Current.user) %>
+  <% vote_counts = @audition_request.vote_counts %>
+
+  <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
+       data-controller="vote-form"
+       data-vote-form-save-url-value="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>">
+    <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> get an audition?</h3>
+    </div>
+    <div class="p-3 flex items-center gap-3">
       <!-- Previous button -->
-      <div class="flex-shrink-0">
+      <div class="flex-shrink-0 border-r border-gray-200 pr-3">
         <% if @audition_request.previous %>
-          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.previous), class: "flex flex-col lg:flex-row items-center lg:gap-1" do %>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6 lg:h-10 lg:w-10">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.previous),
+              class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+              data: { action: "click->vote-form#navigateWithSave" } do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
-            <p class="text-xs hidden lg:block">Previous</p>
           <% end %>
+        <% else %>
+          <div class="flex items-center justify-center w-10 h-10 text-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+          </div>
         <% end %>
       </div>
 
-      <!-- Status buttons -->
-      <div class="flex-1 grid grid-cols-3 gap-1 lg:gap-3 px-1 lg:px-4">
-          <% [:undecided, :accepted, :passed].each do |status| %>
-            <% classes = "text-xs lg:text-lg font-bold px-1 py-2 lg:px-4 lg:py-3 text-center border rounded-lg border-gray-200 " %>
-            <% if @audition_request.status == status.to_s %>
-              <% classes += " bg-pink-500 text-white hover:bg-pink-600 hover:text-white" %>
-            <% else %>
-              <% classes += " bg-white text-pink-500 hover:bg-pink-600 hover:text-white" %>
-            <% end %>
-            <% count = @status_counts&.dig(status.to_s) || 0 %>
-            <%= link_to set_status_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request, status: status), class: classes, data: { turbo_method: :post } do %>
-              <span class="w-full flex justify-center items-center">
-                <span class="flex w-full justify-center items-center relative">
-                  <span class="mx-auto"><%= manage_signup_status_name(status) %></span>
-                  <span class="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] lg:text-base font-normal px-0.5 lg:px-2"><%= count %></span>
-                </span>
-              </span>
-            <% end %>
-          <% end %>
+      <!-- Add a comment section -->
+      <div class="flex-1 flex items-center gap-2 border-r border-gray-200 pr-3">
+        <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline">Add a comment</span>
+        <input type="text"
+               id="vote-comment"
+               data-vote-form-target="comment"
+               placeholder="Optional comment..."
+               value="<%= current_vote&.comment %>"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
+        <button type="button"
+                data-action="click->vote-form#submitComment"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
+          Save
+        </button>
+      </div>
+
+      <!-- Cast your vote section -->
+      <div class="flex items-center gap-2 border-r border-gray-200 pr-3">
+        <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline mr-1">Cast your vote</span>
+        <%# Yes button %>
+        <% is_yes = current_vote&.vote == "yes" %>
+        <button type="button"
+                data-action="click->vote-form#submitVote"
+                data-vote-form-vote-param="yes"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+          <span>Yes</span>
+          <span class="opacity-75">(<%= vote_counts[:yes] %>)</span>
+        </button>
+
+        <%# No button %>
+        <% is_no = current_vote&.vote == "no" %>
+        <button type="button"
+                data-action="click->vote-form#submitVote"
+                data-vote-form-vote-param="no"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+          <span>No</span>
+          <span class="opacity-75">(<%= vote_counts[:no] %>)</span>
+        </button>
+
+        <%# Not Sure button %>
+        <% is_maybe = current_vote&.vote == "maybe" %>
+        <button type="button"
+                data-action="click->vote-form#submitVote"
+                data-vote-form-vote-param="maybe"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+          <span>Not Sure</span>
+          <span class="opacity-75">(<%= vote_counts[:maybe] %>)</span>
+        </button>
       </div>
 
       <!-- Next button -->
       <div class="flex-shrink-0">
         <% if @audition_request.next %>
-          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.next), class: "flex flex-col lg:flex-row items-center lg:gap-1" do %>
-            <p class="text-xs hidden lg:block">Next</p>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6 lg:h-10 lg:w-10">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.next),
+              class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+              data: { action: "click->vote-form#navigateWithSave" } do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
           <% end %>
+        <% else %>
+          <div class="flex items-center justify-center w-10 h-10 text-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
         <% end %>
       </div>
-
     </div>
   </div>
 <% end %>
+
+<script>
+  // Update navigation links to preserve current tab
+  document.addEventListener('DOMContentLoaded', function() {
+    function updateNavLinks() {
+      const hash = window.location.hash;
+      let tabIndex = 0;
+      if (hash && hash.startsWith('#tab-')) {
+        tabIndex = parseInt(hash.replace('#tab-', ''), 10);
+      }
+
+      document.querySelectorAll('.nav-preserve-tab').forEach(function(link) {
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('tab', tabIndex);
+        link.href = url.toString();
+      });
+    }
+
+    updateNavLinks();
+    window.addEventListener('hashchange', updateNavLinks);
+  });
+</script>

@@ -9,6 +9,7 @@
   } %>
 
   <% if @active_audition_cycle.present? %>
+    <% if current_user_has_role?(@production) %>
     <!-- Active Call to Audition Info -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
@@ -97,8 +98,8 @@
               <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.count %></p>
             </div>
             <div class="p-3 bg-gray-50 rounded-lg">
-              <p class="text-xs text-gray-600 font-medium">Sign-ups To Be Reviewed</p>
-              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.where(status: [:unreviewed, :undecided]).count %></p>
+              <p class="text-xs text-gray-600 font-medium">Sign-ups Pending Review</p>
+              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.where(status: :pending).count %></p>
             </div>
           <% elsif status == :closed && @active_audition_cycle.audition_type == 'in_person' %>
             <%
@@ -111,9 +112,9 @@
                 scheduled_auditionables = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.auditionable_type', 'auditions.auditionable_id')
                 scheduled_count = scheduled_auditionables.count
 
-                # Count accepted requests that haven't been scheduled yet
-                accepted_requests = @active_audition_cycle.audition_requests.where(status: :accepted)
-                to_be_scheduled_count = accepted_requests.reject do |req|
+                # Count approved requests that haven't been scheduled yet
+                approved_requests = @active_audition_cycle.audition_requests.where(status: :approved)
+                to_be_scheduled_count = approved_requests.reject do |req|
                   scheduled_auditionables.include?([req.requestable_type, req.requestable_id])
                 end.count
             %>
@@ -134,6 +135,7 @@
         <% end %>
       </div>
     </div>
+    <% end %>
 
     <!-- Audition Process Steps -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -148,6 +150,7 @@
 
           <div class="grid grid-cols-1 gap-12">
 
+            <% if current_user_has_role?(@production) %>
             <!-- Step 1: Prepare -->
             <%= link_to prepare_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
@@ -198,6 +201,7 @@
                   </div>
                 </div>
               </div>
+            <% end %>
             <% end %>
 
             <!-- Step 3: Review -->
@@ -257,6 +261,7 @@
               <% end %>
             <% end %>
 
+            <% if current_user_has_role?(@production) %>
             <!-- Step 5: Casting -->
             <%= link_to casting_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
@@ -300,6 +305,7 @@
                 </div>
               </div>
             <% end %>
+            <% end %>
 
           </div>
         </div>
@@ -315,6 +321,7 @@
     <% end %>
   <% end %>
 
+  <% if current_user_has_role?(@production) %>
   <!-- Past Calls to Audition -->
   <div class="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
     <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -346,4 +353,5 @@
       </div>
     <% end %>
   </div>
+  <% end %>
 </div>

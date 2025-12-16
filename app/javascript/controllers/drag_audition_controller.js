@@ -43,10 +43,6 @@ export default class extends Controller {
     const auditionId = event.currentTarget.dataset.auditionId;
     const sessionId = event.currentTarget.dataset.sessionId;
 
-    // Get the filter from the URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const filter = urlParams.get('filter') || 'to_be_scheduled';
-
     fetch("/manage/auditions/remove_from_session", {
       method: "POST",
       headers: {
@@ -55,8 +51,7 @@ export default class extends Controller {
       },
       body: JSON.stringify({
         audition_id: auditionId,
-        audition_session_id: sessionId,
-        filter: filter
+        audition_session_id: sessionId
       })
     })
       .then(response => {
@@ -102,10 +97,6 @@ export default class extends Controller {
   }
 
   moveAuditionToSession(auditionId, newSessionId) {
-    // Get the filter from the URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const filter = urlParams.get('filter') || 'to_be_scheduled';
-
     fetch("/manage/auditions/move_to_session", {
       method: "POST",
       headers: {
@@ -114,8 +105,7 @@ export default class extends Controller {
       },
       body: JSON.stringify({
         audition_id: auditionId,
-        audition_session_id: newSessionId,
-        filter: filter
+        audition_session_id: newSessionId
       })
     })
       .then(response => {
@@ -128,10 +118,6 @@ export default class extends Controller {
   }
 
   addPersonToSession(draggedItemId, droppedOnDropzoneId) {
-    // Get the filter from the URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const filter = urlParams.get('filter') || 'to_be_scheduled';
-
     fetch("/manage/auditions/add_to_session", {
       method: "POST",
       headers: {
@@ -140,8 +126,7 @@ export default class extends Controller {
       },
       body: JSON.stringify({
         audition_request_id: draggedItemId,
-        audition_session_id: droppedOnDropzoneId,
-        filter: filter
+        audition_session_id: droppedOnDropzoneId
       })
     })
       .then(response => {

@@ -5,41 +5,23 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy set_status update_audition_session_availability]
-    before_action :ensure_user_is_manager, except: %i[index show]
+    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability cast_vote votes]
+    before_action :ensure_user_is_manager, except: %i[index show cast_vote votes]
 
     def index
-      # Store the status filter
-      @filter = params[:filter] || session[:audition_requests_filter] || "all"
-      session[:audition_requests_filter] = @filter
-
-      # Process the filter
-      @audition_requests = @audition_cycle.audition_requests
-
-      case @filter
-      when "unreviewed", "undecided", "accepted", "passed"
-        @audition_requests = @audition_requests.where(status: @filter).order(:created_at)
-      when "all"
-        @audition_requests = @audition_requests.order(:created_at)
-      else
-        @filter = "all"
-        @audition_requests = @audition_requests.order(:created_at)
-      end
+      @audition_requests = @audition_cycle.audition_requests.order(:created_at)
     end
 
     def show
-      # Since an audition request starts in the "unreviewed" state, if it's being viewed,
-      # we can assume it's being reviewed, so move it to "undecided".
-      @audition_request.undecided! if @audition_request.unreviewed?
-
       # Get the requestable (Person or Group)
       @requestable = @audition_request.requestable
 
       # Get the answers
       @answers = @audition_request.answers.includes(:question)
 
-      # Get status counts for buttons
-      @status_counts = @audition_cycle.audition_requests.group(:status).count
+      # Get all votes for this request
+      @votes = @audition_request.audition_request_votes.includes(user: :person)
+      @current_user_vote = @audition_request.vote_for(Current.user)
 
       # Load availability data if enabled
       if @audition_cycle.include_availability_section
@@ -67,13 +49,13 @@ module Manage
 
     def new
       @audition_request = @audition_cycle.audition_requests.new
-      @audition_request.status = :unreviewed
+      @audition_request.status = :pending
     end
 
     def create
       @audition_request = @audition_cycle.audition_requests.new(audition_request_params)
       @audition_request.audition_cycle = @audition_cycle
-      @audition_request.status = :unreviewed
+      @audition_request.status = :pending
 
       if @audition_request.save
         redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle),
@@ -133,14 +115,30 @@ module Manage
                   notice: "Sign-up successfully deleted", status: :see_other
     end
 
-    def set_status
-      @audition_request.status = params.expect(:status)
+    def cast_vote
+      vote = @audition_request.audition_request_votes.find_or_initialize_by(user: Current.user)
+      vote.vote = params[:vote] if params[:vote].present?
+      vote.comment = params[:comment] if params.key?(:comment)
 
-      if @audition_request.save
-        redirect_back_or_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)
+      if vote.save
+        respond_to do |format|
+          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
+          format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
+          format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
+        end
       else
-        render :show, status: :unprocessable_entity
+        respond_to do |format|
+          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
+          format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
+          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
+        end
       end
+    end
+
+    def votes
+      @votes = @audition_request.audition_request_votes.includes(user: :person).order(created_at: :desc)
     end
 
     def update_audition_session_availability

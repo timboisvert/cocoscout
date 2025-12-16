@@ -38,13 +38,26 @@ class AuditionCycle < ApplicationRecord
   end
 
   def counts
-    Rails.cache.fetch([ "audition_cycle_counts_v1", id, audition_requests.maximum(:updated_at)&.to_i ],
+    Rails.cache.fetch([ "audition_cycle_counts_v2", id, audition_requests.maximum(:updated_at)&.to_i ],
                       expires_in: 2.minutes) do
       {
-        unreviewed: audition_requests.where(status: :unreviewed).count,
-        undecided: audition_requests.where(status: :undecided).count,
-        passed: audition_requests.where(status: :passed).count,
-        accepted: audition_requests.where(status: :accepted).count
+        pending: audition_requests.where(status: :pending).count,
+        approved: audition_requests.where(status: :approved).count,
+        rejected: audition_requests.where(status: :rejected).count
+      }
+    end
+  end
+
+  def vote_summary
+    Rails.cache.fetch([ "audition_cycle_vote_summary_v2", id, AuditionRequestVote.where(audition_request_id: audition_requests.select(:id)).maximum(:updated_at)&.to_i ],
+                      expires_in: 2.minutes) do
+      total_requests = audition_requests.count
+      votes = AuditionRequestVote.where(audition_request_id: audition_requests.select(:id))
+
+      {
+        total_requests: total_requests,
+        total_votes: votes.count,
+        total_comments: votes.where.not(comment: [ nil, "" ]).count
       }
     end
   end

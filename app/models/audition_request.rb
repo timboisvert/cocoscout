@@ -6,12 +6,14 @@ class AuditionRequest < ApplicationRecord
   has_many :answers, dependent: :destroy
   has_many :auditions, dependent: :destroy
   has_many :audition_session_availabilities, as: :available_entity, dependent: :destroy
+  has_many :audition_request_votes, dependent: :destroy
 
+  # Status represents the manager's final decision on whether to give this person an audition
+  # Reviewers provide advisory votes via audition_request_votes
   enum :status, {
-    unreviewed: 0,
-    undecided: 1,
-    passed: 2,
-    accepted: 3
+    pending: 0,   # Manager hasn't made a decision yet (default)
+    approved: 1,  # Yes, give them an audition
+    rejected: 2   # No, don't give them an audition
   }
 
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
@@ -40,6 +42,23 @@ class AuditionRequest < ApplicationRecord
     Audition.joins(:audition_session)
             .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
             .exists?
+  end
+
+  # Vote helper methods
+  def vote_for(user)
+    audition_request_votes.find_by(user: user)
+  end
+
+  def vote_counts
+    @vote_counts ||= {
+      yes: audition_request_votes.yes.count,
+      no: audition_request_votes.no.count,
+      maybe: audition_request_votes.maybe.count
+    }
+  end
+
+  def votes_with_comments
+    audition_request_votes.includes(user: :person).where.not(comment: [ nil, "" ]).order(created_at: :desc)
   end
 
   private

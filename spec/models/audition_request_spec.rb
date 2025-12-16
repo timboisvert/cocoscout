@@ -56,31 +56,26 @@ RSpec.describe AuditionRequest, type: :model do
   end
 
   describe 'status enum' do
-    it 'can be unreviewed' do
-      request = create(:audition_request, status: :unreviewed)
-      expect(request.unreviewed?).to be true
+    it 'can be pending' do
+      request = create(:audition_request, status: :pending)
+      expect(request.pending?).to be true
     end
 
-    it 'can be undecided' do
-      request = create(:audition_request, :undecided)
-      expect(request.undecided?).to be true
+    it 'can be approved' do
+      request = create(:audition_request, :approved)
+      expect(request.approved?).to be true
     end
 
-    it 'can be passed' do
-      request = create(:audition_request, :passed)
-      expect(request.passed?).to be true
-    end
-
-    it 'can be accepted' do
-      request = create(:audition_request, :accepted)
-      expect(request.accepted?).to be true
+    it 'can be rejected' do
+      request = create(:audition_request, :rejected)
+      expect(request.rejected?).to be true
     end
   end
 
   describe '#display_name' do
     it "returns the person's name" do
       person = create(:person, name: 'John Doe')
-      request = create(:audition_request, person: person)
+      request = create(:audition_request, requestable: person)
 
       expect(request.display_name).to eq('John Doe')
     end

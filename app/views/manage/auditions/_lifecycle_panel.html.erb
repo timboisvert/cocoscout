@@ -9,15 +9,18 @@
     <!-- Mobile Timeline (dropdown style) -->
     <div class="md:hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="false">
       <%
-        steps = [
-          { key: :prepare, label: "Prepare", path: prepare_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "settings" },
-          { key: :publicize, label: "Publicize", path: publicize_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "megaphone" },
-          { key: :review, label: "Review", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "clipboard" }
-        ]
-        if @production.audition_cycle&.audition_type == 'in_person'
-          steps.insert(3, { key: :run, label: "Run Auditions", path: run_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "star" })
+        steps = []
+        if current_user_has_role?(@production)
+          steps << { key: :prepare, label: "Prepare", path: prepare_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "settings" }
+          steps << { key: :publicize, label: "Publicize", path: publicize_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "megaphone" }
         end
-        steps.push({ key: :communicate, label: "Casting", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "users" })
+        steps << { key: :review, label: "Review", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "clipboard" }
+        if @production.audition_cycle&.audition_type == 'in_person'
+          steps << { key: :run, label: "Run Auditions", path: run_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "star" }
+        end
+        if current_user_has_role?(@production)
+          steps << { key: :communicate, label: "Casting", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "users" }
+        end
 
         current_step_info = steps.find { |s| s[:key] == current_step } || steps.first
       %>
@@ -93,8 +96,19 @@
         <!-- Timeline line (hidden on mobile, shown on larger screens) -->
         <div class="absolute top-6 left-0 right-0 h-0.5 bg-gray-200" aria-hidden="true" style="left: 3rem; right: 3rem;"></div>
 
-        <div class="grid grid-cols-1 <%= !defined?(current_step) || current_step.nil? ? (@production.audition_cycle&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') : (@production.audition_cycle&.audition_type == 'in_person' ? 'md:grid-cols-5' : 'md:grid-cols-4') %> gap-8">
+        <%
+          # Calculate grid columns based on user role and audition type
+          has_role = current_user_has_role?(@production)
+          is_in_person = @production.audition_cycle&.audition_type == 'in_person'
+          if has_role
+            col_count = is_in_person ? 5 : 4
+          else
+            col_count = is_in_person ? 2 : 1
+          end
+        %>
+        <div class="grid grid-cols-1 md:grid-cols-<%= col_count %> gap-8">
 
+        <% if current_user_has_role?(@production) %>
         <!-- Step 1: Prepare -->
         <%= link_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :prepare %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :prepare %>">
@@ -120,6 +134,7 @@
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :publicize ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Publicize</h4>
             <p class="text-xs text-gray-500">Share sign-up link and collect applications</p>
           </div>
+        <% end %>
         <% end %>
 
         <!-- Step 3: Review -->
@@ -150,6 +165,7 @@
           <% end %>
         <% end %>
 
+        <% if current_user_has_role?(@production) %>
         <!-- Step 5: Casting -->
         <%= link_to casting_manage_production_audition_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :communicate %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :communicate %>">
@@ -162,6 +178,7 @@
             <p class="text-xs text-gray-500">Manage cast decisions and notify applicants</p>
             </div>
           <% end %>
+        <% end %>
         </div>
       </div>
     </div>

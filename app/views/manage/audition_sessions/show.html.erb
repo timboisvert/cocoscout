@@ -1,114 +1,88 @@
-<% content_for :title, "Schedule an In-person Session" %>
-
+<% content_for :title, "Audition Session" %>
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)]
+    ],
+    text: "#{@audition_session.start_at.strftime("%b %-d, %Y at %-l:%M %p")}",
+    links: []
+  } %>
 
+  <div class="space-y-1 mb-4">
+    <% if @auditions.any? %>
+      <% @auditions.each do |audition| %>
+        <% requestable = audition.audition_request&.requestable %>
+        <% vote_counts = audition.vote_counts if current_user_can_review?(@production) %>
 
-  <% if @audition.nil? %>
+        <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition_session, audition),
+            class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200",
+            data: { turbo_prefetch: false } do %>
 
-    <%= render partial: "shared/top_menu", locals: {
-        breadcrumbs: [
-          ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)]
-        ],
-        text: "#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}",
-        links: []
-      }
-    %>
-
-    <div class="w-full h-full flex items-center justify-center text-center text-sm text-gray-500" style="min-height: 60vh;">
-      Select an auditionee below to view their Sign-up
-    </div>
-
-  <% else %>
-
-    <%= render partial: "shared/top_menu", locals: {
-        breadcrumbs: [
-          ["Auditions", manage_production_auditions_path(@production)],
-          ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)],
-          ["#{@audition_session.start_at.strftime("%-m/%-d/%Y at %-l:%M %p")}", manage_production_audition_cycle_audition_session_path(@production, @audition_cycle, @audition_session)]
-        ],
-        text: "#{@requestable.name}",
-        links: []
-      }
-    %>
-
-    <div class="w-full" data-controller="tabs">
-      <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
-        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Profile</button>
-        <% if @requestable.is_a?(Person) %>
-          <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
-        <% end %>
-        <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
-      </nav>
-
-      <div data-tabs-target="panel">
-        <% if @requestable.is_a?(Person) %>
-          <%= render "shared/person_card", person: @requestable, show_public_profile_link: false %>
-        <% else %>
-          <%= render "shared/group_card", group: @requestable, show_public_profile_link: false %>
-        <% end %>
-      </div>
-
-      <% if @requestable.is_a?(Person) %>
-        <div data-tabs-target="panel" class="hidden">
-          <% resume_preview = @requestable.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
-          <% if resume_preview %>
-            <div class="w-full">
-              <%= image_tag resume_preview, class: "object-contain" %>
-            </div>
-          <% else %>
-            <p class="text-left text-gray-500 text-sm">No resume found</p>
-          <% end %>
-        </div>
-      <% end %>
-
-      <div data-tabs-target="panel" class="hidden">
-        <% if @answers.any? %>
-          <div class="mt-2">
-            <%= render "manage/audition_requests/answers", answers: @answers %>
-          </div>
-        <% else %>
-          <p class="text-left text-gray-500 text-sm">No sign-up questions answered</p>
-        <% end %>
-      </div>
-
-    </div>
-
-  <% end %>
-
-</div>
-
-<%# Bottom Navigation Bar %>
-<div class="fixed bottom-0 left-0 w-full lg:h-[84px] bg-white text-pink-500 p-2 pb-1 border-t-4 border-pink-500 lg:pl-56">
-
-  <div class="flex justify-start lg:justify-center gap-1 flex-wrap">
-      <% @audition_session.auditions.each do |audition| %>
-        <% auditionable = audition.auditionable %>
-        <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @production.audition_cycle, @audition_session, audition), class: "flex flex-col items-center rounded-lg" do %>
-          <div
-            data-controller="tooltip"
-            data-tooltip-text="<%= auditionable.name.truncate(40, omission: "...") %>"
-          >
-            <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
-            <% if headshot_url %>
-              <%= image_tag headshot_url, alt: auditionable.name, class: "w-12 h-12 lg:w-16 lg:h-16 rounded-lg object-cover" %>
-            <% elsif auditionable.is_a?(Person) %>
-              <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
-                <%= auditionable.initials %>
+          <%# Left Section: Headshot & Name (50%) %>
+          <div class="w-1/2 flex items-center gap-4">
+            <% if requestable.present? %>
+              <div class="flex-shrink-0">
+                <% headshot_url = safe_headshot_url(requestable) %>
+                <% if headshot_url %>
+                  <%= image_tag headshot_url, class: "relative inline-block h-12 w-12 !rounded-lg object-cover object-center" %>
+                <% else %>
+                  <% if requestable.is_a?(Person) %>
+                    <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold">
+                      <%= requestable.initials %>
+                    </div>
+                  <% else %>
+                    <%# Group without headshot %>
+                    <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900 truncate">
+                  <%= truncate(requestable.name, length: 50, omission: "...") %>
+                </div>
               </div>
             <% else %>
-              <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-lg bg-gray-300 flex items-center justify-center text-white font-bold text-xs lg:text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                </svg>
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center text-gray-600 font-bold">
+                  ?
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-500">[Deleted]</div>
               </div>
             <% end %>
           </div>
+
+          <%# Right Section: Vote Counts in thirds (50%) %>
+          <% if current_user_can_review?(@production) %>
+            <div class="w-1/2 border-l border-gray-200 pl-4 grid grid-cols-3 items-center divide-x divide-gray-200">
+              <div class="text-center px-2">
+                <div class="text-xs text-gray-400 uppercase tracking-wide">Yes</div>
+                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:yes] %></div>
+              </div>
+              <div class="text-center px-2">
+                <div class="text-xs text-gray-400 uppercase tracking-wide">No</div>
+                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:no] %></div>
+              </div>
+              <div class="text-center px-2">
+                <div class="text-xs text-gray-400 uppercase tracking-wide">Not Sure</div>
+                <div class="text-lg font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
+              </div>
+            </div>
+          <% end %>
+
         <% end %>
       <% end %>
-
+    <% else %>
+      <p class="text-gray-500 text-sm pt-2">
+        No one is scheduled for this audition session yet.
+      </p>
+    <% end %>
   </div>
-
-
 </div>

@@ -22,7 +22,7 @@ RSpec.describe 'My::AuditionRequests', type: :system do
                               finalize_audition_invitations: true)
     end
     let!(:audition_request) do
-      create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed)
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :pending)
     end
 
     it 'displays the audition request' do
@@ -53,24 +53,24 @@ RSpec.describe 'My::AuditionRequests', type: :system do
                               finalize_audition_invitations: true)
     end
 
-    it 'shows unreviewed status' do
-      create(:audition_request, person: person, audition_cycle: audition_cycle, status: :unreviewed)
+    it 'shows pending status' do
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :pending)
 
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
       expect(page).to have_content('Awaiting Review')
     end
 
-    it 'shows passed status' do
-      create(:audition_request, person: person, audition_cycle: audition_cycle, status: :passed)
+    it 'shows rejected status' do
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :rejected)
 
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
       expect(page).to have_content('No Audition Offered')
     end
 
-    it 'shows accepted status' do
-      create(:audition_request, person: person, audition_cycle: audition_cycle, status: :accepted)
+    it 'shows approved status' do
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :approved)
 
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
@@ -83,8 +83,8 @@ RSpec.describe 'My::AuditionRequests', type: :system do
       create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true,
                               finalize_audition_invitations: true)
     end
-    let!(:request1) { create(:audition_request, person: person, audition_cycle: call2) }
-    let!(:request2) { create(:audition_request, person: person, audition_cycle: call2) }
+    let!(:request1) { create(:audition_request, requestable: person, audition_cycle: call2) }
+    let!(:request2) { create(:audition_request, requestable: person, audition_cycle: call2) }
 
     it 'displays all audition requests' do
       sign_in_as_person(user, person)
@@ -97,7 +97,7 @@ RSpec.describe 'My::AuditionRequests', type: :system do
   describe 'with answers to questions' do
     let!(:audition_cycle) { create(:audition_cycle, production: production) }
     let!(:question) { create(:question, questionable: audition_cycle, text: 'What is your favorite role?') }
-    let!(:audition_request) { create(:audition_request, person: person, audition_cycle: audition_cycle) }
+    let!(:audition_request) { create(:audition_request, requestable: person, audition_cycle: audition_cycle) }
     let!(:answer) { create(:answer, audition_request: audition_request, question: question, value: 'Elphaba') }
 
     it 'allows viewing submitted answers' do

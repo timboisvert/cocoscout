@@ -19,10 +19,12 @@ module Manage
     end
 
     def show
-      return unless @audition.present?
+      @auditions = @audition_session.auditions.includes(audition_request: :requestable).order(:id)
 
-      @requestable = @audition_request.requestable
-      @answers = @audition_request.answers.includes(:question)
+      if @audition.present?
+        @requestable = @audition_request.requestable
+        @answers = @audition_request.answers.includes(:question)
+      end
     end
 
     def new

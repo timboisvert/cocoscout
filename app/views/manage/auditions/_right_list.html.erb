@@ -1,34 +1,69 @@
-<div id="right_list" class="p-4 space-y-2 overflow-y-auto flex-1">
+<div id="right_list" class="p-2 space-y-1 overflow-y-auto flex-1">
   <% if available_people.any? %>
     <% available_people.each do |request| %>
       <% requestable = request.requestable %>
       <% scheduled = scheduled_auditionables&.include?([request.requestable_type, request.requestable_id]) %>
-      <div class="bg-white p-3 rounded border border-gray-300 shadow-sm cursor-move hover:shadow-md transition text-sm flex items-center gap-3 <%= 'opacity-40' if scheduled %>"
+      <% vote_counts = request.vote_counts %>
+      <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200 cursor-move <%= 'opacity-40' if scheduled %>"
            draggable="true"
            data-id="<%= request.id %>"
            data-action="dragstart->drag-audition#dragStart dragend->drag-audition#dragEnd">
-        <% headshot_url = safe_headshot_url(requestable) %>
-        <% if headshot_url %>
-          <%= image_tag headshot_url, alt: requestable.name, class: "w-10 h-10 rounded object-cover pointer-events-none" %>
-        <% else %>
-          <div class="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-xs font-bold pointer-events-none">
-            <% if requestable.is_a?(Person) %>
-              <%= requestable.initials %>
-            <% else %>
-              <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
-              </svg>
-            <% end %>
+
+        <%# Left Section: Headshot & Name (50%) %>
+        <div class="w-1/2 flex items-center gap-3 pointer-events-none">
+          <% if requestable.present? %>
+            <div class="flex-shrink-0">
+              <% headshot_url = safe_headshot_url(requestable) %>
+              <% if headshot_url %>
+                <%= image_tag headshot_url, class: "h-10 w-10 rounded-lg object-cover" %>
+              <% else %>
+                <% if requestable.is_a?(Person) %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-sm">
+                    <%= requestable.initials %>
+                  </div>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm <%= scheduled ? 'text-gray-400' : 'text-gray-900' %> truncate">
+                <%= requestable.name %>
+              </div>
+            </div>
+          <% else %>
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center text-gray-600 font-bold">?</div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm text-gray-500">[Deleted]</div>
+            </div>
+          <% end %>
+        </div>
+
+        <%# Right Section: Vote Counts in thirds (50%) %>
+        <div class="w-1/2 border-l border-gray-200 pl-3 grid grid-cols-3 items-center divide-x divide-gray-200 pointer-events-none">
+          <div class="text-center px-1">
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">Yes</div>
+            <div class="text-base font-bold text-pink-600"><%= vote_counts[:yes] %></div>
           </div>
-        <% end %>
-        <div class="font-medium <%= scheduled ? 'text-gray-400' : 'text-gray-900' %> pointer-events-none"><%= requestable.name %></div>
+          <div class="text-center px-1">
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">No</div>
+            <div class="text-base font-bold text-pink-600"><%= vote_counts[:no] %></div>
+          </div>
+          <div class="text-center px-1">
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">Not Sure</div>
+            <div class="text-base font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
+          </div>
+        </div>
+
       </div>
     <% end %>
   <% else %>
-    <% if filter.blank? || filter == "to_be_scheduled" %>
-      <p class="text-gray-500 text-sm">All accepted sign-ups have been scheduled</p>
-    <% else %>
-      <p class="text-gray-500 text-sm">No sign-ups</p>
-    <% end %>
+    <p class="text-gray-500 text-sm">No sign-ups yet</p>
   <% end %>
 </div>

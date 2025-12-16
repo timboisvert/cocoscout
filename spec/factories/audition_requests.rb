@@ -3,23 +3,19 @@
 FactoryBot.define do
   factory :audition_request do
     association :audition_cycle
-    association :person
-    status { :unreviewed }
+    association :requestable, factory: :person
+    status { :pending }
 
     trait :with_video do
       video_url { 'https://youtube.com/watch?v=abc123' }
     end
 
-    trait :undecided do
-      status { :undecided }
+    trait :approved do
+      status { :approved }
     end
 
-    trait :passed do
-      status { :passed }
-    end
-
-    trait :accepted do
-      status { :accepted }
+    trait :rejected do
+      status { :rejected }
     end
   end
 end

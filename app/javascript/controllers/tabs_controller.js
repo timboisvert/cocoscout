@@ -28,6 +28,9 @@ export default class extends Controller {
         }
 
         this.show(initialTab);
+
+        // Update the URL hash to match the initial tab
+        history.replaceState(null, '', `#tab-${initialTab}`);
     }
 
     select(e) {

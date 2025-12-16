@@ -16,6 +16,31 @@ module ApplicationHelper
     end
   end
 
+  def current_user_can_review?(production = nil)
+    return false unless Current.user
+
+    production ||= Current.production
+    return false unless production
+
+    # Managers/viewers can always review
+    return true if Current.user.role_for_production(production).present?
+
+    # Check if user has reviewer access to any active audition cycle
+    production.audition_cycles.where(active: true).any? do |cycle|
+      Current.user.can_review_audition_cycle?(cycle)
+    end
+  end
+
+  # Check if user has a role (manager/viewer) on the production, not just review access
+  def current_user_has_role?(production = nil)
+    return false unless Current.user
+
+    production ||= Current.production
+    return false unless production
+
+    Current.user.role_for_production(production).present?
+  end
+
   def current_user_is_global_manager?
     return false unless Current.user
 

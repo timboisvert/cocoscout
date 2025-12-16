@@ -12,18 +12,64 @@
     links: []
   } %>
 
+  <%# Hero Section with Headshot, Name, Email, Profile Link %>
+  <div class="flex items-center gap-4 mb-6">
+    <% headshot_variant = @person.safe_headshot_variant(:thumb) %>
+    <% if headshot_variant %>
+      <%= image_tag headshot_variant, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold flex-shrink-0">
+        <%= @person.initials %>
+      </div>
+    <% end %>
+    <div class="flex-1 min-w-0">
+      <div class="font-bold text-xl text-gray-900 truncate"><%= @person.name %></div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+        <% if @person.email.present? %>
+          <%= link_to @person.email, "mailto:#{@person.email}", class: "text-pink-500 hover:underline" %>
+        <% end %>
+        <% if @person.public_key.present? %>
+          <%= link_to public_profile_path(@person.public_key), target: "_blank", class: "inline-flex items-center gap-1 text-pink-500 hover:underline" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+            Public Profile
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
   <div class="w-full" data-controller="tabs">
     <nav class="flex space-x-2 border-b border-gray-200 mb-4">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Messages</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Headshots</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Messages</button>
     </nav>
 
+    <%# Profile Tab %>
     <div data-tabs-target="panel">
-      <%= render "shared/person_card", person: @person %>
+      <%= render "manage/people/profile_tab", person: @person %>
     </div>
 
+    <%# Headshots Tab %>
+    <div data-tabs-target="panel" class="hidden">
+      <% if @person.profile_headshots.any? %>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <% @person.profile_headshots.each do |headshot| %>
+            <% if headshot.image.attached? %>
+              <%= image_tag url_for(headshot.image), class: "rounded-lg w-full object-cover" %>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-left text-gray-500 text-sm">No headshots uploaded</p>
+      <% end %>
+    </div>
+
+    <%# Resume Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
       <% if resume_preview %>
@@ -35,6 +81,7 @@
       <% end %>
     </div>
 
+    <%# Availability Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% if @shows.empty? %>
         <p class="text-left text-gray-500 text-sm">No upcoming shows found for this person's productions.</p>
@@ -61,11 +108,11 @@
       <% end %>
     </div>
 
+    <%# Messages Tab %>
     <div data-tabs-target="panel" class="hidden">
       <%= render "shared/email_inbox", email_logs: @email_logs, email_logs_pagy: @email_logs_pagy, entity: @person, search_query: @search_messages_query %>
     </div>
 
   </div>
-
 
 </div>

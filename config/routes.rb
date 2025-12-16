@@ -324,12 +324,17 @@ Rails.application.routes.draw do
           member do
             get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
             get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
-            post  "set_status/:status", to: "audition_requests#set_status",   as: "set_status"
             patch "update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_audition_session_availability"
+            post  "cast_vote",          to: "audition_requests#cast_vote",    as: "cast_vote"
+            get   "votes",              to: "audition_requests#votes",        as: "votes"
           end
         end
         resources :audition_sessions do
-          resources :auditions, only: [ :show ], to: "audition_sessions#show"
+          resources :auditions, only: [ :show ] do
+            member do
+              post "cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote"
+            end
+          end
         end
         member do
           get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"

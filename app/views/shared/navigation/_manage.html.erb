@@ -7,43 +7,61 @@
       <% if Current.production.present? && !Current.production.new_record? %>
 
         <%
-        links = [
-          {
-            label: "Home",
-            path: manage_path(Current.production),
-            active: controller_name == "productions"
-          },
-          {
-            label: "Shows & Events",
-            path: manage_production_shows_path(Current.production),
-            active: ["shows", "vacancies"].include?(controller_name)
-          },
-          {
-            label: "Availability",
-            path: manage_production_availability_index_path(Current.production),
-            active: controller_name == "availability"
-          },
-          {
-            label: "Casting & Roles",
-            path: manage_production_casting_path(Current.production),
-            active: ["casting", "roles", "talent_pools"].include?(controller_name)
-          },
-          {
-            label: "Auditions",
-            path: manage_production_auditions_path(Current.production),
-            active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
-          },
-          {
-            label: "Questionnaires",
-            path: manage_production_questionnaires_path(Current.production),
-            active: controller_name == "questionnaires"
-          },
-          {
-            label: "Directory",
-            path: manage_directory_path,
-            active: ["directory", "people", "groups"].include?(controller_name)
-          }
-        ]
+        # Check if user has production team access (not just reviewer access)
+        has_team_access = Current.user.role_for_production(Current.production).present?
+
+        # Build links based on access level
+        links = []
+
+        if has_team_access
+          # Full navigation for production team members
+          links = [
+            {
+              label: "Home",
+              path: manage_path(Current.production),
+              active: controller_name == "productions"
+            },
+            {
+              label: "Shows & Events",
+              path: manage_production_shows_path(Current.production),
+              active: ["shows", "vacancies"].include?(controller_name)
+            },
+            {
+              label: "Availability",
+              path: manage_production_availability_index_path(Current.production),
+              active: controller_name == "availability"
+            },
+            {
+              label: "Casting & Roles",
+              path: manage_production_casting_path(Current.production),
+              active: ["casting", "roles", "talent_pools"].include?(controller_name)
+            },
+            {
+              label: "Auditions",
+              path: manage_production_auditions_path(Current.production),
+              active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+            },
+            {
+              label: "Questionnaires",
+              path: manage_production_questionnaires_path(Current.production),
+              active: controller_name == "questionnaires"
+            },
+            {
+              label: "Directory",
+              path: manage_directory_path,
+              active: ["directory", "people", "groups"].include?(controller_name)
+            }
+          ]
+        else
+          # Limited navigation for reviewer-only users
+          links = [
+            {
+              label: "Auditions",
+              path: manage_production_auditions_path(Current.production),
+              active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+            }
+          ]
+        end
         %>
 
         <% links.each do |item| %>

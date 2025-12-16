@@ -9,6 +9,8 @@ class User < ApplicationRecord
   has_many :organizations, through: :organization_roles
   has_many :production_permissions, dependent: :destroy
   has_many :email_logs, dependent: :destroy
+  has_many :audition_request_votes, dependent: :destroy
+  has_many :audition_votes, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false },
@@ -49,16 +51,18 @@ class User < ApplicationRecord
     role = default_role
     # User has access if they have manager/viewer role, OR if they have "member" role with per-production permissions
     return true if %w[manager viewer].include?(role)
-    return false if role.nil?
 
-    # If role is "member", check if they have any production-specific permissions
+    # Check for production-specific permissions
     if role == "member"
-      production_permissions.joins(:production)
-                            .where(productions: { organization_id: Current.organization.id })
-                            .exists?
-    else
-      false
+      return true if production_permissions.joins(:production)
+                                           .where(productions: { organization_id: Current.organization.id })
+                                           .exists?
     end
+
+    # Check if user is a reviewer for any active audition cycle in the org
+    return true if reviewer_for_any_active_audition_cycle?
+
+    false
   end
 
   # Returns the effective role for a specific production
@@ -95,11 +99,85 @@ class User < ApplicationRecord
     if %w[manager viewer].include?(role)
       Current.organization.productions.includes(logo_attachment: :blob)
     else
-      # Otherwise, only return productions they have specific permissions for
-      production_ids = production_permissions.where(
+      # Combine production permissions and reviewer access
+      permission_production_ids = production_permissions.where(
         production_id: Current.organization.productions.pluck(:id)
       ).pluck(:production_id)
-      Current.organization.productions.where(id: production_ids).includes(logo_attachment: :blob)
+
+      reviewer_production_ids = productions_with_reviewer_access.pluck(:id)
+
+      all_production_ids = (permission_production_ids + reviewer_production_ids).uniq
+      Current.organization.productions.where(id: all_production_ids).includes(logo_attachment: :blob)
+    end
+  end
+
+  # Returns productions where user is a reviewer for an active audition cycle
+  def productions_with_reviewer_access
+    return Production.none unless person
+    return Production.none unless Current.organization
+
+    # Collect all production IDs where user has reviewer access
+    production_ids = []
+
+    # 1. Productions where user is explicitly listed as a reviewer
+    specific_reviewer_ids = Production.joins(audition_cycles: :audition_reviewers)
+                                      .where(organization_id: Current.organization.id)
+                                      .where(audition_cycles: { active: true })
+                                      .where(audition_reviewers: { person_id: person.id })
+                                      .pluck(:id)
+    production_ids.concat(specific_reviewer_ids)
+
+    # 2. Productions where reviewer_access_type is 'all' and user is in talent pool
+    talent_pool_production_ids = person.talent_pool_productions
+                                       .where(organization_id: Current.organization.id)
+                                       .joins(:audition_cycles)
+                                       .where(audition_cycles: { active: true, reviewer_access_type: "all" })
+                                       .pluck(:id)
+    production_ids.concat(talent_pool_production_ids)
+
+    # 3. Productions where reviewer_access_type is 'managers' and user has production team access
+    team_production_ids = productions_with_team_access
+                          .where(organization_id: Current.organization.id)
+                          .joins(:audition_cycles)
+                          .where(audition_cycles: { active: true, reviewer_access_type: "managers" })
+                          .pluck(:id)
+    production_ids.concat(team_production_ids)
+
+    Production.where(id: production_ids.uniq)
+  end
+
+  # Check if user is a reviewer for any active audition cycle in the current org
+  def reviewer_for_any_active_audition_cycle?
+    productions_with_reviewer_access.exists?
+  end
+
+  # Check if user can review a specific audition cycle
+  def can_review_audition_cycle?(audition_cycle)
+    return false unless audition_cycle
+    return true if role_for_production(audition_cycle.production).present?
+
+    case audition_cycle.reviewer_access_type
+    when "managers"
+      # Only production team members (managers/viewers) - already checked above
+      false
+    when "all"
+      # Anyone in the talent pool
+      person&.in_talent_pool_for?(audition_cycle.production)
+    when "specific"
+      # Only specific reviewers
+      person && audition_cycle.reviewer_people.include?(person)
+    else
+      false
+    end
+  end
+
+  # Helper: productions where user has team access (global or production-specific)
+  def productions_with_team_access
+    role = default_role
+    if %w[manager viewer].include?(role)
+      Current.organization.productions
+    else
+      Production.where(id: production_permissions.select(:production_id))
     end
   end
 

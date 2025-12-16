@@ -61,13 +61,11 @@ module MyHelper
     end
 
     case audition_request.status
-    when "unreviewed"
+    when "pending"
       "Your sign-up is awaiting review"
-    when "undecided"
-      "Your sign-up has been reviewed, but no decision has been made yet"
-    when "passed"
+    when "rejected"
       "Unfortunately, you have not been offered an audition for this production"
-    when "accepted"
+    when "approved"
       "Congratulations! You have been offered an audition for this production"
     end
   end
@@ -83,10 +81,10 @@ module MyHelper
       end
 
       case audition_request.status
-      when "accepted"
+      when "approved"
         return '<div class="bg-pink-500 text-white px-2 py-1 text-sm rounded-lg">Cast Spot Offered</div>'.html_safe
       else
-        # unreviewed, undecided, or passed all become "No Cast Spot Offered"
+        # pending or rejected all become "No Cast Spot Offered"
         return '<div class="bg-red-500 text-white px-2 py-1 text-sm rounded-lg">No Cast Spot Offered</div>'.html_safe
       end
 
@@ -100,13 +98,11 @@ module MyHelper
     end
 
     case audition_request.status
-    when "unreviewed"
+    when "pending"
       '<div class="bg-black text-white px-2 py-1 text-sm rounded-lg">Awaiting Review</div>'.html_safe
-    when "undecided"
-      '<div class="bg-black text-white px-2 py-1 text-sm rounded-lg">In Review</div>'.html_safe
-    when "passed"
+    when "rejected"
       '<div class="bg-red-500 text-white px-2 py-1 text-sm rounded-lg">No Cast Spot Offered</div>'.html_safe
-    when "accepted"
+    when "approved"
       '<div class="bg-pink-500 text-white px-2 py-1 text-sm rounded-lg">Cast Spot Offered</div>'.html_safe
     end
   end
@@ -138,13 +134,11 @@ module MyHelper
     end
 
     case audition_request.status
-    when "unreviewed"
+    when "pending"
       "Your video audition is awaiting review"
-    when "undecided"
-      "Your video audition has been reviewed, but no decision has been made yet"
-    when "passed"
+    when "rejected"
       "Unfortunately, you have not been offered a cast spot for this production"
-    when "accepted"
+    when "approved"
       "Congratulations! You have been offered a cast spot for this production"
     end
   end
