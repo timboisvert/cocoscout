@@ -1,0 +1,105 @@
+<% content_for :title, "All Votes" %>
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
+      [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
+      [@audition_request.requestable&.name&.truncate(20) || "Sign-up", manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
+    ],
+    text: "All Votes",
+    links: []
+  } %>
+
+  <% vote_counts = @audition_request.vote_counts %>
+  <div class="mb-6 flex items-center gap-4">
+    <span class="text-sm text-gray-500">Vote Summary:</span>
+    <div class="flex gap-4 text-sm">
+      <span class="px-3 py-1 bg-green-100 text-green-700 rounded-lg font-medium">Yes: <%= vote_counts[:yes] %></span>
+      <span class="px-3 py-1 bg-red-100 text-red-700 rounded-lg font-medium">No: <%= vote_counts[:no] %></span>
+      <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg font-medium">Not Sure: <%= vote_counts[:maybe] %></span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left side: Name-Vote combos -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Reviewer Votes</h3>
+      </div>
+      <div class="p-4">
+        <% if @votes.any? %>
+          <div class="space-y-3">
+            <% @votes.each do |vote| %>
+              <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                <div class="flex items-center gap-3">
+                  <% person = vote.user.person %>
+                  <% if person %>
+                    <% headshot_url = person.profile_headshots.first&.file&.attached? ? url_for(person.profile_headshots.first.file.variant(:thumb)) : nil %>
+                    <% if headshot_url %>
+                      <%= image_tag headshot_url, class: "w-8 h-8 rounded-full object-cover" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
+                      ?
+                    </div>
+                  <% end %>
+                  <span class="font-medium text-gray-900"><%= person&.name || vote.user.email_address %></span>
+                </div>
+                <div>
+                  <% case vote.vote %>
+                  <% when "yes" %>
+                    <span class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm font-medium">Yes</span>
+                  <% when "no" %>
+                    <span class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-medium">No</span>
+                  <% when "maybe" %>
+                    <span class="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm font-medium">Not Sure</span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm">No votes yet</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Right side: All comments -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Comments</h3>
+      </div>
+      <div class="p-4">
+        <% votes_with_comments = @votes.select { |v| v.comment.present? } %>
+        <% if votes_with_comments.any? %>
+          <div class="space-y-4">
+            <% votes_with_comments.each do |vote| %>
+              <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="font-medium text-gray-900 text-sm"><%= vote.user.person&.name || vote.user.email_address %></span>
+                  <% case vote.vote %>
+                  <% when "yes" %>
+                    <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Yes</span>
+                  <% when "no" %>
+                    <span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">No</span>
+                  <% when "maybe" %>
+                    <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">Not Sure</span>
+                  <% end %>
+                </div>
+                <p class="text-gray-700 text-sm"><%= vote.comment %></p>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm">No comments yet</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

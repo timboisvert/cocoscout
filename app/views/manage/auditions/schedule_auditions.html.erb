@@ -13,6 +13,16 @@
 
   <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
 
+  <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-base font-semibold text-gray-700">Schedule Auditions</p>
+        <p class="text-sm text-gray-600">Drag each person from the right to a session on the left to schedule them.</p>
+      </div>
+      <%= render partial: "shared/button", locals: { text: "Done Scheduling Auditions", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+    </div>
+  </div>
+
   <div class="flex gap-6">
     <!-- Sessions on the left (smaller) -->
     <div class="w-1/2">

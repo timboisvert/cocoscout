@@ -98,15 +98,20 @@
                     <%= request.created_at.strftime("%b %-d, %Y") %>
                   </p>
                 </div>
-                <% if request.status.present? %>
-                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%=
-                    case request.status
-                    when 'accepted' then 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
-                    when 'passed' then 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
-                    else 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10'
-                    end
-                  %>">
-                    <%= request.status == 'accepted' ? 'Yes' : (request.status == 'passed' ? 'No' : request.status.titleize) %>
+                <% # Check if they were scheduled for an audition or cast %>
+                <% was_scheduled = request.auditions.exists? %>
+                <% was_cast = CastAssignmentStage.exists?(audition_cycle_id: @audition_cycle.id, assignable: request.requestable) %>
+                <% if was_cast %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                    Cast
+                  </span>
+                <% elsif was_scheduled %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20">
+                    Auditioned
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                    Not Scheduled
                   </span>
                 <% end %>
               </div>

@@ -224,18 +224,32 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <% requests.each do |request| %>
+              <%
+                # Determine status based on scheduling (in_person) or casting (video_upload)
+                cycle = request.audition_cycle
+                if cycle.audition_type == 'video_upload'
+                  if request.cast_assignment_stages.any?
+                    status_text = "Selected"
+                    status_class = "bg-green-100 text-green-800"
+                  else
+                    status_text = "Submitted"
+                    status_class = "bg-blue-100 text-blue-800"
+                  end
+                else
+                  if request.auditions.any?
+                    status_text = "Scheduled"
+                    status_class = "bg-green-100 text-green-800"
+                  else
+                    status_text = "Submitted"
+                    status_class = "bg-blue-100 text-blue-800"
+                  end
+                end
+              %>
               <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-sm text-gray-900"><%= request.audition_cycle.production.name %></td>
                 <td class="px-4 py-3 text-sm">
-                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                    <%= case request.status
-                        when 'submitted' then 'bg-blue-100 text-blue-800'
-                        when 'reviewed' then 'bg-purple-100 text-purple-800'
-                        when 'scheduled' then 'bg-green-100 text-green-800'
-                        when 'rejected' then 'bg-red-100 text-red-800'
-                        else 'bg-gray-100 text-gray-600'
-                        end %>">
-                    <%= request.status&.titleize || "Unknown" %>
+                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= status_class %>">
+                    <%= status_text %>
                   </span>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-600"><%= request.created_at&.strftime("%b %d, %Y") %></td>

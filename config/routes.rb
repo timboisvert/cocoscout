@@ -346,6 +346,7 @@ Rails.application.routes.draw do
           post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
           patch  "archive",           to: "audition_cycles#archive",           as: "archive"
           get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
+          patch  "toggle_voting",     to: "audition_cycles#toggle_voting",     as: "toggle_voting"
           get    "prepare",           to: "auditions#prepare",                   as: "prepare"
           patch  "update_reviewers",  to: "auditions#update_reviewers",          as: "update_reviewers"
           get    "publicize",         to: "auditions#publicize",                 as: "publicize"

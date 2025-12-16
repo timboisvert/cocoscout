@@ -10,6 +10,57 @@
     links: []
   } %>
 
+  <% if current_user_has_role?(@production) %>
+    <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex-shrink-0">
+            <% if @audition_cycle.audition_voting_enabled %>
+              <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+            <% else %>
+              <span class="relative flex h-3 w-3">
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400"></span>
+              </span>
+            <% end %>
+          </div>
+          <div>
+            <p class="text-base font-semibold <%= @audition_cycle.audition_voting_enabled ? 'text-green-700' : 'text-gray-700' %>">
+              Voting is <%= @audition_cycle.audition_voting_enabled ? 'live' : 'paused' %>
+            </p>
+            <p class="text-sm text-gray-600">
+              <% if @audition_cycle.audition_voting_enabled %>
+                <%= @audition_cycle.reviewer_count %> <%= 'reviewer'.pluralize(@audition_cycle.reviewer_count) %> can vote
+              <% else %>
+                Voting bar is hidden
+              <% end %>
+            </p>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer"
+               data-controller="toggle-voting"
+               data-toggle-voting-cycle-id-value="<%= @audition_cycle.id %>"
+               data-toggle-voting-enabled-value="<%= @audition_cycle.audition_voting_enabled %>"
+               data-toggle-voting-url-value="<%= toggle_voting_manage_production_audition_cycle_path(@production, @audition_cycle) %>"
+               data-toggle-voting-voting-type-value="audition">
+          <span class="text-sm font-semibold <%= @audition_cycle.audition_voting_enabled ? 'text-gray-700' : 'text-gray-400' %>">
+            <%= @audition_cycle.audition_voting_enabled ? 'Enabled' : 'Disabled' %>
+          </span>
+          <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
+            <input type="checkbox"
+                   <%= 'checked' if @audition_cycle.audition_voting_enabled %>
+                   data-action="change->toggle-voting#confirm"
+                   class="sr-only peer">
+            <div class="block w-10 h-6 rounded-full <%= @audition_cycle.audition_voting_enabled ? 'bg-pink-500' : 'bg-gray-300' %> peer-focus:ring-2 peer-focus:ring-pink-300"></div>
+            <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform <%= @audition_cycle.audition_voting_enabled ? 'translate-x-4' : 'translate-x-0' %>"></div>
+          </div>
+        </label>
+      </div>
+    </div>
+  <% end %>
+
   <div class="space-y-1 mb-4">
     <% if @auditions.any? %>
       <% @auditions.each do |audition| %>
@@ -17,7 +68,7 @@
         <% vote_counts = audition.vote_counts if current_user_can_review?(@production) %>
 
         <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition_session, audition),
-            class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200",
+            class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200",
             data: { turbo_prefetch: false } do %>
 
           <%# Left Section: Headshot & Name (50%) %>
@@ -60,7 +111,7 @@
           </div>
 
           <%# Right Section: Vote Counts in thirds (50%) %>
-          <% if current_user_can_review?(@production) %>
+          <% if current_user_can_review?(@production) && vote_counts %>
             <div class="w-1/2 border-l border-gray-200 pl-4 grid grid-cols-3 items-center divide-x divide-gray-200">
               <div class="text-center px-2">
                 <div class="text-xs text-gray-400 uppercase tracking-wide">Yes</div>

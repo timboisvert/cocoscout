@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_15_200002) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_16_171348) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -62,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_15_200002) do
   create_table "audition_cycles", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "audition_type", default: "in_person", null: false
+    t.boolean "audition_voting_enabled", default: true, null: false
     t.text "availability_show_ids"
     t.datetime "casting_finalized_at"
     t.datetime "closes_at"
@@ -79,6 +80,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_15_200002) do
     t.text "success_text"
     t.string "token"
     t.datetime "updated_at", null: false
+    t.boolean "voting_enabled", default: true, null: false
     t.index ["production_id", "active"], name: "index_audition_cycles_on_production_id_and_active", unique: true, where: "active = true"
     t.index ["production_id"], name: "index_audition_cycles_on_production_id"
   end

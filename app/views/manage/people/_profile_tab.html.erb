@@ -1,0 +1,76 @@
+<%# Profile tab content for manage/people show page %>
+<%# Shows profile info without headshot (moved to Headshots tab) and without email (in hero) %>
+
+<% if person.nil? %>
+  <div class="p-6 text-center text-gray-500">
+    <p>This person is no longer available.</p>
+  </div>
+<% else %>
+  <div class="">
+    <div class="flex flex-col lg:flex-row items-start lg:space-x-6">
+      <div class="flex-1 w-full">
+        <%# Pronouns (name is in hero now) %>
+        <% if person.pronouns.present? %>
+          <div class="text-gray-500 text-sm mb-4">Pronouns: <%= person.pronouns %></div>
+        <% end %>
+
+        <%# Socials Box (email is in hero now) %>
+        <% if person.socials.any? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Socials</h3>
+            </div>
+            <div class="p-4">
+              <div class="space-y-1">
+                <% person.socials.each do |social| %>
+                  <div class="flex items-center space-x-2">
+                    <%= social.icon(20) %>
+                    <%= link_to social.handle, social.url, class: "text-pink-500 text-sm hover:underline", target: "_blank", rel: "noopener" %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <% if current_user_can_manage? || Current.user&.superadmin? %>
+          <%# Organization Box %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organization</h3>
+            </div>
+            <div class="p-4">
+              <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
+                <%= link_to "Remove from #{Current.organization.name}",
+                    remove_from_organization_manage_person_path(person),
+                    data: {
+                      turbo_method: :post,
+                      turbo_confirm: "Are you sure you want to remove #{person.name} from #{Current.organization.name}?"
+                    },
+                    class: "text-sm text-pink-500 hover:underline"
+                %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if Current.user&.superadmin? %>
+          <%# Superadmin Actions Box %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Superadmin Actions</h3>
+            </div>
+            <div class="p-4 space-y-2">
+              <% if person.user %>
+                <%= button_to impersonate_user_path, method: :post, params: { email: person.user.email_address }, class: "text-sm text-pink-500 hover:underline cursor-pointer" do %>
+                  Impersonate
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+  </div>
+<% end %>

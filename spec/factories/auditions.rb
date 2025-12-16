@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :audition do
-    association :person
+    association :auditionable, factory: :person
     association :audition_request
     association :audition_session
   end

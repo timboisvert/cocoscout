@@ -49,13 +49,11 @@ module Manage
 
     def new
       @audition_request = @audition_cycle.audition_requests.new
-      @audition_request.status = :pending
     end
 
     def create
       @audition_request = @audition_cycle.audition_requests.new(audition_request_params)
       @audition_request.audition_cycle = @audition_cycle
-      @audition_request.status = :pending
 
       if @audition_request.save
         redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle),

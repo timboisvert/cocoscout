@@ -103,7 +103,8 @@
     </div>
   </div>
 
-  <!-- Section 1.5: Audition Availability -->
+  <!-- Section 1.5: Audition Availability (only for in-person auditions) -->
+  <% unless @audition_cycle.audition_type == "video_upload" %>
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:audition_availability_open].present? %>">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Availability</h3>
@@ -132,6 +133,7 @@
       <% end %>
     </div>
   </div>
+  <% end %>
 
   <!-- Section 2: Custom Questions -->
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].present? || params[:questions_open].present? || @question_error.present? %>">

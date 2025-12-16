@@ -76,23 +76,22 @@ RSpec.describe AuditionCycle, type: :model do
   describe '#counts' do
     let(:call) { create(:audition_cycle) }
 
-    it 'returns counts for each status' do
-      create(:audition_request, audition_cycle: call, status: :pending)
-      create(:audition_request, audition_cycle: call, status: :pending)
-      create(:audition_request, audition_cycle: call, status: :approved)
-      create(:audition_request, audition_cycle: call, status: :rejected)
+    it 'returns counts for total, scheduled, and cast' do
+      create(:audition_request, audition_cycle: call)
+      create(:audition_request, audition_cycle: call)
+      create(:audition_request, audition_cycle: call)
 
       counts = call.counts
-      expect(counts[:pending]).to eq(2)
-      expect(counts[:approved]).to eq(1)
-      expect(counts[:rejected]).to eq(1)
+      expect(counts[:total]).to eq(3)
+      expect(counts[:scheduled]).to eq(0)
+      expect(counts[:cast]).to eq(0)
     end
 
-    it 'returns zero for statuses with no requests' do
+    it 'returns zero when no requests' do
       counts = call.counts
-      expect(counts[:pending]).to eq(0)
-      expect(counts[:approved]).to eq(0)
-      expect(counts[:rejected]).to eq(0)
+      expect(counts[:total]).to eq(0)
+      expect(counts[:scheduled]).to eq(0)
+      expect(counts[:cast]).to eq(0)
     end
   end
 

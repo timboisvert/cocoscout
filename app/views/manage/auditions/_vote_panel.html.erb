@@ -1,0 +1,79 @@
+<%# Vote panel for reviewers to cast their advisory votes on auditions %>
+<% current_vote = audition.vote_for(Current.user) %>
+<% vote_counts = audition.vote_counts %>
+
+<div class="bg-gray-50 border-b border-gray-200 px-4 py-3">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+    <!-- Your Vote Section -->
+    <div class="flex items-center gap-2">
+      <span class="text-sm font-medium text-gray-700">Your Vote:</span>
+      <div class="flex gap-1">
+        <% [:yes, :no, :maybe].each do |vote_type| %>
+          <%
+            is_selected = current_vote&.vote == vote_type.to_s
+            base_classes = "px-3 py-1.5 text-sm font-medium rounded-lg border transition-all cursor-pointer"
+            if is_selected
+              case vote_type
+              when :yes
+                classes = "#{base_classes} bg-green-500 text-white border-green-500"
+              when :no
+                classes = "#{base_classes} bg-red-500 text-white border-red-500"
+              when :maybe
+                classes = "#{base_classes} bg-yellow-500 text-white border-yellow-500"
+              end
+            else
+              classes = "#{base_classes} bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+            end
+
+            vote_label = case vote_type
+              when :yes then "👍 Yes"
+              when :no then "👎 No"
+              when :maybe then "🤔 Maybe"
+            end
+          %>
+          <%= link_to vote_label,
+              cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition.audition_session, audition, vote: vote_type),
+              class: classes,
+              data: { turbo_method: :post } %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Vote Tally Section -->
+    <div class="flex items-center gap-4">
+      <span class="text-sm text-gray-500">Team Votes:</span>
+      <div class="flex gap-3 text-sm">
+        <span class="text-green-600 font-medium">👍 <%= vote_counts[:yes] %></span>
+        <span class="text-red-600 font-medium">👎 <%= vote_counts[:no] %></span>
+        <span class="text-yellow-600 font-medium">🤔 <%= vote_counts[:maybe] %></span>
+      </div>
+    </div>
+  </div>
+
+  <% votes_with_comments = audition.votes_with_comments %>
+  <% if votes_with_comments.any? %>
+    <div class="mt-3 pt-3 border-t border-gray-200">
+      <p class="text-xs text-gray-500 mb-2">Comments from reviewers:</p>
+      <div class="space-y-2">
+        <% votes_with_comments.each do |vote| %>
+          <div class="flex items-start gap-2 text-sm">
+            <span class="flex-shrink-0">
+              <% case vote.vote %>
+              <% when "yes" %>
+                <span class="text-green-600">👍</span>
+              <% when "no" %>
+                <span class="text-red-600">👎</span>
+              <% when "maybe" %>
+                <span class="text-yellow-600">🤔</span>
+              <% end %>
+            </span>
+            <span class="text-gray-700">
+              <span class="font-medium"><%= vote.user.person&.name || vote.user.email_address %>:</span>
+              <%= vote.comment %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

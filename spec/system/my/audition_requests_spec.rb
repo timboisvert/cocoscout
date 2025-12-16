@@ -11,7 +11,7 @@ RSpec.describe 'My::AuditionRequests', type: :system do
   describe 'when user has no audition requests' do
     it 'shows no sign-ups message' do
       sign_in_as_person(user, person)
-      visit '/my/audition_requests'
+      visit '/my/audition_requests?requests_filter=all'
       expect(page).to have_content("You haven't signed up for any auditions.")
     end
   end
@@ -22,7 +22,7 @@ RSpec.describe 'My::AuditionRequests', type: :system do
                               finalize_audition_invitations: true)
     end
     let!(:audition_request) do
-      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :pending)
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle)
     end
 
     it 'displays the audition request' do
@@ -32,11 +32,12 @@ RSpec.describe 'My::AuditionRequests', type: :system do
       expect(page).to have_content(production.name)
     end
 
-    it 'shows request status' do
+    it 'shows request status as in review when not finalized' do
+      audition_cycle.update(finalize_audition_invitations: false)
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
 
-      expect(page).to have_content('Awaiting Review')
+      expect(page).to have_content('In Review')
     end
 
     it 'shows when auditions close' do
@@ -47,30 +48,24 @@ RSpec.describe 'My::AuditionRequests', type: :system do
     end
   end
 
-  describe 'audition request statuses' do
+  describe 'audition request statuses based on scheduling' do
     let!(:audition_cycle) do
       create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true,
                               finalize_audition_invitations: true)
     end
 
-    it 'shows pending status' do
-      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :pending)
-
-      sign_in_as_person(user, person)
-      visit '/my/audition_requests'
-      expect(page).to have_content('Awaiting Review')
-    end
-
-    it 'shows rejected status' do
-      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :rejected)
+    it 'shows no audition offered when not scheduled' do
+      create(:audition_request, requestable: person, audition_cycle: audition_cycle)
 
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
       expect(page).to have_content('No Audition Offered')
     end
 
-    it 'shows approved status' do
-      create(:audition_request, requestable: person, audition_cycle: audition_cycle, status: :approved)
+    it 'shows audition offered when scheduled' do
+      audition_request = create(:audition_request, requestable: person, audition_cycle: audition_cycle)
+      audition_session = create(:audition_session, audition_cycle: audition_cycle)
+      create(:audition, audition_session: audition_session, audition_request: audition_request, auditionable: person)
 
       sign_in_as_person(user, person)
       visit '/my/audition_requests'
@@ -95,7 +90,7 @@ RSpec.describe 'My::AuditionRequests', type: :system do
   end
 
   describe 'with answers to questions' do
-    let!(:audition_cycle) { create(:audition_cycle, production: production) }
+    let!(:audition_cycle) { create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now, form_reviewed: true) }
     let!(:question) { create(:question, questionable: audition_cycle, text: 'What is your favorite role?') }
     let!(:audition_request) { create(:audition_request, requestable: person, audition_cycle: audition_cycle) }
     let!(:answer) { create(:answer, audition_request: audition_request, question: question, value: 'Elphaba') }

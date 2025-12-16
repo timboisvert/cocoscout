@@ -71,6 +71,8 @@ module My
 
       all_auditions = Audition
                       .joins(:audition_session)
+                      .joins(audition_request: :audition_cycle)
+                      .where(audition_cycles: { finalize_audition_invitations: true })
                       .where("audition_sessions.start_at >= ?", Time.current)
                       .where(
                         auditionable_conditions.map { "(auditionable_type = ? AND auditionable_id = ?)" }.join(" OR "),
@@ -104,6 +106,7 @@ module My
 
       all_requests = AuditionRequest
                      .joins(:audition_cycle)
+                     .where(audition_cycles: { active: true, form_reviewed: true })
                      .where("audition_cycles.closes_at >= ? OR audition_cycles.closes_at IS NULL", Time.current)
                      .where(
                        auditionable_conditions.map { "(requestable_type = ? AND requestable_id = ?)" }.join(" OR "),

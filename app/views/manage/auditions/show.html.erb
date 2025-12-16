@@ -1,45 +1,48 @@
-<% content_for :title, "Sign-ups" %>
+<% content_for :title, "Audition" %>
+<% audition_session = @audition.audition_session %>
+<% auditionable = @audition.auditionable %>
+
 <div class="w-full pb-48 lg:pb-40">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
-      ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
-      [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
+      ["Run Auditions", run_manage_production_audition_cycle_path(@production, @audition_cycle)],
+      [audition_session.start_at.strftime("%b %-d, %Y at %-l:%M %p"), manage_production_audition_cycle_audition_session_path(@production, @audition_cycle, audition_session)]
     ],
-    text: @requestable&.name&.truncate(40, omission: "...") || "Deleted",
+    text: auditionable&.name&.truncate(40, omission: "...") || "Audition",
     links: []
   } %>
 
   <%# Hero Section with Headshot, Name, Email, Profile Link %>
-  <% if @requestable.present? %>
+  <% if auditionable.present? %>
     <div class="flex items-center gap-4 mb-6">
-      <% if @requestable.respond_to?(:safe_headshot_variant) %>
-        <% headshot_variant = @requestable.safe_headshot_variant(:thumb) %>
+      <% if auditionable.respond_to?(:safe_headshot_variant) %>
+        <% headshot_variant = auditionable.safe_headshot_variant(:thumb) %>
         <% if headshot_variant %>
           <%= image_tag headshot_variant, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
         <% else %>
           <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold flex-shrink-0">
-            <%= @requestable.respond_to?(:initials) ? @requestable.initials : @requestable.name[0..1].upcase %>
+            <%= auditionable.respond_to?(:initials) ? auditionable.initials : auditionable.name[0..1].upcase %>
           </div>
         <% end %>
       <% end %>
       <div class="flex-1 min-w-0">
         <div class="flex items-baseline gap-2 min-w-0">
-          <div class="font-bold text-xl text-gray-900 truncate flex-shrink"><%= @requestable.name %></div>
-          <% if @requestable.respond_to?(:pronouns) && @requestable.pronouns.present? %>
-            <div class="text-sm text-gray-500 flex-shrink-0">(<%= @requestable.pronouns %>)</div>
+          <div class="font-bold text-xl text-gray-900 truncate flex-shrink"><%= auditionable.name %></div>
+          <% if auditionable.respond_to?(:pronouns) && auditionable.pronouns.present? %>
+            <div class="text-sm text-gray-500 flex-shrink-0">(<%= auditionable.pronouns %>)</div>
           <% end %>
         </div>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-          <% if @requestable.respond_to?(:email) && @requestable.email.present? %>
-            <%= link_to @requestable.email, "mailto:#{@requestable.email}", class: "text-pink-500 hover:underline" %>
+          <% if auditionable.respond_to?(:email) && auditionable.email.present? %>
+            <%= link_to auditionable.email, "mailto:#{auditionable.email}", class: "text-pink-500 hover:underline" %>
           <% end %>
         </div>
       </div>
-      <% if @requestable.respond_to?(:public_key) && @requestable.public_key.present? %>
+      <% if auditionable.respond_to?(:public_key) && auditionable.public_key.present? %>
         <div class="flex-shrink-0">
-          <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@requestable.public_key), variant: "primary", target: "_blank" } %>
+          <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(auditionable.public_key), variant: "primary", target: "_blank" } %>
         </div>
       <% end %>
     </div>
@@ -54,7 +57,7 @@
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
       <% idx += 1 %>
-      <% if @audition_cycle.audition_type == "video_upload" %>
+      <% if @audition.audition_request&.audition_cycle&.audition_type == "video_upload" %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Video</button>
         <% idx += 1 %>
       <% end %>
@@ -70,10 +73,10 @@
 
     <%# Profile Tab %>
     <div data-tabs-target="panel">
-      <% if @requestable.is_a?(Person) %>
-        <%= render "manage/audition_requests/profile_tab", person: @requestable %>
-      <% elsif @requestable.present? %>
-        <%= render "shared/group_card", group: @requestable, show_delete_signup: true, show_public_profile_link: false %>
+      <% if auditionable.is_a?(Person) %>
+        <%= render "manage/audition_requests/profile_tab", person: auditionable %>
+      <% elsif auditionable.present? %>
+        <%= render "shared/group_card", group: auditionable, show_delete_signup: false, show_public_profile_link: false %>
       <% else %>
         <p class="text-gray-500">This person/group is no longer available.</p>
       <% end %>
@@ -81,11 +84,11 @@
 
     <%# Headshots Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if @requestable.nil? %>
+      <% if auditionable.nil? %>
         <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
-      <% elsif @requestable.respond_to?(:profile_headshots) && @requestable.profile_headshots.any? %>
+      <% elsif auditionable.respond_to?(:profile_headshots) && auditionable.profile_headshots.any? %>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <% @requestable.profile_headshots.each do |headshot| %>
+          <% auditionable.profile_headshots.each do |headshot| %>
             <% if headshot.image.attached? %>
               <%= image_tag url_for(headshot.image), class: "rounded-lg w-full object-cover" %>
             <% end %>
@@ -98,10 +101,10 @@
 
     <%# Resume Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if @requestable.nil? %>
+      <% if auditionable.nil? %>
         <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
       <% else %>
-        <% resume = @requestable.profile_resumes.first %>
+        <% resume = auditionable.profile_resumes.first %>
         <% if resume&.file&.attached? %>
           <% if resume.file.content_type == 'application/pdf' && resume.file.representable? %>
             <div class="w-full">
@@ -120,18 +123,12 @@
       <% end %>
     </div>
 
-    <%# Video Tab (conditional) %>
-    <% if @audition_cycle.audition_type == "video_upload" %>
+    <%# Video Tab %>
+    <% if @audition.audition_request&.audition_cycle&.audition_type == "video_upload" %>
       <div data-tabs-target="panel" class="hidden">
-        <% if @audition_request.video_url.present? %>
+        <% if @audition.audition_request&.video_url.present? %>
           <div class="mt-2">
-            <%= render "manage/audition_requests/video", audition_request: @audition_request %>
-          </div>
-          <div class="mt-2">
-            <%= link_to "Edit Video",
-                edit_video_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
-                class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
-            %>
+            <%= render "manage/audition_requests/video", audition_request: @audition.audition_request %>
           </div>
         <% else %>
           <p class="text-sm text-gray-500">No video uploaded</p>
@@ -141,108 +138,31 @@
 
     <%# Availability Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if current_user_can_manage?(@production) %>
-        <%# Manager view: availability with edit buttons %>
-        <% if @audition_cycle.include_availability_section && @shows.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
-            </div>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @shows.each do |show| %>
-                  <% availability = @show_availabilities[show.id] %>
-                  <%= render partial: "shared/show_row", locals: {
-                    show: show,
-                    show_location: true,
-                    show_production: false,
-                    show_linked: false,
-                    availability: availability,
-                    entity_key: "show_#{show.id}",
-                    entity: @requestable,
-                    has_groups: false,
-                    right_panel: :availability,
-                    manage_context: true
-                  } %>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
+      <% if auditionable.nil? %>
+        <p class="text-left text-gray-500 text-sm">This person/group is no longer available</p>
+      <% elsif @audition.audition_request.present? %>
+        <% audition_request = @audition.audition_request %>
+        <% audition_cycle = audition_request.audition_cycle %>
+        <% shows = audition_cycle.production.shows %>
+        <% show_availabilities = auditionable.is_a?(Person) ? auditionable.show_availabilities.where(show_id: shows.pluck(:id)).index_by(&:show_id) : {} %>
+        <% audition_sessions = audition_cycle.audition_sessions %>
+        <%
+          audition_availability = {}
+          AuditionSessionAvailability.where(available_entity: auditionable, audition_session_id: audition_sessions.pluck(:id)).each do |session_availability|
+            audition_availability[session_availability.audition_session_id.to_s] = session_availability.status.to_s
+          end
+        %>
 
-        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
-            </div>
-            <div class="p-2">
-              <div class="space-y-1">
-                <% @audition_sessions.each do |session| %>
-                  <% current_status = @audition_availability&.dig("#{session.id}") %>
-                  <div class="group relative flex items-stretch gap-0 px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200"
-                       data-controller="availability"
-                       data-availability-show-id-value="<%= session.id %>"
-                       data-availability-status-value="<%= current_status || 'unset' %>"
-                       data-availability-entity-key="audition_session"
-                       data-availability-entity-id="<%= @requestable.id %>"
-                       data-availability-entity-type="<%= @requestable.class.name %>"
-                       data-availability-update-url-value="<%= update_audition_session_availability_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                       data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>">
-                    <div class="w-1/2 flex items-center gap-4">
-                      <div class="flex-shrink-0 w-14 text-center">
-                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                        <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                        <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900">Audition Session</div>
-                        <div class="text-sm text-gray-600"><%= session.start_at.strftime("%l:%M %p") %></div>
-                      </div>
-                    </div>
-                    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center gap-3">
-                      <div class="flex-1 min-w-0">
-                        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
-                        <div class="flex gap-0">
-                          <% [:available, :unavailable].each do |status| %>
-                            <% classes = "w-8 sm:w-20 text-xs py-1 sm:py-1.5 text-center border border-gray-200 cursor-pointer flex items-center justify-center" %>
-                            <% classes += status == :available ? " rounded-l border-r-0" : " rounded-r" %>
-                            <% classes += current_status == status.to_s ? " bg-pink-500 text-white" : " bg-white text-gray-700 hover:bg-gray-50" %>
-                            <%= link_to "#", class: classes, data: { action: "click->availability#setStatus", availability_status: status, availability_target: "#{status}Btn" } do %>
-                              <span data-availability-target="<%= status %>Check" class="hidden">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
-                                </svg>
-                              </span>
-                              <span data-availability-target="<%= status %>Text">
-                                <span class="hidden sm:inline"><%= status.to_s.humanize %></span>
-                                <span class="sm:hidden"><%= status == :available ? '✓' : '✗' %></span>
-                              </span>
-                            <% end %>
-                          <% end %>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          </div>
-        <% end %>
-
-        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
-          <p class="text-center mt-10 text-gray-500">No availability entered</p>
-        <% end %>
-      <% else %>
         <%# Reviewer view: read-only availability display %>
-        <% if @audition_cycle.include_availability_section && @shows.present? %>
+        <% if audition_cycle.include_availability_section && shows.present? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
             <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
               <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
             </div>
             <div class="p-2">
               <div class="space-y-1">
-                <% @shows.each do |show| %>
-                  <% availability = @show_availabilities[show.id] %>
+                <% shows.each do |show| %>
+                  <% availability = show_availabilities[show.id] %>
                   <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200">
                     <div class="w-1/2 flex items-center gap-4">
                       <div class="flex-shrink-0 w-14 text-center">
@@ -271,15 +191,15 @@
           </div>
         <% end %>
 
-        <% if @audition_cycle.include_audition_availability_section && @audition_sessions.present? %>
+        <% if audition_cycle.include_audition_availability_section && audition_sessions.present? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
             <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
               <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
             </div>
             <div class="p-2">
               <div class="space-y-1">
-                <% @audition_sessions.each do |session| %>
-                  <% current_status = @audition_availability&.dig("#{session.id}") %>
+                <% audition_sessions.each do |session| %>
+                  <% current_status = audition_availability&.dig("#{session.id}") %>
                   <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200">
                     <div class="w-1/2 flex items-center gap-4">
                       <div class="flex-shrink-0 w-14 text-center">
@@ -308,27 +228,20 @@
           </div>
         <% end %>
 
-        <% if !@audition_cycle.include_availability_section && !@audition_cycle.include_audition_availability_section %>
+        <% if !audition_cycle.include_availability_section && !audition_cycle.include_audition_availability_section %>
           <p class="text-center mt-10 text-gray-500">No availability entered</p>
         <% end %>
+      <% else %>
+        <p class="text-center mt-10 text-gray-500">No availability entered</p>
       <% end %>
     </div>
 
     <%# Sign-up Questions Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if @answers&.any? %>
+      <% if @audition.audition_request&.answers&.any? %>
         <div class="mt-2">
-          <%= render "manage/audition_requests/answers", answers: @answers %>
+          <%= render "manage/audition_requests/answers", answers: @audition.audition_request.answers.includes(:question) %>
         </div>
-
-        <% if current_user_can_manage?(@production) %>
-          <div class="mt-2">
-            <%= link_to "Edit Answers",
-                edit_answers_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
-                class: "mt-1 font-medium rounded-lg text-sm px-5 h-10 py-2.5 text-center mb-0 inline-block text-white bg-pink-500 hover:bg-pink-600"
-            %>
-          </div>
-        <% end %>
       <% else %>
         <p class="text-center mt-10">No sign-up questions answered</p>
       <% end %>
@@ -337,8 +250,8 @@
     <%# Votes Tab (for reviewers only) %>
     <% if current_user_can_review?(@production) %>
       <div data-tabs-target="panel" class="hidden">
-        <% votes = @audition_request.audition_request_votes.includes(user: :person).order(created_at: :desc) %>
-        <% vote_counts = @audition_request.vote_counts %>
+        <% votes = @audition.audition_votes.includes(user: :person).order(created_at: :desc) %>
+        <% vote_counts = @audition.vote_counts %>
 
         <%# Vote count boxes spanning full width %>
         <div class="grid grid-cols-3 gap-2 mb-4">
@@ -452,27 +365,25 @@
 <%# Fade overlay for bottom of content %>
 <div class="fixed bottom-0 left-0 right-0 lg:left-56 h-48 bg-gradient-to-t from-gray-100 via-gray-100/80 to-transparent pointer-events-none z-10"></div>
 
-<% if current_user_can_review?(@production) && @audition_cycle.voting_enabled %>
-  <% current_vote = @audition_request.vote_for(Current.user) %>
-  <% vote_counts = @audition_request.vote_counts %>
+<% if current_user_can_review?(@production) && @audition_cycle.audition_voting_enabled %>
+  <% current_vote = @audition.vote_for(Current.user) %>
+  <% vote_counts = @audition.vote_counts %>
+  <% auditions_in_session = audition_session.auditions.order(:id) %>
+  <% current_index = auditions_in_session.find_index(@audition) %>
+  <% prev_audition = current_index && current_index > 0 ? auditions_in_session[current_index - 1] : nil %>
+  <% next_audition = current_index && current_index < auditions_in_session.size - 1 ? auditions_in_session[current_index + 1] : nil %>
 
   <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
        data-controller="vote-form"
-       data-vote-form-save-url-value="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>">
+       data-vote-form-save-url-value="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>">
     <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-      <h3 class="text-sm font-semibold text-gray-900 coustard-regular">
-        <% if @audition_cycle.audition_type == "video_upload" %>
-          Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?
-        <% else %>
-          Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> get an audition?
-        <% end %>
-      </h3>
+      <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Should this <%= auditionable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?</h3>
     </div>
     <div class="p-3 flex items-center gap-3">
       <!-- Previous button -->
       <div class="flex-shrink-0 border-r border-gray-200 pr-3">
-        <% if @audition_request.previous %>
-          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.previous),
+        <% if prev_audition %>
+          <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, prev_audition),
               class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
               data: { action: "click->vote-form#navigateWithSave" } do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -499,7 +410,7 @@
                class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
         <button type="button"
                 data-action="click->vote-form#submitComment"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                 class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
           Save
         </button>
@@ -513,7 +424,7 @@
         <button type="button"
                 data-action="click->vote-form#submitVote"
                 data-vote-form-vote-param="yes"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                 class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
           <span>Yes</span>
           <span class="opacity-75">(<%= vote_counts[:yes] %>)</span>
@@ -524,7 +435,7 @@
         <button type="button"
                 data-action="click->vote-form#submitVote"
                 data-vote-form-vote-param="no"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                 class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
           <span>No</span>
           <span class="opacity-75">(<%= vote_counts[:no] %>)</span>
@@ -535,7 +446,7 @@
         <button type="button"
                 data-action="click->vote-form#submitVote"
                 data-vote-form-vote-param="maybe"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                 class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
           <span>Not Sure</span>
           <span class="opacity-75">(<%= vote_counts[:maybe] %>)</span>
@@ -544,8 +455,8 @@
 
       <!-- Next button -->
       <div class="flex-shrink-0">
-        <% if @audition_request.next %>
-          <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.next),
+        <% if next_audition %>
+          <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
               class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
               data: { action: "click->vote-form#navigateWithSave" } do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">

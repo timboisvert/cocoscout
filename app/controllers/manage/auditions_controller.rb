@@ -66,12 +66,20 @@ module Manage
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
       @talent_pool = @production.talent_pool
-      # Get all auditionees (people and groups) who actually auditioned
-      audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
-      auditions = Audition.where(audition_session_id: audition_session_ids)
-                          .select(:auditionable_type, :auditionable_id)
-                          .distinct
-      @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
+
+      if @audition_cycle.audition_type == "video_upload"
+        # For video upload auditions, use audition requests instead of auditions
+        audition_requests = @audition_cycle.audition_requests.includes(:requestable)
+        @auditioned_people = audition_requests.map(&:requestable).compact.sort_by { |r| r.name.to_s }
+      else
+        # For in-person auditions, use auditions from audition sessions
+        audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
+        auditions = Audition.where(audition_session_id: audition_session_ids)
+                            .select(:auditionable_type, :auditionable_id)
+                            .distinct
+        @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
+      end
+
       @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
     end
 
@@ -80,13 +88,47 @@ module Manage
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
       @talent_pool = @production.talent_pool
-      # Get all auditionees (people and groups) who actually auditioned
-      audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
-      auditions = Audition.where(audition_session_id: audition_session_ids)
-                          .select(:auditionable_type, :auditionable_id)
-                          .distinct
-      @auditioned_people = auditions.map(&:auditionable).compact.sort_by { |a| a.name.to_s }
+      @auditionee_vote_counts = {}
+
+      if @audition_cycle.audition_type == "video_upload"
+        # For video upload auditions, use audition requests instead of auditions
+        audition_requests = @audition_cycle.audition_requests
+                              .includes(:audition_request_votes, :requestable)
+
+        audition_requests.each do |request|
+          next unless request.requestable
+          key = [ request.requestable_type, request.requestable_id ]
+          @auditionee_vote_counts[key] = request.vote_counts
+        end
+
+        @auditioned_people = audition_requests.map(&:requestable).compact.sort_by do |r|
+          key = [ r.class.name, r.id ]
+          counts = @auditionee_vote_counts[key] || {}
+          -(counts[:yes] || 0)
+        end
+      else
+        # For in-person auditions, use auditions from audition sessions
+        audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
+        auditions = Audition.where(audition_session_id: audition_session_ids)
+                            .includes(:audition_votes, :auditionable)
+                            .select(:id, :auditionable_type, :auditionable_id)
+                            .distinct
+
+        auditions.each do |audition|
+          next unless audition.auditionable
+          key = [ audition.auditionable_type, audition.auditionable_id ]
+          @auditionee_vote_counts[key] = audition.vote_counts
+        end
+
+        @auditioned_people = auditions.map(&:auditionable).compact.sort_by do |a|
+          key = [ a.class.name, a.id ]
+          counts = @auditionee_vote_counts[key] || {}
+          -(counts[:yes] || 0)
+        end
+      end
+
       @cast_assignment_stages = @audition_cycle.cast_assignment_stages.includes(:assignable, :talent_pool)
+      @current_talent_pool_members = @talent_pool.talent_pool_memberships.includes(:member).map(&:member).compact.sort_by { |m| m.name.to_s }
     end
 
     # PATCH /auditions/finalize_invitations
@@ -467,8 +509,8 @@ module Manage
       # Mark all remaining cast assignment stages as finalized (no longer destroy them)
       cast_assignment_stages.where(status: :pending).update_all(status: :finalized)
 
-      # Mark the audition cycle as having finalized casting
-      audition_cycle.update(casting_finalized_at: Time.current)
+      # Mark the audition cycle as having finalized casting and disable audition voting
+      audition_cycle.update(casting_finalized_at: Time.current, audition_voting_enabled: false)
 
       redirect_to casting_manage_production_audition_cycle_path(@production, audition_cycle),
                   notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{auditionees_added_to_casts} auditionee#{auditionees_added_to_casts != 1 ? 's' : ''} added to casts."
@@ -494,11 +536,9 @@ module Manage
 
       # Process requests that:
       # 1. Haven't been notified yet (invitation_notification_sent_at is nil), OR
-      # 2. Have been notified but their status has changed since then, OR
-      # 3. Have been notified but their scheduling status has changed (e.g., they were added to schedule)
+      # 2. Have been notified but their scheduling status has changed (e.g., they were added to schedule)
       requests_to_process = audition_requests.select do |req|
         req.invitation_notification_sent_at.nil? ||
-          req.notified_status != req.status ||
           (scheduled_auditionables.include?([ req.requestable_type, req.requestable_id ]) != req.notified_scheduled)
       end
 
@@ -555,16 +595,16 @@ module Manage
           end
         end
 
-        # Mark this request as notified with current status and scheduling status
+        # Mark this request as notified with scheduling status
         request.update(
           invitation_notification_sent_at: Time.current,
-          notified_status: request.status,
           notified_scheduled: is_scheduled
         )
       end
 
       # Set finalize_audition_invitations to true so applicants can see results
-      audition_cycle.update(finalize_audition_invitations: true)
+      # Also disable both voting types since scheduling is finalized
+      audition_cycle.update(finalize_audition_invitations: true, voting_enabled: false, audition_voting_enabled: false)
 
       redirect_to review_manage_production_audition_cycle_path(@production, audition_cycle),
                   notice: "#{emails_sent} invitation email#{emails_sent != 1 ? 's' : ''} sent successfully."

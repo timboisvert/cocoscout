@@ -38,7 +38,13 @@
           <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_requests] %></p>
-              <p class="text-xs text-center text-gray-500">Total Sign-ups</p>
+              <p class="text-xs text-center text-gray-500">
+                <% if @audition_cycle.audition_type == "video_upload" %>
+                  Total Video Auditions
+                <% else %>
+                  Total Sign-ups
+                <% end %>
+              </p>
             </div>
           <% end %>
           <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
@@ -58,7 +64,45 @@
         <%
           button_text = @audition_cycle.audition_type == "video_upload" ? "View all Video Auditions" : "View all Sign-ups"
         %>
-        <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
+        <div class="flex items-center justify-between">
+          <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
+
+          <% if current_user_has_role?(@production) %>
+            <div class="flex items-center gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
+              <div class="flex items-center gap-2">
+                <% if @audition_cycle.voting_enabled %>
+                  <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                  <span class="text-sm font-semibold text-green-700">Voting Live</span>
+                <% else %>
+                  <span class="relative flex h-3 w-3">
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400"></span>
+                  </span>
+                  <span class="text-sm font-semibold text-gray-500">Voting Paused</span>
+                <% end %>
+                <% if @audition_cycle.voting_enabled %>
+                  <span class="text-sm text-gray-500">(<%= @audition_cycle.reviewer_count %> <%= 'reviewer'.pluralize(@audition_cycle.reviewer_count) %>)</span>
+                <% end %>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer"
+                     data-controller="toggle-voting"
+                     data-toggle-voting-cycle-id-value="<%= @audition_cycle.id %>"
+                     data-toggle-voting-enabled-value="<%= @audition_cycle.voting_enabled %>"
+                     data-toggle-voting-url-value="<%= toggle_voting_manage_production_audition_cycle_path(@production, @audition_cycle) %>">
+                <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
+                  <input type="checkbox"
+                         <%= 'checked' if @audition_cycle.voting_enabled %>
+                         data-action="change->toggle-voting#confirm"
+                         class="sr-only peer">
+                  <div class="block w-10 h-6 rounded-full <%= @audition_cycle.voting_enabled ? 'bg-pink-500' : 'bg-gray-300' %> peer-focus:ring-2 peer-focus:ring-pink-300"></div>
+                  <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform <%= @audition_cycle.voting_enabled ? 'translate-x-4' : 'translate-x-0' %>"></div>
+                </div>
+              </label>
+            </div>
+          <% end %>
+        </div>
       </div>
     </div>
 
@@ -102,14 +146,15 @@
         <% # Get all scheduled auditionables (people and groups) for this audition cycle %>
         <% scheduled_auditionables = @audition_cycle.audition_sessions.joins(:auditions).pluck('auditions.auditionable_type', 'auditions.auditionable_id').map { |type, id| [type, id] }.to_set %>
 
-        <% # Count people who have been notified and whose status hasn't changed since %>
-        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && req.notified_status == req.status && (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) == req.notified_scheduled) } %>
+        <% # Count people who have been notified and whose scheduling status hasn't changed since %>
+        <% notified_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.present? && (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) == req.notified_scheduled) } %>
         <% notified_people_count = notified_requests.count %>
 
-        <% # Show requests that haven't been notified yet OR whose status has changed OR whose scheduling status has changed %>
-        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || req.notified_status != req.status || (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) != req.notified_scheduled) } %>
-        <% accepted_requests = audition_requests.select { |req| req.status == "accepted" } %>
-        <% not_accepted_requests = audition_requests.reject { |req| req.status == "accepted" } %>
+        <% # Show requests that haven't been notified yet OR whose scheduling status has changed %>
+        <% audition_requests = all_audition_requests.select { |req| req.invitation_notification_sent_at.nil? || (scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) != req.notified_scheduled) } %>
+        <% # Split by whether they're currently scheduled %>
+        <% scheduled_requests = audition_requests.select { |req| scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) } %>
+        <% not_scheduled_requests = audition_requests.reject { |req| scheduled_auditionables.include?([req.requestable_type, req.requestable_id]) } %>
 
         <% # Load email assignments for requestables (people and groups) who haven't been notified %>
         <% requestable_tuples = audition_requests.map { |r| [r.requestable_type, r.requestable_id] } %>
@@ -160,7 +205,7 @@
           <% end %>
         <% end %>
 
-        <% if accepted_requests.any? || not_accepted_requests.any? %>
+        <% if scheduled_requests.any? || not_scheduled_requests.any? %>
           <div data-controller="email-groups tabs" data-email-groups-production-id-value="<%= @production.id %>" data-email-groups-audition-cycle-id-value="<%= @audition_cycle.id %>" data-email-groups-group-type-value="audition">
 
             <nav class="flex flex-wrap gap-2 border-b border-gray-200 mb-4">
@@ -254,8 +299,7 @@
                     <% if accepted_group_requestables.any? %>
                       <% accepted_group_requestables.each do |requestable| %>
                         <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
-                        <% request = audition_requests.find { |r| r.requestable == requestable } %>
-                        <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                        <% original_group = scheduled_auditionables.include?([requestable.class.name, requestable.id]) ? 'invitation_accepted' : 'invitation_not_accepted' %>
                         <div
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                           data-requestable-type="<%= requestable.class.name %>"
@@ -333,8 +377,7 @@ The <%= @production.name %> Team<% end %></textarea>
                     <% if not_accepted_group_requestables.any? %>
                       <% not_accepted_group_requestables.each do |requestable| %>
                         <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
-                        <% request = audition_requests.find { |r| r.requestable == requestable } %>
-                        <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                        <% original_group = scheduled_auditionables.include?([requestable.class.name, requestable.id]) ? 'invitation_accepted' : 'invitation_not_accepted' %>
                         <div
                           class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                           data-requestable-type="<%= requestable.class.name %>"
@@ -412,8 +455,7 @@ The <%= @production.name %> Team<% end %></textarea>
                       <% if group_requestables.any? %>
                         <% group_requestables.each do |requestable| %>
                           <% assignment = email_assignments[[requestable.class.name, requestable.id]] %>
-                          <% request = audition_requests.find { |r| r.requestable == requestable } %>
-                          <% original_group = request&.status == 'accepted' ? 'invitation_accepted' : 'invitation_not_accepted' %>
+                          <% original_group = scheduled_auditionables.include?([requestable.class.name, requestable.id]) ? 'invitation_accepted' : 'invitation_not_accepted' %>
                           <div
                             class="inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-medium border border-gray-200 hover:border-pink-400 cursor-pointer transition-all"
                             data-requestable-type="<%= requestable.class.name %>"

@@ -22,9 +22,12 @@
                 <%= call_data[:call].opens_at.strftime("%b %d, %Y") %><% if call_data[:call].closes_at.present? %> - <%= call_data[:call].closes_at.strftime("%b %d, %Y") %><% else %> (open-ended)<% end %>
               </p>
               <div class="text-xs text-gray-600 mt-2 space-x-3">
-                <span><span class="font-semibold text-gray-900"><%= call_data[:call].counts[:pending] %></span> Pending</span>
-                <span><span class="font-semibold text-green-600"><%= call_data[:call].counts[:approved] %></span> Approved</span>
-                <span><span class="font-semibold text-red-600"><%= call_data[:call].counts[:rejected] %></span> Rejected</span>
+                <span><span class="font-semibold text-gray-900"><%= call_data[:call].counts[:total] %></span> Sign-ups</span>
+                <% if call_data[:call].audition_type == "in_person" %>
+                  <span><span class="font-semibold text-green-600"><%= call_data[:call].counts[:scheduled] %></span> Scheduled</span>
+                <% else %>
+                  <span><span class="font-semibold text-green-600"><%= call_data[:call].counts[:cast] %></span> Cast</span>
+                <% end %>
               </div>
             </div>
             <span class="inline-block bg-pink-100 text-pink-800 text-sm font-semibold px-4 py-2 rounded-lg">

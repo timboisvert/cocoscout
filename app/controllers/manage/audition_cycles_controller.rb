@@ -6,19 +6,20 @@ module Manage
     before_action :check_production_access
     before_action :set_audition_cycle,
                   only: %i[show edit form update destroy preview create_question update_question destroy_question reorder_questions
-                           archive delete_confirm]
+                           archive delete_confirm toggle_voting]
     before_action :set_question, only: %i[update_question destroy_question]
     before_action :ensure_user_is_manager, except: %i[preview show]
 
     def new
       @audition_cycle = AuditionCycle.new
+      # Set default closes_at to 2 weeks from now
+      @audition_cycle.closes_at = 2.weeks.from_now.change(hour: 23, min: 59)
     end
 
     def show
       # Summary view for archived auditions
       @custom_questions = @audition_cycle.questions.order(:position)
       @audition_requests = @audition_cycle.audition_requests.includes(:requestable).order(created_at: :desc)
-      @accepted_requests = @audition_requests.where(status: :accepted)
 
       # Get people added to casts during this audition cycle via cast_assignment_stages
       person_ids = CastAssignmentStage.where(audition_cycle_id: @audition_cycle.id, assignable_type: "Person")
@@ -103,7 +104,11 @@ module Manage
             notice_message = "Text successfully updated"
             redirect_params[:text_open] = true
           else
-            notice_message = "Form review status successfully updated"
+            # Form review status - redirect to prepare page
+            redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
+                        notice: "Form review status successfully updated",
+                        status: :see_other
+            return
           end
 
           redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, redirect_params),
@@ -227,6 +232,26 @@ module Manage
       else
         redirect_to manage_production_auditions_path(@production), alert: "Failed to archive Audition Cycle",
                                                                    status: :see_other
+      end
+    end
+
+    # PATCH /audition_cycles/:id/toggle_voting
+    def toggle_voting
+      voting_type = params[:voting_type] || "request"
+      voting_enabled = params[:voting_enabled]
+
+      if voting_type == "audition"
+        if @audition_cycle.update(audition_voting_enabled: voting_enabled)
+          render json: { success: true, voting_enabled: @audition_cycle.audition_voting_enabled }
+        else
+          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_entity
+        end
+      else
+        if @audition_cycle.update(voting_enabled: voting_enabled)
+          render json: { success: true, voting_enabled: @audition_cycle.voting_enabled }
+        else
+          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_entity
+        end
       end
     end
 

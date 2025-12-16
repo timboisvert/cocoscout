@@ -55,23 +55,6 @@ RSpec.describe AuditionRequest, type: :model do
     end
   end
 
-  describe 'status enum' do
-    it 'can be pending' do
-      request = create(:audition_request, status: :pending)
-      expect(request.pending?).to be true
-    end
-
-    it 'can be approved' do
-      request = create(:audition_request, :approved)
-      expect(request.approved?).to be true
-    end
-
-    it 'can be rejected' do
-      request = create(:audition_request, :rejected)
-      expect(request.rejected?).to be true
-    end
-  end
-
   describe '#display_name' do
     it "returns the person's name" do
       person = create(:person, name: 'John Doe')

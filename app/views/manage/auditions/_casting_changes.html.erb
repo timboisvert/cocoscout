@@ -13,7 +13,7 @@
           <%# Show finalized (notified) people %>
           <% if notified_stages.any? %>
             <div class="border-l-4 border-green-500 pl-4">
-              <h4 class="text-sm font-semibold text-gray-900 mb-2">Notified - Talent Pool</h4>
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Notified</h4>
               <div class="flex flex-wrap gap-2">
                 <% notified_stages.each do |stage| %>
                   <% assignable = stage.assignable %>
@@ -37,7 +37,7 @@
           <%# Show pending (newly added) people %>
           <% if pending_stages.any? %>
             <div class="border-l-4 border-pink-500 pl-4">
-              <h4 class="text-sm font-semibold text-gray-900 mb-2">Newly Added - Talent Pool</h4>
+              <h4 class="text-sm font-semibold text-gray-900 mb-2">Newly Added</h4>
               <div class="flex flex-wrap gap-2">
                 <% pending_stages.each do |stage| %>
                   <% assignable = stage.assignable %>
@@ -71,7 +71,7 @@
       <% if pending_cast_stages.any? %>
         <div class="space-y-4 mb-6">
           <div class="border-l-4 border-pink-500 pl-4">
-            <h4 class="text-sm font-semibold text-gray-900 mb-2">Add to Talent Pool</h4>
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">Pending</h4>
             <div class="flex flex-wrap gap-2">
               <% pending_cast_stages.each do |stage| %>
                 <% assignable = stage.assignable %>

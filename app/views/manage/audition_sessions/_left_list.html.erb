@@ -18,14 +18,18 @@
 
     <%
         ar = AuditionRequest.joins(:audition_cycle).where(audition_cycles: { production_id: production.id })
+        audition_cycle = production.active_audition_cycle
 
         if filter == "all"
-            ar = ar.where(status: [ :pending, :approved, :rejected ])
+            # Show all requests (no status filtering needed)
+            ar = ar.all
         elsif filter == "to_be_scheduled"
-            audition_cycle = production.active_audition_cycle
-            ar = ar.where(status: :approved, requestable_type: 'Person').where.not(requestable_id: audition_cycle&.audition_sessions&.joins(:auditions)&.select("auditions.person_id") || [])
+            # Show requests not yet scheduled
+            scheduled_person_ids = audition_cycle&.audition_sessions&.joins(:auditions)&.pluck("auditions.auditionable_id") || []
+            ar = ar.where(requestable_type: 'Person').where.not(requestable_id: scheduled_person_ids)
         elsif filter == "approved"
-            ar = ar.where(status: :approved)
+            # Show all requests (previously filtered by approved status)
+            ar = ar.all
         end
 
         ar = ar.order(created_at: :asc)

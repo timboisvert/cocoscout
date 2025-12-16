@@ -25,27 +25,27 @@
               <div class="flex flex-wrap gap-3">
                 <% session.auditions.each do |audition| %>
                   <% auditionable = audition.auditionable %>
-                  <div class="flex flex-col items-center relative group cursor-move w-20"
+                  <div class="flex flex-col items-center relative group cursor-move w-14"
                        draggable="true"
                        data-audition-id="<%= audition.id %>"
                        data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
                     <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
                     <% if headshot_url %>
-                      <%= image_tag headshot_url, alt: auditionable.name, class: "w-20 h-20 rounded-lg object-cover pointer-events-none" %>
+                      <%= image_tag headshot_url, alt: auditionable.name, class: "w-12 h-12 rounded-md object-cover pointer-events-none" %>
                     <% elsif auditionable.is_a?(Person) %>
-                      <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-base pointer-events-none">
+                      <div class="w-12 h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs pointer-events-none">
                         <%= auditionable.initials %>
                       </div>
                     <% else %>
-                      <div class="w-20 h-20 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                      <div class="w-12 h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                         </svg>
                       </div>
                     <% end %>
-                    <span class="text-xs text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= auditionable.name %></span>
+                    <span class="text-[10px] text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= auditionable.name %></span>
                     <button type="button"
-                      class="absolute bottom-6 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                      class="absolute bottom-4 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
                       data-action="click->drag-audition#removeAudition"
                       data-audition-id="<%= audition.id %>"
                       data-session-id="<%= session.id %>">
@@ -55,7 +55,7 @@
                 <% end %>
               </div>
             <% else %>
-              <div class="flex items-center justify-center h-20 text-xs text-gray-400">
+              <div class="flex items-center justify-center h-14 text-xs text-gray-400">
                 Drag people here to schedule them
               </div>
             <% end %>

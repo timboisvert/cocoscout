@@ -54,7 +54,7 @@ module My
       else
         @auditions_filter = "upcoming"
         @auditions = @auditions.select do |a|
-          a.audition_session.start_at > Time.current
+          a.audition_session.start_at >= Time.current
         end.sort_by { |a| a.audition_session.start_at }
       end
 

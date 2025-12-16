@@ -97,10 +97,6 @@
               <p class="text-xs text-gray-600 font-medium">Sign-ups Received</p>
               <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.count %></p>
             </div>
-            <div class="p-3 bg-gray-50 rounded-lg">
-              <p class="text-xs text-gray-600 font-medium">Sign-ups Pending Review</p>
-              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.where(status: :pending).count %></p>
-            </div>
           <% elsif status == :closed && @active_audition_cycle.audition_type == 'in_person' %>
             <%
               # Only show these stats if auditions haven't happened yet
@@ -112,9 +108,9 @@
                 scheduled_auditionables = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.auditionable_type', 'auditions.auditionable_id')
                 scheduled_count = scheduled_auditionables.count
 
-                # Count approved requests that haven't been scheduled yet
-                approved_requests = @active_audition_cycle.audition_requests.where(status: :approved)
-                to_be_scheduled_count = approved_requests.reject do |req|
+                # Count all requests that haven't been scheduled yet
+                all_requests = @active_audition_cycle.audition_requests
+                to_be_scheduled_count = all_requests.reject do |req|
                   scheduled_auditionables.include?([req.requestable_type, req.requestable_id])
                 end.count
             %>

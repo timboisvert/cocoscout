@@ -23,6 +23,9 @@ class AuditionCycle < ApplicationRecord
   validate :closes_at_after_opens_at
   validate :only_one_active_per_production
 
+  # Set default for reviewer_access_type
+  after_initialize :set_default_reviewer_access_type, if: :new_record?
+
   # Cache invalidation
   after_commit :invalidate_caches
 
@@ -38,12 +41,16 @@ class AuditionCycle < ApplicationRecord
   end
 
   def counts
-    Rails.cache.fetch([ "audition_cycle_counts_v2", id, audition_requests.maximum(:updated_at)&.to_i ],
+    Rails.cache.fetch([ "audition_cycle_counts_v3", id, audition_requests.maximum(:updated_at)&.to_i ],
                       expires_in: 2.minutes) do
+      # Count scheduled vs not scheduled for in-person, or cast vs not cast for video upload
+      scheduled_count = audition_sessions.joins(:auditions).distinct.count("auditions.auditionable_id")
+      cast_count = cast_assignment_stages.count
+
       {
-        pending: audition_requests.where(status: :pending).count,
-        approved: audition_requests.where(status: :approved).count,
-        rejected: audition_requests.where(status: :rejected).count
+        total: audition_requests.count,
+        scheduled: scheduled_count,
+        cast: cast_count
       }
     end
   end
@@ -119,7 +126,30 @@ class AuditionCycle < ApplicationRecord
     opening_soon? && !form_reviewed
   end
 
+  def reviewer_count
+    access_type = reviewer_access_type.presence || "managers"
+    case access_type
+    when "managers"
+      # Count global managers/viewers + production-level managers/viewers
+      global_user_ids = production.organization.organization_roles.where(company_role: %w[manager viewer]).pluck(:user_id)
+      production_user_ids = production.production_permissions.where(role: %w[manager viewer]).pluck(:user_id)
+      (global_user_ids + production_user_ids).uniq.count
+    when "all"
+      # Count all talent pool members
+      production.organization.talent_pool.people.count
+    when "specific"
+      # Count specifically assigned reviewers
+      audition_reviewers.count
+    else
+      0
+    end
+  end
+
   private
+
+  def set_default_reviewer_access_type
+    self.reviewer_access_type ||= "managers"
+  end
 
   def invalidate_caches
     # NOTE: counts cache uses key versioning with audition_requests.maximum(:updated_at)

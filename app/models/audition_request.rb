@@ -8,17 +8,9 @@ class AuditionRequest < ApplicationRecord
   has_many :audition_session_availabilities, as: :available_entity, dependent: :destroy
   has_many :audition_request_votes, dependent: :destroy
 
-  # Status represents the manager's final decision on whether to give this person an audition
-  # Reviewers provide advisory votes via audition_request_votes
-  enum :status, {
-    pending: 0,   # Manager hasn't made a decision yet (default)
-    approved: 1,  # Yes, give them an audition
-    rejected: 2   # No, don't give them an audition
-  }
-
   validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
 
-  # Cache invalidation - when status changes, invalidate the counts cache
+  # Cache invalidation - when request changes, invalidate the counts cache
   after_commit :invalidate_cycle_caches, on: %i[create update destroy]
 
   # Helper method for backward compatibility - auditions are always for individual people
