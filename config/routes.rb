@@ -124,6 +124,12 @@ Rails.application.routes.draw do
     get   "/shoutouts/search",                  to: "shoutouts#search_people_and_groups",
                                                 as: "search_shoutout_recipients"
     get   "/shoutouts/check_existing",          to: "shoutouts#check_existing_shoutout", as: "check_existing_shoutout"
+
+    # Calendar sync management
+    get   "/calendar_sync/settings",            to: "calendar_sync#settings",             as: "calendar_sync_settings"
+    patch "/calendar_sync/update",              to: "calendar_sync#update_settings",      as: "calendar_sync_update"
+    post  "/calendar_sync/confirm_email",       to: "calendar_sync#confirm_email",        as: "calendar_sync_confirm_email"
+    post  "/calendar_sync/disable",             to: "calendar_sync#disable",              as: "calendar_sync_disable"
   end
 
   # Management interface

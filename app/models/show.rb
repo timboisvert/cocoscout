@@ -58,6 +58,11 @@ class Show < ApplicationRecord
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
 
+  # Calendar sync notifications
+  after_commit :send_calendar_sync_notification, on: [ :create ]
+  after_commit :send_calendar_sync_update, on: [ :update ], if: :should_send_calendar_update?
+  after_commit :send_calendar_sync_cancellation, on: [ :destroy ]
+
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
 
@@ -318,5 +323,26 @@ class Show < ApplicationRecord
 
     # Also unmark this show as finalized (will be saved with the record)
     self.casting_finalized_at = nil
+  end
+
+  def send_calendar_sync_notification
+    CalendarSyncService.notify_for_show(self, "REQUEST")
+  end
+
+  def send_calendar_sync_update
+    CalendarSyncService.notify_for_show(self, "UPDATE")
+  end
+
+  def send_calendar_sync_cancellation
+    # Store show data before destruction for the notification
+    CalendarSyncService.notify_for_show(self, "CANCEL")
+  end
+
+  def should_send_calendar_update?
+    # Send update notification if date, time, location, or name changed
+    saved_change_to_date_and_time? ||
+      saved_change_to_location_id? ||
+      saved_change_to_secondary_name? ||
+      saved_change_to_canceled?
   end
 end

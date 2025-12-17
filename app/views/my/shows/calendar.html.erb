@@ -16,6 +16,9 @@
     ]
   } %>
 
+  <!-- Calendar Sync Banner -->
+  <%= render partial: "shared/calendar_sync_banner", locals: { person: @person } %>
+
   <%= render "shared/filters/filter_bar",
       toggle_label: "Filters",
       filter_groups: [

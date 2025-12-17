@@ -66,6 +66,9 @@
     ]
   } %>
 
+  <!-- Calendar Sync Banner -->
+  <%= render partial: "shared/calendar_sync_banner", locals: { person: @person } %>
+
   <% if @has_any_shows %>
 
   <%= render "shared/filters/filter_bar",
