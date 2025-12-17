@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #ec4899;">
+      <% if @action_type == "CANCEL" %>
+        Event Cancelled
+      <% elsif @action_type == "UPDATE" %>
+        Event Updated
+      <% else %>
+        New Event
+      <% end %>
+    </h2>
+    
+    <p>Hi <%= @person.name %>,</p>
+    
+    <% if @action_type == "CANCEL" %>
+      <p>The following event has been <strong>cancelled</strong>:</p>
+    <% elsif @action_type == "UPDATE" %>
+      <p>The following event has been <strong>updated</strong>:</p>
+    <% else %>
+      <p>You have a new event:</p>
+    <% end %>
+    
+    <div style="background: #f9fafb; border-left: 4px solid #ec4899; padding: 15px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #1f2937;"><%= @production.name %></h3>
+      <p style="margin: 5px 0;"><strong>Event:</strong> <%= @show.secondary_name.present? ? @show.secondary_name : @show.event_type.titleize %></p>
+      <p style="margin: 5px 0;"><strong>Date & Time:</strong> <%= @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") %></p>
+      <% if @show.location %>
+        <p style="margin: 5px 0;"><strong>Location:</strong> <%= @show.location.name %></p>
+      <% end %>
+    </div>
+    
+    <% if @action_type != "CANCEL" %>
+      <p>This event has been added to your calendar. Check your calendar application for details.</p>
+    <% end %>
+    
+    <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+      You're receiving this because you've enabled calendar sync in CocoScout.<br>
+      To manage your calendar sync settings, visit your <a href="<%= my_calendar_sync_settings_url %>" style="color: #ec4899;">Calendar Sync Settings</a>.
+    </p>
+  </div>
+</body>
+</html>
