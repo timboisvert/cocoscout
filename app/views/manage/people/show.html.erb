@@ -58,29 +58,12 @@
 
     <%# Headshots Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% if @person.profile_headshots.any? %>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <% @person.profile_headshots.each do |headshot| %>
-            <% if headshot.image.attached? %>
-              <%= image_tag url_for(headshot.image), class: "rounded-lg w-full object-cover" %>
-            <% end %>
-          <% end %>
-        </div>
-      <% else %>
-        <p class="text-left text-gray-500 text-sm">No headshots uploaded</p>
-      <% end %>
+      <%= render "shared/image_gallery", items: @person.profile_headshots, type: "headshot", empty_message: "No headshots uploaded" %>
     </div>
 
     <%# Resume Tab %>
     <div data-tabs-target="panel" class="hidden">
-      <% resume_preview = @person.safe_resume_preview(resize_to_limit: [1224, 1584]) %>
-      <% if resume_preview %>
-        <div class="w-full">
-          <%= image_tag resume_preview, class: "object-contain" %>
-        </div>
-      <% else %>
-        <p class="text-left text-gray-500 text-sm">No resume found</p>
-      <% end %>
+      <%= render "shared/image_gallery", items: @person.profile_resumes, type: "resume", empty_message: "No resume found" %>
     </div>
 
     <%# Availability Tab %>

@@ -127,6 +127,15 @@
 
   <!-- People Offered Auditions -->
   <% if @audition_cycle.audition_type != "video_upload" %>
+    <%
+      # Build a lookup of person_id => audition for linking to audition pages
+      auditions_by_person = {}
+      @audition_cycle.audition_sessions.includes(:auditions).each do |session|
+        session.auditions.where(auditionable_type: "Person").each do |audition|
+          auditions_by_person[audition.auditionable_id] ||= { audition: audition, session: session }
+        end
+      end
+    %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">
@@ -138,7 +147,15 @@
         <% if @accepted_requests.any? %>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <% @accepted_requests.each do |request| %>
-              <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+              <%
+                audition_data = auditions_by_person[request.person.id]
+                if audition_data
+                  link_path = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_data[:session], audition_data[:audition])
+                else
+                  link_path = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request)
+                end
+              %>
+              <%= link_to link_path, class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
                 <div class="flex items-center gap-3">
                   <% headshot_variant = request.person.safe_headshot_variant(:thumb) %>
                   <% if headshot_variant %>

@@ -19,6 +19,12 @@ module Manage
     end
 
     def show
+      # Redirect to audition cycle summary if archived
+      unless @audition_cycle.active
+        redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+        return
+      end
+
       @auditions = @audition_session.auditions.includes(audition_request: :requestable).order(:id)
 
       if @audition.present?

@@ -5,11 +5,12 @@ module Manage
     before_action :set_production, except: %i[add_to_session remove_from_session move_to_session]
     before_action :check_production_access, except: %i[add_to_session remove_from_session move_to_session]
     before_action :set_audition_cycle,
-                  except: %i[index schedule_auditions add_to_session remove_from_session move_to_session]
+                  except: %i[index archive schedule_auditions add_to_session remove_from_session move_to_session]
     before_action :set_audition, only: %i[show edit update destroy cast_audition_vote]
     before_action :ensure_user_is_manager,
-                  except: %i[index show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
+                  except: %i[index archive show prepare publicize review run casting casting_select schedule_auditions cast_audition_vote]
     before_action :ensure_user_has_role, only: %i[prepare publicize]
+    before_action :ensure_audition_cycle_active, only: %i[cast_audition_vote]
 
     # GET /auditions
     def index
@@ -616,6 +617,13 @@ module Manage
     end
 
     private
+
+    def ensure_audition_cycle_active
+      unless @audition_cycle.active
+        redirect_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition),
+                    alert: "This audition cycle is archived. Voting is not allowed."
+      end
+    end
 
     def generate_default_cast_email(person, talent_pool, production)
       <<~EMAIL

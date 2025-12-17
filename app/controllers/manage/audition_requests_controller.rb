@@ -7,8 +7,15 @@ module Manage
     before_action :set_audition_cycle
     before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability cast_vote votes]
     before_action :ensure_user_is_manager, except: %i[index show cast_vote votes]
+    before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability cast_vote]
 
     def index
+      # Redirect to audition cycle show page if archived
+      unless @audition_cycle.active
+        redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+        return
+      end
+
       @audition_requests = @audition_cycle.audition_requests.order(:created_at)
     end
 
@@ -184,6 +191,13 @@ module Manage
         unless @audition_cycle
           redirect_to manage_production_path(@production), alert: "No active audition cycle. Please create one first."
         end
+      end
+    end
+
+    def ensure_audition_cycle_active
+      unless @audition_cycle&.active
+        redirect_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
+                    alert: "This audition cycle is archived and cannot be modified."
       end
     end
 
