@@ -1,0 +1,119 @@
+<% content_for :title, "Calendar Sync" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["My Shows & Events", my_shows_path],
+      ["Calendar", my_shows_calendar_path]
+    ],
+    text: "Sync",
+    links: []
+  } %>
+
+  <p class="text-gray-600 mb-6">Sync your shows and events to your personal calendar. Events will be automatically added, updated, or removed as changes are made.</p>
+
+  <%
+    google_subscription = @subscriptions.find { |s| s.provider == "google" }
+    ical_subscription = @subscriptions.find { |s| s.provider == "ical" }
+  %>
+
+  <!-- Google Calendar -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
+          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="0.5"/>
+          <path d="M18.316 7.684L12 12V4.684a7.316 7.316 0 016.316 3z" fill="#EA4335"/>
+          <path d="M12 12l6.316-4.316A7.316 7.316 0 0119.316 12H12z" fill="#FBBC04"/>
+          <path d="M12 12h7.316a7.316 7.316 0 01-3 4.316L12 12z" fill="#34A853"/>
+          <path d="M12 12l4.316 4.316A7.316 7.316 0 0112 19.316V12z" fill="#4285F4"/>
+          <path d="M12 12v7.316a7.316 7.316 0 01-4.316-3L12 12z" fill="#34A853"/>
+          <path d="M12 12l-4.316 4.316A7.316 7.316 0 014.684 12H12z" fill="#FBBC04"/>
+          <path d="M12 12H4.684a7.316 7.316 0 013-4.316L12 12z" fill="#EA4335"/>
+          <path d="M12 12L7.684 7.684A7.316 7.316 0 0112 4.684V12z" fill="#4285F4"/>
+        </svg>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Google Calendar</h3>
+      </div>
+      <% if google_subscription %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Connected
+        </span>
+      <% end %>
+    </div>
+    <div class="p-6">
+      <% if google_subscription %>
+        <%= render "subscription_settings", subscription: google_subscription, syncable_entities: @syncable_entities %>
+      <% else %>
+        <p class="text-sm text-gray-600 mb-4">Connect your Google Calendar to automatically sync your shows and events.</p>
+        <%= render "shared/button", text: "Connect Google Calendar", path: my_calendar_sync_connect_google_path, variant: "primary", size: "small", icon: "link" %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- iCal Feed -->
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">iCal Feed (Universal)</h3>
+      </div>
+      <% if ical_subscription %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Active
+        </span>
+      <% end %>
+    </div>
+    <div class="p-6">
+      <% if ical_subscription %>
+        <p class="text-sm text-gray-600 mb-4">Your iCal feed is active. Subscribe to this URL in any calendar app:</p>
+
+        <%= render "shared/copy_url", url: calendar_feed_url(token: ical_subscription.ical_token, format: :ics), label: "iCal Feed URL", help_text: "Works with Apple Calendar, Google Calendar, Outlook, and other calendar apps" %>
+
+        <div class="mt-6 pt-6 border-t border-gray-200">
+          <%= render "subscription_settings", subscription: ical_subscription, syncable_entities: @syncable_entities %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-600 mb-4">Get an iCal feed URL that you can subscribe to in any calendar application (Apple Calendar, Google Calendar, Outlook, etc.).</p>
+
+        <%= form_with url: my_calendar_sync_create_ical_path, method: :post, local: true, class: "space-y-4" do |form| %>
+          <div>
+            <label class="block font-semibold mb-2 text-sm">What events do you want to sync?</label>
+            <div class="space-y-2">
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="sync_scope" value="assigned" checked class="mr-2 accent-pink-500 cursor-pointer">
+                <span class="text-sm">Only events I'm assigned to</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="sync_scope" value="talent_pool" class="mr-2 accent-pink-500 cursor-pointer">
+                <span class="text-sm">All events for productions I'm part of</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold mb-2 text-sm">Sync events for:</label>
+            <div class="space-y-2">
+              <label class="flex items-center cursor-pointer">
+                <input type="checkbox" name="sync_entities[]" value="person" checked class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500 mr-2 cursor-pointer">
+                <span class="text-sm">Me (<%= @person.name %>)</span>
+              </label>
+              <% @groups.each do |group| %>
+                <label class="flex items-center cursor-pointer">
+                  <input type="checkbox" name="sync_entities[]" value="group_<%= group.id %>" checked class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500 mr-2 cursor-pointer">
+                  <span class="text-sm"><%= group.name %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <%= render "shared/button", text: "Create iCal Feed", variant: "primary", size: "small", icon: "link", type: :submit %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

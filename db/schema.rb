@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_16_171348) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -179,6 +179,41 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_16_171348) do
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
     t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
     t.index ["auditionable_type", "auditionable_id"], name: "index_auditions_on_auditionable"
+  end
+
+  create_table "calendar_events", force: :cascade do |t|
+    t.integer "calendar_subscription_id", null: false
+    t.datetime "created_at", null: false
+    t.string "last_sync_hash"
+    t.datetime "last_synced_at"
+    t.string "provider_event_id", null: false
+    t.integer "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["calendar_subscription_id", "show_id"], name: "index_calendar_events_on_calendar_subscription_id_and_show_id", unique: true
+    t.index ["calendar_subscription_id"], name: "index_calendar_events_on_calendar_subscription_id"
+    t.index ["provider_event_id"], name: "index_calendar_events_on_provider_event_id"
+    t.index ["show_id"], name: "index_calendar_events_on_show_id"
+  end
+
+  create_table "calendar_subscriptions", force: :cascade do |t|
+    t.text "access_token_ciphertext"
+    t.string "calendar_id"
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.boolean "enabled", default: true, null: false
+    t.string "ical_token"
+    t.text "last_sync_error"
+    t.datetime "last_synced_at"
+    t.integer "person_id", null: false
+    t.string "provider", null: false
+    t.text "refresh_token_ciphertext"
+    t.json "sync_entities", default: []
+    t.string "sync_scope", default: "assigned", null: false
+    t.datetime "token_expires_at"
+    t.datetime "updated_at", null: false
+    t.index ["ical_token"], name: "index_calendar_subscriptions_on_ical_token", unique: true
+    t.index ["person_id", "provider"], name: "index_calendar_subscriptions_on_person_id_and_provider", unique: true
+    t.index ["person_id"], name: "index_calendar_subscriptions_on_person_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -896,6 +931,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_16_171348) do
   add_foreign_key "audition_votes", "users"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
+  add_foreign_key "calendar_events", "calendar_subscriptions"
+  add_foreign_key "calendar_events", "shows"
+  add_foreign_key "calendar_subscriptions", "people"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"

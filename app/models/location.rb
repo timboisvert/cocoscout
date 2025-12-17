@@ -27,6 +27,14 @@ class Location < ApplicationRecord
     shows.exists? || audition_sessions.exists?
   end
 
+  def full_address
+    parts = [ name ]
+    parts << address1 if address1.present?
+    parts << address2 if address2.present?
+    parts << "#{city}, #{state} #{postal_code}".strip if city.present? || state.present? || postal_code.present?
+    parts.join(", ")
+  end
+
   private
 
   def ensure_single_default

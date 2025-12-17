@@ -124,7 +124,19 @@ Rails.application.routes.draw do
     get   "/shoutouts/search",                  to: "shoutouts#search_people_and_groups",
                                                 as: "search_shoutout_recipients"
     get   "/shoutouts/check_existing",          to: "shoutouts#check_existing_shoutout", as: "check_existing_shoutout"
+
+    # Calendar sync management
+    get   "/calendar-sync",                     to: "calendar_sync#index",                as: "calendar_sync"
+    get   "/calendar-sync/connect/google",      to: "calendar_sync#connect_google",       as: "calendar_sync_connect_google"
+    get   "/calendar-sync/callback",            to: "calendar_sync#oauth_callback",       as: "calendar_oauth_callback"
+    post  "/calendar-sync/ical",                to: "calendar_sync#create_ical",          as: "calendar_sync_create_ical"
+    patch "/calendar-sync/:id",                 to: "calendar_sync#update",               as: "calendar_sync_update"
+    delete "/calendar-sync/:id",                to: "calendar_sync#disconnect",           as: "calendar_sync_disconnect"
+    post "/calendar-sync/:id/sync",            to: "calendar_sync#sync_now",             as: "calendar_sync_sync_now"
   end
+
+  # iCal feed (public, no authentication)
+  get "/calendar/:token.ics", to: "calendar_feeds#show", as: "calendar_feed"
 
   # Management interface
   namespace :manage do

@@ -4,6 +4,15 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Shows & Events",
+    links: [
+      { text: "Calendar", path: my_shows_calendar_path, icon: "calendar" }
+    ]
+  } %>
+
   <!-- Pending Vacancy Invitations -->
   <% if @pending_vacancy_invitations.any? %>
     <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
@@ -53,18 +62,6 @@
       </div>
     </div>
   <% end %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Shows & Events",
-    links: [
-      {
-        text: "Calendar",
-        path: my_shows_calendar_path,
-        icon: "calendar"
-      }
-    ]
-  } %>
 
   <% if @has_any_shows %>
 

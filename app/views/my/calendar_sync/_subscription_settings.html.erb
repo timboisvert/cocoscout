@@ -1,0 +1,64 @@
+<%= form_with url: my_calendar_sync_update_path(subscription), method: :patch, local: true, class: "space-y-4" do |form| %>
+  <% if subscription.provider != "ical" %>
+    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div>
+        <p class="text-sm font-medium text-gray-900">Connected as</p>
+        <p class="text-sm text-gray-600"><%= subscription.email %></p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" name="enabled" value="1" <%= 'checked' if subscription.enabled? %> class="sr-only peer">
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        <span class="ms-3 text-sm font-medium text-gray-900"><%= subscription.enabled? ? 'Enabled' : 'Disabled' %></span>
+      </label>
+    </div>
+  <% end %>
+
+  <% if subscription.last_synced_at.present? %>
+    <p class="text-xs text-gray-500">
+      Last synced: <%= time_ago_in_words(subscription.last_synced_at) %> ago
+      <% if subscription.last_sync_error.present? %>
+        <span class="text-red-500 ml-2">Error: <%= subscription.last_sync_error.truncate(50) %></span>
+      <% end %>
+    </p>
+  <% end %>
+
+  <div>
+    <label class="block font-semibold mb-2 text-sm">What events do you want to sync?</label>
+    <div class="space-y-2">
+      <label class="flex items-center cursor-pointer">
+        <input type="radio" name="sync_scope" value="assigned" <%= 'checked' if subscription.sync_scope == 'assigned' %> class="mr-2 accent-pink-500 cursor-pointer">
+        <span class="text-sm">Only events I'm assigned to</span>
+      </label>
+      <label class="flex items-center cursor-pointer">
+        <input type="radio" name="sync_scope" value="talent_pool" <%= 'checked' if subscription.sync_scope == 'talent_pool' %> class="mr-2 accent-pink-500 cursor-pointer">
+        <span class="text-sm">All events for productions I'm part of</span>
+      </label>
+    </div>
+  </div>
+
+  <div>
+    <label class="block font-semibold mb-2 text-sm">Sync events for:</label>
+    <div class="space-y-2">
+      <% syncable_entities.each do |entity| %>
+        <%
+          entity_key = entity[:type] == "Person" ? "person" : "group_#{entity[:id]}"
+          is_checked = subscription.sync_entities.any? { |e| e["type"] == entity[:type] && e["id"] == entity[:id] }
+        %>
+        <label class="flex items-center cursor-pointer">
+          <input type="checkbox" name="sync_entities[]" value="<%= entity_key %>" <%= 'checked' if is_checked %> class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500 mr-2 cursor-pointer">
+          <span class="text-sm"><%= entity[:name] %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 pt-2">
+    <%= render "shared/button", text: "Save Settings", variant: "primary", size: "small", type: :submit %>
+
+    <% if subscription.provider != "ical" %>
+      <%= render "shared/button", text: "Sync Now", path: my_calendar_sync_sync_now_path(subscription), variant: "outline", size: "small", data: { turbo_method: :post } %>
+    <% end %>
+
+    <%= render "shared/button", text: "Disconnect", path: my_calendar_sync_disconnect_path(subscription), variant: "ghost", size: "small", data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to disconnect this calendar? Any synced events will remain in your calendar but will no longer be updated." } %>
+  </div>
+<% end %>

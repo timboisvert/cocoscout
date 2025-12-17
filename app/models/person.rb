@@ -50,6 +50,9 @@ class Person < ApplicationRecord
   has_many :training_credits, dependent: :destroy
   has_many :profile_skills, as: :profileable, dependent: :destroy
 
+  # Calendar sync
+  has_many :calendar_subscriptions, dependent: :destroy
+
   # Accept nested attributes for profile system
   accepts_nested_attributes_for :profile_headshots, allow_destroy: true
   accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank

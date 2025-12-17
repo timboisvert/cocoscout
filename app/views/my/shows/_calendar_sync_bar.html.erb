@@ -1,0 +1,27 @@
+<%# Calendar Sync Promotion Bar %>
+<% has_calendar_subscription = @person.calendar_subscriptions.enabled.any? %>
+
+<div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+        <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-base font-semibold text-gray-700">Calendar Sync</p>
+        <% if has_calendar_subscription %>
+          <p class="text-sm text-gray-600">Your events are syncing to your personal calendar.</p>
+        <% else %>
+          <p class="text-sm text-gray-600">Sync your shows and events to Google Calendar or any calendar app.</p>
+        <% end %>
+      </div>
+    </div>
+    <% if has_calendar_subscription %>
+      <%= render "shared/button", text: "Manage Sync", path: my_calendar_sync_path, variant: "primary", size: "small", icon: "cog" %>
+    <% else %>
+      <%= render "shared/button", text: "Set Up Sync", path: my_calendar_sync_path, variant: "primary", size: "small", icon: "link" %>
+    <% end %>
+  </div>
+</div>

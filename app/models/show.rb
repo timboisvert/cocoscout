@@ -58,6 +58,10 @@ class Show < ApplicationRecord
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
 
+  # Calendar sync - trigger sync for affected people when show changes
+  after_commit :trigger_calendar_sync, on: [ :create, :update ]
+  after_destroy :trigger_calendar_sync_for_destruction
+
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
 
@@ -318,5 +322,72 @@ class Show < ApplicationRecord
 
     # Also unmark this show as finalized (will be saved with the record)
     self.casting_finalized_at = nil
+  end
+
+  def trigger_calendar_sync
+    # Find all people who might have this show in their calendar sync
+    # This includes:
+    # 1. People assigned to this show
+    # 2. People in the talent pool for this production (if they sync "all")
+    person_ids = affected_person_ids_for_calendar_sync
+
+    # Queue sync jobs for each person's subscriptions
+    CalendarSubscription.enabled.where(person_id: person_ids).find_each do |subscription|
+      CalendarSyncJob.perform_later(subscription.id)
+    end
+  end
+
+  def trigger_calendar_sync_for_destruction
+    # Before the show is destroyed, find the relevant calendar events and delete them
+    CalendarEvent.where(show_id: id).find_each do |calendar_event|
+      begin
+        service = calendar_service_for(calendar_event.calendar_subscription)
+        service&.delete_event(calendar_event)
+      rescue StandardError => e
+        Rails.logger.error("Failed to delete calendar event #{calendar_event.id}: #{e.message}")
+        # Still destroy the calendar event record even if external deletion fails
+        calendar_event.destroy
+      end
+    end
+  end
+
+  def affected_person_ids_for_calendar_sync
+    person_ids = Set.new
+
+    # People directly assigned to this show
+    show_person_role_assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
+      person_ids << id
+    end
+
+    # People in groups assigned to this show
+    group_ids = show_person_role_assignments.where(assignable_type: "Group").pluck(:assignable_id)
+    GroupMembership.where(group_id: group_ids).pluck(:person_id).each do |id|
+      person_ids << id
+    end
+
+    # People in the production's talent pool (they might have "talent_pool" sync scope)
+    talent_pool = production.talent_pool
+    if talent_pool
+      TalentPoolMembership.where(talent_pool_id: talent_pool.id, member_type: "Person").pluck(:member_id).each do |id|
+        person_ids << id
+      end
+
+      # People in groups that are in the talent pool
+      group_ids_in_pool = TalentPoolMembership.where(talent_pool_id: talent_pool.id, member_type: "Group").pluck(:member_id)
+      GroupMembership.where(group_id: group_ids_in_pool).pluck(:person_id).each do |id|
+        person_ids << id
+      end
+    end
+
+    person_ids.to_a
+  end
+
+  def calendar_service_for(subscription)
+    case subscription.provider
+    when "google"
+      CalendarSync::GoogleService.new(subscription)
+    else
+      nil # iCal doesn't need event deletion
+    end
   end
 end
