@@ -1,0 +1,28 @@
+<%
+  # Calendar Sync Banner component
+  # Shows a banner to encourage users to enable calendar sync
+  person = local_assigns[:person]
+%>
+
+<% if person.present? && !person.calendar_sync_enabled %>
+  <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0">
+          <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-base font-semibold text-gray-700">Sync Your Calendar</p>
+          <p class="text-sm text-gray-600">Keep your personal calendar up to date with your shows and events.</p>
+        </div>
+      </div>
+      <%= render partial: "shared/button", locals: { 
+        text: "Enable Calendar Sync", 
+        path: my_calendar_sync_settings_path, 
+        variant: "primary" 
+      } %>
+    </div>
+  </div>
+<% end %>

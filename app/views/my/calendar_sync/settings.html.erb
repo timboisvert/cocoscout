@@ -1,0 +1,166 @@
+<% content_for :title, "Calendar Sync Settings" %>
+
+<div class="w-full max-w-4xl mx-auto pb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["My Shows & Events", my_shows_path]
+    ],
+    text: "Calendar Sync Settings",
+    links: []
+  } %>
+
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-gray-900 mb-2">Sync Your Calendar</h2>
+      <p class="text-sm text-gray-600">
+        Keep your personal calendar up to date with your shows and events. Choose which events to sync and receive updates when they change.
+      </p>
+    </div>
+
+    <%= form_with url: my_calendar_sync_update_path, method: :patch, local: true do |f| %>
+      <!-- Enable Calendar Sync Toggle -->
+      <div class="mb-6 pb-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="text-base font-medium text-gray-700">Enable Calendar Sync</label>
+            <p class="text-sm text-gray-500 mt-1">Automatically sync your shows and events to your personal calendar</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="calendar_sync_enabled" value="0" />
+            <input type="checkbox" name="calendar_sync_enabled" value="1" <%= 'checked' if @person.calendar_sync_enabled %> class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Email Confirmation -->
+      <% if @person.calendar_sync_enabled && !@person.calendar_sync_email_confirmed %>
+        <div class="mb-6 pb-6 border-b border-gray-200">
+          <div class="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-yellow-800">Email Confirmation Required</p>
+              <p class="text-sm text-yellow-700 mt-1">Please confirm your email address (<strong><%= @person.email %></strong>) to enable calendar sync.</p>
+              <%= link_to "Confirm Email", my_calendar_sync_confirm_email_path, method: :post, 
+                  class: "mt-2 inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-800 bg-yellow-100 border border-yellow-300 rounded hover:bg-yellow-200 transition-colors" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <div id="calendar-sync-options" <%= 'style="display: none;"' unless @person.calendar_sync_enabled && @person.calendar_sync_email_confirmed %>>
+        <!-- Sync Scope -->
+        <div class="mb-6 pb-6 border-b border-gray-200">
+          <label class="text-base font-medium text-gray-700 block mb-3">What to Sync</label>
+          <div class="space-y-3">
+            <label class="flex items-start cursor-pointer">
+              <input type="radio" name="calendar_sync_scope" value="assignments_only" 
+                     <%= 'checked' if @person.calendar_sync_scope == 'assignments_only' || @person.calendar_sync_scope.blank? %>
+                     class="mt-1 h-4 w-4 border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
+                <span class="text-sm font-medium text-gray-900">Shows & Events with My Assignments</span>
+                <p class="text-sm text-gray-500">Only sync shows and events where you or your groups have role assignments</p>
+              </div>
+            </label>
+            <label class="flex items-start cursor-pointer">
+              <input type="radio" name="calendar_sync_scope" value="all_shows" 
+                     <%= 'checked' if @person.calendar_sync_scope == 'all_shows' %>
+                     class="mt-1 h-4 w-4 border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
+                <span class="text-sm font-medium text-gray-900">All Shows & Events</span>
+                <p class="text-sm text-gray-500">Sync all shows and events for productions you're in the talent pool of</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Entity Selection -->
+        <div class="mb-6">
+          <label class="text-base font-medium text-gray-700 block mb-3">Sync For</label>
+          <p class="text-sm text-gray-500 mb-3">Choose which calendars to sync</p>
+          <div class="space-y-2">
+            <!-- Person Checkbox -->
+            <label class="flex items-center cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <input type="checkbox" name="sync_person" value="1" 
+                     <%= 'checked' if @person.calendar_sync_entities['person'] != false %>
+                     class="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+              <span class="ml-3 text-sm font-medium text-gray-900">Myself (<%= @person.name %>)</span>
+            </label>
+
+            <!-- Group Checkboxes -->
+            <% @groups.each do |group| %>
+              <label class="flex items-center cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <input type="checkbox" name="sync_group_<%= group.id %>" value="1" 
+                       <%= 'checked' if @person.calendar_sync_entities["group_#{group.id}"] == true %>
+                       class="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
+                <span class="ml-3 text-sm font-medium text-gray-900"><%= group.name %></span>
+              </label>
+            <% end %>
+
+            <% if @groups.empty? %>
+              <p class="text-sm text-gray-500 italic p-3">You are not a member of any groups.</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="flex items-center gap-3 pt-4">
+        <%= render "shared/button", text: "Save Settings", variant: "primary", type: :submit %>
+        <%= render "shared/button", text: "Cancel", path: my_shows_path, variant: "secondary" %>
+      </div>
+    <% end %>
+
+    <!-- Disable Calendar Sync -->
+    <% if @person.calendar_sync_enabled %>
+      <div class="mt-8 pt-6 border-t border-gray-200">
+        <p class="text-sm text-gray-600 mb-3">
+          If you no longer want to sync your calendar, you can disable this feature.
+        </p>
+        <%= button_to "Disable Calendar Sync", my_calendar_sync_disable_path, method: :post, 
+            class: "inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors",
+            data: { confirm: "Are you sure you want to disable calendar sync?" } %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Help Section -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <h3 class="text-sm font-semibold text-blue-900 mb-1">How Calendar Sync Works</h3>
+        <ul class="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <li>When you enable sync, we'll send calendar invitations to your email (<strong><%= @person.email %></strong>)</li>
+          <li>You'll receive updates when events are created, modified, or cancelled</li>
+          <li>Choose to sync only your assigned roles or all events for your productions</li>
+          <li>You can enable sync for yourself and any groups you're part of</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show/hide options based on toggle
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggle = document.querySelector('input[name="calendar_sync_enabled"]');
+    const options = document.getElementById('calendar-sync-options');
+    
+    if (toggle && options) {
+      toggle.addEventListener('change', function() {
+        if (this.checked) {
+          options.style.display = 'block';
+        } else {
+          options.style.display = 'none';
+        }
+      });
+    }
+  });
+</script>
