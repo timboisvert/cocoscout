@@ -12,13 +12,10 @@
     <% if current_user_has_role?(@production) %>
     <!-- Active Call to Audition Info -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Active Audition Cycle</h3>
-        <% if current_user_can_manage?(@production) %>
-          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-xs text-pink-500 underline cursor-pointer", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
-        <% end %>
       </div>
-      <div class="p-6">
+      <div class="p-4">
         <%
           # Check if casting has been completed
           has_casting_notifications = @active_audition_cycle.casting_finalized_at.present?
@@ -42,101 +39,48 @@
           </div>
         <% end %>
 
-        <p class="text-sm text-gray-500 mb-4">Current audition cycle settings and statistics.</p>
+        <div class="space-y-1">
+          <%
+            if @active_audition_cycle.opens_at > Time.current
+              status_text = "Opening Soon"
+              status_color = "text-yellow-600"
+            elsif @active_audition_cycle.closes_at.present? && @active_audition_cycle.closes_at <= Time.current
+              status_text = "Closed"
+              status_color = "text-gray-500"
+            else
+              status_text = "Open"
+              status_color = "text-green-600"
+            end
+          %>
+          <div class="px-3 py-2 border border-gray-200 rounded-lg bg-white">
+            <div class="flex items-stretch">
+              <%# Left Half: Audition Type & Dates %>
+              <div class="w-1/2 flex flex-col justify-center">
+                <div class="font-medium text-gray-900">
+                  <%= @active_audition_cycle.audition_type == "in_person" ? "In-person Auditions" : "Video Upload Auditions" %>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <%= @active_audition_cycle.opens_at.strftime("%b %-d") %><% if @active_audition_cycle.closes_at.present? %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>
+                  · <span class="<%= status_color %>"><%= status_text %></span>
+                </div>
+              </div>
 
-        <%
-          # Determine status
-          if @active_audition_cycle.opens_at > Time.current
-            status = :upcoming
-          elsif @active_audition_cycle.closes_at.present? && @active_audition_cycle.closes_at <= Time.current
-            status = :closed
-          else
-            status = :open
-          end
-        %>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Audition Type</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">
-              <% if @active_audition_cycle.audition_type == "in_person" %>
-                In-person Auditions
-              <% elsif @active_audition_cycle.audition_type == "video_upload" %>
-                Video Upload Auditions
-              <% end %>
-            </p>
-          </div>
-          <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= @active_audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %><% if @active_audition_cycle.closes_at.present? %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %><% else %> (open-ended)<% end %>
-              <% if status == :upcoming %>
-                <% seconds_until = (@active_audition_cycle.opens_at - Time.current).to_i %>
-                <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_audition_cycle.opens_at.utc.iso8601 %>">
-                    Opens in <span data-countdown-target="clock"></span>
-                  </div>
-                <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, @active_audition_cycle.opens_at) %></span>
-                <% end %>
-              <% elsif status == :open && @active_audition_cycle.closes_at.present? %>
-                <% seconds_until = (@active_audition_cycle.closes_at - Time.current).to_i %>
-                <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= @active_audition_cycle.closes_at.utc.iso8601 %>">
-                    Closes in <span data-countdown-target="clock"></span>
-                  </div>
-                <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, @active_audition_cycle.closes_at) %></span>
-                <% end %>
-              <% end %>
-            </p>
-          </div>
-
-          <% if status == :open %>
-            <div class="p-3 bg-gray-50 rounded-lg">
-              <p class="text-xs text-gray-600 font-medium">Sign-ups Received</p>
-              <p class="text-sm font-semibold text-gray-900 mt-1"><%= @active_audition_cycle.audition_requests.count %></p>
+              <%# Right Half: Sign-ups count %>
+              <div class="w-1/2 border-l border-gray-200 pl-4 flex flex-col justify-center">
+                <div class="text-xs font-semibold text-gray-700 mb-1">Sign-ups</div>
+                <div class="text-2xl font-bold text-pink-600"><%= @active_audition_cycle.audition_requests.count %></div>
+              </div>
             </div>
-          <% elsif status == :closed && @active_audition_cycle.audition_type == 'in_person' %>
-            <%
-              # Only show these stats if auditions haven't happened yet
-              last_session = @active_audition_cycle.audition_sessions.order(start_at: :desc).first
-              auditions_not_yet_happened = last_session.nil? || last_session.start_at.nil? || last_session.start_at > Time.current
-
-              if auditions_not_yet_happened
-                # Get scheduled auditionable IDs (both Person and Group)
-                scheduled_auditionables = @active_audition_cycle.audition_sessions.joins(:auditions).distinct.pluck('auditions.auditionable_type', 'auditions.auditionable_id')
-                scheduled_count = scheduled_auditionables.count
-
-                # Count all requests that haven't been scheduled yet
-                all_requests = @active_audition_cycle.audition_requests
-                to_be_scheduled_count = all_requests.reject do |req|
-                  scheduled_auditionables.include?([req.requestable_type, req.requestable_id])
-                end.count
-            %>
-              <div class="p-3 bg-gray-50 rounded-lg">
-                <p class="text-xs text-gray-600 font-medium">Auditions Scheduled</p>
-                <p class="text-sm font-semibold text-gray-900 mt-1"><%= scheduled_count %></p>
-              </div>
-              <div class="p-3 bg-gray-50 rounded-lg">
-                <p class="text-xs text-gray-600 font-medium">Auditions To Be Scheduled</p>
-                <p class="text-sm font-semibold text-gray-900 mt-1"><%= to_be_scheduled_count %></p>
-              </div>
-            <% end %>
-          <% end %>
+          </div>
         </div>
-
-        <% if current_user_can_manage?(@production) %>
-          <%= render partial: "shared/button", locals: {text: "Edit Settings", path: edit_manage_production_audition_cycle_path(@production, @active_audition_cycle), variant: "primary"} %>
-        <% end %>
       </div>
     </div>
     <% end %>
 
     <!-- Audition Process Steps -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Audition Process</h3>
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Process</h3>
       </div>
 
       <div class="p-8">
@@ -317,37 +261,20 @@
     <% end %>
   <% end %>
 
-  <% if current_user_has_role?(@production) %>
-  <!-- Past Calls to Audition -->
-  <div class="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-      <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Past Audition Cycles</h3>
-    </div>
-    <% if @past_audition_cycles.any? %>
-      <div class="divide-y divide-gray-200">
-        <% @past_audition_cycles.each do |audition_cycle| %>
-          <%= link_to manage_production_audition_cycle_path(@production, audition_cycle), class: "block p-6 hover:bg-gray-50 transition-colors group" do %>
-            <div class="flex justify-between items-start">
-              <div>
-                <h4 class="font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">
-                  <%= audition_cycle.audition_type.titleize %> Auditions
-                </h4>
-                <p class="text-sm text-gray-600 mt-1">
-                  <%= audition_cycle.opens_at&.strftime("%b %d, %Y") %><% if audition_cycle.closes_at.present? %> - <%= audition_cycle.closes_at.strftime("%b %d, %Y") %><% else %> (open-ended)<% end %>
-                </p>
-              </div>
-              <div class="text-sm text-gray-500">
-                Archived
-              </div>
-            </div>
-          <% end %>
+  <% if current_user_has_role?(@production) && @active_audition_cycle.present? %>
+  <div class="mt-8 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-base font-semibold text-gray-700">Archive</p>
+        <p class="text-sm text-gray-600">End this audition cycle or view past cycles.</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <% if current_user_can_manage?(@production) %>
+          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
         <% end %>
+        <%= link_to "View Archive", archive_manage_production_auditions_path(@production), class: "text-sm text-pink-500 underline" %>
       </div>
-    <% else %>
-      <div class="p-6 text-left text-gray-500 text-sm">
-        This production hasn't offered auditions yet.
-      </div>
-    <% end %>
+    </div>
   </div>
   <% end %>
 </div>

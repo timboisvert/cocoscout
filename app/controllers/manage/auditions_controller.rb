@@ -14,6 +14,11 @@ module Manage
     # GET /auditions
     def index
       @active_audition_cycle = @production.active_audition_cycle
+      @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc).limit(3)
+    end
+
+    # GET /auditions/archive
+    def archive
       @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc)
     end
 

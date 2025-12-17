@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)]
+      ["Auditions", manage_production_auditions_path(@production)],
+      ["Archive", archive_manage_production_auditions_path(@production)]
     ],
     text: "Archived Audition Cycle",
     links: []

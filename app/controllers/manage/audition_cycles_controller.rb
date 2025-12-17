@@ -21,6 +21,9 @@ module Manage
       @custom_questions = @audition_cycle.questions.order(:position)
       @audition_requests = @audition_cycle.audition_requests.includes(:requestable).order(created_at: :desc)
 
+      # For in-person auditions, get person requests (not group requests)
+      @accepted_requests = @audition_requests.where(requestable_type: "Person")
+
       # Get people added to casts during this audition cycle via cast_assignment_stages
       person_ids = CastAssignmentStage.where(audition_cycle_id: @audition_cycle.id, assignable_type: "Person")
                                       .pluck(:assignable_id)

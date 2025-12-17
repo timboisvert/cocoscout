@@ -385,7 +385,11 @@ Rails.application.routes.draw do
       resources :cast_assignment_stages, only: %i[create update destroy]
       resources :email_groups, only: %i[create update destroy]
       resources :audition_email_assignments, only: %i[create update destroy]
-      resources :auditions
+      resources :auditions do
+        collection do
+          get :archive
+        end
+      end
     end
 
     # Used for adding people and removing them from an audition session
