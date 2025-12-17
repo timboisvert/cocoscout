@@ -2,7 +2,7 @@
   <% if @questions.any? %>
     <div class="space-y-2" data-controller="question-order" data-question-order-url="<%= reorder_questions_manage_production_audition_cycle_path(@production, @audition_cycle) %>">
       <% @questions.each do |question| %>
-        <div class="p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move relative group" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd" onclick="event.stopPropagation();">
+        <div class="p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move relative group" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd">
           <div class="flex items-start gap-4">
             <span class="text-gray-400 cursor-move mt-1" title="Drag to reorder">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -27,16 +27,18 @@
 
           <!-- Hover buttons on the right -->
           <div class="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-            <button
-              type="button"
-              data-action="question-modal#openForEdit"
-              data-question-text="<%= question.text %>"
-              data-question-type="<%= question.question_type %>"
-              data-question-required="<%= question.required %>"
-              data-update-path="<%= update_question_manage_production_audition_cycle_path(@production, @audition_cycle, question_id: question.id) %>"
-              class="cursor-pointer">
-              <%= render "shared/button", text: "Edit", variant: "primary", size: "small", type: :button %>
-            </button>
+            <%= render "shared/button",
+              text: "Edit",
+              variant: "primary",
+              size: "small",
+              type: :button,
+              data: {
+                action: "question-modal#openForEdit",
+                "question-text": question.text,
+                "question-type": question.question_type,
+                "question-required": question.required,
+                "update-path": update_question_manage_production_audition_cycle_path(@production, @audition_cycle, question_id: question.id)
+              } %>
             <%= button_to destroy_question_manage_production_audition_cycle_path(@production, @audition_cycle, question_id: question.id),
                 method: :delete,
                 form: { data: { turbo_confirm: "Are you sure you want to delete this question?" }, class: "inline" },

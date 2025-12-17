@@ -23,21 +23,23 @@
       </div>
     <% end %>
     <div class="flex-1 min-w-0">
-      <div class="font-bold text-xl text-gray-900 truncate"><%= @person.name %></div>
+      <div class="flex items-baseline gap-2 min-w-0">
+        <div class="font-bold text-xl text-gray-900 truncate flex-shrink"><%= @person.name %></div>
+        <% if @person.pronouns.present? %>
+          <div class="text-sm text-gray-500 flex-shrink-0">(<%= @person.pronouns %>)</div>
+        <% end %>
+      </div>
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
         <% if @person.email.present? %>
           <%= link_to @person.email, "mailto:#{@person.email}", class: "text-pink-500 hover:underline" %>
         <% end %>
-        <% if @person.public_key.present? %>
-          <%= link_to public_profile_path(@person.public_key), target: "_blank", class: "inline-flex items-center gap-1 text-pink-500 hover:underline" do %>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
-            Public Profile
-          <% end %>
-        <% end %>
       </div>
     </div>
+    <% if @person.public_key.present? %>
+      <div class="flex-shrink-0">
+        <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@person.public_key), variant: "primary", target: "_blank" } %>
+      </div>
+    <% end %>
   </div>
 
   <div class="w-full" data-controller="tabs">

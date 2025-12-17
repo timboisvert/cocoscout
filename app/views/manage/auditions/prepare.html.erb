@@ -171,6 +171,7 @@
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">Identify who will get access to view and assess sign-ups and auditions.</p>
 
+        <% reviewer_type = @audition_cycle.reviewer_access_type.presence || 'managers' %>
         <%= form_with url: update_reviewers_manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
           <div class="mb-4">
             <label class="block font-semibold mb-2 text-sm">Who can review auditions?</label>
@@ -178,7 +179,7 @@
               <div>
                 <div class="flex items-center">
                   <label class="flex items-center cursor-pointer">
-                    <%= radio_button_tag :reviewer_access_type, 'managers', @audition_cycle.reviewer_access_type == 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <%= radio_button_tag :reviewer_access_type, 'managers', reviewer_type == 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
                     <span class="text-sm">Production Team</span>
                   </label>
                   <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleManagersList" data-reviewer-selector-target="managersToggle">
@@ -223,7 +224,7 @@
               <div>
                 <div class="flex items-center">
                   <label class="flex items-center cursor-pointer">
-                    <%= radio_button_tag :reviewer_access_type, 'all', @audition_cycle.reviewer_access_type == 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                    <%= radio_button_tag :reviewer_access_type, 'all', reviewer_type == 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
                     <span class="text-sm">Entire Talent Pool</span>
                   </label>
                   <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleTalentPoolList" data-reviewer-selector-target="talentPoolToggle">
@@ -261,14 +262,14 @@
 
               <div>
                 <label class="flex items-center cursor-pointer">
-                  <%= radio_button_tag :reviewer_access_type, 'specific', @audition_cycle.reviewer_access_type == 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <%= radio_button_tag :reviewer_access_type, 'specific', reviewer_type == 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
                   <span class="text-sm">Specific People</span>
                 </label>
               </div>
             </div>
           </div>
 
-          <div class="<%= @audition_cycle.reviewer_access_type == 'specific' ? '' : 'hidden' %> ml-6" data-reviewer-selector-target="specificSection">
+          <div class="<%= reviewer_type == 'specific' ? '' : 'hidden' %> ml-6" data-reviewer-selector-target="specificSection">
             <div class="border border-gray-300 rounded-lg p-3 bg-gray-50 max-h-96 overflow-y-auto">
               <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
                 <% @talent_pool_people.each do |person| %>

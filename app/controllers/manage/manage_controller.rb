@@ -16,7 +16,8 @@ module Manage
     before_action :ensure_user_has_access_to_company, if: lambda {
       Current.user.present? && Current.organization.present?
     }, except: %i[index welcome dismiss_production_welcome]
-    before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? }
+    before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? },
+                  except: %i[index welcome dismiss_production_welcome]
 
     before_action :track_last_dashboard
     before_action :show_manage_sidebar

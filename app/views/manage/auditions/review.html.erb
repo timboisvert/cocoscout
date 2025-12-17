@@ -10,7 +10,10 @@
     links: []
   } %>
 
-  <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+  <% # Hide lifecycle panel for non-managers on video_upload since there's only one step %>
+  <% unless !current_user_can_manage?(@production) && @audition_cycle&.audition_type == "video_upload" %>
+    <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
+  <% end %>
 
   <%= render partial: "archived_banner" %>
 

@@ -10,12 +10,12 @@
     <div class="flex flex-col lg:flex-row items-start lg:space-x-6">
       <div class="flex-1 w-full">
         <%# Socials Box (email is in hero now) %>
-        <% if person.socials.any? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Socials</h3>
-            </div>
-            <div class="p-4">
+        <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Socials</h3>
+          </div>
+          <div class="p-4">
+            <% if person.socials.any? %>
               <div class="space-y-1">
                 <% person.socials.each do |social| %>
                   <div class="flex items-center space-x-2">
@@ -24,9 +24,11 @@
                   </div>
                 <% end %>
               </div>
-            </div>
+            <% else %>
+              <p class="text-sm text-gray-500">No socials added</p>
+            <% end %>
           </div>
-        <% end %>
+        </div>
 
         <% if current_user_can_manage? || Current.user&.superadmin? %>
           <%# Organization Box %>
