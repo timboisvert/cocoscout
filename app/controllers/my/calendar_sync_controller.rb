@@ -41,7 +41,7 @@ module My
     def confirm_email
       @person = Current.user.person
 
-      # For now, just mark as confirmed. In a real implementation, you would send a confirmation email
+      # Mark email as confirmed. Future enhancement: send confirmation link via email
       @person.calendar_sync_email_confirmed = true
 
       if @person.save

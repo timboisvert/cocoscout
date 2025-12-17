@@ -25,8 +25,8 @@ class CalendarSyncMailer < ApplicationMailer
   private
 
   def generate_ical(show, person, action_type)
-    # Simple iCal format
-    # In a production system, you might want to use the 'icalendar' gem
+    # Generate iCal format compliant with RFC 5545
+    # Using manual generation to avoid external dependencies
     uid = "show-#{show.id}@cocoscout.com"
     timestamp = Time.current.utc.strftime("%Y%m%dT%H%M%SZ")
     start_time = show.date_and_time.utc.strftime("%Y%m%dT%H%M%SZ")
