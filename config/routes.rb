@@ -26,6 +26,17 @@ Rails.application.routes.draw do
   get   "/set_password/:token",  to: "auth#set_password",        as: "set_password"
   post  "/set_password/:token",  to: "auth#handle_set_password", as: "handle_set_password"
 
+  # Account
+  get   "/account",                       to: "account#show",                as: "account"
+  patch "/account",                       to: "account#update"
+  get   "/account/profiles",              to: "account#profiles",            as: "account_profiles"
+  post  "/account/profiles",              to: "account#create_profile",      as: "create_profile_account"
+  post  "/account/profiles/:id/set_default", to: "account#set_default_profile", as: "set_default_profile_account"
+  post  "/account/profiles/:id/archive",  to: "account#archive_profile",     as: "archive_profile_account"
+  get   "/account/notifications",         to: "account#notifications",       as: "account_notifications"
+  patch "/account/notifications",         to: "account#update_notifications"
+  get   "/account/billing",               to: "account#billing",             as: "account_billing"
+
   # Superadmin
   scope "/superadmin" do
     get  "/",                   to: "superadmin#index",               as: "superadmin"
@@ -133,14 +144,6 @@ Rails.application.routes.draw do
     patch "/calendar-sync/:id",                 to: "calendar_sync#update",               as: "calendar_sync_update"
     delete "/calendar-sync/:id",                to: "calendar_sync#disconnect",           as: "calendar_sync_disconnect"
     post "/calendar-sync/:id/sync",            to: "calendar_sync#sync_now",             as: "calendar_sync_sync_now"
-
-    # Profile management (multi-profile support)
-    resources :profiles, only: [ :index, :new, :create, :edit, :update ] do
-      member do
-        post :set_default
-        post :archive
-      end
-    end
   end
 
   # iCal feed (public, no authentication)

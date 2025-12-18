@@ -1,77 +1,108 @@
-<!-- Mobile Navigation Overlay -->
-<div class="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden" data-mobile-nav-target="overlay" data-action="click->mobile-nav#close"></div>
-
-<!-- Mobile Navigation Sidebar -->
-<nav class="lg:hidden fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r-2 border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 overflow-y-auto" data-mobile-nav-target="sidebar" data-controller="mobile-nav">
-  <div class="px-4 py-4 border-b border-gray-200">
-    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Edit Group Profile</h3>
+<div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
+  <div class="flex items-center justify-between px-4 py-3">
+    <button type="button" data-action="mobile-nav#toggle" class="flex items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    </button>
+    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+      <%= link_to my_dashboard_path, class: "flex items-center gap-2" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
+        <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+      <% end %>
+    </div>
+    <div class="w-6"></div>
   </div>
 
-  <div class="mt-2">
-    <%
-      sections = [
-        { name: "Basic Info", id: "basic-info" },
-        { name: "Social Media", id: "social-media" },
-        { name: "Headshots", id: "headshots" },
-        { name: "Videos & Reels", id: "videos" },
-        { name: "Performance History", id: "performance-history" },
-        { name: "Resumes", id: "resumes" },
-        { name: "Members", id: "members" },
-        { name: "Notifications", id: "notifications" }
-      ]
-    %>
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
+    <div class="px-4 py-4">
 
-    <% sections.each do |section| %>
-      <a href="#<%= section[:id] %>"
-         data-action="click->mobile-nav#close"
-         class="mobile-profile-nav-link flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-pink-500 hover:text-white transition-all font-medium">
-        <%= section[:name] %>
-      </a>
-    <% end %>
-  </div>
-
-  <!-- My Profile Section -->
-  <div class="mt-6 px-4 py-4 border-t border-gray-200">
-    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">My Profile</h3>
-    <div class="flex items-center gap-3 mb-3">
-      <% if Current.user.person.headshot&.attached? %>
-        <%= image_tag Current.user.person.headshot.variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
-      <% else %>
-        <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">
-          <%= Current.user.person.initials %>
+      <!-- Impersonation Banner -->
+      <% if impersonating? %>
+        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
+          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
+          <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small", classes: "w-full" %>
         </div>
       <% end %>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-gray-900 truncate"><%= Current.user.person.name %></p>
+
+      <!-- Group Navigation -->
+      <div class="mb-6">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Group</div>
+        <div class="space-y-2">
+          <%= link_to "Group Profile", edit_group_path(@group), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Group Settings", settings_group_path(@group), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+        </div>
+      </div>
+
+      <!-- Profile Sections -->
+      <div class="mb-6">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Edit Profile</div>
+        <div class="space-y-2">
+          <a href="#basic-info" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Basic Info</a>
+          <a href="#social-media" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Social Media</a>
+          <a href="#headshots" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Headshots</a>
+          <a href="#videos" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Videos & Reels</a>
+          <a href="#performance-history" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Performance History</a>
+          <a href="#resumes" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Resumes</a>
+          <a href="#members" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Members</a>
+          <a href="#notifications" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Notifications</a>
+        </div>
+      </div>
+
+      <!-- User Profile Section -->
+      <div class="mb-6 pb-6 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+          <% if Current.user.person&.headshot&.attached? %>
+            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
+              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Links -->
+      <div class="mb-6">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigate To</div>
+        <div class="space-y-2">
+          <%= link_to "My Profile", profile_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Talent Dashboard", my_dashboard_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+          <%= link_to "Production Dashboard", manage_path, data: { turbo: false }, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="space-y-2">
+        <% if Current.user.superadmin? %>
+          <%= link_to "Superadmin", superadmin_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
+        <% end %>
+
+        <%= link_to "My Account", account_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
+
+        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
       </div>
     </div>
-    <%= link_to profile_path, class: "flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-pink-50 text-gray-700 hover:text-pink-600 rounded-lg text-sm font-medium transition-all w-full" do %>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-      </svg>
-      <span>Edit My Profile</span>
-    <% end %>
   </div>
-
-  <div class="flex justify-center py-4">
-    <%= render "shared/cocoscout_logo", size: :large %>
-  </div>
-</nav>
+</div>
 
 <script>
   // Smooth scroll to sections with offset for fixed header on mobile
   document.addEventListener('DOMContentLoaded', function() {
-    const navLinks = document.querySelectorAll('.mobile-profile-nav-link');
-
-    navLinks.forEach(link => {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('href').substring(1);
-        const target = document.getElementById(targetId);
-
-        if (target) {
-          setTimeout(() => {
-            const headerOffset = 80;
+    const mobileNav = document.querySelector('[data-controller="mobile-nav"]');
+    if (mobileNav) {
+      mobileNav.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const targetId = this.getAttribute('href');
+          const target = document.querySelector(targetId);
+          if (target) {
+            const headerOffset = 60; // Mobile header height
             const elementPosition = target.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
@@ -79,13 +110,9 @@
               top: offsetPosition,
               behavior: 'smooth'
             });
-          }, 300);
-
-          // Update active state
-          navLinks.forEach(l => l.classList.remove('bg-pink-500', 'text-white'));
-          this.classList.add('bg-pink-500', 'text-white');
-        }
+          }
+        });
       });
-    });
+    }
   });
 </script>

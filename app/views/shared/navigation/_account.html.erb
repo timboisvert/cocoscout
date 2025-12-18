@@ -1,0 +1,18 @@
+<nav class="hidden w-56 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-20 fixed left-0 top-16 h-[calc(100vh-4rem)] justify-between">
+  <div class="flex-1 overflow-y-auto">
+
+    <div class="mt-2">
+      <%= render "shared/nav_link", text: "Account", path: account_path, active: action_name == "show" %>
+      <%= render "shared/nav_link", text: "Profiles", path: account_profiles_path, active: action_name == "profiles" %>
+      <%= render "shared/nav_link", text: "Notifications", path: account_notifications_path, active: action_name == "notifications" %>
+      <%= render "shared/nav_link", text: "Billing", path: account_billing_path, active: action_name == "billing" %>
+    </div>
+
+  </div>
+
+  <!-- Bottom section -->
+  <div class="flex justify-center">
+    <%= render "shared/cocoscout_logo", size: :large %>
+  </div>
+
+</nav>

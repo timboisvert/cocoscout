@@ -1,0 +1,66 @@
+<% content_for :title, "Account Settings" %>
+
+<div class="w-full">
+  <div id="notice-container">
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  </div>
+
+  <!-- Account Settings Section -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Account Settings</h3>
+    </div>
+    <div class="p-6 space-y-6">
+      <%= form_with(model: Current.user, url: account_path, method: :patch, data: { turbo: true }) do |f| %>
+        <div class="max-w-md">
+          <%= f.label :email_address, "Email Address", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.email_field :email_address, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+          <p class="mt-1 text-xs text-gray-500">Your login email address</p>
+        </div>
+
+        <div class="mt-4">
+          <%= render "shared/button", text: "Save Changes", type: :submit, variant: "primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Password Section -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Password</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">
+        To change your password, use the password reset flow.
+      </p>
+      <%= render "shared/button", text: "Reset Password", path: password_path, variant: "outline" %>
+    </div>
+  </div>
+
+  <!-- Contact Support Section -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Contact Support</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">
+        Need help? Have a question or feedback? We'd love to hear from you.
+      </p>
+      <%= render "shared/button", text: "Email Support", path: "mailto:support@cocoscout.com", variant: "outline", icon: "mail" %>
+    </div>
+  </div>
+
+  <!-- Danger Zone Section -->
+  <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+      <h3 class="text-md font-semibold text-red-900 coustard-regular">Danger Zone</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">
+        Want to delete your account? Contact support and we'll help you with that.
+      </p>
+      <%= render "shared/button", text: "Contact Support to Delete Account", path: "mailto:support@cocoscout.com?subject=Delete%20My%20Account", variant: "danger", icon: "mail" %>
+    </div>
+  </div>
+</div>

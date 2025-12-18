@@ -1,0 +1,71 @@
+<% content_for :title, "Notification Preferences" %>
+
+<div class="w-full">
+  <div id="notice-container">
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  </div>
+
+  <!-- Notification Preferences Section -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Email Notifications</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-6">
+        Control which email notifications you receive from CocoScout.
+      </p>
+
+      <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Show Invitations</p>
+              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to fill a role in a show</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="notifications[show_invitations]" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Audition Invitations</p>
+              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to audition</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="notifications[audition_invitations]" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Group Invitations</p>
+              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to join a group</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="notifications[group_invitations]" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between py-3">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Shoutouts</p>
+              <p class="text-xs text-gray-500 mt-1">Get notified when someone sends you a shoutout</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="notifications[shoutouts]" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <%= render "shared/button", text: "Save Preferences", type: :submit, variant: "primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

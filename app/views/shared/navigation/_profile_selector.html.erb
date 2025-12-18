@@ -1,0 +1,122 @@
+<%# Profile Selector Dropdown %>
+<%# Shows the current profile (person or group) with a dropdown to switch between all profiles and groups %>
+<%
+  # Get all user's profiles and group memberships (only active groups)
+  all_profiles = Current.user.people.active.includes(:profile_headshots).order(:created_at)
+  group_memberships = Current.user.person&.groups&.active || []
+  
+  # Determine if we should show the dropdown (more than one option)
+  has_multiple_options = all_profiles.count > 1 || group_memberships.any?
+  
+  # Get current entity info
+  if local_assigns[:current_entity].is_a?(Group)
+    current_name = current_entity.name
+    current_headshot = current_entity.headshot
+    current_initials = current_entity.initials
+    is_group = true
+  else
+    current_entity ||= Current.user.person
+    current_name = current_entity&.name || Current.user.email_address
+    current_headshot = current_entity&.profile_headshots&.order(created_at: :desc)&.first&.image
+    current_initials = current_entity&.initials || Current.user.email_address[0].upcase
+    is_group = false
+  end
+%>
+
+<% if has_multiple_options %>
+  <div class="relative z-50" data-controller="dropdown">
+    <button data-action="click->dropdown#toggle click@window->dropdown#hide" class="flex items-center gap-3 hover:bg-slate-50 px-3 py-2 transition cursor-pointer h-12 border-r border-slate-200">
+      <% if current_headshot&.attached? %>
+        <%= image_tag current_headshot.variant(resize_to_fill: [32, 32]), class: "w-8 h-8 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+          <%= current_initials %>
+        </div>
+      <% end %>
+      <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= current_name %></div>
+      <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    <div data-dropdown-target="menu" class="hidden absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+      <!-- Personal Profiles Section -->
+      <% if all_profiles.any? %>
+        <div class="px-4 py-2 text-xs text-slate-500 font-semibold uppercase">My Profiles</div>
+        <% all_profiles.each do |profile| %>
+          <% is_current = !is_group && profile.id == current_entity&.id %>
+          <%= link_to profile_path, data: { turbo: false }, class: "flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition cursor-pointer #{ is_current ? 'bg-pink-50' : '' }" do %>
+            <% headshot = profile.profile_headshots.order(created_at: :desc).first %>
+            <% if headshot&.image&.attached? %>
+              <%= image_tag headshot.image.variant(resize_to_fill: [32, 32]), class: "w-8 h-8 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                <%= profile.initials %>
+              </div>
+            <% end %>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-sm font-medium text-slate-900 truncate"><%= profile.name %></span>
+              <% if profile.default_profile? %>
+                <span class="text-xs text-pink-500">Default Profile</span>
+              <% end %>
+            </div>
+            <% if is_current %>
+              <svg class="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <!-- Group Memberships Section -->
+      <% if group_memberships.any? %>
+        <div class="border-t border-slate-200 my-1"></div>
+        <div class="px-4 py-2 text-xs text-slate-500 font-semibold uppercase">My Groups</div>
+        <% group_memberships.each do |group| %>
+          <% is_current = is_group && group.id == current_entity.id %>
+          <%= link_to edit_group_path(group), data: { turbo: false }, class: "flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition cursor-pointer #{ is_current ? 'bg-pink-50' : '' }" do %>
+            <% if group.headshot&.attached? %>
+              <%= image_tag group.headshot.variant(resize_to_fill: [32, 32]), class: "w-8 h-8 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xs">
+                <%= group.initials %>
+              </div>
+            <% end %>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-sm font-medium text-slate-900 truncate"><%= group.name %></span>
+              <span class="text-xs text-slate-500">Group</span>
+            </div>
+            <% if is_current %>
+              <svg class="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <!-- Manage Profiles Link -->
+      <div class="border-t border-slate-200 my-1"></div>
+      <%= link_to account_profiles_path, class: "flex items-center gap-3 px-4 py-2 text-sm text-pink-500 hover:bg-slate-50 transition cursor-pointer font-medium" do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Manage Profiles
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <!-- Single profile, no dropdown - just show the profile info -->
+  <div class="flex items-center gap-3 px-3 py-2 h-12 border-r border-slate-200">
+    <% if current_headshot&.attached? %>
+      <%= image_tag current_headshot.variant(resize_to_fill: [32, 32]), class: "w-8 h-8 rounded-lg object-cover" %>
+    <% else %>
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+        <%= current_initials %>
+      </div>
+    <% end %>
+    <div class="text-sm font-medium text-slate-700 max-w-[200px] truncate"><%= current_name %></div>
+  </div>
+<% end %>

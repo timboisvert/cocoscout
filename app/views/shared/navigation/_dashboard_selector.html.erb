@@ -1,12 +1,21 @@
 <%# Dashboard Selector Dropdown %>
-<%# Required local: current_dashboard - one of "production", "talent", "profile", "group_profile", "group_settings" %>
+<%# Required local: current_dashboard - one of "production", "talent", "profile", "group_profile", "group_settings", "account" %>
 <%
+  # Determine if user has multiple profiles or group memberships (only active groups)
+  all_profiles = Current.user.people.active rescue []
+  group_memberships = Current.user.person&.groups&.active || []
+  has_multiple_profiles = all_profiles.count > 1 || group_memberships.any?
+  
+  # Dynamic label for profile section
+  profile_label = has_multiple_profiles ? "My Profiles" : "My Profile"
+  
   dashboard_labels = {
     "production" => "Production Dashboard",
     "talent" => "Talent Dashboard",
-    "profile" => "My Profile",
-    "group_profile" => "Group Profile",
-    "group_settings" => "Group Settings"
+    "profile" => profile_label,
+    "group_profile" => profile_label,
+    "group_settings" => profile_label,
+    "account" => "My Account"
   }
   current_label = dashboard_labels[current_dashboard] || "Dashboard"
 %>
@@ -34,17 +43,10 @@
       <% end %>
       <div class="border-t border-slate-200"></div>
     <% end %>
-    <% unless current_dashboard == "profile" %>
+    <% unless %w[profile group_profile group_settings].include?(current_dashboard) %>
       <%= link_to profile_path, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
-        <div class="text-base font-semibold coustard-regular text-slate-800">My Profile</div>
+        <div class="text-base font-semibold coustard-regular text-slate-800"><%= profile_label %></div>
         <div class="text-xs text-slate-500">Edit your headshots, resume, and settings</div>
-      <% end %>
-      <div class="border-t border-slate-200"></div>
-    <% end %>
-    <% if Current.user.person&.groups&.any? %>
-      <%= link_to groups_path, class: "block px-4 py-3 hover:bg-slate-50 transition cursor-pointer" do %>
-        <div class="text-base font-semibold coustard-regular text-slate-800">My Groups</div>
-        <div class="text-xs text-slate-500">Manage your group profiles</div>
       <% end %>
     <% end %>
   </div>

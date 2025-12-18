@@ -64,6 +64,13 @@
         <%= render "shared/navigation/my" %>
         <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56 overflow-x-hidden">
 
+      <% elsif @show_account_sidebar %>
+
+        <%= render "shared/navigation/account_header" %>
+        <%= render "shared/navigation/account_mobile" %>
+        <%= render "shared/navigation/account" %>
+        <main class="flex-1 px-5 pt-16 lg:pt-20 lg:ml-56 overflow-x-hidden">
+
       <% else %>
 
         <main class="flex-1 overflow-x-hidden">

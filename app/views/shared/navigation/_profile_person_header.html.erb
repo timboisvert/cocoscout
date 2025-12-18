@@ -2,6 +2,7 @@
 <header class="hidden lg:flex fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 items-center justify-between z-30">
   <div class="flex items-center">
     <%= render "shared/navigation/dashboard_selector", current_dashboard: "profile" %>
+    <%= render "shared/navigation/profile_selector", current_entity: @person %>
   </div>
 
   <div class="flex items-center gap-3 mr-4 border-l border-slate-200 h-12 pl-3">
@@ -37,6 +38,8 @@
           <%= link_to "Superadmin", superadmin_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
           <div class="border-t border-slate-200 my-1"></div>
         <% end %>
+        <%= link_to "My Account", account_path, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
+        <div class="border-t border-slate-200 my-1"></div>
         <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" %>
       </div>
     </div>
