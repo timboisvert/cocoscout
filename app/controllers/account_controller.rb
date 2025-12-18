@@ -3,7 +3,7 @@
 class AccountController < ApplicationController
   skip_before_action :show_my_sidebar
   before_action :set_account_sidebar
-  before_action :set_profile, only: [:set_default_profile, :archive_profile]
+  before_action :set_profile, only: [ :set_default_profile, :archive_profile ]
 
   def show
   end

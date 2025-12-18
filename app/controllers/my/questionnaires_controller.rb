@@ -91,6 +91,12 @@ module My
 
       # Determine the respondent based on params or default logic
       if params[:respondent_type].present? && params[:respondent_id].present?
+        # Validate respondent_type against allowlist before constantize
+        allowed_respondent_types = %w[Person Group]
+        unless allowed_respondent_types.include?(params[:respondent_type])
+          redirect_to my_dashboard_path, alert: "Invalid respondent type"
+          return
+        end
         # User explicitly selected a respondent
         @respondent = params[:respondent_type].constantize.find(params[:respondent_id])
 
@@ -177,6 +183,12 @@ module My
 
       # Determine the respondent from form params
       if params[:respondent_type].present? && params[:respondent_id].present?
+        # Validate respondent_type against allowlist before constantize
+        allowed_respondent_types = %w[Person Group]
+        unless allowed_respondent_types.include?(params[:respondent_type])
+          redirect_to my_dashboard_path, alert: "Invalid respondent type"
+          return
+        end
         @respondent = params[:respondent_type].constantize.find(params[:respondent_id])
 
         # Verify the selected respondent is valid

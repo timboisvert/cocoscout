@@ -130,7 +130,7 @@
             </div>
 
             <div class="flex flex-col gap-3">
-              <%= render "shared/button", text: "Join #{ @team_invitation.organization.name }", variant: "primary", size: "medium", type: :submit, class: "w-full" %>
+              <%= render "shared/button", text: "Join #{sanitize(@team_invitation.organization.name)}", variant: "primary", size: "medium", type: :submit, class: "w-full" %>
             </div>
           <% end %>
 

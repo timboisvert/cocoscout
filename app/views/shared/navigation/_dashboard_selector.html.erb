@@ -5,10 +5,10 @@
   all_profiles = Current.user.people.active rescue []
   group_memberships = Current.user.person&.groups&.active || []
   has_multiple_profiles = all_profiles.count > 1 || group_memberships.any?
-  
+
   # Dynamic label for profile section
   profile_label = has_multiple_profiles ? "My Profiles" : "My Profile"
-  
+
   dashboard_labels = {
     "production" => "Production Dashboard",
     "talent" => "Talent Dashboard",

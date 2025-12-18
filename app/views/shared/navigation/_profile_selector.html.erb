@@ -4,10 +4,10 @@
   # Get all user's profiles and group memberships (only active groups)
   all_profiles = Current.user.people.active.includes(:profile_headshots).order(:created_at)
   group_memberships = Current.user.person&.groups&.active || []
-  
+
   # Determine if we should show the dropdown (more than one option)
   has_multiple_options = all_profiles.count > 1 || group_memberships.any?
-  
+
   # Get current entity info
   if local_assigns[:current_entity].is_a?(Group)
     current_name = current_entity.name

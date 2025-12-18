@@ -294,9 +294,16 @@ class SuperadminController < ApplicationController
     failed_execution = SolidQueue::FailedExecution.find(params[:id])
     job = failed_execution.job
 
+    # Validate job class is an ApplicationJob subclass before constantize
+    job_class = safe_constantize_job(job.class_name)
+    unless job_class
+      redirect_to queue_failed_path, alert: "Invalid job class: #{job.class_name}"
+      return
+    end
+
     # Create a new job with the same parameters
     ActiveJob::Base.queue_adapter.enqueue(
-      job.class_name.constantize.new(*JSON.parse(job.arguments))
+      job_class.new(*JSON.parse(job.arguments))
     )
 
     redirect_to queue_failed_path, notice: "Job queued for retry"
@@ -316,8 +323,13 @@ class SuperadminController < ApplicationController
         # Parse the serialized arguments
         arguments = JSON.parse(job.arguments)
 
-        # Recreate and enqueue the job
-        job_class = job.class_name.constantize
+        # Validate and recreate the job class safely
+        job_class = safe_constantize_job(job.class_name)
+        unless job_class
+          Rails.logger.error "Invalid job class: #{job.class_name}"
+          error_count += 1
+          next
+        end
         new_job = job_class.new(*arguments)
         new_job.enqueue(queue: job.queue_name)
 
@@ -690,5 +702,19 @@ class SuperadminController < ApplicationController
 
     # Now destroy the person (dependent associations will be handled automatically)
     person.destroy!
+  end
+
+  # Safely constantize job class names - only allows ApplicationJob subclasses
+  def safe_constantize_job(class_name)
+    return nil if class_name.blank?
+
+    # Try to constantize and verify it's a valid job class
+    klass = class_name.safe_constantize
+    return nil unless klass
+
+    # Ensure it's an ApplicationJob subclass (ActiveJob::Base for Rails jobs)
+    klass if klass < ApplicationJob || klass < ActiveJob::Base
+  rescue NameError
+    nil
   end
 end

@@ -268,13 +268,16 @@ class ProfileController < ApplicationController
       training_credits_attributes: %i[
         id institution program
         year_start year_end ongoing notes position _destroy
-      ],
-      profile_skills_attributes: {}
+      ]
     )
 
-    # Manually permit the nested profile_skills_attributes hash
+    # Manually permit the nested profile_skills_attributes hash with specific keys
     if params[:person][:profile_skills_attributes].present?
-      permitted_params[:profile_skills_attributes] = params[:person][:profile_skills_attributes].permit!
+      permitted_skills = {}
+      params[:person][:profile_skills_attributes].each do |key, attrs|
+        permitted_skills[key] = attrs.permit(:id, :category, :skill_name, :_destroy)
+      end
+      permitted_params[:profile_skills_attributes] = permitted_skills
     end
 
     # Filter out profile_skills with blank skill_name (unchecked skills)

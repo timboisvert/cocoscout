@@ -464,7 +464,7 @@
   </div>
 
   <div class="border-t border-gray-200 pt-5 mt-5">
-    <%= render "shared/button", text: "Update #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, data: { show_edit_target: "submitButton", recurring_edit_target: "submitButton" } %>
+    <%= render "shared/button", text: "Update #{sanitize(@show.event_type.titleize)}", variant: "primary", size: "medium", type: :submit, data: { show_edit_target: "submitButton", recurring_edit_target: "submitButton" } %>
     <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
   </div>
 
