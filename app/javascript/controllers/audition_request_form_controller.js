@@ -57,7 +57,8 @@ export default class extends Controller {
 
     selectPersonFromDropdown(event) {
         event.preventDefault()
-        const personId = this.requestableIdTarget.dataset.personId
+        // Get person ID from the clicked button's data attribute, or fall back to default
+        const personId = event.currentTarget.dataset.personId || this.requestableIdTarget.dataset.personId
         this.requestableTypeTarget.value = "Person"
         this.requestableIdTarget.value = personId
         this.closeDropdown()

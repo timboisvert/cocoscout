@@ -10,6 +10,7 @@ module My
       end
 
       @person = Current.user.person
+      @all_profiles = Current.user.people.active.includes(:profile_headshots).order(:created_at)
       @groups = @person.groups.active.order(:name).to_a
       group_ids = @groups.map(&:id)
 

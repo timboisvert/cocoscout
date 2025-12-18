@@ -64,9 +64,8 @@ describe Person, type: :model do
   describe '.suspicious' do
     it 'finds people with suspicious names' do
       normal_person = create(:person, name: 'Normal Person')
-      suspicious_person = create(:person, name: 'Test<script>alert(1)</script>', email: 'test@example.com')
-
-      # Need to skip validation to create the suspicious person
+      # Build and save without validation to bypass the name validation
+      suspicious_person = build(:person, name: 'Test<script>alert(1)</script>')
       suspicious_person.save(validate: false)
 
       suspicious_results = Person.suspicious

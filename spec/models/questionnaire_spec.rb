@@ -109,7 +109,7 @@ RSpec.describe Questionnaire, type: :model do
   describe '#respond_url' do
     it 'returns the correct URL' do
       questionnaire = create(:questionnaire, token: 'ABC123')
-      expect(questionnaire.respond_url).to include('/q/ABC123')
+      expect(questionnaire.respond_url).to include('/my/questionnaires/ABC123/form')
     end
   end
 end

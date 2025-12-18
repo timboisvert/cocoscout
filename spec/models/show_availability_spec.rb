@@ -9,14 +9,14 @@ RSpec.describe ShowAvailability, type: :model do
       expect(availability).to be_valid
     end
 
-    it 'validates uniqueness of person_id scoped to show_id' do
+    it 'validates uniqueness of available_entity scoped to show_id' do
       person = create(:person)
       show = create(:show)
-      create(:show_availability, person: person, show: show)
+      create(:show_availability, available_entity: person, show: show)
 
-      duplicate = build(:show_availability, person: person, show: show)
+      duplicate = build(:show_availability, available_entity: person, show: show)
       expect(duplicate).not_to be_valid
-      expect(duplicate.errors[:person_id]).to include('has already been taken')
+      expect(duplicate.errors[:available_entity_id]).to include('has already been taken')
     end
 
     it 'allows the same person to have availabilities for different shows' do
@@ -24,18 +24,18 @@ RSpec.describe ShowAvailability, type: :model do
       show1 = create(:show)
       show2 = create(:show)
 
-      create(:show_availability, person: person, show: show1)
-      availability2 = build(:show_availability, person: person, show: show2)
+      create(:show_availability, available_entity: person, show: show1)
+      availability2 = build(:show_availability, available_entity: person, show: show2)
 
       expect(availability2).to be_valid
     end
   end
 
   describe 'associations' do
-    it 'belongs to person' do
+    it 'belongs to available_entity' do
       availability = create(:show_availability)
-      expect(availability.person).to be_present
-      expect(availability).to respond_to(:person)
+      expect(availability.available_entity).to be_present
+      expect(availability).to respond_to(:available_entity)
     end
 
     it 'belongs to show' do

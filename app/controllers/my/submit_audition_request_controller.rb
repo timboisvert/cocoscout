@@ -282,7 +282,7 @@ module My
 
         # Verify group exists and user has permission
         if group.nil?
-          # Group doesn't exist, fall back to person
+          # Group doesn't exist, fall back to default person
           session[:requestable_type] = "Person"
           session[:requestable_id] = Current.user.person.id
           return Current.user.person
@@ -301,7 +301,17 @@ module My
           Current.user.person
         end
       else
-        Current.user.person
+        # Person type - verify user owns this person profile
+        person = Person.find_by(id: requestable_id)
+
+        if person.nil? || person.user_id != Current.user.id || person.archived?
+          # Person doesn't exist, doesn't belong to user, or is archived - fall back to default
+          session[:requestable_type] = "Person"
+          session[:requestable_id] = Current.user.person.id
+          return Current.user.person
+        end
+
+        person
       end
     end
 

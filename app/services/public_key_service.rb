@@ -21,12 +21,12 @@ class PublicKeyService
 
   # Generate an available key with auto-increment
   def generate
-    base_key = @key.parameterize(separator: "")
+    base_key = @key.parameterize(separator: "")[0, 25] # Truncate to leave room for suffix
     key = base_key
     counter = 2
 
     while !format_valid?(key) || reserved?(key) || taken?(key)
-      key = "#{base_key}-#{counter}"
+      key = "#{base_key[0, 25]}-#{counter}"
       counter += 1
     end
 

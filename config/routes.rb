@@ -133,6 +133,14 @@ Rails.application.routes.draw do
     patch "/calendar-sync/:id",                 to: "calendar_sync#update",               as: "calendar_sync_update"
     delete "/calendar-sync/:id",                to: "calendar_sync#disconnect",           as: "calendar_sync_disconnect"
     post "/calendar-sync/:id/sync",            to: "calendar_sync#sync_now",             as: "calendar_sync_sync_now"
+
+    # Profile management (multi-profile support)
+    resources :profiles, only: [ :index, :new, :create, :edit, :update ] do
+      member do
+        post :set_default
+        post :archive
+      end
+    end
   end
 
   # iCal feed (public, no authentication)

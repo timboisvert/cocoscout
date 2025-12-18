@@ -64,6 +64,10 @@ class Person < ApplicationRecord
 
   belongs_to :user, optional: true
 
+  # Scopes for multi-profile support
+  scope :active, -> { where(archived_at: nil) }
+  scope :archived, -> { where.not(archived_at: nil) }
+
   # Validations
   validates :name, presence: true, length: { minimum: 2, maximum: 100 }
   validates :email, presence: true, length: { maximum: 100 }
@@ -86,6 +90,24 @@ class Person < ApplicationRecord
     return "" if name.blank?
 
     name.split.map { |word| word[0] }.join.upcase
+  end
+
+  # Multi-profile archiving methods (soft delete)
+  def archived?
+    archived_at.present?
+  end
+
+  def archive!
+    update!(archived_at: Time.current)
+  end
+
+  def unarchive!
+    update!(archived_at: nil)
+  end
+
+  # Check if this person is the default profile for their user
+  def default_profile?
+    user&.default_person_id == id
   end
 
   def update_public_key(new_key)

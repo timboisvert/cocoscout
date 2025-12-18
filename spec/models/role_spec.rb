@@ -133,11 +133,12 @@ RSpec.describe Role, type: :model do
       context 'when role is restricted' do
         before do
           role.update!(restricted: true)
-          create(:role_eligibility, role: role, member: person1)
-          create(:role_eligibility, role: role, member: group1)
         end
 
         it 'returns only eligible members who are also in the talent pool' do
+          create(:role_eligibility, role: role, member: person1)
+          create(:role_eligibility, role: role, member: group1)
+
           eligible = role.eligible_assignees([ talent_pool.id ])
           expect(eligible).to include(person1, group1)
           expect(eligible).not_to include(person2, person3)

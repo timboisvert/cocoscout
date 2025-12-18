@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -421,6 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
   end
 
   create_table "people", force: :cascade do |t|
+    t.datetime "archived_at"
     t.text "bio"
     t.boolean "bio_visible", default: true, null: false
     t.datetime "casting_notification_sent_at"
@@ -448,6 +449,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.boolean "videos_visible", default: true, null: false
+    t.index ["archived_at"], name: "index_people_on_archived_at"
     t.index ["created_at"], name: "index_people_on_created_at"
     t.index ["email"], name: "index_people_on_email"
     t.index ["name"], name: "index_people_on_name"
@@ -668,7 +670,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
     t.integer "role_id", null: false
     t.datetime "updated_at", null: false
     t.index ["member_id"], name: "index_role_eligibilities_on_member_id"
-    t.index ["role_id", "member_id"], name: "index_role_eligibilities_on_role_id_and_member_id", unique: true
     t.index ["role_id", "member_type", "member_id"], name: "index_role_eligibilities_on_role_and_member", unique: true
     t.index ["role_id"], name: "index_role_eligibilities_on_role_id"
   end
@@ -895,6 +896,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
 
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.integer "default_person_id"
     t.string "email_address", null: false
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
@@ -906,6 +908,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
     t.datetime "updated_at", null: false
     t.datetime "welcomed_at"
     t.datetime "welcomed_production_at"
+    t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
@@ -992,4 +995,5 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_17_120000) do
   add_foreign_key "team_invitations", "productions"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
+  add_foreign_key "users", "people", column: "default_person_id"
 end

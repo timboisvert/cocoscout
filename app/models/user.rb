@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  has_one :person, dependent: :nullify
+  # Multi-profile support: users can have multiple person profiles
+  has_many :people, dependent: :nullify
+  belongs_to :default_person, class_name: "Person", optional: true
+
   has_secure_password
   has_many :sessions, dependent: :destroy
 
@@ -19,6 +22,25 @@ class User < ApplicationRecord
   validate :email_not_malicious
 
   SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
+
+  # Returns the user's primary person profile
+  # Priority: default_person if set, otherwise the first active profile by creation date
+  def primary_person
+    default_person || people.where(archived_at: nil).order(:created_at).first
+  end
+
+  # Backward compatibility alias - returns the primary person profile
+  # This allows existing code using Current.user.person to continue working
+  def person
+    primary_person
+  end
+
+  # Assign a person as the default profile
+  def set_default_person!(person)
+    return unless people.include?(person)
+
+    update!(default_person: person)
+  end
 
   def email_not_malicious
     return if email_address.blank?

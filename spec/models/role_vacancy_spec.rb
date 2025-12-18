@@ -50,7 +50,7 @@ RSpec.describe RoleVacancy, type: :model do
   describe "#fill!" do
     let(:vacancy) { create(:role_vacancy) }
     let(:person) { create(:person) }
-    let(:closer) { create(:person) }
+    let(:closer) { create(:user) }
 
     it "fills the vacancy with the person" do
       vacancy.fill!(person, by: closer)
@@ -65,7 +65,7 @@ RSpec.describe RoleVacancy, type: :model do
 
   describe "#cancel!" do
     let(:vacancy) { create(:role_vacancy) }
-    let(:closer) { create(:person) }
+    let(:closer) { create(:user) }
 
     it "cancels the vacancy" do
       vacancy.cancel!(by: closer)
