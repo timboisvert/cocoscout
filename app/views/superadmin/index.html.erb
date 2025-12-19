@@ -99,8 +99,18 @@
       <% end %>
     </div>
 
-    <!-- Right Column: Queue Monitor and Email Logs (stacked) -->
+    <!-- Right Column: Data Monitor, Queue Monitor, Cache Monitor, Storage Monitor, Email Logs (stacked) -->
     <div class="grid grid-cols-1 gap-4">
+      <!-- Data Monitor Link Card -->
+      <%= link_to data_monitor_path, class: "block" do %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
+          <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Data Monitor</h3>
+            <p class="text-sm text-gray-600 mt-1">View database table statistics and usage</p>
+          </div>
+        </div>
+      <% end %>
+
       <!-- Queue Monitor Link Card -->
       <%= link_to queue_monitor_path, class: "block" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
@@ -111,12 +121,12 @@
         </div>
       <% end %>
 
-      <!-- Email Logs Link Card -->
-      <%= link_to email_logs_path, class: "block" do %>
+      <!-- Cache Monitor Link Card -->
+      <%= link_to cache_monitor_path, class: "block" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
           <div class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Email Logs</h3>
-            <p class="text-sm text-gray-600 mt-1">View all sent emails and delivery status</p>
+            <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Cache Monitor</h3>
+            <p class="text-sm text-gray-600 mt-1">View cache stats, patterns, and clear cache</p>
           </div>
         </div>
       <% end %>
@@ -131,12 +141,12 @@
         </div>
       <% end %>
 
-      <!-- Cache Monitor Link Card -->
-      <%= link_to cache_monitor_path, class: "block" do %>
+      <!-- Email Logs Link Card -->
+      <%= link_to email_logs_path, class: "block" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
           <div class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Cache Monitor</h3>
-            <p class="text-sm text-gray-600 mt-1">View cache stats, patterns, and clear cache</p>
+            <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Email Logs</h3>
+            <p class="text-sm text-gray-600 mt-1">View all sent emails and delivery status</p>
           </div>
         </div>
       <% end %>

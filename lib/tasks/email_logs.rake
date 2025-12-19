@@ -163,4 +163,92 @@ namespace :email_logs do
     puts "  - Batches created: #{batches_created}"
     puts "  - Email logs updated: #{logs_updated}"
   end
+
+  desc "Migrate email_logs.body column to Active Storage attachments"
+  task migrate_to_active_storage: :environment do
+    puts "Migrating email_logs body column to Active Storage..."
+
+    # Check if body column still exists
+    unless EmailLog.column_names.include?("body")
+      puts "Body column no longer exists. Migration already complete or column removed."
+      exit 0
+    end
+
+    total = EmailLog.where.not(body: nil).where.missing(:body_file_attachment).count
+    puts "Found #{total} email logs with body content to migrate"
+
+    migrated = 0
+    failed = 0
+
+    EmailLog.where.not(body: nil).where.missing(:body_file_attachment).find_each do |email_log|
+      begin
+        email_log.body_file.attach(
+          io: StringIO.new(email_log.body),
+          filename: "email_#{email_log.id}.html",
+          content_type: "text/html"
+        )
+        migrated += 1
+        print "." if migrated % 10 == 0
+      rescue StandardError => e
+        failed += 1
+        puts "\nFailed to migrate email_log #{email_log.id}: #{e.message}"
+      end
+    end
+
+    puts "\n\nMigration complete!"
+    puts "  Migrated: #{migrated}"
+    puts "  Failed: #{failed}"
+    puts "\nNext steps:"
+    puts "  1. Verify attachments are working: EmailLog.last.body_file.attached?"
+    puts "  2. Run migration to remove body column: rails db:migrate"
+  end
+
+  desc "Clear legacy body column after verifying Active Storage migration"
+  task clear_legacy_bodies: :environment do
+    unless EmailLog.column_names.include?("body")
+      puts "Body column no longer exists."
+      exit 0
+    end
+
+    # Only clear bodies where Active Storage attachment exists
+    count = EmailLog.where.not(body: nil).joins(:body_file_attachment).count
+    puts "Found #{count} email logs with both legacy body and Active Storage attachment"
+
+    print "Clear legacy body column for these records? (yes/no): "
+    confirm = $stdin.gets.chomp.downcase
+
+    if confirm == "yes"
+      EmailLog.where.not(body: nil).joins(:body_file_attachment).update_all(body: nil)
+      puts "Cleared #{count} legacy body values"
+    else
+      puts "Aborted"
+    end
+  end
+
+  desc "Show email_logs storage statistics"
+  task stats: :environment do
+    puts "Email Log Statistics"
+    puts "=" * 40
+
+    total = EmailLog.count
+    puts "Total email logs: #{total}"
+
+    if EmailLog.column_names.include?("body")
+      with_legacy_body = EmailLog.where.not(body: nil).count
+      legacy_size = EmailLog.where.not(body: nil).sum("LENGTH(body)")
+      puts "With legacy body column: #{with_legacy_body}"
+      puts "Legacy body total size: #{ActiveSupport::NumberHelper.number_to_human_size(legacy_size)}"
+    end
+
+    with_attachment = EmailLog.joins(:body_file_attachment).count
+    puts "With Active Storage attachment: #{with_attachment}"
+
+    if with_attachment > 0
+      attachment_size = ActiveStorage::Blob
+        .joins(:attachments)
+        .where(active_storage_attachments: { record_type: "EmailLog", name: "body_file" })
+        .sum(:byte_size)
+      puts "Active Storage total size: #{ActiveSupport::NumberHelper.number_to_human_size(attachment_size)}"
+    end
+  end
 end

@@ -3,7 +3,7 @@
   # Parameters:
   # - entity: Person or Group instance
   entity_name = entity.is_a?(Person) ? 'person' : 'group'
-  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+  form_url = entity.is_a?(Person) ? update_profile_path(entity) : update_group_path(entity)
   socials = entity.socials.reject(&:marked_for_destruction?)
 %>
 

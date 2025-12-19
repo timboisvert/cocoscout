@@ -5,7 +5,11 @@ class AccountController < ApplicationController
   before_action :set_account_sidebar
   before_action :set_profile, only: [ :set_default_profile, :archive_profile ]
 
+  # Rate limit: can only change email once per 24 hours
+  EMAIL_CHANGE_COOLDOWN = 24.hours
+
   def show
+    @person = Current.user.person
   end
 
   def update
@@ -16,9 +20,53 @@ class AccountController < ApplicationController
     end
   end
 
+  def update_email
+    new_email = params[:email_address]&.strip&.downcase
+
+    # Check rate limit
+    if Current.user.email_changed_at.present? && Current.user.email_changed_at > EMAIL_CHANGE_COOLDOWN.ago
+      render json: { success: false, error: "You've changed your email too recently. Please try again later." }, status: :unprocessable_entity
+      return
+    end
+
+    # Check if email is same as current
+    if new_email == Current.user.email_address
+      render json: { success: false, error: "This is already your email address." }, status: :unprocessable_entity
+      return
+    end
+
+    # Check if email already exists
+    if User.where.not(id: Current.user.id).exists?(email_address: new_email)
+      render json: { success: false, error: "An account with this email address already exists." }, status: :unprocessable_entity
+      return
+    end
+
+    # Get profile IDs to update
+    profile_ids_to_update = params[:profile_ids] || []
+
+    ActiveRecord::Base.transaction do
+      old_email = Current.user.email_address
+
+      # Update user email
+      Current.user.update!(email_address: new_email, email_changed_at: Time.current)
+
+      # Update selected profile emails
+      if profile_ids_to_update.any?
+        Current.user.people.where(id: profile_ids_to_update).each do |person|
+          person.update!(email: new_email) if person.email == old_email
+        end
+      end
+    end
+
+    render json: { success: true, message: "Email updated successfully." }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { success: false, error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
+  end
+
   def profiles
     @profiles = Current.user.people.active.order(:created_at)
     @default_profile = Current.user.default_person
+    @groups = Current.user.person&.groups&.active&.includes(:group_memberships) || []
   end
 
   def create_profile

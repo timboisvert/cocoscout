@@ -21,7 +21,7 @@ module Manage
     def show
       @role = @organization.role_for(Current.user)
       @is_owner = @organization.owned_by?(Current.user)
-      @team_members = @organization.users.includes(:person, :organization_roles)
+      @team_members = @organization.users.includes(:default_person, :organization_roles)
       @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
       @locations = @organization.locations.order(:created_at)
       @team_invitation = TeamInvitation.new

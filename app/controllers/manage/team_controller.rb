@@ -221,13 +221,39 @@ module Manage
       end
     end
 
+    def update_global_notifications
+      user = Current.organization.users.find(params[:id])
+      organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
+
+      if organization_role
+        notifications_enabled = params[:notifications_enabled] == "1"
+        organization_role.update(notifications_enabled: notifications_enabled)
+        expire_team_cache
+        respond_to do |format|
+          format.json { render json: { success: true } }
+          format.html do
+            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+                        notice: "Notification preference updated"
+          end
+        end
+      else
+        respond_to do |format|
+          format.json { render json: { success: false }, status: :unprocessable_entity }
+          format.html do
+            redirect_to manage_organization_path(Current.organization, anchor: "tab-1"),
+                        alert: "Could not update notification preference"
+          end
+        end
+      end
+    end
+
     private
 
     def fetch_team_members
       Rails.cache.fetch(team_cache_key, expires_in: 10.minutes) do
         members = Current.organization.users
                          .joins(:organization_roles)
-                         .includes(:person, :organization_roles)
+                         .includes(:default_person, :organization_roles)
                          .where(organization_roles: { organization_id: Current.organization.id,
                                                       company_role: %w[manager viewer member] })
                          .distinct

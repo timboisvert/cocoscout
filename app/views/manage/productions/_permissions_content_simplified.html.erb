@@ -8,7 +8,7 @@
     { text: "For production-specific access, use the Team tab on individual production settings pages." }
   ] %>
 
-<div class="mt-4">
+<div class="mt-4" data-controller="org-role-notifications">
   <div class="p-4 border border-gray-200 rounded-lg mb-4">
     <h3 class="text-lg font-semibold mb-2">Global Role</h3>
     <p class="text-sm text-gray-600 mb-3">
@@ -26,7 +26,7 @@
                 organization_role&.company_role || "viewer"
               ),
               class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400",
-              data: { action: "change->auto-submit#submit" }
+              data: { action: "change->auto-submit#submit change->org-role-notifications#roleChanged", "org-role-notifications-target": "roleSelect" }
           %>
         <% end %>
       </div>
@@ -56,6 +56,27 @@
       </div>
     <% end %>
   </div>
+
+  <div class="p-4 border border-gray-200 rounded-lg mb-4">
+    <h3 class="text-lg font-semibold mb-2">Email Notifications</h3>
+    <p class="text-sm text-gray-600 mb-3">
+      Receive email notifications for audition submissions and other important updates.
+    </p>
+    <%= form_with url: update_global_notifications_manage_team_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" } do |f| %>
+      <div class="flex items-center gap-3">
+        <button type="button"
+                data-org-role-notifications-target="toggle"
+                data-action="click->org-role-notifications#toggleNotifications"
+                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 <%= organization_role&.notifications_enabled? ? 'bg-pink-500' : 'bg-gray-200' %>"
+                role="switch"
+                aria-checked="<%= organization_role&.notifications_enabled? %>">
+          <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out <%= organization_role&.notifications_enabled? ? 'translate-x-5' : 'translate-x-0' %>"></span>
+        </button>
+        <span class="text-sm text-gray-700">Enable email notifications</span>
+        <%= hidden_field_tag :notifications_enabled, organization_role&.notifications_enabled? ? "1" : "0", data: { "org-role-notifications-target": "hiddenField" } %>
+      </div>
+    <% end %>
+  </div>
 </div>
 
 <div class="mt-4" data-controller="team-remove">
@@ -68,14 +89,11 @@
         text: "Remove from Team",
         variant: "danger",
         size: "medium",
-        type: :link,
-        href: "#",
-        extra_attrs: {
-            data: {
-                team_remove_target: "removeButton",
-                action: "team-remove#remove",
-                url: remove_member_manage_team_index_path(id: user.id, format: :json)
-            }
+        type: :button,
+        data: {
+            team_remove_target: "removeButton",
+            action: "team-remove#remove",
+            url: remove_member_manage_team_index_path(id: user.id, format: :json)
         } %>
   </div>
 </div>

@@ -58,9 +58,9 @@ module Manage
         person.organizations << @team_invitation.organization
       end
 
-      # Set a role and the organization
+      # Set a role and the organization (viewer by default, notifications off)
       unless OrganizationRole.exists?(user: user, organization: @team_invitation.organization)
-        OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "member")
+        OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "viewer", notifications_enabled: false)
       end
 
       # If this is a production-specific invitation, create the production permission

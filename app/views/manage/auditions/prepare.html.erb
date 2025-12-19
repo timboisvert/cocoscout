@@ -187,8 +187,8 @@
                   </button>
                 </div>
                 <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg" data-reviewer-selector-target="managersList">
-                  <% global_managers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :person).map { |r| { user: r.user, role: "#{r.company_role.capitalize} (Global)" } } %>
-                  <% production_team = @production.production_permissions.where(role: %w[manager viewer]).includes(user: :person).map { |p| { user: p.user, role: p.role.capitalize } } %>
+                  <% global_managers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :default_person).map { |r| { user: r.user, role: "#{r.company_role.capitalize} (Global)" } } %>
+                  <% production_team = @production.production_permissions.where(role: %w[manager viewer]).includes(user: :default_person).map { |p| { user: p.user, role: p.role.capitalize } } %>
                   <% all_team = (global_managers + production_team).uniq { |t| t[:user].id } %>
                   <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
                     <% all_team.each do |team_member| %>

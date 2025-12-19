@@ -204,7 +204,7 @@ module Manage
       Rails.cache.fetch(team_cache_key, expires_in: 10.minutes) do
         members = Current.organization.users
                          .joins(:organization_roles)
-                         .includes(:person, :organization_roles)
+                         .includes(:default_person, :organization_roles)
                          .where(organization_roles: { organization_id: Current.organization.id,
                                                       company_role: %w[manager viewer member] })
                          .distinct

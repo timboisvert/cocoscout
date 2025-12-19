@@ -344,7 +344,7 @@
     <%# Votes Tab (for reviewers only) %>
     <% if current_user_can_review?(@production) %>
       <div data-tabs-target="panel" class="hidden">
-        <% votes = @audition_request.audition_request_votes.includes(user: :person).order(created_at: :desc) %>
+        <% votes = @audition_request.audition_request_votes.includes(user: :default_person).order(created_at: :desc) %>
         <% vote_counts = @audition_request.vote_counts %>
 
         <%# Vote count boxes spanning full width %>
@@ -477,7 +477,7 @@
     </div>
     <div class="p-3 flex items-center gap-3">
       <!-- Previous button -->
-      <div class="flex-shrink-0 border-r border-gray-200 pr-3">
+      <div class="flex-shrink-0">
         <% if @audition_request.previous %>
           <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request.previous),
               class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
@@ -495,59 +495,68 @@
         <% end %>
       </div>
 
-      <!-- Add a comment section -->
-      <div class="flex-1 flex items-center gap-2 border-r border-gray-200 pr-3">
-        <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline">Add a comment</span>
-        <input type="text"
-               id="vote-comment"
-               data-vote-form-target="comment"
-               placeholder="Optional comment..."
-               value="<%= current_vote&.comment %>"
-               class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
-        <button type="button"
-                data-action="click->vote-form#submitComment"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
-          Save
-        </button>
+      <!-- Separator -->
+      <div class="w-px h-12 bg-gray-200"></div>
+
+      <!-- Content rows -->
+      <div class="flex-1 space-y-2">
+        <!-- Row 1: Cast your vote -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline w-28">Cast your vote</span>
+          <%# Yes button %>
+          <% is_yes = current_vote&.vote == "yes" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="yes"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                  class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>Yes</span>
+            <span class="opacity-75">(<%= vote_counts[:yes] %>)</span>
+          </button>
+
+          <%# No button %>
+          <% is_no = current_vote&.vote == "no" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="no"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                  class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>No</span>
+            <span class="opacity-75">(<%= vote_counts[:no] %>)</span>
+          </button>
+
+          <%# Not Sure button %>
+          <% is_maybe = current_vote&.vote == "maybe" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="maybe"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                  class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>Not Sure</span>
+            <span class="opacity-75">(<%= vote_counts[:maybe] %>)</span>
+          </button>
+        </div>
+
+        <!-- Row 2: Add a comment -->
+        <div class="flex items-center gap-2 border-t border-gray-200 pt-2">
+          <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline w-28">Add a comment</span>
+          <input type="text"
+                 id="vote-comment"
+                 data-vote-form-target="comment"
+                 placeholder="Optional comment..."
+                 value="<%= current_vote&.comment %>"
+                 class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
+          <button type="button"
+                  data-action="click->vote-form#submitComment"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
+                  class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
+            Save
+          </button>
+        </div>
       </div>
 
-      <!-- Cast your vote section -->
-      <div class="flex items-center gap-2 border-r border-gray-200 pr-3">
-        <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline mr-1">Cast your vote</span>
-        <%# Yes button %>
-        <% is_yes = current_vote&.vote == "yes" %>
-        <button type="button"
-                data-action="click->vote-form#submitVote"
-                data-vote-form-vote-param="yes"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-          <span>Yes</span>
-          <span class="opacity-75">(<%= vote_counts[:yes] %>)</span>
-        </button>
-
-        <%# No button %>
-        <% is_no = current_vote&.vote == "no" %>
-        <button type="button"
-                data-action="click->vote-form#submitVote"
-                data-vote-form-vote-param="no"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-          <span>No</span>
-          <span class="opacity-75">(<%= vote_counts[:no] %>)</span>
-        </button>
-
-        <%# Not Sure button %>
-        <% is_maybe = current_vote&.vote == "maybe" %>
-        <button type="button"
-                data-action="click->vote-form#submitVote"
-                data-vote-form-vote-param="maybe"
-                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>"
-                class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-          <span>Not Sure</span>
-          <span class="opacity-75">(<%= vote_counts[:maybe] %>)</span>
-        </button>
-      </div>
+      <!-- Separator -->
+      <div class="w-px h-12 bg-gray-200"></div>
 
       <!-- Next button -->
       <div class="flex-shrink-0">

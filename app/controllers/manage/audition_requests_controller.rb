@@ -27,7 +27,7 @@ module Manage
       @answers = @audition_request.answers.includes(:question)
 
       # Get all votes for this request
-      @votes = @audition_request.audition_request_votes.includes(user: :person)
+      @votes = @audition_request.audition_request_votes.includes(user: :default_person)
       @current_user_vote = @audition_request.vote_for(Current.user)
 
       # Load availability data if enabled
@@ -143,7 +143,7 @@ module Manage
     end
 
     def votes
-      @votes = @audition_request.audition_request_votes.includes(user: :person).order(created_at: :desc)
+      @votes = @audition_request.audition_request_votes.includes(user: :default_person).order(created_at: :desc)
     end
 
     def update_audition_session_availability

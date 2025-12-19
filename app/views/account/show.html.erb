@@ -1,27 +1,45 @@
 <% content_for :title, "Account Settings" %>
 
-<div class="w-full">
+<div class="w-full" data-controller="account-email">
   <div id="notice-container">
     <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   </div>
 
-  <!-- Account Settings Section -->
+  <!-- Hero Section with User Info -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Account Settings</h3>
-    </div>
-    <div class="p-6 space-y-6">
-      <%= form_with(model: Current.user, url: account_path, method: :patch, data: { turbo: true }) do |f| %>
-        <div class="max-w-md">
-          <%= f.label :email_address, "Email Address", class: "block text-sm font-medium text-gray-700" %>
-          <%= f.email_field :email_address, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-          <p class="mt-1 text-xs text-gray-500">Your login email address</p>
+    <div class="p-6">
+      <div class="flex items-start gap-6">
+        <!-- User Headshot -->
+        <div class="flex-shrink-0">
+          <% headshot = @person&.profile_headshots&.order(created_at: :desc)&.first %>
+          <% if headshot&.image&.attached? %>
+            <%= image_tag headshot.image.variant(resize_to_fill: [120, 120]), class: "w-24 h-24 rounded-xl object-cover" %>
+          <% else %>
+            <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl">
+              <%= @person&.initials || Current.user.email_address[0].upcase %>
+            </div>
+          <% end %>
         </div>
 
-        <div class="mt-4">
-          <%= render "shared/button", text: "Save Changes", type: :submit, variant: "primary" %>
+        <!-- User Details -->
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-1">
+            <%= @person&.name || "Your Account" %>
+          </h1>
+          <div class="flex items-center gap-2 text-gray-600 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+            <span><%= Current.user.email_address %></span>
+            <span class="ml-2">
+              <%= render "shared/button", text: "Change", variant: "primary", size: "small", type: :button, data: { action: "click->account-email#open" } %>
+            </span>
+          </div>
+          <p class="text-sm text-gray-500">
+            Member since <%= Current.user.created_at.strftime("%B %Y") %>
+          </p>
         </div>
-      <% end %>
+      </div>
     </div>
   </div>
 
@@ -61,6 +79,85 @@
         Want to delete your account? Contact support and we'll help you with that.
       </p>
       <%= render "shared/button", text: "Contact Support to Delete Account", path: "mailto:support@cocoscout.com?subject=Delete%20My%20Account", variant: "danger", icon: "mail" %>
+    </div>
+  </div>
+
+  <!-- Email Change Modal -->
+  <div data-account-email-target="modal"
+       data-action="click->account-email#close keydown.esc@window->account-email#close"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full" data-action="click->account-email#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Email Address</h2>
+      </div>
+
+      <form data-account-email-target="form" data-action="submit->account-email#submit">
+        <div class="p-6 space-y-5">
+          <!-- Warning Box -->
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div class="flex gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div class="text-sm text-amber-800">
+                <p class="font-medium mb-1">Important: Changing your email affects your login</p>
+                <ul class="list-disc list-inside space-y-1 text-amber-700">
+                  <li>You'll use your new email to sign in</li>
+                  <li>Password reset emails will go to your new address</li>
+                  <li>Existing sessions will remain active</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error Message -->
+          <div data-account-email-target="errorMessage" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700"></div>
+
+          <!-- Current Email -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Current Email</label>
+            <div class="text-gray-900"><%= Current.user.email_address %></div>
+          </div>
+
+          <!-- New Email -->
+          <div>
+            <label for="new_email" class="block text-sm font-medium text-gray-700 mb-1">New Email Address</label>
+            <input type="email"
+                   id="new_email"
+                   data-account-email-target="emailInput"
+                   required
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                   placeholder="your.new.email@example.com">
+          </div>
+
+          <!-- Profile Emails -->
+          <% profiles_with_matching_email = Current.user.people.active.where(email: Current.user.email_address) %>
+          <% if profiles_with_matching_email.any? %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Also update email on these profiles:</label>
+              <div class="space-y-2">
+                <% profiles_with_matching_email.each do |profile| %>
+                  <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox"
+                           value="<%= profile.id %>"
+                           checked
+                           data-account-email-target="profileCheckbox"
+                           class="h-4 w-4 rounded border-gray-300 text-pink-500 focus:ring-pink-500 accent-pink-500">
+                    <span class="text-sm text-gray-900"><%= profile.name %></span>
+                    <span class="text-xs text-gray-500">(<%= profile.email %>)</span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">Uncheck any profiles you want to keep on the old email.</p>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->account-email#close" } %>
+          <%= render "shared/button", text: "Change Email", variant: "primary", type: :submit %>
+        </div>
+      </form>
     </div>
   </div>
 </div>

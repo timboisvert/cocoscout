@@ -7,13 +7,18 @@ module My
     before_action :set_questionnaire_and_questions, except: [ :index ]
 
     def index
-      @person = Current.user.person
-      @groups = @person.groups.active.order(:name)
+      @people = Current.user.people.active.order(:created_at).to_a
+      people_ids = @people.map(&:id)
+      people_by_id = @people.index_by(&:id)
+
+      # Get groups from ALL profiles
+      @groups = Group.active.joins(:group_memberships).where(group_memberships: { person_id: people_ids }).distinct.order(:name).to_a
 
       @filter = params[:filter] || "awaiting"
 
       # Handle entity filter - comma-separated like availability
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
       # Build questionnaire-entity pairs
       @questionnaire_entity_pairs = []
@@ -21,8 +26,10 @@ module My
       # Get all unique questionnaires from selected entities
       questionnaire_ids = []
 
-      if @entity_filter.include?("person")
-        person_q_ids = QuestionnaireInvitation.where(invitee: @person).pluck(:questionnaire_id)
+      # Get questionnaire IDs for selected profiles
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
+      if selected_person_ids.any?
+        person_q_ids = QuestionnaireInvitation.where(invitee_type: "Person", invitee_id: selected_person_ids).pluck(:questionnaire_id)
         questionnaire_ids += person_q_ids
       end
 
@@ -38,13 +45,17 @@ module My
 
       # Build pairs for each questionnaire-entity combination
       questionnaires.each do |questionnaire|
-        if @entity_filter.include?("person") && questionnaire.questionnaire_invitations.exists?(invitee: @person)
-          @questionnaire_entity_pairs << {
-            questionnaire: questionnaire,
-            entity_type: "person",
-            entity: @person,
-            entity_key: "person"
-          }
+        # Check each selected profile
+        selected_person_ids.each do |person_id|
+          person = people_by_id[person_id]
+          if questionnaire.questionnaire_invitations.exists?(invitee: person)
+            @questionnaire_entity_pairs << {
+              questionnaire: questionnaire,
+              entity_type: "person",
+              entity: person,
+              entity_key: "person_#{person.id}"
+            }
+          end
         end
 
         @groups.each do |group|

@@ -3,7 +3,7 @@
   # Parameters:
   # - entity: Person or Group instance
   entity_name = entity.is_a?(Person) ? 'person' : 'group'
-  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+  form_url = entity.is_a?(Person) ? update_profile_path(entity) : update_group_path(entity)
 %>
 
 <div id="performance-history" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="performance-credits profile-section reorderable" data-reorderable-handle-value=".section-drag-handle">

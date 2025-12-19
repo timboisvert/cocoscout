@@ -9,31 +9,43 @@ module My
         render "welcome" and return
       end
 
-      @person = Current.user.person
-      @all_profiles = Current.user.people.active.includes(:profile_headshots).order(:created_at)
-      @groups = @person.groups.active.order(:name).to_a
+      # Get all active profiles and their IDs
+      @people = Current.user.people.active.order(:created_at).to_a
+      @all_profiles = @people # alias for backward compatibility with view
+      people_ids = @people.map(&:id)
+      people_by_id = @people.index_by(&:id)
+
+      # Get groups from ALL profiles
+      @groups = Group.active.joins(:group_memberships).where(group_memberships: { person_id: people_ids }).distinct.order(:name).to_a
       group_ids = @groups.map(&:id)
+      groups_by_id = @groups.index_by(&:id)
 
-      @productions = Production.joins(talent_pools: :people).where(people: { id: Current.user.person.id }).distinct
+      @productions = Production.joins(talent_pools: :people).where(people: { id: people_ids }).distinct
 
-      # Get upcoming shows where user or their groups have a role assignment (next 45 days)
+      # Get upcoming shows where any profile or their groups have a role assignment (next 45 days)
       # Consolidate by show - one row per show with all entity assignments
       end_date = 45.days.from_now
       show_data_by_id = {}
+      added_assignments = Set.new
 
-      # Person shows
+      # Person shows (all profiles)
       person_shows = Show
                      .joins(:show_person_role_assignments)
-                     .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: @person.id })
+                     .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: people_ids })
                      .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
                      .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
                      .order(:date_and_time)
+                     .distinct
 
       person_shows.each do |show|
-        assignment = show.show_person_role_assignments.find { |a| a.assignable_type == "Person" && a.assignable_id == @person.id }
-        if assignment
+        show.show_person_role_assignments.each do |assignment|
+          next unless assignment.assignable_type == "Person" && people_ids.include?(assignment.assignable_id)
+          # Avoid duplicates by tracking assignment IDs
+          next if added_assignments.include?(assignment.id)
+          added_assignments.add(assignment.id)
+          person = people_by_id[assignment.assignable_id]
           show_data_by_id[show.id] ||= { show: show, assignments: [] }
-          show_data_by_id[show.id][:assignments] << { type: "person", entity: @person, assignment: assignment }
+          show_data_by_id[show.id][:assignments] << { type: "person", entity: person, assignment: assignment }
         end
       end
 
@@ -45,15 +57,14 @@ module My
                       .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
                       .includes(:production, :location, :event_linkage, show_person_role_assignments: :role)
                       .order(:date_and_time)
-
-        # Build groups_by_id lookup for O(1) access
-        groups_by_id = @groups.index_by(&:id)
+                      .distinct
 
         group_shows.each do |show|
-          assignment = show.show_person_role_assignments.find do |a|
-            a.assignable_type == "Group" && group_ids.include?(a.assignable_id)
-          end
-          if assignment
+          show.show_person_role_assignments.each do |assignment|
+            next unless assignment.assignable_type == "Group" && group_ids.include?(assignment.assignable_id)
+            # Avoid duplicates by tracking assignment IDs
+            next if added_assignments.include?(assignment.id)
+            added_assignments.add(assignment.id)
             group = groups_by_id[assignment.assignable_id]
             show_data_by_id[show.id] ||= { show: show, assignments: [] }
             show_data_by_id[show.id][:assignments] << { type: "group", entity: group, assignment: assignment }
@@ -66,8 +77,8 @@ module My
       # Upcoming audition sessions for person and groups - batch query
       @upcoming_audition_entities = []
 
-      # Build list of auditionable entities for batch query
-      auditionable_conditions = [ [ @person.class.name, @person.id ] ]
+      # Build list of auditionable entities for batch query (all profiles + all groups)
+      auditionable_conditions = @people.map { |p| [ p.class.name, p.id ] }
       @groups.each { |g| auditionable_conditions << [ g.class.name, g.id ] }
 
       all_auditions = Audition
@@ -84,11 +95,11 @@ module My
                       .limit(20)
                       .to_a
 
-      groups_by_id = @groups.index_by(&:id)
       all_auditions.each do |audition|
-        if audition.auditionable_type == "Person" && audition.auditionable_id == @person.id
+        if audition.auditionable_type == "Person" && people_ids.include?(audition.auditionable_id)
+          person = people_by_id[audition.auditionable_id]
           @upcoming_audition_entities << { audition_session: audition.audition_session, entity_type: "person",
-                                           entity: @person }
+                                           entity: person }
         elsif audition.auditionable_type == "Group"
           group = groups_by_id[audition.auditionable_id]
           if group
@@ -119,8 +130,9 @@ module My
                      .to_a
 
       all_requests.each do |request|
-        if request.requestable_type == "Person" && request.requestable_id == @person.id
-          @open_audition_request_entities << { audition_request: request, entity_type: "person", entity: @person }
+        if request.requestable_type == "Person" && people_ids.include?(request.requestable_id)
+          person = people_by_id[request.requestable_id]
+          @open_audition_request_entities << { audition_request: request, entity_type: "person", entity: person }
         elsif request.requestable_type == "Group"
           group = groups_by_id[request.requestable_id]
           @open_audition_request_entities << { audition_request: request, entity_type: "group", entity: group } if group
@@ -134,8 +146,8 @@ module My
       # Pending questionnaires for person and groups - batch query
       @pending_questionnaire_entities = []
 
-      # Get all questionnaire IDs in one query
-      invitee_conditions = [ [ "Person", @person.id ] ]
+      # Get all questionnaire IDs in one query (all profiles + all groups)
+      invitee_conditions = @people.map { |p| [ "Person", p.id ] }
       @groups.each { |g| invitee_conditions << [ "Group", g.id ] }
 
       questionnaire_ids = QuestionnaireInvitation
@@ -156,9 +168,11 @@ module My
       questionnaires.each do |questionnaire|
         invitations = questionnaire.questionnaire_invitations.to_a
 
-        # Check person invitation using in-memory filter
-        if invitations.any? { |inv| inv.invitee_type == "Person" && inv.invitee_id == @person.id }
-          @pending_questionnaire_entities << { questionnaire: questionnaire, entity_type: "person", entity: @person }
+        # Check person invitations using in-memory filter (all profiles)
+        @people.each do |person|
+          if invitations.any? { |inv| inv.invitee_type == "Person" && inv.invitee_id == person.id }
+            @pending_questionnaire_entities << { questionnaire: questionnaire, entity_type: "person", entity: person }
+          end
         end
 
         # Check group invitations using in-memory filter
@@ -171,10 +185,10 @@ module My
 
       @pending_questionnaire_entities = @pending_questionnaire_entities.first(5)
 
-      # Unresolved vacancy invitations for the person (not claimed, vacancy still open)
+      # Unresolved vacancy invitations for all profiles (not claimed, vacancy still open)
       @pending_vacancy_invitations = RoleVacancyInvitation
                                       .unresolved
-                                      .where(person: @person)
+                                      .where(person_id: people_ids)
                                       .includes(role_vacancy: [ :role, { show: :production } ])
                                       .order("shows.date_and_time ASC")
     end

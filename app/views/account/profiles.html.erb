@@ -7,16 +7,10 @@
 
   <!-- Profiles Section -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Profiles</h3>
-      <%= render "shared/button", text: "New Profile", variant: "primary", size: "small", icon: "plus", data: { action: "click->account-profiles#openCreate" } %>
     </div>
     <div class="p-6">
-      <p class="text-sm text-gray-600 mb-4">
-        You can have multiple profiles for different stage names, troupes, or performance personas.
-        Your default profile is used when you're invited to auditions or shows.
-      </p>
-
       <div class="space-y-4">
         <% @profiles.each do |profile| %>
           <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg <%= profile.default_profile? ? 'bg-pink-50/30 border-pink-200' : '' %>">
@@ -36,7 +30,7 @@
                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Default</span>
                   <% end %>
                 </div>
-                <div class="text-sm text-gray-500"><%= profile.email %></div>
+                <div class="text-sm text-gray-500">@<%= profile.public_key %></div>
                 <% if profile.pronouns.present? %>
                   <div class="text-xs text-gray-400"><%= profile.pronouns %></div>
                 <% end %>
@@ -53,47 +47,76 @@
           </div>
         <% end %>
       </div>
+
+      <!-- New Profile Section -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <div class="flex items-start gap-4">
+          <div class="flex-1">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">Need another profile?</h4>
+            <p class="text-sm text-gray-600">
+              Create separate profiles for different stage names, personas, or performance identities.
+              Each profile gets its own public page, headshots, and credits—perfect for performers
+              who work under multiple names or in different genres.
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <%= render "shared/button", text: "New Profile", variant: "primary", icon: "plus", path: new_my_profile_path %>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Create Profile Modal -->
-  <div data-account-profiles-target="createModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" data-action="click->account-profiles#closeCreate"></div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <h3 class="text-lg font-semibold text-gray-900 coustard-regular mb-4">Create New Profile</h3>
-          <%= form_with(url: create_profile_account_path, method: :post, data: { turbo: true }) do |f| %>
-            <div class="space-y-4">
-              <div>
-                <%= f.label "person[name]", "Profile Name", class: "block text-sm font-medium text-gray-700" %>
-                <%= f.text_field "person[name]", required: true, placeholder: "e.g., Your Stage Name", class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-                <p class="mt-1 text-xs text-gray-500">The name you perform under</p>
+  <!-- Groups Section -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Groups</h3>
+    </div>
+    <div class="p-6">
+      <% if @groups.any? %>
+        <div class="space-y-4">
+          <% @groups.each do |group| %>
+            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div class="flex items-center gap-4">
+                <% if group.headshot&.attached? %>
+                  <%= image_tag group.headshot.variant(resize_to_fill: [64, 64]), class: "w-16 h-16 rounded-lg object-cover" %>
+                <% else %>
+                  <div class="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                    <%= group.initials %>
+                  </div>
+                <% end %>
+                <div>
+                  <div class="font-medium text-gray-900"><%= group.name %></div>
+                  <div class="text-sm text-gray-500">@<%= group.public_key %></div>
+                  <% membership = group.group_memberships.find_by(person: @profiles) %>
+                  <% if membership %>
+                    <div class="text-xs text-gray-400"><%= membership.permission_level.humanize %></div>
+                  <% end %>
+                </div>
               </div>
-
-              <div>
-                <%= f.label "person[email]", "Email (optional)", class: "block text-sm font-medium text-gray-700" %>
-                <%= f.email_field "person[email]", placeholder: Current.user.email_address, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-                <p class="mt-1 text-xs text-gray-500">Leave blank to use your account email</p>
-              </div>
-
-              <div>
-                <%= f.label "person[pronouns]", "Pronouns (optional)", class: "block text-sm font-medium text-gray-700" %>
-                <%= f.text_field "person[pronouns]", placeholder: "e.g., she/her, he/him, they/them", class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-              </div>
-
               <div class="flex items-center gap-2">
-                <%= f.check_box :set_as_default, { class: "h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded" }, "1", "0" %>
-                <%= f.label :set_as_default, "Set as my default profile", class: "text-sm text-gray-700" %>
+                <%= render "shared/button", text: "Manage", path: edit_group_path(group), variant: "outline", size: "small" %>
               </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-              <%= render "shared/button", text: "Cancel", variant: "outline", type: :button, data: { action: "click->account-profiles#closeCreate" } %>
-              <%= render "shared/button", text: "Create Profile", variant: "primary", type: :submit %>
             </div>
           <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500">You aren't part of any groups yet.</p>
+      <% end %>
+
+      <!-- Create Group Section -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <div class="flex items-start gap-4">
+          <div class="flex-1">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">Start a group</h4>
+            <p class="text-sm text-gray-600">
+              Create a group profile for your band, troupe, ensemble, or any performing group.
+              Groups have their own public pages and can invite members to collaborate.
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <%= render "shared/button", text: "New Group", variant: "primary", icon: "plus", path: new_group_path %>
+          </div>
         </div>
       </div>
     </div>

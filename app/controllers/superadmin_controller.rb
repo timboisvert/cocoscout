@@ -292,19 +292,9 @@ class SuperadminController < ApplicationController
 
   def queue_retry
     failed_execution = SolidQueue::FailedExecution.find(params[:id])
-    job = failed_execution.job
 
-    # Validate job class is an ApplicationJob subclass before constantize
-    job_class = safe_constantize_job(job.class_name)
-    unless job_class
-      redirect_to queue_failed_path, alert: "Invalid job class: #{job.class_name}"
-      return
-    end
-
-    # Create a new job with the same parameters
-    ActiveJob::Base.queue_adapter.enqueue(
-      job_class.new(*JSON.parse(job.arguments))
-    )
+    # Use SolidQueue's built-in retry mechanism
+    failed_execution.retry
 
     redirect_to queue_failed_path, notice: "Job queued for retry"
   rescue StandardError => e
@@ -318,21 +308,8 @@ class SuperadminController < ApplicationController
 
     failed_executions.each do |failed_execution|
       begin
-        job = failed_execution.job
-
-        # Parse the serialized arguments
-        arguments = JSON.parse(job.arguments)
-
-        # Validate and recreate the job class safely
-        job_class = safe_constantize_job(job.class_name)
-        unless job_class
-          Rails.logger.error "Invalid job class: #{job.class_name}"
-          error_count += 1
-          next
-        end
-        new_job = job_class.new(*arguments)
-        new_job.enqueue(queue: job.queue_name)
-
+        # Use SolidQueue's built-in retry mechanism
+        failed_execution.retry
         retry_count += 1
       rescue StandardError => e
         Rails.logger.error "Failed to retry job #{failed_execution.id}: #{e.message}"
@@ -550,6 +527,318 @@ class SuperadminController < ApplicationController
     redirect_to storage_monitor_path, notice: message
   rescue StandardError => e
     redirect_to storage_monitor_path, alert: "S3 cleanup failed: #{e.message}"
+  end
+
+  # Data Monitor - Database table statistics
+  def data
+    # Get list of all ActiveRecord models
+    @tables = []
+
+    # Get all tables from the database
+    table_names = ActiveRecord::Base.connection.tables.sort
+
+    # Detect database adapter
+    adapter = ActiveRecord::Base.connection.adapter_name.downcase
+
+    # Calculate table sizes based on database type
+    table_sizes = {}
+    if adapter.include?("postgresql")
+      # PostgreSQL: use pg_catalog tables for accurate size info
+      begin
+        results = ActiveRecord::Base.connection.execute(<<~SQL)
+          SELECT
+            relname as name,
+            pg_total_relation_size(quote_ident(relname)) as size_bytes
+          FROM pg_catalog.pg_stat_user_tables
+          ORDER BY pg_total_relation_size(quote_ident(relname)) DESC
+        SQL
+        results.each do |row|
+          table_sizes[row["name"]] = row["size_bytes"].to_i
+        end
+      rescue StandardError => e
+        Rails.logger.warn "Could not query pg_catalog: #{e.message}"
+      end
+    else
+      # SQLite: use dbstat virtual table
+      begin
+        results = ActiveRecord::Base.connection.execute(
+          "SELECT name, SUM(pgsize) as size_bytes FROM dbstat GROUP BY name"
+        )
+        results.each do |row|
+          table_sizes[row["name"]] = row["size_bytes"].to_i
+        end
+      rescue StandardError => e
+        Rails.logger.warn "Could not query dbstat: #{e.message}"
+      end
+    end
+
+    # Get database bloat/vacuum info based on adapter
+    @freelist_count = 0
+    @page_count = 0
+    @freelist_bytes = 0
+    @freelist_percent = 0
+    @bloat_info = nil
+
+    if adapter.include?("postgresql")
+      # PostgreSQL: check for table bloat using pg_stat_user_tables
+      begin
+        result = ActiveRecord::Base.connection.execute(<<~SQL)
+          SELECT
+            SUM(pg_total_relation_size(quote_ident(relname))) as total_size,
+            SUM(n_dead_tup) as dead_tuples,
+            SUM(n_live_tup) as live_tuples
+          FROM pg_catalog.pg_stat_user_tables
+        SQL
+        row = result.first
+        if row
+          dead_tuples = row["dead_tuples"].to_i
+          live_tuples = row["live_tuples"].to_i
+          total_tuples = dead_tuples + live_tuples
+          if total_tuples > 0 && dead_tuples > 1000
+            @freelist_percent = (dead_tuples.to_f / total_tuples * 100).round(1)
+            @bloat_info = { dead_tuples: dead_tuples, live_tuples: live_tuples }
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.warn "Could not query PostgreSQL bloat: #{e.message}"
+      end
+    else
+      # SQLite: check freelist for vacuum recommendation
+      begin
+        @page_count = ActiveRecord::Base.connection.execute("PRAGMA page_count").first.values.first.to_i
+        @freelist_count = ActiveRecord::Base.connection.execute("PRAGMA freelist_count").first.values.first.to_i
+        page_size = ActiveRecord::Base.connection.execute("PRAGMA page_size").first.values.first.to_i
+        @freelist_bytes = @freelist_count * page_size
+        @freelist_percent = @page_count > 0 ? (@freelist_count.to_f / @page_count * 100).round(1) : 0
+      rescue StandardError
+        # Ignore
+      end
+    end
+
+    table_names.each do |table_name|
+      # Skip internal Rails tables
+      next if %w[schema_migrations ar_internal_metadata].include?(table_name)
+
+      table_info = {
+        name: table_name,
+        row_count: 0,
+        size_bytes: table_sizes[table_name],
+        model_name: nil,
+        recent_count: 0,
+        oldest_at: nil,
+        newest_at: nil
+      }
+
+      # Get row count
+      begin
+        table_info[:row_count] = ActiveRecord::Base.connection.execute(
+          "SELECT COUNT(*) FROM #{table_name}"
+        ).first.values.first
+      rescue StandardError
+        table_info[:row_count] = 0
+      end
+
+      # Try to find the corresponding model
+      begin
+        model_name = table_name.classify
+        model = model_name.safe_constantize
+        if model && model < ApplicationRecord
+          table_info[:model_name] = model_name
+
+          # Get timestamps if available
+          if model.column_names.include?("created_at")
+            table_info[:oldest_at] = model.minimum(:created_at)
+            table_info[:newest_at] = model.maximum(:created_at)
+            table_info[:recent_count] = model.where("created_at > ?", 7.days.ago).count
+          end
+        end
+      rescue StandardError
+        # Model not found or not accessible
+      end
+
+      @tables << table_info
+    end
+
+    # Sort by size descending (fall back to row count if no size)
+    @tables.sort_by! { |t| -(t[:size_bytes] || 0) }
+
+    # Calculate total table size
+    @total_table_size = @tables.sum { |t| t[:size_bytes] || 0 }
+
+    # Summary statistics
+    @total_tables = @tables.count
+    @total_rows = @tables.sum { |t| t[:row_count] }
+
+    # Database file sizes - approach differs by adapter
+    @database_files = []
+    @total_db_size = 0
+
+    if adapter.include?("postgresql")
+      # PostgreSQL: get database size from pg_database
+      begin
+        result = ActiveRecord::Base.connection.execute(<<~SQL)
+          SELECT
+            pg_database.datname as name,
+            pg_database_size(pg_database.datname) as size_bytes
+          FROM pg_database
+          WHERE datname = current_database()
+        SQL
+        row = result.first
+        if row
+          @total_db_size = row["size_bytes"].to_i
+          @database_files << {
+            name: row["name"],
+            path: "PostgreSQL/",
+            size_bytes: row["size_bytes"].to_i,
+            modified_at: Time.current
+          }
+        end
+      rescue StandardError => e
+        Rails.logger.warn "Could not query PostgreSQL database size: #{e.message}"
+      end
+    else
+      # SQLite: scan for database files on disk
+      # Main database files
+      db_path = Rails.root.join("db")
+      Dir.glob(db_path.join("*.sqlite3*")).each do |file_path|
+        next unless File.exist?(file_path)
+
+        file_size = File.size(file_path)
+        @total_db_size += file_size
+        @database_files << {
+          name: File.basename(file_path),
+          path: "db/",
+          size_bytes: file_size,
+          modified_at: File.mtime(file_path)
+        }
+      end
+
+      # Storage folder databases
+      storage_path = Rails.root.join("storage")
+      Dir.glob(storage_path.join("*.sqlite3*")).each do |file_path|
+        next unless File.exist?(file_path)
+
+        file_size = File.size(file_path)
+        @total_db_size += file_size
+        @database_files << {
+          name: File.basename(file_path),
+          path: "storage/",
+          size_bytes: file_size,
+          modified_at: File.mtime(file_path)
+        }
+      end
+    end
+
+    # Sort database files by size descending
+    @database_files.sort_by! { |f| -f[:size_bytes] }
+
+    # Index information
+    @indexes = []
+    table_names.each do |table_name|
+      next if %w[schema_migrations ar_internal_metadata].include?(table_name)
+
+      begin
+        indexes = ActiveRecord::Base.connection.indexes(table_name)
+        indexes.each do |index|
+          @indexes << {
+            table: table_name,
+            name: index.name,
+            columns: index.columns,
+            unique: index.unique
+          }
+        end
+      rescue StandardError
+        # Skip if can't get indexes
+      end
+    end
+
+    # Storage breakdown - show where the space is actually going
+    @storage_breakdown = []
+
+    # Active Storage blobs (the big one!)
+    begin
+      if defined?(ActiveStorage::Blob)
+        blob_size = ActiveStorage::Blob.sum(:byte_size)
+        blob_count = ActiveStorage::Blob.count
+        @storage_breakdown << {
+          name: "Active Storage Blobs",
+          size_bytes: blob_size,
+          count: blob_count,
+          unit: "files",
+          color: "bg-pink-500",
+          description: "Uploaded images, videos, and files (headshots, reels, attachments)"
+        }
+      end
+    rescue StandardError
+      # Skip if Active Storage not available
+    end
+
+    # Calculate storage folder size (actual files on disk)
+    storage_folder_path = Rails.root.join("storage")
+    @active_storage_files_on_disk = 0
+    @active_storage_blob_count = 0
+    if storage_folder_path.exist?
+      # Sum all files in storage subdirectories (exclude .sqlite3 files)
+      Dir.glob(storage_folder_path.join("**/*")).each do |file_path|
+        next unless File.file?(file_path)
+        next if file_path.end_with?(".sqlite3", ".sqlite3-shm", ".sqlite3-wal")
+
+        @active_storage_files_on_disk += File.size(file_path)
+        @active_storage_blob_count += 1
+      end
+    end
+
+    # Main development.sqlite3 data tables
+    main_db_size = @database_files.find { |f| f[:name] == "development.sqlite3" }&.dig(:size_bytes) || 0
+    @storage_breakdown << {
+      name: "Application Data",
+      size_bytes: main_db_size,
+      count: @total_rows,
+      unit: "rows",
+      color: "bg-blue-500",
+      description: "Core application tables (users, profiles, organizations, etc.)"
+    }
+
+    # Solid Queue database
+    queue_size = @database_files.select { |f| f[:name].include?("queue") }.sum { |f| f[:size_bytes] }
+    if queue_size > 0
+      queue_jobs = 0
+      begin
+        queue_jobs = SolidQueue::Job.count if defined?(SolidQueue::Job)
+      rescue StandardError
+        # Skip
+      end
+      @storage_breakdown << {
+        name: "Background Jobs Queue",
+        size_bytes: queue_size,
+        count: queue_jobs,
+        unit: "jobs",
+        color: "bg-purple-500",
+        description: "Solid Queue job storage and history"
+      }
+    end
+
+    # Cache database
+    cache_size = @database_files.select { |f| f[:name].include?("cache") }.sum { |f| f[:size_bytes] }
+    if cache_size > 0
+      cache_entries = 0
+      begin
+        cache_entries = SolidCache::Entry.count if defined?(SolidCache::Entry)
+      rescue StandardError
+        # Skip
+      end
+      @storage_breakdown << {
+        name: "Cache Storage",
+        size_bytes: cache_size,
+        count: cache_entries,
+        unit: "entries",
+        color: "bg-green-500",
+        description: "Solid Cache key-value storage"
+      }
+    end
+
+    # Sort by size descending
+    @storage_breakdown.sort_by! { |item| -item[:size_bytes] }
   end
 
   # Cache Monitor

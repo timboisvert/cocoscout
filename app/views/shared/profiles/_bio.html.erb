@@ -3,7 +3,7 @@
   # Parameters:
   # - entity: Person or Group instance
   entity_name = entity.is_a?(Person) ? 'person' : 'group'
-  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+  form_url = entity.is_a?(Person) ? update_profile_path(entity) : update_group_path(entity)
 
   # Customize label and placeholder based on entity type
   if entity.is_a?(Person)

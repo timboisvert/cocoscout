@@ -4,7 +4,7 @@
   # - entity: the person or group object
 
   entity_name = entity.is_a?(Person) ? 'person' : 'group'
-  form_url = entity.is_a?(Person) ? update_profile_path : update_group_path(entity)
+  form_url = entity.is_a?(Person) ? update_profile_path(entity) : update_group_path(entity)
   form_id = entity.is_a?(Person) ? 'headshots-form' : 'group-headshots-form'
 %>
 

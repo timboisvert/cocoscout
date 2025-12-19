@@ -76,7 +76,6 @@ class Person < ApplicationRecord
   validates :public_key,
             format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
-  validate :email_change_frequency
   validate :public_key_change_frequency
   # name_not_malicious, email_not_malicious, and sanitize_name are in SuspiciousDetection concern
 

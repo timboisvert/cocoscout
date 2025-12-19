@@ -62,11 +62,12 @@
       <% end %>
 
       <div class="p-0">
-        <% if @email_log.body.present? %>
+        <% body = @email_log.body_content %>
+        <% if body.present? %>
           <iframe
             class="w-full min-h-[600px] border-0"
             sandbox="allow-same-origin"
-            srcdoc="<%= ERB::Util.html_escape(@email_log.body) %>"
+            srcdoc="<%= ERB::Util.html_escape(body) %>"
           ></iframe>
         <% else %>
           <div class="text-center py-8 text-gray-500">

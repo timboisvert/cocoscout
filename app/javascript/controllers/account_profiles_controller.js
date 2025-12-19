@@ -1,15 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["createModal", "archiveModal", "archiveName", "archiveForm"]
-
-    openCreate() {
-        this.createModalTarget.classList.remove("hidden")
-    }
-
-    closeCreate() {
-        this.createModalTarget.classList.add("hidden")
-    }
+    static targets = ["archiveModal", "archiveName", "archiveForm"]
 
     openArchive(event) {
         const profileId = event.currentTarget.dataset.profileId

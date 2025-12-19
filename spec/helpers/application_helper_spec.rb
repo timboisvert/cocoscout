@@ -8,21 +8,22 @@ RSpec.describe ApplicationHelper, type: :helper do
 
   describe 'attachment helpers' do
     it 'identifies pending attachments for unsaved records' do
-      person = Person.new(name: 'Test Person', email: 'pending@example.com')
-      person.headshot.attach(io: StringIO.new(File.binread(image_path)), filename: 'headshot.png',
-                             content_type: 'image/png')
+      profile_headshot = ProfileHeadshot.new(position: 0, is_primary: true)
+      profile_headshot.image.attach(io: StringIO.new(File.binread(image_path)), filename: 'headshot.png',
+                                    content_type: 'image/png')
 
-      expect(displayable_attachment?(person.headshot)).to be(false)
-      expect(pending_attachment?(person.headshot)).to be(true)
+      expect(displayable_attachment?(profile_headshot.image)).to be(false)
+      expect(pending_attachment?(profile_headshot.image)).to be(true)
     end
 
     it 'identifies persisted attachments for saved records' do
       person = create(:person, email: 'persisted@example.com')
-      person.headshot.attach(io: StringIO.new(File.binread(image_path)), filename: 'headshot.png',
-                             content_type: 'image/png')
+      profile_headshot = person.profile_headshots.create!(position: 0, is_primary: true)
+      profile_headshot.image.attach(io: StringIO.new(File.binread(image_path)), filename: 'headshot.png',
+                                    content_type: 'image/png')
 
-      expect(displayable_attachment?(person.headshot)).to be(true)
-      expect(pending_attachment?(person.headshot)).to be(false)
+      expect(displayable_attachment?(profile_headshot.image)).to be(true)
+      expect(pending_attachment?(profile_headshot.image)).to be(false)
     end
   end
 end

@@ -5,7 +5,7 @@
   <link rel="canonical" href="<%= submit_audition_request_url(@audition_cycle.token) %>">
 <% end %>
 
-<div class="min-h-screen bg-white" data-controller="audition-request-form">
+<div class="min-h-screen bg-white" data-controller="audition-request-form" data-audition-request-form-profile-url-value="<%= update_profile_path(@requestable) %>">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
     <!-- Full-Width Header -->
@@ -35,11 +35,6 @@
       <!-- Right Column: Form -->
       <div>
         <%
-          # Define variables used throughout the form
-          profile_incomplete = Current.user.person.name == Current.user.email_address.split("@").first ||
-                              !Current.user.person.profile_headshots.exists? ||
-                              !Current.user.person.profile_resumes.exists?
-
           # Get all user's active profiles
           user_profiles = Current.user.people.active.includes(:profile_headshots, :profile_resumes).order(:created_at)
 
@@ -55,8 +50,10 @@
           is_group = @requestable.is_a?(Group)
           entity = @requestable
           entity_headshot = entity.profile_headshots.order(created_at: :desc).first
-          entity_profile_path = is_group ? edit_group_path(entity) : profile_path
-          entity_profile_incomplete = is_group ? (!entity.profile_headshots.exists? || !entity.profile_resumes.exists?) : profile_incomplete
+          entity_profile_path = is_group ? edit_group_path(entity) : edit_profile_path(entity)
+          
+          # Check if the selected entity (person or group) has incomplete profile
+          entity_profile_incomplete = !entity.profile_headshots.exists? || !entity.profile_resumes.exists?
         %>
 
         <%= form_with(model: @audition_request, url: my_submit_submit_audition_request_form_path(@audition_cycle.token), method: :post, data: { turbo: false }, class: "space-y-4") do |form| %>
@@ -92,7 +89,7 @@
                 <% end %>
                 <div class="flex-1 text-left min-w-0">
                   <div class="font-medium text-gray-900 truncate"><%= entity.name %></div>
-                  <div class="text-sm text-gray-500 truncate"><%= is_group ? entity.email : entity.email %></div>
+                  <div class="text-sm text-gray-500 truncate">@<%= entity.public_key %></div>
                 </div>
                 <svg data-audition-request-form-target="dropdownChevron"
                      class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0"
@@ -125,7 +122,7 @@
                     <% end %>
                     <div class="flex-1 text-left min-w-0">
                       <div class="font-medium text-gray-900 truncate"><%= person_profile.name %></div>
-                      <div class="text-sm text-gray-500 truncate"><%= person_profile.email %></div>
+                      <div class="text-sm text-gray-500 truncate">@<%= person_profile.public_key %></div>
                     </div>
                     <% if !is_group && entity.id == person_profile.id %>
                       <svg class="w-5 h-5 text-pink-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -154,7 +151,7 @@
                     <% end %>
                     <div class="flex-1 text-left min-w-0">
                       <div class="font-medium text-gray-900 truncate"><%= group.name %></div>
-                      <div class="text-sm text-gray-500 truncate"><%= group.email %></div>
+                      <div class="text-sm text-gray-500 truncate">@<%= group.public_key %></div>
                     </div>
                     <% if is_group && entity.id == group.id %>
                       <svg class="w-5 h-5 text-pink-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -180,7 +177,7 @@
               <% end %>
               <div class="flex-1 text-left min-w-0">
                 <div class="font-medium text-gray-900 truncate"><%= Current.user.person.name %></div>
-                <div class="text-sm text-gray-500 truncate"><%= Current.user.email_address %></div>
+                <div class="text-sm text-gray-500 truncate">@<%= Current.user.person.public_key %></div>
               </div>
             </div>
           <% end %>
@@ -463,7 +460,7 @@
         </button>
       </div>
 
-      <%= form_with(model: Current.user.person, url: profile_path, method: :patch, scope: :person, data: { turbo: false, audition_request_form_target: "profileForm", action: "submit->audition-request-form#submitProfileForm" }, class: "p-6 space-y-6") do |person_form| %>
+      <%= form_with(model: @requestable, url: update_profile_path(@requestable), method: :patch, scope: :person, data: { turbo: false, audition_request_form_target: "profileForm", action: "submit->audition-request-form#submitProfileForm" }, class: "p-6 space-y-6") do |person_form| %>
 
           <!-- Name -->
           <div>
@@ -488,13 +485,13 @@
               <%= person_form.label :profile_headshots, "Headshot", class: "block text-sm font-medium text-gray-700 mb-2" %>
               <%= person_form.fields_for :profile_headshots, person_form.object.profile_headshots.build do |headshot_form| %>
                 <div data-audition-request-form-target="headshotContainer">
-                  <% if Current.user.person.profile_headshots.any? && Current.user.person.profile_headshots.first.image.attached? %>
+                  <% if @requestable.profile_headshots.any? && @requestable.profile_headshots.first.image.attached? %>
                     <div class="relative inline-block" data-audition-request-form-target="headshotPreview">
-                      <%= image_tag Current.user.person.profile_headshots.first.image.variant(resize_to_fill: [300, 400]),
+                      <%= image_tag @requestable.profile_headshots.first.image.variant(resize_to_fill: [300, 400]),
                                     class: "w-full aspect-[3/4] rounded-lg object-cover border-2 border-gray-200" %>
                       <button type="button"
                               data-action="click->audition-request-form#removeHeadshot"
-                              data-headshot-id="<%= Current.user.person.profile_headshots.first.id %>"
+                              data-headshot-id="<%= @requestable.profile_headshots.first.id %>"
                               class="absolute bottom-2 right-2 bg-pink-500 text-white text-xs px-2 py-1 rounded hover:bg-pink-600 cursor-pointer">
                         Remove
                       </button>
@@ -524,9 +521,9 @@
               <%= person_form.label :profile_resumes, "Resume", class: "block text-sm font-medium text-gray-700 mb-2" %>
               <%= person_form.fields_for :profile_resumes, person_form.object.profile_resumes.build do |resume_form| %>
                 <div data-audition-request-form-target="resumeContainer">
-                  <% if Current.user.person.profile_resumes.any? && Current.user.person.profile_resumes.first.file.attached? %>
+                  <% if @requestable.profile_resumes.any? && @requestable.profile_resumes.first.file.attached? %>
                     <div class="relative inline-block" data-audition-request-form-target="resumePreview">
-                      <% resume = Current.user.person.profile_resumes.first %>
+                      <% resume = @requestable.profile_resumes.first %>
                       <% if resume.file.content_type == 'application/pdf' %>
                         <% if resume.file.representable? %>
                           <%= image_tag resume.file.representation(resize_to_limit: [300, 400]),

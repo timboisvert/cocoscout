@@ -15,6 +15,14 @@ class ProfileController < ApplicationController
     # Edit mode - show profile edit form with left sidebar
   end
 
+  # Show/edit a specific profile (when selected from dropdown)
+  def show
+    # @person is already set by set_person with the ID from params
+    # For additional profiles, skip the welcome screen - they've already been through onboarding
+    # Only redirect to welcome for the primary profile if they haven't seen it
+    render :index
+  end
+
   def welcome
     # Show welcome screen (don't mark as welcomed until they proceed)
   end
@@ -207,14 +215,14 @@ class ProfileController < ApplicationController
     cooldown_days = settings["url_change_cooldown_days"]
 
     if @person.public_key_changed_at && @person.public_key_changed_at > cooldown_days.days.ago
-      redirect_to profile_path, notice: "You changed your public URL too recently."
+      redirect_to edit_profile_path(@person), notice: "You changed your public URL too recently."
       return
     end
 
     if @person.update(public_key: new_key)
-      redirect_to profile_path, notice: "Your profile URL has been updated successfully."
+      redirect_to edit_profile_path(@person), notice: "Your profile URL has been updated successfully."
     else
-      redirect_to profile_path, notice: @person.errors.full_messages.join(", ")
+      redirect_to edit_profile_path(@person), notice: @person.errors.full_messages.join(", ")
     end
   end
 
@@ -225,25 +233,26 @@ class ProfileController < ApplicationController
   def update_email
     new_email = params[:person][:email]&.strip&.downcase
 
-    # Check if 30 days have passed since last change
-    if @person.last_email_changed_at && @person.last_email_changed_at > 30.days.ago
-      days_remaining = (30 - (Time.current - @person.last_email_changed_at).to_i / 1.day).ceil
-      redirect_to profile_path,
-                  notice: "You can only change your email once every 30 days. #{days_remaining} days remaining."
-      return
-    end
-
-    if @person.update(email: new_email, last_email_changed_at: Time.current)
-      redirect_to profile_path, notice: "Your email has been updated successfully."
+    if @person.update(email: new_email)
+      redirect_to edit_profile_path(@person), notice: "Your email has been updated successfully."
     else
-      redirect_to profile_path, notice: @person.errors.full_messages.join(", ")
+      redirect_to edit_profile_path(@person), notice: @person.errors.full_messages.join(", ")
     end
   end
 
   private
 
   def set_person
-    @person = Current.user.person
+    if params[:id].present?
+      # Load specific profile by ID, but only if user owns it
+      @person = Current.user.people.find_by(id: params[:id])
+      unless @person
+        redirect_to profile_path, alert: "Profile not found"
+        nil
+      end
+    else
+      @person = Current.user.person
+    end
   end
 
   def hide_sidebar_on_welcome
@@ -364,5 +373,15 @@ class ProfileController < ApplicationController
     render json: { success: true, message: "Successfully left group" }
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Membership not found" }, status: :not_found
+  end
+
+  def toggle_group_visibility
+    membership = @person.group_memberships.find(params[:membership_id])
+    membership.update!(show_on_profile: params[:show_on_profile])
+    render json: { success: true }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Membership not found" }, status: :not_found
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 end

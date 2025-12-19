@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -267,7 +267,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
   end
 
   create_table "email_logs", force: :cascade do |t|
-    t.text "body"
     t.datetime "created_at", null: false
     t.datetime "delivered_at"
     t.string "delivery_status", default: "pending"
@@ -325,6 +324,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
     t.text "notification_preferences"
     t.integer "permission_level", default: 0, null: false
     t.integer "person_id", null: false
+    t.boolean "show_on_profile", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["group_id", "person_id"], name: "index_group_memberships_on_group_id_and_person_id", unique: true
     t.index ["group_id"], name: "index_group_memberships_on_group_id"
@@ -397,6 +397,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
   create_table "organization_roles", force: :cascade do |t|
     t.string "company_role", null: false
     t.datetime "created_at", null: false
+    t.boolean "notifications_enabled"
     t.integer "organization_id", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
@@ -898,6 +899,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_18_011027) do
     t.datetime "created_at", null: false
     t.integer "default_person_id"
     t.string "email_address", null: false
+    t.datetime "email_changed_at"
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
     t.datetime "last_seen_at"

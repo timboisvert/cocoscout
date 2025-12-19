@@ -14,7 +14,7 @@
     <div class="p-6">
       <div class="space-y-4">
         <!-- Enable/Disable Toggle -->
-        <%= form_with(model: @person, url: update_profile_path, method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>
+        <%= form_with(model: @person, url: update_profile_path(@person), method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>
           <div class="flex items-center justify-between">
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-700">Enable Public Profile</p>
@@ -68,7 +68,7 @@
   <!-- Profile Sections (hidden when profile disabled) -->
   <div data-profile-visibility-target="sections" class="<%= 'hidden' unless @person.public_profile_enabled %>">
     <!-- Basic Information Section -->
-    <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
+    <%= form_with(model: @person, url: update_profile_path(@person), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
     <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
@@ -167,12 +167,12 @@
   <!-- Profile Modals -->
   <!-- Change URL Modal -->
   <div data-profile-modals-target="changeUrlModal" data-action="click->profile-modals#closeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_profile_path %>">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full" data-action="click->profile-modals#stopPropagation" data-controller="url-checker" data-url-checker-check-url-value="<%= check_url_availability_profile_path(@person) %>">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Public Profile URL</h2>
       </div>
       <div class="p-6">
-        <%= form_with(model: @person, url: update_url_profile_path, method: :patch, data: { url_checker_target: "form" }) do |f| %>
+        <%= form_with(model: @person, url: update_url_profile_path(@person), method: :patch, data: { url_checker_target: "form" }) do |f| %>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Current URL</label>
@@ -224,7 +224,7 @@
         <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Email Address</h2>
       </div>
       <div class="p-6">
-        <%= form_with(model: @person, url: update_email_profile_path, method: :patch) do |f| %>
+        <%= form_with(model: @person, url: update_email_profile_path(@person), method: :patch) do |f| %>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Current Email</label>
@@ -233,21 +233,12 @@
               </div>
             </div>
 
-            <% settings = YAML.load_file(Rails.root.join('config', 'profile_settings.yml')) %>
-            <% email_cooldown_days = settings['email_change_cooldown_days'] %>
-            <% email_is_blocked = @person.last_email_changed_at && @person.last_email_changed_at > email_cooldown_days.days.ago %>
-
-            <% if email_is_blocked %>
-              <div class="bg-pink-50 border border-pink-200 rounded-lg p-3">
-                <p class="text-sm text-pink-800">You changed your email too recently.</p>
-              </div>
-            <% else %>
-              <div>
-                <%= f.label :email, "New Email", class: "block text-sm font-medium text-gray-700 mb-2" %>
-                <%= f.email_field :email, value: @person.email, placeholder: "your.email@example.com", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-                <p class="mt-2 text-xs text-gray-500">This will also update your login email address.</p>
-              </div>
-            <% end %>
+            <div>
+              <%= f.label :email, "New Email", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= f.email_field :email, value: @person.email, placeholder: "your.email@example.com", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+              <p class="mt-2 text-xs text-gray-500">This will update the contact email for this profile. Organizations will use this email to contact you about casting and productions.</p>
+              <p class="mt-1 text-xs text-gray-500">To change your login email address, go to your <%= link_to "Account Settings", account_path, class: "text-pink-500 hover:text-pink-600 underline" %>.</p>
+            </div>
           </div>
           <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
             <%= render "shared/button",
@@ -255,13 +246,11 @@
                 variant: "ghost-cancel",
                 data: { action: "click->profile-modals#closeModal" },
                 type: :button %>
-            <% unless email_is_blocked %>
-              <%= render "shared/button",
-                  text: "Update Email",
-                  variant: "primary",
-                  size: "medium",
-                  type: :submit %>
-            <% end %>
+            <%= render "shared/button",
+                text: "Update Email",
+                variant: "primary",
+                size: "medium",
+                type: :submit %>
           </div>
         <% end %>
       </div>
@@ -277,7 +266,7 @@
         <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Add Social Media/Link</h2>
       </div>
       <div class="p-6">
-        <%= form_with(model: @person, url: update_profile_path, method: :patch, data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
+        <%= form_with(model: @person, url: update_profile_path(@person), method: :patch, data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
           <%= f.fields_for :socials, @person.socials.build do |sf| %>
             <div class="space-y-4">
               <div>
@@ -322,7 +311,7 @@
         <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Edit Social Media/Link</h2>
       </div>
       <div class="p-6">
-        <%= form_with(model: @person, url: update_profile_path, method: :patch, id: "edit-social-form", data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
+        <%= form_with(model: @person, url: update_profile_path(@person), method: :patch, id: "edit-social-form", data: { action: "turbo:submit-end->profile-modals#closeModal" }) do |f| %>
           <%= f.fields_for :socials, @person.socials.build do |sf| %>
             <%= sf.hidden_field :id, id: "edit-social-id" %>
             <div class="space-y-4">

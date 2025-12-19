@@ -1,18 +1,19 @@
 <%
-# Shared entity filter component (person + groups checkboxes)
+# Shared entity filter component (person(s) + groups checkboxes)
 #
 # Parameters:
 #   path_helper: Method - Method that generates the path (e.g., method(:my_shows_path))
-#   person: Person object - The current person
+#   people: Array - Collection of person profiles (for multi-profile support)
+#   person: Person object - The current person (legacy support, converted to people array)
 #   groups: Array - Collection of groups
-#   entity_filter: Array - Currently selected entity filters (e.g., ["person", "group_3"])
+#   entity_filter: Array - Currently selected entity filters (e.g., ["person_3", "group_3"])
 #   label: String (optional) - Label for the filter group (default: "Show")
 #   Additional params: Any other params to pass to path_helper (as keyword arguments)
 #
 # Example usage:
 #   render "shared/filters/entity_filter",
 #       path_helper: method(:my_shows_path),
-#       person: @person,
+#       people: @people,
 #       groups: @groups,
 #       entity_filter: @entity_filter,
 #       label: "Include",
@@ -22,29 +23,36 @@
 <%
 label ||= "Show"
 
-# Extract path helper params (everything except the required params)
-path_params = local_assigns.except(:path_helper, :person, :groups, :entity_filter, :label)
+# Support legacy 'person' parameter - convert to array
+people_list = local_assigns[:people] || (local_assigns[:person] ? [local_assigns[:person]] : [])
 
-if groups.any?
+# Extract path helper params (everything except the required params)
+path_params = local_assigns.except(:path_helper, :person, :people, :groups, :entity_filter, :label)
+
+if people_list.count > 1 || groups.any?
 %>
 <div class="flex items-center gap-2">
   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
   <div class="flex flex-wrap gap-1">
-    <%
-      # Build the toggle URL for person
-      current_entities = entity_filter.dup
-      person_url_entities = if current_entities.include?('person')
-        current_entities - ['person']
-      else
-        current_entities + ['person']
-      end
-      person_url_entities = ['person'] if person_url_entities.empty? # Keep at least one
-    %>
-    <%= link_to path_helper.call(**path_params, entity: person_url_entities.join(",")),
-            data: { turbo_prefetch: false },
-            class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition #{entity_filter.include?("person") ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}" do %>
-      <svg class="w-3.5 h-3.5 <%= entity_filter.include?("person") ? "" : "opacity-40" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-      <%= person.name %>
+    <% people_list.each do |profile| %>
+      <%
+        # Build the toggle URL for this person
+        person_key = "person_#{profile.id}"
+        current_entities = entity_filter.dup
+        person_url_entities = if current_entities.include?(person_key)
+          current_entities - [person_key]
+        else
+          current_entities + [person_key]
+        end
+        # Keep at least one entity selected - use first person as default
+        person_url_entities = ["person_#{people_list.first.id}"] if person_url_entities.empty?
+      %>
+      <%= link_to path_helper.call(**path_params, entity: person_url_entities.join(",")),
+              data: { turbo_prefetch: false },
+              class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition #{entity_filter.include?(person_key) ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}" do %>
+        <svg class="w-3.5 h-3.5 <%= entity_filter.include?(person_key) ? "" : "opacity-40" %>" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        <%= profile.name %>
+      <% end %>
     <% end %>
 
     <% groups.each do |group| %>
@@ -57,7 +65,8 @@ if groups.any?
         else
           current_entities + [group_key]
         end
-        group_url_entities = ['person'] if group_url_entities.empty? # Keep at least one
+        # Keep at least one entity selected - use first person as default
+        group_url_entities = ["person_#{people_list.first.id}"] if group_url_entities.empty?
       %>
       <%= link_to path_helper.call(**path_params, entity: group_url_entities.join(",")),
               data: { turbo_prefetch: false },

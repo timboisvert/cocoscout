@@ -10,7 +10,7 @@
     ] %>
 
   <div class="mt-4">
-    <% production_permissions = @production.production_permissions.includes(user: :person) %>
+    <% production_permissions = @production.production_permissions.includes(user: :default_person) %>
     <% if production_permissions.any? %>
       <div class="space-y-1 mb-1">
         <% production_permissions.each do |permission| %>
@@ -122,7 +122,7 @@
     <p class="text-xs text-gray-500 mb-3">
       <strong>Organization team members with global access:</strong> These people already have access to all productions.
     </p>
-    <% org_managers_viewers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :person) %>
+    <% org_managers_viewers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :default_person) %>
     <% if org_managers_viewers.any? %>
       <div class="flex flex-wrap gap-2">
         <% org_managers_viewers.each do |org_role| %>

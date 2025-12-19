@@ -1,0 +1,216 @@
+<% content_for :title, "Create New Profile" %>
+
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50" data-controller="scroll-indicator">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Header with Logo -->
+    <div class="text-center mb-8 sm:mb-12">
+      <%= render "shared/cocoscout_logo", size: :medium, class: "mx-auto mb-4" %>
+      <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 coustard-regular mb-3">Create Another Profile</h1>
+      <p class="text-lg sm:text-xl text-pink-600">Manage multiple performance personas from one account</p>
+    </div>
+
+    <!-- What is a Profile? Section -->
+    <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 mb-8 shadow-sm">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4 coustard-regular">Why Create Another Profile?</h2>
+      <p class="text-gray-700 mb-4">
+        Some performers have more than one professional identity. A new profile lets you maintain separate portfolios,
+        headshots, and experiences for each persona—all managed from your single CocoScout account.
+      </p>
+      <p class="text-gray-700">
+        Each profile has its own public page, audition history, and can be selected independently when signing up for opportunities.
+      </p>
+    </div>
+
+    <!-- Use Cases Grid -->
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+
+      <!-- Use Case 1: Stage Name -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Stage Names & Personas</h3>
+            <p class="text-sm text-gray-600">Perform under different names for different types of work? Keep your drag persona separate from your Equity name, or your comedy character from your dramatic work.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Use Case 2: Different Markets -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Different Types of Work</h3>
+            <p class="text-sm text-gray-600">Separate your musical theatre credits from your film work, or your corporate MC gigs from your improv shows. Different headshots and reels for each.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Use Case 3: Union vs Non-Union -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Professional Contexts</h3>
+            <p class="text-sm text-gray-600">Some performers maintain separate identities for union and non-union work, or for work in different regions or countries.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Use Case 4: Collaborative Work -->
+      <div class="bg-white border border-pink-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-pink-300 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-pink-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Character-Based Work</h3>
+            <p class="text-sm text-gray-600">Perform as a specific character at events? Create a profile for that character with its own photos and history.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Important Info Section -->
+    <div class="bg-gradient-to-br from-amber-50 to-white border border-amber-200 rounded-lg p-6 sm:p-8 mb-8 shadow-sm">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        What to Know About Multiple Profiles
+      </h3>
+      <ul class="space-y-3">
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span class="text-sm text-gray-700"><strong>Each profile is independent</strong>—separate headshots, resumes, audition history, and public page</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span class="text-sm text-gray-700"><strong>You choose which profile</strong> to use when signing up for each audition</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span class="text-sm text-gray-700"><strong>Notifications go to each profile's email</strong>—set different contact emails for different work</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span class="text-sm text-gray-700"><strong>You can set a default profile</strong> that's pre-selected for audition signups</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 mb-8 shadow-sm">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Tips</h3>
+      <ul class="space-y-3">
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">Create the profile with basic info first, then add headshots, videos, and experience on the profile editor</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">Switch between profiles anytime from the profile selector in the sidebar</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-sm text-gray-700">Most performers only need one profile—only create another if you truly have separate professional identities</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Creation Form -->
+    <%= form_with model: @profile, url: my_profiles_path, method: :post, class: "space-y-6" do |form| %>
+      <div class="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 shadow-sm">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 coustard-regular">Create Your New Profile</h2>
+
+        <% if @profile.errors.any? %>
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
+            <div class="flex gap-3">
+              <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-red-800 mb-1">Please fix the following errors:</p>
+                <ul class="list-disc list-inside text-sm text-red-700">
+                  <% @profile.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="space-y-4">
+          <div>
+            <%= form.label :name, "Profile Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.text_field :name, required: true, placeholder: "e.g., Dizzie Daisie", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">The name that will appear on audition sign-ups and your public profile</p>
+          </div>
+
+          <div>
+            <%= form.label :pronouns, "Pronouns", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.text_field :pronouns, placeholder: "e.g., she/her, he/him, they/them", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+
+          <div>
+            <%= form.label :email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.email_field :email, placeholder: Current.user.email_address, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">Audition notifications for this profile will be sent here. Leave blank to use your account email.</p>
+          </div>
+
+          <div>
+            <%= form.label :bio, "Bio (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.text_area :bio, rows: 4, placeholder: "Tell casting directors about this persona...", class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <p class="mt-1 text-xs text-gray-500">You can add more details later</p>
+          </div>
+
+          <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <%= check_box_tag :set_as_default, "1", false, class: "mt-1 rounded border-gray-300 text-pink-600 focus:ring-pink-500", id: "set_as_default" %>
+            <div>
+              <%= label_tag :set_as_default, "Set as my default profile", class: "text-sm font-medium text-gray-700 cursor-pointer" %>
+              <p class="text-xs text-gray-500 mt-0.5">Your default profile is automatically selected when signing up for auditions.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <%= render "shared/button", text: "Create Profile", variant: "primary", size: "medium", type: :submit, class: "flex-1" %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "medium", path: my_profiles_path, type: :button %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+
+  <%= render "shared/more_below" %>
+</div>

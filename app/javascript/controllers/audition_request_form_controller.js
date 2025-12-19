@@ -17,6 +17,10 @@ export default class extends Controller {
         "resumePreview"
     ]
 
+    static values = {
+        profileUrl: String
+    }
+
     connect() {
         // Close dropdown when clicking outside
         this.boundCloseDropdown = this.closeDropdownOnClickOutside.bind(this)
@@ -204,7 +208,7 @@ export default class extends Controller {
         formData.append('person[profile_headshots_attributes][0][image]', file)
 
         try {
-            const response = await fetch('/profile', {
+            const response = await fetch(this.profileUrlValue, {
                 method: 'PATCH',
                 body: formData,
                 headers: {
@@ -268,7 +272,7 @@ export default class extends Controller {
         formData.append('person[profile_headshots_attributes][0][_destroy]', '1')
 
         try {
-            const response = await fetch('/profile', {
+            const response = await fetch(this.profileUrlValue, {
                 method: 'PATCH',
                 body: formData,
                 headers: {
@@ -304,7 +308,7 @@ export default class extends Controller {
         formData.append('person[profile_resumes_attributes][0][file]', file)
 
         try {
-            const response = await fetch('/profile', {
+            const response = await fetch(this.profileUrlValue, {
                 method: 'PATCH',
                 body: formData,
                 headers: {
@@ -394,7 +398,7 @@ export default class extends Controller {
         formData.append('person[profile_resumes_attributes][0][_destroy]', '1')
 
         try {
-            const response = await fetch('/profile', {
+            const response = await fetch(this.profileUrlValue, {
                 method: 'PATCH',
                 body: formData,
                 headers: {

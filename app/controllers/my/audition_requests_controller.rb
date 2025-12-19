@@ -4,26 +4,38 @@ module My
   class AuditionRequestsController < ApplicationController
     def index
       @person = Current.user.person
-      @groups = @person.groups.active.order(:name).to_a
+      @people = Current.user.people.active.order(:created_at).to_a
+
+      # Get all groups from all profiles
+      @groups = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: @people.map(&:id) })
+                     .distinct
+                     .order(:name)
+                     .to_a
 
       # Store the audition requests_filter
       @requests_filter = params[:requests_filter] || session[:requests_filter] || "open"
       session[:requests_filter] = @requests_filter
 
-      # Handle entity filter - comma-separated like availability
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      # Handle entity filter - comma-separated, now uses person_ID format
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
-      include_person = @entity_filter.include?("person")
+      # Parse selected person IDs and group IDs from entity filter
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
+
+      people_by_id = @people.index_by(&:id)
       groups_by_id = @groups.index_by(&:id)
 
       # Build conditions for batch query
       requestable_conditions = []
       requestable_params = []
 
-      if include_person
-        requestable_conditions << "(requestable_type = 'Person' AND requestable_id = ?)"
-        requestable_params << @person.id
+      if selected_person_ids.any?
+        requestable_conditions << "(requestable_type = 'Person' AND requestable_id IN (?))"
+        requestable_params << selected_person_ids
       end
 
       if selected_group_ids.any?
@@ -63,9 +75,10 @@ module My
       @audition_requests.each do |audition_request|
         entities = []
 
-        # Check if person has this audition request and is in entity filter
-        if include_person && audition_request.requestable_type == "Person" && audition_request.requestable_id == @person.id
-          entities << { type: "person", entity: @person }
+        # Check if any person profile has this audition request and is in entity filter
+        if audition_request.requestable_type == "Person" && selected_person_ids.include?(audition_request.requestable_id)
+          person = people_by_id[audition_request.requestable_id]
+          entities << { type: "person", entity: person } if person
         end
 
         # Check groups using preloaded data

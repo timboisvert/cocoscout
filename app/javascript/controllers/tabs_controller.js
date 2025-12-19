@@ -2,9 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["tab", "panel", "hiddenField"]
+    static values = { initialTab: { type: Number, default: 0 } }
 
     connect() {
-        let initialTab = 0;
+        let initialTab = this.initialTabValue;
 
         // First check if there's a tab in the URL query params
         const urlParams = new URLSearchParams(window.location.search);

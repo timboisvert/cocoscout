@@ -25,6 +25,6 @@ class Audition < ApplicationRecord
   end
 
   def votes_with_comments
-    audition_votes.includes(user: :person).where.not(comment: [ nil, "" ]).order(created_at: :desc)
+    audition_votes.includes(user: :default_person).where.not(comment: [ nil, "" ]).order(created_at: :desc)
   end
 end

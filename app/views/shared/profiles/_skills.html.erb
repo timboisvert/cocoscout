@@ -9,7 +9,7 @@
 %>
 
 <div id="skills">
-<%= form_with(model: entity, url: entity.is_a?(Person) ? update_profile_path : update_group_path(entity), method: :patch, id: "skills-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
+<%= form_with(model: entity, url: entity.is_a?(Person) ? update_profile_path(entity) : update_group_path(entity), method: :patch, id: "skills-form", data: { turbo: true, controller: "profile-auto-save" }) do |person_form| %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-controller="profile-skills profile-section">
   <%= render "shared/section_header",
     entity: entity,

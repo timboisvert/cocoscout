@@ -1,4 +1,4 @@
-<p>Hi <%= @user.person.name || @user.email_address %>,</p>
+<p>Hi <%= @user.person&.name || @user.email_address %>,</p>
 
 <% if @event == "created" %>
   <p>A new vacancy has been created for <strong><%= @production.name %></strong>.</p>

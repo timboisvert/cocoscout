@@ -15,6 +15,9 @@ class GroupMembership < ApplicationRecord
   validates :person, presence: true
   validates :person_id, uniqueness: { scope: :group_id, message: "is already a member of this group" }
 
+  # Scopes
+  scope :visible_on_profile, -> { where(show_on_profile: true) }
+
   # Notification preferences stored as JSON
   serialize :notification_preferences, coder: JSON
 

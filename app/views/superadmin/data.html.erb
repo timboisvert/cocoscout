@@ -1,0 +1,362 @@
+<% content_for :title, "Data Monitor - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Data Monitor",
+    links: []
+  } %>
+
+  <!-- Overview Stats -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@total_tables) %></div>
+      <div class="text-sm text-gray-500">Tables</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@total_rows) %></div>
+      <div class="text-sm text-gray-500">Total Rows</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_to_human_size(@total_db_size) %></div>
+      <div class="text-sm text-gray-500">Database Size</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @indexes.count %></div>
+      <div class="text-sm text-gray-500">Indexes</div>
+    </div>
+  </div>
+
+  <% if @freelist_percent && @freelist_percent > 10 %>
+    <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div class="flex gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-amber-600 flex-shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <div>
+          <% if @bloat_info %>
+            <h3 class="text-sm font-semibold text-amber-800">Database Has Dead Tuples</h3>
+            <p class="text-sm text-amber-700 mt-1">
+              <strong><%= number_with_delimiter(@bloat_info[:dead_tuples]) %></strong> dead tuples detected (<%= @freelist_percent %>% of total).
+              Consider running <code class="bg-amber-100 px-1 rounded">VACUUM ANALYZE;</code> to reclaim space and update statistics.
+            </p>
+          <% else %>
+            <h3 class="text-sm font-semibold text-amber-800">Database Needs VACUUM</h3>
+            <p class="text-sm text-amber-700 mt-1">
+              <strong><%= @freelist_percent %>%</strong> of the database (<strong><%= number_to_human_size(@freelist_bytes) %></strong>) is unused space from deleted records.
+              Run <code class="bg-amber-100 px-1 rounded">sqlite3 db/development.sqlite3 "VACUUM;"</code> to reclaim this space.
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Tabbed Interface -->
+  <div class="mt-6" data-controller="tabs">
+    <!-- Tab Navigation -->
+    <div class="border-b border-gray-200">
+      <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+        <button type="button"
+                data-tabs-target="tab"
+                data-action="click->tabs#select"
+                data-index="0"
+                class="cursor-pointer whitespace-nowrap border-b-2 py-2 px-3 text-sm font-medium transition-colors border-transparent text-gray-500 hover:text-gray-700">
+          Database Files
+          <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= @database_files.count %></span>
+        </button>
+        <button type="button"
+                data-tabs-target="tab"
+                data-action="click->tabs#select"
+                data-index="1"
+                class="cursor-pointer whitespace-nowrap border-b-2 py-2 px-3 text-sm font-medium transition-colors border-transparent text-gray-500 hover:text-gray-700">
+          Tables
+          <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= @tables.count %></span>
+        </button>
+        <button type="button"
+                data-tabs-target="tab"
+                data-action="click->tabs#select"
+                data-index="2"
+                class="cursor-pointer whitespace-nowrap border-b-2 py-2 px-3 text-sm font-medium transition-colors border-transparent text-gray-500 hover:text-gray-700">
+          Indexes
+          <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= @indexes.count %></span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Tab Panels -->
+    <div class="mt-4">
+      <!-- Database Files Panel -->
+      <div data-tabs-target="panel" class="hidden">
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Files</h3>
+            <p class="text-sm text-gray-500 mt-1">SQLite database files on disk</p>
+          </div>
+          <div class="p-4">
+            <% if @database_files.any? %>
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-gray-500 border-b">
+                    <th class="pb-2">File</th>
+                    <th class="pb-2 text-right">Size</th>
+                    <th class="pb-2 text-right">Last Modified</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @database_files.each do |db| %>
+                    <tr class="border-b border-gray-100">
+                      <td class="py-3">
+                        <span class="font-mono text-xs text-gray-600"><%= db[:path] %></span><span class="font-mono text-xs font-medium"><%= db[:name] %></span>
+                      </td>
+                      <td class="py-3 text-right font-medium"><%= number_to_human_size(db[:size_bytes]) %></td>
+                      <td class="py-3 text-right text-gray-500"><%= time_ago_in_words(db[:modified_at]) %> ago</td>
+                    </tr>
+                  <% end %>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t-2 border-gray-200 bg-gray-50">
+                    <td class="py-3 font-semibold">Total</td>
+                    <td class="py-3 text-right font-bold text-pink-600"><%= number_to_human_size(@total_db_size) %></td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            <% else %>
+              <p class="text-sm text-gray-500">No database files found</p>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Storage Breakdown -->
+        <% if @storage_breakdown.present? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Where Is the Space Going?</h3>
+              <p class="text-sm text-gray-500 mt-1">Breakdown of storage usage by type</p>
+            </div>
+            <div class="p-4">
+              <div class="space-y-4">
+                <% @storage_breakdown.each do |item| %>
+                  <div>
+                    <div class="flex justify-between text-sm mb-1">
+                      <span class="font-medium text-gray-700"><%= item[:name] %></span>
+                      <span class="font-medium <%= item[:size_bytes] > 500.megabytes ? 'text-red-600' : item[:size_bytes] > 100.megabytes ? 'text-amber-600' : 'text-gray-700' %>">
+                        <%= number_to_human_size(item[:size_bytes]) %>
+                        <span class="text-gray-400 ml-1">(<%= item[:count] %> <%= item[:unit] %>)</span>
+                      </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                      <div class="<%= item[:color] %> h-3 rounded-full transition-all" style="width: <%= (@total_db_size > 0 ? (item[:size_bytes].to_f / @total_db_size * 100) : 0).round(1) %>%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1"><%= item[:description] %></p>
+                  </div>
+                <% end %>
+              </div>
+
+              <% if @active_storage_files_on_disk.present? && @active_storage_files_on_disk > 0 %>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div class="flex gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                      <div>
+                        <p class="text-sm font-medium text-amber-800">Active Storage Files on Disk</p>
+                        <p class="text-xs text-amber-700 mt-0.5">
+                          <strong><%= number_to_human_size(@active_storage_files_on_disk) %></strong> of uploaded files stored in <code class="bg-amber-100 px-1 rounded">storage/</code> folder
+                          (<%= @active_storage_blob_count %> blobs)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Tables Panel -->
+      <div data-tabs-target="panel" class="hidden">
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Tables</h3>
+            <p class="text-sm text-gray-500 mt-1">All tables sorted by size</p>
+          </div>
+          <div class="p-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 border-b">
+                  <th class="pb-2">Table</th>
+                  <th class="pb-2">Model</th>
+                  <th class="pb-2 text-right">Size</th>
+                  <th class="pb-2 text-right">Rows</th>
+                  <th class="pb-2 text-right">New (7d)</th>
+                  <th class="pb-2 text-right">Oldest</th>
+                  <th class="pb-2 text-right">Newest</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tables.each do |table| %>
+                  <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 font-mono text-xs"><%= table[:name] %></td>
+                    <td class="py-2 text-gray-600"><%= table[:model_name] || '-' %></td>
+                    <td class="py-2 text-right font-medium <%= table[:size_bytes] && table[:size_bytes] > 100.megabytes ? 'text-red-600' : table[:size_bytes] && table[:size_bytes] > 10.megabytes ? 'text-amber-600' : 'text-gray-700' %>">
+                      <%= table[:size_bytes] ? number_to_human_size(table[:size_bytes]) : '-' %>
+                    </td>
+                    <td class="py-2 text-right font-medium <%= table[:row_count] > 10000 ? 'text-amber-600' : table[:row_count] > 1000 ? 'text-blue-600' : 'text-gray-900' %>">
+                      <%= number_with_delimiter(table[:row_count]) %>
+                    </td>
+                    <td class="py-2 text-right">
+                      <% if table[:recent_count] && table[:recent_count] > 0 %>
+                        <span class="text-green-600">+<%= number_with_delimiter(table[:recent_count]) %></span>
+                      <% else %>
+                        <span class="text-gray-400">-</span>
+                      <% end %>
+                    </td>
+                    <td class="py-2 text-right text-xs text-gray-500">
+                      <%= table[:oldest_at] ? time_ago_in_words(table[:oldest_at]) + " ago" : '-' %>
+                    </td>
+                    <td class="py-2 text-right text-xs text-gray-500">
+                      <%= table[:newest_at] ? time_ago_in_words(table[:newest_at]) + " ago" : '-' %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <tfoot>
+                <tr class="border-t-2 border-gray-200 bg-gray-50">
+                  <td class="py-2 font-semibold" colspan="2">Total</td>
+                  <td class="py-2 text-right font-bold text-pink-600"><%= number_to_human_size(@total_table_size) %></td>
+                  <td class="py-2 text-right font-bold text-pink-600"><%= number_with_delimiter(@total_rows) %></td>
+                  <td colspan="3"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Size Distribution Chart -->
+        <% sized_tables = @tables.select { |t| t[:size_bytes] && t[:size_bytes] > 0 }.first(15) %>
+        <% if sized_tables.any? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Size Distribution</h3>
+              <p class="text-sm text-gray-500 mt-1">Top tables by disk space usage</p>
+            </div>
+            <div class="p-4">
+              <% max_size = sized_tables.map { |t| t[:size_bytes] }.max %>
+              <div class="space-y-3">
+                <% sized_tables.each do |table| %>
+                  <div>
+                    <div class="flex justify-between text-sm mb-1">
+                      <span class="font-mono text-xs text-gray-700"><%= table[:name] %></span>
+                      <span class="font-medium <%= table[:size_bytes] > 100.megabytes ? 'text-red-600' : table[:size_bytes] > 10.megabytes ? 'text-amber-600' : '' %>">
+                        <%= number_to_human_size(table[:size_bytes]) %>
+                        <span class="text-gray-400 text-xs">(<%= number_with_delimiter(table[:row_count]) %> rows)</span>
+                      </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="<%= table[:size_bytes] > 100.megabytes ? 'bg-red-500' : table[:size_bytes] > 10.megabytes ? 'bg-amber-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= (table[:size_bytes].to_f / max_size * 100).round(1) %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Row Distribution Chart -->
+        <% large_tables = @tables.select { |t| t[:row_count] >= 100 }.first(15) %>
+        <% if large_tables.any? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Row Distribution</h3>
+              <p class="text-sm text-gray-500 mt-1">Top tables by row count</p>
+            </div>
+            <div class="p-4">
+              <% max_rows = large_tables.map { |t| t[:row_count] }.max %>
+              <div class="space-y-3">
+                <% large_tables.each do |table| %>
+                  <div>
+                    <div class="flex justify-between text-sm mb-1">
+                      <span class="font-mono text-xs text-gray-700"><%= table[:name] %></span>
+                      <span class="font-medium"><%= number_with_delimiter(table[:row_count]) %> rows</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-pink-500 h-2 rounded-full transition-all" style="width: <%= (table[:row_count].to_f / max_rows * 100).round(1) %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Indexes Panel -->
+      <div data-tabs-target="panel" class="hidden">
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Indexes</h3>
+            <p class="text-sm text-gray-500 mt-1">All indexes across all tables</p>
+          </div>
+          <div class="p-4 overflow-x-auto">
+            <% if @indexes.any? %>
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-gray-500 border-b">
+                    <th class="pb-2">Table</th>
+                    <th class="pb-2">Index Name</th>
+                    <th class="pb-2">Columns</th>
+                    <th class="pb-2 text-center">Unique</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @indexes.sort_by { |i| [i[:table], i[:name]] }.each do |index| %>
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                      <td class="py-2 font-mono text-xs text-gray-600"><%= index[:table] %></td>
+                      <td class="py-2 font-mono text-xs"><%= index[:name] %></td>
+                      <td class="py-2 text-xs text-gray-700"><%= index[:columns].join(", ") %></td>
+                      <td class="py-2 text-center">
+                        <% if index[:unique] %>
+                          <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Yes</span>
+                        <% else %>
+                          <span class="text-gray-400">-</span>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+
+              <!-- Index Summary -->
+              <div class="mt-4 pt-4 border-t border-gray-200">
+                <div class="flex gap-6 text-sm">
+                  <div>
+                    <span class="text-gray-500">Total Indexes:</span>
+                    <span class="font-medium ml-1"><%= @indexes.count %></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Unique Indexes:</span>
+                    <span class="font-medium ml-1"><%= @indexes.count { |i| i[:unique] } %></span>
+                  </div>
+                  <div>
+                    <span class="text-gray-500">Tables with Indexes:</span>
+                    <span class="font-medium ml-1"><%= @indexes.map { |i| i[:table] }.uniq.count %></span>
+                  </div>
+                </div>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-500">No indexes found</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

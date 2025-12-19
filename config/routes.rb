@@ -29,13 +29,14 @@ Rails.application.routes.draw do
   # Account
   get   "/account",                       to: "account#show",                as: "account"
   patch "/account",                       to: "account#update"
+  patch "/account/email",                 to: "account#update_email",        as: "update_email_account"
   get   "/account/profiles",              to: "account#profiles",            as: "account_profiles"
   post  "/account/profiles",              to: "account#create_profile",      as: "create_profile_account"
   post  "/account/profiles/:id/set_default", to: "account#set_default_profile", as: "set_default_profile_account"
   post  "/account/profiles/:id/archive",  to: "account#archive_profile",     as: "archive_profile_account"
   get   "/account/notifications",         to: "account#notifications",       as: "account_notifications"
   patch "/account/notifications",         to: "account#update_notifications"
-  get   "/account/billing",               to: "account#billing",             as: "account_billing"
+  get   "/account/subscription",          to: "account#billing",             as: "account_billing"
 
   # Superadmin
   scope "/superadmin" do
@@ -65,6 +66,7 @@ Rails.application.routes.draw do
     post "/storage/cleanup_legacy",  to: "superadmin#storage_cleanup_legacy",  as: "storage_cleanup_legacy"
     post "/storage/migrate_keys",    to: "superadmin#storage_migrate_keys",    as: "storage_migrate_keys"
     post "/storage/cleanup_s3_orphans", to: "superadmin#storage_cleanup_s3_orphans", as: "storage_cleanup_s3_orphans"
+    get  "/data",               to: "superadmin#data",                as: "data_monitor"
     get  "/cache",              to: "superadmin#cache",               as: "cache_monitor"
     post "/cache/clear",        to: "superadmin#cache_clear",         as: "cache_clear"
     post "/cache/clear_pattern", to: "superadmin#cache_clear_pattern", as: "cache_clear_pattern"
@@ -103,6 +105,10 @@ Rails.application.routes.draw do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     get   "/welcome",                       to: "dashboard#welcome",        as: "welcome"
     post  "/dismiss_welcome",               to: "dashboard#dismiss_welcome", as: "dismiss_welcome"
+
+    # Profile management
+    resources :profiles, only: [ :index, :new, :create ]
+
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",               as: "show"
@@ -183,6 +189,7 @@ Rails.application.routes.draw do
         patch :update_production_permission
         patch :update_production_notifications
         patch :update_global_role
+        patch :update_global_notifications
       end
     end
 
@@ -201,6 +208,7 @@ Rails.application.routes.draw do
       collection do
         get :search
         post :batch_invite
+        get :check_email
       end
       member do
         # Used when adding a person to a cast from a person (or person-like) page
@@ -441,23 +449,28 @@ Rails.application.routes.draw do
     get "/success", to: "claim_vacancy#success", as: "claim_vacancy_success"
   end
 
-  # Profile routes (top-level)
+  # Profile routes (top-level) - supports optional :person_id for multi-profile editing
   get    "/profile",         to: "profile#index",   as: "profile"
   get    "/profile/welcome", to: "profile#welcome", as: "profile_welcome"
   post   "/profile/dismiss_welcome", to: "profile#dismiss_welcome", as: "dismiss_profile_welcome"
   post   "/profile/mark_welcomed", to: "profile#mark_welcomed", as: "mark_profile_welcomed"
-  patch  "/profile", to: "profile#update", as: "update_profile"
+  patch  "/profile", to: "profile#update"  # Fallback for requests without ID (uses default profile)
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
   get    "/profile/public", to: "profile#public", as: "profile_public"
-  get    "/profile/change-url", to: "profile#change_url", as: "change_url_profile"
-  post   "/profile/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile"
-  patch  "/profile/update-url", to: "profile#update_url", as: "update_url_profile"
   get    "/profile/search_groups", to: "profile#search_groups", as: "search_groups_profile"
   post   "/profile/join_group", to: "profile#join_group", as: "join_group_profile"
   delete "/profile/leave_group/:id", to: "profile#leave_group", as: "leave_group_profile"
-  get    "/profile/change-email", to: "profile#change_email", as: "change_email_profile"
-  patch  "/profile/change-email", to: "profile#update_email", as: "update_email_profile"
+  patch  "/profile/toggle_group_visibility", to: "profile#toggle_group_visibility", as: "toggle_group_visibility_profile"
+
+  # Profile routes with ID (for editing specific profiles)
+  get    "/profile/:id", to: "profile#show", as: "edit_profile", constraints: { id: /\d+/ }
+  patch  "/profile/:id", to: "profile#update", as: "update_profile", constraints: { id: /\d+/ }
+  get    "/profile/:id/change-url", to: "profile#change_url", as: "change_url_profile", constraints: { id: /\d+/ }
+  post   "/profile/:id/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile", constraints: { id: /\d+/ }
+  patch  "/profile/:id/update-url", to: "profile#update_url", as: "update_url_profile", constraints: { id: /\d+/ }
+  get    "/profile/:id/change-email", to: "profile#change_email", as: "change_email_profile", constraints: { id: /\d+/ }
+  patch  "/profile/:id/change-email", to: "profile#update_email", as: "update_email_profile", constraints: { id: /\d+/ }
 
   # Groups routes (top-level, use profile layout)
   get    "/groups",                   to: "groups#index",      as: "groups"

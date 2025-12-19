@@ -10,31 +10,49 @@
 
   <div class="p-6 space-y-4" data-profile-section-target="content">
     <p class="text-sm text-gray-600 mb-4">
-      Manage the performing groups you're a part of—like bands, troupes, or ensembles. Create profile pages for both yourself as an individual performer and the groups you perform with.
+      Show the groups you're a part of on your public profile. Toggle the visibility for each group.
     </p>
 
-    <!-- Current Groups Grid -->
-    <div id="groups-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" data-profile-groups-target="list">
-      <% active_memberships = @person.group_memberships.includes(:group).select { |m| m.group.archived_at.nil? } %>
+    <!-- Current Groups List -->
+    <div id="groups-list" class="space-y-3" data-profile-groups-target="list">
+      <% active_memberships = entity.group_memberships.includes(:group).select { |m| m.group.archived_at.nil? } %>
       <% if active_memberships.any? %>
         <% active_memberships.each do |membership| %>
-          <%= link_to edit_group_path(membership.group),
-                      class: "group flex flex-col items-center p-4 border-2 border-gray-200 hover:border-pink-300 rounded-lg hover:shadow-md transition-all",
-                      data: { membership_id: membership.id, group_id: membership.group.id } do %>
-            <% if membership.group.headshot&.attached? %>
-              <%= image_tag membership.group.headshot.variant(:thumb), class: "w-24 h-32 rounded object-cover mb-3" %>
-            <% else %>
-              <div class="w-24 h-32 rounded bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl mb-3">
-                <%= membership.group.initials %>
+          <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition"
+               data-membership-id="<%= membership.id %>"
+               data-group-id="<%= membership.group.id %>">
+            <div class="flex items-center gap-4">
+              <% if membership.group.headshot&.attached? %>
+                <%= image_tag membership.group.headshot.variant(:thumb), class: "w-12 h-12 rounded-lg object-cover" %>
+              <% else %>
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                  <%= membership.group.initials %>
+                </div>
+              <% end %>
+              <div>
+                <%= link_to edit_group_path(membership.group), class: "text-sm font-medium text-gray-900 hover:text-pink-600 transition-colors" do %>
+                  <%= membership.group.name %>
+                <% end %>
+                <div class="text-xs text-gray-500">@<%= membership.group.public_key %></div>
               </div>
-            <% end %>
-            <span class="text-sm font-medium text-gray-900 text-center group-hover:text-pink-600 transition-colors line-clamp-2">
-              <%= membership.group.name %>
-            </span>
-          <% end %>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">Show on profile</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox"
+                         <%= 'checked' if membership.show_on_profile? %>
+                         data-membership-id="<%= membership.id %>"
+                         data-action="change->profile-groups#toggleVisibility"
+                         class="sr-only peer">
+                  <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+            </div>
+          </div>
         <% end %>
       <% else %>
-        <p class="text-xs text-gray-500 text-left">You aren't part of any groups</p>
+        <p class="text-sm text-gray-500">You aren't part of any groups yet.</p>
       <% end %>
     </div>
 
@@ -47,49 +65,6 @@
           <p class="font-medium mb-1">Don't see your group?</p>
           <p>You can <%= link_to "create a new group", new_group_path, class: "underline hover:text-pink-900" %> or ask an existing group member to invite you.</p>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Search Modal -->
-  <div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-       data-profile-groups-target="modal"
-       data-action="click->profile-groups#closeModal">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col"
-         data-action="click->profile-groups#stopPropagation">
-      <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-        <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Add to Group</h3>
-      </div>
-
-      <div class="p-6 flex-1 overflow-y-auto">
-        <!-- Search Input -->
-        <div class="mb-4">
-          <input type="text"
-                 data-profile-groups-target="searchInput"
-                 data-action="input->profile-groups#search"
-                 placeholder="Search for groups..."
-                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-        </div>
-
-        <!-- Search Results -->
-        <div data-profile-groups-target="results" class="space-y-2">
-          <p class="text-sm text-gray-500 text-center py-4">Search for groups to join</p>
-        </div>
-
-        <!-- Loading State -->
-        <div data-profile-groups-target="loading" class="hidden">
-          <div class="flex items-center justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
-        <button type="button"
-                class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium cursor-pointer"
-                data-action="click->profile-groups#closeModal">
-          Cancel
-        </button>
       </div>
     </div>
   </div>

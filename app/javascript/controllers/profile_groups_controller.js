@@ -162,4 +162,34 @@ export default class extends Controller {
             alert(error.message || 'Failed to leave group. Please try again.')
         }
     }
+
+    async toggleVisibility(event) {
+        const checkbox = event.currentTarget
+        const membershipId = checkbox.dataset.membershipId
+        const showOnProfile = checkbox.checked
+
+        try {
+            const response = await fetch('/profile/toggle_group_visibility', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    membership_id: membershipId,
+                    show_on_profile: showOnProfile
+                })
+            })
+
+            if (!response.ok) {
+                const data = await response.json()
+                throw new Error(data.error || 'Failed to update visibility')
+            }
+        } catch (error) {
+            console.error('Toggle visibility error:', error)
+            // Revert checkbox state
+            checkbox.checked = !showOnProfile
+            alert(error.message || 'Failed to update visibility. Please try again.')
+        }
+    }
 }

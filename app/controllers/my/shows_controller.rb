@@ -4,20 +4,29 @@ module My
   class ShowsController < ApplicationController
     def index
       @person = Current.user.person
+      @people = Current.user.people.active.order(:created_at).to_a
+      people_ids = @people.map(&:id)
+      people_by_id = @people.index_by(&:id)
 
-      # Get groups the person is a member of
-      @groups = @person.groups.active.order(:name).to_a
+      # Get groups from all profiles
+      @groups = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .distinct
+                     .order(:name)
+                     .to_a
       group_ids = @groups.map(&:id)
       groups_by_id = @groups.index_by(&:id)
 
       # Handle filter parameters
       @filter = params[:filter] || "my_assignments"
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
       # Check if user has ANY shows at all (before filtering) for showing filter bar
       person_has_shows = Show.joins(production: { talent_pools: :people })
-                             .where(people: { id: @person.id })
+                             .where(people: { id: people_ids })
                              .where("date_and_time >= ?", Time.current)
                              .exists?
       groups_have_shows = group_ids.any? && Show.joins(production: { talent_pools: :groups })
@@ -26,22 +35,26 @@ module My
                                                 .exists?
       @has_any_shows = person_has_shows || groups_have_shows
 
-      include_person = @entity_filter.include?("person")
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
 
       # Get all shows from selected entities with entity tracking
       shows_with_source = []
 
       # Add person shows if selected
-      if include_person
+      if selected_person_ids.any?
         person_shows = Show.joins(production: { talent_pools: :people })
-                           .where(people: { id: @person.id })
+                           .where(people: { id: selected_person_ids })
                            .where("date_and_time >= ?", Time.current)
                            .includes(:production, :location, :event_linkage)
-                           .select("shows.*")
+                           .select("shows.*, people.id as source_person_id")
                            .distinct
                            .to_a
-        person_shows.each { |s| shows_with_source << { show: s, entity_key: "person", entity: @person } }
+        person_shows.each do |s|
+          person_id = s.read_attribute(:source_person_id)
+          person = people_by_id[person_id]
+          shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person } if person
+        end
       end
 
       # Add group shows in batch if selected
@@ -71,11 +84,11 @@ module My
       # Order shows
       @shows = @shows.sort_by(&:date_and_time)
 
-      # Get assignments for these shows (both person and group assignments) - use group_ids instead of pluck
+      # Get assignments for these shows (both person and group assignments)
       show_ids = @shows.map(&:id)
       assignments = ShowPersonRoleAssignment.where(show_id: show_ids)
-                                            .where("(assignable_type = ? AND assignable_id = ?) OR (assignable_type = ? AND assignable_id IN (?))",
-                                                   "Person", @person.id, "Group", group_ids)
+                                            .where("(assignable_type = ? AND assignable_id IN (?)) OR (assignable_type = ? AND assignable_id IN (?))",
+                                                   "Person", people_ids, "Group", group_ids)
                                             .includes(:role)
                                             .to_a
       @assignments_by_show = assignments.index_by(&:show_id)
@@ -84,8 +97,9 @@ module My
       @show_assignments = {}
       assignments.each do |assignment|
         @show_assignments[assignment.show_id] ||= []
-        if assignment.assignable_type == "Person" && assignment.assignable_id == @person.id
-          @show_assignments[assignment.show_id] << { type: "person", entity: @person, assignment: assignment }
+        if assignment.assignable_type == "Person" && people_ids.include?(assignment.assignable_id)
+          person = people_by_id[assignment.assignable_id]
+          @show_assignments[assignment.show_id] << { type: "person", entity: person, assignment: assignment } if person
         elsif assignment.assignable_type == "Group"
           group = groups_by_id[assignment.assignable_id]
           @show_assignments[assignment.show_id] << { type: "group", entity: group, assignment: assignment } if group
@@ -153,9 +167,11 @@ module My
       @shows.each do |show|
         @show_entities[show.id] = []
 
-        # Check if person is assigned using preloaded data
-        if include_person && shows_by_entity_key["person"].include?(show.id)
-          @show_entities[show.id] << { type: "person", entity: @person }
+        # Check if any selected profile is assigned using preloaded data
+        selected_person_ids.each do |pid|
+          if shows_by_entity_key["person_#{pid}"].include?(show.id)
+            @show_entities[show.id] << { type: "person", entity: people_by_id[pid] }
+          end
         end
 
         # Check if any selected group is assigned using preloaded data
@@ -166,10 +182,10 @@ module My
         end
       end
 
-      # Unresolved vacancy invitations for the person (not claimed, vacancy still open)
+      # Unresolved vacancy invitations for all profiles (not claimed, vacancy still open)
       @pending_vacancy_invitations = RoleVacancyInvitation
                                       .unresolved
-                                      .where(person: @person)
+                                      .where(person_id: people_ids)
                                       .includes(role_vacancy: [ :role, { show: :production } ])
                                       .order("shows.date_and_time ASC")
     end

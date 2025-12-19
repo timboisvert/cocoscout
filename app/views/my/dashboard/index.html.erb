@@ -50,40 +50,6 @@
     </div>
   <% end %>
 
-  <!-- My Profiles (only show if user has multiple profiles) -->
-  <% if @all_profiles.count > 1 %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Profiles</h3>
-        <div class="flex gap-2">
-          <%= link_to "Manage Profiles", account_profiles_path, class: "text-pink-500 text-xs underline" %>
-        </div>
-      </div>
-      <div class="p-4">
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          <% @all_profiles.each do |profile| %>
-            <%= link_to account_profiles_path, class: "group flex flex-col items-center p-3 border-2 #{ profile.default_profile? ? 'border-pink-300 bg-pink-50/30' : 'border-gray-200' } rounded-lg hover:border-pink-300 hover:shadow-md transition-all" do %>
-              <% headshot = profile.profile_headshots.order(created_at: :desc).first %>
-              <% if headshot&.image&.attached? %>
-                <%= image_tag headshot.image.variant(resize_to_fill: [64, 64]), class: "w-16 h-16 rounded-lg object-cover mb-2" %>
-              <% else %>
-                <div class="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg mb-2">
-                  <%= profile.initials %>
-                </div>
-              <% end %>
-              <span class="text-sm font-medium text-gray-900 text-center group-hover:text-pink-600 transition-colors line-clamp-1">
-                <%= profile.name %>
-              </span>
-              <% if profile.default_profile? %>
-                <span class="text-xs text-pink-600 font-medium mt-0.5">Default</span>
-              <% end %>
-            <% end %>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  <% end %>
-
   <!-- Upcoming Shows & Events -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">

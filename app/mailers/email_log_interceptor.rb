@@ -34,11 +34,10 @@ class EmailLogInterceptor
     organization = Organization.find_by(id: organization_id) if organization_id.present?
 
     # Create the email log
-    EmailLog.create!(
+    email_log = EmailLog.create!(
       user: user,
       recipient: Array(message.to).join(", "),
       subject: message.subject,
-      body: extract_body_with_inline_images(message),
       mailer_class: message.header["X-Mailer-Class"]&.value,
       mailer_action: message.header["X-Mailer-Action"]&.value,
       message_id: message.message_id,
@@ -48,6 +47,16 @@ class EmailLogInterceptor
       email_batch: email_batch,
       organization: organization
     )
+
+    # Attach body as Active Storage file (stored in S3 in production)
+    body_html = extract_body_with_inline_images(message)
+    if body_html.present?
+      email_log.body_file.attach(
+        io: StringIO.new(body_html),
+        filename: "email_#{email_log.id}.html",
+        content_type: "text/html"
+      )
+    end
   rescue StandardError => e
     # Log the error but don't prevent email delivery
     Rails.logger.error("Failed to log email: #{e.message}")

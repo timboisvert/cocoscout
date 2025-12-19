@@ -14,8 +14,19 @@ class ProfileResume < ApplicationRecord
 
   before_validation :set_default_position, on: :create
   before_validation :set_default_name, on: :create
+  after_commit :invalidate_profileable_cache
 
   private
+
+  # Invalidate the parent person/group cache when resume changes
+  def invalidate_profileable_cache
+    return unless profileable.respond_to?(:invalidate_cache)
+
+    profileable.invalidate_cache(:person_card) if profileable.is_a?(Person)
+    profileable.invalidate_cache(:person_profile) if profileable.is_a?(Person)
+    profileable.invalidate_cache(:group_card) if profileable.is_a?(Group)
+    profileable.invalidate_cache(:group_profile) if profileable.is_a?(Group)
+  end
 
   def set_default_position
     return if position.present?

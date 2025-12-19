@@ -39,78 +39,172 @@ module Manage
       @person = Person.new
     end
 
+    # AJAX endpoint to check if an email has existing profiles
+    def check_email
+      email = params[:email]&.strip&.downcase
+      return render json: { profiles: [] } if email.blank?
+
+      # Find all profiles with this email
+      profiles = Person.where(email: email).includes(:user, :organizations)
+
+      profiles_data = profiles.map do |person|
+        {
+          id: person.id,
+          name: person.name,
+          email: person.email,
+          has_user: person.user.present?,
+          already_in_org: person.organizations.include?(Current.organization)
+        }
+      end
+
+      render json: { profiles: profiles_data }
+    end
+
     def create
-      # Check if a user with this email already exists
-      existing_user = User.find_by(email_address: person_params[:email])
+      email = person_params[:email]&.strip&.downcase
 
-      # Check if a person with this email already exists
-      existing_person = Person.find_by(email: person_params[:email])
+      # Check if specific profile IDs were selected
+      selected_profile_ids = params[:selected_profile_ids]&.reject(&:blank?)&.map(&:to_i) || []
 
-      if existing_user&.person
-        # User and person both exist - just add to production company if not already
-        existing_person = existing_user.person
-        unless existing_person.organizations.include?(Current.organization)
-          existing_person.organizations << Current.organization
-        end
-
-        redirect_to [ :manage, existing_person ],
-                    notice: "#{existing_person.name} has been added to #{Current.organization.name}"
-      elsif existing_person
-        # Person exists but no user - create user and link them
-        unless existing_person.organizations.include?(Current.organization)
-          existing_person.organizations << Current.organization
-        end
-
-        user = User.create!(
-          email_address: existing_person.email,
-          password: SecureRandom.hex(16)
-        )
-        existing_person.update!(user: user)
-
-        # Create person invitation with production company context
-        person_invitation = PersonInvitation.create!(
-          email: existing_person.email,
-          organization: Current.organization
-        )
-
-        # Send invitation email
-        invitation_subject = params[:person][:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
-        invitation_message = params[:person][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
-
-        redirect_to [ :manage, existing_person ],
-                    notice: "User account created and invitation sent to #{existing_person.name}"
+      if selected_profile_ids.any?
+        # Inviting specific selected profiles
+        invite_selected_profiles(selected_profile_ids)
       else
-        # Create both person and user
-        @person = Person.new(person_params)
-        if @person.save
-          # Associate with current production company
-          @person.organizations << Current.organization
+        # Check if a user with this email already exists (by login email)
+        existing_user = User.find_by(email_address: email)
 
-          user = User.create!(
-            email_address: @person.email,
-            password: SecureRandom.hex(16)
-          )
-          @person.update!(user: user)
+        if existing_user
+          # User exists - add their default profile to the organization
+          existing_person = existing_user.person
+          unless existing_person.organizations.include?(Current.organization)
+            existing_person.organizations << Current.organization
+          end
 
-          # Create person invitation with production company context
-          person_invitation = PersonInvitation.create!(
-            email: @person.email,
-            organization: Current.organization
-          )
-
-          # Send invitation email
-          invitation_subject = params[:person][:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
-          invitation_message = params[:person][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
-          Manage::PersonMailer.person_invitation(person_invitation, invitation_subject,
-                                                 invitation_message).deliver_later
-
-          redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
+          redirect_to [ :manage, existing_person ],
+                      notice: "#{existing_person.name} has been added to #{Current.organization.name}"
         else
-          render :new, status: :unprocessable_entity
+          # Check if any profiles exist with this email
+          existing_profiles = Person.where(email: email)
+
+          if existing_profiles.count > 1
+            # Multiple profiles with same email - need user to select which ones
+            @person = Person.new(person_params)
+            @multiple_profiles = existing_profiles
+            render :new, status: :unprocessable_entity
+          elsif existing_profiles.count == 1
+            # Single profile exists - use it
+            existing_person = existing_profiles.first
+            invite_single_profile(existing_person)
+          else
+            # No existing profiles - create new person and user
+            create_new_person_and_invite
+          end
         end
       end
     end
+
+    private
+
+    def invite_selected_profiles(profile_ids)
+      profiles = Person.where(id: profile_ids, email: person_params[:email]&.downcase)
+      invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
+      invitation_message = params[:person][:invitation_message] || default_invitation_message
+
+      invited_names = []
+
+      profiles.each do |person|
+        unless person.organizations.include?(Current.organization)
+          person.organizations << Current.organization
+        end
+
+        # Create user if needed
+        if person.user.nil?
+          user = User.create!(
+            email_address: person.email,
+            password: SecureRandom.hex(16)
+          )
+          person.update!(user: user)
+        end
+
+        # Create and send invitation
+        person_invitation = PersonInvitation.create!(
+          email: person.email,
+          organization: Current.organization
+        )
+        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+
+        invited_names << person.name
+      end
+
+      if invited_names.count == 1
+        redirect_to [ :manage, profiles.first ], notice: "Invitation sent to #{invited_names.first}"
+      else
+        redirect_to manage_people_path, notice: "Invitations sent to #{invited_names.to_sentence}"
+      end
+    end
+
+    def invite_single_profile(person)
+      invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
+      invitation_message = params[:person][:invitation_message] || default_invitation_message
+
+      unless person.organizations.include?(Current.organization)
+        person.organizations << Current.organization
+      end
+
+      if person.user.nil?
+        user = User.create!(
+          email_address: person.email,
+          password: SecureRandom.hex(16)
+        )
+        person.update!(user: user)
+      end
+
+      person_invitation = PersonInvitation.create!(
+        email: person.email,
+        organization: Current.organization
+      )
+      Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+
+      redirect_to [ :manage, person ],
+                  notice: "User account created and invitation sent to #{person.name}"
+    end
+
+    def create_new_person_and_invite
+      @person = Person.new(person_params)
+
+      if @person.save
+        @person.organizations << Current.organization
+
+        user = User.create!(
+          email_address: @person.email,
+          password: SecureRandom.hex(16)
+        )
+        @person.update!(user: user)
+
+        invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
+        invitation_message = params[:person][:invitation_message] || default_invitation_message
+
+        person_invitation = PersonInvitation.create!(
+          email: @person.email,
+          organization: Current.organization
+        )
+        Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+
+        redirect_to [ :manage, @person ], notice: "Person was successfully created and invitation sent"
+      else
+        render :new, status: :unprocessable_entity
+      end
+    end
+
+    def default_invitation_subject
+      "You've been invited to join #{Current.organization.name} on CocoScout"
+    end
+
+    def default_invitation_message
+      "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
+    end
+
+    public
 
     def update
       if @person.update(person_params)
@@ -180,86 +274,101 @@ module Manage
       emails_text = params[:emails].to_s
       email_lines = emails_text.split(/\r?\n/).map(&:strip).reject(&:blank?)
 
-      invitation_subject = params[:invitation_subject] || "You've been invited to join #{Current.organization.name} on CocoScout"
-      invitation_message = params[:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
+      invitation_subject = params[:invitation_subject] || default_invitation_subject
+      invitation_message = params[:invitation_message] || default_invitation_message
 
-      invited_count = 0
-      skipped_count = 0
-      errors = []
+      @invited = []
+      @skipped = []
+      @skipped_multiple_profiles = []
+      @errors = []
 
       email_lines.each do |email|
+        email = email.downcase
+
         # Validate email format
         unless email.match?(/\A[\w+\-.]+@[a-z\d-]+(\.[a-z\d-]+)*\.[a-z]+\z/i)
-          errors << "Invalid email format: #{email}"
+          @errors << { email: email, reason: "Invalid email format" }
           next
         end
 
-        # Check if user already exists
-        if User.exists?(email_address: email.downcase)
-          skipped_count += 1
+        # Check if multiple profiles have this email
+        profiles_with_email = Person.where(email: email)
+        if profiles_with_email.count > 1
+          @skipped_multiple_profiles << { email: email, count: profiles_with_email.count }
           next
         end
 
-        # Check if person already exists
-        existing_person = Person.find_by(email: email.downcase)
+        # Check if user already exists (by login email)
+        existing_user = User.find_by(email_address: email)
+        if existing_user
+          existing_person = existing_user.person
+          if existing_person.organizations.include?(Current.organization)
+            @skipped << { email: email, name: existing_person.name, reason: "Already in organization" }
+          else
+            existing_person.organizations << Current.organization
+            @invited << { email: email, name: existing_person.name, new_account: false }
+          end
+          next
+        end
+
+        # Check if exactly one person exists with this email
+        existing_person = profiles_with_email.first
 
         if existing_person
-          # Person exists but may or may not have a user
-          if existing_person.user
-            # Person and user both exist - skip
-            skipped_count += 1
+          if existing_person.organizations.include?(Current.organization)
+            @skipped << { email: email, name: existing_person.name, reason: "Already in organization" }
             next
-          else
-            # Person exists but no user - create user and send invitation
-            person = existing_person
           end
+
+          # Person exists - add to org and create user if needed
+          existing_person.organizations << Current.organization
+
+          if existing_person.user.nil?
+            user = User.create!(
+              email_address: existing_person.email,
+              password: SecureRandom.hex(16)
+            )
+            existing_person.update!(user: user)
+
+            # Send invitation
+            person_invitation = PersonInvitation.create!(
+              email: existing_person.email,
+              organization: Current.organization
+            )
+            Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+          end
+
+          @invited << { email: email, name: existing_person.name, new_account: existing_person.user.present? }
         else
-          # Generate name from email (part before @)
+          # Create new person and user
           name = email.split("@").first.gsub(/[._-]/, " ").titleize
+          person = Person.new(name: name, email: email)
 
-          # Create person
-          person = Person.new(name: name, email: email.downcase)
-        end
+          if person.save
+            person.organizations << Current.organization
 
-        if person.save
-          # Associate with current production company (in case it's a new person)
-          person.organizations << Current.organization unless person.organizations.include?(Current.organization)
-
-          # Create user account if it doesn't exist
-          if person.user.nil?
             user = User.create!(
               email_address: person.email,
               password: SecureRandom.hex(16)
             )
             person.update!(user: user)
+
+            person_invitation = PersonInvitation.create!(
+              email: person.email,
+              organization: Current.organization
+            )
+            Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+
+            @invited << { email: email, name: person.name, new_account: true }
+          else
+            @errors << { email: email, reason: person.errors.full_messages.join(", ") }
           end
-
-          # Create person invitation
-          person_invitation = PersonInvitation.create!(
-            email: person.email,
-            organization: Current.organization
-          )
-
-          # Send invitation email
-          Manage::PersonMailer.person_invitation(person_invitation, invitation_subject,
-                                                 invitation_message).deliver_later
-
-          invited_count += 1
-        else
-          errors << "Failed to create person for #{email}: #{person.errors.full_messages.join(', ')}"
         end
       end
 
-      # Build notice message
-      notice_parts = []
-      notice_parts << "#{invited_count} #{'person'.pluralize(invited_count)} invited" if invited_count.positive?
-      notice_parts << "#{skipped_count} skipped (already exists)" if skipped_count.positive?
-
-      if errors.any?
-        redirect_to new_manage_person_path, alert: "Errors occurred: #{errors.join('; ')}"
-      else
-        redirect_to manage_people_path, notice: notice_parts.join(", ")
-      end
+      @batch_results = true
+      @person = Person.new  # For the form
+      render :new
     end
 
     def add_to_cast

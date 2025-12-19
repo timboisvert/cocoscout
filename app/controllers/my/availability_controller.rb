@@ -4,31 +4,42 @@ module My
   class AvailabilityController < ApplicationController
     def index
       @person = Current.user.person
-      @groups = @person.groups.active.order(:name).to_a
+      @people = Current.user.people.active.order(:created_at).to_a
+      people_ids = @people.map(&:id)
+      people_by_id = @people.index_by(&:id)
+
+      # Get groups from all profiles
+      @groups = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .distinct
+                     .order(:name)
+                     .to_a
 
       @filter = params[:filter] || session[:availability_filter] || "no_response"
       session[:availability_filter] = @filter
 
-      # Handle entity filter
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      # Handle entity filter - now uses person_ID format
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
-      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: @person.id }).distinct
+      @productions = Production.joins(talent_pools: :people).joins(:shows).where(people: { id: people_ids }).distinct
 
       # Check if user is a cast member of any productions (for showing filter bar even when filtered results are empty)
       @has_any_productions = @productions.any? || @groups.any? { |g| g.talent_pool_memberships.joins(talent_pool: :production).exists? }
 
-      # Build selected group IDs for batch queries
+      # Build selected entity IDs for batch queries
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
       groups_by_id = @groups.index_by(&:id)
-      include_person = @entity_filter.include?("person")
 
       # Batch fetch ALL shows for person and selected groups in one query
       show_conditions = []
       show_params = []
 
-      if include_person
-        show_conditions << "people.id = ?"
-        show_params << @person.id
+      if selected_person_ids.any?
+        show_conditions << "people.id IN (?)"
+        show_params << selected_person_ids
       end
 
       if selected_group_ids.any?
@@ -39,15 +50,20 @@ module My
       # Single query for all shows with entity tracking
       all_shows_with_source = []
 
-      if include_person
+      if selected_person_ids.any?
         person_shows = Show.joins(production: { talent_pools: :people })
-                           .where(people: { id: @person.id })
+                           .select("shows.*, people.id as source_person_id")
+                           .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time > ?", Time.current)
                            .includes(:production, :location, :event_linkage)
                            .distinct
                            .to_a
-        person_shows.each { |s| all_shows_with_source << { show: s, entity_key: "person", entity: @person } }
+        person_shows.each do |s|
+          person_id = s.read_attribute(:source_person_id)
+          person = people_by_id[person_id]
+          all_shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person } if person
+        end
       end
 
       if selected_group_ids.any?
@@ -73,13 +89,13 @@ module My
       @all_shows = all_shows_with_source.map { |item| item[:show] }.uniq.sort_by(&:date_and_time)
       all_show_ids = @all_shows.map(&:id)
 
-      # Batch fetch ALL availabilities for person and selected groups
+      # Batch fetch ALL availabilities for selected person(s) and groups
       availability_conditions = []
       availability_params = []
 
-      if include_person
+      selected_person_ids.each do |pid|
         availability_conditions << "(available_entity_type = 'Person' AND available_entity_id = ?)"
-        availability_params << @person.id
+        availability_params << pid
       end
 
       selected_group_ids.each do |gid|
@@ -102,7 +118,7 @@ module My
 
       all_availabilities.each do |avail|
         entity_key = if avail.available_entity_type == "Person"
-                       "person"
+                       "person_#{avail.available_entity_id}"
         else
                        "group_#{avail.available_entity_id}"
         end
@@ -113,16 +129,18 @@ module My
       # Build entity_data using preloaded data
       @entity_data = {}
 
-      if include_person
+      selected_person_ids.each do |person_id|
+        entity_key = "person_#{person_id}"
+        person = people_by_id[person_id]
         person_shows = all_shows_with_source.select do |item|
-          item[:entity_key] == "person"
+          item[:entity_key] == entity_key
         end.map { |item| item[:show] }.uniq.sort_by(&:date_and_time)
-        person_avail_ids = availability_ids_by_entity["person"]
-        @entity_data["person"] = {
-          entity: @person,
+        person_avail_ids = availability_ids_by_entity[entity_key]
+        @entity_data[entity_key] = {
+          entity: person,
           shows: person_shows,
           no_response_shows: person_shows.reject { |s| person_avail_ids.include?(s.id) },
-          availabilities: availabilities_by_entity["person"]
+          availabilities: availabilities_by_entity[entity_key]
         }
       end
 
@@ -164,7 +182,8 @@ module My
       @no_response_shows = @all_shows.select do |show|
         @entity_data.values.any? { |data| data[:no_response_shows].include?(show) }
       end
-      @availabilities = availabilities_by_entity["person"] || {}
+      first_person_key = @people.first ? "person_#{@people.first.id}" : nil
+      @availabilities = first_person_key ? (availabilities_by_entity[first_person_key] || {}) : {}
 
       # Build show_entities mapping using preloaded data (no additional queries)
       # First, index shows by entity_key for O(1) lookup
@@ -177,9 +196,12 @@ module My
       @all_shows.each do |show|
         @show_entities[show.id] = []
 
-        # Check if person has this show using preloaded data
-        if include_person && shows_by_entity_key["person"].include?(show.id)
-          @show_entities[show.id] << { type: "person", entity: @person }
+        # Check if any person profile has this show using preloaded data
+        selected_person_ids.each do |person_id|
+          entity_key = "person_#{person_id}"
+          if shows_by_entity_key[entity_key].include?(show.id)
+            @show_entities[show.id] << { type: "person", entity: people_by_id[person_id] }
+          end
         end
 
         # Check if any selected group has this show using preloaded data
@@ -208,13 +230,24 @@ module My
 
     def calendar
       @person = Current.user.person
-      @groups = @person.groups.active.order(:name).to_a
+      @people = Current.user.people.active.order(:created_at).to_a
+      people_ids = @people.map(&:id)
+      people_by_id = @people.index_by(&:id)
+
+      # Get groups from all profiles
+      @groups = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .distinct
+                     .order(:name)
+                     .to_a
 
       # Handle event type filter - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
-      # Handle entity filter (person, group_N)
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      # Handle entity filter (person_ID, group_ID)
+      default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
+      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
 
       # Date range for calendar navigation (wider range to support month navigation)
       start_date = 6.months.ago.beginning_of_month
@@ -224,14 +257,15 @@ module My
       # This creates SEPARATE entries for each show/entity combination
       @show_entity_pairs = []
 
-      include_person = @entity_filter.include?("person")
+      selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
       groups_by_id = @groups.index_by(&:id)
 
       # Add person shows if selected
-      if include_person
+      if selected_person_ids.any?
         person_shows = Show.joins(production: { talent_pools: :people })
-                           .where(people: { id: @person.id })
+                           .select("shows.*, people.id as source_person_id")
+                           .where(people: { id: selected_person_ids })
                            .where.not(canceled: true)
                            .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
                            .includes(:production, :location)
@@ -242,11 +276,13 @@ module My
         person_shows.each do |show|
           next unless @event_type_filter.include?(show.event_type)
 
+          person_id = show.read_attribute(:source_person_id)
+          person = people_by_id[person_id]
           @show_entity_pairs << {
             show: show,
-            entity_key: "person",
-            entity: @person
-          }
+            entity_key: "person_#{person_id}",
+            entity: person
+          } if person
         end
       end
 
@@ -287,9 +323,9 @@ module My
       availability_conditions = []
       availability_params = []
 
-      if include_person
+      selected_person_ids.each do |pid|
         availability_conditions << "(available_entity_type = 'Person' AND available_entity_id = ?)"
-        availability_params << @person.id
+        availability_params << pid
       end
 
       selected_group_ids.each do |gid|
@@ -309,7 +345,7 @@ module My
       @availabilities = {}
       all_availabilities.each do |availability|
         entity_key = if availability.available_entity_type == "Person"
-                       "person"
+                       "person_#{availability.available_entity_id}"
         else
                        "group_#{availability.available_entity_id}"
         end
@@ -320,15 +356,11 @@ module My
     def update
       @show = Show.find(params[:show_id])
 
-      # Determine the entity based on entity_key parameter
-      entity_key = params[:entity_key] || "person"
-      if entity_key == "person"
-        entity = Current.user.person
-      else
-        # Extract group ID from "group_123" format
-        group_id = entity_key.sub(/^group_/, "").to_i
-        entity = Current.user.person.groups.find(group_id)
-      end
+      # Determine the entity based on entity_key parameter (now person_ID or group_ID format)
+      entity_key = params[:entity_key]
+      entity = resolve_entity_from_key(entity_key)
+
+      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
 
       @availability = ShowAvailability.find_or_initialize_by(available_entity: entity, show: @show)
       @availability.status = params[:status]
@@ -342,15 +374,11 @@ module My
     def update_audition_session
       @session = AuditionSession.find(params[:session_id])
 
-      # Determine the entity based on entity_key parameter
-      entity_key = params[:entity_key] || "person"
-      if entity_key == "person"
-        entity = Current.user.person
-      else
-        # Extract group ID from "group_123" format
-        group_id = entity_key.sub(/^group_/, "").to_i
-        entity = Current.user.person.groups.find(group_id)
-      end
+      # Determine the entity based on entity_key parameter (now person_ID or group_ID format)
+      entity_key = params[:entity_key]
+      entity = resolve_entity_from_key(entity_key)
+
+      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
 
       @availability = AuditionSessionAvailability.find_or_initialize_by(available_entity: entity, audition_session: @session)
       @availability.status = params[:status]
@@ -358,6 +386,31 @@ module My
         render json: { status: @availability.status }
       else
         render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
+    end
+
+    private
+
+    def resolve_entity_from_key(entity_key)
+      return nil unless entity_key
+
+      if entity_key.start_with?("person_")
+        # Extract person ID from "person_123" format
+        person_id = entity_key.sub(/^person_/, "").to_i
+        Current.user.people.find_by(id: person_id)
+      elsif entity_key.start_with?("group_")
+        # Extract group ID from "group_123" format
+        group_id = entity_key.sub(/^group_/, "").to_i
+        # Find group that any of the user's profiles is a member of
+        people_ids = Current.user.people.pluck(:id)
+        Group.joins(:group_memberships)
+             .where(group_memberships: { person_id: people_ids })
+             .find_by(id: group_id)
+      elsif entity_key == "person"
+        # Legacy support for old format
+        Current.user.person
+      else
+        nil
       end
     end
   end
