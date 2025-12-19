@@ -15,7 +15,7 @@
           "type": "controller",
           "class": "My::ShowsController",
           "method": "show",
-          "line": 228,
+          "line": 244,
           "file": "app/controllers/my/shows_controller.rb",
           "rendered": {
             "name": "my/shows/show",
@@ -33,6 +33,29 @@
         79
       ],
       "note": "safe_url method validates URL scheme is http/https only, preventing javascript: XSS"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "6d55636c1cd5d6d20dd8a78c48a4544e2ce23d6c83b84e9a93db1219d5b867c4",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/controllers/superadmin_controller.rb",
+      "line": 635,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.execute(\"SELECT COUNT(*) FROM #{table_name}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "SuperadminController",
+        "method": "data"
+      },
+      "user_input": "table_name",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": ""
     }
   ],
   "brakeman_version": "7.1.1"

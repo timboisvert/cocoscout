@@ -51,7 +51,7 @@
           entity = @requestable
           entity_headshot = entity.profile_headshots.order(created_at: :desc).first
           entity_profile_path = is_group ? edit_group_path(entity) : edit_profile_path(entity)
-          
+
           # Check if the selected entity (person or group) has incomplete profile
           entity_profile_incomplete = !entity.profile_headshots.exists? || !entity.profile_resumes.exists?
         %>

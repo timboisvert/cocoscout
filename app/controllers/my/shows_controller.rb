@@ -20,9 +20,9 @@ module My
 
       # Handle filter parameters
       @filter = params[:filter] || "my_assignments"
-      @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
+      @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : EventTypes.all
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
-      @entity_filter = params[:entity] ? params[:entity].split(",") : default_entities
+      @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
 
       # Check if user has ANY shows at all (before filtering) for showing filter bar
       person_has_shows = Show.joins(production: { talent_pools: :people })
