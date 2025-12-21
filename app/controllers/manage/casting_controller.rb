@@ -11,7 +11,7 @@ module Manage
       @upcoming_shows = @production.shows
                                    .where("date_and_time >= ?", Time.current)
                                    .where(casting_enabled: true)
-                                   .includes(:location, show_person_role_assignments: :role)
+                                   .includes(:location, :custom_roles, show_person_role_assignments: :role)
                                    .order(:date_and_time)
 
       # Eager load roles for the production (used in cast_card partial)
@@ -25,6 +25,16 @@ module Manage
         .where(show_id: show_ids)
         .group(:show_id)
         .maximum(:updated_at)
+
+      # Precompute max role updated_at per show for custom roles
+      @roles_max_updated_at_by_show = {}
+      @upcoming_shows.each do |show|
+        if show.use_custom_roles?
+          @roles_max_updated_at_by_show[show.id] = show.custom_roles.map(&:updated_at).compact.max
+        else
+          @roles_max_updated_at_by_show[show.id] = @roles_max_updated_at
+        end
+      end
 
       # Preload assignables (people and groups) with their headshots
       all_assignments = @upcoming_shows.flat_map(&:show_person_role_assignments)

@@ -12,7 +12,7 @@ module Manage
                                  .pluck(:production_id).uniq
       @shows = Show.where(production_id: production_ids, canceled: false)
                    .where("date_and_time >= ?", Time.current)
-                   .includes(:event_linkage)
+                   .includes(event_linkage: :shows)
                    .order(:date_and_time)
 
       # Build a hash of availabilities: { show_id => show_availability }

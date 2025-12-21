@@ -40,7 +40,7 @@ class SuperadminController < ApplicationController
   def people_list
     @search = params[:search].to_s.strip
     @filter = params[:filter].to_s.strip
-    @people = Person.order(created_at: :desc)
+    @people = Person.includes(:user).order(created_at: :desc)
 
     # Apply filter for suspicious people
     @people = @people.suspicious if @filter == "suspicious"
@@ -111,7 +111,7 @@ class SuperadminController < ApplicationController
 
   def organizations_list
     @search = params[:search].to_s.strip
-    @organizations = Organization.order(created_at: :desc)
+    @organizations = Organization.includes(owner: :person).order(created_at: :desc)
 
     # Filter by search term if provided (search by org name or owner email/name)
     if @search.present?

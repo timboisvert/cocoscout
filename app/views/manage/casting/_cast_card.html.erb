@@ -31,7 +31,11 @@
   else
     show.show_person_role_assignments.maximum(:updated_at)
   end
-  roles_max = show.available_roles.maximum(:updated_at) || production.roles.maximum(:updated_at)
+  roles_max = if @roles_max_updated_at_by_show
+    @roles_max_updated_at_by_show[show.id]
+  else
+    show.available_roles.maximum(:updated_at) || production.roles.maximum(:updated_at)
+  end
 
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [

@@ -56,6 +56,29 @@
         89
       ],
       "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "80161a7771acf572b2084b27754096d8920091db68b9faa0d15bac6fadda18c6",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/profile_controller.rb",
+      "line": 307,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:person).permit(:name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled, :profile_visibility_settings => ({}), :socials_attributes => ([:id, :platform, :handle, :name, :_destroy]), :profile_headshots_attributes => ([:id, :category, :is_primary, :position, :image, :_destroy]), :profile_resumes_attributes => ([:id, :name, :position, :file, :_destroy]), :profile_videos_attributes => ([:id, :title, :url, :position, :_destroy]), :performance_sections_attributes => ([:id, :name, :position, :_destroy, { :performance_credits_attributes => ([:id, :section_name, :title, :location, :role, :year_start, :year_end, :ongoing, :notes, :link_url, :position, :_destroy]) }]), :training_credits_attributes => ([:id, :institution, :program, :year_start, :year_end, :ongoing, :notes, :position, :_destroy])).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ProfileController",
+        "method": "person_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
     }
   ],
   "brakeman_version": "7.1.1"

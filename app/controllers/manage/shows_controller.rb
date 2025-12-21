@@ -15,8 +15,8 @@ module Manage
       # Handle event type filter (show, rehearsal, meeting, class, workshop) - checkboxes
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
-      # Get the shows using the shows filter, eager load location to avoid N+1
-      @shows = @production.shows.includes(:location)
+      # Get the shows using the shows filter, eager load location and event_linkage to avoid N+1
+      @shows = @production.shows.includes(:location, event_linkage: :shows)
 
       # Apply event type filter
       @shows = @shows.where(event_type: @event_type_filter)

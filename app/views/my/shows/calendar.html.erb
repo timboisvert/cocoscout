@@ -184,12 +184,8 @@
                       (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
                     end %>
                     <% filtered_assignments.each do |entity_info| %>
-                      <% # Find the actual assignment record for this entity
-                         assignment = ShowPersonRoleAssignment.find_by(
-                           show_id: show.id,
-                           assignable_type: entity_info[:type] == "person" ? "Person" : "Group",
-                           assignable_id: entity_info[:entity].id
-                         ) %>
+                      <% # Use the preloaded assignment from entity_info
+                         assignment = entity_info[:assignment] %>
                       <% if assignment %>
                         <div class="text-[10px] font-semibold text-pink-600 mt-1">
                           <%= assignment.role.name %>

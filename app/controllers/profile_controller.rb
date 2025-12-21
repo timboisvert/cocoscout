@@ -247,13 +247,13 @@ class ProfileController < ApplicationController
   def set_person
     if params[:id].present?
       # Load specific profile by ID, but only if user owns it
-      @person = Current.user.people.find_by(id: params[:id])
+      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: params[:id])
       unless @person
         redirect_to profile_path, alert: "Profile not found"
         nil
       end
     else
-      @person = Current.user.person
+      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.person_id)
     end
   end
 
