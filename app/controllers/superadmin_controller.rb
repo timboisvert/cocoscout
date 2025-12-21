@@ -111,7 +111,7 @@ class SuperadminController < ApplicationController
 
   def organizations_list
     @search = params[:search].to_s.strip
-    @organizations = Organization.includes(owner: :person).order(created_at: :desc)
+    @organizations = Organization.includes(owner: :default_person).order(created_at: :desc)
 
     # Filter by search term if provided (search by org name or owner email/name)
     if @search.present?
