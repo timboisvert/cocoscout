@@ -39,9 +39,11 @@ class ProfileController < ApplicationController
 
   def update
     # Handle virtual attribute conversion
-    @person.show_contact_info = person_params[:show_contact_info] if person_params[:show_contact_info].present?
+    permitted = person_params.to_h
+    show_contact_info_value = permitted.delete(:show_contact_info)
+    @person.show_contact_info = show_contact_info_value if show_contact_info_value.present?
 
-    if @person.update(person_params.except(:show_contact_info))
+    if @person.update(permitted)
       respond_to do |format|
         format.json do
           # For JSON requests (from modal), return the uploaded file info
@@ -284,7 +286,7 @@ class ProfileController < ApplicationController
     if params[:person][:profile_skills_attributes].present?
       permitted_skills = {}
       params[:person][:profile_skills_attributes].each do |key, attrs|
-        permitted_skills[key] = attrs.permit(:id, :category, :skill_name, :_destroy)
+        permitted_skills[key] = attrs.permit(:id, :category, :skill_name, :_destroy).to_h
       end
       permitted_params[:profile_skills_attributes] = permitted_skills
     end
@@ -302,7 +304,7 @@ class ProfileController < ApplicationController
       end
     end
 
-    permitted_params
+    permitted_params.permit!
   end
 
   def search_groups

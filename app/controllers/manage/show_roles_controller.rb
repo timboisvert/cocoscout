@@ -156,11 +156,11 @@ module Manage
 
       # Get linked shows if this show is linked
       linked_shows_data = if @show.linked?
-        @show.event_linkage.shows.where.not(id: @show.id).order(:event_date).map do |show|
+        @show.event_linkage.shows.where.not(id: @show.id).order(:date_and_time).map do |show|
           {
             id: show.id,
             title: show.title,
-            event_date: show.event_date.strftime("%B %-d, %Y")
+            event_date: show.date_and_time&.strftime("%B %-d, %Y")
           }
         end
       else
