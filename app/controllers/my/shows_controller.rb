@@ -24,162 +24,105 @@ module My
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
 
-      # Check if user has ANY shows at all (before filtering) for showing filter bar
-      person_has_shows = Show.joins(production: { talent_pools: :people })
-                             .where(people: { id: people_ids })
-                             .where("date_and_time >= ?", Time.current)
-                             .exists?
-      groups_have_shows = group_ids.any? && Show.joins(production: { talent_pools: :groups })
-                                                .where(groups: { id: group_ids })
-                                                .where("date_and_time >= ?", Time.current)
-                                                .exists?
-      @has_any_shows = person_has_shows || groups_have_shows
-
       selected_person_ids = @people.select { |p| @entity_filter.include?("person_#{p.id}") }.map(&:id)
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
 
-      # Get all shows from selected entities with entity tracking
-      shows_with_source = []
+      # Step 1: Get ALL shows from talent pool membership (base set for All Shows / By Production)
+      all_talent_pool_show_ids = Set.new
 
-      # Add person shows if selected
       if selected_person_ids.any?
-        person_shows = Show.joins(production: { talent_pools: :people })
-                           .where(people: { id: selected_person_ids })
-                           .where("date_and_time >= ?", Time.current)
-                           .includes(:production, :location, :event_linkage)
-                           .select("shows.*, people.id as source_person_id")
-                           .distinct
-                           .to_a
-        person_shows.each do |s|
-          person_id = s.read_attribute(:source_person_id)
-          person = people_by_id[person_id]
-          shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person } if person
-        end
+        tp_person_shows = Show.joins(production: { talent_pools: :people })
+                              .where(people: { id: selected_person_ids })
+                              .where("date_and_time >= ?", Time.current)
+                              .pluck(:id)
+        all_talent_pool_show_ids.merge(tp_person_shows)
       end
 
-      # Add group shows in batch if selected
       if selected_group_ids.any?
-        group_shows = Show.select("shows.*, groups.id as source_group_id")
-                          .joins(production: { talent_pools: :groups })
-                          .where(groups: { id: selected_group_ids })
-                          .where("date_and_time >= ?", Time.current)
-                          .includes(:production, :location, :event_linkage)
-                          .distinct
-                          .to_a
-        group_shows.each do |show|
-          group_id = show.read_attribute(:source_group_id)
-          shows_with_source << { show: show, entity_key: "group_#{group_id}", entity: groups_by_id[group_id] }
+        tp_group_shows = Show.joins(production: { talent_pools: :groups })
+                             .where(groups: { id: selected_group_ids })
+                             .where("date_and_time >= ?", Time.current)
+                             .pluck(:id)
+        all_talent_pool_show_ids.merge(tp_group_shows)
+      end
+
+      # Load all shows from talent pool with includes
+      all_shows = Show.where(id: all_talent_pool_show_ids)
+                      .includes(:production, :location, :event_linkage)
+                      .order(:date_and_time)
+                      .to_a
+
+      # Filter by event type
+      all_shows.select! { |show| @event_type_filter.include?(show.event_type) }
+
+      # Step 2: Get all assignments for these shows (for selected people and groups)
+      show_ids = all_shows.map(&:id)
+      assignments = if show_ids.any?
+        ShowPersonRoleAssignment
+          .where(show_id: show_ids)
+          .where(
+            "(assignable_type = 'Person' AND assignable_id IN (?)) OR (assignable_type = 'Group' AND assignable_id IN (?))",
+            selected_person_ids.presence || [ 0 ],
+            selected_group_ids.presence || [ 0 ]
+          )
+          .includes(:role)
+          .to_a
+      else
+        []
+      end
+
+      # Build assignments hash by show_id
+      assignments_by_show = Hash.new { |h, k| h[k] = [] }
+      assignments.each do |assignment|
+        if assignment.assignable_type == "Person"
+          person = people_by_id[assignment.assignable_id]
+          assignments_by_show[assignment.show_id] << { type: "person", entity: person, assignment: assignment } if person
+        elsif assignment.assignable_type == "Group"
+          group = groups_by_id[assignment.assignable_id]
+          assignments_by_show[assignment.show_id] << { type: "group", entity: group, assignment: assignment } if group
         end
       end
 
-      # Remove duplicates and filter by event type
-      @shows = shows_with_source.map do |item|
-        item[:show]
-      end.uniq.select { |show| @event_type_filter.include?(show.event_type) }
+      # Step 3: Build show_data based on filter
+      show_data_by_id = {}
+
+      if @filter == "my_assignments"
+        # Only include shows where the user has an assignment
+        all_shows.each do |show|
+          show_assignments = assignments_by_show[show.id]
+          next if show_assignments.empty?
+          show_data_by_id[show.id] = { show: show, assignments: show_assignments }
+        end
+      else
+        # "all" or "by_production" - include all talent pool shows with their assignments (if any)
+        all_shows.each do |show|
+          show_data_by_id[show.id] = { show: show, assignments: assignments_by_show[show.id] }
+        end
+      end
+
+      # Check if user has ANY shows at all (before filtering) for showing filter bar
+      @has_any_shows = all_talent_pool_show_ids.any?
+
+      # Build @shows array
+      @shows = show_data_by_id.values.map { |data| data[:show] }.sort_by(&:date_and_time)
 
       # Get productions from shows
       production_ids = @shows.map(&:production_id).uniq
       @productions = Production.where(id: production_ids).order(:name)
 
-      # Order shows
-      @shows = @shows.sort_by(&:date_and_time)
-
-      # Get assignments for these shows (both person and group assignments)
-      show_ids = @shows.map(&:id)
-      assignments = ShowPersonRoleAssignment.where(show_id: show_ids)
-                                            .where("(assignable_type = ? AND assignable_id IN (?)) OR (assignable_type = ? AND assignable_id IN (?))",
-                                                   "Person", people_ids, "Group", group_ids)
-                                            .includes(:role)
-                                            .to_a
-      @assignments_by_show = assignments.index_by(&:show_id)
-
-      # Build mapping of which entities have assignments for each show
+      # Build @show_assignments for compatibility
       @show_assignments = {}
-      assignments.each do |assignment|
-        @show_assignments[assignment.show_id] ||= []
-        if assignment.assignable_type == "Person" && people_ids.include?(assignment.assignable_id)
-          person = people_by_id[assignment.assignable_id]
-          @show_assignments[assignment.show_id] << { type: "person", entity: person, assignment: assignment } if person
-        elsif assignment.assignable_type == "Group"
-          group = groups_by_id[assignment.assignable_id]
-          @show_assignments[assignment.show_id] << { type: "group", entity: group, assignment: assignment } if group
-        end
+      show_data_by_id.each do |show_id, data|
+        @show_assignments[show_id] = data[:assignments]
       end
 
-      # Filter to only shows with assignments if my_assignments filter is active
-      if @filter == "my_assignments"
-        @shows = @shows.select { |show| @show_assignments[show.id].present? }
-        production_ids = @shows.map(&:production_id).uniq
-        @productions = Production.where(id: production_ids).order(:name)
-      end
+      # Build show entity rows for the view
+      @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
-      # Build show-entity rows: one row per show with all entity assignments consolidated
-      # This is the primary data structure for rendering - each row is a show with all its assignments
-      shows_by_id = @shows.index_by(&:id)
-      show_rows_by_id = {}
-
-      shows_with_source.each do |item|
-        show = shows_by_id[item[:show].id]
-        next unless show # Skip if filtered out
-        next unless @event_type_filter.include?(show.event_type)
-
-        entity = item[:entity]
-        entity_type = item[:entity_key] == "person" ? "Person" : "Group"
-
-        # Find assignments for this entity on this show
-        entity_assignments = (@show_assignments[show.id] || []).select do |a|
-          if entity_type == "Person"
-            a[:type] == "person"
-          else
-            a[:type] == "group" && a[:entity]&.id == entity.id
-          end
-        end
-
-        # For "my_assignments" filter, only include if entity has an assignment
-        next if @filter == "my_assignments" && entity_assignments.empty?
-
-        # Consolidate by show - add to existing row or create new one
-        if show_rows_by_id[show.id]
-          # Add this entity's assignments to the existing row
-          entity_assignments.each do |ea|
-            # Avoid duplicates
-            unless show_rows_by_id[show.id][:assignments].any? { |a| a[:assignment].id == ea[:assignment].id }
-              show_rows_by_id[show.id][:assignments] << ea
-            end
-          end
-        else
-          show_rows_by_id[show.id] = {
-            show: show,
-            assignments: entity_assignments.dup
-          }
-        end
-      end
-
-      # Convert to array and sort by show date
-      @show_entity_rows = show_rows_by_id.values
-      @show_entity_rows.sort_by! { |row| row[:show].date_and_time }
-
-      # Build a mapping of shows to their entities using preloaded data (no additional queries)
-      shows_by_entity_key = Hash.new { |h, k| h[k] = Set.new }
-      shows_with_source.each { |item| shows_by_entity_key[item[:entity_key]].add(item[:show].id) }
-
+      # Build @show_entities for compatibility
       @show_entities = {}
       @shows.each do |show|
-        @show_entities[show.id] = []
-
-        # Check if any selected profile is assigned using preloaded data
-        selected_person_ids.each do |pid|
-          if shows_by_entity_key["person_#{pid}"].include?(show.id)
-            @show_entities[show.id] << { type: "person", entity: people_by_id[pid] }
-          end
-        end
-
-        # Check if any selected group is assigned using preloaded data
-        selected_group_ids.each do |gid|
-          if shows_by_entity_key["group_#{gid}"].include?(show.id)
-            @show_entities[show.id] << { type: "group", entity: groups_by_id[gid] }
-          end
-        end
+        @show_entities[show.id] = show_data_by_id[show.id]&.[](:assignments) || []
       end
 
       # Unresolved vacancy invitations for all profiles (not claimed, vacancy still open)
