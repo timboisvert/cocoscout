@@ -47,7 +47,16 @@ module Manage
         return
       end
 
-      @productions = Current.user.accessible_productions.where(organization: Current.organization).order(:name)
+      @productions = Current.user.accessible_productions
+        .where(organization: Current.organization)
+        .left_joins(:shows, :talent_pools)
+        .select(
+          "productions.*",
+          "COUNT(DISTINCT shows.id) AS shows_count",
+          "(SELECT COUNT(*) FROM talent_pool_memberships WHERE talent_pool_memberships.talent_pool_id = talent_pools.id) AS talent_pool_members_count"
+        )
+        .group("productions.id, talent_pools.id")
+        .order(:name)
 
       # If user has exactly one production, auto-select it
       if @productions.count == 1

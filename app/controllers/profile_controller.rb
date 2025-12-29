@@ -256,7 +256,7 @@ class ProfileController < ApplicationController
         nil
       end
     else
-      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.person_id)
+      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.primary_person&.id)
       unless @person
         # User doesn't have a profile yet - redirect to create one or show appropriate error
         redirect_to root_path, alert: "No profile found. Please contact support."
