@@ -119,6 +119,27 @@ module My
       # Build show entity rows for the view
       @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
+      # Load vacancies created by the user (they said they can't make it)
+      # Used to show "You've indicated you can't make it" indicator on linked events
+      # Group by affected shows, not the show where vacancy was initiated
+      #
+      # For linked shows, the person stays on the cast - they aren't removed.
+      # We just need to check if this show is in the vacancy's affected_shows.
+      upcoming_show_ids = @shows.map(&:id)
+      
+      @my_vacancies_by_show = {}
+      RoleVacancy
+        .where(vacated_by_type: "Person", vacated_by_id: people_ids)
+        .where.not(status: :filled)
+        .includes(:affected_shows, :role, :invitations)
+        .each do |vacancy|
+          vacancy.affected_shows.each do |affected_show|
+            next unless upcoming_show_ids.include?(affected_show.id)
+            @my_vacancies_by_show[affected_show.id] ||= []
+            @my_vacancies_by_show[affected_show.id] << vacancy
+          end
+        end
+
       # Build @show_entities for compatibility
       @show_entities = {}
       @shows.each do |show|
@@ -135,14 +156,22 @@ module My
 
     def show
       @person = Current.user.person
-      @groups = @person.groups.active.to_a
+      @people = Current.user.people.active.to_a
+      people_ids = @people.map(&:id)
+      
+      # Get groups from all profiles
+      @groups = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .distinct
+                     .to_a
       group_ids = @groups.map(&:id)
 
       # Find the show if user has access via:
-      # 1. Person is in the production's talent pool
-      # 2. Person's group is in the production's talent pool
-      # 3. Person has a direct role assignment
-      # 4. Person's group has a role assignment
+      # 1. Any of user's profiles is in the production's talent pool
+      # 2. Any of user's groups is in the production's talent pool
+      # 3. Any of user's profiles has a direct role assignment
+      # 4. Any of user's groups has a role assignment
       @show = Show.where(id: params[:id])
                   .includes(event_linkage: :shows)
                   .where(
@@ -150,7 +179,7 @@ module My
                              INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
                              WHERE talent_pools.production_id = shows.production_id
                              AND talent_pool_memberships.member_type = 'Person'
-                             AND talent_pool_memberships.member_id = ?) OR
+                             AND talent_pool_memberships.member_id IN (?)) OR
                      EXISTS (SELECT 1 FROM talent_pools
                              INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
                              WHERE talent_pools.production_id = shows.production_id
@@ -159,12 +188,12 @@ module My
                      EXISTS (SELECT 1 FROM show_person_role_assignments
                              WHERE show_person_role_assignments.show_id = shows.id
                              AND show_person_role_assignments.assignable_type = 'Person'
-                             AND show_person_role_assignments.assignable_id = ?) OR
+                             AND show_person_role_assignments.assignable_id IN (?)) OR
                      EXISTS (SELECT 1 FROM show_person_role_assignments
                              WHERE show_person_role_assignments.show_id = shows.id
                              AND show_person_role_assignments.assignable_type = 'Group'
                              AND show_person_role_assignments.assignable_id IN (?))",
-                    @person.id, group_ids.presence || [ 0 ], @person.id, group_ids.presence || [ 0 ]
+                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ]
                   )
                   .first!
       @production = @show.production
@@ -182,10 +211,36 @@ module My
         associations: :assignable
       ).call
 
-      # Get my assignment for this show (check both person and group assignments) - use preloaded group_ids
-      @my_assignment = @show_person_role_assignments.find do |a|
-        (a.assignable_type == "Person" && a.assignable_id == @person.id) ||
+      # Get my assignments for this show (check all profiles and group assignments)
+      @my_assignments = @show_person_role_assignments.select do |a|
+        (a.assignable_type == "Person" && people_ids.include?(a.assignable_id)) ||
           (a.assignable_type == "Group" && group_ids.include?(a.assignable_id))
+      end
+
+      # Load vacancies for this show created by the user's profiles
+      # Used to show "You've indicated you can't make it" indicator
+      @my_vacancies = RoleVacancy
+        .where(vacated_by_type: "Person", vacated_by_id: people_ids)
+        .where.not(status: :filled)
+        .joins(:affected_shows)
+        .where(role_vacancy_shows: { show_id: @show.id })
+        .includes(:role)
+        .to_a
+
+      # Also include vacancies where a Group vacated (if user is in that group)
+      @my_group_vacancies = RoleVacancy
+        .where(vacated_by_type: "Group", vacated_by_id: group_ids)
+        .where.not(status: :filled)
+        .joins(:affected_shows)
+        .where(role_vacancy_shows: { show_id: @show.id })
+        .includes(:role)
+        .to_a
+
+      # Build a lookup by [role_id, assignable_type, assignable_id] for quick access
+      @vacancies_by_assignment = {}
+      (@my_vacancies + @my_group_vacancies).each do |vacancy|
+        key = [vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id]
+        @vacancies_by_assignment[key] = vacancy
       end
     end
 

@@ -51,6 +51,20 @@ module Manage
                       .where(id: group_ids)
                       .includes(profile_headshots: { image_attachment: :blob })
                       .index_by(&:id)
+
+      # Load cancelled vacancies (can't make it but still cast) for all shows
+      @cancelled_vacancies_by_show = {}
+      @upcoming_shows.each do |show|
+        @cancelled_vacancies_by_show[show.id] = show.cancelled_vacancies_by_assignment
+      end
+
+      # Load open vacancies for non-linked shows (person removed, role needs filling)
+      @open_vacancies_by_show = {}
+      @upcoming_shows.each do |show|
+        next if show.linked? # Linked shows keep person cast with "can't make it" indicator
+        open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
+        @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)
+      end
     end
 
     def show_cast
@@ -96,6 +110,9 @@ module Manage
 
       # Build set of assigned member keys for quick lookup
       @assigned_member_keys = Set.new(@assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
+
+      # Load cancelled vacancies where person can't make it but is still cast
+      @cancelled_vacancies_by_assignment = @show.cancelled_vacancies_by_assignment
 
       # Build linkage sync info for linked shows (do this before email drafts so they can reference linked shows)
       if @show.linked?

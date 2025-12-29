@@ -18,6 +18,7 @@
     - entity_key: Entity key for Stimulus data attribute (default: nil)
     - show_cant_make_it: Whether to show "Can't make it" link (default: false)
     - cant_make_it_person: Person to generate vacancy token for (default: nil)
+    - my_vacancies: Array of vacancies user created for this show (default: [])
     - has_groups: Whether the user has any groups (used to determine if headshot should be shown)
     - right_panel: Type of right panel content (:cast_assignment, :availability, or nil for no panel)
     - entity_assignments: Array of {entity:, role_assignments:} for multiple stacked cast assignment panels
@@ -32,6 +33,7 @@
   show_location = local_assigns.fetch(:show_location, true)
   show_cant_make_it = local_assigns.fetch(:show_cant_make_it, false)
   cant_make_it_person = local_assigns.fetch(:cant_make_it_person, nil)
+  my_vacancies = local_assigns.fetch(:my_vacancies, [])
   has_groups = local_assigns.fetch(:has_groups, false)
   role_assignments = local_assigns.fetch(:role_assignments, [])
   entity_assignments = local_assigns.fetch(:entity_assignments, [])
@@ -42,8 +44,18 @@
   has_link = local_assigns[:link_path].present?
   has_availability = local_assigns[:entity_key].present?
   current_status = local_assigns[:availability]&.status || 'unset'
-  can_show_vacancy = show_cant_make_it && cant_make_it_person.present? && !is_canceled && show.date_and_time > Time.current
+  # Don't show "Can't make it" button if user already has a vacancy for this show
+  can_show_vacancy = show_cant_make_it && cant_make_it_person.present? && !is_canceled && show.date_and_time > Time.current && my_vacancies.empty?
   has_right_panel = right_panel.present?
+
+  # Check if user has notified they can't make it (only for linked events)
+  # For linked shows, person stays on cast but vacancy indicates:
+  # - Open vacancy = replacement is being sought
+  # - Cancelled vacancy = no replacement will be sought
+  is_linked_event = show.linked?
+  my_open_vacancies = my_vacancies.select(&:open?)
+  my_cancelled_vacancies = my_vacancies.select(&:cancelled?)
+  show_vacancy_indicator = is_linked_event && (my_open_vacancies.any? || my_cancelled_vacancies.any?)
 %>
 
 <%# Build data attributes for availability rows %>
@@ -161,6 +173,20 @@
                 <strong class="text-pink-500"><%= ra[:role_name] %></strong>
               </div>
             <% end %>
+            <% if show_vacancy_indicator %>
+              <div class="flex items-center gap-1 mt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span class="text-xs text-amber-600 font-medium">
+                  <% if my_open_vacancies.any? %>
+                    You've indicated that you can't make it and a replacement is being sought
+                  <% else %>
+                    You've indicated that you can't make it
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
           </div>
         </div>
       <% end %>
@@ -184,6 +210,20 @@
             <span class="text-gray-700"><%= ra[:entity_name] %></span>
             <span class="text-gray-400">as</span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
+          </div>
+        <% end %>
+        <% if show_vacancy_indicator %>
+          <div class="flex items-center gap-1 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <span class="text-xs text-amber-600 font-medium">
+              <% if my_open_vacancies.any? %>
+                You've indicated that you can't make it and a replacement is being sought
+              <% else %>
+                You've indicated that you can't make it
+              <% end %>
+            </span>
           </div>
         <% end %>
       </div>

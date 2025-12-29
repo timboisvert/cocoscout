@@ -263,6 +263,39 @@ class Show < ApplicationRecord
     end
   end
 
+  # Get vacancies where the person can't make this show but is still cast.
+  # Includes:
+  # - Cancelled vacancies (producer chose "don't find a replacement" for linked events)
+  # - Open vacancies (looking for replacement but not filled yet)
+  # Does NOT include filled vacancies (someone claimed the role).
+  # Returns a hash: { [role_id, assignable_type, assignable_id] => vacancy }
+  def cant_make_it_vacancies_by_assignment
+    # Find cancelled or open vacancies that affect this show (either as primary show or via role_vacancy_shows)
+    vacancies = RoleVacancy
+      .where(status: %w[cancelled open])
+      .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
+      .where("role_vacancies.show_id = ? OR role_vacancy_shows.show_id = ?", id, id)
+      .includes(:role, :affected_shows)
+      .distinct
+
+    # Build lookup hash keyed by [role_id, assignable_type, assignable_id]
+    result = {}
+    vacancies.each do |vacancy|
+      # Check if this specific show is affected (for linked events)
+      affected_show_ids = vacancy.affected_shows.pluck(:id)
+      is_affected = affected_show_ids.empty? || affected_show_ids.include?(id) || vacancy.show_id == id
+
+      next unless is_affected && vacancy.vacated_by.present?
+
+      key = [vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id]
+      result[key] = vacancy
+    end
+    result
+  end
+
+  # Alias for backward compatibility
+  alias_method :cancelled_vacancies_by_assignment, :cant_make_it_vacancies_by_assignment
+
   private
 
   def invalidate_production_caches

@@ -6,17 +6,26 @@ class VacancyController < ApplicationController
   before_action :set_show, only: %i[show confirm success]
 
   def show
-    # Get person's direct assignments
-    @person_assignments = @show.show_person_role_assignments
-                               .where(assignable: @person)
-                               .includes(:role)
+    # Get all of the user's profiles (not just the one from the token)
+    @user = @person.user
+    @people = @user.people.active.to_a
+    people_ids = @people.map(&:id)
 
-    # Get group assignments for groups the person is a member of
-    @groups = @person.groups.active.to_a
+    # Get person assignments for ALL of user's profiles
+    @person_assignments = @show.show_person_role_assignments
+                               .where(assignable_type: "Person", assignable_id: people_ids)
+                               .includes(:role, :assignable)
+
+    # Get group assignments for groups any of user's profiles are members of
+    @groups = Group.active
+                   .joins(:group_memberships)
+                   .where(group_memberships: { person_id: people_ids })
+                   .distinct
+                   .to_a
     @groups_by_id = @groups.index_by(&:id)
     @group_assignments = @show.show_person_role_assignments
                               .where(assignable_type: "Group", assignable_id: @groups.map(&:id))
-                              .includes(:role)
+                              .includes(:role, :assignable)
 
     # Person assignments first, then group assignments, each sorted by role position
     @all_assignments = @person_assignments.sort_by { |a| a.role&.position || 0 } +
@@ -39,8 +48,13 @@ class VacancyController < ApplicationController
 
     @vacancies_created = []
 
-    # Get groups the person can act on behalf of
-    group_ids = @person.groups.active.pluck(:id)
+    # Get all user's profiles and their groups
+    @user = @person.user
+    people_ids = @user.people.active.pluck(:id)
+    group_ids = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .pluck(:id)
 
     # Validate affected shows are linked to this show
     is_linked = @show.linked?
@@ -57,12 +71,12 @@ class VacancyController < ApplicationController
         role_id, assignable_type, assignable_id = assignment_key.split(":")
         role_id = role_id.to_i
 
-        # Find the assignment, validating the person has access
-        assignment = if assignable_type == "Person" && assignable_id.to_i == @person.id
+        # Find the assignment, validating the user has access (any of their profiles or groups)
+        assignment = if assignable_type == "Person" && people_ids.include?(assignable_id.to_i)
           @show.show_person_role_assignments.find_by(
             role_id: role_id,
             assignable_type: "Person",
-            assignable_id: @person.id
+            assignable_id: assignable_id
           )
         elsif assignable_type == "Group" && group_ids.include?(assignable_id.to_i)
           @show.show_person_role_assignments.find_by(

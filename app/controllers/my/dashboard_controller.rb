@@ -75,6 +75,27 @@ module My
 
       @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
+      # Load vacancies created by the user (they said they can't make it)
+      # Used to show "You've indicated you can't make it" indicator on linked events
+      # Group by affected_shows, not show_id (show_id is just where vacancy was initiated from)
+      #
+      # For linked shows, the person stays on the cast - they aren't removed.
+      # We just need to check if this show is in the vacancy's affected_shows.
+      upcoming_show_ids = @upcoming_show_rows.map { |row| row[:show].id }
+      
+      @my_vacancies_by_show = {}
+      RoleVacancy
+        .where(vacated_by_type: "Person", vacated_by_id: people_ids)
+        .where.not(status: :filled)
+        .includes(:affected_shows, :role, :invitations)
+        .each do |vacancy|
+          vacancy.affected_shows.each do |affected_show|
+            next unless upcoming_show_ids.include?(affected_show.id)
+            @my_vacancies_by_show[affected_show.id] ||= []
+            @my_vacancies_by_show[affected_show.id] << vacancy
+          end
+        end
+
       # Upcoming audition sessions for person and groups - batch query
       @upcoming_audition_entities = []
 

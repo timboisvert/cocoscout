@@ -11,6 +11,8 @@
     - has_groups: Whether user has groups (default: false)
     - show_cant_make_it: Show "Can't make it" link (default: false)
     - cant_make_it_person: Person for vacancy token (default: nil)
+    - my_vacancies_by_show: Hash of show_id => vacancies user created (default: {})
+    - my_vacancies_by_show: Hash of show_id => vacancies user created affecting that show (default: {})
     - link_path_helper: Lambda to generate link path for a show (default: nil)
 %>
 
@@ -20,6 +22,7 @@
   has_groups = local_assigns.fetch(:has_groups, false)
   show_cant_make_it = local_assigns.fetch(:show_cant_make_it, false)
   cant_make_it_person = local_assigns.fetch(:cant_make_it_person, nil)
+  my_vacancies_by_show = local_assigns.fetch(:my_vacancies_by_show, {})
   link_path_helper = local_assigns.fetch(:link_path_helper, nil)
 
   # Sort rows by show date
@@ -44,6 +47,14 @@
 
       # Only show "Can't make it" if the user has assignments for this show
       row_show_cant_make_it = show_cant_make_it && row[:assignments].any?
+
+      # For the vacancy link, use the first Person assignment's entity, or fall back to cant_make_it_person
+      # This handles cases where user has multiple profiles with different assignments
+      person_assignment = row[:assignments].find { |a| a[:type] == "person" }
+      row_cant_make_it_person = person_assignment ? person_assignment[:entity] : cant_make_it_person
+
+      # Get user's vacancies for this show (they've notified they can't make it)
+      my_vacancies = my_vacancies_by_show[show.id] || []
     %>
     <%= render partial: "shared/show_row", locals: {
       show: show,
@@ -56,7 +67,8 @@
       has_groups: has_groups,
       right_panel: entity_assignments.any? ? :cast_assignment : nil,
       show_cant_make_it: row_show_cant_make_it,
-      cant_make_it_person: cant_make_it_person
+      cant_make_it_person: row_cant_make_it_person,
+      my_vacancies: my_vacancies
     } %>
   <% end %>
 </div>

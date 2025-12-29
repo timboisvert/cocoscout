@@ -107,6 +107,7 @@
                        has_groups: @groups.any?,
                        show_cant_make_it: true,
                        cant_make_it_person: @person,
+                       my_vacancies_by_show: @my_vacancies_by_show,
                        link_path_helper: ->(show) { my_show_path(show) } %>
           </div>
         <% end %>
@@ -126,6 +127,7 @@
                  has_groups: @groups.any?,
                  show_cant_make_it: true,
                  cant_make_it_person: @person,
+                 my_vacancies_by_show: @my_vacancies_by_show,
                  link_path_helper: ->(show) { my_show_path(show) } %>
     <% else %>
       <div class="text-sm text-gray-500">

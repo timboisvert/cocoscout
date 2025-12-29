@@ -1,12 +1,13 @@
 <% content_for :title, @production.name %>
 
 <%
-  # Check if current user has assignments for this show
+  # Check if current user has assignments for this show (check all profiles and groups)
+  people_ids = @people.map(&:id)
+  group_ids = @groups.map(&:id)
   my_assignments = @show_person_role_assignments.select do |a|
-    (a.assignable_type == "Person" && a.assignable_id == @person.id) ||
-    (a.assignable_type == "Group" && @groups.map(&:id).include?(a.assignable_id))
+    (a.assignable_type == "Person" && people_ids.include?(a.assignable_id)) ||
+    (a.assignable_type == "Group" && group_ids.include?(a.assignable_id))
   end
-  can_show_cant_make_it = my_assignments.any? && !@show.canceled && @show.date_and_time > Time.current
 %>
 
 <div class="w-full">
@@ -160,6 +161,13 @@
 
     <!-- Cast Section - 50/50 layout when both exist -->
     <% if @show.casting_enabled %>
+      <%
+        # For the "Can't make it" button, find a Person assignment to use for the link
+        # The vacancy page will show all roles for all profiles/groups
+        person_assignment = my_assignments.find { |a| a.assignable_type == "Person" }
+        cant_make_it_person = person_assignment&.assignable || @person
+        can_show_cant_make_it = my_assignments.any? && !@show.canceled && @show.date_and_time > Time.current
+      %>
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- My Cast Assignment (left side) -->
         <% if my_assignments.any? %>
@@ -170,31 +178,53 @@
             <div class="p-4">
               <div class="space-y-3">
                 <% my_assignments.each do |assignment| %>
-                  <div class="flex items-center gap-3 <%= 'pb-3 border-b border-gray-200' if my_assignments.size > 1 && assignment != my_assignments.last %>">
-                    <% if assignment.assignable_type == "Group" %>
-                      <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                  <%
+                    # Check if this assignment has a vacancy
+                    vacancy_key = [assignment.role_id, assignment.assignable_type, assignment.assignable_id]
+                    assignment_vacancy = @vacancies_by_assignment[vacancy_key]
+                    has_vacancy = assignment_vacancy.present? && @show.linked?
+                  %>
+                  <div class="<%= 'pb-3 border-b border-gray-200' if my_assignments.size > 1 && assignment != my_assignments.last %>">
+                    <div class="flex items-center gap-3">
+                      <% if assignment.assignable_type == "Group" %>
+                        <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            <%= assignment.assignable.initials %>
+                          </div>
+                        <% end %>
                       <% else %>
-                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                          <%= assignment.assignable.initials %>
-                        </div>
+                        <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                            <%= assignment.assignable.initials %>
+                          </div>
+                        <% end %>
                       <% end %>
-                    <% else %>
-                      <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
-                      <% if headshot_variant %>
-                        <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-                      <% else %>
-                        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
-                          <%= assignment.assignable.initials %>
+                      <div class="flex-1">
+                        <div class="text-sm">
+                          <span class="text-gray-700"><%= assignment.assignable.name %></span>
+                          <span class="text-gray-400">as</span>
+                          <strong class="text-pink-500"><%= assignment.role.name %></strong>
                         </div>
-                      <% end %>
-                    <% end %>
-                    <div class="flex-1">
-                      <div class="text-sm">
-                        <span class="text-gray-700"><%= assignment.assignable.name %></span>
-                        <span class="text-gray-400">as</span>
-                        <strong class="text-pink-500"><%= assignment.role.name %></strong>
+                        <% if has_vacancy %>
+                          <div class="flex items-center gap-1 mt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                            <span class="text-xs text-amber-600 font-medium">
+                              <% if assignment_vacancy.open? %>
+                                You've indicated that you can't make it and a replacement is being sought
+                              <% else %>
+                                You've indicated that you can't make it
+                              <% end %>
+                            </span>
+                          </div>
+                        <% end %>
                       </div>
                     </div>
                   </div>
@@ -202,7 +232,7 @@
               </div>
               <% if can_show_cant_make_it %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
-                  <%= render "shared/button", text: "Can't make it?", path: vacancy_link_for(@person, @show), variant: "secondary", size: "small" %>
+                  <%= render "shared/button", text: "Can't make it?", path: vacancy_link_for(cant_make_it_person, @show), variant: "secondary", size: "small" %>
                 </div>
               <% end %>
             </div>
@@ -219,20 +249,21 @@
               <div class="flex flex-wrap gap-2">
                 <% @show_person_role_assignments.each do |assignment| %>
                   <% if assignment.assignable_type == "Person" %>
+                    <% is_my_person = people_ids.include?(assignment.assignable_id) %>
                     <%= link_to public_profile_path(assignment.assignable.public_key), class: "flex flex-col items-center w-[100px] hover:opacity-80 transition-opacity" do %>
                       <% headshot_variant = assignment.assignable.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
-                        <%= image_tag headshot_variant, alt: assignment.assignable.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if assignment.assignable == Current.user.person}", draggable: false %>
+                        <%= image_tag headshot_variant, alt: assignment.assignable.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if is_my_person}", draggable: false %>
                       <% else %>
-                        <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if assignment.assignable == Current.user.person}">
+                        <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg border border-gray-200 #{'ring-2 ring-pink-500' if is_my_person}">
                           <%= assignment.assignable.initials %>
                         </div>
                       <% end %>
-                      <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if assignment.assignable == Current.user.person %>"><%= assignment.assignable.name %></div>
+                      <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if is_my_person %>"><%= assignment.assignable.name %></div>
                       <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role&.name %></div>
                     <% end %>
                   <% elsif assignment.assignable_type == "Group" %>
-                    <% is_my_group = @groups.include?(assignment.assignable) %>
+                    <% is_my_group = group_ids.include?(assignment.assignable_id) %>
                     <%= link_to public_profile_path(assignment.assignable.public_key), class: "flex flex-col items-center w-[100px] hover:opacity-80 transition-opacity" do %>
                       <% if assignment.assignable.headshot&.attached? %>
                         <%= image_tag assignment.assignable.headshot.variant(:thumb), alt: assignment.assignable.name, class: "w-20 h-20 rounded-lg object-cover border border-gray-200 #{'ring-2 ring-pink-500' if is_my_group}", draggable: false %>

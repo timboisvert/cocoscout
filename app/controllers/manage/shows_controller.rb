@@ -62,8 +62,14 @@ module Manage
                           .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
                           .where("role_vacancies.show_id = ? OR role_vacancy_shows.show_id = ?", @show.id, @show.id)
                           .distinct
-                          .includes(:role, :affected_shows)
+                          .includes(:role, :affected_shows, :vacated_by)
                           .to_a
+
+      # Build open vacancies by role for non-linked shows (person removed, role empty)
+      @open_vacancies_by_role = @open_vacancies.group_by(&:role_id)
+
+      # Load cancelled/open vacancies for linked shows (person still cast but can't make it)
+      @cancelled_vacancies_by_assignment = @show.cancelled_vacancies_by_assignment
     end
 
     def calendar

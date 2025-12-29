@@ -34,12 +34,16 @@
 
   role_count = roles.size
 
-  # Build vacancies lookup by role_id
+  # Build vacancies lookup by role_id (include vacated_by for showing who can't make it)
   vacancies_by_role_id = local_assigns[:vacancies_by_role_id] || @vacancies_by_role_id
   unless vacancies_by_role_id
-    all_vacancies = show.role_vacancies.open.includes(:role).to_a
+    all_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
     vacancies_by_role_id = all_vacancies.group_by(&:role_id)
   end
+
+  # Cancelled vacancies where person can't make it but is still cast
+  # Hash keyed by [role_id, assignable_type, assignable_id]
+  cancelled_vacancies_by_assignment = local_assigns[:cancelled_vacancies_by_assignment] || @cancelled_vacancies_by_assignment || {}
 
   # Linkage info for JS finalize logic
   is_linked = show.linked?
@@ -86,13 +90,6 @@
             <div class="grid grid-cols-[140px_1fr] gap-4 items-center">
               <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
                 <%= role.name %>
-                <% if has_open_vacancy %>
-                  <span class="text-amber-600" title="<%= pluralize(open_vacancies.count, 'open vacancy') %>">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </span>
-                <% end %>
                 <span class="text-pink-500" title="Restricted role">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -110,18 +107,35 @@
                     else
                       groups_by_id[assignment.assignable_id] || assignment.assignable
                     end
+                    cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
                   %>
-                  <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-white group">
+                  <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg group">
                     <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                     <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}" %>
                     <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                      <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
                         <%= assignable.initials %>
                       </div>
                     <% end %>
 
-                    <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
+                    <div class="flex-1 min-w-0">
+                      <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
+                      <% if cant_make_it_vacancy %>
+                        <div class="flex items-center gap-1 text-amber-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                          </svg>
+                          <span class="text-xs font-medium">
+                            <% if cant_make_it_vacancy.status == 'open' %>
+                              Can't make it – looking for replacement
+                            <% else %>
+                              Can't make it – no replacement
+                            <% end %>
+                          </span>
+                        </div>
+                      <% end %>
+                    </div>
                     <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                       <button type="button"
                         class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
@@ -136,6 +150,28 @@
                     </div>
                   </div>
                 <% else %>
+                  <%# Show vacancy warning if non-linked show has open vacancy %>
+                  <% if has_open_vacancy && !is_linked %>
+                    <% vacancy = open_vacancies.first %>
+                    <% vacated_by = vacancy.vacated_by %>
+                    <div class="mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
+                      <div class="flex items-center gap-1.5 text-amber-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        <span class="text-xs font-medium">
+                          <% if vacated_by %>
+                            <%= vacated_by.name %> can't make it –
+                            select a replacement below or
+                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
+                          <% else %>
+                            Looking for replacement –
+                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
+                          <% end %>
+                        </span>
+                      </div>
+                    </div>
+                  <% end %>
                   <%# Show eligible members as clickable options %>
                   <% if eligible_members.any? %>
                     <div class="flex flex-wrap gap-2">
@@ -187,13 +223,6 @@
             <div class="grid grid-cols-[140px_1fr] gap-4 items-center">
               <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
                 <%= role.name %>
-                <% if has_open_vacancy %>
-                  <span class="text-amber-600" title="<%= pluralize(open_vacancies.count, 'open vacancy') %>">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </span>
-                <% end %>
               </div>
 
               <div>
@@ -207,8 +236,9 @@
                         else
                           groups_by_id[assignment.assignable_id] || assignment.assignable
                         end
+                        cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
                       %>
-                      <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all bg-white group relative cursor-grab active:cursor-grabbing"
+                      <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all group relative cursor-grab active:cursor-grabbing"
                           draggable="true"
                           data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
                           data-assignable-type="<%= assignable.class.name %>"
@@ -217,14 +247,30 @@
                           data-source-role-id="<%= role.id %>">
                         <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
                         <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0", draggable: false %>
+                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
                         <% else %>
-                          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
+                          <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
                             <%= assignable.initials %>
                           </div>
                         <% end %>
 
-                        <span class="font-medium text-sm flex-1 truncate"><%= assignable.name %></span>
+                        <div class="flex-1 min-w-0">
+                          <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
+                          <% if cant_make_it_vacancy %>
+                            <div class="flex items-center gap-1 text-amber-600">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                              </svg>
+                              <span class="text-xs font-medium">
+                                <% if cant_make_it_vacancy.status == 'open' %>
+                                  Can't make it – looking for replacement
+                                <% else %>
+                                  Can't make it – no replacement
+                                <% end %>
+                              </span>
+                            </div>
+                          <% end %>
+                        </div>
                         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           <button type="button"
                             class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
@@ -241,9 +287,47 @@
                     <% end %>
                   </div>
                 <% else %>
-                  <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
-                    <span>Drag a talent pool member here</span>
-                  </div>
+                  <% if has_open_vacancy && !is_linked %>
+                    <%# Non-linked show with open vacancy - show who can't make it %>
+                    <% vacancy = open_vacancies.first %>
+                    <% vacated_by = vacancy.vacated_by %>
+                    <div class="p-3 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg">
+                      <div class="flex items-center gap-2">
+                        <% if vacated_by %>
+                          <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: vacated_by.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 opacity-50 grayscale" %>
+                          <% else %>
+                            <div class="w-8 h-8 rounded-lg bg-gray-300 flex items-center justify-center text-gray-500 font-bold text-xs flex-shrink-0">
+                              <%= vacated_by.initials %>
+                            </div>
+                          <% end %>
+                        <% end %>
+                        <div class="flex-1">
+                          <div class="flex items-center gap-1.5 text-amber-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                            <span class="text-xs font-medium">
+                              <% if vacated_by %>
+                                <%= vacated_by.name %> can't make it
+                              <% else %>
+                                Looking for replacement
+                              <% end %>
+                            </span>
+                          </div>
+                          <p class="text-xs text-amber-600 mt-0.5">
+                            Drag a talent pool member here, or
+                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  <% else %>
+                    <div class="flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
+                      <span>Drag a talent pool member here</span>
+                    </div>
+                  <% end %>
                 <% end %>
               </div>
             </div>

@@ -181,6 +181,11 @@
 
             <%# Cast member headshots %>
             <% if @roles.any? %>
+              <%
+                is_linked = @show.linked?
+                cancelled_vacancies = @cancelled_vacancies_by_assignment || {}
+                open_vacancies_by_role = @open_vacancies_by_role || {}
+              %>
               <div class="flex flex-wrap gap-1.5">
                 <% @roles.each do |role| %>
                   <%
@@ -193,31 +198,124 @@
                       else
                         @groups_by_id[assignment.assignable_id] || assignment.assignable
                       end
+                      cant_make_it = cancelled_vacancies[[role.id, assignable.class.name, assignable.id]].present?
+                      tooltip_text = "#{assignable.name} - #{role.name}"
+                      tooltip_text += " (Can't make it)" if cant_make_it
                     %>
                     <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant,
-                          alt: assignable.name,
-                          class: "w-10 h-10 rounded-md object-cover",
-                          data: { controller: "tooltip", tooltip_text: "#{assignable.name} - #{role.name}" } %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-md bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs"
-                           data-controller="tooltip"
-                           data-tooltip-text="<%= "#{assignable.name} - #{role.name}" %>">
-                        <%= assignable.initials %>
-                      </div>
-                    <% end %>
+                    <div class="relative">
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant,
+                            alt: assignable.name,
+                            class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
+                            data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-green-100 text-green-700' %> flex items-center justify-center font-bold text-xs"
+                             data-controller="tooltip"
+                             data-tooltip-text="<%= tooltip_text %>">
+                          <%= assignable.initials %>
+                        </div>
+                      <% end %>
+                      <% if cant_make_it %>
+                        <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center" data-controller="tooltip" data-tooltip-text="Can't make it">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                          </svg>
+                        </div>
+                      <% end %>
+                    </div>
                   <% else %>
+                    <%
+                      # Check for open vacancy on this role (non-linked shows)
+                      role_open_vacancies = open_vacancies_by_role[role.id] || []
+                      has_open_vacancy = role_open_vacancies.any? && !is_linked
+                      vacancy = role_open_vacancies.first
+                      vacated_by = vacancy&.vacated_by
+                      tooltip_text = if has_open_vacancy && vacated_by
+                        "#{role.name} - #{vacated_by.name} can't make it"
+                      elsif has_open_vacancy
+                        "#{role.name} - Looking for replacement"
+                      else
+                        "#{role.name} - Not Cast"
+                      end
+                    %>
                     <%= link_to manage_production_show_cast_path(@production, @show), class: "block" do %>
-                      <div class="w-10 h-10 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 text-xs hover:border-pink-400 hover:bg-pink-50 transition-all"
+                      <div class="w-10 h-10 rounded-md border-2 border-dashed <%= has_open_vacancy ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-gray-50' %> flex items-center justify-center <%= has_open_vacancy ? 'text-amber-500' : 'text-gray-400' %> text-xs hover:border-pink-400 hover:bg-pink-50 transition-all"
                            data-controller="tooltip"
-                           data-tooltip-text="<%= "#{role.name} - Not Cast" %>">
-                        +
+                           data-tooltip-text="<%= tooltip_text %>">
+                        <% if has_open_vacancy %>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                          </svg>
+                        <% else %>
+                          +
+                        <% end %>
                       </div>
                     <% end %>
                   <% end %>
                 <% end %>
               </div>
+
+              <%# Show "Can't make it" warning for linked shows %>
+              <% if is_linked %>
+                <%
+                  cant_make_it_list = []
+                  @roles.each do |role|
+                    assignment = @show.show_person_role_assignments.find { |a| a.role_id == role.id }
+                    if assignment
+                      assignable = if assignment.assignable_type == "Person"
+                        @people_by_id[assignment.assignable_id] || assignment.assignable
+                      else
+                        @groups_by_id[assignment.assignable_id] || assignment.assignable
+                      end
+                      vacancy = cancelled_vacancies[[role.id, assignable.class.name, assignable.id]]
+                      if vacancy
+                        cant_make_it_list << { name: assignable.name, role: role.name, vacancy: vacancy }
+                      end
+                    end
+                  end
+                %>
+                <% if cant_make_it_list.any? %>
+                  <div class="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+                    <div class="flex items-center gap-1.5 text-amber-700">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                      </svg>
+                      <span class="text-sm font-medium">Can't make it:</span>
+                      <span class="text-sm">
+                        <%= cant_make_it_list.map { |item| "#{item[:name]} (#{item[:role]})" }.join(", ") %>
+                      </span>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+
+              <%# Show "Needs replacement" warning for non-linked shows %>
+              <% if !is_linked %>
+                <%
+                  needs_replacement_list = []
+                  open_vacancies_by_role.each do |role_id, vacancies|
+                    role = @roles.find { |r| r.id == role_id }
+                    next unless role
+                    vacancy = vacancies.first
+                    vacated_by = vacancy&.vacated_by
+                    needs_replacement_list << { name: vacated_by&.name || "Someone", role: role.name }
+                  end
+                %>
+                <% if needs_replacement_list.any? %>
+                  <div class="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+                    <div class="flex items-center gap-1.5 text-amber-700">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                      </svg>
+                      <span class="text-sm font-medium">Needs replacement:</span>
+                      <span class="text-sm">
+                        <%= needs_replacement_list.map { |item| "#{item[:name]} can't make it (#{item[:role]})" }.join(", ") %>
+                      </span>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
             <% else %>
               <p class="text-xs text-gray-400 italic">No roles defined yet</p>
             <% end %>
