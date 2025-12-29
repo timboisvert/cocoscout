@@ -287,7 +287,7 @@ class Show < ApplicationRecord
 
       next unless is_affected && vacancy.vacated_by.present?
 
-      key = [vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id]
+      key = [ vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id ]
       result[key] = vacancy
     end
     result

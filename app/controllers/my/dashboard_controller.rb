@@ -82,7 +82,7 @@ module My
       # For linked shows, the person stays on the cast - they aren't removed.
       # We just need to check if this show is in the vacancy's affected_shows.
       upcoming_show_ids = @upcoming_show_rows.map { |row| row[:show].id }
-      
+
       @my_vacancies_by_show = {}
       RoleVacancy
         .where(vacated_by_type: "Person", vacated_by_id: people_ids)
