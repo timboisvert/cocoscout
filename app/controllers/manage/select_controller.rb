@@ -47,6 +47,24 @@ module Manage
         return
       end
 
+      # First check how many productions user has access to (simple count query)
+      production_count = Current.user.accessible_productions
+        .where(organization: Current.organization)
+        .count
+
+      # If user has exactly one production, auto-select it without loading full data
+      if production_count == 1
+        production = Current.user.accessible_productions
+          .where(organization: Current.organization)
+          .first
+        session[:current_production_id_for_organization] ||= {}
+        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] =
+          production.id
+        redirect_to manage_path
+        return
+      end
+
+      # Load productions with counts for display
       @productions = Current.user.accessible_productions
         .where(organization: Current.organization)
         .left_joins(:shows, :talent_pools)
@@ -57,16 +75,6 @@ module Manage
         )
         .group("productions.id, talent_pools.id")
         .order(:name)
-
-      # If user has exactly one production, auto-select it
-      if @productions.count == 1
-        production = @productions.first
-        session[:current_production_id_for_organization] ||= {}
-        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] =
-          production.id
-        redirect_to manage_path
-        return
-      end
 
       @production = Production.new
     end
