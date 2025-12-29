@@ -12,6 +12,7 @@ module My
       # Get all active profiles and their IDs
       @people = Current.user.people.active.order(:created_at).to_a
       @all_profiles = @people # alias for backward compatibility with view
+      @person = Current.user.person # primary person for vacancy links
       people_ids = @people.map(&:id)
       people_by_id = @people.index_by(&:id)
 

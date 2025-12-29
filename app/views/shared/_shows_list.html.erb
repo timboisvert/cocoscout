@@ -41,6 +41,9 @@
       end
 
       row_link_path = link_path_helper ? link_path_helper.call(show) : nil
+
+      # Only show "Can't make it" if the user has assignments for this show
+      row_show_cant_make_it = show_cant_make_it && row[:assignments].any?
     %>
     <%= render partial: "shared/show_row", locals: {
       show: show,
@@ -52,7 +55,7 @@
       entity_assignments: entity_assignments,
       has_groups: has_groups,
       right_panel: entity_assignments.any? ? :cast_assignment : nil,
-      show_cant_make_it: show_cant_make_it,
+      show_cant_make_it: row_show_cant_make_it,
       cant_make_it_person: cant_make_it_person
     } %>
   <% end %>
