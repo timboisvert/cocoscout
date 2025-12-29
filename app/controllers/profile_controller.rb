@@ -6,6 +6,9 @@ class ProfileController < ApplicationController
   before_action :hide_sidebar_on_welcome, only: [ :welcome ]
 
   def index
+    # If @person is nil, set_person already issued a redirect
+    return if @person.nil?
+
     # Redirect to welcome screen if this is their first time
     return unless @person.profile_welcomed_at.nil?
 
@@ -254,6 +257,11 @@ class ProfileController < ApplicationController
       end
     else
       @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.person_id)
+      unless @person
+        # User doesn't have a profile yet - redirect to create one or show appropriate error
+        redirect_to root_path, alert: "No profile found. Please contact support."
+        nil
+      end
     end
   end
 
