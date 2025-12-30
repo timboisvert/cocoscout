@@ -112,39 +112,84 @@
     </div>
     <div class="p-4">
       <% if @open_audition_request_entities.any? %>
-        <div class="space-y-1">
+        <div class="grid grid-cols-1 gap-1">
           <% @open_audition_request_entities.each do |item| %>
             <% audition_request = item[:audition_request] %>
             <% entity = item[:entity] %>
-            <% production = audition_request.audition_cycle.production %>
-            <div class="flex items-start p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">
-              <%= link_to my_audition_requests_path(requests_filter: :open), class: "flex-1 min-w-0 no-underline" do %>
-                <div <% if audition_request.audition_cycle.closes_at.present? %>data-controller="countdown" data-countdown-until-value="<%= audition_request.audition_cycle.closes_at.utc.iso8601 %>"<% end %>>
-                  <p class="font-bold text-sm"><%= production.name %></p>
-                  <div class="text-xs text-gray-600 mt-1">
-                    <% if audition_request.audition_cycle.audition_type == "in_person" %>
-                      Audition Sign-ups
-                    <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
-                      Video Auditions
+            <% cycle = audition_request.audition_cycle %>
+            <% production = cycle.production %>
+            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-start">
+              <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 w-full">
+                <div class="col-span-1 sm:col-span-3 items-center">
+                  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <% logo_variant = production.safe_logo_variant(:small) %>
+                    <% if logo_variant %>
+                      <div class="w-full sm:w-auto sm:flex-shrink-0">
+                        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
+                      </div>
                     <% end %>
-                    <% if audition_request.audition_cycle.closes_at.present? %>
-                      close
-                      <% if audition_request.audition_cycle.closes_at > 1.day.from_now %>
-                        on <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%A, %b %d, %Y') %></span> at <span class="text-pink-500"><%= audition_request.audition_cycle.closes_at.strftime('%l:%M %p') %></span>
+                    <div class="w-full sm:w-auto text-left">
+                      <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
+                      <% if cycle.closes_at.present? && cycle.closes_at > 1.day.from_now %>
+                        <div class="text-xs text-gray-500 mt-1">
+                          <% if cycle.video_only? %>
+                            Video auditions
+                          <% else %>
+                            Sign-ups
+                          <% end %>
+                          close on <%= cycle.closes_at.strftime('%b %d, %Y') %> at <%= cycle.closes_at.strftime('%l:%M %p') %>
+                        </div>
+                      <% elsif cycle.closes_at.present? %>
+                        <div class="text-xs <%= cycle.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= cycle.closes_at.utc.iso8601 %>">
+                          <% if cycle.video_only? %>
+                            Video auditions
+                          <% else %>
+                            Sign-ups
+                          <% end %>
+                          close in <span data-countdown-target="clock" class="text-pink-500"></span>
+                        </div>
                       <% else %>
-                        in <span data-countdown-target="clock" class="text-pink-500"></span>
+                        <div class="text-xs text-gray-500 mt-1">(open-ended)</div>
                       <% end %>
+                      <%
+                        edit_url = if @groups.any?
+                          my_submit_audition_request_form_path(
+                            cycle.token,
+                            requestable_type: audition_request.requestable_type,
+                            requestable_id: audition_request.requestable_id
+                          )
+                        else
+                          my_submit_audition_request_form_path(cycle.token)
+                        end
+                      %>
+                      <%= link_to "Edit my Sign-up", edit_url, class: "text-xs text-pink-500 underline", target: "_blank" %>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-span-1 sm:col-span-2 mt-2 sm:mt-0 flex flex-col justify-center items-start">
+                  <div class="text-lg">
+                    <% if cycle.video_only? %>
+                      <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Video Submitted</div>
                     <% else %>
-                      <span class="text-gray-500">(open-ended)</span>
+                      <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Signed Up</div>
+                    <% end %>
+                  </div>
+                  <div class="text-sm text-gray-500 mt-1">
+                    <% if cycle.video_only? %>
+                      Your video audition has been submitted. You can still edit it until the window closes.
+                    <% else %>
+                      Your sign-up has been submitted. You can still edit it until the window closes.
                     <% end %>
                   </div>
                 </div>
-              <% end %>
+              </div>
               <% if @groups.any? %>
-                <% headshot = entity.safe_headshot_variant(:thumb) %>
-                <% if headshot %>
-                  <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover", alt: entity.name %>
-                <% end %>
+                <div class="flex flex-col gap-2 ml-2">
+                  <% headshot = entity.safe_headshot_variant(:thumb) %>
+                  <% if headshot %>
+                    <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover", alt: entity.name %>
+                  <% end %>
+                </div>
               <% end %>
             </div>
           <% end %>

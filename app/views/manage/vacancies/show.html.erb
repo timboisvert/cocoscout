@@ -4,6 +4,8 @@
   # Determine current step
   if @vacancy.filled?
     current_step = :filled
+  elsif @vacancy.not_filling?
+    current_step = :not_filling
   elsif @vacancy.cancelled?
     current_step = :cancelled
   elsif @invitations.any?
@@ -160,7 +162,49 @@
     </div>
   </div>
 
-  <% if @vacancy.open? %>
+  <!-- Other Cast Members -->
+  <% if @other_cast_assignments.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-900 coustard-regular flex items-center gap-2">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Other Cast Members
+        </h3>
+      </div>
+      <div class="p-4">
+        <div class="flex flex-wrap gap-3">
+          <% @other_cast_assignments.each do |assignment| %>
+            <% assignable = assignment.assignable %>
+            <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
+              <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-8 h-8 rounded-lg <%= assignable.is_a?(Person) ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-600' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  <% if assignable.is_a?(Person) %>
+                    <%= assignable.initials %>
+                  <% else %>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-7 8c0-2.66 5.33-4 8-4s8 1.34 8 4v2H5v-2z"/>
+                    </svg>
+                  <% end %>
+                </div>
+              <% end %>
+              <div class="text-sm">
+                <span class="font-medium text-gray-900"><%= assignable.name %></span>
+                <span class="text-gray-400 mx-1">as</span>
+                <span class="text-pink-500 font-medium"><%= assignment.role.name %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @vacancy.active? %>
     <% is_linked = show.linked? %>
     <% has_invitations = @invitations.any? %>
 
@@ -475,10 +519,14 @@
                 is_linked = all_shows_list.size > 1
                 if is_linked
                   subject_text = "[#{@production.name}] Replacement needed for #{all_shows_list.size} linked shows"
-                  shows_text = all_shows_list.map { |s| s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip }.join("\n")
+                  shows_text = all_shows_list.map do |s|
+                    event_name = s.secondary_name.presence || s.event_type.titleize
+                    "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{event_name}"
+                  end.join("\n")
                 else
-                  subject_text = "[#{@production.name}] Replacement needed for #{@vacancy.show.date_and_time.strftime('%b %-d')} show"
-                  shows_text = @vacancy.show.date_and_time.strftime("%A, %B %d at %l:%M %p")
+                  event_name = @vacancy.show.secondary_name.presence || @vacancy.show.event_type.titleize
+                  subject_text = "[#{@production.name}] Replacement needed for #{@vacancy.show.date_and_time.strftime('%b %-d')} #{event_name}"
+                  shows_text = "#{@vacancy.show.date_and_time.strftime("%A, %B %d at %l:%M %p")} - #{event_name}"
                 end
               %>
               <input type="text"
@@ -592,6 +640,17 @@ Thank you,
       </div>
     </div>
 
+  <% elsif @vacancy.not_filling? %>
+    <!-- Not Filling Box -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+      <div class="bg-gray-100 px-4 py-3 border-b border-gray-200">
+        <h3 class="text-md font-semibold text-gray-700 coustard-regular">Vacancy Closed</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-sm text-gray-500">This vacancy was closed without finding a replacement.</p>
+      </div>
+    </div>
+
   <% elsif @vacancy.cancelled? %>
     <!-- Cancelled Box -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
@@ -599,7 +658,7 @@ Thank you,
         <h3 class="text-md font-semibold text-gray-700 coustard-regular">Vacancy Cancelled</h3>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500">This vacancy was cancelled and is no longer active.</p>
+        <p class="text-sm text-gray-500">This vacancy was cancelled because the event was cancelled.</p>
       </div>
     </div>
   <% end %>

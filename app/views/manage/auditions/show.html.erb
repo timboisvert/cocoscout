@@ -83,7 +83,7 @@
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
       <% idx += 1 %>
-      <% if @audition.audition_request&.audition_cycle&.audition_type == "video_upload" %>
+      <% if @audition.audition_request&.audition_cycle&.accepts_video_submissions? %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Video</button>
         <% idx += 1 %>
       <% end %>
@@ -129,7 +129,7 @@
     </div>
 
     <%# Video Tab %>
-    <% if @audition.audition_request&.audition_cycle&.audition_type == "video_upload" %>
+    <% if @audition.audition_request&.audition_cycle&.accepts_video_submissions? %>
       <div data-tabs-target="panel" class="hidden">
         <% if @audition.audition_request&.video_url.present? %>
           <div class="mt-2">
@@ -148,9 +148,9 @@
       <% elsif @audition.audition_request.present? %>
         <% audition_request = @audition.audition_request %>
         <% audition_cycle = audition_request.audition_cycle %>
-        <% shows = audition_cycle.production.shows %>
+        <% shows = audition_cycle.production.shows.where("date_and_time >= ?", Time.current).order(:date_and_time) %>
         <% show_availabilities = auditionable.is_a?(Person) ? auditionable.show_availabilities.where(show_id: shows.pluck(:id)).index_by(&:show_id) : {} %>
-        <% audition_sessions = audition_cycle.audition_sessions %>
+        <% audition_sessions = audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at) %>
         <%
           audition_availability = {}
           AuditionSessionAvailability.where(available_entity: auditionable, audition_session_id: audition_sessions.pluck(:id)).each do |session_availability|

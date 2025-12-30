@@ -1,0 +1,42 @@
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 1, step_name: "Audition Format" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How will people audition?</h2>
+  <p class="text-gray-600 mb-6">Choose how you'd like to collect auditions. You can enable both options.</p>
+
+  <%= form_with url: manage_audition_wizard_production_save_format_path(@production), method: :post, local: true do |form| %>
+    <div class="space-y-4">
+      <!-- Scheduled Sessions Toggle -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex-1 mr-4">
+          <p class="font-medium text-gray-900">Scheduled Sessions</p>
+          <p class="text-sm text-gray-500 mt-1">Schedule audition time slots (in-person or virtual) that people can sign up for</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="hidden" name="allow_in_person_auditions" value="0">
+          <input type="checkbox" name="allow_in_person_auditions" value="1"
+                 <%= "checked" if @wizard_state[:allow_in_person_auditions] %>
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <!-- Video Submissions Toggle -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex-1 mr-4">
+          <p class="font-medium text-gray-900">Video Submissions</p>
+          <p class="text-sm text-gray-500 mt-1">Allow people to submit a video as part of their audition</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="hidden" name="allow_video_submissions" value="0">
+          <input type="checkbox" name="allow_video_submissions" value="1"
+                 <%= "checked" if @wizard_state[:allow_video_submissions] %>
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -13,9 +13,35 @@
 
   <%= form_with(model: [:manage, @production, @audition_cycle], class: "contents") do |form| %>
     <div class="mt-5 mb-7">
-      <%= form.label :audition_type, "Audition Type:" %>
-      <p class="text-sm text-gray-500">Choosing "In-Person" auditions will enable people to sign up for an audition, while "Video Upload" auditions will allow them to submit a video during the sign-up process.</p>
-      <%= form.select :audition_type, [["In-person", "in_person"], ["Video Upload", "video_upload"]], {}, class: "block shadow-sm rounded-lg border px-3 py-2 mt-2 w-64 border-gray-400" %>
+      <p class="text-sm text-gray-500 mb-4">Choose which audition formats to accept. You can enable both options to allow performers to submit videos and also attend in-person auditions.</p>
+
+      <!-- Video Submissions Toggle -->
+      <div class="flex items-center justify-between py-3 border-b border-gray-100">
+        <div>
+          <h4 class="font-medium text-gray-900">Video Submissions</h4>
+          <p class="text-sm text-gray-500">Allow performers to submit video auditions</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <%= form.check_box :allow_video_submissions,
+              class: "sr-only peer",
+              checked: @audition_cycle.allow_video_submissions %>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <!-- In-Person Auditions Toggle -->
+      <div class="flex items-center justify-between py-3">
+        <div>
+          <h4 class="font-medium text-gray-900">In-Person Auditions</h4>
+          <p class="text-sm text-gray-500">Schedule and manage in-person audition sessions</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <%= form.check_box :allow_in_person_auditions,
+              class: "sr-only peer",
+              checked: @audition_cycle.allow_in_person_auditions.nil? ? true : @audition_cycle.allow_in_person_auditions %>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
     </div>
 
     <%= render partial: "shared/top_menu", locals: {

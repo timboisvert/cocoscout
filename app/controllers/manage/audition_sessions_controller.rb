@@ -44,7 +44,6 @@ module Manage
         original = AuditionSession.find_by(id: params[:duplicate], production: @production)
         if original.present?
           @audition_session.start_at = original.start_at
-          @audition_session.maximum_auditionees = original.maximum_auditionees
         end
       end
 
@@ -118,7 +117,7 @@ module Manage
     end
 
     def audition_session_params
-      params.expect(audition_session: %i[start_at end_at maximum_auditionees location_id])
+      params.expect(audition_session: %i[start_at end_at location_id])
     end
   end
 end

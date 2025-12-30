@@ -38,11 +38,10 @@
         <div class="p-3 bg-gray-50 rounded-lg">
           <p class="text-xs text-gray-600 font-medium">Audition Type</p>
           <p class="text-sm font-semibold text-gray-900 mt-1">
-            <% if @audition_cycle.audition_type == "in_person" %>
-              In-person Auditions
-            <% elsif @audition_cycle.audition_type == "video_upload" %>
-              Video Upload Auditions
-            <% end %>
+            <% formats = [] %>
+            <% formats << "Video Submissions" if @audition_cycle.accepts_video_submissions? %>
+            <% formats << "In-Person Auditions" if @audition_cycle.accepts_in_person_auditions? %>
+            <%= formats.join(" + ") %>
           </p>
         </div>
         <div class="p-3 bg-gray-50 rounded-lg">
@@ -60,9 +59,9 @@
     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
 
-        <% if @audition_cycle.audition_type == "in_person" %>
+        <% if @audition_cycle.accepts_in_person_auditions? %>
           Sign-ups Received
-        <% elsif @audition_cycle.audition_type == "video_upload" %>
+        <% else %>
           Video Auditions Received
         <% end %>
         <span class="ml-2 text-sm font-normal text-gray-600">(<%= @audition_requests.count %>)</span>
@@ -126,7 +125,7 @@
   </div>
 
   <!-- People Offered Auditions -->
-  <% if @audition_cycle.audition_type != "video_upload" %>
+  <% if @audition_cycle.accepts_in_person_auditions? %>
     <%
       # Build a lookup of person_id => audition for linking to audition pages
       auditions_by_person = {}

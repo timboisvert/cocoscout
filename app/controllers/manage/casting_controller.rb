@@ -814,11 +814,19 @@ module Manage
       result = {}
       show_ids = linked_shows.map(&:id)
 
+      # Build a lookup for show dates
+      show_dates = linked_shows.index_by(&:id)
+
       # Load all availability records for linked shows
       ShowAvailability.where(show_id: show_ids).each do |avail|
         key = "#{avail.available_entity_type}_#{avail.available_entity_id}"
         result[key] ||= { total: linked_shows.count, available: 0, shows: [] }
-        result[key][:shows] << { show_id: avail.show_id, available: avail.available? }
+        show = show_dates[avail.show_id]
+        result[key][:shows] << {
+          show_id: avail.show_id,
+          available: avail.available?,
+          date_and_time: show&.date_and_time
+        }
         result[key][:available] += 1 if avail.available?
       end
 

@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Connects to data-controller="date-field-toggle"
 export default class extends Controller {
   static targets = ["field", "link", "hiddenField"]
+  static values = { default: { type: String, default: "hide" } } // "hide" = open-ended by default, "show" = has date by default
 
   connect() {
     // The visible field gets the value from Rails form helper, so use that as source of truth
@@ -16,8 +17,14 @@ export default class extends Controller {
       this.savedValue = ""
     }
 
-    // Determine initial state based on field value
-    this.isOpenEnded = !initialValue || initialValue.trim() === ""
+    // Determine initial state based on default value or field value
+    if (this.defaultValue === "show") {
+      // Default to showing the date field (not open-ended)
+      this.isOpenEnded = false
+    } else {
+      // Default to checking if field has a value
+      this.isOpenEnded = !initialValue || initialValue.trim() === ""
+    }
     this.updateFieldState()
 
     // Add event listener to sync visible field changes to hidden field

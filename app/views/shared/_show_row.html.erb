@@ -48,14 +48,14 @@
   can_show_vacancy = show_cant_make_it && cant_make_it_person.present? && !is_canceled && show.date_and_time > Time.current && my_vacancies.empty?
   has_right_panel = right_panel.present?
 
-  # Check if user has notified they can't make it (only for linked events)
-  # For linked shows, person stays on cast but vacancy indicates:
-  # - Open vacancy = replacement is being sought
-  # - Cancelled vacancy = no replacement will be sought
+  # Check if user has notified they can't make it
+  # For linked shows, person stays on cast but vacancy indicates replacement is being sought
+  # For non-linked shows, person was removed from cast but we show them as having a vacancy
+  # Cancelled vacancies are excluded from the query (user reclaimed their spot)
   is_linked_event = show.linked?
   my_open_vacancies = my_vacancies.select(&:open?)
-  my_cancelled_vacancies = my_vacancies.select(&:cancelled?)
-  show_vacancy_indicator = is_linked_event && (my_open_vacancies.any? || my_cancelled_vacancies.any?)
+  show_vacancy_indicator = my_open_vacancies.any?
+  is_vacancy_only = !is_linked_event && my_open_vacancies.any? && entity_assignments.empty?
 %>
 
 <%# Build data attributes for availability rows %>
@@ -138,6 +138,9 @@
       </div>
       <div class="text-sm text-gray-600">
         <%= show.date_and_time.strftime("%l:%M %p") %>
+        <% if show.call_time_enabled? && show.call_time.present? %>
+          · Call <%= show.call_time.strftime("%l:%M %p") %>
+        <% end %>
         <% if show_location %>
           <% if show.is_online %>
             · Online
@@ -179,11 +182,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
                 <span class="text-xs text-amber-600 font-medium">
-                  <% if my_open_vacancies.any? %>
-                    You've indicated that you can't make it and a replacement is being sought
-                  <% else %>
-                    You've indicated that you can't make it
-                  <% end %>
+                  You've indicated that you can't make it
                 </span>
               </div>
             <% end %>
@@ -218,14 +217,23 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
             <span class="text-xs text-amber-600 font-medium">
-              <% if my_open_vacancies.any? %>
-                You've indicated that you can't make it and a replacement is being sought
-              <% else %>
-                You've indicated that you can't make it
-              <% end %>
+              You've indicated that you can't make it
             </span>
           </div>
         <% end %>
+      </div>
+    </div>
+
+  <% elsif is_vacancy_only %>
+    <%# Right Section: Vacancy only (no assignment, user was removed from cast) %>
+    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+      <div class="flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-amber-600">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <span class="text-xs text-amber-600 font-medium">
+          You've indicated you can't make it
+        </span>
       </div>
     </div>
 

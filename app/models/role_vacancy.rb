@@ -10,8 +10,17 @@ class RoleVacancy < ApplicationRecord
   has_many :role_vacancy_shows, dependent: :destroy
   has_many :affected_shows, through: :role_vacancy_shows, source: :show
 
-  enum :status, { open: "open", filled: "filled", cancelled: "cancelled" }
+  enum :status, {
+    open: "open",
+    finding_replacement: "finding_replacement",
+    not_filling: "not_filling",
+    filled: "filled",
+    cancelled: "cancelled"
+  }
 
+  # Scopes for active (still in progress) vs closed vacancies
+  scope :active, -> { where(status: %w[open finding_replacement]) }
+  scope :closed, -> { where(status: %w[not_filling filled cancelled]) }
   scope :for_show, ->(show) { where(show: show) }
   scope :for_role, ->(role) { where(role: role) }
 
@@ -77,8 +86,59 @@ class RoleVacancy < ApplicationRecord
     )
   end
 
+  def mark_not_filling!(by: nil)
+    update!(
+      status: :not_filling,
+      closed_at: Time.current,
+      closed_by: by
+    )
+  end
+
+  def mark_finding_replacement!
+    update!(status: :finding_replacement) if open?
+  end
+
+  # Reclaim the vacancy - person who created it can now make it after all
+  def reclaim!(by: nil)
+    return false unless active?
+
+    transaction do
+      # For linked shows, the assignment was kept throughout - nothing to restore
+      # For non-linked shows, the assignment was removed and needs to be recreated
+      unless show.linked?
+        # Restore the assignment if it was a Person or Group
+        if vacated_by.present?
+          show.show_person_role_assignments.find_or_create_by!(
+            role: role,
+            assignable: vacated_by
+          )
+        end
+      end
+
+      # Note: For linked shows (affected_shows), we do NOT create assignments here
+      # because the person was never removed from the cast. Each show has its own
+      # role records, so we can't use this vacancy's role_id on other shows anyway.
+
+      # Cancel the vacancy
+      update!(
+        status: :cancelled,
+        closed_at: Time.current,
+        closed_by: by
+      )
+    end
+
+    # Notify team that the vacancy was reclaimed
+    VacancyNotificationJob.perform_later(id, "reclaimed")
+    true
+  end
+
   def can_invite?(person)
-    open? && !invitations.exists?(person: person)
+    active? && !invitations.exists?(person: person)
+  end
+
+  # Check if vacancy is still active (in progress)
+  def active?
+    open? || finding_replacement?
   end
 
   def pending_invitations

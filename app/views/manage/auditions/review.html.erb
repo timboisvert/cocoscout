@@ -10,8 +10,8 @@
     links: []
   } %>
 
-  <% # Hide lifecycle panel for non-managers on video_upload since there's only one step %>
-  <% unless !current_user_can_manage?(@production) && @audition_cycle&.audition_type == "video_upload" %>
+  <% # Hide lifecycle panel for non-managers on video-only since there's only one step %>
+  <% unless !current_user_can_manage?(@production) && @audition_cycle&.video_only? %>
     <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
   <% end %>
 
@@ -25,9 +25,9 @@
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-          <% if @audition_cycle.audition_type == "video_upload" %>
+          <% if @audition_cycle.video_only? %>
             Video Auditions
-          <% elsif @audition_cycle.audition_type == "in_person" %>
+          <% else %>
             Sign-ups
           <% end %>
         </h3>
@@ -42,7 +42,7 @@
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_requests] %></p>
               <p class="text-xs text-center text-gray-500">
-                <% if @audition_cycle.audition_type == "video_upload" %>
+                <% if @audition_cycle.video_only? %>
                   Total Video Auditions
                 <% else %>
                   Total Sign-ups
@@ -65,7 +65,7 @@
         </div>
 
         <%
-          button_text = @audition_cycle.audition_type == "video_upload" ? "View all Video Auditions" : "View all Sign-ups"
+          button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Sign-ups"
         %>
         <div class="flex items-center justify-between">
           <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
@@ -109,7 +109,7 @@
       </div>
     </div>
 
-    <% if @audition_cycle.audition_type == "in_person" && current_user_has_role?(@production) %>
+    <% if @audition_cycle.accepts_in_person_auditions? && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule Auditions</h3>
@@ -135,7 +135,7 @@
     </div>
     <% end %>
 
-    <% if @audition_cycle.audition_type == "in_person" && current_user_has_role?(@production) %>
+    <% if @audition_cycle.accepts_in_person_auditions? && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
       <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>
@@ -346,7 +346,7 @@
 
 Congratulations! You've been invited to audition for <%= @production.name %>.
 
-<% if @audition_cycle.audition_type == "video_upload" %>Your audition materials have been received and are under review. We'll notify you once decisions have been made.<% else %>Your audition is scheduled for [Date and Time] at [Location]. Please arrive 10 minutes early.
+<% if @audition_cycle.video_only? %>Your audition materials have been received and are under review. We'll notify you once decisions have been made.<% else %>Your audition is scheduled for [Date and Time] at [Location]. Please arrive 10 minutes early.
 
 You can view your full audition details on your Auditions page.<% end %>
 

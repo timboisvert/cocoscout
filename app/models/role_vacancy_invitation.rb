@@ -28,7 +28,7 @@ class RoleVacancyInvitation < ApplicationRecord
 
   def claim!
     return false if claimed?
-    return false unless role_vacancy.open?
+    return false unless role_vacancy.active?
 
     transaction do
       update!(claimed_at: Time.current)
@@ -47,12 +47,12 @@ class RoleVacancyInvitation < ApplicationRecord
   end
 
   def expired?
-    !role_vacancy.open?
+    !role_vacancy.active?
   end
 
   # Can still claim if declined but vacancy is still open
   def can_claim?
-    !claimed? && role_vacancy.open?
+    !claimed? && role_vacancy.active?
   end
 
   private

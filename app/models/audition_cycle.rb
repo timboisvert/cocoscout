@@ -29,10 +29,37 @@ class AuditionCycle < ApplicationRecord
   # Cache invalidation
   after_commit :invalidate_caches
 
+  # Keep the enum for now (for backward compatibility during transition)
+  # but also provide new boolean-based methods
   enum :audition_type, {
     in_person: "in_person",
     video_upload: "video_upload"
   }
+
+  # New boolean-based methods that should be used going forward
+  # These check the new columns, with fallback to the enum for existing records
+  def accepts_video_submissions?
+    allow_video_submissions
+  end
+
+  def accepts_in_person_auditions?
+    allow_in_person_auditions
+  end
+
+  def video_only?
+    allow_video_submissions && !allow_in_person_auditions
+  end
+
+  def in_person_only?
+    allow_in_person_auditions && !allow_video_submissions
+  end
+
+  def hybrid_auditions?
+    allow_video_submissions && allow_in_person_auditions
+  end
+
+  # Validation: at least one format must be enabled
+  validate :at_least_one_audition_format
 
   serialize :availability_show_ids, type: Array, coder: YAML
 
@@ -149,6 +176,12 @@ class AuditionCycle < ApplicationRecord
 
   def set_default_reviewer_access_type
     self.reviewer_access_type ||= "managers"
+  end
+
+  def at_least_one_audition_format
+    return if allow_video_submissions || allow_in_person_auditions
+
+    errors.add(:base, "You must enable at least one audition format (video submissions or in-person auditions)")
   end
 
   def invalidate_caches

@@ -227,7 +227,7 @@
               <%
                 # Determine status based on scheduling (in_person) or casting (video_upload)
                 cycle = request.audition_cycle
-                if cycle.audition_type == 'video_upload'
+                if cycle.video_only?
                   if request.cast_assignment_stages.any?
                     status_text = "Selected"
                     status_class = "bg-green-100 text-green-800"

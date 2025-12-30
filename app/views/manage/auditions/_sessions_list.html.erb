@@ -62,20 +62,10 @@
           </div>
         </div>
 
-        <%# Bottom Bar: Capacity Status %>
+        <%# Bottom Bar: Audition Count %>
         <div class="border-t border-gray-200 px-4 py-2 bg-gray-50">
-          <div class="text-xs <%= session.is_overbooked? ? 'text-red-600' : (session.is_full? ? 'text-pink-600' : 'text-gray-600') %>">
-            <% if session.maximum_auditionees %>
-              <% if session.auditions.count == session.maximum_auditionees %>
-                <%= pluralize(session.auditions.count, 'audition slot') %> filled. This session is full.
-              <% elsif session.is_overbooked? %>
-                <%= session.auditions.count %> out of <%= pluralize(session.maximum_auditionees, 'audition slot') %> filled. This session is overbooked.
-              <% else %>
-                <%= session.auditions.count %> out of <%= pluralize(session.maximum_auditionees, 'audition slot') %> filled.
-              <% end %>
-            <% else %>
-              <%= pluralize(session.auditions.count, 'audition slot') %> filled. This session has no slot limit.
-            <% end %>
+          <div class="text-xs text-gray-600">
+            <%= pluralize(session.auditions.count, 'audition') %> scheduled
           </div>
         </div>
       </div>

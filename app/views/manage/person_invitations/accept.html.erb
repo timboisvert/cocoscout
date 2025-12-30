@@ -12,66 +12,87 @@
       <div class="order-2 lg:order-1">
         <div class="lg:sticky lg:top-8">
           <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
-            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">You're invited!</h2>
             <% if @person_invitation.organization %>
-              <p class="text-slate-600 mb-6">
-                <span class="font-semibold text-pink-600"><%= @person_invitation.organization.name %></span> is using CocoScout to manage its productions, auditions, and casting.
-              </p>
+              <!-- Organization Logo/Avatar -->
+              <div class="flex justify-center mb-6">
+                <% if @person_invitation.organization.logo.attached? %>
+                  <%= image_tag @person_invitation.organization.logo, class: "w-24 h-24 rounded-xl object-cover border-2 border-pink-200 shadow-sm" %>
+                <% else %>
+                  <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl shadow-sm">
+                    <%= @person_invitation.organization.name.first.upcase %>
+                  </div>
+                <% end %>
+              </div>
+
+              <h2 class="text-2xl font-bold text-slate-900 text-center mb-2"><%= @person_invitation.organization.name %></h2>
+              <p class="text-slate-600 text-center mb-6">has invited you to join them on CocoScout</p>
+
+              <div class="border-t border-pink-200 pt-6 mb-6">
+                <div class="flex items-center gap-3 text-slate-600">
+                  <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-sm"><%= @person_invitation.email %></span>
+                </div>
+              </div>
+
+              <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p class="text-sm text-amber-800">
+                  By accepting, you'll join <strong><%= @person_invitation.organization.name %></strong> on CocoScout. They'll be able to add you to their productions and events.
+                </p>
+              </div>
             <% else %>
+              <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">You're invited!</h2>
               <p class="text-slate-600 mb-6">
                 You've been invited to join <span class="font-semibold text-pink-600">CocoScout</span>, the platform for managing productions, auditions, and casting.
               </p>
-            <% end %>
 
-            <!-- Invitation Details -->
-            <div class="bg-white border border-pink-200 rounded-lg p-4 mb-6">
-              <div class="flex items-center gap-3 mb-2">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-center gap-3 text-slate-600 mb-6">
+                <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <span class="text-sm text-slate-600">Invited as:</span>
-              </div>
-              <p class="text-lg font-semibold text-slate-900 ml-8"><%= @person_invitation.email %></p>
-            </div>
-
-            <!-- What You'll Get -->
-            <div class="space-y-4">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Track your schedule</h3>
-                  <p class="text-sm text-slate-600">View all your upcoming auditions, rehearsals, and performances</p>
-                </div>
+                <span class="text-sm"><%= @person_invitation.email %></span>
               </div>
 
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+              <!-- What You'll Get -->
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Track your schedule</h3>
+                    <p class="text-sm text-slate-600">View all your upcoming auditions, rehearsals, and performances</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Manage auditions</h3>
-                  <p class="text-sm text-slate-600">Submit audition materials and track your submissions</p>
-                </div>
-              </div>
 
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Manage auditions</h3>
+                    <p class="text-sm text-slate-600">Submit audition materials and track your submissions</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Stay connected</h3>
-                  <p class="text-sm text-slate-600">Communicate with cast members and production teams</p>
+
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Stay connected</h3>
+                    <p class="text-sm text-slate-600">Communicate with cast members and production teams</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -79,62 +100,87 @@
       <!-- Right Column: Form -->
       <div class="order-1 lg:order-2">
         <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
-          <h2 class="text-xl font-bold text-slate-900 mb-2">Create your account</h2>
-          <p class="text-sm text-slate-600 mb-6">Set a password to join CocoScout</p>
-
-          <%= form_with url: manage_do_accept_person_invitations_path(token: @person_invitation.token), method: :post, local: true do |form| %>
-            <div class="mb-6">
-              <label class="block text-sm font-semibold text-slate-700 mb-2">
-                Email address
-              </label>
-              <div class="block rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700">
-                <%= @person_invitation.email %>
-              </div>
-            </div>
-
-            <div class="mb-6" data-controller="password-visibility">
-              <% if @user&.errors&.[](:password)&.any? %>
-                <label class="block text-sm font-semibold text-pink-600 mb-2">
-                  Password must be at least 8 characters
-                </label>
-              <% else %>
-                <label class="block text-sm font-semibold text-slate-700 mb-2">
-                  Password
-                </label>
-              <% end %>
-              <div class="relative">
-                <%= form.password_field :password,
-                      required: true,
-                      autocomplete: "new-password",
-                      placeholder: "Enter your password",
-                      maxlength: 72,
-                      class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
-                      data: { password_visibility_target: "input" }
-                %>
-                <button type="button"
-                        data-action="password-visibility#toggle"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition">
-                  <span data-password-visibility-target="icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-            </div>
+          <% if @existing_user %>
+            <!-- Existing user - just show accept/decline -->
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Accept invitation?</h2>
+            <p class="text-sm text-slate-600 mb-6">You're signed in as <strong><%= @person_invitation.email %></strong></p>
 
             <div class="flex flex-col gap-3">
-              <%= render "shared/button", text: "Join CocoScout", variant: "primary", size: "jumbo", type: :submit %>
+              <%= button_to "Accept & Join #{@person_invitation.organization.name}", manage_do_accept_person_invitations_path(token: @person_invitation.token), method: :post, class: "w-full inline-flex items-center justify-center px-6 py-4 text-lg font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition cursor-pointer" %>
+            </div>
+
+            <div class="mt-4 text-center">
+              <%= button_to "Decline invitation", manage_decline_person_invitations_path(token: @person_invitation.token), method: :post, class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition", data: { turbo_confirm: "Are you sure you want to decline this invitation?" } %>
+            </div>
+          <% else %>
+            <!-- New user or not signed in - show password form -->
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Join CocoScout</h2>
+            <p class="text-sm text-slate-600 mb-6">Enter a password to accept this invitation</p>
+
+            <%= form_with url: manage_do_accept_person_invitations_path(token: @person_invitation.token), method: :post, local: true do |form| %>
+              <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                  Email address
+                </label>
+                <div class="block rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700">
+                  <%= @person_invitation.email %>
+                </div>
+              </div>
+
+              <div class="mb-6" data-controller="password-visibility">
+                <% if @user&.errors&.[](:password)&.any? %>
+                  <label class="block text-sm font-semibold text-pink-600 mb-2">
+                    Password must be at least 8 characters
+                  </label>
+                <% else %>
+                  <label class="block text-sm font-semibold text-slate-700 mb-2">
+                    Password
+                  </label>
+                <% end %>
+                <div class="relative">
+                  <%= form.password_field :password,
+                        required: true,
+                        autocomplete: "new-password",
+                        placeholder: "Enter your password",
+                        maxlength: 72,
+                        class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
+                        data: { password_visibility_target: "input" }
+                  %>
+                  <button type="button"
+                          data-action="password-visibility#toggle"
+                          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition">
+                    <span data-password-visibility-target="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <% if @person_invitation.organization %>
+                  <%= render "shared/button", text: "Accept & Join #{@person_invitation.organization.name}", variant: "primary", size: "jumbo", type: :submit %>
+                <% else %>
+                  <%= render "shared/button", text: "Join CocoScout", variant: "primary", size: "jumbo", type: :submit %>
+                <% end %>
+              </div>
+            <% end %>
+
+            <% if @person_invitation.organization %>
+              <div class="mt-4 text-center">
+                <%= button_to "Decline invitation", manage_decline_person_invitations_path(token: @person_invitation.token), method: :post, class: "text-sm text-pink-500 hover:text-pink-600 cursor-pointer transition", data: { turbo_confirm: "Are you sure you want to decline this invitation?" } %>
+              </div>
+            <% end %>
+
+            <div class="mt-6 pt-6 border-t border-slate-200">
+              <p class="text-sm text-slate-600 text-center">
+                Already have an account?
+                <%= link_to "Sign in", signin_path(redirect_to: manage_accept_person_invitations_path(token: @person_invitation.token)), class: "font-semibold text-pink-500 hover:text-pink-600 transition" %>
+              </p>
             </div>
           <% end %>
-
-          <div class="mt-6 pt-6 border-t border-slate-200">
-            <p class="text-sm text-slate-600 text-center">
-              Already have an account?
-              <%= link_to "Sign in", signin_path, class: "font-semibold text-pink-500 hover:text-pink-600 transition" %>
-            </p>
-          </div>
         </div>
       </div>
 

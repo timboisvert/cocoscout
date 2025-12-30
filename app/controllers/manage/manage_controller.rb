@@ -141,6 +141,10 @@ module Manage
       @show_manage_sidebar = true
     end
 
+    def show_manage_header_only
+      @show_manage_header_only = true
+    end
+
     def set_current_organization
       user_id = Current.user&.id
       if user_id && session[:current_organization_id].is_a?(Hash)

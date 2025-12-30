@@ -99,6 +99,9 @@ module Manage
       # Set default casting_enabled based on event_type from config
       @show.casting_enabled = EventTypes.casting_enabled_default(@show.event_type || "show")
 
+      # Set default call_time_enabled based on event_type from config
+      @show.call_time_enabled = EventTypes.call_time_enabled_default(@show.event_type || "show")
+
       # Set default location if available
       default_location = Current.organization.locations.find_by(default: true)
       @show.location = default_location if default_location
@@ -115,6 +118,8 @@ module Manage
       @show.location = @original_show.location
       @show.casting_enabled = @original_show.casting_enabled
       @show.use_custom_roles = @original_show.use_custom_roles
+      @show.call_time_enabled = @original_show.call_time_enabled
+      @show.call_time = @original_show.call_time
     end
 
     def edit; end
@@ -622,7 +627,7 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
-                                               :public_profile_visible, :use_custom_roles,
+                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled,
                                                show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info

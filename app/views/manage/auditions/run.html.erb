@@ -21,7 +21,7 @@
   <% else %>
     <% audition_cycle = @audition_cycle %>
 
-    <% if audition_cycle.audition_type == "in_person" %>
+    <% if audition_cycle.accepts_in_person_auditions? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
@@ -81,7 +81,8 @@
         <% end %>
         </div>
       </div>
-    <% elsif audition_cycle.audition_type == "video_upload" %>
+    <% end %>
+    <% if audition_cycle.video_only? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h3 class="text-md font-semibold text-gray-900 coustard-regular">Video Upload Auditions</h3>

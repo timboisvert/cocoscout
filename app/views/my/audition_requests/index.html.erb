@@ -71,19 +71,19 @@
                                         <% if cycle.closes_at.present? && cycle.closes_at > 1.day.from_now %>
                                             <div class="text-xs text-gray-500 mt-1">
 
-                                                <% if cycle.audition_type == "in_person" %>
-                                                    Sign-ups
-                                                <% elsif cycle.audition_type == "video_upload" %>
+                                                <% if cycle.video_only? %>
                                                     Video auditions
+                                                <% else %>
+                                                    Sign-ups
                                                 <% end %>
                                                 close on <%= cycle.closes_at.strftime('%b %d, %Y') %> at <%= cycle.closes_at.strftime('%l:%M %p') %>
                                             </div>
                                         <% elsif cycle.closes_at.present? %>
                                             <div class="text-xs <%= cycle.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= cycle.closes_at.utc.iso8601 %>">
-                                                <% if cycle.audition_type == "in_person" %>
-                                                    Sign-ups
-                                                <% elsif cycle.audition_type == "video_upload" %>
+                                                <% if cycle.video_only? %>
                                                     Video auditions
+                                                <% else %>
+                                                    Sign-ups
                                                 <% end %>
                                                 close in <span data-countdown-target="clock" class="text-pink-500"></span>
                                             </div>
@@ -115,21 +115,39 @@
                         </div>
 
                         <div class="col-span-1 sm:col-span-2 mt-2 sm:mt-0 flex flex-col justify-center items-start">
-                            <div class="text-lg">
-                                <% if audition_request.audition_cycle.audition_type == "in_person" %>
-                                    <%= in_person_signup_status_name(audition_request) %>
-                                 <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
-                                    <%= video_audition_status_name(audition_request) %>
+                            <% if cycle.editable_by_talent? %>
+                              <%# Window is still open - show appropriate status %>
+                              <div class="text-lg">
+                                <% if cycle.video_only? %>
+                                  <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Video Submitted</div>
+                                <% else %>
+                                  <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Signed Up</div>
                                 <% end %>
-                            </div>
-                            <div class="text-sm text-gray-500 mt-1">
-                                <% if audition_request.audition_cycle.audition_type == "in_person" %>
-                                    <%= in_person_signup_status_text(audition_request) %>
-                                 <% elsif audition_request.audition_cycle.audition_type == "video_upload" %>
-                                    <%= video_audition_status_text(audition_request) %>
+                              </div>
+                              <div class="text-sm text-gray-500 mt-1">
+                                <% if cycle.video_only? %>
+                                  Your video audition has been submitted. You can still edit it until the window closes.
+                                <% else %>
+                                  Your sign-up has been submitted. You can still edit it until the window closes.
                                 <% end %>
-
-                            </div>
+                              </div>
+                            <% else %>
+                              <%# Window is closed - show actual status %>
+                              <div class="text-lg">
+                                  <% if audition_request.audition_cycle.video_only? %>
+                                      <%= video_audition_status_name(audition_request) %>
+                                  <% else %>
+                                      <%= in_person_signup_status_name(audition_request) %>
+                                  <% end %>
+                              </div>
+                              <div class="text-sm text-gray-500 mt-1">
+                                  <% if audition_request.audition_cycle.video_only? %>
+                                      <%= video_audition_status_text(audition_request) %>
+                                  <% else %>
+                                      <%= in_person_signup_status_text(audition_request) %>
+                                  <% end %>
+                              </div>
+                            <% end %>
                         </div>
                     </div>
 

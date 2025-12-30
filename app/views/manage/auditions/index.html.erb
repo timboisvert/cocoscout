@@ -12,8 +12,16 @@
     <% if current_user_has_role?(@production) %>
     <!-- Active Call to Audition Info -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">Active Audition Cycle</h3>
+        <% if current_user_can_manage?(@production) %>
+          <%= link_to edit_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "text-gray-400 hover:text-gray-600", title: "Settings" do %>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          <% end %>
+        <% end %>
       </div>
       <div class="p-4">
         <%
@@ -39,38 +47,92 @@
           </div>
         <% end %>
 
-        <div class="space-y-1">
-          <%
-            if @active_audition_cycle.opens_at > Time.current
-              status_text = "Opening Soon"
-              status_color = "text-yellow-600"
-            elsif @active_audition_cycle.closes_at.present? && @active_audition_cycle.closes_at <= Time.current
-              status_text = "Closed"
-              status_color = "text-gray-500"
-            else
-              status_text = "Open"
-              status_color = "text-green-600"
-            end
-          %>
-          <div class="px-3 py-2 border border-gray-200 rounded-lg bg-white">
-            <div class="flex items-stretch">
-              <%# Left Half: Audition Type & Dates %>
-              <div class="w-1/2 flex flex-col justify-center">
-                <div class="font-medium text-gray-900">
-                  <%= @active_audition_cycle.audition_type == "in_person" ? "In-person Auditions" : "Video Upload Auditions" %>
-                </div>
-                <div class="text-sm text-gray-600">
-                  <%= @active_audition_cycle.opens_at.strftime("%b %-d") %><% if @active_audition_cycle.closes_at.present? %> - <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>
-                  · <span class="<%= status_color %>"><%= status_text %></span>
-                </div>
+        <%# Status and Configuration Summary %>
+        <%
+          if @active_audition_cycle.opens_at > Time.current
+            status_text = "Opens Soon"
+            status_class = "bg-pink-100 text-pink-700"
+          elsif @active_audition_cycle.closes_at.present? && @active_audition_cycle.closes_at <= Time.current
+            status_text = "Closed"
+            status_class = "bg-gray-100 text-gray-600"
+          else
+            status_text = "Open"
+            status_class = "bg-green-100 text-green-700"
+          end
+        %>
+
+        <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+          <%# Left: Status and Details %>
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="inline-flex items-center rounded px-2 py-1 text-xs font-semibold <%= status_class %>">
+                <%= status_text %>
+              </span>
+              <span class="text-sm text-gray-500">
+                <%= @active_audition_cycle.opens_at.strftime("%b %-d") %><% if @active_audition_cycle.closes_at.present? %> – <%= @active_audition_cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>
+              </span>
+            </div>
+
+            <div class="space-y-1.5 text-sm">
+              <%# Audition Format %>
+              <div class="flex items-center gap-2 text-gray-700">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>
+                  <% if @active_audition_cycle.hybrid_auditions? %>
+                    Video + In-Person Auditions
+                  <% elsif @active_audition_cycle.video_only? %>
+                    Video Submissions Only
+                  <% else %>
+                    In-Person Auditions
+                  <% end %>
+                </span>
               </div>
 
-              <%# Right Half: Sign-ups count %>
-              <div class="w-1/2 border-l border-gray-200 pl-4 flex flex-col justify-center">
-                <div class="text-xs font-semibold text-gray-700 mb-1">Sign-ups</div>
-                <div class="text-2xl font-bold text-pink-600"><%= @active_audition_cycle.audition_requests.count %></div>
+              <%# Sessions (if in-person) %>
+              <% if @active_audition_cycle.accepts_in_person_auditions? %>
+                <% session_count = @active_audition_cycle.audition_sessions.count %>
+                <div class="flex items-center gap-2 text-gray-700">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span><%= pluralize(session_count, "audition session") %> scheduled</span>
+                </div>
+              <% end %>
+
+              <%# Custom Questions %>
+              <% question_count = @active_audition_cycle.questions.count %>
+              <% if question_count > 0 %>
+                <div class="flex items-center gap-2 text-gray-700">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span><%= pluralize(question_count, "custom question") %></span>
+                </div>
+              <% end %>
+
+              <%# Form Review Status %>
+              <div class="flex items-center gap-2 <%= @active_audition_cycle.form_reviewed ? 'text-green-600' : 'text-amber-600' %>">
+                <% if @active_audition_cycle.form_reviewed %>
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  <span>Form reviewed</span>
+                <% else %>
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                  <span>Form needs review</span>
+                <% end %>
               </div>
             </div>
+          </div>
+
+          <%# Right: Sign-ups Count %>
+          <div class="sm:border-l sm:border-gray-200 sm:pl-4 flex flex-col items-center sm:items-start">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Sign-ups</div>
+            <div class="text-3xl font-bold text-pink-600"><%= @active_audition_cycle.audition_requests.count %></div>
           </div>
         </div>
       </div>
@@ -105,46 +167,29 @@
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Prepare</h4>
 
                     <p class="text-gray-600 text-sm mt-1">
-                      <% if @active_audition_cycle.audition_type == 'video_upload' %>
+                      <% if @active_audition_cycle.video_only? %>
                         Configure settings and customize audition form
-                      <% elsif @active_audition_cycle.audition_type == 'in_person' %>
+                      <% elsif @active_audition_cycle.accepts_in_person_auditions? %>
                         Configure settings, plan sessions, and customize sign-up form
                       <% end %>
                     </p>
 
-                    <% if @active_audition_cycle.audition_type == 'in_person' && @active_audition_cycle.audition_sessions.any? %>
+                    <% if @active_audition_cycle.accepts_in_person_auditions? && @active_audition_cycle.audition_sessions.any? %>
                       <% session_count = @active_audition_cycle.audition_sessions.count %>
                       <p class="text-xs text-green-600 font-medium mt-2">✓ <%= session_count %> audition <%= 'session'.pluralize(session_count) %> scheduled</p>
                     <% end %>
 
                     <% if @active_audition_cycle.form_reviewed %>
-                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= @active_audition_cycle.audition_type == 'video_upload' ? 'Audition form finalized' : 'Sign-up form finalized' %></p>
+                      <p class="text-xs text-green-600 font-medium mt-2">✓ <%= @active_audition_cycle.video_only? ? 'Audition form finalized' : 'Sign-up form finalized' %></p>
                     <% end %>
 
                   </div>
                 </div>
               </div>
             <% end %>
-
-            <!-- Step 2: Publicize -->
-            <%= link_to publicize_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
-              <div class="relative flex flex-col items-start text-left group">
-                <div class="flex items-start gap-6">
-                  <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
-                    <svg class="w-8 h-8 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                    </svg>
-                  </div>
-                  <div class="flex-1">
-                    <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Publicize</h4>
-                    <p class="text-gray-600 text-sm mt-1">Share sign-up link and collect applications</p>
-                  </div>
-                </div>
-              </div>
-            <% end %>
             <% end %>
 
-            <!-- Step 3: Review -->
+            <!-- Step 2: Review -->
             <%= link_to review_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
@@ -155,7 +200,7 @@
                   </div>
                   <div class="flex-1">
                     <h4 class="text-lg font-semibold text-gray-900 group-hover:text-pink-500 transition-colors">Review</h4>
-                    <p class="text-gray-600 text-sm mt-1"><%= @active_audition_cycle.audition_type == 'video_upload' ? 'Watch and evaluate auditions' : 'Accept or decline sign-ups and schedule auditions' %></p>
+                    <p class="text-gray-600 text-sm mt-1"><%= @active_audition_cycle.video_only? ? 'Watch and evaluate auditions' : 'Accept or decline sign-ups and schedule auditions' %></p>
                     <%
                       total_signups = @active_audition_cycle.audition_requests.count
                       # Count auditionables (people/groups) who are actually scheduled for auditions
@@ -176,8 +221,8 @@
               </div>
             <% end %>
 
-            <!-- Step 4: Run Auditions -->
-            <% if @active_audition_cycle.audition_type != "video_upload" %>
+            <!-- Step 3: Run Auditions -->
+            <% if @active_audition_cycle.accepts_in_person_auditions? %>
               <%= link_to run_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
                 <div class="relative flex flex-col items-start text-left group">
                   <div class="flex items-start gap-6">
@@ -202,7 +247,7 @@
             <% end %>
 
             <% if current_user_has_role?(@production) %>
-            <!-- Step 5: Casting -->
+            <!-- Step 4: Casting -->
             <%= link_to casting_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
@@ -252,173 +297,108 @@
       </div>
     </div>
   <% else %>
-    <%# Welcome/Onboarding state when no active audition cycle %>
-    <div class="bg-gradient-to-br from-pink-50 via-white to-slate-50 border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+    <%# Welcome state when no active audition cycle %>
+
+    <% if @wizard_in_progress %>
+      <%# Wizard in progress - show continue option %>
+      <div class="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-lg p-5 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-pink-900">Audition Setup In Progress</h3>
+              <p class="text-sm text-pink-700">You have an unfinished audition cycle setup.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_audition_wizard_production_format_path(@production), variant: "primary", size: "small", icon: "arrow-right" } %>
+            <%= link_to "Start Over", manage_audition_wizard_production_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 underline" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Main welcome card %>
+    <div class="bg-gradient-to-br from-pink-50 via-white to-slate-50 border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div class="p-6 sm:p-8">
         <%# Header %>
-        <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 mb-4">
-            <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-pink-100 mb-3">
+            <svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
             </svg>
           </div>
-          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 coustard-regular">Start Your Audition Process</h2>
-          <p class="text-slate-600 max-w-xl mx-auto">CocoScout makes it easy to manage auditions from start to finish. Here's how it works:</p>
-        </div>
-
-        <%# Simplified Timeline Preview - All 5 steps on one line %>
-        <div class="max-w-5xl mx-auto mb-8">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-center gap-4 sm:gap-3">
-            <%# Step 1: Prepare %>
-            <div class="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-1 flex-1">
-              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-              </div>
-              <div class="sm:mt-1">
-                <h4 class="text-sm font-semibold text-slate-900">Prepare</h4>
-                <p class="text-xs text-slate-500 hidden sm:block">Set dates & form</p>
-              </div>
-            </div>
-
-            <%# Arrow %>
-            <svg class="hidden sm:block w-5 h-5 text-gray-300 flex-shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-
-            <%# Step 2: Publicize %>
-            <div class="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-1 flex-1">
-              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
-                </svg>
-              </div>
-              <div class="sm:mt-1">
-                <h4 class="text-sm font-semibold text-slate-900">Publicize</h4>
-                <p class="text-xs text-slate-500 hidden sm:block">Share sign-up link</p>
-              </div>
-            </div>
-
-            <%# Arrow %>
-            <svg class="hidden sm:block w-5 h-5 text-gray-300 flex-shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-
-            <%# Step 3: Review %>
-            <div class="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-1 flex-1">
-              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                </svg>
-              </div>
-              <div class="sm:mt-1">
-                <h4 class="text-sm font-semibold text-slate-900">Review</h4>
-                <p class="text-xs text-slate-500 hidden sm:block">View submissions</p>
-              </div>
-            </div>
-
-            <%# Arrow %>
-            <svg class="hidden sm:block w-5 h-5 text-gray-300 flex-shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-
-            <%# Step 4: Run Auditions %>
-            <div class="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-1 flex-1">
-              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                </svg>
-              </div>
-              <div class="sm:mt-1">
-                <h4 class="text-sm font-semibold text-slate-900">Run Auditions</h4>
-                <p class="text-xs text-slate-500 hidden sm:block">Conduct sessions</p>
-              </div>
-            </div>
-
-            <%# Arrow %>
-            <svg class="hidden sm:block w-5 h-5 text-gray-300 flex-shrink-0 mt-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-
-            <%# Step 5: Cast %>
-            <div class="flex sm:flex-col items-center sm:text-center gap-3 sm:gap-1 flex-1">
-              <div class="flex-shrink-0 w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-              </div>
-              <div class="sm:mt-1">
-                <h4 class="text-sm font-semibold text-slate-900">Cast</h4>
-                <p class="text-xs text-slate-500 hidden sm:block">Send notifications</p>
-              </div>
-            </div>
-          </div>
+          <h2 class="text-2xl font-bold text-slate-900 coustard-regular">Ready to Hold Auditions?</h2>
+          <p class="text-slate-600 mt-2 max-w-lg mx-auto">Set up an audition cycle to start accepting and reviewing submissions for your production.</p>
         </div>
 
         <%# Features Grid %>
-        <div class="max-w-4xl mx-auto mb-8">
-          <h3 class="text-lg font-semibold text-slate-900 mb-4 text-center">What You Can Do</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-100 shadow-sm">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                  <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                  </svg>
-                </div>
-                <p class="text-sm text-slate-700">Create a custom audition sign-up form with your own questions</p>
-              </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-2xl mx-auto">
+          <div class="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
             </div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-100 shadow-sm">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                  <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <p class="text-sm text-slate-700">Accept video submissions or schedule in-person audition slots</p>
-              </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Custom sign-up forms</p>
+              <p class="text-xs text-slate-500">Add your own questions</p>
             </div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-100 shadow-sm">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                  <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <p class="text-sm text-slate-700">Review headshots, resumes, and track availability at a glance</p>
-              </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
             </div>
-            <div class="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-100 shadow-sm">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                  <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <p class="text-sm text-slate-700">Send casting notifications automatically when you're ready</p>
-              </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Video or in-person</p>
+              <p class="text-xs text-slate-500">Flexible audition formats</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Track availability</p>
+              <p class="text-xs text-slate-500">Know who can make your shows</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Cast notifications</p>
+              <p class="text-xs text-slate-500">Send results automatically</p>
             </div>
           </div>
         </div>
 
         <%# CTA Button %>
         <% if current_user_can_manage?(@production) %>
-          <div class="text-center">
-            <%= render "shared/button",
-              text: "Start New Audition Cycle",
-              variant: "primary",
-              size: "large",
-              icon: "plus",
-              type: :link,
-              path: new_manage_production_audition_cycle_path(@production) %>
-          </div>
+          <% unless @wizard_in_progress %>
+            <div class="text-center">
+              <%= render "shared/button",
+                text: "Start New Audition Cycle",
+                variant: "primary",
+                size: "large",
+                icon: "plus",
+                type: :link,
+                path: manage_audition_wizard_production_format_path(@production) %>
+            </div>
+          <% end %>
         <% else %>
-          <div class="text-center">
-            <p class="text-sm text-slate-500">Contact a production manager to start a new audition cycle.</p>
-          </div>
+          <p class="text-sm text-slate-500 text-center">Contact a production manager to start a new audition cycle.</p>
         <% end %>
       </div>
     </div>

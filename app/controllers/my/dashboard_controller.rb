@@ -76,25 +76,49 @@ module My
       @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
       # Load vacancies created by the user (they said they can't make it)
-      # Used to show "You've indicated you can't make it" indicator on linked events
-      # Group by affected_shows, not show_id (show_id is just where vacancy was initiated from)
-      #
-      # For linked shows, the person stays on the cast - they aren't removed.
-      # We just need to check if this show is in the vacancy's affected_shows.
+      # Used to show "You've indicated you can't make it" indicator
+      # For non-linked shows, the person was removed from cast but we still want to show them
       upcoming_show_ids = @upcoming_show_rows.map { |row| row[:show].id }
 
       @my_vacancies_by_show = {}
-      RoleVacancy
+      open_vacancies = RoleVacancy
         .where(vacated_by_type: "Person", vacated_by_id: people_ids)
-        .where.not(status: :filled)
-        .includes(:affected_shows, :role, :invitations)
-        .each do |vacancy|
+        .where.not(status: [ :filled, :cancelled ])
+        .includes(:show, :affected_shows, :role, :invitations)
+        .to_a
+
+      open_vacancies.each do |vacancy|
+        # For non-linked shows, use the primary show_id
+        # For linked shows, use affected_shows
+        if vacancy.show.linked?
           vacancy.affected_shows.each do |affected_show|
             next unless upcoming_show_ids.include?(affected_show.id)
             @my_vacancies_by_show[affected_show.id] ||= []
             @my_vacancies_by_show[affected_show.id] << vacancy
           end
+        else
+          @my_vacancies_by_show[vacancy.show_id] ||= []
+          @my_vacancies_by_show[vacancy.show_id] << vacancy
         end
+      end
+
+      # Also include shows where user has an open vacancy but no assignment
+      # (for non-linked events where they were removed from cast)
+      vacancy_only_show_ids = @my_vacancies_by_show.keys - upcoming_show_ids
+      if vacancy_only_show_ids.any?
+        vacancy_shows = Show
+          .where(id: vacancy_only_show_ids)
+          .where("date_and_time >= ? AND date_and_time <= ?", Time.current, end_date)
+          .includes(:production, :location, :event_linkage)
+          .to_a
+
+        vacancy_shows.each do |show|
+          show_data_by_id[show.id] ||= { show: show, assignments: [], vacancy_only: true }
+        end
+
+        # Re-sort to include vacancy-only shows
+        @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
+      end
 
       # Upcoming audition sessions for person and groups - batch query
       @upcoming_audition_entities = []

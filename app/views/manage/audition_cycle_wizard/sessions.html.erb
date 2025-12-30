@@ -1,0 +1,337 @@
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 3, step_name: "Audition Sessions" } do %>
+  <div data-controller="location-modal session-wizard" data-location-modal-event-type-value="audition">
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Set up audition sessions</h2>
+    <p class="text-gray-600 mb-6">Create time slots for auditions. You can create multiple sessions automatically or add them one at a time.</p>
+
+    <!-- Current Sessions List -->
+    <% if @wizard_state[:audition_sessions].present? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-700 mb-3">Scheduled Sessions (<%= @wizard_state[:audition_sessions].size %>)</h3>
+        <div class="space-y-2">
+          <% sorted_sessions = @wizard_state[:audition_sessions].each_with_index.sort_by { |s, i| Time.parse(s[:start_at]) rescue Time.current } %>
+          <% sorted_sessions.each do |session, original_index| %>
+            <% location = @locations.find { |l| l.id.to_s == session[:location_id].to_s } %>
+            <div class="group flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+              <div>
+                <p class="font-medium text-gray-900">
+                  <%= Time.parse(session[:start_at]).strftime("%b %-d, %Y at %-I:%M %p") %>
+                </p>
+                <p class="text-sm text-gray-500">
+                  <%= session[:duration_minutes] %> min · <%= session[:is_online] ? "Online" : (location&.name || "No location") %>
+                </p>
+              </div>
+              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button"
+                        class="cursor-pointer"
+                        data-action="click->session-wizard#openEditModal"
+                        data-session-index="<%= original_index %>"
+                        data-session-start-at="<%= session[:start_at] %>"
+                        data-session-duration="<%= session[:duration_minutes] %>"
+                        data-session-location="<%= session[:location_id] %>">
+                  <%= render "shared/button", text: "Edit", variant: "ghost", size: "small", type: :button %>
+                </button>
+                <%= button_to manage_audition_wizard_production_delete_session_path(@production, session_index: original_index),
+                    method: :delete,
+                    class: "inline-block",
+                    data: { turbo_confirm: "Remove this session?" } do %>
+                  <%= render "shared/button", text: "Remove", variant: "ghost", size: "small", type: :button %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Generate Sessions Section -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+      <h3 class="font-medium text-gray-900 mb-3"><%= @wizard_state[:audition_sessions].present? ? "Generate More Audition Sessions" : "Generate Audition Sessions" %></h3>
+      <p class="text-sm text-gray-500 mb-4">Automatically create consecutive audition slots.</p>
+
+      <%= form_with url: manage_audition_wizard_production_generate_sessions_path(@production), method: :post, local: true do |form| %>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Number of sessions</label>
+            <%= number_field_tag :session_count, 6, min: 1, max: 50,
+                class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Duration each (minutes)</label>
+            <%= number_field_tag :session_duration, 30, min: 5, step: 5,
+                class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Starting at</label>
+          <%= datetime_field_tag :start_at, @wizard_state[:opens_at],
+              class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+
+          <!-- Hidden field for is_online -->
+          <input type="hidden" name="is_online" value="false" data-location-modal-target="isOnlineField" data-session-wizard-target="generateIsOnline">
+
+          <!-- In-Person Location Container -->
+          <div data-location-modal-target="inPersonContainer">
+            <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+            <%= select_tag :location_id,
+                options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                prompt: "Select a location",
+                class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                data: { "location-modal-target": "locationSelect", "session-wizard-target": "generateLocationSelect", action: "change->location-modal#handleLocationChange" } %>
+            <div class="mt-1 ml-1 flex gap-2">
+              <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 underline text-sm cursor-pointer">Add a Location</a>
+              <span class="text-gray-400">|</span>
+              <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm cursor-pointer" data-location-modal-target="toggleLink">
+                <span data-location-modal-target="toggleLinkText">Host audition online</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Online Location Container -->
+          <div data-location-modal-target="onlineContainer" class="hidden">
+            <%= text_field_tag :online_location_info, nil,
+                placeholder: "e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'",
+                class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                data: { "session-wizard-target": "generateOnlineInfo" } %>
+            <div class="mt-1 ml-1">
+              <p class="text-xs text-gray-500 inline">Optional: Add a URL or instructions for joining online</p>
+              <span class="text-gray-400 mx-1">|</span>
+              <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm cursor-pointer" data-location-modal-target="toggleLink">
+                <span data-location-modal-target="toggleLinkText">Host audition in person</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <%= render "shared/button", text: "Generate Sessions", variant: "secondary", size: "medium", type: :submit %>
+      <% end %>
+    </div>
+
+    <!-- Add Single Session Section -->
+    <div class="p-4 bg-white rounded-lg border border-gray-200 border-dashed cursor-pointer hover:border-pink-300 transition"
+         data-action="click->session-wizard#openAddModal">
+      <div class="flex items-center gap-3 text-gray-600 hover:text-pink-500">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        <span class="font-medium">Add a session manually</span>
+      </div>
+    </div>
+
+    <!-- Add Session Modal -->
+    <div data-session-wizard-target="addModal" class="hidden fixed inset-0 z-50">
+      <div class="fixed inset-0 bg-black/50 cursor-pointer" data-action="click->session-wizard#closeAddModal"></div>
+      <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 pointer-events-auto" data-action="keydown.escape->session-wizard#closeAddModal" tabindex="-1">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Add Audition Session</h3>
+          <%= form_with url: manage_audition_wizard_production_add_session_path(@production), method: :post, local: true, data: { "session-wizard-target": "addForm" } do |form| %>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                <%= datetime_field_tag :start_at, @wizard_state[:opens_at],
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <%= number_field_tag :duration_minutes, 30, min: 5, step: 5,
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input type="hidden" name="is_online" value="false" data-session-wizard-target="addIsOnline">
+                <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+                <%= select_tag :location_id,
+                    options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                    prompt: "Select a location",
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                    data: { "session-wizard-target": "addLocationSelect" } %>
+              </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+              <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->session-wizard#closeAddModal">Cancel</button>
+              <%= render "shared/button", text: "Add Session", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Session Modal -->
+    <div data-session-wizard-target="editModal" class="hidden fixed inset-0 z-50">
+      <div class="fixed inset-0 bg-black/50 cursor-pointer" data-action="click->session-wizard#closeEditModal"></div>
+      <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 pointer-events-auto" data-action="keydown.escape->session-wizard#closeEditModal" tabindex="-1">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Edit Session</h3>
+          <%= form_with url: "#", method: :patch, local: true, data: { "session-wizard-target": "editForm" } do |form| %>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                <%= datetime_field_tag :start_at, nil,
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                    data: { "session-wizard-target": "editStartAt" } %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <%= number_field_tag :duration_minutes, 30, min: 5, step: 5,
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                    data: { "session-wizard-target": "editDuration" } %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+                <%= select_tag :location_id,
+                    options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                    prompt: "Select a location",
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                    data: { "session-wizard-target": "editLocationSelect" } %>
+              </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+              <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->session-wizard#closeEditModal">Cancel</button>
+              <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Location Modal (copied from shows/new.html.erb) -->
+    <div data-location-modal-target="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <h2 class="text-2xl font-semibold coustard-regular">Add a Location</h2>
+          <button type="button" data-action="click->location-modal#closeModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="px-6 py-6">
+          <form data-location-modal-target="form" action="<%= manage_locations_path %>" method="post" data-action="submit->location-modal#submitForm">
+            <div data-location-modal-target="errorContainer" class="hidden bg-pink-50 px-3 py-2 font-medium rounded-md mb-4">
+              <h2 data-location-modal-target="errorCount"></h2>
+              <ul data-location-modal-target="errorList" class="list-disc ml-6"></ul>
+            </div>
+
+            <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+
+            <div>
+              <label for="location_name">Name</label>
+              <div class="text-gray-500 text-sm mb-1">The name of the location that will be displayed to users.</div>
+              <input type="text" id="location_name" name="location[name]" value="" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400" />
+            </div>
+
+            <div class="mt-6">
+              <label for="location_address1">Street Address Line 1</label>
+              <input type="text" id="location_address1" name="location[address1]" value="" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400" />
+            </div>
+
+            <div class="mt-4">
+              <label for="location_address2">Street Address Line 2</label>
+              <span class="text-sm text-gray-500">(optional)</span>
+              <input type="text" id="location_address2" name="location[address2]" value="" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400" />
+            </div>
+
+            <div class="mt-4">
+              <label for="location_city">City</label>
+              <input type="text" id="location_city" name="location[city]" value="" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400" />
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-4">
+              <div class="w-full md:w-[calc(50%-8px)]">
+                <label for="location_state">State/Province</label>
+                <select id="location_state" name="location[state]" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400">
+                  <option value="">Select State/Province</option>
+                  <option value="AL">Alabama</option>
+                  <option value="AK">Alaska</option>
+                  <option value="AZ">Arizona</option>
+                  <option value="AR">Arkansas</option>
+                  <option value="CA">California</option>
+                  <option value="CO">Colorado</option>
+                  <option value="CT">Connecticut</option>
+                  <option value="DE">Delaware</option>
+                  <option value="DC">District of Columbia</option>
+                  <option value="FL">Florida</option>
+                  <option value="GA">Georgia</option>
+                  <option value="HI">Hawaii</option>
+                  <option value="ID">Idaho</option>
+                  <option value="IL">Illinois</option>
+                  <option value="IN">Indiana</option>
+                  <option value="IA">Iowa</option>
+                  <option value="KS">Kansas</option>
+                  <option value="KY">Kentucky</option>
+                  <option value="LA">Louisiana</option>
+                  <option value="ME">Maine</option>
+                  <option value="MD">Maryland</option>
+                  <option value="MA">Massachusetts</option>
+                  <option value="MI">Michigan</option>
+                  <option value="MN">Minnesota</option>
+                  <option value="MS">Mississippi</option>
+                  <option value="MO">Missouri</option>
+                  <option value="MT">Montana</option>
+                  <option value="NE">Nebraska</option>
+                  <option value="NV">Nevada</option>
+                  <option value="NH">New Hampshire</option>
+                  <option value="NJ">New Jersey</option>
+                  <option value="NM">New Mexico</option>
+                  <option value="NY">New York</option>
+                  <option value="NC">North Carolina</option>
+                  <option value="ND">North Dakota</option>
+                  <option value="OH">Ohio</option>
+                  <option value="OK">Oklahoma</option>
+                  <option value="OR">Oregon</option>
+                  <option value="PA">Pennsylvania</option>
+                  <option value="RI">Rhode Island</option>
+                  <option value="SC">South Carolina</option>
+                  <option value="SD">South Dakota</option>
+                  <option value="TN">Tennessee</option>
+                  <option value="TX">Texas</option>
+                  <option value="UT">Utah</option>
+                  <option value="VT">Vermont</option>
+                  <option value="VA">Virginia</option>
+                  <option value="WA">Washington</option>
+                  <option value="WV">West Virginia</option>
+                  <option value="WI">Wisconsin</option>
+                  <option value="WY">Wyoming</option>
+                </select>
+              </div>
+
+              <div class="w-full md:w-[calc(50%-8px)]">
+                <label for="location_postal_code">Zip/Postal Code</label>
+                <input type="text" id="location_postal_code" name="location[postal_code]" maxlength="10" value="" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400" />
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label for="location_notes">Notes/Instructions</label>
+              <div class="text-gray-500 text-sm mb-1">Any additional information about this location.</div>
+              <textarea id="location_notes" name="location[notes]" rows="3" class="block shadow-sm rounded-md border px-3 py-2 mt-2 w-full border-gray-400"></textarea>
+            </div>
+
+            <div class="flex gap-2 pt-6">
+              <%= render "shared/button", text: "Add Location", variant: "primary", size: "medium", type: :submit %>
+              <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->location-modal#closeModal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <%= form_with url: manage_audition_wizard_production_save_sessions_path(@production), method: :post, local: true do |form| %>
+      <div class="mt-8 flex justify-between">
+        <%= link_to manage_audition_wizard_production_schedule_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

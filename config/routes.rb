@@ -37,6 +37,8 @@ Rails.application.routes.draw do
   get   "/account/notifications",         to: "account#notifications",       as: "account_notifications"
   patch "/account/notifications",         to: "account#update_notifications"
   get   "/account/subscription",          to: "account#billing",             as: "account_billing"
+  get   "/account/organizations",         to: "account#organizations",       as: "account_organizations"
+  delete "/account/organizations/:id/leave", to: "account#leave_organization", as: "leave_organization_account"
 
   # Superadmin
   scope "/superadmin" do
@@ -109,9 +111,15 @@ Rails.application.routes.draw do
     # Profile management
     resources :profiles, only: [ :index, :new, :create ]
 
+    # Productions
+    get    "/productions",                  to: "productions#index",        as: "productions"
+    get    "/productions/:id",              to: "productions#show",         as: "production"
+    delete "/productions/:id/leave",        to: "productions#leave",        as: "leave_production"
+
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/calendar",                to: "shows#calendar",           as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",               as: "show"
+    post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
     get   "/availability",                  to: "availability#index",       as: "availability"
     get   "/availability/calendar",         to: "availability#calendar",    as: "availability_calendar"
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
@@ -203,6 +211,7 @@ Rails.application.routes.draw do
     # Person invitations - for inviting cast members to join a production company
     get  "person_invitations/accept/:token",  to: "person_invitations#accept",    as: "accept_person_invitations"
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
+    post "person_invitations/decline/:token", to: "person_invitations#decline",   as: "decline_person_invitations"
 
     resources :people, except: [ :destroy ] do
       collection do
@@ -348,6 +357,29 @@ Rails.application.routes.draw do
             post :resend
           end
         end
+      end
+
+      # Audition cycle creation wizard
+      scope "audition-wizard", as: "audition_wizard" do
+        get    "/",           to: "audition_cycle_wizard#format",          as: "format"
+        post   "format",      to: "audition_cycle_wizard#save_format",     as: "save_format"
+        get    "schedule",    to: "audition_cycle_wizard#schedule",        as: "schedule"
+        post   "schedule",    to: "audition_cycle_wizard#save_schedule",   as: "save_schedule"
+        get    "sessions",    to: "audition_cycle_wizard#sessions",        as: "sessions"
+        post   "sessions",    to: "audition_cycle_wizard#save_sessions",   as: "save_sessions"
+        post   "sessions/generate", to: "audition_cycle_wizard#generate_sessions", as: "generate_sessions"
+        post   "sessions/add", to: "audition_cycle_wizard#add_session",    as: "add_session"
+        patch  "sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "update_session"
+        delete "sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "delete_session"
+        get    "availability", to: "audition_cycle_wizard#availability",   as: "availability"
+        post   "availability", to: "audition_cycle_wizard#save_availability", as: "save_availability"
+        get    "reviewers",   to: "audition_cycle_wizard#reviewers",       as: "reviewers"
+        post   "reviewers",   to: "audition_cycle_wizard#save_reviewers",  as: "save_reviewers"
+        get    "voting",      to: "audition_cycle_wizard#voting",          as: "voting"
+        post   "voting",      to: "audition_cycle_wizard#save_voting",     as: "save_voting"
+        get    "review",      to: "audition_cycle_wizard#review",          as: "review"
+        post   "create",      to: "audition_cycle_wizard#create_cycle",    as: "create_cycle"
+        delete "cancel",      to: "audition_cycle_wizard#cancel",          as: "cancel"
       end
 
       resources :audition_cycles do

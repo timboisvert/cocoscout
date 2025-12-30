@@ -31,7 +31,7 @@
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
-      [(@audition_cycle.audition_type == "video_upload" ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
+      [(@audition_cycle.video_only? ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
     ],
     text: @requestable&.name&.truncate(40, omission: "...") || "Deleted",
     links: []
@@ -80,7 +80,7 @@
       <% idx += 1 %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Resume</button>
       <% idx += 1 %>
-      <% if @audition_cycle.audition_type == "video_upload" %>
+      <% if @audition_cycle.accepts_video_submissions? %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Video</button>
         <% idx += 1 %>
       <% end %>
@@ -126,7 +126,7 @@
     </div>
 
     <%# Video Tab (conditional) %>
-    <% if @audition_cycle.audition_type == "video_upload" %>
+    <% if @audition_cycle.accepts_video_submissions? %>
       <div data-tabs-target="panel" class="hidden">
         <% if @audition_request.video_url.present? %>
           <div class="mt-2">
@@ -468,7 +468,7 @@
        data-vote-form-save-url-value="<%= cast_vote_manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request) %>">
     <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-900 coustard-regular">
-        <% if @audition_cycle.audition_type == "video_upload" %>
+        <% if @audition_cycle.video_only? %>
           Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?
         <% else %>
           Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> get an audition?

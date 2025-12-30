@@ -74,14 +74,14 @@ module Manage
         existing_user = User.find_by(email_address: email)
 
         if existing_user
-          # User exists - add their default profile to the organization
+          # User exists - invite their profile (don't auto-add, require acceptance)
           existing_person = existing_user.person
-          unless existing_person.organizations.include?(Current.organization)
-            existing_person.organizations << Current.organization
+          if existing_person.organizations.include?(Current.organization)
+            redirect_to [ :manage, existing_person ],
+                        notice: "#{existing_person.name} is already a member of #{Current.organization.name}"
+          else
+            invite_single_profile(existing_person)
           end
-
-          redirect_to [ :manage, existing_person ],
-                      notice: "#{existing_person.name} has been added to #{Current.organization.name}"
         else
           # Check if any profiles exist with this email
           existing_profiles = Person.where(email: email)
@@ -113,9 +113,8 @@ module Manage
       invited_names = []
 
       profiles.each do |person|
-        unless person.organizations.include?(Current.organization)
-          person.organizations << Current.organization
-        end
+        # Note: We don't add the person to the organization here.
+        # They will be added when they accept the invitation.
 
         # Create user if needed
         if person.user.nil?
@@ -147,9 +146,8 @@ module Manage
       invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
       invitation_message = params[:person][:invitation_message] || default_invitation_message
 
-      unless person.organizations.include?(Current.organization)
-        person.organizations << Current.organization
-      end
+      # Note: We don't add the person to the organization here.
+      # They will be added when they accept the invitation.
 
       if person.user.nil?
         user = User.create!(
@@ -173,7 +171,8 @@ module Manage
       @person = Person.new(person_params)
 
       if @person.save
-        @person.organizations << Current.organization
+        # Note: We don't add the person to the organization here.
+        # They will be added when they accept the invitation.
 
         user = User.create!(
           email_address: @person.email,

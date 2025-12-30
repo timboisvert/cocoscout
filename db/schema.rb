@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -61,6 +61,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
 
   create_table "audition_cycles", force: :cascade do |t|
     t.boolean "active", default: true, null: false
+    t.boolean "allow_in_person_auditions", default: false, null: false
+    t.boolean "allow_video_submissions", default: false, null: false
     t.string "audition_type", default: "in_person", null: false
     t.boolean "audition_voting_enabled", default: true, null: false
     t.text "availability_show_ids"
@@ -338,7 +340,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.boolean "headshots_visible", default: true, null: false
-    t.boolean "hide_contact_info", default: false, null: false
+    t.boolean "hide_contact_info", default: true, null: false
     t.string "name", null: false
     t.text "old_keys"
     t.boolean "performance_credits_visible", default: true, null: false
@@ -429,7 +431,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
     t.datetime "created_at", null: false
     t.string "email"
     t.boolean "headshots_visible", default: true, null: false
-    t.boolean "hide_contact_info", default: false, null: false
+    t.boolean "hide_contact_info", default: true, null: false
     t.datetime "last_email_changed_at"
     t.datetime "last_public_key_changed_at"
     t.string "name"
@@ -493,6 +495,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
   create_table "person_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
+    t.datetime "declined_at"
     t.string "email", null: false
     t.integer "organization_id"
     t.string "token", null: false
@@ -811,6 +814,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_19_191127) do
   end
 
   create_table "shows", force: :cascade do |t|
+    t.datetime "call_time"
+    t.boolean "call_time_enabled", default: false, null: false
     t.boolean "canceled", default: false, null: false
     t.boolean "casting_enabled", default: true, null: false
     t.datetime "casting_finalized_at"

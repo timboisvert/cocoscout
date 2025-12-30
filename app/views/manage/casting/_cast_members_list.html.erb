@@ -71,7 +71,16 @@
                     <% if is_fully_available %>
                       Available for all <%= total_events %> events
                     <% elsif is_partially_available %>
-                      Available for <%= events_available_for %> of <%= total_events %> events
+                      <%
+                        # Get the dates they're available for (current show + linked shows)
+                        available_dates = []
+                        available_dates << show.date_and_time if is_available
+                        linked_data[:shows].each do |show_data|
+                          available_dates << show_data[:date_and_time] if show_data[:available] && show_data[:date_and_time]
+                        end
+                        available_dates = available_dates.compact.sort
+                      %>
+                      Available for <%= available_dates.map { |d| d.strftime("%-m/%-d") }.join(", ") %>
                     <% end %>
                   </span>
                 <% end %>

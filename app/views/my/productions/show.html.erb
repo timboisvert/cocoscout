@@ -1,0 +1,85 @@
+<% content_for :title, @production.name %>
+
+<div class="w-full">
+
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["My Productions", my_productions_path]
+    ],
+    text: @production.name,
+    links: []
+  } %>
+
+  <!-- Production Info -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="p-4 flex items-center gap-4">
+      <% logo_variant = @production.safe_logo_variant(:small) %>
+      <% if logo_variant %>
+        <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-[100px] object-contain rounded" %>
+      <% end %>
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-gray-900"><%= @production.name %></h2>
+        <p class="text-sm text-gray-500"><%= @production.organization.name %></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Assignments -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Assignments</h3>
+    </div>
+    <div class="p-4">
+      <% if @upcoming_assignments.any? %>
+        <div class="space-y-2">
+          <% @upcoming_assignments.each do |assignment| %>
+            <% show = assignment.show %>
+            <%= link_to my_show_path(show), class: "flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all no-underline" do %>
+              <div class="flex-shrink-0 w-14 text-center">
+                <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900"><%= show.secondary_name.presence || show.event_type.titleize %></div>
+                <div class="text-sm text-gray-600">
+                  <span class="text-pink-600 font-medium"><%= assignment.role.name %></span>
+                  · <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                </div>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-500 text-sm">You don't have any upcoming assignments for this production.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Leave Production -->
+  <div class="border border-red-200 rounded-lg overflow-hidden">
+    <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+      <h3 class="text-md font-semibold text-red-800 coustard-regular">Leave Production</h3>
+    </div>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-4">
+        Removing yourself from this production's talent pool will remove you from future scheduling.
+        Your existing assignments will remain, but you won't be considered for new ones.
+      </p>
+      <%= render "shared/button",
+          text: "Leave Talent Pool",
+          path: my_leave_production_path(@production),
+          method: :delete,
+          variant: "danger",
+          icon: "arrow-right-start-on-rectangle",
+          data: { turbo_confirm: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin." }
+      %>
+    </div>
+  </div>
+
+</div>

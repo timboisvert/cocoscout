@@ -1,15 +1,5 @@
-<%
-    if audition_session.is_full?
-        border_color = "border-green-400 border-solid"
-    elsif audition_session.is_overbooked?
-        border_color = "border-pink-500 border-solid"
-    else
-        border_color = "border-pink-300 border-dashed"
-    end
-%>
-
 <div class="col-span-3">
-    <div class="border-2 <%= border_color %> p-4 min-h-24 items-center flex justify-center relative rounded-lg"
+    <div class="border-2 border-pink-300 border-dashed p-4 min-h-24 items-center flex justify-center relative rounded-lg"
         data-drag-target="dropzone"
         data-id="<%= audition_session.id %>"
         data-action="dragover->drag#dragOver drop->drag#drop"
@@ -42,14 +32,6 @@
                                 Remove
                             </button>
                         </div>
-                <% end %>
-
-                <% if (!audition_session.is_full? && !audition_session.is_overbooked? && audition_session.maximum_auditionees) %>
-                    <span class="inline-flex items-center text-xs text-gray-500 h-full text-center ml-2">
-                        <div class="flex flex-col items-center justify-center">
-                            Add up to<br><%= audition_session.maximum_auditionees - audition_session.auditions.count %> more
-                        </div>
-                    </span>
                 <% end %>
             </div>
         <% else %>

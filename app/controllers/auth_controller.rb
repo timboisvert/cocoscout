@@ -75,6 +75,11 @@ class AuthController < ApplicationController
   end
 
   def signin
+    # Store redirect_to param in session if provided (e.g., from invitation accept page)
+    if params[:redirect_to].present?
+      session[:return_to] = params[:redirect_to]
+    end
+
     # If user is already authenticated, redirect them to their dashboard
     if authenticated?
       last_dashboard_prefs = cookies.encrypted[:last_dashboard]

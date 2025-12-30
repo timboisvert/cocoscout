@@ -1,0 +1,135 @@
+<% review_step = @wizard_state[:allow_in_person_auditions] ? 7 : 6 %>
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: review_step, step_name: "Review" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review your settings</h2>
+  <p class="text-gray-600 mb-6">Make sure everything looks right before creating your audition cycle.</p>
+
+  <div class="space-y-4">
+    <!-- Audition Format -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Audition Format</h3>
+        <%= link_to "Edit", manage_audition_wizard_production_format_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% formats = [] %>
+        <% formats << "Video Submissions" if @wizard_state[:allow_video_submissions] %>
+        <% formats << "Scheduled Sessions" if @wizard_state[:allow_in_person_auditions] %>
+        <%= formats.join(" + ") %>
+      </div>
+    </div>
+
+    <!-- Schedule -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Sign-up Window</h3>
+        <%= link_to "Edit", manage_audition_wizard_production_schedule_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% opens_at = @wizard_state[:opens_at].is_a?(String) ? Time.parse(@wizard_state[:opens_at]) : @wizard_state[:opens_at] rescue nil %>
+        <% closes_at = @wizard_state[:closes_at].is_a?(String) ? Time.parse(@wizard_state[:closes_at]) : @wizard_state[:closes_at] rescue nil %>
+        Opens: <%= opens_at&.strftime("%b %-d, %Y at %-I:%M %p") || "Not set" %><br>
+        <% if closes_at.present? %>
+          Closes: <%= closes_at.strftime("%b %-d, %Y at %-I:%M %p") %>
+        <% else %>
+          Closes: Open indefinitely
+        <% end %>
+      </div>
+    </div>
+
+    <% if @wizard_state[:allow_in_person_auditions] %>
+      <!-- Audition Sessions -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="font-medium text-gray-900">Audition Sessions</h3>
+          <%= link_to "Edit", manage_audition_wizard_production_sessions_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+        </div>
+        <div class="mt-2 text-sm text-gray-600">
+          <% if @wizard_state[:audition_sessions].present? %>
+            <p><%= pluralize(@wizard_state[:audition_sessions].size, "session") %> scheduled</p>
+            <% if @wizard_state[:audition_sessions].size <= 3 %>
+              <ul class="mt-1 space-y-1">
+                <% @wizard_state[:audition_sessions].each do |session| %>
+                  <li>• <%= Time.parse(session[:start_at]).strftime("%b %-d at %-I:%M %p") %> (<%= session[:duration_minutes] %> min)</li>
+                <% end %>
+              </ul>
+            <% end %>
+          <% else %>
+            <p class="text-amber-600">⚠ No sessions configured</p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Availability -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Availability Collection</h3>
+        <%= link_to "Edit", manage_audition_wizard_production_availability_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% if @wizard_state[:include_availability_section] %>
+          <p>✓ Collecting show availability<%= " (required)" if @wizard_state[:require_all_availability] %></p>
+        <% else %>
+          <p>Not collecting show availability</p>
+        <% end %>
+        <% if @wizard_state[:allow_in_person_auditions] && @wizard_state[:include_audition_availability_section] %>
+          <p>✓ Collecting audition session availability<%= " (required)" if @wizard_state[:require_all_audition_availability] %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Reviewers -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Who Reviews</h3>
+        <%= link_to "Edit", manage_audition_wizard_production_reviewers_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% case @wizard_state[:reviewer_access_type] %>
+        <% when "managers" %>
+          Managers only
+        <% when "all" %>
+          Everyone in the cast
+        <% when "specific" %>
+          <%= pluralize(@wizard_state[:reviewer_person_ids]&.length || 0, "specific person") %>
+        <% else %>
+          Managers only
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Voting -->
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-900">Voting</h3>
+        <%= link_to "Edit", manage_audition_wizard_production_voting_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+      <div class="mt-2 text-sm text-gray-600">
+        <% if @wizard_state[:voting_enabled] != false %>
+          <p>✓ Voting on sign-ups enabled</p>
+        <% else %>
+          <p>Voting on sign-ups disabled</p>
+        <% end %>
+        <% if @wizard_state[:allow_in_person_auditions] %>
+          <% if @wizard_state[:audition_voting_enabled] != false %>
+            <p>✓ Voting on scheduled auditions enabled</p>
+          <% else %>
+            <p>Voting on scheduled auditions disabled</p>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%= form_with url: manage_audition_wizard_production_create_cycle_path(@production), method: :post, local: true do |form| %>
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_audition_wizard_production_voting_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Create Audition Cycle", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

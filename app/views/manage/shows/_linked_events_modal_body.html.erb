@@ -27,8 +27,8 @@
   <% if other_linked_shows.any? %>
     <%# Current Linkage Section - shows with remove on hover %>
     <div class="mb-6">
-      <h3 class="text-sm font-medium text-gray-900 mb-3">Currently Linked Events</h3>
-      <div class="space-y-1">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Currently Linked Events (<%= other_linked_shows.count %>)</h3>
+      <div class="space-y-1 max-h-64 overflow-y-auto">
         <% other_linked_shows.each do |linked_show| %>
           <div class="group relative">
             <%= render partial: "shared/show_row", locals: {
@@ -59,26 +59,27 @@
     <h3 class="text-sm font-medium text-gray-900 mb-3">Link another event</h3>
 
     <% if linkable_shows.any? %>
-      <div class="flex items-center gap-3">
-        <select data-show-linkage-target="showSelect"
-                class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-          <option value="">Choose an event...</option>
-          <% linkable_shows.each do |linkable_show| %>
-            <% linkable_event_name = linkable_show.secondary_name.presence || linkable_show.event_type.titleize %>
-            <option value="<%= linkable_show.id %>">
-              <%= linkable_show.date_and_time.strftime("%b %-d, %Y @ %-I:%M %p") %> - <%= linkable_event_name %>
-              <% if linkable_show.secondary_name.present? %>
-                (<%= linkable_show.event_type.titleize %>)
-              <% end %>
-            </option>
-          <% end %>
-        </select>
-
-        <%= render "shared/button",
-                text: "+ Link Event",
-                variant: "primary",
-                type: :button,
-                data: { action: "click->show-linkage#linkShow" } %>
+      <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2">
+        <% linkable_shows.each do |linkable_show| %>
+          <% linkable_event_name = linkable_show.secondary_name.presence || linkable_show.event_type.titleize %>
+          <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer group">
+            <input type="checkbox"
+                   class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer"
+                   data-action="change->show-linkage#toggleLinkShow"
+                   data-show-id="<%= linkable_show.id %>">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 truncate">
+                <%= linkable_show.date_and_time.strftime("%b %-d, %Y @ %-I:%M %p") %>
+              </div>
+              <div class="text-xs text-gray-500 truncate">
+                <%= linkable_event_name %>
+                <% if linkable_show.secondary_name.present? %>
+                  (<%= linkable_show.event_type.titleize %>)
+                <% end %>
+              </div>
+            </div>
+          </label>
+        <% end %>
       </div>
     <% else %>
       <div class="text-center py-4 bg-gray-50 rounded-lg">

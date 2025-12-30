@@ -180,8 +180,16 @@ module My
         render :form, status: :unprocessable_entity
       elsif @audition_request.valid?
 
+        # Track if this is a new request (for notification)
+        is_new_request = @audition_request.new_record?
+
         # Save the audition request and redirect to the success page
         @audition_request.save!
+
+        # Notify producers if this is a new audition request
+        if is_new_request
+          AuditionRequestNotificationJob.perform_later(@audition_request.id)
+        end
 
         # Save availability data if included
         if @audition_cycle.include_availability_section && params[:availability].present?

@@ -37,7 +37,10 @@
                   <%# Left Half: Audition Type & Dates %>
                   <div class="w-1/2 flex flex-col justify-center">
                     <div class="font-medium text-gray-900">
-                      <%= cycle.audition_type == "in_person" ? "In-person Auditions" : "Video Upload Auditions" %>
+                      <% formats = [] %>
+                      <% formats << "Video" if cycle.accepts_video_submissions? %>
+                      <% formats << "In-Person" if cycle.accepts_in_person_auditions? %>
+                      <%= formats.join(" + ") %> Auditions
                     </div>
                     <div class="text-sm text-gray-600">
                       <%= cycle.opens_at.strftime("%b %-d") %><% if cycle.closes_at.present? %> - <%= cycle.closes_at.strftime("%b %-d, %Y") %><% else %> (open-ended)<% end %>

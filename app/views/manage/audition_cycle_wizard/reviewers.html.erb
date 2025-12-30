@@ -1,0 +1,179 @@
+<% reviewers_step = @wizard_state[:allow_in_person_auditions] ? 5 : 4 %>
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: reviewers_step, step_name: "Reviewers" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who reviews submissions?</h2>
+  <p class="text-gray-600 mb-6">Choose who can see and vote on audition submissions.</p>
+
+  <%= form_with url: manage_audition_wizard_production_save_reviewers_path(@production), method: :post, local: true, data: { controller: "reviewer-wizard" } do |form| %>
+    <div class="space-y-3">
+      <!-- Production Team -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+        <label class="flex items-start cursor-pointer">
+          <input type="radio" name="reviewer_access_type" value="managers"
+                 <%= "checked" if @wizard_state[:reviewer_access_type].nil? || @wizard_state[:reviewer_access_type] == "managers" %>
+                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500"
+                 data-action="change->reviewer-wizard#toggleSection"
+                 data-reviewer-wizard-target="managersRadio">
+          <div class="ml-3 flex-1">
+            <p class="font-medium text-gray-900">Production Team</p>
+            <p class="text-sm text-gray-500">Only production managers and company managers can review</p>
+          </div>
+        </label>
+
+        <% if @managers.any? %>
+          <div class="mt-3 ml-7">
+            <button type="button" class="text-sm text-pink-500 hover:text-pink-600 cursor-pointer" data-action="click->reviewer-wizard#toggleManagersList" data-reviewer-wizard-target="managersToggle">
+              Show <%= pluralize(@managers.size, "person") %>
+            </button>
+            <div class="hidden mt-3" data-reviewer-wizard-target="managersList">
+              <div class="grid grid-cols-4 sm:grid-cols-6 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                <% @managers.each do |team_member| %>
+                  <% user = team_member[:user] %>
+                  <% next unless user.person %>
+                  <div class="text-center">
+                    <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-1">
+                      <% if user.person.headshot&.attached? %>
+                        <%= image_tag user.person.safe_headshot_variant(:thumb),
+                              class: "w-full h-full object-cover",
+                              loading: "lazy",
+                              alt: user.person.name %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <div class="text-lg font-bold text-gray-500">
+                            <%= user.person.name.split.map(&:first).join.upcase %>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="text-xs font-medium text-gray-900 truncate" title="<%= user.person.name %>">
+                      <%= user.person.name.split.first %>
+                    </div>
+                    <div class="text-[10px] text-gray-500 truncate">
+                      <%= team_member[:role] %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Entire Talent Pool -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+        <label class="flex items-start cursor-pointer">
+          <input type="radio" name="reviewer_access_type" value="all"
+                 <%= "checked" if @wizard_state[:reviewer_access_type] == "all" %>
+                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500"
+                 data-action="change->reviewer-wizard#toggleSection"
+                 data-reviewer-wizard-target="allRadio">
+          <div class="ml-3 flex-1">
+            <p class="font-medium text-gray-900">Everyone in the Talent Pool</p>
+            <p class="text-sm text-gray-500">All talent pool members can view and vote on submissions</p>
+          </div>
+        </label>
+
+        <% if @talent_pool_people.any? %>
+          <div class="mt-3 ml-7">
+            <button type="button" class="text-sm text-pink-500 hover:text-pink-600 cursor-pointer" data-action="click->reviewer-wizard#toggleTalentPoolList" data-reviewer-wizard-target="talentPoolToggle">
+              Show <%= pluralize(@talent_pool_people.size, "person") %>
+            </button>
+            <div class="hidden mt-3 max-h-64 overflow-y-auto" data-reviewer-wizard-target="talentPoolList">
+              <div class="grid grid-cols-4 sm:grid-cols-6 gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                <% @talent_pool_people.each do |person| %>
+                  <div class="text-center">
+                    <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-1">
+                      <% if person.headshot&.attached? %>
+                        <%= image_tag person.safe_headshot_variant(:thumb),
+                              class: "w-full h-full object-cover",
+                              loading: "lazy",
+                              alt: person.name %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <div class="text-lg font-bold text-gray-500">
+                            <%= person.name.split.map(&:first).join.upcase %>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="text-xs font-medium text-gray-900 truncate" title="<%= person.name %>">
+                      <%= person.name.split.first %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Specific People -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
+        <label class="flex items-start cursor-pointer">
+          <input type="radio" name="reviewer_access_type" value="specific"
+                 <%= "checked" if @wizard_state[:reviewer_access_type] == "specific" %>
+                 class="mt-0.5 text-pink-600 focus:ring-pink-500 accent-pink-500"
+                 data-action="change->reviewer-wizard#toggleSection"
+                 data-reviewer-wizard-target="specificRadio"
+                 id="specific-radio">
+          <div class="ml-3 flex-1">
+            <p class="font-medium text-gray-900">Specific People</p>
+            <p class="text-sm text-gray-500">Choose exactly who can review</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- People Selector (shown when "specific" is selected) -->
+    <div data-reviewer-wizard-target="specificSection" class="<%= 'hidden' unless @wizard_state[:reviewer_access_type] == 'specific' %> mt-4">
+      <% if @talent_pool_people.any? %>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 max-h-80 overflow-y-auto">
+          <p class="text-sm font-medium text-gray-700 mb-3">Select reviewers:</p>
+          <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
+            <% @talent_pool_people.each do |person| %>
+              <% is_selected = @selected_reviewer_ids.include?(person.id.to_s) %>
+              <label class="relative cursor-pointer group">
+                <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-1">
+                  <!-- Checkbox in top right corner -->
+                  <div class="absolute top-1 right-1 z-10">
+                    <input type="checkbox" name="reviewer_person_ids[]" value="<%= person.id %>"
+                           <%= "checked" if is_selected %>
+                           class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer">
+                  </div>
+                  <% if person.headshot&.attached? %>
+                    <%= image_tag person.safe_headshot_variant(:thumb),
+                          class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
+                          loading: "lazy",
+                          alt: person.name %>
+                  <% else %>
+                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                      <div class="text-lg font-bold text-gray-500">
+                        <%= person.name.split.map(&:first).join.upcase %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="text-xs font-medium text-gray-900 truncate text-center" title="<%= person.name %>">
+                  <%= person.name.split.first %>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <div class="bg-gray-100 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-500">No people in the talent pool yet. You can add reviewers later.</p>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_audition_wizard_production_availability_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

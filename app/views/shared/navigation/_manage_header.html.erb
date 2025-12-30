@@ -3,6 +3,7 @@
     <%= render "shared/navigation/dashboard_selector", current_dashboard: "production" %>
 
     <!-- Production Selector -->
+    <% unless @hide_production_selector %>
     <% if Current.organization.present? %>
       <%
         # Calculate if user has multiple productions or can create new ones
@@ -123,6 +124,7 @@
       </div>
       <% end %> <%# end has_dropdown_content %>
     <% end %>
+    <% end %> <%# end unless @hide_production_selector %>
   </div>
 
   <div class="flex items-center mr-2 border-l border-slate-200 h-12">

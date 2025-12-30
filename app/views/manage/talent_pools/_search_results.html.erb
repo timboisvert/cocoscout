@@ -1,7 +1,7 @@
 <% if members.any? %>
   <% members.each do |member| %>
     <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group w-full">
-      <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+      <% headshot_variant = member.safe_headshot_variant(:tile) %>
       <% if headshot_variant %>
         <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
       <% elsif member.is_a?(Person) %>

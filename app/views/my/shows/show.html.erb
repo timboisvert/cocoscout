@@ -76,6 +76,15 @@
               <span class="text-gray-900 font-medium"><%= @show.date_and_time.strftime("%l:%M %p") %></span>
             </div>
 
+            <% if @show.call_time_enabled? && @show.call_time.present? %>
+              <div class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                <span class="text-gray-900 font-medium">Call time <%= @show.call_time.strftime("%l:%M %p") %></span>
+              </div>
+            <% end %>
+
             <div class="flex items-start gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
@@ -166,6 +175,11 @@
         # The vacancy page will show all roles for all profiles/groups
         person_assignment = my_assignments.find { |a| a.assignable_type == "Person" }
         cant_make_it_person = person_assignment&.assignable || @person
+
+        # Check if user has an open vacancy (for non-linked shows where they were removed from cast)
+        my_open_vacancy = @my_vacancies.find { |v| v.active? } || @my_group_vacancies.find { |v| v.active? }
+        has_vacancy_without_assignment = my_assignments.empty? && my_open_vacancy.present?
+
         can_show_cant_make_it = my_assignments.any? && !@show.canceled && @show.date_and_time > Time.current
       %>
       <div class="flex flex-col lg:flex-row gap-4">
@@ -179,10 +193,11 @@
               <div class="space-y-3">
                 <% my_assignments.each do |assignment| %>
                   <%
-                    # Check if this assignment has a vacancy
-                    vacancy_key = [assignment.role_id, assignment.assignable_type, assignment.assignable_id]
-                    assignment_vacancy = @vacancies_by_assignment[vacancy_key]
-                    has_vacancy = assignment_vacancy.present? && @show.linked?
+                    # Check if this assignment's entity has a vacancy (exclude cancelled vacancies - they were reclaimed)
+                    # We match by entity (type + id) only, not role_id, because linked events have different role IDs per show
+                    entity_key = [assignment.assignable_type, assignment.assignable_id]
+                    assignment_vacancy = @vacancies_by_entity[entity_key]
+                    has_vacancy = assignment_vacancy.present? && !assignment_vacancy.cancelled?
                   %>
                   <div class="<%= 'pb-3 border-b border-gray-200' if my_assignments.size > 1 && assignment != my_assignments.last %>">
                     <div class="flex items-center gap-3">
@@ -217,8 +232,12 @@
                               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                             </svg>
                             <span class="text-xs text-amber-600 font-medium">
-                              <% if assignment_vacancy.open? %>
+                              <% if assignment_vacancy.active? %>
                                 You've indicated that you can't make it and a replacement is being sought
+                              <% elsif assignment_vacancy.not_filling? %>
+                                You've indicated that you can't make it – no replacement being sought
+                              <% elsif assignment_vacancy.filled? %>
+                                You've indicated that you can't make it – a replacement has been found
                               <% else %>
                                 You've indicated that you can't make it
                               <% end %>
@@ -230,9 +249,67 @@
                   </div>
                 <% end %>
               </div>
+              <%
+                # Check if any of my assignments have an active vacancy
+                # Use entity key (type + id) since linked events have different role IDs per show
+                has_active_vacancy = my_assignments.any? do |a|
+                  key = [a.assignable_type, a.assignable_id]
+                  v = @vacancies_by_entity[key]
+                  v.present? && v.active?
+                end
+                active_vacancy = my_assignments.map { |a|
+                  key = [a.assignable_type, a.assignable_id]
+                  @vacancies_by_entity[key]
+                }.compact.find(&:active?)
+              %>
               <% if can_show_cant_make_it %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
-                  <%= render "shared/button", text: "Can't make it?", path: vacancy_link_for(cant_make_it_person, @show), variant: "secondary", size: "small" %>
+                  <% if has_active_vacancy && active_vacancy %>
+                    <%= render "shared/button",
+                        text: "Actually, I can make it",
+                        path: my_reclaim_vacancy_path(@show, active_vacancy),
+                        method: :post,
+                        variant: "secondary",
+                        size: "small",
+                        data: { turbo_confirm: "Are you sure? This will cancel the vacancy and restore your assignment." }
+                    %>
+                  <% else %>
+                    <%= render "shared/button", text: "Can't make it?", path: vacancy_link_for(cant_make_it_person, @show), variant: "secondary", size: "small" %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% elsif has_vacancy_without_assignment %>
+          <!-- Vacancy only (user was removed from cast but has open vacancy) -->
+          <div class="lg:w-1/2 border border-gray-200 rounded-lg overflow-hidden">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Your Status</h3>
+            </div>
+            <div class="p-4">
+              <div class="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <div>
+                  <p class="text-sm text-amber-600 font-medium">
+                    You've indicated that you can't make it and a replacement is being sought
+                  </p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    You were previously cast as <strong><%= my_open_vacancy.role.name %></strong>
+                  </p>
+                </div>
+              </div>
+              <% if !@show.canceled && @show.date_and_time > Time.current %>
+                <div class="mt-4 pt-3 border-t border-gray-200">
+                  <%= render "shared/button",
+                      text: "Actually, I can make it",
+                      path: my_reclaim_vacancy_path(@show, my_open_vacancy),
+                      method: :post,
+                      variant: "secondary",
+                      size: "small",
+                      data: { turbo_confirm: "Are you sure? This will cancel the vacancy and restore your assignment." }
+                  %>
                 </div>
               <% end %>
             </div>
@@ -240,7 +317,7 @@
         <% end %>
 
         <!-- Full Cast (right side) -->
-        <div class="<%= my_assignments.any? ? 'lg:w-1/2' : 'w-full' %> border border-gray-200 rounded-lg overflow-hidden">
+        <div class="<%= (my_assignments.any? || has_vacancy_without_assignment) ? 'lg:w-1/2' : 'w-full' %> border border-gray-200 rounded-lg overflow-hidden">
           <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-md font-semibold text-gray-900 coustard-regular">Full Cast</h3>
           </div>

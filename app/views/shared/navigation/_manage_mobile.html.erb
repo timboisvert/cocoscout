@@ -27,6 +27,7 @@
       <% end %>
 
       <!-- Production Section -->
+      <% unless @hide_production_selector %>
       <% if Current.production.present? && !Current.production.new_record? %>
         <%
           # Check if user has multiple productions or can create new ones
@@ -76,6 +77,7 @@
           </div>
         </div>
       <% end %>
+      <% end %> <%# end unless @hide_production_selector %>
 
       <!-- Organization Section -->
       <% if Current.organization.present? %>

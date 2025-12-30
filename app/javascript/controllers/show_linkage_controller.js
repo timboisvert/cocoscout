@@ -98,6 +98,55 @@ export default class extends Controller {
             })
     }
 
+    toggleLinkShow(event) {
+        const checkbox = event.currentTarget
+        const targetShowId = checkbox.dataset.showId
+
+        // Disable the checkbox while processing
+        checkbox.disabled = true
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+        if (!csrfToken) {
+            alert("Authentication error. Please refresh the page.")
+            checkbox.disabled = false
+            checkbox.checked = !checkbox.checked
+            return
+        }
+
+        // Build URL
+        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/link_show`
+
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "Accept": "text/vnd.turbo-stream.html",
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken
+            },
+            body: JSON.stringify({
+                target_show_id: targetShowId,
+                linkage_role: "sibling"
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`)
+                }
+                return response.text()
+            })
+            .then(html => {
+                // Turbo will process the stream - updates just the modal body and list
+                Turbo.renderStreamMessage(html)
+            })
+            .catch(error => {
+                console.error("Error linking show:", error)
+                alert(error.message || "An error occurred while linking the event")
+                checkbox.checked = !checkbox.checked
+                checkbox.disabled = false
+            })
+    }
+
     removeFromLinkage(event) {
         event.preventDefault()
 

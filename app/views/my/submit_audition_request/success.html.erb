@@ -4,10 +4,12 @@
     <!-- Full-Width Header -->
     <div class="mb-8 sm:mb-10">
       <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-      <% if @audition_cycle.audition_type == "in_person" %>
-        <p class="text-lg text-slate-600">Sign up for an in-person audition</p>
-      <% elsif @audition_cycle.audition_type == "video_upload" %>
+      <% if @audition_cycle.hybrid_auditions? %>
+        <p class="text-lg text-slate-600">Audition sign-up</p>
+      <% elsif @audition_cycle.video_only? %>
         <p class="text-lg text-slate-600">Video audition submission</p>
+      <% else %>
+        <p class="text-lg text-slate-600">Sign up for an in-person audition</p>
       <% end %>
     </div>
 

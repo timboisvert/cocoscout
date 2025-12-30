@@ -58,6 +58,15 @@ module Manage
 
       # For backward compatibility (used in unrestricted roles radio option count)
       @eligible_people = @eligible_members.select { |m| m.is_a?(Person) }
+
+      # Get other cast members for display (excluding the person who vacated)
+      @other_cast_assignments = @vacancy.show.show_person_role_assignments
+                                            .includes(:role)
+                                            .where.not(
+                                              assignable_type: @vacated_by_type,
+                                              assignable_id: @vacated_by_id
+                                            )
+                                            .order("roles.position ASC")
       @all_potential_people = @all_potential_members.select { |m| m.is_a?(Person) }
     end
 
@@ -132,14 +141,17 @@ module Manage
         invited_count += 1
       end
 
+      # Mark the vacancy as finding replacement if we sent any invitations
+      @vacancy.mark_finding_replacement! if invited_count > 0
+
       redirect_to manage_production_vacancy_path(@production, @vacancy),
                   notice: "Invited #{invited_count} #{'person'.pluralize(invited_count)}."
     end
 
     def cancel
-      @vacancy.cancel!(by: Current.user)
+      @vacancy.mark_not_filling!(by: Current.user)
       redirect_to manage_production_path(@production),
-                  notice: "Vacancy cancelled."
+                  notice: "Vacancy closed without filling."
     end
 
     def fill

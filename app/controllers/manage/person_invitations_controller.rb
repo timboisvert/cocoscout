@@ -2,19 +2,44 @@
 
 module Manage
   class PersonInvitationsController < Manage::ManageController
-    allow_unauthenticated_access only: %i[accept do_accept]
+    allow_unauthenticated_access only: %i[accept do_accept decline]
 
-    skip_before_action :require_current_organization, only: %i[accept do_accept]
+    skip_before_action :require_current_organization, only: %i[accept do_accept decline]
     skip_before_action :show_manage_sidebar
 
-    before_action :set_person_invitation, only: %i[accept do_accept]
+    before_action :set_person_invitation, only: %i[accept do_accept decline]
 
     def accept
-      # Renders a form for the invitee to set their password
+      # Check if user is already signed in with matching email
+      @existing_user = Current.user && Current.user.email_address.downcase == @person_invitation.email.downcase
+
+      # Renders a form for the invitee to accept or decline
     end
 
     def do_accept
-      # Try and find the user accepting the invitation
+      # Check if existing user is already signed in with matching email
+      if Current.user && Current.user.email_address.downcase == @person_invitation.email.downcase
+        user = Current.user
+        person = user.person
+
+        # Ensure the person is in the organization (if invitation has one)
+        if @person_invitation.organization && !person.organizations.include?(@person_invitation.organization)
+          person.organizations << @person_invitation.organization
+        end
+
+        # Mark the invitation as accepted
+        @person_invitation.update(accepted_at: Time.current)
+
+        # Mark the invitation as accepted and redirect to dashboard
+        if @person_invitation.organization
+          redirect_to my_dashboard_path, notice: "You've joined #{@person_invitation.organization.name}!", status: :see_other
+        else
+          redirect_to my_dashboard_path, notice: "Invitation accepted!", status: :see_other
+        end
+        return
+      end
+
+      # Not signed in - need to handle password
       user = User.find_by(email_address: @person_invitation.email.downcase)
       person = Person.find_by(email: @person_invitation.email.downcase)
 
@@ -69,20 +94,22 @@ module Manage
       # Sign the user in
       start_new_session_for user
 
-      # Set the current production company in session (if invitation has one)
-      if @person_invitation.organization
-        user_id = user&.id
-        if user_id
-          session[:current_organization_id] ||= {}
-          session[:current_organization_id][user_id.to_s] = @person_invitation.organization.id
-        end
-      end
-
       # And redirect appropriately
       if @person_invitation.organization
-        redirect_to manage_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
+        redirect_to my_dashboard_path, notice: "Welcome to #{@person_invitation.organization.name}!", status: :see_other
       else
         redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your account is ready.", status: :see_other
+      end
+    end
+
+    def decline
+      @person_invitation.update(declined_at: Time.current)
+
+      # If they're already logged in, redirect to dashboard
+      if Current.user
+        redirect_to my_dashboard_path, notice: "You've declined the invitation.", status: :see_other
+      else
+        redirect_to root_path, notice: "You've declined the invitation.", status: :see_other
       end
     end
 

@@ -55,6 +55,7 @@
             <h2 class="font-semibold text-gray-900"><%= @production.name %></h2>
             <% unless @show.linked? %>
               <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %></p>
+              <p class="text-xs text-pink-600 font-medium"><%= @show.secondary_name.presence || @show.event_type.titleize %></p>
               <% if @show.location %>
                 <p class="text-xs text-gray-500"><%= @show.location.name %></p>
               <% end %>
@@ -103,6 +104,43 @@
             </div>
           </div>
         <% end %>
+      <% end %>
+
+      <!-- Other Cast Members -->
+      <% if @other_cast_assignments.any? %>
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+          <div class="p-4 border-b border-gray-200">
+            <p class="text-sm font-medium text-gray-700">Who else is in the cast?</p>
+          </div>
+          <div class="p-4">
+            <div class="space-y-2">
+              <% @other_cast_assignments.each do |assignment| %>
+                <% assignable = assignment.assignable %>
+                <div class="flex items-center gap-2">
+                  <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, class: "w-8 h-8 rounded-full object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded-full <%= assignable.is_a?(Person) ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-600' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
+                      <% if assignable.is_a?(Person) %>
+                        <%= assignable.initials %>
+                      <% else %>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-7 8c0-2.66 5.33-4 8-4s8 1.34 8 4v2H5v-2z"/>
+                        </svg>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <div class="text-sm">
+                    <span class="font-medium text-gray-900"><%= assignable.name %></span>
+                    <span class="text-gray-400 mx-1">as</span>
+                    <span class="text-pink-500"><%= assignment.role.name %></span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
       <% end %>
 
       <!-- Action Buttons -->

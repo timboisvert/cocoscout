@@ -1,0 +1,24 @@
+<p>Hi <%= @recipient.person&.first_name || "there" %>,</p>
+
+<p><strong><%= @person.name %></strong> has removed themselves from the talent pool for <strong><%= @production.name %></strong>.</p>
+
+<% if @groups.any? %>
+<p>The following groups were also removed:</p>
+<ul>
+  <% @groups.each do |group| %>
+    <li><%= group.name %></li>
+  <% end %>
+</ul>
+<% end %>
+
+<p>They will no longer be considered for future scheduling, but any existing assignments remain in place.</p>
+
+<p>
+  <a href="<%= manage_production_talent_pool_url(@production) %>" style="display: inline-block; padding: 12px 24px; background-color: #ec4899; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+    View Talent Pool
+  </a>
+</p>
+
+<p style="color: #6b7280; font-size: 14px;">
+  You're receiving this because you have notifications enabled for <%= @production.name %>.
+</p>

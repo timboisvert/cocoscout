@@ -8,7 +8,7 @@ class AuditionRequest < ApplicationRecord
   has_many :audition_session_availabilities, as: :available_entity, dependent: :destroy
   has_many :audition_request_votes, dependent: :destroy
 
-  validates :video_url, presence: true, if: -> { audition_cycle&.audition_type == "video_upload" }
+  validates :video_url, presence: true, if: -> { audition_cycle&.video_only? }
 
   # Cache invalidation - when request changes, invalidate the counts cache
   after_commit :invalidate_cycle_caches, on: %i[create update destroy]

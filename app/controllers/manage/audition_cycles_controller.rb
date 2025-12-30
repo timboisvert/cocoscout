@@ -85,51 +85,24 @@ module Manage
       end
 
       if @audition_cycle.update(params_to_update)
-        # Check if this is from the form page (availability, text sections, or form_reviewed)
-        if params[:audition_cycle]&.key?(:include_availability_section) ||
-           params[:audition_cycle]&.key?(:availability_show_ids) ||
-           params[:audition_cycle]&.key?(:include_audition_availability_section) ||
-           params[:audition_cycle]&.key?(:require_all_audition_availability) ||
-           params[:audition_cycle]&.key?(:instruction_text) ||
-           params[:audition_cycle]&.key?(:video_field_text) ||
-           params[:audition_cycle]&.key?(:success_text) ||
-           params[:audition_cycle]&.keys == [ "form_reviewed" ]
-
-          # Determine the appropriate notice message and accordion state
-          redirect_params = {}
-          if params[:audition_cycle]&.key?(:include_availability_section) || params[:audition_cycle]&.key?(:availability_show_ids)
-            notice_message = "Availability settings successfully updated"
-            redirect_params[:availability_open] = true
-          elsif params[:audition_cycle]&.key?(:include_audition_availability_section) || params[:audition_cycle]&.key?(:require_all_audition_availability)
-            notice_message = "Audition availability settings successfully updated"
-            redirect_params[:audition_availability_open] = true
-          elsif params[:audition_cycle]&.key?(:instruction_text) || params[:audition_cycle]&.key?(:video_field_text) || params[:audition_cycle]&.key?(:success_text)
-            notice_message = "Text successfully updated"
-            redirect_params[:text_open] = true
-          else
-            # Form review status - redirect to prepare page
-            redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
-                        notice: "Form review status successfully updated",
-                        status: :see_other
-            return
-          end
-
-          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, redirect_params),
-                      notice: notice_message,
+        # Redirect based on source
+        if params[:redirect_to] == "form"
+          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, tab: params[:tab]),
+                      notice: "Form saved",
                       status: :see_other
         else
           redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
                       notice: "Audition Settings successfully updated",
                       status: :see_other
         end
-      elsif params[:audition_cycle]&.keys == [ "form_reviewed" ]
-        # Determine which view to render based on what params were sent
-        # If form_reviewed is the only param, it came from the form page
-        # Otherwise it came from the edit page
-        setup_form_variables
-        render :form, status: :unprocessable_entity
       else
-        render :edit, status: :unprocessable_entity
+        # On error, render the appropriate view
+        if params[:redirect_to] == "form"
+          setup_form_variables
+          render :form, status: :unprocessable_entity
+        else
+          render :edit, status: :unprocessable_entity
+        end
       end
     end
 
@@ -284,7 +257,9 @@ module Manage
     end
 
     def audition_cycle_params
-      params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type, :instruction_text,
+      params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type,
+                                             :allow_video_submissions, :allow_in_person_auditions,
+                                             :instruction_text,
                                              :video_field_text, :success_text, :token, :include_availability_section, :require_all_availability, :include_audition_availability_section, :require_all_audition_availability, :form_reviewed, availability_show_ids: [])
     end
 

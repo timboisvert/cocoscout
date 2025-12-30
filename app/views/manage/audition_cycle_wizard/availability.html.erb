@@ -1,0 +1,162 @@
+<% availability_step = @wizard_state[:allow_in_person_auditions] ? 4 : 3 %>
+<%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: availability_step, step_name: "Availability" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Collect availability?</h2>
+  <p class="text-gray-600 mb-6">Ask people about their availability for shows or audition sessions.</p>
+
+  <!-- Why Availability Matters -->
+  <div class="p-4 bg-pink-50 border border-pink-100 rounded-lg mb-6">
+    <div class="flex gap-3">
+      <svg class="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p class="text-sm font-medium text-pink-800 mb-1">Why collect availability?</p>
+        <p class="text-sm text-pink-700">Gathering availability upfront is one of CocoScout's most powerful features. It helps you make smarter casting decisions by knowing who can actually perform on your show dates—before you cast them. No more awkward conversations after casting someone who can't make half the shows!</p>
+      </div>
+    </div>
+  </div>
+
+  <%= form_with url: manage_audition_wizard_production_save_availability_path(@production), method: :post, local: true, data: { controller: "availability-wizard" } do |form| %>
+    <div class="space-y-6">
+      <!-- Event Availability -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 mr-4">
+            <p class="font-medium text-gray-900">Show & Event Availability</p>
+            <p class="text-sm text-gray-500 mt-1">Ask if they're available for upcoming shows and events</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="include_availability_section" value="0">
+            <input type="checkbox" name="include_availability_section" value="1"
+                   <%= "checked" if @wizard_state[:include_availability_section] %>
+                   class="sr-only peer"
+                   data-action="change->availability-wizard#toggleSection"
+                   data-availability-wizard-target="showAvailabilityToggle">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <div data-availability-wizard-target="showAvailabilitySection" class="<%= 'hidden' unless @wizard_state[:include_availability_section] %> mt-4 pt-4 border-t border-gray-200">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-sm font-medium text-gray-700">Select shows & events to ask about:</p>
+            <%= link_to "Manage shows", manage_production_shows_path(@production), target: "_blank", class: "text-sm text-pink-500 hover:text-pink-600" %>
+          </div>
+
+          <% if @shows.any? %>
+            <div class="bg-white border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto" data-availability-wizard-target="showList">
+              <div class="space-y-2">
+                <% @shows.each do |show| %>
+                  <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded -m-2">
+                    <input type="checkbox" name="availability_show_ids[]" value="<%= show.id %>"
+                           <%= "checked" if @wizard_state[:availability_show_ids]&.include?(show.id.to_s) %>
+                           class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500"
+                           data-availability-wizard-target="showCheckbox">
+                    <span class="ml-3 text-sm text-gray-700">
+                      <span class="font-medium"><%= show.event_type.titleize %></span>
+                      <% if show.secondary_name.present? %>
+                        <span class="text-gray-500">: <%= show.secondary_name %></span>
+                      <% end %>
+                      <span class="text-gray-400 ml-2"><%= show.date_and_time.strftime("%b %-d, %Y at %-I:%M %p") %></span>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+            <button type="button" class="mt-2 text-sm text-pink-500 hover:text-pink-600 font-medium" data-action="click->availability-wizard#selectAllShows">Select All Shows</button>
+          <% else %>
+            <div class="bg-white border border-gray-200 rounded-lg p-4 text-center">
+              <p class="text-sm text-gray-500">No upcoming shows scheduled yet.</p>
+              <%= link_to "Schedule a show", new_manage_production_show_path(@production), target: "_blank", class: "text-sm text-pink-500 hover:text-pink-600 font-medium" %>
+            </div>
+          <% end %>
+
+          <!-- Require Show Availability Toggle -->
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">Require show & event availability when signing up</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="require_show_availability" value="0">
+                <input type="checkbox" name="require_show_availability" value="1"
+                       <%= "checked" if @wizard_state[:require_show_availability] %>
+                       class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audition Session Availability (only if in-person auditions enabled) -->
+      <% if @wizard_state[:allow_in_person_auditions] %>
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 mr-4">
+              <p class="font-medium text-gray-900">Audition Session Availability</p>
+              <p class="text-sm text-gray-500 mt-1">Ask which audition times work for them</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="include_audition_availability_section" value="0">
+              <input type="checkbox" name="include_audition_availability_section" value="1"
+                     <%= "checked" if @wizard_state[:include_audition_availability_section] %>
+                     class="sr-only peer"
+                     data-action="change->availability-wizard#toggleAuditionSection"
+                     data-availability-wizard-target="auditionAvailabilityToggle">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <div data-availability-wizard-target="auditionAvailabilitySection" class="<%= 'hidden' unless @wizard_state[:include_audition_availability_section] %> mt-4 pt-4 border-t border-gray-200">
+            <% if @wizard_state[:audition_sessions].present? %>
+              <div class="bg-white border border-gray-200 rounded-lg p-3">
+                <p class="text-sm text-gray-600 mb-2"><%= pluralize(@wizard_state[:audition_sessions].size, "audition session") %> configured:</p>
+                <div class="space-y-1">
+                  <% @wizard_state[:audition_sessions].sort_by { |s| Time.parse(s[:start_at]) rescue Time.current }.first(3).each do |session| %>
+                    <p class="text-sm text-gray-500">• <%= Time.parse(session[:start_at]).strftime("%b %-d at %-I:%M %p") %> (<%= session[:duration_minutes] %> min)</p>
+                  <% end %>
+                  <% if @wizard_state[:audition_sessions].size > 3 %>
+                    <p class="text-sm text-gray-400">+ <%= @wizard_state[:audition_sessions].size - 3 %> more...</p>
+                  <% end %>
+                </div>
+              </div>
+            <% else %>
+              <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p class="text-sm text-amber-700">
+                  <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  No audition sessions configured yet.
+                  <%= link_to "Go back to add sessions", manage_audition_wizard_production_sessions_path(@production), class: "text-pink-500 hover:text-pink-600 font-medium" %>
+                </p>
+              </div>
+            <% end %>
+
+            <!-- Require Audition Availability Toggle -->
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-700">Require audition session availability when signing up</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="hidden" name="require_audition_availability" value="0">
+                  <input type="checkbox" name="require_audition_availability" value="1"
+                         <%= "checked" if @wizard_state[:require_audition_availability] %>
+                         class="sr-only peer">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <% back_path = @wizard_state[:allow_in_person_auditions] ? manage_audition_wizard_production_sessions_path(@production) : manage_audition_wizard_production_schedule_path(@production) %>
+      <%= link_to back_path, class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

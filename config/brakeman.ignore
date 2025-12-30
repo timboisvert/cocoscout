@@ -7,7 +7,7 @@
       "check_name": "LinkToHref",
       "message": "Potentially unsafe model attribute in `link_to` href",
       "file": "app/views/my/shows/show.html.erb",
-      "line": 103,
+      "line": 113,
       "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
       "code": "link_to((Unresolved Model).new.safe_url, :target => \"_blank\", :rel => \"noopener noreferrer\", :class => \"inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 rounded-md hover:bg-pink-100 transition-colors\")",
       "render_path": [
@@ -15,7 +15,7 @@
           "type": "controller",
           "class": "My::ShowsController",
           "method": "show",
-          "line": 244,
+          "line": 282,
           "file": "app/controllers/my/shows_controller.rb",
           "rendered": {
             "name": "my/shows/show",
@@ -64,7 +64,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/profile_controller.rb",
-      "line": 307,
+      "line": 315,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.require(:person).permit(:name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled, :profile_visibility_settings => ({}), :socials_attributes => ([:id, :platform, :handle, :name, :_destroy]), :profile_headshots_attributes => ([:id, :category, :is_primary, :position, :image, :_destroy]), :profile_resumes_attributes => ([:id, :name, :position, :file, :_destroy]), :profile_videos_attributes => ([:id, :title, :url, :position, :_destroy]), :performance_sections_attributes => ([:id, :name, :position, :_destroy, { :performance_credits_attributes => ([:id, :section_name, :title, :location, :role, :year_start, :year_end, :ongoing, :notes, :link_url, :position, :_destroy]) }]), :training_credits_attributes => ([:id, :institution, :program, :year_start, :year_end, :ongoing, :notes, :position, :_destroy])).permit!",
       "render_path": null,
@@ -79,7 +79,41 @@
         915
       ],
       "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "86124411749e39a215a9ba2e62e5e2215a60646e1994f5f44b98b9f2a98deae2",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/person_invitations/accept.html.erb",
+      "line": 164,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Accept & Join #{PersonInvitation.find_by(:token => params[:token]).organization.name}\", { :variant => \"primary\", :size => \"jumbo\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::PersonInvitationsController",
+          "method": "accept",
+          "line": 15,
+          "file": "app/controllers/manage/person_invitations_controller.rb",
+          "rendered": {
+            "name": "manage/person_invitations/accept",
+            "file": "app/views/manage/person_invitations/accept.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/person_invitations/accept"
+      },
+      "user_input": "PersonInvitation.find_by(:token => params[:token]).organization.name",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
+      ],
+      "note": ""
     }
   ],
-  "brakeman_version": "7.1.1"
+  "brakeman_version": "7.1.2"
 }

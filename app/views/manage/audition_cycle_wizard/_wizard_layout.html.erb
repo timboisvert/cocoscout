@@ -1,0 +1,81 @@
+<% content_for :title, "Set Up Auditions - #{step_name}" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Auditions", manage_production_auditions_path(@production)]
+    ],
+    text: "Set Up Auditions",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-8">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <%
+          # Build steps dynamically based on wizard state
+          all_steps = []
+          all_steps << { key: "format", name: "Format", path: manage_audition_wizard_production_format_path(@production) }
+          all_steps << { key: "schedule", name: "Schedule", path: manage_audition_wizard_production_schedule_path(@production) }
+          if @wizard_state && @wizard_state[:allow_in_person_auditions]
+            all_steps << { key: "sessions", name: "Sessions", path: manage_audition_wizard_production_sessions_path(@production) }
+          end
+          all_steps << { key: "availability", name: "Availability", path: manage_audition_wizard_production_availability_path(@production) }
+          all_steps << { key: "reviewers", name: "Reviewers", path: manage_audition_wizard_production_reviewers_path(@production) }
+          all_steps << { key: "voting", name: "Voting", path: manage_audition_wizard_production_voting_path(@production) }
+          all_steps << { key: "review", name: "Review", path: manage_audition_wizard_production_review_path(@production) }
+
+          # Assign step numbers
+          steps = all_steps.each_with_index.map { |step, i| step.merge(num: i + 1) }
+        %>
+        <% steps.each_with_index do |step, index| %>
+          <% is_current = step[:num] == current_step %>
+          <% is_completed = step[:num] < current_step %>
+          <% is_clickable = is_completed %>
+
+          <div class="flex items-center">
+            <% if is_clickable %>
+              <%= link_to step[:path], class: "flex items-center" do %>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_completed ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
+                  <% if is_completed %>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  <% else %>
+                    <%= step[:num] %>
+                  <% end %>
+                </div>
+                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
+              <% end %>
+            <% else %>
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
+                  <%= step[:num] %>
+                </div>
+                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
+              </div>
+            <% end %>
+          </div>
+
+          <% if index < steps.length - 1 %>
+            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < current_step ? 'bg-pink-500' : 'bg-gray-200' %>"></div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <%= yield %>
+    </div>
+
+    <!-- Cancel Link -->
+    <div class="mt-4 text-center">
+      <%= link_to "Cancel", manage_audition_wizard_production_cancel_path(@production),
+          data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." },
+          class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+</div>

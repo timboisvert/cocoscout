@@ -117,6 +117,174 @@ class AccountController < ApplicationController
   def billing
   end
 
+  def organizations
+    @person = Current.user.person
+    @people = Current.user.people.active.order(:created_at).to_a
+    people_ids = @people.map(&:id)
+
+    # Get groups from all profiles
+    @groups = Group.active
+                   .joins(:group_memberships)
+                   .where(group_memberships: { person_id: people_ids })
+                   .distinct
+                   .order(:name)
+                   .to_a
+    group_ids = @groups.map(&:id)
+
+    # Find all organizations the user is connected to via talent pools
+    production_ids = Set.new
+
+    # Productions via person memberships
+    person_production_ids = TalentPoolMembership
+      .where(member_type: "Person", member_id: people_ids)
+      .joins(:talent_pool)
+      .pluck("talent_pools.production_id")
+    production_ids.merge(person_production_ids)
+
+    # Productions via group memberships
+    if group_ids.any?
+      group_production_ids = TalentPoolMembership
+        .where(member_type: "Group", member_id: group_ids)
+        .joins(:talent_pool)
+        .pluck("talent_pools.production_id")
+      production_ids.merge(group_production_ids)
+    end
+
+    # Get all organizations from these productions
+    org_ids = Production.where(id: production_ids).pluck(:organization_id).uniq
+
+    # Also include organizations from organization_roles (team memberships)
+    team_org_ids = Current.user.organization_roles.pluck(:organization_id)
+    org_ids = (org_ids + team_org_ids).uniq
+
+    # Also include organizations from people's directory memberships (HABTM)
+    if people_ids.any?
+      people_org_ids = Organization.joins(:people).where(people: { id: people_ids }).pluck(:id)
+      org_ids = (org_ids + people_org_ids).uniq
+    end
+
+    @organizations = Organization.where(id: org_ids).includes(:productions, logo_attachment: :blob).order(:name)
+
+    # Build lookup of connection types for each org
+    @organization_connections = {}
+    @organizations.each do |org|
+      connections = {
+        as_talent: false,
+        as_team: false,
+        production_count: 0,
+        people: [],
+        groups: []
+      }
+
+      # Check team membership
+      if Current.user.organization_roles.exists?(organization_id: org.id)
+        connections[:as_team] = true
+      end
+
+      # Check talent pool memberships
+      org_production_ids = org.productions.pluck(:id)
+      talent_pools = TalentPool.where(production_id: org_production_ids)
+
+      @people.each do |person|
+        if TalentPoolMembership.exists?(talent_pool: talent_pools, member: person)
+          connections[:as_talent] = true
+          connections[:people] << person
+        end
+      end
+
+      @groups.each do |group|
+        if TalentPoolMembership.exists?(talent_pool: talent_pools, member: group)
+          connections[:as_talent] = true
+          connections[:groups] << group
+        end
+      end
+
+      connections[:production_count] = org_production_ids.count
+      @organization_connections[org.id] = connections
+    end
+  end
+
+  def leave_organization
+    organization = Organization.find(params[:id])
+    @people = Current.user.people.active.to_a
+    people_ids = @people.map(&:id)
+
+    # Get groups from all profiles
+    group_ids = Group.active
+                     .joins(:group_memberships)
+                     .where(group_memberships: { person_id: people_ids })
+                     .pluck(:id)
+
+    # Get all production IDs for this organization
+    production_ids = organization.productions.pluck(:id)
+    talent_pool_ids = TalentPool.where(production_id: production_ids).pluck(:id)
+
+    ActiveRecord::Base.transaction do
+      # Remove talent pool memberships for all profiles
+      TalentPoolMembership.where(talent_pool_id: talent_pool_ids, member_type: "Person", member_id: people_ids).destroy_all
+
+      # Remove talent pool memberships for groups
+      if group_ids.any?
+        TalentPoolMembership.where(talent_pool_id: talent_pool_ids, member_type: "Group", member_id: group_ids).destroy_all
+      end
+
+      # Remove all show assignments for this org's productions
+      show_ids = Show.where(production_id: production_ids).pluck(:id)
+      ShowPersonRoleAssignment.where(show_id: show_ids, assignable_type: "Person", assignable_id: people_ids).destroy_all
+      if group_ids.any?
+        ShowPersonRoleAssignment.where(show_id: show_ids, assignable_type: "Group", assignable_id: group_ids).destroy_all
+      end
+
+      # Remove audition requests
+      AuditionRequest.where(requestable_type: "Person", requestable_id: people_ids)
+                     .joins(:audition_window)
+                     .joins("INNER JOIN audition_cycles ON audition_windows.audition_cycle_id = audition_cycles.id")
+                     .where(audition_cycles: { production_id: production_ids })
+                     .destroy_all
+
+      if group_ids.any?
+        AuditionRequest.where(requestable_type: "Group", requestable_id: group_ids)
+                       .joins(:audition_window)
+                       .joins("INNER JOIN audition_cycles ON audition_windows.audition_cycle_id = audition_cycles.id")
+                       .where(audition_cycles: { production_id: production_ids })
+                       .destroy_all
+      end
+
+      # Remove cast assignment stages
+      CastAssignmentStage.where(assignable_type: "Person", assignable_id: people_ids, talent_pool_id: talent_pool_ids).destroy_all
+      if group_ids.any?
+        CastAssignmentStage.where(assignable_type: "Group", assignable_id: group_ids, talent_pool_id: talent_pool_ids).destroy_all
+      end
+
+      # Remove role eligibilities
+      RoleEligibility.where(member_type: "Person", member_id: people_ids)
+                     .joins(:role)
+                     .where(roles: { production_id: production_ids })
+                     .destroy_all
+
+      if group_ids.any?
+        RoleEligibility.where(member_type: "Group", member_id: group_ids)
+                       .joins(:role)
+                       .where(roles: { production_id: production_ids })
+                       .destroy_all
+      end
+
+      # Remove vacancy invitations
+      RoleVacancyInvitation.where(person_id: people_ids)
+                           .joins(role_vacancy: { show_person_role_assignment: :show })
+                           .where(shows: { production_id: production_ids })
+                           .destroy_all
+
+      # Remove show availabilities
+      ShowAvailability.where(available_entity_type: "Person", available_entity_id: people_ids, show_id: show_ids).destroy_all
+      if group_ids.any?
+        ShowAvailability.where(available_entity_type: "Group", available_entity_id: group_ids, show_id: show_ids).destroy_all
+      end
+    end
+
+    redirect_to account_organizations_path, notice: "You have been removed from #{organization.name}."
+  end
+
   private
 
   def set_account_sidebar

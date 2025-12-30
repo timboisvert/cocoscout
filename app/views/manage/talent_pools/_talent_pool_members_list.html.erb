@@ -1,6 +1,6 @@
 <%# Renders the list of people in a talent pool, for AJAX refresh %>
 <% can_manage = current_user_can_manage?(talent_pool.production) %>
-<% cache ["talent_pool_members_v4", talent_pool.id, talent_pool.updated_at.to_i, talent_pool.talent_pool_memberships.maximum(:updated_at)&.to_i, can_manage] do %>
+<% cache ["talent_pool_members_v5", talent_pool.id, talent_pool.updated_at.to_i, talent_pool.talent_pool_memberships.maximum(:updated_at)&.to_i, can_manage] do %>
   <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
     <% if talent_pool.members.any? %>
       <% talent_pool.members.each do |member| %>
@@ -12,7 +12,7 @@
                       class: "block" do %>
             <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
               <% if member.headshot&.attached? %>
-                <%= image_tag member.safe_headshot_variant(:thumb),
+                <%= image_tag member.safe_headshot_variant(:tile),
                               class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
                               loading: "lazy",
                               alt: member.name %>

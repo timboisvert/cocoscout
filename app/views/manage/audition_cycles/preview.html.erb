@@ -29,9 +29,11 @@
       <!-- Full-Width Header -->
       <div class="mb-8 sm:mb-10">
         <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-        <% if @audition_cycle.audition_type == "in_person" %>
+        <% if @audition_cycle.hybrid_auditions? %>
+          <p class="text-lg text-slate-600">Submit a video and/or sign up for an in-person audition</p>
+        <% elsif @audition_cycle.accepts_in_person_auditions? %>
           <p class="text-lg text-slate-600">Sign up for an in-person audition</p>
-        <% elsif @audition_cycle.audition_type == "video_upload" %>
+        <% else %>
           <p class="text-lg text-slate-600">Submit a video audition</p>
         <% end %>
       </div>
@@ -125,7 +127,7 @@
             <% end %>
 
             <!-- Video Upload Section -->
-            <% if @audition_cycle.audition_type == "video_upload" %>
+            <% if @audition_cycle.accepts_video_submissions? %>
               <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
                 <div class="p-5">
               <% if @audition_cycle.video_field_text.present? %>
@@ -285,9 +287,9 @@
 
         <!-- Submit Button -->
       <%
-        if @audition_cycle.audition_type == "in_person"
+        if @audition_cycle.accepts_in_person_auditions?
           submit_text = "Sign up (Preview Mode)"
-        elsif @audition_cycle.audition_type == "video_upload"
+        else
           submit_text = "Submit video audition (Preview Mode)"
         end
       %>

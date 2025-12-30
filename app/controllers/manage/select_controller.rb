@@ -4,6 +4,8 @@ module Manage
   class SelectController < Manage::ManageController
     before_action :set_current_organization, except: %i[organization set_organization]
     skip_before_action :show_manage_sidebar
+    before_action :show_manage_header_only
+    before_action :hide_production_selector
 
     def organization
       # Organization selection screen
@@ -89,6 +91,12 @@ module Manage
       session[:current_production_id_for_organization] ||= {}
       session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = production.id
       redirect_to manage_path
+    end
+
+    private
+
+    def hide_production_selector
+      @hide_production_selector = true
     end
   end
 end

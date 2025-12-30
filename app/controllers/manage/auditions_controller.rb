@@ -16,6 +16,9 @@ module Manage
     def index
       @active_audition_cycle = @production.active_audition_cycle
       @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc).limit(3)
+
+      # Check for wizard in progress
+      @wizard_in_progress = session[:audition_wizard].present? && session[:audition_wizard][@production.id.to_s].present?
     end
 
     # GET /auditions/archive
@@ -27,6 +30,9 @@ module Manage
     def prepare
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
       @talent_pool_people = @production.talent_pool.people.order(:name)
+
+      # Check for wizard in progress
+      @wizard_in_progress = session[:audition_wizard].present? && session[:audition_wizard][@production.id.to_s].present?
     end
 
     # PATCH /auditions/update_reviewers
@@ -48,9 +54,9 @@ module Manage
                   notice: "Audition review team updated successfully."
     end
 
-    # GET /auditions/publicize
+    # GET /auditions/publicize - redirects to prepare (publicize section removed)
     def publicize
-      redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
+      redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle)
     end
 
     # GET /auditions/review
@@ -73,12 +79,12 @@ module Manage
 
       @talent_pool = @production.talent_pool
 
-      if @audition_cycle.audition_type == "video_upload"
-        # For video upload auditions, use audition requests instead of auditions
+      if @audition_cycle.video_only?
+        # For video-only auditions, use audition requests instead of auditions
         audition_requests = @audition_cycle.audition_requests.includes(:requestable)
         @auditioned_people = audition_requests.map(&:requestable).compact.sort_by { |r| r.name.to_s }
       else
-        # For in-person auditions, use auditions from audition sessions
+        # For in-person auditions (or hybrid), use auditions from audition sessions
         audition_session_ids = @audition_cycle.audition_sessions.pluck(:id)
         auditions = Audition.where(audition_session_id: audition_session_ids)
                             .select(:auditionable_type, :auditionable_id)
@@ -96,8 +102,8 @@ module Manage
       @talent_pool = @production.talent_pool
       @auditionee_vote_counts = {}
 
-      if @audition_cycle.audition_type == "video_upload"
-        # For video upload auditions, use audition requests instead of auditions
+      if @audition_cycle.video_only?
+        # For video-only auditions, use audition requests instead of auditions
         audition_requests = @audition_cycle.audition_requests
                               .includes(:audition_request_votes, :requestable)
 

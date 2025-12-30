@@ -16,9 +16,8 @@ module My
                      .order(:name)
                      .to_a
 
-      # Store the auditions filter (upcoming/past)
-      @auditions_filter = params[:auditions_filter] || session[:auditions_filter] || "upcoming"
-      session[:auditions_filter] = @auditions_filter
+      # Store the auditions filter (upcoming/past) - always default to upcoming
+      @auditions_filter = params[:auditions_filter].presence || "upcoming"
 
       # Handle entity filter - now uses person_ID format
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }

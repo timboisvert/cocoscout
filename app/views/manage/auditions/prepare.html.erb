@@ -14,333 +14,421 @@
 
   <%= render partial: "archived_banner" %>
 
-  <% if @audition_cycle.present? && @audition_cycle.opening_soon_and_not_reviewed? %>
-    <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="ml-3">
-          <p class="text-sm font-medium text-yellow-800">
-            Sign-up window opens in <%= distance_of_time_in_words(@audition_cycle.opens_at, Time.current) %>
-          </p>
-          <p class="text-sm text-yellow-700 mt-1">
-            Please review and approve the sign-up form before the window opens.
-            <%= link_to "Review Form", form_manage_production_audition_cycle_path(@production, @audition_cycle), class: "font-semibold underline" %>
-          </p>
+  <% if @audition_cycle.blank? %>
+    <%# No audition cycle - show setup options %>
+    <% if @wizard_in_progress %>
+      <!-- Wizard In Progress Banner -->
+      <div class="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-lg p-5 mb-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-pink-900 mb-1">You have an audition setup in progress</h3>
+            <p class="text-sm text-pink-700 mb-3">Pick up where you left off or start fresh.</p>
+            <div class="flex gap-3">
+              <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_audition_wizard_production_format_path(@production), variant: "primary", size: "small" } %>
+              <%= link_to "Start Over", manage_audition_wizard_production_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 self-center underline" %>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  <% end %>
-
-  <% if @audition_cycle.blank? %>
-    <div class="mb-5 text-gray-500 text-sm">
-      You aren't currently offering auditions for <%= @production.name %>
-    </div>
-
-    <% if current_user_can_manage?(@production) %>
-      <%= render partial: "shared/button", locals: {text: "Offer Auditions", path: new_manage_production_audition_cycle_path(@production), variant: "primary"} %>
+    <% else %>
+      <!-- No Audition Cycle - Clean Welcome -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-gray-900 mb-1 text-lg">Ready to find new talent?</h3>
+            <p class="text-sm text-gray-600 mb-4">Set up auditions to collect video submissions, schedule audition sessions, or both.</p>
+            <% if current_user_can_manage?(@production) %>
+              <%= render partial: "shared/button", locals: { text: "Set Up Auditions", path: manage_audition_wizard_production_format_path(@production), variant: "primary" } %>
+            <% end %>
+          </div>
+        </div>
+      </div>
     <% end %>
   <% else %>
     <% audition_cycle = @audition_cycle %>
+    <%
+      # Determine status
+      if audition_cycle.opens_at > Time.current
+        status = :upcoming
+        status_label = "Opens Soon"
+      elsif audition_cycle.closes_at.present? && audition_cycle.closes_at <= Time.current
+        status = :closed
+        status_label = "Closed"
+      else
+        status = :open
+        status_label = "Open for Sign-ups"
+      end
+    %>
 
+    <%# ==================== STATUS BANNER ==================== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Settings</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Configure audition type, dates, and basic settings for your audition process.</p>
-
-        <%
-          # Determine status
-          if audition_cycle.opens_at > Time.current
-            status = :upcoming
-          elsif audition_cycle.closes_at.present? && audition_cycle.closes_at <= Time.current
-            status = :closed
-          else
-            status = :open
-          end
-        %>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Audition Type</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">
-              <% if audition_cycle.audition_type == "in_person" %>
-                In-person Auditions
-              <% elsif audition_cycle.audition_type == "video_upload" %>
-                Video Upload Auditions
+      <div class="p-5">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <%# Status and timing %>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0">
+              <% if status == :open %>
+                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              <% elsif status == :upcoming %>
+                <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              <% else %>
+                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               <% end %>
-            </p>
-          </div>
-          <div class="p-3 bg-gray-50 rounded-lg">
-            <p class="text-xs text-gray-600 font-medium">Sign-up Window</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">
-              <%= audition_cycle.opens_at.strftime("%b %-d, %Y at %l:%M %p") %><% if audition_cycle.closes_at.present? %> - <%= audition_cycle.closes_at.strftime("%b %-d, %Y at %l:%M %p") %><% else %> (open-ended)<% end %>
-              <% if status == :upcoming %>
-                <% seconds_until = (audition_cycle.opens_at - Time.current).to_i %>
-                <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.opens_at.utc.iso8601 %>">
-                    Opens in <span data-countdown-target="clock"></span>
-                  </div>
-                <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Opens in <%= distance_of_time_in_words(Time.current, audition_cycle.opens_at) %></span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 coustard-regular"><%= status_label %></h3>
+              <div class="text-sm mt-1 space-y-0.5">
+                <% if status == :upcoming %>
+                  <% seconds_until = (audition_cycle.opens_at - Time.current).to_i %>
+                  <% if seconds_until > 0 && seconds_until < 172800 %>
+                    <p class="text-gray-600">
+                      Opens in <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.opens_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
+                    </p>
+                  <% elsif seconds_until > 0 %>
+                    <p class="text-gray-600">Opens in <span class="text-pink-600 font-medium"><%= distance_of_time_in_words(Time.current, audition_cycle.opens_at) %></span></p>
+                  <% end %>
+                <% elsif status == :open && audition_cycle.closes_at.present? %>
+                  <% seconds_until = (audition_cycle.closes_at - Time.current).to_i %>
+                  <% if seconds_until > 0 && seconds_until < 172800 %>
+                    <p class="text-gray-600">
+                      Closes in <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
+                    </p>
+                  <% elsif seconds_until > 0 %>
+                    <p class="text-gray-600">Closes in <span class="text-pink-600 font-medium"><%= distance_of_time_in_words(Time.current, audition_cycle.closes_at) %></span></p>
+                  <% end %>
                 <% end %>
-              <% elsif status == :open && audition_cycle.closes_at.present? %>
-                <% seconds_until = (audition_cycle.closes_at - Time.current).to_i %>
-                <% if seconds_until > 0 && seconds_until < 172800 %>
-                  <div class="text-xs text-pink-500 mt-1" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>">
-                    Closes in <span data-countdown-target="clock"></span>
-                  </div>
-                <% elsif seconds_until > 0 %>
-                  <span class="block text-xs text-pink-500 mt-1">Closes in <%= distance_of_time_in_words(Time.current, audition_cycle.closes_at) %></span>
-                <% end %>
-              <% end %>
-            </p>
-          </div>
-        </div>
-
-      <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Edit Settings" : "View Settings"), path: edit_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
-      <% end %>
-      </div>
-    </div>
-
-    <% if audition_cycle.audition_type == "in_person" %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Plan your Audition Sessions</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500 mb-6">Schedule when and where auditions will take place, and set how many people you want to audition at each session.</p>
-
-      <% if @audition_cycle.audition_sessions.any? %>
-        <div class="mb-4 space-y-3">
-          <% @audition_cycle.audition_sessions.order(:start_at).each do |session| %>
-            <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200">
-              <%# Left Section: Date & Session Details %>
-              <div class="w-1/2 flex items-center gap-4">
-                <%# Date Box %>
-                <div class="flex-shrink-0 w-14 text-center">
-                  <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-                  <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
-                  <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
-                </div>
-
-                <%# Session Details %>
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium text-gray-900">
-                    Audition Session
-                  </div>
-                  <div class="text-sm text-gray-600">
-                    <%= session.start_at.strftime("%l:%M %p") %>
-                    <% if session.location.present? %>
-                      · <%= session.location.name %>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-
-              <%# Right Section: Capacity %>
-              <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
-                <div class="flex-1">
-                  <div class="text-[10px] text-gray-400 uppercase tracking-wide">Capacity</div>
-                  <div class="text-lg font-semibold text-gray-900"><%= session.maximum_auditionees.present? ? session.maximum_auditionees : "∞" %></div>
-                </div>
+                <p class="text-gray-500">
+                  Runs from <%= audition_cycle.opens_at.strftime("%b %-d") %><%= audition_cycle.closes_at.present? ? " to #{audition_cycle.closes_at.strftime("%b %-d")}" : " (open-ended)" %>
+                </p>
               </div>
             </div>
+          </div>
+
+          <%# Quick actions %>
+          <div class="flex items-center gap-2">
+            <% if current_user_can_manage?(@production) %>
+              <%= link_to edit_manage_production_audition_cycle_path(@production, audition_cycle), class: "inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors", title: "Settings" do %>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Sign-up URL section %>
+      <% if status == :open || status == :upcoming %>
+        <div class="px-5 py-4 border-t border-gray-100 bg-gray-50">
+          <%= render "shared/copy_url", url: audition_cycle.respond_url, label: "Sign-up Link" %>
+        </div>
+      <% end %>
+
+      <%# Warning if form not reviewed and opening soon %>
+      <% if audition_cycle.opening_soon_and_not_reviewed? %>
+        <div class="px-5 py-3 bg-pink-50 border-t border-pink-100">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="text-sm text-pink-800">
+              <strong>Heads up!</strong> Review your sign-up form before the window opens.
+              <%= link_to "Review now →", form_manage_production_audition_cycle_path(@production, audition_cycle), class: "font-semibold underline ml-1" %>
+            </span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# ==================== TWO COLUMN LAYOUT ==================== %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <%# Left Column: Sign-up Form %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
+          <% if audition_cycle.form_reviewed %>
+            <span class="inline-flex items-center gap-1 text-xs text-green-700">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+              Reviewed
+            </span>
+          <% else %>
+            <span class="inline-flex items-center gap-1 text-xs text-yellow-700">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+              Needs Review
+            </span>
           <% end %>
         </div>
-      <% else %>
-        <p class="text-gray-500 text-sm mb-4">No sessions scheduled yet</p>
-      <% end %>
+        <div class="p-5">
+          <p class="text-sm text-gray-600 mb-4">Customize the questions and information you collect from auditionees.</p>
 
-      <% if current_user_can_manage?(@production) %>
-        <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Manage Sessions" : "View Audition Sessions"), path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "primary"} %>
-      <% end %>
-      </div>
-    </div>
-    <% end %>
-
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Pick your Audition Review Team</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Identify who will get access to view and assess sign-ups and auditions.</p>
-
-        <% reviewer_type = @audition_cycle.reviewer_access_type.presence || 'managers' %>
-        <%= form_with url: update_reviewers_manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
-          <div class="mb-4">
-            <label class="block font-semibold mb-2 text-sm">Who can review auditions?</label>
-            <div class="space-y-2">
-              <div>
-                <div class="flex items-center">
-                  <label class="flex items-center cursor-pointer">
-                    <%= radio_button_tag :reviewer_access_type, 'managers', reviewer_type == 'managers', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
-                    <span class="text-sm">Production Team</span>
-                  </label>
-                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleManagersList" data-reviewer-selector-target="managersToggle">
-                    Show
-                  </button>
-                </div>
-                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg" data-reviewer-selector-target="managersList">
-                  <% global_managers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :default_person).map { |r| { user: r.user, role: "#{r.company_role.capitalize} (Global)" } } %>
-                  <% production_team = @production.production_permissions.where(role: %w[manager viewer]).includes(user: :default_person).map { |p| { user: p.user, role: p.role.capitalize } } %>
-                  <% all_team = (global_managers + production_team).uniq { |t| t[:user].id } %>
-                  <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
-                    <% all_team.each do |team_member| %>
-                      <% user = team_member[:user] %>
-                      <% next unless user.person %>
-                      <div class="relative group">
-                        <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
-                          <% if user.person.headshot&.attached? %>
-                            <%= image_tag user.person.safe_headshot_variant(:thumb),
-                                  class: "w-full h-full object-cover",
-                                  loading: "lazy",
-                                  alt: user.person.name %>
-                          <% else %>
-                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                              <div class="text-2xl font-bold text-gray-500">
-                                <%= user.person.name.split.map(&:first).join.upcase %>
-                              </div>
-                            </div>
-                          <% end %>
-                        </div>
-                        <div class="text-xs font-medium text-gray-900 truncate" title="<%= user.person.name %>">
-                          <%= user.person.name %>
-                        </div>
-                        <div class="text-[10px] text-gray-500 truncate">
-                          <%= team_member[:role] %>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div class="flex items-center">
-                  <label class="flex items-center cursor-pointer">
-                    <%= radio_button_tag :reviewer_access_type, 'all', reviewer_type == 'all', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
-                    <span class="text-sm">Entire Talent Pool</span>
-                  </label>
-                  <button type="button" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer" data-action="click->reviewer-selector#toggleTalentPoolList" data-reviewer-selector-target="talentPoolToggle">
-                    Show
-                  </button>
-                </div>
-                <div class="hidden ml-6 mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg max-h-96 overflow-y-auto" data-reviewer-selector-target="talentPoolList">
-                  <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
-                    <% @talent_pool_people.each do |person| %>
-                      <div class="relative group">
-                        <%= link_to manage_person_path(person), data: { turbo_frame: "_top" }, class: "block" do %>
-                          <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
-                            <% if person.headshot&.attached? %>
-                              <%= image_tag person.safe_headshot_variant(:thumb),
-                                    class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
-                                    loading: "lazy",
-                                    alt: person.name %>
-                            <% else %>
-                              <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                                <div class="text-2xl font-bold text-gray-500">
-                                  <%= person.name.split.map(&:first).join.upcase %>
-                                </div>
-                              </div>
-                            <% end %>
-                          </div>
-                          <div class="text-xs font-medium text-gray-900 group-hover:text-pink-600 transition-colors truncate" title="<%= person.name %>">
-                            <%= person.name %>
-                          </div>
-                        <% end %>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label class="flex items-center cursor-pointer">
-                  <%= radio_button_tag :reviewer_access_type, 'specific', reviewer_type == 'specific', class: "mr-2 accent-pink-500 cursor-pointer", data: { action: "change->reviewer-selector#toggleSpecific" } %>
-                  <span class="text-sm">Specific People</span>
-                </label>
-              </div>
+          <%# Quick summary of what's being collected %>
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center gap-2 text-sm text-gray-700">
+              <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Name, email & contact info</span>
             </div>
+            <% if audition_cycle.accepts_video_submissions? %>
+              <div class="flex items-center gap-2 text-sm text-gray-700">
+                <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Video submission</span>
+              </div>
+            <% end %>
+            <% if audition_cycle.include_availability_section? %>
+              <div class="flex items-center gap-2 text-sm text-gray-700">
+                <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Show availability</span>
+              </div>
+            <% end %>
+            <% custom_question_count = audition_cycle.questions.count %>
+            <% if custom_question_count > 0 %>
+              <div class="flex items-center gap-2 text-sm text-gray-700">
+                <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span><%= pluralize(custom_question_count, "custom question") %></span>
+              </div>
+            <% end %>
           </div>
 
-          <div class="<%= reviewer_type == 'specific' ? '' : 'hidden' %> ml-6" data-reviewer-selector-target="specificSection">
-            <div class="border border-gray-300 rounded-lg p-3 bg-gray-50 max-h-96 overflow-y-auto">
-              <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
-                <% @talent_pool_people.each do |person| %>
-                  <% is_selected = @audition_cycle.reviewer_people.include?(person) %>
-                  <label class="relative group cursor-pointer">
-                    <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
-                      <%# Checkbox in top right corner %>
-                      <div class="absolute top-1 right-1 z-10">
-                        <%= check_box_tag 'person_ids[]', person.id, is_selected, class: "w-5 h-5 accent-pink-500 cursor-pointer rounded" %>
-                      </div>
-                      <% if person.headshot&.attached? %>
-                        <%= image_tag person.safe_headshot_variant(:thumb),
-                              class: "w-full h-full object-cover group-hover:scale-105 transition-transform duration-200",
-                              loading: "lazy",
-                              alt: person.name %>
+          <div class="flex gap-2">
+            <% if current_user_can_manage?(@production) %>
+              <%= render partial: "shared/button", locals: { text: "Edit Form", path: form_manage_production_audition_cycle_path(@production, audition_cycle), variant: "outline", size: "small", icon: "pencil" } %>
+            <% end %>
+            <%= render partial: "shared/button", locals: { text: "Preview", path: preview_manage_production_audition_cycle_path(@production, audition_cycle), variant: "ghost", size: "small", icon: "eye", target: "_blank" } %>
+          </div>
+        </div>
+      </div>
+
+      <%# Right Column: Review Team %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" data-controller="prepare-reviewers">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Review Team</h3>
+        </div>
+        <div class="p-5">
+          <p class="text-sm text-gray-600 mb-4">Who can view and vote on submissions.</p>
+
+          <% reviewer_type = @audition_cycle.reviewer_access_type.presence || 'managers' %>
+
+          <%# Summary view %>
+          <div data-prepare-reviewers-target="summary">
+            <div class="mb-4">
+              <% if reviewer_type == 'managers' %>
+                <% global_managers = Current.organization.organization_roles.where(company_role: %w[manager viewer]).includes(user: :default_person).map { |r| r.user }.compact %>
+                <% production_team = @production.production_permissions.where(role: %w[manager viewer]).includes(user: :default_person).map { |p| p.user }.compact %>
+                <% all_team = (global_managers + production_team).uniq %>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                    Production Team
+                  </span>
+                  <span class="text-sm text-gray-500"><%= pluralize(all_team.select { |u| u.person.present? }.size, "person") %></span>
+                </div>
+                <div class="flex -space-x-2">
+                  <% all_team.select { |u| u.person.present? }.first(8).each do |user| %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-100" title="<%= user.person.name %>">
+                      <% if user.person.headshot&.attached? %>
+                        <%= image_tag user.person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
                       <% else %>
-                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                          <div class="text-2xl font-bold text-gray-500">
-                            <%= person.name.split.map(&:first).join.upcase %>
-                          </div>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
+                          <%= user.person.name.split.map(&:first).join.upcase[0..1] %>
                         </div>
                       <% end %>
                     </div>
-                    <div class="text-xs font-medium text-gray-900 truncate" title="<%= person.name %>">
-                      <%= person.name %>
+                  <% end %>
+                  <% remaining = all_team.select { |u| u.person.present? }.size - 8 %>
+                  <% if remaining > 0 %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                      +<%= remaining %>
                     </div>
-                  </label>
-                <% end %>
-              </div>
+                  <% end %>
+                </div>
+              <% elsif reviewer_type == 'all' %>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                    Entire Talent Pool
+                  </span>
+                  <span class="text-sm text-gray-500"><%= pluralize(@talent_pool_people.size, "person") %></span>
+                </div>
+                <div class="flex -space-x-2">
+                  <% @talent_pool_people.first(8).each do |person| %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-100" title="<%= person.name %>">
+                      <% if person.headshot&.attached? %>
+                        <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
+                          <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% remaining = @talent_pool_people.size - 8 %>
+                  <% if remaining > 0 %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                      +<%= remaining %>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <% specific_reviewers = @audition_cycle.reviewer_people %>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                    Specific People
+                  </span>
+                  <span class="text-sm text-gray-500"><%= pluralize(specific_reviewers.size, "person") %></span>
+                </div>
+                <div class="flex -space-x-2">
+                  <% specific_reviewers.first(8).each do |person| %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-100" title="<%= person.name %>">
+                      <% if person.headshot&.attached? %>
+                        <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-xs font-bold text-gray-500">
+                          <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% remaining = specific_reviewers.size - 8 %>
+                  <% if remaining > 0 %>
+                    <div class="relative w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                      +<%= remaining %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
+
+            <% if current_user_can_manage?(@production) %>
+              <%= render partial: "shared/button", locals: { text: "Change", variant: "outline", size: "small", icon: "pencil", type: :button, data: { action: "click->prepare-reviewers#toggle" } } %>
+            <% end %>
           </div>
 
-          <% if current_user_can_manage?(@production) %>
-            <div class="mt-4">
-              <%= render partial: "shared/button", locals: { text: "Save Review Team", variant: "primary", type: "submit" } %>
-            </div>
-          <% end %>
-        <% end %>
+          <%# Edit form (hidden by default) %>
+          <div class="hidden" data-prepare-reviewers-target="editor">
+            <%= form_with url: update_reviewers_manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
+              <div class="space-y-3 mb-4">
+                <label class="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition <%= reviewer_type == 'managers' ? 'ring-2 ring-pink-500' : '' %>">
+                  <%= radio_button_tag :reviewer_access_type, 'managers', reviewer_type == 'managers', class: "mr-3 accent-pink-500", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Production Team</span>
+                    <p class="text-xs text-gray-500">Only production managers and company managers</p>
+                  </div>
+                </label>
+                <label class="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition <%= reviewer_type == 'all' ? 'ring-2 ring-pink-500' : '' %>">
+                  <%= radio_button_tag :reviewer_access_type, 'all', reviewer_type == 'all', class: "mr-3 accent-pink-500", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Entire Talent Pool</span>
+                    <p class="text-xs text-gray-500">Everyone in your talent pool can review</p>
+                  </div>
+                </label>
+                <label class="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition <%= reviewer_type == 'specific' ? 'ring-2 ring-pink-500' : '' %>">
+                  <%= radio_button_tag :reviewer_access_type, 'specific', reviewer_type == 'specific', class: "mr-3 accent-pink-500", data: { action: "change->reviewer-selector#toggleSpecific" } %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Specific People</span>
+                    <p class="text-xs text-gray-500">Choose exactly who can review</p>
+                  </div>
+                </label>
+              </div>
+
+              <div class="<%= reviewer_type == 'specific' ? '' : 'hidden' %>" data-reviewer-selector-target="specificSection">
+                <div class="border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto mb-4">
+                  <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                    <% @talent_pool_people.each do |person| %>
+                      <% is_selected = @audition_cycle.reviewer_people.include?(person) %>
+                      <label class="relative cursor-pointer group">
+                        <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                          <div class="absolute top-1 right-1 z-10">
+                            <%= check_box_tag 'person_ids[]', person.id, is_selected, class: "w-4 h-4 accent-pink-500 cursor-pointer rounded" %>
+                          </div>
+                          <% if person.headshot&.attached? %>
+                            <%= image_tag person.safe_headshot_variant(:thumb), class: "w-full h-full object-cover", loading: "lazy" %>
+                          <% else %>
+                            <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-bold text-gray-500">
+                              <%= person.name.split.map(&:first).join.upcase[0..1] %>
+                            </div>
+                          <% end %>
+                        </div>
+                        <div class="text-[10px] text-gray-700 truncate mt-1 text-center" title="<%= person.name %>"><%= person.name.split.first %></div>
+                      </label>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <%= render partial: "shared/button", locals: { text: "Save", variant: "primary", type: "submit", size: "small" } %>
+                <button type="button" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->prepare-reviewers#toggle">Cancel</button>
+              </div>
+            <% end %>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500 mb-4">Customize the questions and information you want to collect from auditionees. This form will be shared with everyone you invite to audition.</p>
-
-        <div class="bg-gray-50 rounded-lg p-4 mb-4">
-          <p class="text-sm text-gray-600 mb-1">Current Form Status</p>
-          <% if audition_cycle.form_reviewed %>
-            <div class="flex items-center">
-              <svg class="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-              <span class="text-gray-700 font-semibold text-green-700">Reviewed and ready to share</span>
+    <%# ==================== SESSIONS (if enabled) ==================== %>
+    <% if audition_cycle.accepts_in_person_auditions? %>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
+          <span class="text-sm text-gray-500"><%= pluralize(@audition_cycle.audition_sessions.count, "session") %></span>
+        </div>
+        <div class="p-5">
+          <% if @audition_cycle.audition_sessions.any? %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+              <% @audition_cycle.audition_sessions.order(:start_at).limit(6).each do |session| %>
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div class="flex-shrink-0 text-center w-12">
+                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
+                    <div class="text-xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900"><%= session.start_at.strftime("%-I:%M %p") %></div>
+                    <div class="text-xs text-gray-500 truncate"><%= session.location.name %></div>
+                  </div>
+                </div>
+              <% end %>
             </div>
+            <% if @audition_cycle.audition_sessions.count > 6 %>
+              <p class="text-sm text-gray-500 mb-4">+ <%= @audition_cycle.audition_sessions.count - 6 %> more sessions</p>
+            <% end %>
           <% else %>
-            <div class="flex items-center">
-              <svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-              <span class="text-gray-700 font-semibold text-yellow-700">Pending review</span>
-            </div>
+            <p class="text-sm text-gray-500 mb-4">No sessions scheduled yet.</p>
           <% end %>
-        </div>
 
-        <div class="flex flex-col sm:flex-row sm:space-x-2 gap-4 sm:gap-0">
           <% if current_user_can_manage?(@production) %>
-            <%= render partial: "shared/button", locals: {text: (@audition_cycle.active ? "Edit Form" : "View Form"), path: form_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
+            <%= render partial: "shared/button", locals: { text: "Manage Sessions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "outline", size: "small", icon: "calendar" } %>
           <% end %>
-          <%= render partial: "shared/button", locals: {text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, audition_cycle), variant: "primary"} %>
         </div>
       </div>
-    </div>
+    <% end %>
 
   <% end %>
 </div>

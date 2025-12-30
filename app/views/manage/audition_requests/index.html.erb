@@ -6,7 +6,7 @@
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
-    text: (@audition_cycle.audition_type == "video_upload") ? "Video Auditions" : "Sign-ups",
+    text: @audition_cycle.video_only? ? "Video Auditions" : "Sign-ups",
     links: []
   } %>
 
@@ -134,7 +134,7 @@
     <% else %>
 
     <p class="text-gray-500 text-sm pt-2">
-      <% if @audition_cycle.audition_type == "video_upload" %>
+      <% if @audition_cycle.video_only? %>
         No one has submitted a video audition yet.
       <% else %>
         No one has signed up for an audition yet.

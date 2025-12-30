@@ -6,10 +6,19 @@ FactoryBot.define do
     opens_at { 1.day.ago }
     closes_at { 1.week.from_now }
     audition_type { :in_person }
+    allow_in_person_auditions { true }
+    allow_video_submissions { false }
     token { SecureRandom.urlsafe_base64(12) }
 
     trait :video_upload do
       audition_type { :video_upload }
+      allow_in_person_auditions { false }
+      allow_video_submissions { true }
+    end
+
+    trait :hybrid do
+      allow_in_person_auditions { true }
+      allow_video_submissions { true }
     end
 
     trait :upcoming do

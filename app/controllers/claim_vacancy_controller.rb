@@ -9,6 +9,15 @@ class ClaimVacancyController < ApplicationController
     @role = @vacancy.role
     @show = @vacancy.show
     @production = @show.production
+
+    # Get other cast members for display (excluding the person who vacated)
+    @other_cast_assignments = @show.show_person_role_assignments
+                                   .includes(:role)
+                                   .where.not(
+                                     assignable_type: @vacancy.vacated_by_type,
+                                     assignable_id: @vacancy.vacated_by_id
+                                   )
+                                   .order("roles.position ASC")
   end
 
   def claim

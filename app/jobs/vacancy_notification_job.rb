@@ -43,6 +43,8 @@ class VacancyNotificationJob < ApplicationJob
         "[#{production.name}] New vacancy: #{role.name} for #{show.date_and_time.strftime('%b %-d')}"
       when "filled"
         "[#{production.name}] Vacancy filled: #{role.name} for #{show.date_and_time.strftime('%b %-d')}"
+      when "reclaimed"
+        "[#{production.name}] Vacancy cancelled: #{vacancy.vacated_by&.name || role.name} is back"
       else
         "[#{production.name}] Vacancy update: #{role.name}"
       end

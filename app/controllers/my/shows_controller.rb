@@ -120,25 +120,52 @@ module My
       @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
       # Load vacancies created by the user (they said they can't make it)
-      # Used to show "You've indicated you can't make it" indicator on linked events
-      # Group by affected shows, not the show where vacancy was initiated
-      #
-      # For linked shows, the person stays on the cast - they aren't removed.
-      # We just need to check if this show is in the vacancy's affected_shows.
+      # For non-linked shows, the person was removed from cast but we still want to show them
       upcoming_show_ids = @shows.map(&:id)
 
       @my_vacancies_by_show = {}
-      RoleVacancy
+      open_vacancies = RoleVacancy
         .where(vacated_by_type: "Person", vacated_by_id: people_ids)
-        .where.not(status: :filled)
-        .includes(:affected_shows, :role, :invitations)
-        .each do |vacancy|
+        .where.not(status: [ :filled, :cancelled ])
+        .includes(:show, :affected_shows, :role, :invitations)
+        .to_a
+
+      open_vacancies.each do |vacancy|
+        # For non-linked shows, use the primary show_id
+        # For linked shows, use affected_shows
+        if vacancy.show.linked?
           vacancy.affected_shows.each do |affected_show|
             next unless upcoming_show_ids.include?(affected_show.id)
             @my_vacancies_by_show[affected_show.id] ||= []
             @my_vacancies_by_show[affected_show.id] << vacancy
           end
+        else
+          @my_vacancies_by_show[vacancy.show_id] ||= []
+          @my_vacancies_by_show[vacancy.show_id] << vacancy
         end
+      end
+
+      # Also include shows where user has an open vacancy but no assignment
+      # (for non-linked events where they were removed from cast)
+      vacancy_only_show_ids = @my_vacancies_by_show.keys - upcoming_show_ids
+      if vacancy_only_show_ids.any? && @filter == "my_assignments"
+        vacancy_shows = Show
+          .where(id: vacancy_only_show_ids)
+          .where("date_and_time >= ?", Time.current)
+          .includes(:production, :location, :event_linkage)
+          .to_a
+
+        # Filter by event type
+        vacancy_shows.select! { |show| @event_type_filter.include?(show.event_type) }
+
+        vacancy_shows.each do |show|
+          show_data_by_id[show.id] ||= { show: show, assignments: [], vacancy_only: true }
+        end
+
+        # Rebuild shows array and entity rows
+        @shows = show_data_by_id.values.map { |data| data[:show] }.sort_by(&:date_and_time)
+        @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
+      end
 
       # Build @show_entities for compatibility
       @show_entities = {}
@@ -172,6 +199,7 @@ module My
       # 2. Any of user's groups is in the production's talent pool
       # 3. Any of user's profiles has a direct role assignment
       # 4. Any of user's groups has a role assignment
+      # 5. User has an open vacancy for this show (they can't make it but can reclaim)
       @show = Show.where(id: params[:id])
                   .includes(event_linkage: :shows)
                   .where(
@@ -192,8 +220,13 @@ module My
                      EXISTS (SELECT 1 FROM show_person_role_assignments
                              WHERE show_person_role_assignments.show_id = shows.id
                              AND show_person_role_assignments.assignable_type = 'Group'
-                             AND show_person_role_assignments.assignable_id IN (?))",
-                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ]
+                             AND show_person_role_assignments.assignable_id IN (?)) OR
+                     EXISTS (SELECT 1 FROM role_vacancies
+                             WHERE role_vacancies.show_id = shows.id
+                             AND role_vacancies.vacated_by_type = 'Person'
+                             AND role_vacancies.vacated_by_id IN (?)
+                             AND role_vacancies.status NOT IN ('filled', 'cancelled'))",
+                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ], people_ids
                   )
                   .first!
       @production = @show.production
@@ -219,11 +252,14 @@ module My
 
       # Load vacancies for this show created by the user's profiles
       # Used to show "You've indicated you can't make it" indicator
+      # Check both primary show and affected_shows (for linked events)
       @my_vacancies = RoleVacancy
         .where(vacated_by_type: "Person", vacated_by_id: people_ids)
         .where.not(status: :filled)
-        .joins(:affected_shows)
-        .where(role_vacancy_shows: { show_id: @show.id })
+        .where(
+          "show_id = :show_id OR EXISTS (SELECT 1 FROM role_vacancy_shows WHERE role_vacancy_shows.role_vacancy_id = role_vacancies.id AND role_vacancy_shows.show_id = :show_id)",
+          show_id: @show.id
+        )
         .includes(:role)
         .to_a
 
@@ -231,16 +267,20 @@ module My
       @my_group_vacancies = RoleVacancy
         .where(vacated_by_type: "Group", vacated_by_id: group_ids)
         .where.not(status: :filled)
-        .joins(:affected_shows)
-        .where(role_vacancy_shows: { show_id: @show.id })
+        .where(
+          "show_id = :show_id OR EXISTS (SELECT 1 FROM role_vacancy_shows WHERE role_vacancy_shows.role_vacancy_id = role_vacancies.id AND role_vacancy_shows.show_id = :show_id)",
+          show_id: @show.id
+        )
         .includes(:role)
         .to_a
 
-      # Build a lookup by [role_id, assignable_type, assignable_id] for quick access
-      @vacancies_by_assignment = {}
+      # Build a lookup by [assignable_type, assignable_id] for quick access
+      # Note: We don't include role_id because for linked events, each show has different role IDs
+      # The vacancy affects ALL roles for that entity on the affected shows
+      @vacancies_by_entity = {}
       (@my_vacancies + @my_group_vacancies).each do |vacancy|
-        key = [ vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id ]
-        @vacancies_by_assignment[key] = vacancy
+        key = [ vacancy.vacated_by_type, vacancy.vacated_by_id ]
+        @vacancies_by_entity[key] = vacancy
       end
     end
 
@@ -328,6 +368,32 @@ module My
           group = groups_by_id[assignment.assignable_id]
           @show_assignments[assignment.show_id] << { type: "group", entity: group } if group
         end
+      end
+    end
+
+    def reclaim_vacancy
+      @show = Show.find(params[:show_id])
+      @vacancy = RoleVacancy.find(params[:vacancy_id])
+
+      # Verify the current user is the one who created the vacancy
+      people_ids = Current.user.people.active.pluck(:id)
+      group_ids = Group.active
+                       .joins(:group_memberships)
+                       .where(group_memberships: { person_id: people_ids })
+                       .pluck(:id)
+
+      can_reclaim = (@vacancy.vacated_by_type == "Person" && people_ids.include?(@vacancy.vacated_by_id)) ||
+                    (@vacancy.vacated_by_type == "Group" && group_ids.include?(@vacancy.vacated_by_id))
+
+      unless can_reclaim && @vacancy.active?
+        redirect_to my_show_path(@show), alert: "You cannot reclaim this vacancy."
+        return
+      end
+
+      if @vacancy.reclaim!(by: Current.user)
+        redirect_to my_show_path(@show), notice: "Great! You're back on the call sheet."
+      else
+        redirect_to my_show_path(@show), alert: "Unable to reclaim the vacancy."
       end
     end
   end

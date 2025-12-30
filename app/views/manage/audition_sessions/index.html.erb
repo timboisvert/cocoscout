@@ -42,14 +42,6 @@
               </div>
             </div>
 
-            <%# Right Section: Capacity %>
-            <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
-              <div class="flex-1">
-                <div class="text-[10px] text-gray-400 uppercase tracking-wide">Capacity</div>
-                <div class="text-lg font-semibold text-gray-900"><%= session.maximum_auditionees.present? ? session.maximum_auditionees : "∞" %></div>
-              </div>
-            </div>
-
             <%# Action Buttons - only visible on hover %>
             <div class="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
               <%= render "shared/button",

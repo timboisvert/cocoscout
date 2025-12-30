@@ -1,0 +1,7 @@
+Hi <%= @recipient.default_person&.first_name || @recipient.email_address %>,
+
+<%= @requestable.name %> has submitted an audition request for <%= @production.name %>.
+
+View the request here: <%= manage_production_audition_cycle_audition_request_url(@production, @audition_cycle, @audition_request) %>
+
+You're receiving this email because you're a producer for <%= @production.name %>.
