@@ -48,7 +48,8 @@
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Headshots</button>
       <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
       <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Messages</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Emails</button>
     </nav>
 
     <%# Profile Tab %>
@@ -93,7 +94,25 @@
       <% end %>
     </div>
 
-    <%# Messages Tab %>
+    <%# Notes Tab %>
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Producer Notes</h3>
+        </div>
+        <div class="p-4">
+          <p class="text-sm text-gray-500 mb-4">Private notes about this person. Only visible to producers.</p>
+          <%= form_with model: [:manage, @person], url: manage_person_path(@person), method: :patch, data: { turbo: true } do |form| %>
+            <div class="mb-4">
+              <%= form.rich_text_area :producer_notes, class: "min-h-[200px]" %>
+            </div>
+            <%= render "shared/button", text: "Save Notes", variant: "primary", type: :submit %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Emails Tab %>
     <div data-tabs-target="panel" class="hidden">
       <%= render "shared/email_inbox", email_logs: @email_logs, email_logs_pagy: @email_logs_pagy, entity: @person, search_query: @search_messages_query %>
     </div>

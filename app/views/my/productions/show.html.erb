@@ -12,7 +12,7 @@
     links: []
   } %>
 
-  <!-- Production Info -->
+  <!-- Production Hero with Membership Info -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="p-4 flex items-center gap-4">
       <% logo_variant = @production.safe_logo_variant(:small) %>
@@ -21,17 +21,54 @@
       <% end %>
       <div class="flex-1">
         <h2 class="text-xl font-bold text-gray-900"><%= @production.name %></h2>
-        <p class="text-sm text-gray-500"><%= @production.organization.name %></p>
+        <p class="text-sm text-gray-500 mb-2"><%= @production.organization.name %></p>
+        
+        <!-- Talent Pool Membership Badges -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs text-gray-500 font-medium">In talent pool as:</span>
+          <% @person_memberships.each do |membership| %>
+            <% person = membership.member %>
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-pink-50 border border-pink-200 rounded">
+              <% headshot = person.safe_headshot_variant(:thumb) %>
+              <% if headshot %>
+                <%= image_tag headshot, class: "w-5 h-5 rounded object-cover" %>
+              <% else %>
+                <div class="w-5 h-5 rounded bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-medium">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+              <span class="text-xs font-medium text-pink-700"><%= person.name %></span>
+            </div>
+          <% end %>
+          <% @group_memberships.each do |membership| %>
+            <% group = membership.member %>
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 border border-purple-200 rounded">
+              <% if group.headshot&.attached? %>
+                <%= image_tag group.headshot.variant(resize_to_fill: [20, 20]), class: "w-5 h-5 rounded object-cover" %>
+              <% else %>
+                <div class="w-5 h-5 rounded bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-medium">
+                  <%= group.name[0..1].upcase %>
+                </div>
+              <% end %>
+              <span class="text-xs font-medium text-purple-700"><%= group.name %></span>
+            </div>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Upcoming Assignments -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Assignments</h3>
-    </div>
-    <div class="p-4">
+  <!-- Tabs Section -->
+  <div class="w-full" data-controller="tabs">
+    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">My Assignments</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Calendar</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Settings</button>
+    </nav>
+
+    <!-- Tab 1: My Assignments -->
+    <div data-tabs-target="panel">
       <% if @upcoming_assignments.any? %>
         <div class="space-y-2">
           <% @upcoming_assignments.each do |assignment| %>
@@ -56,30 +93,279 @@
           <% end %>
         </div>
       <% else %>
-        <p class="text-gray-500 text-sm">You don't have any upcoming assignments for this production.</p>
+        <div class="text-center py-12 bg-white border border-gray-200 rounded-lg">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+          </div>
+          <h4 class="text-lg font-medium text-gray-900 mb-2">No upcoming assignments</h4>
+          <p class="text-gray-500 text-sm max-w-xs mx-auto">You don't have any upcoming assignments for this production yet.</p>
+        </div>
       <% end %>
     </div>
-  </div>
 
-  <!-- Leave Production -->
-  <div class="border border-red-200 rounded-lg overflow-hidden">
-    <div class="bg-red-50 px-4 py-3 border-b border-red-200">
-      <h3 class="text-md font-semibold text-red-800 coustard-regular">Leave Production</h3>
+    <!-- Tab 2: Calendar -->
+    <div data-tabs-target="panel" class="hidden">
+      <% if @calendar_shows.any? %>
+        <% # Desktop: Show selected month only; Mobile: Show all months %>
+        <% current_month_param = params[:month] ? Date.parse(params[:month]).to_time.beginning_of_month : nil %>
+        <% desktop_month = current_month_param || Time.current.beginning_of_month %>
+        <% desktop_shows = @calendar_shows_by_month[desktop_month] || [] %>
+
+        <% # Calculate valid month range %>
+        <% first_month = @calendar_shows_by_month.keys.sort.first %>
+        <% last_month = @calendar_shows_by_month.keys.sort.last %>
+        <% prev_month = desktop_month - 1.month %>
+        <% next_month = desktop_month + 1.month %>
+        <% can_go_prev = first_month && prev_month >= first_month %>
+        <% can_go_next = last_month && next_month <= last_month %>
+
+        <!-- Month Navigation (Desktop Only) -->
+        <div class="hidden md:flex items-center justify-between mb-4">
+          <% if can_go_prev %>
+            <%= link_to my_production_path(@production, month: prev_month.strftime("%Y-%m-01"), tab: 1),
+                    data: { turbo_prefetch: false },
+                    class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <%= prev_month.strftime("%B %Y") %>
+            <% end %>
+          <% else %>
+            <div class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <%= prev_month.strftime("%B %Y") %>
+            </div>
+          <% end %>
+
+          <div class="flex items-center gap-3">
+            <h2 class="text-2xl font-bold text-gray-900"><%= desktop_month.strftime("%B %Y") %></h2>
+            <% if desktop_month != Time.current.beginning_of_month %>
+              <%= link_to my_production_path(@production, tab: 1),
+                      data: { turbo_prefetch: false },
+                      class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors" do %>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Today
+              <% end %>
+            <% end %>
+          </div>
+
+          <% if can_go_next %>
+            <%= link_to my_production_path(@production, month: next_month.strftime("%Y-%m-01"), tab: 1),
+                    data: { turbo_prefetch: false },
+                    class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
+              <%= next_month.strftime("%B %Y") %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            <% end %>
+          <% else %>
+            <div class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed">
+              <%= next_month.strftime("%B %Y") %>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Desktop: Single Month Calendar -->
+        <div class="hidden md:block border border-gray-200 rounded-lg p-4 mb-8">
+          <div class="grid grid-cols-7 gap-1">
+            <!-- Day headers -->
+            <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day| %>
+              <div class="text-center text-xs font-semibold text-gray-600 p-2">
+                <%= day %>
+              </div>
+            <% end %>
+
+            <!-- Empty cells for days before month starts -->
+            <% (desktop_month.wday).times do %>
+              <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
+            <% end %>
+
+            <!-- Calendar days -->
+            <% current_date = desktop_month %>
+            <% while current_date.month == desktop_month.month %>
+              <% day_shows = desktop_shows.select { |s| s.date_and_time.to_date == current_date.to_date } %>
+              <% is_past = current_date.to_date < Date.current %>
+              <% is_today = current_date.to_date == Date.current %>
+              <div class="border border-gray-200 min-h-[80px] p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+                <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>">
+                  <%= current_date.day %>
+                </div>
+
+                <% day_shows.each do |show| %>
+                  <%= link_to my_show_path(show), class: "block mb-2" do %>
+                    <% has_my_assignment = @calendar_assignments_by_show[show.id].present? %>
+                    <% event_type_badge_classes = if is_past
+                      "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                    else
+                      case show.event_type
+                        when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+                        when "meeting" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                        else "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+                      end
+                    end %>
+                    <div class="text-xs p-2 rounded border <%= event_type_badge_classes %> transition-colors relative">
+                      <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
+                      <% if show.secondary_name.present? %>
+                        <div class="truncate text-[10px] mb-1"><%= show.secondary_name %></div>
+                      <% end %>
+                      <% if has_my_assignment %>
+                        <% @calendar_assignments_by_show[show.id].each do |assignment| %>
+                          <div class="text-[10px] font-semibold text-pink-600">
+                            <%= assignment.role.name %>
+                          </div>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+              <% current_date = current_date + 1.day %>
+            <% end %>
+
+            <!-- Empty cells to complete the week -->
+            <% remaining_cells = (7 - current_date.wday) % 7 %>
+            <% remaining_cells.times do %>
+              <div class="border border-gray-100 bg-gray-50 min-h-[80px] p-1"></div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Mobile: All Months List View -->
+        <div class="md:hidden space-y-8">
+          <% @calendar_shows_by_month.sort.each do |month_start, shows| %>
+            <% next if month_start < Time.current.beginning_of_month %>
+            <div class="border border-gray-200 rounded-lg p-4">
+              <h2 class="text-xl font-bold mb-4"><%= month_start.strftime("%B %Y") %></h2>
+
+              <!-- Mobile List View -->
+              <div class="space-y-2">
+                <% current_date = month_start %>
+                <% while current_date.month == month_start.month %>
+                  <% day_shows = shows.select { |s| s.date_and_time.to_date == current_date.to_date } %>
+                  <% if day_shows.any? %>
+                    <% is_past = current_date.to_date < Date.current %>
+                    <% is_today = current_date.to_date == Date.current %>
+                    <div class="border border-gray-200 rounded-lg p-3 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %>">
+                      <div class="text-sm font-semibold mb-2 <%= is_past ? 'text-gray-500' : 'text-gray-700' %>">
+                        <%= current_date.strftime("%A, %B %-d") %>
+                      </div>
+
+                      <div class="space-y-2">
+                        <% day_shows.each do |show| %>
+                          <%= link_to my_show_path(show), class: "block" do %>
+                            <% has_my_assignment = @calendar_assignments_by_show[show.id].present? %>
+                            <% event_type_badge_classes = if is_past
+                              "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                            else
+                              case show.event_type
+                                when "rehearsal" then "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+                                when "meeting" then "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                                else "bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200"
+                              end
+                            end %>
+                            <div class="text-sm p-3 rounded border <%= event_type_badge_classes %> transition-colors">
+                              <div class="flex items-center justify-between mb-1">
+                                <div class="font-semibold"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
+                                <% event_badge_classes = if is_past
+                                  "bg-gray-50 text-gray-600 ring-gray-600/10"
+                                else
+                                  case show.event_type
+                                    when "rehearsal" then "bg-blue-50 text-blue-700 ring-blue-600/10"
+                                    when "meeting" then "bg-green-50 text-green-700 ring-green-600/10"
+                                    else "bg-pink-50 text-pink-700 ring-pink-600/10"
+                                  end
+                                end %>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_badge_classes %>">
+                                  <%= show.event_type.titleize %>
+                                </span>
+                              </div>
+                              <% if show.secondary_name.present? %>
+                                <div class="text-sm text-gray-600"><%= show.secondary_name %></div>
+                              <% end %>
+                              <% if has_my_assignment %>
+                                <% @calendar_assignments_by_show[show.id].each do |assignment| %>
+                                  <div class="text-sm font-semibold text-pink-600 mt-1">
+                                    <%= assignment.role.name %>
+                                  </div>
+                                <% end %>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                  <% current_date = current_date + 1.day %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="p-6 text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">No Shows Scheduled</h4>
+            <p class="text-gray-500 text-sm">There are no shows scheduled for this production yet.</p>
+          </div>
+        </div>
+      <% end %>
     </div>
-    <div class="p-4">
-      <p class="text-sm text-gray-600 mb-4">
-        Removing yourself from this production's talent pool will remove you from future scheduling.
-        Your existing assignments will remain, but you won't be considered for new ones.
-      </p>
-      <%= render "shared/button",
-          text: "Leave Talent Pool",
-          path: my_leave_production_path(@production),
-          method: :delete,
-          variant: "danger",
-          icon: "arrow-right-start-on-rectangle",
-          data: { turbo_confirm: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin." }
-      %>
+
+    <!-- Tab 3: Notes -->
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Notes</h3>
+        </div>
+        <div class="p-6">
+          <% if @production.notes.present? %>
+            <div class="prose prose-sm max-w-none">
+              <%= @production.notes %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm text-center py-8">No production notes have been added yet.</p>
+          <% end %>
+        </div>
+      </div>
     </div>
+
+    <!-- Tab 4: Settings -->
+    <div data-tabs-target="panel" class="hidden">
+      <div class="border border-red-200 rounded-lg overflow-hidden">
+        <div class="bg-red-50 px-4 py-3 border-b border-red-200">
+          <h3 class="text-md font-semibold text-red-800 coustard-regular">Leave Production</h3>
+        </div>
+        <div class="p-4">
+          <p class="text-sm text-gray-600 mb-4">
+            Removing yourself from this production's talent pool will remove you from future scheduling.
+            Your existing assignments will remain, but you won't be considered for new ones.
+          </p>
+          <%= render "shared/button",
+              text: "Leave Talent Pool",
+              path: my_leave_production_path(@production),
+              method: :delete,
+              variant: "danger",
+              icon: "arrow-right-start-on-rectangle",
+              data: { turbo_confirm: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin." }
+          %>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>

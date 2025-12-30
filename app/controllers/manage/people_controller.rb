@@ -433,7 +433,7 @@ module Manage
     # Only allow a list of trusted parameters through.
     def person_params
       params.require(:person).permit(
-        :name, :email, :pronouns, :resume, :headshot,
+        :name, :email, :pronouns, :resume, :headshot, :producer_notes,
         socials_attributes: %i[id platform handle name _destroy]
       )
     end

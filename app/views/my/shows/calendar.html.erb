@@ -16,8 +16,8 @@
     ]
   } %>
 
-  <!-- Calendar Sync Bar -->
-  <%= render partial: "my/shows/calendar_sync_bar" %>
+  <%# Calendar Sync Bar - Hidden until feature is ready %>
+  <%# render partial: "my/shows/calendar_sync_bar" %>
 
   <%= render "shared/filters/filter_bar",
       toggle_label: "Filters",
@@ -157,7 +157,7 @@
                 <div class="text-xs p-2 rounded border <%= event_type_badge_classes %> transition-colors relative">
                   <% if @groups.any? && @show_assignments[show.id].present? %>
                     <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
-                      (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                      (entity_info[:type] == "person" && @entity_filter.include?("person_#{@person.id}")) ||
                       (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
                     end %>
                     <% if filtered_assignments.any? %>
@@ -180,7 +180,7 @@
                   <% end %>
                   <% if @show_assignments[show.id].present? %>
                     <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
-                      (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                      (entity_info[:type] == "person" && @entity_filter.include?("person_#{@person.id}")) ||
                       (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
                     end %>
                     <% filtered_assignments.each do |entity_info| %>
@@ -248,7 +248,7 @@
                         <div class="text-sm p-3 rounded border <%= event_type_badge_classes %> transition-colors relative">
                           <% if @groups.any? && @show_assignments[show.id].present? %>
                             <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
-                              (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                              (entity_info[:type] == "person" && @entity_filter.include?("person_#{@person.id}")) ||
                               (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
                             end %>
                             <% if filtered_assignments.any? %>
@@ -285,7 +285,7 @@
                           <% end %>
                           <% if @show_assignments[show.id].present? %>
                             <% filtered_assignments = @show_assignments[show.id].select do |entity_info|
-                              (entity_info[:type] == "person" && @entity_filter.include?("person")) ||
+                              (entity_info[:type] == "person" && @entity_filter.include?("person_#{@person.id}")) ||
                               (entity_info[:type] == "group" && @entity_filter.include?("group_#{entity_info[:entity].id}"))
                             end %>
                             <% filtered_assignments.each do |entity_info| %>

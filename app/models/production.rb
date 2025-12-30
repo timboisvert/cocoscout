@@ -23,6 +23,9 @@ class Production < ApplicationRecord
     attachable.variant :small, resize_to_limit: [ 300, 200 ], preprocessed: true
   end
 
+  # Rich text for production-wide notes
+  has_rich_text :notes
+
   normalizes :contact_email, with: ->(e) { e.strip.downcase }
 
   validates :name, presence: true

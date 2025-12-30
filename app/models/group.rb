@@ -48,6 +48,9 @@ class Group < ApplicationRecord
   accepts_nested_attributes_for :profile_skills, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank
 
+  # Rich text for producer notes about this group
+  has_rich_text :producer_notes
+
   # Validations
   validates :name, presence: true
   validates :email, presence: true

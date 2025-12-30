@@ -99,6 +99,33 @@ module My
         .includes(:show, :role)
         .order("shows.date_and_time ASC")
         .to_a
+
+      # Build calendar data for all shows in this production
+      # Load shows from 6 months ago to 12 months in the future
+      start_date = 6.months.ago.beginning_of_month
+      end_date = 12.months.from_now.end_of_month
+
+      @calendar_shows = @production.shows
+        .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+        .where(canceled: false)
+        .includes(:location, :event_linkage)
+        .order(:date_and_time)
+        .to_a
+
+      # Build assignment lookup for highlighting user's assignments
+      all_assignments = ShowPersonRoleAssignment
+        .where(show_id: @calendar_shows.map(&:id))
+        .where(
+          "(assignable_type = 'Person' AND assignable_id IN (?)) OR (assignable_type = 'Group' AND assignable_id IN (?))",
+          people_ids, group_ids
+        )
+        .includes(:role)
+        .to_a
+
+      @calendar_assignments_by_show = all_assignments.group_by(&:show_id)
+
+      # Group shows by month for the calendar view
+      @calendar_shows_by_month = @calendar_shows.group_by { |show| show.date_and_time.beginning_of_month }
     end
 
     def leave

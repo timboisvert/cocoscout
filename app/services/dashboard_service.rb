@@ -165,7 +165,8 @@ class DashboardService
                .order("shows.date_and_time ASC")
                .map do |vacancy|
                  affected = vacancy.affected_shows.order(:date_and_time).to_a
-                 is_linked = affected.size > 1
+                 # Check if the show itself is linked, not just whether affected_shows has entries
+                 is_linked = vacancy.show.linked?
                  {
                    vacancy: vacancy,
                    show: vacancy.show,

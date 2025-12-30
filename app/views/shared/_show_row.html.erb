@@ -20,8 +20,9 @@
     - cant_make_it_person: Person to generate vacancy token for (default: nil)
     - my_vacancies: Array of vacancies user created for this show (default: [])
     - has_groups: Whether the user has any groups (used to determine if headshot should be shown)
-    - right_panel: Type of right panel content (:cast_assignment, :availability, or nil for no panel)
+    - right_panel: Type of right panel content (:cast_assignment, :availability, :cast_summary, or nil for no panel)
     - entity_assignments: Array of {entity:, role_assignments:} for multiple stacked cast assignment panels
+    - cast_summary: Hash with {assignments_count:, roles_count:, vacancies:} for cast summary panel
 %>
 
 <%
@@ -39,6 +40,7 @@
   entity_assignments = local_assigns.fetch(:entity_assignments, [])
   right_panel = local_assigns.fetch(:right_panel, nil)
   wrapper_classes = local_assigns.fetch(:wrapper_classes, nil)
+  cast_summary = local_assigns.fetch(:cast_summary, nil)
 
   is_canceled = show_canceled && show.canceled
   has_link = local_assigns[:link_path].present?
@@ -51,11 +53,12 @@
   # Check if user has notified they can't make it
   # For linked shows, person stays on cast but vacancy indicates replacement is being sought
   # For non-linked shows, person was removed from cast but we show them as having a vacancy
-  # Cancelled vacancies are excluded from the query (user reclaimed their spot)
+  # Show for: open, finding_replacement, not_filling (person still can't make it)
+  # Don't show for: filled (someone took the role), cancelled (person reclaimed their spot)
   is_linked_event = show.linked?
-  my_open_vacancies = my_vacancies.select(&:open?)
-  show_vacancy_indicator = my_open_vacancies.any?
-  is_vacancy_only = !is_linked_event && my_open_vacancies.any? && entity_assignments.empty?
+  my_unresolved_vacancies = my_vacancies.select { |v| !v.filled? && !v.cancelled? }
+  show_vacancy_indicator = my_unresolved_vacancies.any?
+  is_vacancy_only = !is_linked_event && my_unresolved_vacancies.any? && entity_assignments.empty?
 %>
 
 <%# Build data attributes for availability rows %>
@@ -252,6 +255,61 @@
       <% else %>
         <span class="text-sm text-gray-400">No response</span>
       <% end %>
+    </div>
+
+  <% elsif right_panel == :cast_summary && cast_summary.present? %>
+    <%# Right Section: Cast Summary (for shows list) - headshots with tooltips %>
+    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+      <div class="flex-1 min-w-0 flex items-center gap-1">
+        <%
+          roles = cast_summary[:roles] || []
+          assignments_by_role = cast_summary[:assignments_by_role] || {}
+          cant_make_it_by_assignment = cast_summary[:cant_make_it_by_assignment] || {}
+        %>
+        <% roles.each do |role| %>
+          <%
+            assignment = assignments_by_role[role.id]&.first
+          %>
+          <% if assignment %>
+            <%
+              assignable = assignment.assignable
+              # Check if this person can't make it by looking up [assignable_type, assignable_id]
+              cant_make_it = cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
+              headshot = assignable.safe_headshot_variant(:thumb)
+              tooltip_text = "#{assignable.name} - #{role.name}"
+              tooltip_text += " (Can't make it)" if cant_make_it
+            %>
+            <div class="relative">
+              <% if headshot %>
+                <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}", data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+              <% else %>
+                <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
+                     data-controller="tooltip"
+                     data-tooltip-text="<%= tooltip_text %>">
+                  <%= assignable.initials %>
+                </div>
+              <% end %>
+              <% if cant_make_it %>
+                <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <%# Empty role - show placeholder %>
+            <div data-controller="tooltip" data-tooltip-text="<%= role.name %> (not assigned)" class="w-10 h-10 rounded-md bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+          <% end %>
+        <% end %>
+        <% if roles.empty? %>
+          <span class="text-sm text-gray-400 pl-2">No roles</span>
+        <% end %>
+      </div>
     </div>
 
   <% elsif right_panel == :availability && local_assigns[:entity].present? %>

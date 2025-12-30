@@ -62,7 +62,7 @@ module Manage
           format.turbo_stream do
             render turbo_stream: [
               turbo_stream.update("features_frame", partial: "manage/productions/features_card", locals: { production: @production }),
-              turbo_stream.prepend("flash-messages", partial: "shared/notice", locals: { notice: "Settings saved" })
+              turbo_stream.prepend("flash-messages", partial: "shared/notice", locals: { notice: "Production saved" })
             ]
           end
           format.html { redirect_to [ :manage, @production ], notice: "Production was successfully updated", status: :see_other }
@@ -251,7 +251,7 @@ module Manage
     # Note: cast_talent_pool_ids and show_upcoming_event_types are processed
     # before this method is called to convert arrays to JSON strings
     def production_params
-      params.require(:production).permit(:name, :logo, :description,
+      params.require(:production).permit(:name, :logo, :description, :notes,
                                          :contact_email, :public_key,
                                          :public_profile_enabled,
                                          :show_cast_members, :show_upcoming_events,

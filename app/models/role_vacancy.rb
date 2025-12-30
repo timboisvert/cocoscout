@@ -100,7 +100,9 @@ class RoleVacancy < ApplicationRecord
 
   # Reclaim the vacancy - person who created it can now make it after all
   def reclaim!(by: nil)
-    return false unless active?
+    # Can reclaim if not already filled or cancelled
+    # This includes: open, finding_replacement, and not_filling statuses
+    return false if filled? || cancelled?
 
     transaction do
       # For linked shows, the assignment was kept throughout - nothing to restore

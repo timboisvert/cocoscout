@@ -12,31 +12,57 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     </nav>
 
     <!-- Tab 1: Basic Information -->
     <div data-tabs-target="panel">
       <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
-        <div class="my-5">
-          <%= form.label :name %>
-          <%= form.text_field :name, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}] %>
+        <!-- Production Details Card -->
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Details</h3>
+          </div>
+          <div class="p-6 space-y-6">
+            <div>
+              <%= form.label :name, "Production Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.text_field :name, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}], placeholder: "Enter production name" %>
+              <% if @production.errors[:name].any? %>
+                <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:name].first %></p>
+              <% end %>
+            </div>
+
+            <div>
+              <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <p class="text-xs text-gray-500 mb-2">A brief description of your production shown on public listings</p>
+              <%= form.textarea :description, rows: 4, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}], placeholder: "Describe your production..." %>
+            </div>
+          </div>
         </div>
 
-        <div class="my-5">
-          <%= form.label :description %>
-          <%= form.textarea :description, rows: 4, class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}] %>
+        <!-- Contact Settings Card -->
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Contact Settings</h3>
+          </div>
+          <div class="p-6">
+            <div>
+              <%= form.label :contact_email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <p class="text-xs text-gray-500 mb-2">Used for automated emails and public inquiries</p>
+              <%= form.email_field :contact_email, autocapitalize: "none", class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}], placeholder: "contact@example.com" %>
+              <% if @production.errors[:contact_email].any? %>
+                <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:contact_email].first %></p>
+              <% end %>
+            </div>
+          </div>
         </div>
 
-        <div class="my-5">
-          <%= form.label :contact_email %>
-          <%= form.email_field :contact_email, autocapitalize: "none", class: ["block shadow-sm rounded-lg border px-3 py-2 mt-2 w-full", {"border-gray-400": @production.errors[:contact_email].none?, "border-pink-500": @production.errors[:contact_email].any?}] %>
-        </div>
-
-        <div class="border-t border-gray-200 pt-5 mt-5">
-          <%= render "shared/button", text: "Update Production", variant: "primary", size: "medium", type: :submit %>
+        <!-- Save Button -->
+        <div class="flex justify-end">
+          <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
     </div>
@@ -182,12 +208,32 @@
       </div>
     </div>
 
-    <!-- Tab 3: Team -->
+    <!-- Tab 3: Notes -->
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Notes</h3>
+        </div>
+        <div class="p-6">
+          <p class="text-sm text-gray-500 mb-4">
+            Use this space for production-wide notes, schedules, or any information you want to share with your team and cast.
+          </p>
+          <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch, data: { turbo: true }) do |form| %>
+            <div class="mb-4">
+              <%= form.rich_text_area :notes, class: "min-h-[300px]" %>
+            </div>
+            <%= render "shared/button", text: "Save Notes", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Team -->
     <div data-tabs-target="panel" class="hidden">
       <%= render "team_permissions" %>
     </div>
 
-    <!-- Tab 4: Public Profile -->
+    <!-- Tab 5: Public Profile -->
     <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -359,7 +405,7 @@
       <% end %>
     </div>
 
-    <!-- Tab 5: Danger Zone -->
+    <!-- Tab 6: Danger Zone -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">

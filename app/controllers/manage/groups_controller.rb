@@ -3,7 +3,7 @@
 module Manage
   class GroupsController < Manage::ManageController
     before_action :set_group,
-                  only: %i[show update_availability add_to_cast remove_from_cast remove_from_organization destroy]
+                  only: %i[show update update_availability add_to_cast remove_from_cast remove_from_organization destroy]
 
     def show
       # Get all future shows for productions this group is a cast member of
@@ -138,10 +138,22 @@ module Manage
       redirect_to manage_directory_path, notice: "#{@group.name} was deleted", status: :see_other
     end
 
+    def update
+      if @group.update(group_params)
+        redirect_to manage_group_path(@group), notice: "Notes updated successfully"
+      else
+        redirect_to manage_group_path(@group), alert: "Failed to update notes"
+      end
+    end
+
     private
 
     def set_group
       @group = Group.find(params[:id])
+    end
+
+    def group_params
+      params.require(:group).permit(:producer_notes)
     end
   end
 end

@@ -204,7 +204,7 @@
     </div>
   <% end %>
 
-  <% if @vacancy.active? %>
+  <% if @vacancy.active? || @vacancy.not_filling? %>
     <% is_linked = show.linked? %>
     <% has_invitations = @invitations.any? %>
 
@@ -263,14 +263,22 @@
                   This vacancy affects <%= @vacancy.affected_shows.count %> linked events. Since these events share the same cast, you have two options:
                 </p>
 
+                <%
+                  # Determine which option should be selected
+                  # not_filling = "Don't find a replacement" is selected
+                  # Otherwise, if there are invitations, "Find a replacement" is selected
+                  show_recast = !@vacancy.not_filling? && has_invitations
+                  show_no_action = @vacancy.not_filling?
+                %>
+
                 <div class="space-y-4">
                   <!-- Option 1: Find replacement -->
                   <label class="block cursor-pointer group">
-                    <div class="flex items-start gap-3 p-4 border <%= has_invitations ? 'border-pink-300 bg-pink-50' : 'border-gray-200' %> rounded-lg group-hover:border-pink-300 transition-colors" data-action="click->linked-vacancy-decision#selectRecast">
+                    <div class="flex items-start gap-3 p-4 border <%= show_recast ? 'border-pink-300 bg-pink-50' : 'border-gray-200' %> rounded-lg group-hover:border-pink-300 transition-colors" data-action="click->linked-vacancy-decision#selectRecast">
                       <input type="radio"
                              name="linked_decision"
                              value="recast"
-                             <%= 'checked' if has_invitations %>
+                             <%= 'checked' if show_recast %>
                              data-linked-vacancy-decision-target="recastRadio"
                              class="mt-1 accent-pink-500 cursor-pointer">
                       <div>
@@ -284,10 +292,11 @@
 
                   <!-- Option 2: No replacement -->
                   <label class="block cursor-pointer group">
-                    <div class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg group-hover:border-gray-300 transition-colors" data-action="click->linked-vacancy-decision#selectNoAction">
+                    <div class="flex items-start gap-3 p-4 border <%= show_no_action ? 'border-gray-300 bg-gray-50' : 'border-gray-200' %> rounded-lg group-hover:border-gray-300 transition-colors" data-action="click->linked-vacancy-decision#selectNoAction">
                       <input type="radio"
                              name="linked_decision"
                              value="no_action"
+                             <%= 'checked' if show_no_action %>
                              data-linked-vacancy-decision-target="noActionRadio"
                              class="mt-1 accent-pink-500 cursor-pointer">
                       <div>
@@ -304,8 +313,8 @@
           </div>
         </div>
 
-        <!-- The invitation section is shown/hidden based on decision (shown if invitations already sent) -->
-        <div data-linked-vacancy-decision-target="inviteSection" class="<%= has_invitations ? '' : 'hidden' %>">
+        <!-- The invitation section is shown/hidden based on decision (shown if recast is selected) -->
+        <div data-linked-vacancy-decision-target="inviteSection" class="<%= show_recast ? '' : 'hidden' %>">
     <% end %>
 
     <!-- Invitations Sent -->
@@ -580,7 +589,7 @@ Thank you,
           </p>
           <%= button_to cancel_manage_production_vacancy_path(@production, @vacancy),
               method: :post,
-              form: { data: { turbo_confirm: "Are you sure you want to cancel this vacancy? This cannot be undone." } },
+              form: { data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } },
               class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer" do %>
             Close Vacancy Without Filling
           <% end %>
@@ -601,7 +610,7 @@ Thank you,
           </p>
           <%= button_to cancel_manage_production_vacancy_path(@production, @vacancy),
               method: :post,
-              form: { data: { turbo_confirm: "Are you sure you want to cancel this vacancy? This cannot be undone." } },
+              form: { data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } },
               class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer" do %>
             Close Vacancy Without Filling
           <% end %>
@@ -640,25 +649,41 @@ Thank you,
       </div>
     </div>
 
-  <% elsif @vacancy.not_filling? %>
-    <!-- Not Filling Box -->
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-100 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-700 coustard-regular">Vacancy Closed</h3>
-      </div>
-      <div class="p-6">
-        <p class="text-sm text-gray-500">This vacancy was closed without finding a replacement.</p>
-      </div>
-    </div>
 
   <% elsif @vacancy.cancelled? %>
     <!-- Cancelled Box -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-100 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-700 coustard-regular">Vacancy Cancelled</h3>
+      <div class="bg-purple-50 px-4 py-3 border-b border-purple-200">
+        <h3 class="text-md font-semibold text-purple-900 coustard-regular flex items-center gap-2">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Vacancy Resolved
+        </h3>
       </div>
       <div class="p-6">
-        <p class="text-sm text-gray-500">This vacancy was cancelled because the event was cancelled.</p>
+        <div class="flex items-center gap-3">
+          <% if @vacancy.vacated_by %>
+            <% headshot = @vacancy.vacated_by.safe_headshot_variant(:thumb) %>
+            <% if headshot %>
+              <%= image_tag headshot, alt: @vacancy.vacated_by.name, class: "w-12 h-12 rounded-lg object-cover" %>
+            <% else %>
+              <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm">
+                <%= @vacancy.vacated_by.initials %>
+              </div>
+            <% end %>
+          <% end %>
+          <div>
+            <div class="font-medium text-gray-900"><%= @vacancy.vacated_by&.name %> can make it after all!</div>
+            <div class="text-sm text-gray-500">
+              <% if @vacancy.closed_at %>
+                Reclaimed on <%= @vacancy.closed_at.strftime("%B %d, %Y at %l:%M %p") %>
+              <% else %>
+                The original cast member is back on the call sheet.
+              <% end %>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   <% end %>

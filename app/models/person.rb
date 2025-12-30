@@ -53,6 +53,9 @@ class Person < ApplicationRecord
   # Calendar sync
   has_many :calendar_subscriptions, dependent: :destroy
 
+  # Rich text for producer notes about this person
+  has_rich_text :producer_notes
+
   # Accept nested attributes for profile system
   accepts_nested_attributes_for :profile_headshots, allow_destroy: true
   accepts_nested_attributes_for :profile_resumes, allow_destroy: true, reject_if: :all_blank

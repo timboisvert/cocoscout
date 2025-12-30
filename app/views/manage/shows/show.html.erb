@@ -210,7 +210,7 @@
                             class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
                             data: { controller: "tooltip", tooltip_text: tooltip_text } %>
                       <% else %>
-                        <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-green-100 text-green-700' %> flex items-center justify-center font-bold text-xs"
+                        <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
                              data-controller="tooltip"
                              data-tooltip-text="<%= tooltip_text %>">
                           <%= assignable.initials %>
@@ -327,6 +327,74 @@
             </div>
           </div>
         </div>
+
+        <%# Vacancy History - show all vacancies including resolved ones %>
+        <% if @all_vacancies.any? %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Vacancy History</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+              <% @all_vacancies.each do |vacancy| %>
+                <% vacated_by = vacancy.vacated_by %>
+                <%= link_to manage_production_vacancy_path(@production, vacancy), class: "flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors group" do %>
+                  <div class="flex items-center gap-3">
+                    <% if vacated_by %>
+                      <% headshot = vacated_by.safe_headshot_variant(:thumb) %>
+                      <% if headshot %>
+                        <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs">
+                          <%= vacated_by.initials %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                      </div>
+                    <% end %>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">
+                        <%= vacated_by&.name || "Unknown" %>
+                        <span class="text-gray-400">as</span>
+                        <span class="text-pink-600"><%= vacancy.role.name %></span>
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        Created <%= time_ago_in_words(vacancy.created_at) %> ago
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <% status_classes = case vacancy.status
+                      when "open" then "bg-amber-100 text-amber-700"
+                      when "finding_replacement" then "bg-blue-100 text-blue-700"
+                      when "not_filling" then "bg-gray-100 text-gray-700"
+                      when "filled" then "bg-green-100 text-green-700"
+                      when "cancelled" then "bg-purple-100 text-purple-700"
+                      else "bg-gray-100 text-gray-700"
+                    end %>
+                    <% status_text = case vacancy.status
+                      when "open" then "Open"
+                      when "finding_replacement" then "Finding Replacement"
+                      when "not_filling" then "Not Filling"
+                      when "filled" then "Filled"
+                      when "cancelled" then "Reclaimed"
+                      else vacancy.status.titleize
+                    end %>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>">
+                      <%= status_text %>
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-gray-400 group-hover:text-pink-500">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       <% end %>
 
       <% if @show.is_online && !@show.canceled %>

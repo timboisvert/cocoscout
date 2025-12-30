@@ -132,14 +132,15 @@ module My
 
       open_vacancies.each do |vacancy|
         # For non-linked shows, use the primary show_id
-        # For linked shows, use affected_shows
-        if vacancy.show.linked?
+        # For linked shows, use affected_shows if present, otherwise fall back to show_id
+        if vacancy.show.linked? && vacancy.affected_shows.any?
           vacancy.affected_shows.each do |affected_show|
             next unless upcoming_show_ids.include?(affected_show.id)
             @my_vacancies_by_show[affected_show.id] ||= []
             @my_vacancies_by_show[affected_show.id] << vacancy
           end
         else
+          # Non-linked show, or linked show without affected_shows set
           @my_vacancies_by_show[vacancy.show_id] ||= []
           @my_vacancies_by_show[vacancy.show_id] << vacancy
         end
@@ -293,9 +294,9 @@ module My
       groups_by_id = @groups.index_by(&:id)
 
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
-      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person" ] + @groups.map { |g| "group_#{g.id}" })
+      @entity_filter = params[:entity] ? params[:entity].split(",") : ([ "person_#{@person.id}" ] + @groups.map { |g| "group_#{g.id}" })
 
-      include_person = @entity_filter.include?("person")
+      include_person = @entity_filter.include?("person_#{@person.id}")
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
 
       # Determine date range for loading shows
@@ -385,7 +386,11 @@ module My
       can_reclaim = (@vacancy.vacated_by_type == "Person" && people_ids.include?(@vacancy.vacated_by_id)) ||
                     (@vacancy.vacated_by_type == "Group" && group_ids.include?(@vacancy.vacated_by_id))
 
-      unless can_reclaim && @vacancy.active?
+      # User can reclaim if they own the vacancy and it's not already filled or cancelled
+      # This includes: open, finding_replacement, and not_filling statuses
+      is_reclaimable = !@vacancy.filled? && !@vacancy.cancelled?
+
+      unless can_reclaim && is_reclaimable
         redirect_to my_show_path(@show), alert: "You cannot reclaim this vacancy."
         return
       end

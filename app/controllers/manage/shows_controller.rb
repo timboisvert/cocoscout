@@ -31,6 +31,49 @@ module Manage
 
       # Load into memory to avoid multiple queries
       @shows = @shows.to_a
+
+      # Load cast and vacancy data for each show
+      show_ids = @shows.map(&:id)
+
+      # Get all assignments for these shows
+      assignments = ShowPersonRoleAssignment
+        .where(show_id: show_ids)
+        .includes(:role, assignable: { profile_headshots: { image_attachment: :blob } })
+        .to_a
+
+      @assignments_by_show = assignments.group_by(&:show_id)
+
+      # Get all roles for these shows
+      @roles_by_show = {}
+      @shows.each do |show|
+        @roles_by_show[show.id] = show.available_roles.to_a
+      end
+
+      # Get open vacancies for these shows (includes open, finding_replacement, not_filling)
+      all_vacancies = RoleVacancy
+        .where(status: %w[open finding_replacement not_filling])
+        .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
+        .where("role_vacancies.show_id IN (?) OR role_vacancy_shows.show_id IN (?)", show_ids, show_ids)
+        .distinct
+        .includes(:role, :vacated_by, :affected_shows)
+        .to_a
+
+      # Build cant_make_it_by_assignment for each show
+      # Keyed by [assignable_type, assignable_id] to match assignment's assignable
+      @cant_make_it_by_show = {}
+      all_vacancies.each do |vacancy|
+        next unless vacancy.vacated_by.present?
+
+        # Determine which shows this vacancy affects
+        affected_show_ids = vacancy.affected_shows.any? ? vacancy.affected_shows.pluck(:id) : [ vacancy.show_id ]
+
+        affected_show_ids.each do |affected_show_id|
+          next unless show_ids.include?(affected_show_id)
+          @cant_make_it_by_show[affected_show_id] ||= {}
+          key = [ vacancy.vacated_by_type, vacancy.vacated_by_id ]
+          @cant_make_it_by_show[affected_show_id][key] = vacancy
+        end
+      end
     end
 
     def show
@@ -67,6 +110,15 @@ module Manage
 
       # Build open vacancies by role for non-linked shows (person removed, role empty)
       @open_vacancies_by_role = @open_vacancies.group_by(&:role_id)
+
+      # Load all vacancies for this show (including not_filling, filled, cancelled) for the vacancies section
+      @all_vacancies = RoleVacancy
+                          .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
+                          .where("role_vacancies.show_id = ? OR role_vacancy_shows.show_id = ?", @show.id, @show.id)
+                          .distinct
+                          .includes(:role, :affected_shows, :vacated_by, :filled_by)
+                          .order(created_at: :desc)
+                          .to_a
 
       # Load cancelled/open vacancies for linked shows (person still cast but can't make it)
       @cancelled_vacancies_by_assignment = @show.cancelled_vacancies_by_assignment

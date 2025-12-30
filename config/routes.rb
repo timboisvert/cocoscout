@@ -230,7 +230,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :groups, only: %i[show destroy] do
+    resources :groups, only: %i[show destroy update] do
       member do
         post :add_to_cast
         post :remove_from_cast

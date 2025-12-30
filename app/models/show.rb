@@ -267,12 +267,20 @@ class Show < ApplicationRecord
   # Includes:
   # - Cancelled vacancies (producer chose "don't find a replacement" for linked events)
   # - Open vacancies (looking for replacement but not filled yet)
-  # Does NOT include filled vacancies (someone claimed the role).
+  # Does NOT include filled or cancelled vacancies.
+  # Filled = someone else claimed the role
+  # Cancelled = the person reclaimed their spot (they can make it now)
   # Returns a hash: { [role_id, assignable_type, assignable_id] => vacancy }
   def cant_make_it_vacancies_by_assignment
-    # Find cancelled or open vacancies that affect this show (either as primary show or via role_vacancy_shows)
+    # Find vacancies where someone can't make it - includes:
+    # - open: vacancy created, looking for replacement
+    # - finding_replacement: actively seeking replacement
+    # - not_filling: producer decided not to fill, person still can't make it
+    # Does NOT include:
+    # - filled: someone else claimed the role
+    # - cancelled: the person reclaimed their spot (they can now make it)
     vacancies = RoleVacancy
-      .where(status: %w[cancelled open])
+      .where(status: %w[open finding_replacement not_filling])
       .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
       .where("role_vacancies.show_id = ? OR role_vacancy_shows.show_id = ?", id, id)
       .includes(:role, :affected_shows)

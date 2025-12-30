@@ -232,8 +232,10 @@
                               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                             </svg>
                             <span class="text-xs text-amber-600 font-medium">
-                              <% if assignment_vacancy.active? %>
+                              <% if assignment_vacancy.finding_replacement? %>
                                 You've indicated that you can't make it and a replacement is being sought
+                              <% elsif assignment_vacancy.open? %>
+                                You've indicated that you can't make it
                               <% elsif assignment_vacancy.not_filling? %>
                                 You've indicated that you can't make it – no replacement being sought
                               <% elsif assignment_vacancy.filled? %>
@@ -250,24 +252,25 @@
                 <% end %>
               </div>
               <%
-                # Check if any of my assignments have an active vacancy
+                # Check if any of my assignments have an unresolved vacancy (open, finding_replacement, or not_filling)
                 # Use entity key (type + id) since linked events have different role IDs per show
-                has_active_vacancy = my_assignments.any? do |a|
+                # Note: not_filling means person still can't make it, they should be able to reclaim
+                has_unresolved_vacancy = my_assignments.any? do |a|
                   key = [a.assignable_type, a.assignable_id]
                   v = @vacancies_by_entity[key]
-                  v.present? && v.active?
+                  v.present? && !v.filled? && !v.cancelled?
                 end
-                active_vacancy = my_assignments.map { |a|
+                unresolved_vacancy = my_assignments.map { |a|
                   key = [a.assignable_type, a.assignable_id]
                   @vacancies_by_entity[key]
-                }.compact.find(&:active?)
+                }.compact.find { |v| !v.filled? && !v.cancelled? }
               %>
               <% if can_show_cant_make_it %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
-                  <% if has_active_vacancy && active_vacancy %>
+                  <% if has_unresolved_vacancy && unresolved_vacancy %>
                     <%= render "shared/button",
                         text: "Actually, I can make it",
-                        path: my_reclaim_vacancy_path(@show, active_vacancy),
+                        path: my_reclaim_vacancy_path(@show, unresolved_vacancy),
                         method: :post,
                         variant: "secondary",
                         size: "small",
@@ -293,7 +296,11 @@
                 </svg>
                 <div>
                   <p class="text-sm text-amber-600 font-medium">
-                    You've indicated that you can't make it and a replacement is being sought
+                    <% if my_open_vacancy.finding_replacement? %>
+                      You've indicated that you can't make it and a replacement is being sought
+                    <% else %>
+                      You've indicated that you can't make it
+                    <% end %>
                   </p>
                   <p class="text-xs text-gray-500 mt-1">
                     You were previously cast as <strong><%= my_open_vacancy.role.name %></strong>

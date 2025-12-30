@@ -89,14 +89,15 @@ module My
 
       open_vacancies.each do |vacancy|
         # For non-linked shows, use the primary show_id
-        # For linked shows, use affected_shows
-        if vacancy.show.linked?
+        # For linked shows, use affected_shows if present, otherwise fall back to show_id
+        if vacancy.show.linked? && vacancy.affected_shows.any?
           vacancy.affected_shows.each do |affected_show|
             next unless upcoming_show_ids.include?(affected_show.id)
             @my_vacancies_by_show[affected_show.id] ||= []
             @my_vacancies_by_show[affected_show.id] << vacancy
           end
         else
+          # Non-linked show, or linked show without affected_shows set
           @my_vacancies_by_show[vacancy.show_id] ||= []
           @my_vacancies_by_show[vacancy.show_id] << vacancy
         end
