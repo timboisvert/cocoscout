@@ -52,22 +52,22 @@
           </div>
         </div>
 
-        <!-- Account Navigation Links (2-wide grid) -->
+        <!-- Account Navigation Links -->
         <div class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">My Account</div>
-        <div class="grid grid-cols-2 gap-1.5 mb-3">
-          <%= link_to account_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+        <div class="space-y-1 mb-3">
+          <%= link_to account_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
             Account
           <% end %>
-          <%= link_to account_profiles_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+          <%= link_to account_profiles_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
             Profiles
           <% end %>
-          <%= link_to account_organizations_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+          <%= link_to account_organizations_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
             Organizations
           <% end %>
-          <%= link_to account_notifications_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+          <%= link_to account_notifications_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
             Notifications
           <% end %>
-          <%= link_to account_billing_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+          <%= link_to account_billing_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
             Billing
           <% end %>
         </div>

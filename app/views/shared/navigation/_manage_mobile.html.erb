@@ -117,37 +117,37 @@
         <% end %>
         <% end %>
 
-        <!-- Navigation Links (2-wide grid) -->
+        <!-- Navigation Links -->
         <% if Current.production.present? && !Current.production.new_record? %>
           <% has_team_access = Current.user.role_for_production(Current.production).present? %>
-          <div class="grid grid-cols-2 gap-1.5 mb-4">
-            <%= link_to manage_production_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
-              Dashboard
+          <div class="space-y-1 mb-4">
+            <%= link_to manage_production_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
+              Home
             <% end %>
             <% if has_team_access %>
-              <%= link_to manage_production_shows_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to manage_production_shows_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Shows
               <% end %>
-              <%= link_to manage_production_casting_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to manage_production_casting_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Casting
               <% end %>
             <% end %>
-            <%= link_to manage_production_auditions_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            <%= link_to manage_production_auditions_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
               Auditions
             <% end %>
             <% if has_team_access %>
-              <%= link_to manage_production_questionnaires_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to manage_production_questionnaires_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Questionnaires
               <% end %>
-              <%= link_to manage_production_availability_index_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to manage_production_availability_index_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Availability
               <% end %>
-              <%= link_to manage_directory_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to manage_directory_path, class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Directory
               <% end %>
             <% end %>
             <% if current_user_can_manage? %>
-              <%= link_to edit_manage_production_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              <%= link_to edit_manage_production_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Settings
               <% end %>
             <% end %>
@@ -226,7 +226,7 @@
         <!-- Actions row -->
         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
           <%= link_to account_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
-            Account
+            My Account
           <% end %>
           <div class="flex items-center gap-3">
             <% if Current.user.superadmin? %>

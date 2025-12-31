@@ -152,11 +152,7 @@
                 </div>
               </div>
               <div class="flex-shrink-0 hidden group-hover:block">
-                <% if is_linked %>
-                  <%= render "shared/button", text: "Review", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
-                <% else %>
-                  <%= render "shared/button", text: "Find a Replacement", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
-                <% end %>
+                <%= render "shared/button", text: "Review", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
               </div>
             </div>
           </div>

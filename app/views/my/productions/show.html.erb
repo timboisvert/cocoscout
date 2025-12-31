@@ -14,16 +14,20 @@
 
   <!-- Production Hero with Membership Info -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="p-4 flex items-center gap-4">
-      <% logo_variant = @production.safe_logo_variant(:small) %>
-      <% if logo_variant %>
-        <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-[100px] object-contain rounded" %>
-      <% end %>
-      <div class="flex-1">
-        <h2 class="text-xl font-bold text-gray-900"><%= @production.name %></h2>
-        <p class="text-sm text-gray-500 mb-2"><%= @production.organization.name %></p>
+    <div class="p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <% logo_variant = @production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-20 sm:w-[100px] object-contain rounded flex-shrink-0" %>
+        <% end %>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-lg sm:text-xl font-bold text-gray-900"><%= @production.name %></h2>
+          <p class="text-sm text-gray-500 mb-2"><%= @production.organization.name %></p>
+        </div>
+      </div>
 
-        <!-- Talent Pool Membership Badges -->
+      <!-- Talent Pool Membership Badges -->
+      <div class="mt-4 pt-4 border-t border-gray-100">
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-xs text-gray-500 font-medium">In talent pool as:</span>
           <% @person_memberships.each do |membership| %>
