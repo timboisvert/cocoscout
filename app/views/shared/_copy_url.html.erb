@@ -19,13 +19,13 @@
     <label class="block text-sm font-medium text-gray-700 mb-2"><%= label %></label>
   <% end %>
 
-  <div class="flex items-center gap-2 pl-3 pr-1 py-1.5 bg-gray-50 rounded border border-gray-200">
+  <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 sm:pl-3 sm:pr-1 sm:py-1.5 bg-gray-50 rounded border border-gray-200">
     <div class="flex-1 overflow-hidden">
       <div class="text-sm font-mono text-gray-700 truncate">
         <%= url %>
       </div>
     </div>
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1 justify-end">
       <%= render "shared/button",
         text: "Visit",
         variant: "outline-pink",

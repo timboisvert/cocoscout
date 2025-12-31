@@ -69,13 +69,12 @@ module Manage
       # Load productions with counts for display
       @productions = Current.user.accessible_productions
         .where(organization: Current.organization)
-        .left_joins(:shows, :talent_pools)
+        .left_joins(:shows)
         .select(
           "productions.*",
-          "COUNT(DISTINCT shows.id) AS shows_count",
-          "(SELECT COUNT(*) FROM talent_pool_memberships WHERE talent_pool_memberships.talent_pool_id = talent_pools.id) AS talent_pool_members_count"
+          "COUNT(DISTINCT shows.id) AS shows_count"
         )
-        .group("productions.id, talent_pools.id")
+        .group("productions.id")
         .order(:name)
 
       @production = Production.new

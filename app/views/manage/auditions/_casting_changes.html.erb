@@ -1,8 +1,6 @@
 <!-- Casting Changes Summary -->
 <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting Changes</h3>
-  </div>
+  <%= render "shared/card_header", title: "Casting Changes" %>
   <div class="p-6">
     <% if has_sent_notifications %>
       <%# After notifications sent - show finalized people and newly added (pending) people %>

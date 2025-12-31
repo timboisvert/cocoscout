@@ -11,9 +11,7 @@
       <div class="flex-1 w-full">
         <%# Socials Box (email is in hero now) %>
         <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Socials</h3>
-          </div>
+          <%= render "shared/card_header", title: "Socials" %>
           <div class="p-4">
             <% if person.socials.any? %>
               <div class="space-y-1">
@@ -33,9 +31,7 @@
         <% if current_user_can_manage? || Current.user&.superadmin? %>
           <%# Organization Box %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organization</h3>
-            </div>
+            <%= render "shared/card_header", title: "Organization" %>
             <div class="p-4">
               <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
                 <%= link_to "Remove from #{Current.organization.name}",
@@ -62,9 +58,7 @@
         <% if Current.user&.superadmin? %>
           <%# Superadmin Actions Box %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Superadmin Actions</h3>
-            </div>
+            <%= render "shared/card_header", title: "Superadmin Actions" %>
             <div class="p-4 space-y-2">
               <% if person.user %>
                 <%= button_to impersonate_user_path, method: :post, params: { email: person.user.email_address }, class: "text-sm text-pink-500 hover:underline cursor-pointer" do %>

@@ -1,9 +1,9 @@
 <div class="w-full" data-controller="tabs">
-  <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
-    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Resume</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Members</button>
+  <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto scrollbar-hide">
+    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
+    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Resume</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Availability</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Members</button>
   </nav>
 
   <div data-tabs-target="panel">
@@ -32,9 +32,7 @@
           <div class="space-y-4">
             <% shows.group_by(&:production).each do |production, production_shows| %>
               <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
-                </div>
+                <%= render "shared/card_header", title: production.name %>
                 <div class="divide-y divide-gray-200">
                   <% production_shows.each do |show| %>
                     <% availability = availabilities[show.id] %>
@@ -79,9 +77,7 @@
         <div class="space-y-4">
           <% shows.group_by(&:production).each do |production, production_shows| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
-              </div>
+              <%= render "shared/card_header", title: production.name %>
               <div class="divide-y divide-gray-200">
                 <% production_shows.each do |show| %>
                   <% availability = availabilities[show.id] %>

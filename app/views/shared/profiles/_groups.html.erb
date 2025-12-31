@@ -18,7 +18,7 @@
       <% active_memberships = entity.group_memberships.includes(:group).select { |m| m.group.archived_at.nil? } %>
       <% if active_memberships.any? %>
         <% active_memberships.each do |membership| %>
-          <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition"
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition gap-3"
                data-membership-id="<%= membership.id %>"
                data-group-id="<%= membership.group.id %>">
             <div class="flex items-center gap-4">

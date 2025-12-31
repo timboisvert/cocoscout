@@ -8,9 +8,7 @@
 
   <!-- Public Profile Card -->
   <div id="public-group-profile" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Group Profile</h3>
-    </div>
+    <%= render "shared/card_header", title: "Public Group Profile" %>
     <div class="p-6">
       <%= form_with(model: @group, url: update_group_path(@group), method: :patch, data: { profile_visibility_target: "form", turbo: true }) do |form| %>
         <div class="space-y-4">
@@ -68,9 +66,7 @@
     <!-- Basic Information Section -->
     <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |form| %>
       <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
-        </div>
+        <%= render "shared/card_header", title: "Basic Information" %>
         <div class="p-6 space-y-4">
           <div>
             <%= form.label :name, "Group Name", class: "block text-sm font-medium text-gray-700" %>

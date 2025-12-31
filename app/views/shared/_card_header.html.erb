@@ -1,0 +1,56 @@
+<%#
+  Card Header Partial
+
+  Usage:
+    render "shared/card_header", title: "My Title"
+
+    render "shared/card_header", title: "My Title", links: [
+      { text: "Link 1", path: some_path },
+      { text: "Link 2", path: other_path }
+    ]
+
+    With a block for custom right content:
+    render "shared/card_header", title: "My Title" do
+      <button>Custom Button</button>
+    end
+
+  Parameters:
+    - title (required): The header title text
+    - links (optional): Array of link hashes with :text and :path keys
+    - icon (optional): SVG icon HTML to show before the title
+    - bg_class (optional): Background class override (default: "bg-gray-50")
+    - border_class (optional): Border class override (default: "border-gray-200")
+    - title_class (optional): Title text color class override (default: "text-gray-900")
+    - clickable (optional): If true, adds cursor-pointer and data-action for show-toggle
+%>
+<%
+  title = local_assigns[:title]
+  links = local_assigns[:links] || []
+  icon = local_assigns[:icon]
+  bg_class = local_assigns[:bg_class] || "bg-gray-50"
+  border_class = local_assigns[:border_class] || "border-gray-200"
+  title_class = local_assigns[:title_class] || "text-gray-900"
+  clickable = local_assigns[:clickable] || false
+  has_right_content = links.any? || block_given?
+%>
+<div class="<%= bg_class %> px-4 py-3 border-b <%= border_class %><%= ' flex items-center justify-between cursor-pointer' if clickable %>"<%= ' data-action="click->show-toggle#toggle"'.html_safe if clickable %>>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
+    <h3 class="text-md font-semibold <%= title_class %> coustard-regular flex items-center gap-2">
+      <% if icon.present? %>
+        <%= icon.html_safe %>
+      <% end %>
+      <%= title %>
+    </h3>
+    <% if has_right_content %>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <% if block_given? %>
+          <%= yield %>
+        <% else %>
+          <% links.each do |link| %>
+            <%= link_to link[:text], link[:path], class: "text-pink-500 underline whitespace-nowrap" %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -30,9 +30,7 @@
 
   <!-- Audition Type & Settings -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Settings</h3>
-    </div>
+    <%= render "shared/card_header", title: "Audition Settings" %>
     <div class="p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div class="p-3 bg-gray-50 rounded-lg">
@@ -56,7 +54,7 @@
 
   <!-- Sign-ups Received -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <%= render "shared/card_header" do %>
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
 
         <% if @audition_cycle.accepts_in_person_auditions? %>
@@ -66,7 +64,7 @@
         <% end %>
         <span class="ml-2 text-sm font-normal text-gray-600">(<%= @audition_requests.count %>)</span>
       </h3>
-    </div>
+    <% end %>
     <div class="p-6">
       <% if @audition_requests.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -136,12 +134,12 @@
       end
     %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+      <%= render "shared/card_header" do %>
         <h3 class="text-md font-semibold text-gray-900 coustard-regular">
           People Offered Auditions
           <span class="ml-2 text-sm font-normal text-gray-600">(<%= @accepted_requests.count %>)</span>
         </h3>
-      </div>
+      <% end %>
       <div class="p-6">
         <% if @accepted_requests.any? %>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -183,12 +181,12 @@
 
   <!-- People Added to Cast -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+    <%= render "shared/card_header" do %>
       <h3 class="text-md font-semibold text-gray-900 coustard-regular">
         People Added to Cast
         <span class="ml-2 text-sm font-normal text-gray-600">(<%= @cast_people.count %>)</span>
       </h3>
-    </div>
+    <% end %>
     <div class="p-6">
       <% if @cast_people.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -34,9 +34,7 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
     <!-- By Service -->
     <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">By Service</h3>
-      </div>
+      <%= render "shared/card_header", title: "By Service" %>
       <div class="p-4">
         <table class="w-full text-sm">
           <thead>
@@ -61,9 +59,7 @@
 
     <!-- By Content Type -->
     <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">By Content Type</h3>
-      </div>
+      <%= render "shared/card_header", title: "By Content Type" %>
       <div class="p-4">
         <table class="w-full text-sm">
           <thead>
@@ -87,9 +83,7 @@
 
   <!-- Attachments Breakdown -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Attachments by Type</h3>
-    </div>
+    <%= render "shared/card_header", title: "Attachments by Type" %>
     <div class="p-4">
       <table class="w-full text-sm">
         <thead>
@@ -116,8 +110,7 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
     <!-- Orphaned Blobs -->
     <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Orphaned Blobs</h3>
+      <%= render "shared/card_header", title: "Orphaned Blobs" do %>
         <% if @orphaned_count > 0 %>
           <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
             <%= @orphaned_count %> orphans
@@ -127,7 +120,7 @@
             Clean
           </span>
         <% end %>
-      </div>
+      <% end %>
       <div class="p-4">
         <p class="text-sm text-gray-600 mb-3">
           Blobs with no attachments (wasting storage).
@@ -157,8 +150,7 @@
 
     <!-- Legacy Attachments -->
     <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Legacy Attachments</h3>
+      <%= render "shared/card_header", title: "Legacy Attachments" do %>
         <% if @legacy_count > 0 %>
           <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
             <%= @legacy_count %> legacy
@@ -168,7 +160,7 @@
             Clean
           </span>
         <% end %>
-      </div>
+      <% end %>
       <div class="p-4">
         <p class="text-sm text-gray-600 mb-3">
           Old Person.headshot and Person.resume attachments (replaced by ProfileHeadshot/ProfileResume).
@@ -190,8 +182,7 @@
 
   <!-- Key Migration -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Key Structure Migration</h3>
+    <%= render "shared/card_header", title: "Key Structure Migration" do %>
       <% if @flat_keys_count > 0 %>
         <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
           <%= @flat_keys_count %> to migrate
@@ -201,7 +192,7 @@
           All migrated
         </span>
       <% end %>
-    </div>
+    <% end %>
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-3">
         Migrate flat keys (e.g., <code class="bg-gray-100 px-1 rounded">abc123xyz</code>) to hierarchical structure
@@ -244,9 +235,7 @@
 
   <!-- Orphaned S3 Files -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Orphaned S3 Files</h3>
-    </div>
+    <%= render "shared/card_header", title: "Orphaned S3 Files" %>
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-3">
         After migrating keys, old flat-key files remain on S3. This cleanup finds and deletes
@@ -266,9 +255,7 @@
 
   <!-- Variants Info -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Variants</h3>
-    </div>
+    <%= render "shared/card_header", title: "Variants" %>
     <div class="p-4">
       <p class="text-sm text-gray-600">
         <strong><%= @variant_count %></strong> variant records (thumbnails, resized images, etc.)

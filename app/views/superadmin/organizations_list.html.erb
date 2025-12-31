@@ -36,14 +36,11 @@
 
   <!-- Organizations table -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        Organizations
-        <% if @search.present? %>
-          <span class="text-sm font-normal text-gray-600">(filtered)</span>
-        <% end %>
-      </h3>
-    </div>
+    <%= render "shared/card_header", title: "Organizations" do %>
+      <% if @search.present? %>
+        <span class="text-sm font-normal text-gray-600">(filtered)</span>
+      <% end %>
+    <% end %>
 
     <% if @organizations.empty? %>
       <div class="text-center py-12 text-gray-500">

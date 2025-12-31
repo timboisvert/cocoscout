@@ -1,7 +1,129 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["role", "person", "show", "assignment"];
+    static targets = ["role", "person", "show", "assignment", "assignModal", "rolesContainer"];
+    static values = { showId: String, productionId: String };
+
+    connect() {
+        // Close modal on escape key
+        this.handleEscape = (event) => {
+            if (event.key === 'Escape') this.closeAssignModal();
+        };
+        document.addEventListener('keydown', this.handleEscape);
+    }
+
+    disconnect() {
+        document.removeEventListener('keydown', this.handleEscape);
+    }
+
+    // Helper to get showId - from value or from rolesContainer
+    get showId() {
+        if (this.hasShowIdValue) return this.showIdValue;
+        if (this.hasRolesContainerTarget) return this.rolesContainerTarget.dataset.showId;
+        return this.element.dataset.showId;
+    }
+
+    // Helper to get productionId - from value or from rolesContainer
+    get productionId() {
+        if (this.hasProductionIdValue) return this.productionIdValue;
+        if (this.hasRolesContainerTarget) return this.rolesContainerTarget.dataset.productionId;
+        return this.element.dataset.productionId;
+    }
+
+    connect() {
+        // Close modal on escape key
+        this.handleEscape = (event) => {
+            if (event.key === 'Escape') this.closeAssignModal();
+        };
+        document.addEventListener('keydown', this.handleEscape);
+    }
+
+    disconnect() {
+        document.removeEventListener('keydown', this.handleEscape);
+    }
+
+    // Open the assign modal for mobile
+    openAssignModal(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const roleId = button.dataset.roleId;
+        const roleName = button.dataset.roleName;
+
+        // Store the role we're assigning to
+        this.currentAssignRoleId = roleId;
+
+        // Update modal title
+        const modal = this.assignModalTarget;
+        const titleEl = modal.querySelector('[data-modal-title]');
+        if (titleEl) {
+            titleEl.textContent = `Assign to ${roleName}`;
+        }
+
+        // Show the modal
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    closeAssignModal() {
+        const modal = this.assignModalTarget;
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+        this.currentAssignRoleId = null;
+    }
+
+    // Assign from the mobile modal
+    assignFromModal(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const assignableType = button.dataset.assignableType;
+        const assignableId = button.dataset.assignableId;
+        const showId = this.showId;
+        const productionId = this.productionId;
+        const roleId = this.currentAssignRoleId;
+
+        if (!roleId) return;
+
+        const requestBody = { role_id: roleId };
+        if (assignableType === "Person") {
+            requestBody.person_id = assignableId;
+        } else if (assignableType === "Group") {
+            requestBody.group_id = assignableId;
+        }
+
+        // Close modal immediately
+        this.closeAssignModal();
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(data => {
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update linkage sync section if present
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
+
+                // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            });
+    }
+
+    stopPropagation(event) {
+        event.stopPropagation();
+    }
 
     allowDrop(event) {
         event.preventDefault();
@@ -96,8 +218,8 @@ export default class extends Controller {
             return;
         }
 
-        const showId = this.element.dataset.showId;
-        const productionId = this.element.dataset.productionId;
+        const showId = this.showId;
+        const productionId = this.productionId;
 
         // If dragging from an assignment (role-to-role), sourceRoleId will be set
         if (sourceRoleId && sourceRoleId !== roleId) {
@@ -182,8 +304,8 @@ export default class extends Controller {
         const roleId = button.dataset.roleId;
         const assignableType = button.dataset.assignableType;
         const assignableId = button.dataset.assignableId;
-        const showId = this.element.dataset.showId;
-        const productionId = this.element.dataset.productionId;
+        const showId = this.showId;
+        const productionId = this.productionId;
 
         const requestBody = { role_id: roleId };
         if (assignableType === "Person") {
@@ -310,8 +432,8 @@ export default class extends Controller {
         const assignmentId = event.currentTarget.dataset.assignmentId;
         const assignableType = event.currentTarget.dataset.assignableType;
         const assignableId = event.currentTarget.dataset.assignableId;
-        const showId = this.element.dataset.showId;
-        const productionId = this.element.dataset.productionId;
+        const showId = this.showId;
+        const productionId = this.productionId;
 
         fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
             method: "POST",
@@ -414,8 +536,8 @@ export default class extends Controller {
         event.preventDefault();
         const button = event.currentTarget;
         const roleId = button.dataset.roleId;
-        const showId = this.element.dataset.showId;
-        const productionId = this.element.dataset.productionId;
+        const showId = this.showId;
+        const productionId = this.productionId;
 
         // Optional: prompt for reason
         const reason = prompt("Reason for vacancy (optional):");

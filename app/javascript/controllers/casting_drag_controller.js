@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["dropZone", "auditionee", "person"]
+    static targets = ["dropZone", "auditionee", "person", "addModal"]
     static values = {
         auditionCycleId: String,
         productionId: String
@@ -9,6 +9,61 @@ export default class extends Controller {
 
     connect() {
         console.log("Casting drag controller connected")
+        // Close modal on escape key
+        this.handleEscape = (event) => {
+            if (event.key === 'Escape') this.closeAddModal();
+        };
+        document.addEventListener('keydown', this.handleEscape);
+    }
+
+    disconnect() {
+        document.removeEventListener('keydown', this.handleEscape);
+    }
+
+    // Open the add modal for mobile
+    openAddModal(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const talentPoolId = button.dataset.talentPoolId;
+
+        // Store the talent pool we're adding to
+        this.currentTalentPoolId = talentPoolId;
+
+        // Show the modal
+        const modal = this.addModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    closeAddModal() {
+        const modal = this.addModalTarget;
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+        this.currentTalentPoolId = null;
+    }
+
+    stopPropagation(event) {
+        event.stopPropagation();
+    }
+
+    // Add from the mobile modal
+    addFromModal(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const auditioneeType = button.dataset.auditioneeType;
+        const auditioneeId = button.dataset.auditioneeId;
+        const auditioneeName = button.dataset.auditioneeName;
+        const talentPoolId = this.currentTalentPoolId;
+
+        if (!talentPoolId || !auditioneeId) return;
+
+        // Close modal immediately
+        this.closeAddModal();
+
+        const csrfToken = document.querySelector('meta[name=csrf-token]').content;
+        this.addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, this.productionIdValue);
     }
 
     // When dragging from the right column (auditionees)

@@ -12,8 +12,7 @@
     <% if current_user_has_role?(@production) %>
     <!-- Active Call to Audition Info -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Active Audition Cycle</h3>
+      <%= render "shared/card_header", title: "Active Audition Cycle" do %>
         <% if current_user_can_manage?(@production) %>
           <%= link_to edit_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "text-gray-400 hover:text-gray-600", title: "Settings" do %>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,7 +21,7 @@
             </svg>
           <% end %>
         <% end %>
-      </div>
+      <% end %>
       <div class="p-4">
         <%
           # Check if casting has been completed
@@ -141,9 +140,7 @@
 
     <!-- Audition Process Steps -->
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Process</h3>
-      </div>
+      <%= render "shared/card_header", title: "Audition Process" %>
 
       <div class="p-8">
         <div class="relative">
@@ -407,7 +404,7 @@
   <%# Archive bar - always show if user has role, even without active cycle %>
   <% if current_user_has_role?(@production) %>
   <div class="mt-8 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <p class="text-base font-semibold text-gray-700">Archive</p>
         <p class="text-sm text-gray-600">
@@ -418,11 +415,11 @@
           <% end %>
         </p>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <% if @active_audition_cycle.present? && current_user_can_manage?(@production) %>
-          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
+          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer whitespace-nowrap", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
         <% end %>
-        <%= link_to "View Archive", archive_manage_production_auditions_path(@production), class: "text-sm text-pink-500 underline" %>
+        <%= link_to "View Archive", archive_manage_production_auditions_path(@production), class: "text-sm text-pink-500 underline whitespace-nowrap" %>
       </div>
     </div>
   </div>

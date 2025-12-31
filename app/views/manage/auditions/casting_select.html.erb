@@ -19,25 +19,26 @@
     </div>
   <% else %>
     <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p class="text-base font-semibold text-gray-700">Select Cast Members</p>
-          <p class="text-sm text-gray-600">Drag auditionees from the right to add them to your talent pool.</p>
+          <p class="text-sm text-gray-600 hidden sm:block">Drag auditionees from the right to add them to your talent pool.</p>
+          <p class="text-sm text-gray-600 sm:hidden">Tap + to add auditionees to your talent pool.</p>
         </div>
-        <%= render partial: "shared/button", locals: { text: "Done Selecting Cast Members", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+        <%= render partial: "shared/button", locals: { text: "Done Selecting", path: casting_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
       </div>
     </div>
 
-    <div class="flex gap-6">
+    <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left side: Talent Pool -->
-      <div class="w-1/2">
+      <div class="w-full lg:w-1/2">
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h2 class="text-md font-semibold text-gray-900 coustard-regular">Talent Pool</h2>
-            <p class="text-xs text-gray-500 mt-1">
-              Drag auditionees here to add them to <%= @production.name %>'s talent pool.
+          <%= render "shared/card_header", title: "Talent Pool" do %>
+            <p class="text-xs text-gray-500">
+              <span class="hidden lg:inline">Drag auditionees here to add them to <%= @production.name %>'s talent pool.</span>
+              <span class="lg:hidden">Tap an auditionee below then tap here to add them.</span>
             </p>
-          </div>
+          <% end %>
           <div class="p-4">
             <!-- New Talent Pool Members Drop Zone -->
             <div class="border-2 border-dashed border-pink-300 rounded-lg p-4 mb-4"
@@ -45,7 +46,8 @@
                  data-drag-drop-type="cast"
                  data-talent-pool-id="<%= @talent_pool.id %>"
                  data-action="dragover->casting-drag#allowDrop dragleave->casting-drag#dragLeave drop->casting-drag#drop">
-              <p class="text-xs text-pink-600 font-medium mb-3">Drop auditionees here to add to talent pool</p>
+              <p class="text-xs text-pink-600 font-medium mb-3 hidden lg:block">Drop auditionees here to add to talent pool</p>
+              <p class="text-xs text-pink-600 font-medium mb-3 lg:hidden">Tap + to add auditionees to talent pool</p>
               <% cast_stages = @cast_assignment_stages.select { |stage| stage.talent_pool_id == @talent_pool.id } %>
 
               <% if cast_stages.any? %>
@@ -76,7 +78,7 @@
                       <% end %>
                       <span class="text-[10px] text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= assignable.name %></span>
                       <button type="button"
-                        class="absolute bottom-4 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                        class="absolute bottom-4 left-0 right-0 z-20 text-pink-500 bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
                         data-action="click->casting-drag#removePerson"
                         data-talent-pool-id="<%= @talent_pool.id %>"
                         data-auditionee-type="<%= assignable.class.name %>"
@@ -85,11 +87,31 @@
                       </button>
                     </div>
                   <% end %>
+                  <%# Mobile add button (inline with existing members) %>
+                  <button type="button"
+                    class="lg:hidden flex flex-col items-center justify-center w-16 h-20 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-all cursor-pointer"
+                    data-action="click->casting-drag#openAddModal"
+                    data-talent-pool-id="<%= @talent_pool.id %>">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span class="text-[10px] mt-1">Add</span>
+                  </button>
                 </div>
               <% else %>
-                <div class="flex items-center justify-center p-4 text-gray-400 text-sm min-h-16">
+                <%# Empty state with mobile add button %>
+                <div class="hidden lg:flex items-center justify-center p-4 text-gray-400 text-sm min-h-16">
                   <span>No new members yet</span>
                 </div>
+                <button type="button"
+                  class="lg:hidden flex items-center justify-center gap-2 w-full p-4 text-gray-500 text-sm min-h-16 hover:text-pink-500 transition-all cursor-pointer"
+                  data-action="click->casting-drag#openAddModal"
+                  data-talent-pool-id="<%= @talent_pool.id %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span>Tap to add auditionees</span>
+                </button>
               <% end %>
             </div>
 
@@ -131,15 +153,15 @@
         </div>
       </div>
 
-      <!-- Right side: Auditionees -->
-      <div class="w-1/2 flex-shrink-0">
-        <div class="sticky top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h2 class="text-md font-semibold text-gray-900 coustard-regular">Auditionees</h2>
-            <p class="text-xs text-gray-500 mt-1">
-              People who auditioned. Drag them to the talent pool.
+      <!-- Right side: Auditionees - hidden on mobile -->
+      <div class="hidden lg:block w-full lg:w-1/2 flex-shrink-0">
+        <div class="lg:sticky lg:top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
+          <%= render "shared/card_header", title: "Auditionees" do %>
+            <p class="text-xs text-gray-500">
+              <span class="hidden lg:inline">People who auditioned. Drag them to the talent pool.</span>
+              <span class="lg:hidden">Tap to add to the talent pool.</span>
             </p>
-          </div>
+          <% end %>
           <div class="p-2 space-y-1 overflow-y-auto flex-1">
             <% @auditioned_people.each do |auditionee| %>
               <% is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id } %>
@@ -198,6 +220,81 @@
 
             <% if @auditioned_people.empty? %>
               <p class="text-gray-500 text-sm text-center py-8">No one has auditioned yet</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Mobile Add Modal %>
+    <div data-casting-drag-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->casting-drag#closeAddModal">
+      <div class="bg-white w-full rounded-t-2xl max-h-[80vh] flex flex-col" data-action="click->casting-drag#stopPropagation">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+          <h2 class="text-lg font-semibold text-gray-900">Add to Talent Pool</h2>
+          <button type="button" data-action="click->casting-drag#closeAddModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="p-4 overflow-y-auto">
+          <p class="text-xs text-gray-500 mb-3">Sorted by yes votes</p>
+          <div class="space-y-1">
+            <%
+              # Sort auditionees by yes votes descending
+              sorted_auditionees = @auditioned_people.sort_by do |auditionee|
+                vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
+                is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id }
+                # Sort: assigned last, then by yes votes descending
+                [is_assigned ? 1 : 0, -(vote_counts&.dig(:yes) || 0)]
+              end
+            %>
+            <% sorted_auditionees.each do |auditionee| %>
+              <%
+                is_assigned = @cast_assignment_stages.any? { |stage| stage.assignable_type == auditionee.class.name && stage.assignable_id == auditionee.id }
+                vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
+              %>
+              <button type="button"
+                class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_assigned ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
+                data-action="click->casting-drag#addFromModal"
+                data-auditionee-type="<%= auditionee.class.name %>"
+                data-auditionee-id="<%= auditionee.id %>"
+                data-auditionee-name="<%= auditionee.name %>"
+                <%= 'disabled' if is_assigned %>>
+                <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: auditionee.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% elsif auditionee.is_a?(Person) %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                    <%= auditionee.initials %>
+                  </div>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                <% end %>
+                <div class="flex-1 text-left min-w-0">
+                  <div class="font-medium text-sm text-gray-900 truncate"><%= auditionee.name %></div>
+                  <div class="text-xs text-gray-500">
+                    <% if is_assigned %>
+                      Already added
+                    <% elsif vote_counts %>
+                      <span class="text-green-600"><%= vote_counts[:yes] %> yes</span>
+                      · <%= vote_counts[:no] %> no
+                      · <%= vote_counts[:maybe] %> maybe
+                    <% else %>
+                      No votes yet
+                    <% end %>
+                  </div>
+                </div>
+                <% unless is_assigned %>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                <% end %>
+              </button>
             <% end %>
           </div>
         </div>

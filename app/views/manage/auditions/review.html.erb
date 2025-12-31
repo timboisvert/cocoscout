@@ -23,21 +23,14 @@
     </div>
   <% else %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-          <% if @audition_cycle.video_only? %>
-            Video Auditions
-          <% else %>
-            Sign-ups
-          <% end %>
-        </h3>
-      </div>
+      <% review_title = @audition_cycle.video_only? ? "Video Auditions" : "Sign-ups" %>
+      <%= render "shared/card_header", title: review_title %>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Review and vote on each auditionee's application.</p>
 
         <% vote_summary = @audition_cycle.vote_summary %>
 
-        <div class="grid grid-cols-3 gap-2 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
           <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_requests] %></p>
@@ -67,11 +60,11 @@
         <%
           button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Sign-ups"
         %>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
 
           <% if current_user_has_role?(@production) %>
-            <div class="flex items-center gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
+            <div class="flex items-center justify-between sm:justify-start gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
               <div class="flex items-center gap-2">
                 <% if @audition_cycle.voting_enabled %>
                   <span class="relative flex h-3 w-3">
@@ -111,9 +104,7 @@
 
     <% if @audition_cycle.accepts_in_person_auditions? && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Schedule Auditions</h3>
-      </div>
+      <%= render "shared/card_header", title: "Schedule Auditions" %>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Assign people to audition sessions.</p>
 
@@ -137,9 +128,7 @@
 
     <% if @audition_cycle.accepts_in_person_auditions? && current_user_has_role?(@production) %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mt-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Finalize Audition Plans and Notify</h3>
-      </div>
+      <%= render "shared/card_header", title: "Finalize Audition Plans and Notify" %>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-4">Send notification emails to all applicants about their audition status and schedule.</p>
 

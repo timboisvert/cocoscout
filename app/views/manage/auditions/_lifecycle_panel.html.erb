@@ -1,8 +1,6 @@
 <div class="mb-6 bg-white overflow-hidden">
   <% if !defined?(current_step) || current_step.nil? %>
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Process</h3>
-    </div>
+    <%= render "shared/card_header", title: "Audition Process" %>
   <% end %>
 
   <div class="p-6">

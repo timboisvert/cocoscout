@@ -37,8 +37,8 @@
               show_production: false,
               right_panel: nil
             } %>
-            <%# Remove button - shows on hover %>
-            <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden group-hover:block">
+            <%# Remove button - shows on hover, always visible on mobile %>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 block md:hidden md:group-hover:block">
               <%= render "shared/button",
                       text: "Remove",
                       variant: "primary",

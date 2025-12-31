@@ -93,10 +93,9 @@
       <!-- Database Files Panel -->
       <div data-tabs-target="panel" class="hidden">
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Files</h3>
+          <%= render "shared/card_header", title: "Database Files" do %>
             <p class="text-sm text-gray-500 mt-1">SQLite database files on disk</p>
-          </div>
+          <% end %>
           <div class="p-4">
             <% if @database_files.any? %>
               <table class="w-full text-sm">
@@ -135,10 +134,9 @@
         <!-- Storage Breakdown -->
         <% if @storage_breakdown.present? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Where Is the Space Going?</h3>
+            <%= render "shared/card_header", title: "Where Is the Space Going?" do %>
               <p class="text-sm text-gray-500 mt-1">Breakdown of storage usage by type</p>
-            </div>
+            <% end %>
             <div class="p-4">
               <div class="space-y-4">
                 <% @storage_breakdown.each do |item| %>
@@ -184,10 +182,9 @@
       <!-- Tables Panel -->
       <div data-tabs-target="panel" class="hidden">
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Tables</h3>
+          <%= render "shared/card_header", title: "Database Tables" do %>
             <p class="text-sm text-gray-500 mt-1">All tables sorted by size</p>
-          </div>
+          <% end %>
           <div class="p-4 overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
@@ -244,10 +241,9 @@
         <% sized_tables = @tables.select { |t| t[:size_bytes] && t[:size_bytes] > 0 }.first(15) %>
         <% if sized_tables.any? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Size Distribution</h3>
+            <%= render "shared/card_header", title: "Size Distribution" do %>
               <p class="text-sm text-gray-500 mt-1">Top tables by disk space usage</p>
-            </div>
+            <% end %>
             <div class="p-4">
               <% max_size = sized_tables.map { |t| t[:size_bytes] }.max %>
               <div class="space-y-3">
@@ -274,10 +270,9 @@
         <% large_tables = @tables.select { |t| t[:row_count] >= 100 }.first(15) %>
         <% if large_tables.any? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Row Distribution</h3>
+            <%= render "shared/card_header", title: "Row Distribution" do %>
               <p class="text-sm text-gray-500 mt-1">Top tables by row count</p>
-            </div>
+            <% end %>
             <div class="p-4">
               <% max_rows = large_tables.map { |t| t[:row_count] }.max %>
               <div class="space-y-3">
@@ -301,10 +296,9 @@
       <!-- Indexes Panel -->
       <div data-tabs-target="panel" class="hidden">
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Database Indexes</h3>
+          <%= render "shared/card_header", title: "Database Indexes" do %>
             <p class="text-sm text-gray-500 mt-1">All indexes across all tables</p>
-          </div>
+          <% end %>
           <div class="p-4 overflow-x-auto">
             <% if @indexes.any? %>
               <table class="w-full text-sm">

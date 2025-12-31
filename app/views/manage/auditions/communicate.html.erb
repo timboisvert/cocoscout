@@ -20,9 +20,7 @@
     <% audition_cycle = @production.audition_cycle %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Send Communications</h3>
-      </div>
+      <%= render "shared/card_header", title: "Send Communications" %>
       <div class="p-6">
       <p class="text-sm text-gray-500 mb-6">Send callback notifications, rejections, or thank you messages to auditionees.</p>
 
@@ -45,9 +43,7 @@
     </div>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Add to Cast</h3>
-      </div>
+      <%= render "shared/card_header", title: "Add to Cast" %>
       <div class="p-6">
       <p class="text-sm text-gray-500 mb-4">Add accepted candidates to your production's cast.</p>
 

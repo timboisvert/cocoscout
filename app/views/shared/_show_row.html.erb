@@ -96,8 +96,11 @@
 %>
 
 <% content = capture do %>
+  <% if has_right_panel %>
+  <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+  <% end %>
   <%# Left Section: Date & Show Details %>
-  <div class="<%= has_right_panel ? 'w-1/2' : 'flex-1' %> flex items-center gap-4">
+  <div class="<%= has_right_panel ? 'w-full md:w-1/2' : 'flex-1' %> flex items-center gap-4">
     <%# Date Box %>
     <div class="flex-shrink-0 w-14 text-center">
       <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
@@ -157,11 +160,11 @@
 
   <% if right_panel == :cast_assignment && local_assigns[:entity_assignments].present? %>
     <%# Right Section: Cast Assignments - stacked panels for multiple entities %>
-    <div class="w-1/2 flex flex-col">
+    <div class="w-full md:w-1/2 flex flex-col border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 relative" data-cant-make-it-hover-zone>
       <% entity_assignments.each_with_index do |ea, idx| %>
         <% entity = ea[:entity] %>
         <% role_assigns = ea[:role_assignments] %>
-        <div class="flex-1 border-l border-gray-200 pl-4 py-2 flex items-center gap-3">
+        <div class="flex-1 md:border-l border-gray-200 md:pl-4 py-2 flex items-center gap-3">
           <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
           <% if headshot_variant %>
             <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
@@ -229,7 +232,7 @@
 
   <% elsif is_vacancy_only %>
     <%# Right Section: Vacancy only (no assignment, user was removed from cast) %>
-    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+    <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
       <div class="flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-amber-600">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -259,7 +262,7 @@
 
   <% elsif right_panel == :cast_summary && cast_summary.present? %>
     <%# Right Section: Cast Summary (for shows list) - headshots with tooltips %>
-    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+    <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
       <div class="flex-1 min-w-0 flex items-center gap-1">
         <%
           roles = cast_summary[:roles] || []
@@ -314,7 +317,7 @@
 
   <% elsif right_panel == :availability && local_assigns[:entity].present? %>
     <%# Right Section: Availability %>
-    <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center gap-3">
+    <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center gap-3 border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
       <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
       <% if headshot_variant %>
         <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
@@ -365,8 +368,13 @@
         </div>
       </div>
     </div>
+  <% end %>
 
-  <% elsif !has_right_panel %>
+  <% if has_right_panel %>
+  </div> <%# Close flex wrapper for mobile stacking %>
+  <% end %>
+
+  <% if !has_right_panel %>
     <%# Legacy: No right panel - show role assignments inline and availability buttons on far right %>
     <% if role_assignments.any? %>
       <div class="flex-shrink-0 ml-4">
@@ -471,7 +479,7 @@
     <div class="<%= row_classes %> relative" <%= link_data_attrs_str.html_safe %>>
       <%= content %>
       <% if can_show_vacancy %>
-        <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:block"
+        <div class="absolute right-2 bottom-3 md:bottom-auto md:top-1/2 md:-translate-y-1/2 hidden group-hover:block"
              onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
           <%= render "shared/button", text: "Can't make it?", variant: "primary", size: "small" %>
         </div>
@@ -482,7 +490,7 @@
   <div class="<%= row_classes %> relative" <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
     <%= content %>
     <% if can_show_vacancy %>
-      <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:block"
+      <div class="absolute right-2 bottom-3 md:bottom-auto md:top-1/2 md:-translate-y-1/2 hidden group-hover:block"
            onclick="event.stopPropagation(); event.preventDefault(); window.location.href='<%= vacancy_link_for(cant_make_it_person, show) %>';">
         <%= render "shared/button", text: "Can't make it?", variant: "primary", size: "small" %>
       </div>

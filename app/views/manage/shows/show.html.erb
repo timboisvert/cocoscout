@@ -16,9 +16,7 @@
 
       <% if current_user_can_manage?(@show.production) %>
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Manage <%= sanitize(@show.event_type.titleize) %></h3>
-          </div>
+          <%= render "shared/card_header", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
           <div class="p-4">
             <%
               # Sanitize event_type to prevent XSS (even though it's from an enum)
@@ -152,9 +150,7 @@
         <% end %>
 
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Casting</h3>
-          </div>
+          <%= render "shared/card_header", title: "Casting" %>
           <div class="p-4">
             <%
               cast_count = @show.show_person_role_assignments.size
@@ -331,9 +327,7 @@
         <%# Vacancy History - show all vacancies including resolved ones %>
         <% if @all_vacancies.any? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Vacancy History</h3>
-            </div>
+            <%= render "shared/card_header", title: "Vacancy History" %>
             <div class="divide-y divide-gray-200">
               <% @all_vacancies.each do |vacancy| %>
                 <% vacated_by = vacancy.vacated_by %>
@@ -400,9 +394,7 @@
       <% if @show.is_online && !@show.canceled %>
         <!-- Online Event Card -->
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Online Event</h3>
-          </div>
+          <%= render "shared/card_header", title: "Online Event" %>
           <div class="p-4">
             <% if @show.online_location_info.present? %>
               <div class="text-sm text-gray-700">
@@ -422,9 +414,7 @@
       <% elsif @show.location.present? && !@show.canceled %>
         <!-- In-Person Location Card -->
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-left">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= @show.location.name %></h3>
-          </div>
+          <%= render "shared/card_header", title: @show.location.name %>
           <div class="p-4 flex flex-col lg:flex-row gap-4">
             <% loc = @show.location %>
             <% if loc.present? %>
@@ -493,12 +483,11 @@
       <% if @show.show_links.any? %>
         <!-- Show Links Card -->
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center">
+          <%= render "shared/card_header", title: "Links" do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-600 flex-shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
             </svg>
-            <h3 class="ml-2 text-sm font-semibold text-gray-900">Links</h3>
-          </div>
+          <% end %>
           <div class="p-4">
             <div class="flex flex-wrap gap-2">
               <% @show.show_links.each do |link| %>

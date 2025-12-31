@@ -23,9 +23,7 @@
 
     <% if audition_cycle.accepts_in_person_auditions? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
-        </div>
+        <%= render "shared/card_header", title: "Audition Sessions" %>
         <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">View and manage your in-person audition sessions.</p>
 
@@ -84,9 +82,7 @@
     <% end %>
     <% if audition_cycle.video_only? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Video Upload Auditions</h3>
-        </div>
+        <%= render "shared/card_header", title: "Video Upload Auditions" %>
         <div class="p-6">
         <p class="text-gray-600 mb-4">Auditionees have submitted their video uploads. Review their submissions.</p>
 

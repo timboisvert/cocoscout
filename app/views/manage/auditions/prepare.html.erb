@@ -167,8 +167,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <%# Left Column: Sign-up Form %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
+        <%= render "shared/card_header", title: "Sign-up Form" do %>
           <% if audition_cycle.form_reviewed %>
             <span class="inline-flex items-center gap-1 text-xs text-green-700">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
@@ -180,7 +179,7 @@
               Needs Review
             </span>
           <% end %>
-        </div>
+        <% end %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">Customize the questions and information you collect from auditionees.</p>
 
@@ -230,9 +229,7 @@
 
       <%# Right Column: Review Team %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" data-controller="prepare-reviewers">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Review Team</h3>
-        </div>
+        <%= render "shared/card_header", title: "Review Team" %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">Who can view and vote on submissions.</p>
 
@@ -396,10 +393,9 @@
     <%# ==================== SESSIONS (if enabled) ==================== %>
     <% if audition_cycle.accepts_in_person_auditions? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Sessions</h3>
+        <%= render "shared/card_header", title: "Audition Sessions" do %>
           <span class="text-sm text-gray-500"><%= pluralize(@audition_cycle.audition_sessions.count, "session") %></span>
-        </div>
+        <% end %>
         <div class="p-5">
           <% if @audition_cycle.audition_sessions.any? %>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">

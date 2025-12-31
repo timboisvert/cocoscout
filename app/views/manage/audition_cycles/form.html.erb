@@ -1,6 +1,6 @@
 <% content_for :title, "Sign-up Form" %>
 
-<div class="w-full" data-controller="question-modal tabs availability-wizard"
+<div class="w-full pb-56 lg:pb-48" data-controller="question-modal tabs availability-wizard"
      data-create-path="<%= create_question_manage_production_audition_cycle_path(@production, @audition_cycle) %>"
      data-new-description="Custom Questions are shown at the bottom of the Audition sign-up form."
      data-has-errors="<%= @question.errors.any? %>"
@@ -49,9 +49,7 @@
 
       <%# Introduction Instructions %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Introduction Instructions</h3>
-        </div>
+        <%= render "shared/card_header", title: "Introduction Instructions" %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">This text appears at the top of the sign-up form, before any questions.</p>
           <%= form.rich_text_area :instruction_text,
@@ -63,9 +61,7 @@
       <%# Video Upload Instructions - only shown when video submissions enabled %>
       <% if @audition_cycle.accepts_video_submissions? %>
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Video Upload Instructions</h3>
-          </div>
+          <%= render "shared/card_header", title: "Video Upload Instructions" %>
           <div class="p-5">
             <p class="text-sm text-gray-600 mb-4">This text appears above the video upload section.</p>
             <%= form.rich_text_area :video_field_text,
@@ -77,9 +73,7 @@
 
       <%# Success Message %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Success Message</h3>
-        </div>
+        <%= render "shared/card_header", title: "Success Message" %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">This text is shown after someone successfully submits the sign-up form.</p>
           <%= form.rich_text_area :success_text,
@@ -253,56 +247,83 @@
     <%= render partial: "questions" %>
   </div>
 
-  <%# ==================== FORM REVIEW SECTION ==================== %>
-  <div class="mt-8 pt-6 border-t border-gray-200">
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="p-5">
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0">
-            <% if @audition_cycle.form_reviewed %>
-              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            <% else %>
-              <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            <% end %>
-          </div>
-          <div class="flex-1">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Form Review Status</h3>
-            <p class="text-sm text-gray-600 mt-1 mb-4">
-              <% if @audition_cycle.form_reviewed %>
-                You've marked this form as reviewed. Auditionees can now sign up with confidence.
-              <% else %>
-                Mark the form as reviewed once you've confirmed everything looks correct. This clears any "needs review" warnings.
-              <% end %>
-            </p>
-            <%= form_with model: [:manage, @production, @audition_cycle],
-                          url: manage_production_audition_cycle_path(@production, @audition_cycle),
-                          method: :patch,
-                          local: true do |form| %>
-              <%= hidden_field_tag :redirect_to, "form" %>
-              <%= hidden_field_tag :tab, params[:tab] || "0" %>
-              <% if @audition_cycle.form_reviewed %>
-                <%= form.hidden_field :form_reviewed, value: "0" %>
-                <%= render partial: "shared/button", locals: { text: "Mark as Not Reviewed", variant: "outline", type: "submit" } %>
-              <% else %>
-                <%= form.hidden_field :form_reviewed, value: "1" %>
-                <%= render partial: "shared/button", locals: { text: "Mark as Reviewed", variant: "primary", type: "submit" } %>
-              <% end %>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Question Modal -->
   <%= render "shared/question_modal" %>
 </div>
 
+<%# Fade overlay for bottom of content %>
+<div class="fixed bottom-0 left-0 right-0 lg:left-56 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
+
+<%# Sticky Preview Box %>
+<div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+  <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Sign-up Form Preview</h3>
+  </div>
+  <div class="p-3 space-y-3">
+    <%# URL Copy Row %>
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:pl-3 sm:pr-1 sm:py-1.5 bg-gray-50 rounded border border-gray-200" data-controller="copy-url">
+      <div class="flex-1 overflow-hidden min-w-0">
+        <div class="text-sm font-mono text-gray-700 truncate">
+          <%= @audition_cycle.respond_url %>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 justify-end flex-shrink-0">
+        <%= render "shared/button",
+          text: "Preview",
+          variant: "outline-pink",
+          size: "small",
+          type: :button,
+          icon: "eye",
+          path: preview_manage_production_audition_cycle_path(@production, @audition_cycle),
+          target: "_blank" %>
+        <div data-copy-url-target="button" data-url="<%= @audition_cycle.respond_url %>">
+          <%= render "shared/button",
+            text: "Copy",
+            variant: "outline-pink",
+            size: "small",
+            type: :button,
+            icon: "clipboard",
+            data: { action: "click->copy-url#copy" } %>
+        </div>
+      </div>
+    </div>
+
+    <%# Form Review Status Row %>
+    <div class="flex items-center gap-3">
+      <% if @audition_cycle.form_reviewed %>
+        <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <span class="text-sm text-green-700 font-medium">Form reviewed &amp; ready to share</span>
+        <%= form_with model: [:manage, @production, @audition_cycle],
+                      url: manage_production_audition_cycle_path(@production, @audition_cycle),
+                      method: :patch,
+                      local: true,
+                      class: "ml-auto" do |form| %>
+          <%= hidden_field_tag :redirect_to, "form" %>
+          <%= hidden_field_tag :tab, params[:tab] || "0" %>
+          <%= form.hidden_field :form_reviewed, value: "0" %>
+          <%= render partial: "shared/button", locals: { text: "Undo", variant: "ghost", size: "small", type: "submit" } %>
+        <% end %>
+      <% else %>
+        <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <span class="text-sm text-gray-600">Preview the form, then confirm it's ready</span>
+        <%= form_with model: [:manage, @production, @audition_cycle],
+                      url: manage_production_audition_cycle_path(@production, @audition_cycle),
+                      method: :patch,
+                      local: true do |form| %>
+          <%= hidden_field_tag :redirect_to, "form" %>
+          <%= hidden_field_tag :tab, params[:tab] || "0" %>
+          <%= form.hidden_field :form_reviewed, value: "1" %>
+          <%= render partial: "shared/button", locals: { text: "Mark Ready", variant: "primary", size: "small", type: "submit" } %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

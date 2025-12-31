@@ -1,91 +1,155 @@
 <div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
-  <div class="flex items-center justify-between px-4 py-3">
+  <div class="flex items-center justify-between px-3 py-2">
     <button type="button" data-action="mobile-nav#toggle" class="flex items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-pink-500">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
       </svg>
     </button>
-    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-      <%= link_to my_dashboard_path, class: "flex items-center gap-2" do %>
-        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
-        <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1.5">
+      <%= link_to my_dashboard_path, class: "flex items-center gap-1.5" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-5 w-5" %>
+        <span class="text-lg text-pink-500 coustard-regular">CocoScout</span>
       <% end %>
     </div>
-    <div class="w-6"></div>
+    <div class="w-5"></div>
   </div>
 
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
-    <div class="px-4 py-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[44px] bg-white overflow-y-auto">
+    <div class="flex flex-col min-h-full">
+      <div class="flex-1 px-3 py-3">
 
-      <!-- Impersonation Banner -->
-      <% if impersonating? %>
-        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
-          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
-          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
-          <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small", classes: "w-full" %>
-        </div>
-      <% end %>
-
-      <!-- Group Navigation -->
-      <div class="mb-6">
-        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Group</div>
-        <div class="space-y-2">
-          <%= link_to "Group Profile", edit_group_path(@group), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "Group Settings", settings_group_path(@group), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-        </div>
-      </div>
-
-      <!-- Profile Sections -->
-      <div class="mb-6">
-        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Edit Profile</div>
-        <div class="space-y-2">
-          <a href="#basic-info" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Basic Info</a>
-          <a href="#social-media" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Social Media</a>
-          <a href="#headshots" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Headshots</a>
-          <a href="#videos" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Videos & Reels</a>
-          <a href="#performance-history" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Performance History</a>
-          <a href="#resumes" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Resumes</a>
-          <a href="#members" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Members</a>
-          <a href="#notifications" data-action="click->mobile-nav#toggle" class="block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700">Notifications</a>
-        </div>
-      </div>
-
-      <!-- User Profile Section -->
-      <div class="mb-6 pb-6 border-b border-gray-200">
-        <div class="flex items-center gap-3">
-          <% if Current.user.person&.headshot&.attached? %>
-            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
-              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+        <!-- Impersonation Banner -->
+        <% if impersonating? %>
+          <div class="mb-3 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-semibold text-yellow-800 uppercase">Impersonating:</span>
+                <span class="text-xs font-medium text-yellow-900 ml-1"><%= Current.user.person&.name || Current.user.email_address %></span>
+              </div>
+              <%= link_to "Stop", stop_impersonating_user_path, data: { turbo_method: :post }, class: "text-xs font-semibold text-yellow-800 underline" %>
             </div>
-          <% end %>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
-            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
           </div>
-        </div>
-      </div>
-
-      <!-- Dashboard Links -->
-      <div class="mb-6">
-        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigate To</div>
-        <div class="space-y-2">
-          <%= link_to "My Profile", profile_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "Talent Dashboard", my_dashboard_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "Production Dashboard", manage_path, data: { turbo: false }, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-        </div>
-      </div>
-
-      <!-- Footer Actions -->
-      <div class="space-y-2">
-        <% if Current.user.superadmin? %>
-          <%= link_to "Superadmin", superadmin_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
         <% end %>
 
-        <%= link_to "My Account", account_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
+        <!-- Dashboard Switcher -->
+        <div class="flex rounded-lg bg-gray-100 p-0.5 mb-3">
+          <%= link_to my_dashboard_path, class: "flex-1 py-1.5 text-center text-xs font-medium rounded-md text-gray-600 hover:bg-white" do %>
+            Talent
+          <% end %>
+          <%= link_to manage_path, data: { turbo: false }, class: "flex-1 py-1.5 text-center text-xs font-medium rounded-md text-gray-600 hover:bg-white" do %>
+            Production
+          <% end %>
+          <%= link_to profile_path, class: "flex-1 py-1.5 text-center text-xs font-semibold rounded-md bg-pink-500 text-white" do %>
+            My Profile
+          <% end %>
+        </div>
 
-        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
+        <!-- Profile Selector -->
+        <%
+          all_profiles = Current.user.people.active.includes(:profile_headshots).order(:created_at)
+          group_memberships = Current.user.person&.groups&.active || []
+        %>
+        <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <% if @group.headshot&.attached? %>
+                <%= image_tag @group.headshot.variant(resize_to_fill: [28, 28]), class: "w-7 h-7 rounded-md object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-7 h-7 rounded-md bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-[10px] flex-shrink-0">
+                  <%= @group.initials %>
+                </div>
+              <% end %>
+              <span class="text-xs font-semibold text-gray-900 truncate"><%= @group.name %></span>
+              <span class="text-[10px] text-blue-600 font-medium">Group</span>
+            </div>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <% all_profiles.each do |profile| %>
+              <%= link_to edit_profile_path(profile), data: { turbo: false }, class: "px-2 py-1 rounded text-[10px] font-medium bg-white text-gray-700 border border-gray-200" do %>
+                <%= profile.name.split.first %>
+              <% end %>
+            <% end %>
+            <% group_memberships.each do |group| %>
+              <% is_current = group.id == @group.id %>
+              <%= link_to edit_group_path(group), data: { turbo: false }, class: "px-2 py-1 rounded text-[10px] font-medium #{ is_current ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 border border-gray-200' }" do %>
+                <span class="<%= is_current ? '' : 'text-blue-500' %>">●</span> <%= group.name.truncate(12) %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Group Navigation -->
+        <div class="grid grid-cols-2 gap-1.5 mb-3">
+          <%= link_to edit_group_path(@group), class: "flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+            Edit Profile
+          <% end %>
+          <%= link_to settings_group_path(@group), class: "flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+            Settings
+          <% end %>
+        </div>
+
+        <!-- Profile Section Links -->
+        <div class="grid grid-cols-2 gap-1.5 mb-3">
+          <a href="#basic-info" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+            Basic Info
+          </a>
+          <a href="#social-media" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" /></svg>
+            Links
+          </a>
+          <a href="#headshots" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>
+            Headshots
+          </a>
+          <a href="#videos" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
+            Videos
+          </a>
+          <a href="#performance-history" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" /></svg>
+            History
+          </a>
+          <a href="#resumes" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+            Resumes
+          </a>
+          <a href="#members" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>
+            Members
+          </a>
+          <a href="#notifications" data-action="click->mobile-nav#toggle" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-pink-500"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
+            Notifications
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Footer Bar -->
+      <div class="border-t border-gray-200 bg-gray-50 px-3 py-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <% if Current.user.person&.headshot&.attached? %>
+              <%= image_tag Current.user.person.headshot, class: "w-7 h-7 rounded-md object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-7 h-7 rounded-md bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+              </div>
+            <% end %>
+            <div class="text-xs font-medium text-gray-700 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <% if Current.user.superadmin? %>
+              <%= link_to "Superadmin", superadmin_path, class: "text-[10px] font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded" %>
+            <% end %>
+            <%= link_to signout_path, data: { turbo_prefetch: false }, class: "text-xs font-semibold text-pink-600" do %>
+              Sign Out
+            <% end %>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -102,7 +166,7 @@
           const targetId = this.getAttribute('href');
           const target = document.querySelector(targetId);
           if (target) {
-            const headerOffset = 60; // Mobile header height
+            const headerOffset = 60;
             const elementPosition = target.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 

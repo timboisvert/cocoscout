@@ -24,9 +24,9 @@
       Select skills from the categories below. Click a category to view and select skills.
     </p>
 
-    <div class="flex gap-6">
+    <div class="flex flex-col md:flex-row gap-4 md:gap-6">
       <!-- Category Sidebar -->
-      <div class="w-56 flex-shrink-0 space-y-1">
+      <div class="w-full md:w-56 flex-shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
         <% all_categories.each_with_index do |category, index| %>
           <%
             selected_count = skills_by_category[category]&.reject { |s| s.marked_for_destruction? }&.count || 0

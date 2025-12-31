@@ -61,9 +61,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
       <!-- Size Distribution -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Size Distribution</h3>
-        </div>
+        <%= render "shared/card_header", title: "Size Distribution" %>
         <div class="p-4">
           <% if @size_distribution.any? %>
             <table class="w-full text-sm">
@@ -90,9 +88,7 @@
 
       <!-- Key Patterns -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Top Key Patterns</h3>
-        </div>
+        <%= render "shared/card_header", title: "Top Key Patterns" %>
         <div class="p-4">
           <% if @key_patterns.any? %>
             <table class="w-full text-sm">
@@ -123,9 +119,7 @@
 
     <!-- Recent Entries -->
     <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Recent Entries</h3>
-      </div>
+      <%= render "shared/card_header", title: "Recent Entries" %>
       <div class="p-4 overflow-x-auto">
         <% if @recent_entries.any? %>
           <table class="w-full text-sm">
@@ -156,9 +150,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
       <!-- Clear All Cache -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Clear All Cache</h3>
-        </div>
+        <%= render "shared/card_header", title: "Clear All Cache" %>
         <div class="p-4">
           <p class="text-sm text-gray-600 mb-3">
             Clear all cached data. The cache will be rebuilt automatically as pages are accessed.
@@ -172,9 +164,7 @@
 
       <!-- Clear by Pattern -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Clear by Pattern</h3>
-        </div>
+        <%= render "shared/card_header", title: "Clear by Pattern" %>
         <div class="p-4">
           <p class="text-sm text-gray-600 mb-3">
             Clear cache entries matching a pattern (e.g., "person_card", "dashboard", "views/manage").
@@ -190,9 +180,7 @@
 
     <!-- Cache Info -->
     <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Cache Configuration</h3>
-      </div>
+      <%= render "shared/card_header", title: "Cache Configuration" %>
       <div class="p-4">
         <dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>

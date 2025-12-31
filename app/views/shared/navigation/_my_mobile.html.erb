@@ -1,72 +1,110 @@
 <div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
-  <div class="flex items-center justify-between px-4 py-3">
+  <div class="flex items-center justify-between px-3 py-2">
     <button type="button" data-action="mobile-nav#toggle" class="flex items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-pink-500">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
       </svg>
     </button>
-    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-      <%= link_to my_dashboard_path, class: "flex items-center gap-2" do %>
-        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
-        <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1.5">
+      <%= link_to my_dashboard_path, class: "flex items-center gap-1.5" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-5 w-5" %>
+        <span class="text-lg text-pink-500 coustard-regular">CocoScout</span>
       <% end %>
     </div>
-    <div class="w-6"></div>
+    <div class="w-5"></div>
   </div>
 
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
-    <div class="px-4 py-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[41px] bg-white overflow-y-auto">
+    <div class="flex flex-col min-h-full">
+      <div class="flex-1 px-3 py-3">
 
-      <!-- Impersonation Banner -->
-      <% if impersonating? %>
-        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
-          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
-          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
-          <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small", classes: "w-full" %>
-        </div>
-      <% end %>
-
-      <!-- Talent Navigation -->
-      <div class="mb-6">
-        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Talent Dashboard</div>
-        <div class="space-y-2">
-          <%= link_to "My Shows & Events", my_shows_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Availability", my_availability_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Auditions", my_auditions_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Sign-ups", my_audition_requests_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Questionnaires", my_questionnaires_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Shoutouts", my_shoutouts_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-          <%= link_to "My Productions", my_productions_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-        </div>
-      </div>
-
-      <!-- User Profile Section -->
-      <div class="mb-6 pb-6 border-b border-gray-200">
-        <div class="flex items-center gap-3">
-          <% if Current.user.person&.headshot&.attached? %>
-            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
-              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+        <!-- Impersonation Banner -->
+        <% if impersonating? %>
+          <div class="mb-3 rounded border border-yellow-300 bg-yellow-50 px-3 py-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-semibold text-yellow-800 uppercase">Impersonating:</span>
+                <span class="text-xs font-medium text-yellow-900 ml-1"><%= Current.user.person&.name || Current.user.email_address %></span>
+              </div>
+              <%= link_to "Stop", stop_impersonating_user_path, data: { turbo_method: :post }, class: "text-xs font-semibold text-yellow-800 underline" %>
             </div>
-          <% end %>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
-            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
-            <%= link_to "My Profile", profile_path, class: "text-xs text-pink-500 underline" %>
           </div>
-        </div>
-      </div>
-
-      <!-- Footer Actions -->
-      <div class="space-y-2">
-        <%= link_to "Switch to Production Dashboard", manage_path, data: { turbo: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
-
-        <% if Current.user.superadmin? %>
-          <%= link_to "Superadmin", superadmin_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
         <% end %>
 
-        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
+        <!-- Dashboard Switcher Dropdown -->
+        <div data-controller="dropdown" class="mb-3">
+          <button type="button" data-action="dropdown#toggle" class="w-full flex items-center justify-between px-3 py-2 rounded border border-gray-200 bg-white">
+            <span class="text-sm font-semibold text-gray-900">Talent Dashboard</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div data-dropdown-target="menu" class="hidden mt-1 rounded border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <%= link_to manage_path, data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
+              Production Dashboard
+            <% end %>
+            <%= link_to profile_path, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-t border-gray-100 text-sm font-medium text-gray-700" do %>
+              My Profile
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Navigation Links (2-wide grid) -->
+        <div class="grid grid-cols-2 gap-1.5 mb-4">
+          <%= link_to my_shows_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Shows
+          <% end %>
+          <%= link_to my_availability_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Availability
+          <% end %>
+          <%= link_to my_auditions_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Auditions
+          <% end %>
+          <%= link_to my_audition_requests_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Sign-ups
+          <% end %>
+          <%= link_to my_questionnaires_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Questionnaires
+          <% end %>
+          <%= link_to my_shoutouts_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Shoutouts
+          <% end %>
+          <%= link_to my_productions_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+            My Productions
+          <% end %>
+        </div>
+
+      </div>
+
+      <!-- Footer Bar -->
+      <div class="border-t border-gray-200 bg-gray-50 px-3 py-2">
+        <!-- User info row -->
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <% if Current.user.person&.headshot&.attached? %>
+              <%= image_tag Current.user.person.headshot, class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-7 h-7 rounded bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+              </div>
+            <% end %>
+            <div class="text-xs font-medium text-gray-700 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+          </div>
+        </div>
+        <!-- Actions row -->
+        <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+          <%= link_to account_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
+            Account
+          <% end %>
+          <div class="flex items-center gap-3">
+            <% if Current.user.superadmin? %>
+              <%= link_to "Superadmin", superadmin_path, class: "text-[10px] font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded" %>
+            <% end %>
+            <%= link_to signout_path, data: { turbo_prefetch: false }, class: "text-xs font-semibold text-pink-600" do %>
+              Sign Out
+            <% end %>
+          </div>
+        </div>
       </div>
     </div>
   </div>

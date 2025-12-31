@@ -14,31 +14,91 @@
   <%= render partial: "lifecycle_panel", locals: { current_step: :review } %>
 
   <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <p class="text-base font-semibold text-gray-700">Schedule Auditions</p>
-        <p class="text-sm text-gray-600">Drag each person from the right to a session on the left to schedule them.</p>
+        <p class="text-sm text-gray-600 hidden sm:block">Drag each person from the right to a session on the left to schedule them.</p>
+        <p class="text-sm text-gray-600 sm:hidden">Tap + on a session to add auditionees.</p>
       </div>
-      <%= render partial: "shared/button", locals: { text: "Done Scheduling Auditions", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: review_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     </div>
   </div>
 
   <div class="flex gap-6">
     <!-- Sessions on the left (smaller) -->
-    <div class="w-1/2">
-      <%= render partial: "sessions_list", locals: { audition_sessions: @audition_sessions } %>
+    <div class="w-full lg:w-1/2">
+      <%= render partial: "sessions_list", locals: { audition_sessions: @audition_sessions, available_people: @available_people, production: @production, audition_cycle: @audition_cycle, scheduled_request_ids: @scheduled_request_ids } %>
     </div>
 
-    <!-- Sign-ups on the right (larger) -->
-    <div class="w-1/2 flex-shrink-0">
+    <!-- Sign-ups on the right (larger) - hidden on mobile -->
+    <div class="hidden lg:block w-1/2 flex-shrink-0">
       <div class="sticky top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h2 class="text-md font-semibold text-gray-900 coustard-regular">Sign-ups</h2>
-          <p class="text-xs text-gray-500 mt-1">
+        <%= render "shared/card_header", title: "Sign-ups" do %>
+          <p class="text-xs text-gray-500">
             Drag each person to an audition slot to schedule them.
           </p>
-        </div>
+        <% end %>
         <%= render partial: "right_list", locals: { available_people: @available_people, production: @production, audition_cycle: @audition_cycle, scheduled_request_ids: @scheduled_request_ids, scheduled_auditionables: @scheduled_auditionables } %>
+      </div>
+    </div>
+  </div>
+
+  <%# Mobile Add Modal %>
+  <div data-drag-audition-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drag-audition#closeAddModal">
+    <div class="bg-white w-full rounded-t-2xl max-h-[80vh] flex flex-col" data-action="click->drag-audition#stopPropagation">
+      <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <h2 data-modal-title class="text-lg font-semibold text-gray-900">Add to Session</h2>
+        <button type="button" data-action="click->drag-audition#closeAddModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-4 overflow-y-auto">
+        <p class="text-xs text-gray-500 mb-3">Tap to add to this session</p>
+        <div class="space-y-1">
+          <% @available_people.each do |request| %>
+            <%
+              auditionable = request.auditionable
+              is_scheduled = (@scheduled_request_ids || Set.new).include?(request.id)
+            %>
+            <button type="button"
+              class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_scheduled ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
+              data-action="click->drag-audition#addFromModal"
+              data-audition-request-id="<%= request.id %>"
+              <%= 'disabled' if is_scheduled %>>
+              <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
+              <% if headshot_url %>
+                <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <% elsif auditionable.is_a?(Person) %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
+                  <%= auditionable.initials %>
+                </div>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                  </svg>
+                </div>
+              <% end %>
+              <div class="flex-1 text-left min-w-0">
+                <div class="font-medium text-sm text-gray-900 truncate"><%= auditionable.name %></div>
+                <div class="text-xs text-gray-500">
+                  <% if is_scheduled %>
+                    Already scheduled
+                  <% else %>
+                    Ready to schedule
+                  <% end %>
+                </div>
+              </div>
+              <% unless is_scheduled %>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              <% end %>
+            </button>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>

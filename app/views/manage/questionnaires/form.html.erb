@@ -26,10 +26,9 @@
 
   <!-- Section 1: Basic Settings -->
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="false">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Settings</h3>
+    <%= render "shared/card_header", title: "Basic Settings", clickable: true do %>
       <div data-show-toggle-target="icon"></div>
-    </div>
+    <% end %>
     <div data-show-toggle-target="content" class="hidden">
       <%= form_with model: [:manage, @production, @questionnaire], class: "contents" do |form| %>
         <div class="p-4">
@@ -61,10 +60,9 @@
 
   <!-- Section 2: Availability -->
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle availability-filter" data-show-toggle-initial-open-value="false">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Availability</h3>
+    <%= render "shared/card_header", title: "Availability", clickable: true do %>
       <div data-show-toggle-target="icon"></div>
-    </div>
+    <% end %>
     <div data-show-toggle-target="content" class="hidden">
       <%= form_with model: [:manage, @production, @questionnaire], class: "contents" do |form| %>
         <div class="p-4">
@@ -162,10 +160,9 @@
 
   <!-- Section 3: Custom Questions -->
   <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden" data-controller="show-toggle" data-show-toggle-initial-open-value="<%= params[:question_id].present? || params[:questions_open].present? || @question.errors.any? %>">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between cursor-pointer" data-action="click->show-toggle#toggle">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Custom Questions</h3>
+    <%= render "shared/card_header", title: "Custom Questions", clickable: true do %>
       <div data-show-toggle-target="icon"></div>
-    </div>
+    <% end %>
     <div data-show-toggle-target="content">
       <div class="p-4">
         <p class="text-sm text-gray-500 mb-4">Add custom questions to your questionnaire.</p>

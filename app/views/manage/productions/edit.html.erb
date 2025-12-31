@@ -23,9 +23,7 @@
       <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
         <!-- Production Details Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Details</h3>
-          </div>
+          <%= render "shared/card_header", title: "Production Details" %>
           <div class="p-6 space-y-6">
             <div>
               <%= form.label :name, "Production Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
@@ -45,9 +43,7 @@
 
         <!-- Contact Settings Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Contact Settings</h3>
-          </div>
+          <%= render "shared/card_header", title: "Contact Settings" %>
           <div class="p-6">
             <div>
               <%= form.label :contact_email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
@@ -71,9 +67,7 @@
     <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= create_poster_manage_production_visual_assets_path(@production) %>">
       <!-- Logo Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Logo</h3>
-        </div>
+        <%= render "shared/card_header", title: "Logo" %>
         <div class="p-6">
           <% logo_variant = @production.safe_logo_variant(:small) %>
           <% if logo_variant %>
@@ -94,9 +88,7 @@
 
       <!-- Posters Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Posters</h3>
-        </div>
+        <%= render "shared/card_header", title: "Posters" %>
         <div class="p-6">
           <% if @production.posters.any? %>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
@@ -211,9 +203,7 @@
     <!-- Tab 3: Notes -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Notes</h3>
-        </div>
+        <%= render "shared/card_header", title: "Production Notes" %>
         <div class="p-6">
           <p class="text-sm text-gray-500 mb-4">
             Use this space for production-wide notes, schedules, or any information you want to share with your team and cast.
@@ -237,9 +227,7 @@
     <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Listing</h3>
-        </div>
+        <%= render "shared/card_header", title: "Public Listing" %>
         <div class="p-6">
           <div class="space-y-4">
             <!-- Enable/Disable Toggle -->

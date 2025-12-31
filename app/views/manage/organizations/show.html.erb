@@ -24,9 +24,7 @@
   <!-- Tab 1: Basic Information -->
   <div data-tabs-target="panel">
     <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900 coustard-regular">Organization Details</h2>
-      </div>
+      <%= render "shared/card_header", title: "Organization Details" %>
       <div class="p-6 bg-white">
         <%= form_with model: [:manage, @organization], method: :patch, class: "space-y-6" do |f| %>
           <% if @organization.errors.any? %>

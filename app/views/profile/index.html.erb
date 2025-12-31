@@ -8,9 +8,7 @@
 
   <!-- Public Profile Card -->
   <div id="public-profile" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Public Profile</h3>
-    </div>
+    <%= render "shared/card_header", title: "Public Profile" %>
     <div class="p-6">
       <div class="space-y-4">
         <!-- Enable/Disable Toggle -->
@@ -70,9 +68,7 @@
     <!-- Basic Information Section -->
     <%= form_with(model: @person, url: update_profile_path(@person), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |person_form| %>
     <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Basic Information</h3>
-      </div>
+      <%= render "shared/card_header", title: "Basic Information" %>
       <div class="p-6 space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">

@@ -2,9 +2,7 @@
      data-controller="event-pages"
      data-event-pages-enabled-value="<%= production.auto_create_event_pages? %>"
      data-event-pages-mode-value="<%= production.auto_create_event_pages_mode || 'all' %>">
-  <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-    <h3 class="text-md font-semibold text-gray-900 coustard-regular">Event Pages</h3>
-  </div>
+  <%= render "shared/card_header", title: "Event Pages" %>
   <div class="p-6">
     <%= form_with(model: [:manage, production], url: manage_production_path(production), method: :patch, data: { turbo_frame: "event_visibility_frame" }) do |form| %>
       <%# Main Toggle %>

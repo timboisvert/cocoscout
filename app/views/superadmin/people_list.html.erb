@@ -52,26 +52,24 @@
 
   <!-- People table with bulk selection -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" id="people-list">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        People
+    <%= render "shared/card_header", title: "People" do %>
+      <div class="flex items-center gap-4">
         <% if @search.present? || @filter.present? %>
           <span class="text-sm font-normal text-gray-600">(filtered)</span>
         <% end %>
-      </h3>
-
-      <!-- Bulk actions -->
-      <div class="flex gap-2 items-center" id="bulk-actions" style="display: none;">
-        <span class="text-sm text-gray-600" id="selected-count">0 selected</span>
-        <%= render "shared/button",
-            text: "Delete Selected",
-            variant: "danger",
-            size: "small",
-            icon: "trash",
-            type: :button,
-            data: { action: "click->bulk-delete#confirm" } %>
+        <!-- Bulk actions -->
+        <div class="flex gap-2 items-center" id="bulk-actions" style="display: none;">
+          <span class="text-sm text-gray-600" id="selected-count">0 selected</span>
+          <%= render "shared/button",
+              text: "Delete Selected",
+              variant: "danger",
+              size: "small",
+              icon: "trash",
+              type: :button,
+              data: { action: "click->bulk-delete#confirm" } %>
+        </div>
       </div>
-    </div>
+    <% end %>
 
     <% if @people.empty? %>
       <div class="text-center py-12 text-gray-500">

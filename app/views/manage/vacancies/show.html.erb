@@ -31,13 +31,13 @@
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
     <div class="p-6">
       <div class="relative">
-        <!-- Timeline line -->
-        <div class="absolute top-6 left-0 right-0 h-0.5 bg-gray-200" aria-hidden="true" style="left: 4rem; right: 4rem;"></div>
+        <!-- Timeline line - hidden on mobile -->
+        <div class="hidden md:block absolute top-6 left-0 right-0 h-0.5 bg-gray-200" aria-hidden="true" style="left: 4rem; right: 4rem;"></div>
 
-        <div class="grid grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
           <!-- Step 1: Vacancy Identified -->
-          <div class="relative flex flex-col items-center text-center">
-            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all bg-pink-500 ring-pink-500 <%= current_step == :identified ? 'shadow-lg shadow-pink-500/50' : '' %>">
+          <div class="relative flex flex-row md:flex-col items-center md:text-center gap-3 md:gap-0">
+            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 md:mb-3 transition-all bg-pink-500 ring-pink-500 <%= current_step == :identified ? 'shadow-lg shadow-pink-500/50' : '' %>">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
               </svg>
@@ -47,8 +47,8 @@
           </div>
 
           <!-- Step 2: Replacement Invitations Sent -->
-          <div class="relative flex flex-col items-center text-center">
-            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= [:invite, :filled].include?(current_step) ? 'bg-pink-500 ring-pink-500' : 'bg-gray-200 ring-white' %> <%= current_step == :invite ? 'shadow-lg shadow-pink-500/50' : '' %>">
+          <div class="relative flex flex-row md:flex-col items-center md:text-center gap-3 md:gap-0">
+            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 md:mb-3 transition-all <%= [:invite, :filled].include?(current_step) ? 'bg-pink-500 ring-pink-500' : 'bg-gray-200 ring-white' %> <%= current_step == :invite ? 'shadow-lg shadow-pink-500/50' : '' %>">
               <svg class="w-6 h-6 <%= [:invite, :filled].include?(current_step) ? 'text-white' : 'text-gray-400' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
@@ -58,8 +58,8 @@
           </div>
 
           <!-- Step 3: Vacancy Resolved -->
-          <div class="relative flex flex-col items-center text-center">
-            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= current_step == :filled ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : (current_step == :cancelled ? 'bg-gray-400 ring-gray-400' : 'bg-gray-200 ring-white') %>">
+          <div class="relative flex flex-row md:flex-col items-center md:text-center gap-3 md:gap-0">
+            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 md:mb-3 transition-all <%= current_step == :filled ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : (current_step == :cancelled ? 'bg-gray-400 ring-gray-400' : 'bg-gray-200 ring-white') %>">
               <svg class="w-6 h-6 <%= [:filled, :cancelled].include?(current_step) ? 'text-white' : 'text-gray-400' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -76,15 +76,11 @@
 
   <!-- Show Row -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular flex items-center gap-2">
-        Show & Role
-      </h3>
-    </div>
+    <%= render "shared/card_header", title: "Show & Role" %>
     <div class="p-4">
-      <div class="flex items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%# Left half: Affected dates %>
-        <div class="w-1/2 px-3 py-2">
+        <div class="w-full md:w-1/2 px-3 py-2">
           <% affected_shows_list = @vacancy.affected_shows.any? ? @vacancy.affected_shows.order(:date_and_time).to_a : [show] %>
           <% if affected_shows_list.size > 1 %>
             <%# Multiple shows stacked vertically %>
@@ -138,7 +134,7 @@
         </div>
 
         <%# Right half: Vacated by entity with role %>
-        <div class="w-1/2 border-l border-gray-200 px-3 py-2 flex items-center gap-3">
+        <div class="w-full md:w-1/2 md:border-l border-t md:border-t-0 border-gray-200 px-3 py-2 flex items-center gap-3">
           <% if vacated_by %>
             <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
@@ -165,14 +161,11 @@
   <!-- Other Cast Members -->
   <% if @other_cast_assignments.any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular flex items-center gap-2">
-          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-          Other Cast Members
-        </h3>
-      </div>
+      <%= render "shared/card_header", title: "Other Cast Members" do %>
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      <% end %>
       <div class="p-4">
         <div class="flex flex-wrap gap-3">
           <% @other_cast_assignments.each do |assignment| %>
@@ -222,9 +215,9 @@
             </h3>
           </div>
           <div class="p-4">
-            <div class="flex items-stretch gap-4">
+            <div class="flex flex-col md:flex-row md:items-stretch gap-4">
               <%# Left half: All linked events %>
-              <div class="w-1/2 pr-4 border-r border-gray-200">
+              <div class="w-full md:w-1/2 md:pr-4 md:border-r border-gray-200">
                 <h4 class="text-sm font-semibold text-gray-900 mb-3">All Events in This Linkage</h4>
                 <div class="space-y-2">
                   <% all_linked_shows = show.event_linkage.shows.order(:date_and_time) %>
@@ -257,7 +250,7 @@
               </div>
 
               <%# Right half: Decision options %>
-              <div class="w-1/2 pl-4">
+              <div class="w-full md:w-1/2 md:pl-4 border-t md:border-t-0 pt-4 md:pt-0">
                 <h4 class="text-sm font-semibold text-gray-900 mb-2">Choose an Action</h4>
                 <p class="text-sm text-gray-600 mb-4">
                   This vacancy affects <%= @vacancy.affected_shows.count %> linked events. Since these events share the same cast, you have two options:
@@ -320,9 +313,7 @@
     <!-- Invitations Sent -->
     <% if @invitations.any? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Invitations Sent</h3>
-        </div>
+        <%= render "shared/card_header", title: "Invitations Sent" %>
         <div class="p-4">
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <% @invitations.each do |invitation| %>
@@ -372,11 +363,7 @@
 
     <!-- Invite Cast Members Box -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-          <%= @invitations.any? ? "Invite More Cast Members" : "Invite Cast Members" %>
-        </h3>
-      </div>
+      <%= render "shared/card_header", title: @invitations.any? ? "Invite More Cast Members" : "Invite Cast Members" %>
       <div class="p-6">
         <% if @vacancy.restricted? %>
           <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -580,9 +567,7 @@ Thank you,
 
       <!-- Close Vacancy Box (for linked events, shown only when "no action" is selected) -->
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6 <%= has_invitations ? 'hidden' : '' %>" data-linked-vacancy-decision-target="closeSection">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Close Vacancy</h3>
-        </div>
+        <%= render "shared/card_header", title: "Close Vacancy" %>
         <div class="p-6">
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
@@ -600,9 +585,7 @@ Thank you,
     <% else %>
       <!-- Changed Your Mind Box (non-linked only) -->
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Changed Your Mind?</h3>
-        </div>
+        <%= render "shared/card_header", title: "Changed Your Mind?" %>
         <div class="p-6">
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.

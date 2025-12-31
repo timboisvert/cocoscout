@@ -78,9 +78,7 @@
     <!-- Queue Breakdown -->
     <% if @queue_stats.any? %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Pending Jobs by Queue</h3>
-        </div>
+        <%= render "shared/card_header", title: "Pending Jobs by Queue" %>
         <div class="p-4">
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <% @queue_stats.each do |queue_name, count| %>
@@ -96,9 +94,7 @@
 
     <!-- Recent Jobs -->
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Recent Jobs (Last 50)</h3>
-      </div>
+      <%= render "shared/card_header", title: "Recent Jobs (Last 50)" %>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">

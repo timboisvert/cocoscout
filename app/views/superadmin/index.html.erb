@@ -19,9 +19,7 @@
       <!-- People Overview Card -->
       <%= link_to people_list_path, class: "block" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">People</h3>
-          </div>
+          <%= render "shared/card_header", title: "People" %>
           <div class="p-6">
             <!-- Stats Grid -->
             <div class="grid grid-cols-3 gap-3">
@@ -60,9 +58,7 @@
       <!-- Organizations Overview Card -->
       <%= link_to organizations_list_path, class: "block" do %>
         <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Organizations</h3>
-          </div>
+          <%= render "shared/card_header", title: "Organizations" %>
           <div class="p-6">
             <!-- Stats Grid -->
             <div class="grid grid-cols-3 gap-3">
@@ -155,9 +151,7 @@
 
   <!-- Impersonate -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Impersonate</h3>
-    </div>
+    <%= render "shared/card_header", title: "Impersonate" %>
     <div class="p-4">
       <%= form_with url: impersonate_user_path, method: :post, local: true, class: "flex items-center space-x-2" do |f| %>
         <%= f.email_field :email, required: true, autocapitalize: "none", class: "inline-block shadow-sm rounded-lg border px-3 py-2 flex-1 border-gray-400" %>
@@ -188,9 +182,7 @@
 
   <!-- Change Email Address -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Change Email Address</h3>
-    </div>
+    <%= render "shared/card_header", title: "Change Email Address" %>
     <div class="p-4">
       <p class="text-xs text-gray-500">This will update the user's email_address and their person's email to the new address.</p>
       <%= form_with url: change_email_user_path, method: :post, local: true, class: "space-y-3 mt-2" do |f| %>

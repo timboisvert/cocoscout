@@ -1,132 +1,242 @@
 <div data-controller="mobile-nav" class="fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
-  <div class="flex items-center justify-between px-4 py-3">
+  <div class="flex items-center justify-between px-3 py-2">
     <button type="button" data-action="mobile-nav#toggle" class="flex items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 text-pink-500">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
       </svg>
     </button>
-    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-      <%= link_to manage_path, class: "flex items-center gap-2" do %>
-        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-6 w-6" %>
-        <span class="mt-1 text-xl text-pink-500 coustard-regular">CocoScout</span>
+    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1.5">
+      <%= link_to manage_path, class: "flex items-center gap-1.5" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-5 w-5" %>
+        <span class="text-lg text-pink-500 coustard-regular">CocoScout</span>
       <% end %>
     </div>
-    <div class="w-6"></div>
+    <div class="w-5"></div>
   </div>
 
-  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[50px] bg-white overflow-y-auto">
-    <div class="px-4 py-4">
+  <div data-mobile-nav-target="panel" class="hidden fixed inset-0 top-[41px] bg-white overflow-y-auto">
+    <div class="flex flex-col min-h-full">
+      <div class="flex-1 px-3 py-3">
 
-      <!-- Impersonation Banner -->
-      <% if impersonating? %>
-        <div class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
-          <div class="text-xs font-semibold text-yellow-800 uppercase mb-1">Impersonating</div>
-          <div class="text-sm font-medium text-yellow-900 mb-3"><%= Current.user.person&.name || Current.user.email_address %></div>
-          <%= render "shared/button", text: "Stop", path: stop_impersonating_user_path, method: :post, variant: "secondary", size: "small", classes: "w-full" %>
-        </div>
-      <% end %>
+        <!-- Impersonation Banner -->
+        <% if impersonating? %>
+          <div class="mb-3 rounded border border-yellow-300 bg-yellow-50 px-3 py-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-semibold text-yellow-800 uppercase">Impersonating:</span>
+                <span class="text-xs font-medium text-yellow-900 ml-1"><%= Current.user.person&.name || Current.user.email_address %></span>
+              </div>
+              <%= link_to "Stop", stop_impersonating_user_path, data: { turbo_method: :post }, class: "text-xs font-semibold text-yellow-800 underline" %>
+            </div>
+          </div>
+        <% end %>
 
-      <!-- Production Section -->
-      <% unless @hide_production_selector %>
-      <% if Current.production.present? && !Current.production.new_record? %>
-        <%
-          # Check if user has multiple productions or can create new ones
-          all_productions = Current.user.accessible_productions
-          other_productions = all_productions.reject { |p| p.id == Current.production&.id }
-          can_switch = other_productions.any? || Current.user.manager?
-        %>
-        <div class="mb-6">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Production Dashboard</div>
-            <% if can_switch %>
-              <%= link_to "Switch", select_production_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
+        <!-- Dashboard Switcher Dropdown -->
+        <div data-controller="dropdown" class="mb-3">
+          <button type="button" data-action="dropdown#toggle" class="w-full flex items-center justify-between px-3 py-2 rounded border border-gray-200 bg-white">
+            <span class="text-sm font-semibold text-gray-900">Production Dashboard</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div data-dropdown-target="menu" class="hidden mt-1 rounded border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <%= link_to my_dashboard_path, data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
+              Talent Dashboard
+            <% end %>
+            <%= link_to profile_path, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-t border-gray-100 text-sm font-medium text-gray-700" do %>
+              My Profile
             <% end %>
           </div>
-          <%= link_to manage_production_path(Current.production), class: "block rounded-lg border-2 border-pink-200 bg-gradient-to-br from-pink-50 to-white p-4 hover:border-pink-300 transition mb-3" do %>
-            <div class="flex items-center gap-3">
-              <% logo_variant = Current.production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-12 h-12 rounded object-cover flex-shrink-0" %>
-              <% else %>
-                <div class="w-12 h-12 rounded bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
-                  <%= Current.production.initials %>
+        </div>
+
+        <!-- Production Selector Dropdown -->
+        <% unless @hide_production_selector %>
+        <% if Current.production.present? && !Current.production.new_record? %>
+          <%
+            all_productions = Current.user.accessible_productions.includes(:logo_attachment)
+            other_productions = all_productions.reject { |p| p.id == Current.production&.id }
+            can_switch = other_productions.any? || Current.user.manager?
+          %>
+          <% if can_switch %>
+            <div data-controller="dropdown" class="mb-3">
+              <button type="button" data-action="dropdown#toggle" class="w-full flex items-center justify-between px-3 py-2 rounded border border-gray-200 bg-white">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                  <% logo_variant = Current.production.safe_logo_variant(:small) %>
+                  <% if logo_variant %>
+                    <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-7 h-7 rounded bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-[10px] flex-shrink-0">
+                      <%= Current.production.initials %>
+                    </div>
+                  <% end %>
+                  <span class="text-xs font-semibold text-gray-900 truncate"><%= Current.production.name %></span>
                 </div>
-              <% end %>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.production.name %></div>
-                <div class="text-xs text-pink-600 font-medium">View Dashboard</div>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-gray-400 flex-shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <div data-dropdown-target="menu" class="hidden mt-1 rounded border border-gray-200 bg-white shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+                <% other_productions.each do |prod| %>
+                  <%= link_to manage_production_path(prod), data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0" do %>
+                    <% prod_logo = prod.safe_logo_variant(:small) %>
+                    <% if prod_logo %>
+                      <%= image_tag prod_logo, alt: "#{prod.name} logo", class: "w-6 h-6 rounded object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-[9px] flex-shrink-0">
+                        <%= prod.initials %>
+                      </div>
+                    <% end %>
+                    <span class="text-xs font-medium text-gray-700 truncate"><%= prod.name %></span>
+                  <% end %>
+                <% end %>
+                <% if Current.user.manager? %>
+                  <%= link_to new_manage_production_path, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-t border-gray-200 text-xs font-medium text-pink-600" do %>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    New Production
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <div class="mb-3 rounded border border-gray-200 bg-gray-50 px-3 py-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <% logo_variant = Current.production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <%= image_tag logo_variant, alt: "#{Current.production.name} logo", class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-7 h-7 rounded bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-[10px] flex-shrink-0">
+                    <%= Current.production.initials %>
+                  </div>
+                <% end %>
+                <span class="text-xs font-semibold text-gray-900 truncate"><%= Current.production.name %></span>
               </div>
             </div>
           <% end %>
-
-          <div class="space-y-2">
-            <% has_team_access = Current.user.role_for_production(Current.production).present? %>
-            <% if has_team_access %>
-              <%= link_to "Shows", manage_production_shows_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-              <%= link_to "Casting & Roles", manage_production_casting_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <% end %>
-            <%= link_to "Auditions", manage_production_auditions_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <% if has_team_access %>
-              <%= link_to "Questionnaires", manage_production_questionnaires_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-              <%= link_to "Availability", manage_production_availability_index_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-              <%= link_to "Directory", manage_directory_path, class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <% end %>
-            <% if current_user_can_manage? %>
-              <%= link_to "Production Settings", edit_manage_production_path(Current.production), class: "block px-4 py-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700" %>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-      <% end %> <%# end unless @hide_production_selector %>
-
-      <!-- Organization Section -->
-      <% if Current.organization.present? %>
-        <div class="mb-6 pb-6 border-b border-gray-200">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</div>
-            <% if Current.user.organizations.count > 1 %>
-              <%= link_to "Switch", select_organization_path, class: "text-xs font-semibold text-pink-500 hover:text-pink-600" %>
-            <% end %>
-          </div>
-          <div class="rounded-lg border border-pink-200 bg-pink-50 p-4">
-            <div class="text-sm font-semibold text-gray-900 mb-3"><%= Current.organization.name %></div>
-            <div class="flex flex-col gap-2">
-              <% if current_user_is_global_manager? %>
-                <%= link_to "Manage Organization", manage_organization_path(Current.organization), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
-              <% end %>
-              <%= link_to "All My Organizations", manage_organizations_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
-            </div>
-          </div>
-        </div>
-      <% end %>
-
-      <!-- User Profile Section -->
-      <div class="mb-6 pb-6 border-b border-gray-200">
-        <div class="flex items-center gap-3">
-          <% if Current.user.person&.headshot&.attached? %>
-            <%= image_tag Current.user.person.headshot, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-12 h-12 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-lg flex-shrink-0">
-              <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
-            </div>
-          <% end %>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-gray-900 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
-            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
-            <%= link_to "My Profile", profile_path, class: "text-xs text-pink-500 underline" %>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer Actions -->
-      <div class="space-y-2">
-        <%= link_to "Switch to Talent Dashboard", my_dashboard_path, data: { turbo: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
-
-        <% if Current.user.superadmin? %>
-          <%= link_to "Superadmin", superadmin_path, class: "block text-center w-full px-4 py-3 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold transition" %>
+        <% end %>
         <% end %>
 
-        <%= link_to "Sign Out", signout_path, data: { turbo_prefetch: false }, class: "block text-center w-full px-4 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold transition" %>
+        <!-- Navigation Links (2-wide grid) -->
+        <% if Current.production.present? && !Current.production.new_record? %>
+          <% has_team_access = Current.user.role_for_production(Current.production).present? %>
+          <div class="grid grid-cols-2 gap-1.5 mb-4">
+            <%= link_to manage_production_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              Dashboard
+            <% end %>
+            <% if has_team_access %>
+              <%= link_to manage_production_shows_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Shows
+              <% end %>
+              <%= link_to manage_production_casting_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Casting
+              <% end %>
+            <% end %>
+            <%= link_to manage_production_auditions_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+              Auditions
+            <% end %>
+            <% if has_team_access %>
+              <%= link_to manage_production_questionnaires_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Questionnaires
+              <% end %>
+              <%= link_to manage_production_availability_index_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Availability
+              <% end %>
+              <%= link_to manage_directory_path, class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Directory
+              <% end %>
+            <% end %>
+            <% if current_user_can_manage? %>
+              <%= link_to edit_manage_production_path(Current.production), class: "flex items-center px-2 py-1.5 rounded border border-gray-200 bg-white text-xs font-medium text-gray-700" do %>
+                Settings
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+
+      </div>
+
+      <!-- Footer Bar -->
+      <div class="border-t border-gray-200 bg-gray-50 px-3 py-2">
+        <!-- User info row -->
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <% if Current.user.person&.headshot&.attached? %>
+              <%= image_tag Current.user.person.headshot, class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-7 h-7 rounded bg-pink-100 text-pink-500 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                <%= Current.user.person&.name&.split&.map(&:first)&.join&.upcase || Current.user.email_address[0].upcase %>
+              </div>
+            <% end %>
+            <div class="text-xs font-medium text-gray-700 truncate"><%= Current.user.person&.name || Current.user.email_address %></div>
+          </div>
+        </div>
+
+        <!-- Organization Dropdown (if manager) -->
+        <% if Current.organization.present? && current_user_is_global_manager? %>
+          <%
+            all_orgs = Current.user.organizations.includes(:logo_attachment)
+            other_orgs = all_orgs.reject { |o| o.id == Current.organization&.id }
+            has_multiple_orgs = other_orgs.any?
+          %>
+          <div data-controller="dropdown" class="mb-2">
+            <button type="button" data-action="dropdown#toggle" class="w-full flex items-center justify-between px-2 py-1.5 rounded border border-gray-200 bg-white text-left">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <% org_logo = Current.organization.logo if Current.organization.respond_to?(:logo) && Current.organization.logo&.attached? %>
+                <% if org_logo %>
+                  <%= image_tag org_logo, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] flex-shrink-0">
+                    <%= Current.organization.name[0..1].upcase %>
+                  </div>
+                <% end %>
+                <span class="text-[11px] font-medium text-gray-700 truncate"><%= Current.organization.name %></span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 text-gray-400 flex-shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+            <div data-dropdown-target="menu" class="hidden mt-1 rounded border border-gray-200 bg-white shadow-lg overflow-hidden">
+              <%= link_to manage_organization_path(Current.organization, anchor: "tab-0"), class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-700" do %>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-gray-400">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                Organization Settings
+              <% end %>
+              <% if has_multiple_orgs %>
+                <% other_orgs.each do |org| %>
+                  <%= link_to manage_organization_path(org), data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0" do %>
+                    <% org_logo_other = org.logo if org.respond_to?(:logo) && org.logo&.attached? %>
+                    <% if org_logo_other %>
+                      <%= image_tag org_logo_other, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] flex-shrink-0">
+                        <%= org.name[0..1].upcase %>
+                      </div>
+                    <% end %>
+                    <span class="text-xs font-medium text-gray-700 truncate"><%= org.name %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Actions row -->
+        <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+          <%= link_to account_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
+            Account
+          <% end %>
+          <div class="flex items-center gap-3">
+            <% if Current.user.superadmin? %>
+              <%= link_to "Superadmin", superadmin_path, class: "text-[10px] font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded" %>
+            <% end %>
+            <%= link_to signout_path, data: { turbo_prefetch: false }, class: "text-xs font-semibold text-pink-600" do %>
+              Sign Out
+            <% end %>
+          </div>
+        </div>
       </div>
     </div>
   </div>

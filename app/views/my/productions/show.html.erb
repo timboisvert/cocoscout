@@ -22,7 +22,7 @@
       <div class="flex-1">
         <h2 class="text-xl font-bold text-gray-900"><%= @production.name %></h2>
         <p class="text-sm text-gray-500 mb-2"><%= @production.organization.name %></p>
-        
+
         <!-- Talent Pool Membership Badges -->
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-xs text-gray-500 font-medium">In talent pool as:</span>
@@ -328,9 +328,7 @@
     <!-- Tab 3: Notes -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Production Notes</h3>
-        </div>
+        <%= render "shared/card_header", title: "Production Notes" %>
         <div class="p-6">
           <% if @production.notes.present? %>
             <div class="prose prose-sm max-w-none">

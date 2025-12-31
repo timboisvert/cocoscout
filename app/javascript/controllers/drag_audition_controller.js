@@ -1,10 +1,83 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["item", "dropzone"]; // Assuming 'item' is the draggable element
+  static targets = ["item", "dropzone", "addModal"]; // Assuming 'item' is the draggable element
 
   connect() {
-    // Optional: Initialize any libraries like SortableJS
+    // Close modal on escape key
+    this.handleEscape = (event) => {
+      if (event.key === 'Escape') this.closeAddModal();
+    };
+    document.addEventListener('keydown', this.handleEscape);
+  }
+
+  disconnect() {
+    document.removeEventListener('keydown', this.handleEscape);
+  }
+
+  // Open the add modal for mobile
+  openAddModal(event) {
+    event.preventDefault();
+    const button = event.currentTarget;
+    const sessionId = button.dataset.sessionId;
+    const sessionDate = button.dataset.sessionDate;
+
+    // Store the session we're adding to
+    this.currentAddSessionId = sessionId;
+
+    // Update modal title
+    const modal = this.addModalTarget;
+    const titleEl = modal.querySelector('[data-modal-title]');
+    if (titleEl) {
+      titleEl.textContent = `Add to ${sessionDate}`;
+    }
+
+    // Show the modal
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  closeAddModal() {
+    const modal = this.addModalTarget;
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    this.currentAddSessionId = null;
+  }
+
+  stopPropagation(event) {
+    event.stopPropagation();
+  }
+
+  // Add from the mobile modal
+  addFromModal(event) {
+    event.preventDefault();
+    const button = event.currentTarget;
+    const auditionRequestId = button.dataset.auditionRequestId;
+    const sessionId = this.currentAddSessionId;
+
+    if (!sessionId || !auditionRequestId) return;
+
+    // Close modal immediately
+    this.closeAddModal();
+
+    fetch("/manage/auditions/add_to_session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+      },
+      body: JSON.stringify({
+        audition_request_id: auditionRequestId,
+        audition_session_id: sessionId
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        this.updatePageContent(data);
+      })
+      .catch(error => console.error('Error:', error));
   }
 
   dragStart(event) {

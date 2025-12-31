@@ -25,9 +25,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Left side: Name-Vote combos -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Reviewer Votes</h3>
-      </div>
+      <%= render "shared/card_header", title: "Reviewer Votes" %>
       <div class="p-4">
         <% if @votes.any? %>
           <div class="space-y-3">
@@ -72,9 +70,7 @@
 
     <!-- Right side: All comments -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Comments</h3>
-      </div>
+      <%= render "shared/card_header", title: "Comments" %>
       <div class="p-4">
         <% votes_with_comments = @votes.select { |v| v.comment.present? } %>
         <% if votes_with_comments.any? %>

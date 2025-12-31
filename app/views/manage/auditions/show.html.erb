@@ -161,9 +161,7 @@
         <%# Reviewer view: read-only availability display %>
         <% if audition_cycle.include_availability_section && shows.present? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Show & Event Availability</h3>
-            </div>
+            <%= render "shared/card_header", title: "Show & Event Availability" %>
             <div class="p-2">
               <div class="space-y-1">
                 <% shows.each do |show| %>
@@ -198,9 +196,7 @@
 
         <% if audition_cycle.include_audition_availability_section && audition_sessions.present? %>
           <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Audition Session Availability</h3>
-            </div>
+            <%= render "shared/card_header", title: "Audition Session Availability" %>
             <div class="p-2">
               <div class="space-y-1">
                 <% audition_sessions.each do |session| %>
@@ -279,9 +275,7 @@
           <%# Left side: Reviewers list %>
           <div>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h3 class="text-md font-semibold text-gray-900 coustard-regular">Reviewers</h3>
-              </div>
+              <%= render "shared/card_header", title: "Reviewers" %>
               <div class="divide-y divide-gray-200">
                 <% if votes.any? %>
                   <% votes.each do |vote| %>
@@ -329,9 +323,7 @@
           <%# Right side: Comments %>
           <div>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <h3 class="text-md font-semibold text-gray-900 coustard-regular">Comments</h3>
-              </div>
+              <%= render "shared/card_header", title: "Comments" %>
               <div class="divide-y divide-gray-200">
                 <% votes_with_comments = votes.select { |v| v.comment.present? } %>
                 <% if votes_with_comments.any? %>
@@ -368,7 +360,7 @@
 
 
 <%# Fade overlay for bottom of content %>
-<div class="fixed bottom-0 left-0 right-0 lg:left-56 h-48 bg-gradient-to-t from-gray-100 via-gray-100/80 to-transparent pointer-events-none z-10"></div>
+<div class="fixed bottom-0 left-0 right-0 lg:left-56 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
 
 <% if current_user_can_review?(@production) && @audition_cycle.audition_voting_enabled && @audition_cycle.active %>
   <% current_vote = @audition.vote_for(Current.user) %>
@@ -384,31 +376,104 @@
     <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Should this <%= auditionable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?</h3>
     </div>
-    <div class="p-3 flex items-center gap-3">
-      <!-- Single Previous button -->
-      <div class="flex-shrink-0">
-        <% if prev_audition %>
-          <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, prev_audition),
-              class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
-              data: { action: "click->vote-form#navigateWithSave" } do %>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
+    <div class="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <!-- Navigation row on mobile, left side on desktop -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Previous button -->
+        <div class="flex-shrink-0">
+          <% if prev_audition %>
+            <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, prev_audition),
+                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+                data: { action: "click->vote-form#navigateWithSave" } do %>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            <% end %>
+          <% else %>
+            <div class="flex items-center justify-center w-10 h-10 text-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            </div>
           <% end %>
-        <% else %>
-          <div class="flex items-center justify-center w-10 h-10 text-gray-300">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-          </div>
-        <% end %>
+        </div>
+
+        <!-- Vote buttons inline on mobile nav row -->
+        <div class="flex items-center gap-1 sm:hidden flex-1 justify-center">
+          <%# Yes button - mobile %>
+          <% is_yes = current_vote&.vote == "yes" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="yes"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>👍</span>
+            <span class="opacity-75"><%= vote_counts[:yes] %></span>
+          </button>
+
+          <%# No button - mobile %>
+          <% is_no = current_vote&.vote == "no" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="no"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>👎</span>
+            <span class="opacity-75"><%= vote_counts[:no] %></span>
+          </button>
+
+          <%# Not Sure button - mobile %>
+          <% is_maybe = current_vote&.vote == "maybe" %>
+          <button type="button"
+                  data-action="click->vote-form#submitVote"
+                  data-vote-form-vote-param="maybe"
+                  data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>🤔</span>
+            <span class="opacity-75"><%= vote_counts[:maybe] %></span>
+          </button>
+        </div>
+
+        <!-- Next button on mobile -->
+        <div class="flex-shrink-0 sm:hidden">
+          <% if next_audition %>
+            <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
+                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
+                data: { action: "click->vote-form#navigateWithSave" } do %>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            <% end %>
+          <% else %>
+            <div class="flex items-center justify-center w-10 h-10 text-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+          <% end %>
+        </div>
       </div>
 
-      <!-- Separator -->
-      <div class="w-px h-12 bg-gray-200"></div>
+      <!-- Mobile comment row -->
+      <div class="sm:hidden flex items-center gap-2 border-t border-gray-200 pt-2">
+        <input type="text"
+               data-vote-form-target="comment"
+               placeholder="Add a comment..."
+               value="<%= current_vote&.comment %>"
+               class="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
+        <button type="button"
+                data-action="click->vote-form#submitComment"
+                data-vote-form-url-param="<%= cast_vote_manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
+          Save
+        </button>
+      </div>
 
-      <!-- Content rows -->
-      <div class="flex-1 space-y-2">
+      <!-- Separator - desktop only -->
+      <div class="hidden sm:block w-px h-12 bg-gray-200"></div>
+
+      <!-- Content rows - desktop only -->
+      <div class="hidden sm:block flex-1 space-y-2">
         <!-- Row 1: Cast your vote -->
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline w-28">Cast your vote</span>
@@ -448,7 +513,7 @@
 
         <!-- Row 2: Add a comment -->
         <div class="flex items-center gap-2 border-t border-gray-200 pt-2">
-          <span class="text-sm text-gray-500 whitespace-nowrap hidden sm:inline w-28">Add a comment</span>
+          <span class="text-sm text-gray-500 whitespace-nowrap w-28">Add a comment</span>
           <input type="text"
                  id="vote-comment"
                  data-vote-form-target="comment"
@@ -464,11 +529,11 @@
         </div>
       </div>
 
-      <!-- Separator -->
-      <div class="w-px h-12 bg-gray-200"></div>
+      <!-- Separator - desktop only -->
+      <div class="hidden sm:block w-px h-12 bg-gray-200"></div>
 
-      <!-- Single Next button -->
-      <div class="flex-shrink-0">
+      <!-- Next button - desktop only -->
+      <div class="hidden sm:block flex-shrink-0">
         <% if next_audition %>
           <%= link_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
               class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",

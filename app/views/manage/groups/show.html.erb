@@ -13,21 +13,23 @@
   } %>
 
   <%# Hero Section with Headshot, Name, Email, Profile Link %>
-  <div class="flex items-center gap-4 mb-6">
-    <% headshot_variant = @group.safe_headshot_variant(:thumb) %>
-    <% if headshot_variant %>
-      <%= image_tag headshot_variant, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
-    <% else %>
-      <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold flex-shrink-0">
-        <%= @group.name[0..1].upcase %>
-      </div>
-    <% end %>
-    <div class="flex-1 min-w-0">
-      <div class="font-bold text-xl text-gray-900 truncate"><%= @group.name %></div>
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-        <% if @group.email.present? %>
-          <%= link_to @group.email, "mailto:#{@group.email}", class: "text-pink-500 hover:underline" %>
-        <% end %>
+  <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+    <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+      <% headshot_variant = @group.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
+      <% else %>
+        <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold flex-shrink-0">
+          <%= @group.name[0..1].upcase %>
+        </div>
+      <% end %>
+      <div class="min-w-0 flex-1">
+        <div class="font-bold text-lg sm:text-xl text-gray-900 truncate"><%= @group.name %></div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+          <% if @group.email.present? %>
+            <%= link_to @group.email, "mailto:#{@group.email}", class: "text-pink-500 hover:underline truncate max-w-[200px] sm:max-w-none" %>
+          <% end %>
+        </div>
       </div>
     </div>
     <% if @group.public_key.present? %>
@@ -38,12 +40,12 @@
   </div>
 
   <div class="w-full" data-controller="tabs">
-    <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer">Profile</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Members</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Availability</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer">Emails</button>
+    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto -mx-5 px-5 scrollbar-hide">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Members</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Availability</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
     </nav>
 
     <div data-tabs-target="panel">
@@ -87,8 +89,7 @@
         <div class="space-y-4">
           <% @shows.group_by(&:production).each do |production, shows| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-md font-semibold text-gray-900 coustard-regular"><%= production.name %></h3>
+              <%= render "shared/card_header", title: production.name do %>
                 <% if current_user_can_manage?(production) %>
                   <% if @edit_mode %>
                     <%= link_to "Done", manage_group_path(@group, tab: 2), class: "text-pink-500 text-xs underline" %>
@@ -96,7 +97,7 @@
                     <%= link_to "Edit Availability", manage_group_path(@group, edit: 'true', tab: 2), class: "text-pink-500 text-xs underline" %>
                   <% end %>
                 <% end %>
-              </div>
+              <% end %>
               <% if @edit_mode && current_user_can_manage?(production) %>
                 <%= form_with url: update_availability_manage_group_path(@group), method: :patch, local: true do |f| %>
                   <div class="divide-y divide-gray-200">
@@ -152,9 +153,7 @@
     <%# Notes Tab %>
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <h3 class="text-md font-semibold text-gray-900 coustard-regular">Producer Notes</h3>
-        </div>
+        <%= render "shared/card_header", title: "Producer Notes" %>
         <div class="p-4">
           <p class="text-sm text-gray-500 mb-4">Private notes about this group. Only visible to producers.</p>
           <%= form_with model: [:manage, @group], url: manage_group_path(@group), method: :patch, data: { turbo: true } do |form| %>

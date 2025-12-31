@@ -2,10 +2,10 @@
 <%# Required locals: session, production, audition_cycle %>
 
 <%= link_to manage_production_audition_cycle_audition_session_path(production, audition_cycle, session),
-    class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200",
+    class: "flex flex-col sm:flex-row sm:items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200",
     data: { turbo_prefetch: false } do %>
   <%# Left Section: Date & Session Details %>
-  <div class="w-1/2 flex items-center gap-4">
+  <div class="w-full sm:w-1/2 flex items-center gap-4">
     <%# Date Box %>
     <div class="flex-shrink-0 w-14 text-center">
       <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
@@ -26,7 +26,7 @@
   </div>
 
   <%# Right Section: People %>
-  <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
+  <div class="w-full sm:w-1/2 sm:border-l border-gray-200 sm:pl-4 flex items-center border-t border-gray-100 sm:border-t-0 mt-2 sm:mt-0 pt-2 sm:pt-0">
     <div class="flex-1">
       <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Scheduled</div>
       <% if session.auditions.any? %>

@@ -37,14 +37,14 @@
                 <%= image_tag headshot_form.object.image.variant(resize_to_limit: [300, 400]),
                     class: "w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-75",
                     data: { action: "click->modal#open", modal_image_param: url_for(headshot_form.object.image) } %>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                 <% if headshot_form.object.is_primary %>
                   <span class="primary-badge absolute top-2 right-2 bg-pink-500 text-white text-xs font-medium px-2 py-1 rounded">Primary</span>
                 <% end %>
               <% end %>
 
               <!-- Floating controls at bottom -->
-              <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <% unless headshot_form.object.is_primary %>
                   <button type="button"
                           class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded cursor-pointer set-primary-btn"
@@ -93,10 +93,10 @@
         <div class="relative group">
           <div class="aspect-[3/4] rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50 relative">
             <img src="" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none"></div>
 
             <!-- Floating controls at bottom -->
-            <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-between gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <button type="button"
                       class="text-xs bg-pink-500 text-white hover:bg-pink-600 px-2 py-1 rounded cursor-pointer set-primary-btn"
                       data-action="click->profile-files#setPrimaryHeadshot"

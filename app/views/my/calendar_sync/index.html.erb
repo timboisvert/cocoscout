@@ -20,27 +20,13 @@
 
   <!-- Google Calendar -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
-          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="0.5"/>
-          <path d="M18.316 7.684L12 12V4.684a7.316 7.316 0 016.316 3z" fill="#EA4335"/>
-          <path d="M12 12l6.316-4.316A7.316 7.316 0 0119.316 12H12z" fill="#FBBC04"/>
-          <path d="M12 12h7.316a7.316 7.316 0 01-3 4.316L12 12z" fill="#34A853"/>
-          <path d="M12 12l4.316 4.316A7.316 7.316 0 0112 19.316V12z" fill="#4285F4"/>
-          <path d="M12 12v7.316a7.316 7.316 0 01-4.316-3L12 12z" fill="#34A853"/>
-          <path d="M12 12l-4.316 4.316A7.316 7.316 0 014.684 12H12z" fill="#FBBC04"/>
-          <path d="M12 12H4.684a7.316 7.316 0 013-4.316L12 12z" fill="#EA4335"/>
-          <path d="M12 12L7.684 7.684A7.316 7.316 0 0112 4.684V12z" fill="#4285F4"/>
-        </svg>
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Google Calendar</h3>
-      </div>
+    <%= render "shared/card_header", title: "Google Calendar", icon: '<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="0.5"/><path d="M18.316 7.684L12 12V4.684a7.316 7.316 0 016.316 3z" fill="#EA4335"/><path d="M12 12l6.316-4.316A7.316 7.316 0 0119.316 12H12z" fill="#FBBC04"/><path d="M12 12h7.316a7.316 7.316 0 01-3 4.316L12 12z" fill="#34A853"/><path d="M12 12l4.316 4.316A7.316 7.316 0 0112 19.316V12z" fill="#4285F4"/><path d="M12 12v7.316a7.316 7.316 0 01-4.316-3L12 12z" fill="#34A853"/><path d="M12 12l-4.316 4.316A7.316 7.316 0 014.684 12H12z" fill="#FBBC04"/><path d="M12 12H4.684a7.316 7.316 0 013-4.316L12 12z" fill="#EA4335"/><path d="M12 12L7.684 7.684A7.316 7.316 0 0112 4.684V12z" fill="#4285F4"/></svg>' do %>
       <% if google_subscription %>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
           Connected
         </span>
       <% end %>
-    </div>
+    <% end %>
     <div class="p-6">
       <% if google_subscription %>
         <%= render "subscription_settings", subscription: google_subscription, syncable_entities: @syncable_entities %>
@@ -53,19 +39,13 @@
 
   <!-- iCal Feed -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">iCal Feed (Universal)</h3>
-      </div>
+    <%= render "shared/card_header", title: "iCal Feed (Universal)", icon: '<svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' do %>
       <% if ical_subscription %>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
           Active
         </span>
       <% end %>
-    </div>
+    <% end %>
     <div class="p-6">
       <% if ical_subscription %>
         <p class="text-sm text-gray-600 mb-4">Your iCal feed is active. Subscribe to this URL in any calendar app:</p>

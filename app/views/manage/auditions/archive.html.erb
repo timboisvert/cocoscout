@@ -12,9 +12,7 @@
 
   <% if @past_audition_cycles.any? %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">Archived Audition Cycles</h3>
-      </div>
+      <%= render "shared/card_header", title: "Archived Audition Cycles" %>
       <div class="divide-y divide-gray-200">
         <% @past_audition_cycles.each do |audition_cycle| %>
           <%= link_to manage_production_audition_cycle_path(@production, audition_cycle), class: "block p-4 hover:bg-gray-50 transition-colors group" do %>

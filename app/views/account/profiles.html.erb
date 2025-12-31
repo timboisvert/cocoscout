@@ -7,9 +7,7 @@
 
   <!-- Profiles Section -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Profiles</h3>
-    </div>
+    <%= render "shared/card_header", title: "My Profiles" %>
     <div class="p-6">
       <div class="space-y-4">
         <% @profiles.each do |profile| %>
@@ -69,9 +67,7 @@
 
   <!-- Groups Section -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">My Groups</h3>
-    </div>
+    <%= render "shared/card_header", title: "My Groups" %>
     <div class="p-6">
       <% if @groups.any? %>
         <div class="space-y-4">

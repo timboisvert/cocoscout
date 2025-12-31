@@ -52,12 +52,7 @@
 
   <!-- Upcoming Shows & Events -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Shows (next 45 days)</h3>
-      <div class="flex gap-2">
-        <%= link_to "My Shows & Events", my_shows_path, class: "text-pink-500 text-xs underline" %>
-      </div>
-    </div>
+    <%= render "shared/card_header", title: "Upcoming Shows (next 45 days)", links: [{ text: "My Shows & Events", path: my_shows_path }] %>
     <div class="p-4">
       <% if @upcoming_show_rows.any? %>
         <%= render "shared/shows_list",
@@ -77,12 +72,7 @@
 
   <!-- Upcoming Auditions -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Upcoming Auditions</h3>
-      <div class="flex gap-2">
-        <%= link_to "My Auditions", my_auditions_path, class: "text-pink-500 text-xs underline" %>
-      </div>
-    </div>
+    <%= render "shared/card_header", title: "Upcoming Auditions", links: [{ text: "My Auditions", path: my_auditions_path }] %>
     <div class="p-4">
       <% if @upcoming_audition_entities.any? %>
         <div class="space-y-1">
@@ -104,12 +94,7 @@
 
   <!-- Open Sign-ups -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Open Sign-ups</h3>
-      <div class="flex gap-2">
-        <%= link_to "My Sign-ups", my_audition_requests_path(requests_filter: :all), class: "text-pink-500 text-xs underline" %>
-      </div>
-    </div>
+    <%= render "shared/card_header", title: "Open Sign-ups", links: [{ text: "My Sign-ups", path: my_audition_requests_path(requests_filter: :all) }] %>
     <div class="p-4">
       <% if @open_audition_request_entities.any? %>
         <div class="grid grid-cols-1 gap-1">
@@ -202,12 +187,7 @@
 
   <!-- Open Questionnaires -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Open Questionnaires</h3>
-      <div class="flex gap-2">
-        <%= link_to "My Questionnaires", my_questionnaires_path, class: "text-pink-500 text-xs underline" %>
-      </div>
-    </div>
+    <%= render "shared/card_header", title: "Open Questionnaires", links: [{ text: "My Questionnaires", path: my_questionnaires_path }] %>
     <div class="p-4">
       <% if @pending_questionnaire_entities.any? %>
         <div class="space-y-1">

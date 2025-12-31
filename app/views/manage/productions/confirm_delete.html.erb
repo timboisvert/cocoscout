@@ -12,9 +12,7 @@
   } %>
 
   <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900 coustard-regular">Delete "<%= @production.name %>"</h2>
-    </div>
+    <%= render "shared/card_header", title: "Delete \"#{@production.name}\"" %>
 
     <div class="p-6">
       <div class="text-gray-700 text-sm pb-6 border-b border-gray-200">

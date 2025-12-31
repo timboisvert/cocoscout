@@ -4,41 +4,41 @@
       <div class="flex flex-col bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all overflow-hidden">
         <div class="flex items-stretch">
           <%# Left Section: Date & Session Details %>
-          <div class="w-32 flex-shrink-0 bg-gray-50 border-r border-gray-200 p-4 flex flex-col items-center justify-center">
+          <div class="w-24 sm:w-32 flex-shrink-0 bg-gray-50 border-r border-gray-200 p-3 sm:p-4 flex flex-col items-center justify-center">
             <%# Date Box %>
             <div class="text-center">
               <div class="text-xs font-semibold text-pink-600 uppercase"><%= session.start_at.strftime("%b") %></div>
-              <div class="text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
+              <div class="text-xl sm:text-2xl font-bold text-gray-900"><%= session.start_at.strftime("%-d") %></div>
               <div class="text-xs text-gray-500"><%= session.start_at.strftime("%a") %></div>
               <div class="text-xs text-gray-600 mt-2">
-                <%= session.start_at.strftime("%l:%M %p") %>
+                <%= session.start_at.strftime("%l:%M %p").strip %>
               </div>
             </div>
           </div>
 
           <%# Right Section: Dropzone %>
-          <div class="flex-1 p-4 transition-colors"
+          <div class="flex-1 p-3 sm:p-4 transition-colors"
                data-drag-target="dropzone"
                data-id="<%= session.id %>"
                data-action="dragover->drag-audition#dragOver dragleave->drag-audition#dragLeave drop->drag-audition#drop">
             <% if session.auditions.any? %>
-              <div class="flex flex-wrap gap-3">
+              <div class="flex flex-wrap gap-2 sm:gap-3">
                 <% session.auditions.each do |audition| %>
                   <% auditionable = audition.auditionable %>
-                  <div class="flex flex-col items-center relative group cursor-move w-14"
+                  <div class="flex flex-col items-center relative group cursor-move w-12 sm:w-14"
                        draggable="true"
                        data-audition-id="<%= audition.id %>"
                        data-action="dragstart->drag-audition#dragStartAudition dragend->drag-audition#dragEndAudition">
                     <% headshot_url = safe_headshot_url(auditionable, variant: :thumb) %>
                     <% if headshot_url %>
-                      <%= image_tag headshot_url, alt: auditionable.name, class: "w-12 h-12 rounded-md object-cover pointer-events-none" %>
+                      <%= image_tag headshot_url, alt: auditionable.name, class: "w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover pointer-events-none" %>
                     <% elsif auditionable.is_a?(Person) %>
-                      <div class="w-12 h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs pointer-events-none">
+                      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs pointer-events-none">
                         <%= auditionable.initials %>
                       </div>
                     <% else %>
-                      <div class="w-12 h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-pink-100 flex items-center justify-center text-pink-600 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 sm:w-6 sm:h-6">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                         </svg>
                       </div>
@@ -53,17 +53,38 @@
                     </button>
                   </div>
                 <% end %>
+                <%# Mobile add button (inline) %>
+                <button type="button"
+                  class="lg:hidden flex flex-col items-center justify-center w-12 sm:w-14 h-14 sm:h-16 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-all cursor-pointer"
+                  data-action="click->drag-audition#openAddModal"
+                  data-session-id="<%= session.id %>"
+                  data-session-date="<%= session.start_at.strftime('%b %-d, %l:%M %p').strip %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </button>
               </div>
             <% else %>
-              <div class="flex items-center justify-center h-14 text-xs text-gray-400">
+              <div class="hidden lg:flex items-center justify-center h-14 text-xs text-gray-400">
                 Drag people here to schedule them
               </div>
+              <%# Mobile add button %>
+              <button type="button"
+                class="lg:hidden flex items-center justify-center gap-2 w-full h-14 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-pink-400 hover:text-pink-500 transition-all cursor-pointer"
+                data-action="click->drag-audition#openAddModal"
+                data-session-id="<%= session.id %>"
+                data-session-date="<%= session.start_at.strftime('%b %-d, %l:%M %p').strip %>">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span class="text-sm">Add auditionees</span>
+              </button>
             <% end %>
           </div>
         </div>
 
         <%# Bottom Bar: Audition Count %>
-        <div class="border-t border-gray-200 px-4 py-2 bg-gray-50">
+        <div class="border-t border-gray-200 px-3 sm:px-4 py-2 bg-gray-50">
           <div class="text-xs text-gray-600">
             <%= pluralize(session.auditions.count, 'audition') %> scheduled
           </div>

@@ -95,9 +95,7 @@
         </div>
 
         <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-md font-semibold text-gray-900 coustard-regular">Invitation Email</h3>
-          </div>
+          <%= render "shared/card_header", title: "Invitation Email" %>
           <div class="p-4">
             <div class="mb-4">
               <%= person_form.label :invitation_subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>
@@ -214,9 +212,7 @@
           </div>
 
           <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 class="text-md font-semibold text-gray-900 coustard-regular">Invitation Email</h3>
-            </div>
+            <%= render "shared/card_header", title: "Invitation Email" %>
             <div class="p-4">
               <div class="mb-4">
                 <%= form.label :invitation_subject, "Email Subject:", class: "block font-semibold mb-2 text-sm" %>

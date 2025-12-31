@@ -18,6 +18,7 @@
     <%= render "manage/casting/finalized_cast", show: @show, production: @production, roles: @roles, assignments_by_role_id: @assignments_by_role_id, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
   <% else %>
     <%# ===== EDITING STATE ===== %>
+    <div data-controller="drop-role" data-drop-role-show-id-value="<%= @show.id %>" data-drop-role-production-id-value="<%= @production.id %>">
     <%= render "shared/help_section",
       title: "How to assign talent pool members to roles",
       initial_state: "closed",
@@ -85,10 +86,10 @@
       </div>
     <% end %>
 
-    <div class="flex gap-8">
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
 
-      <!-- Roles on the left - equal width -->
-      <div class="w-1/2">
+      <!-- Roles on the left (or top on mobile) -->
+      <div class="w-full lg:w-1/2">
         <%= render partial: "manage/casting/roles_list", locals: {
           show: @show,
           roles: @roles,
@@ -99,12 +100,10 @@
         } %>
       </div>
 
-      <!-- Cast Members on the right - equal width and sticky -->
-      <div class="w-1/2 lg:sticky lg:top-4 lg:h-fit">
+      <!-- Cast Members on the right (or bottom on mobile) - sticky on desktop -->
+      <div class="hidden lg:block w-full lg:w-1/2 lg:sticky lg:top-4 lg:h-fit">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-900">Talent Pool</h2>
-          </div>
+          <%= render "shared/card_header", title: "Talent Pool" %>
           <%
             is_linked = @show.linked?
             linked_count = is_linked ? @linked_shows.count : 0
@@ -188,6 +187,104 @@
       </div>
 
     </div>
+
+    <%# Mobile Assign Modal %>
+    <div data-drop-role-target="assignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drop-role#closeAssignModal">
+      <div class="bg-white w-full rounded-t-2xl max-h-[60vh] flex flex-col" data-action="click->drop-role#stopPropagation">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+          <h2 data-modal-title class="text-lg font-semibold text-gray-900">Assign Role</h2>
+          <button type="button" data-action="click->drop-role#closeAssignModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="p-4 flex-1 overflow-hidden flex flex-col">
+          <p class="text-xs text-gray-500 mb-3 flex-shrink-0">Available members appear first</p>
+          <div class="space-y-1 overflow-y-auto flex-1">
+            <%
+              # Sort pool members: fully available first, then partially, then unavailable
+              is_linked = @show.linked?
+              linked_shows = @linked_shows || []
+              total_linked_shows = linked_shows.count
+
+              sorted_pool_members = (@pool_members || []).sort_by do |member|
+                member_key = "#{member.class.name}_#{member.id}"
+                member_availability = @availability[member_key] || @availability[member.id]
+                is_available = member_availability&.available?
+                linked_data = (@linked_availability || {})[member_key] || { available: 0 }
+                linked_available_count = linked_data[:available]
+                is_fully_available = is_available && linked_available_count == total_linked_shows
+                is_partially_available = is_available || linked_available_count > 0
+                is_assigned = (@assigned_member_keys || Set.new).include?(member_key)
+
+                # Sort order: assigned last, then by availability (fully > partially > unavailable)
+                [is_assigned ? 1 : 0, is_fully_available ? 0 : (is_partially_available ? 1 : 2), member.name]
+              end
+            %>
+            <% sorted_pool_members.each do |member| %>
+              <%
+                member_key = "#{member.class.name}_#{member.id}"
+                member_availability = @availability[member_key] || @availability[member.id]
+                is_available = member_availability&.available?
+                linked_data = (@linked_availability || {})[member_key] || { available: 0 }
+                linked_available_count = linked_data[:available]
+                is_fully_available = is_available && linked_available_count == total_linked_shows
+                is_partially_available = is_available || linked_available_count > 0
+                is_assigned = (@assigned_member_keys || Set.new).include?(member_key)
+                is_person = member.is_a?(Person)
+              %>
+              <button type="button"
+                class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_assigned ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
+                data-action="click->drop-role#assignFromModal"
+                data-assignable-type="<%= is_person ? 'Person' : 'Group' %>"
+                data-assignable-id="<%= member.id %>"
+                <%= 'disabled' if is_assigned %>>
+                <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                    <%= member.initials %>
+                  </div>
+                <% end %>
+                <div class="flex-1 text-left min-w-0">
+                  <div class="font-medium text-sm text-gray-900 truncate"><%= member.name %></div>
+                  <div class="text-xs text-gray-500">
+                    <% if is_assigned %>
+                      Already assigned
+                    <% elsif is_fully_available %>
+                      <span class="text-green-600">Available for all events</span>
+                    <% elsif is_partially_available %>
+                      <%
+                        # Get the dates they're available for (current show + linked shows)
+                        available_dates = []
+                        available_dates << @show.date_and_time if is_available
+                        linked_data[:shows]&.each do |show_data|
+                          available_dates << show_data[:date_and_time] if show_data[:available] && show_data[:date_and_time]
+                        end
+                        available_dates = available_dates.compact.sort
+                      %>
+                      <span class="text-yellow-600">Available <%= available_dates.map { |d| d.strftime("%-m/%-d") }.join(", ") %></span>
+                    <% elsif is_available %>
+                      <span class="text-green-600">Available</span>
+                    <% else %>
+                      Not available
+                    <% end %>
+                  </div>
+                </div>
+                <% unless is_assigned %>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                <% end %>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><%# End drop-role controller wrapper %>
   <% end %>
 
 </div>
