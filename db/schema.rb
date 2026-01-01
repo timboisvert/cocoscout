@@ -11,6 +11,9 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -83,7 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
     t.string "token"
     t.datetime "updated_at", null: false
     t.boolean "voting_enabled", default: true, null: false
-    t.index ["production_id", "active"], name: "index_audition_cycles_on_production_id_and_active", unique: true, where: "active = true"
+    t.index ["production_id", "active"], name: "index_audition_cycles_on_production_id_and_active", unique: true, where: "(active = true)"
     t.index ["production_id"], name: "index_audition_cycles_on_production_id"
   end
 
@@ -464,7 +467,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
     t.datetime "created_at", null: false
     t.string "link_url"
     t.string "location", limit: 100
-    t.text "notes", limit: 1000
+    t.text "notes"
     t.boolean "ongoing", default: false, null: false
     t.integer "performance_section_id"
     t.integer "position", default: 0, null: false
@@ -510,7 +513,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
     t.string "name"
     t.integer "production_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "is_primary = true"
+    t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "(is_primary = true)"
     t.index ["production_id"], name: "index_posters_on_production_id"
   end
 
@@ -888,7 +891,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_29_230624) do
     t.datetime "created_at", null: false
     t.string "institution", limit: 200, null: false
     t.string "location", limit: 100
-    t.text "notes", limit: 1000
+    t.text "notes"
     t.boolean "ongoing", default: false, null: false
     t.integer "person_id", null: false
     t.integer "position", default: 0, null: false

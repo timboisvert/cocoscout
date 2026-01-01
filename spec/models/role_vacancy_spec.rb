@@ -42,7 +42,9 @@ RSpec.describe RoleVacancy, type: :model do
       expect(described_class.statuses).to eq({
         "open" => "open",
         "filled" => "filled",
-        "cancelled" => "cancelled"
+        "cancelled" => "cancelled",
+        "finding_replacement" => "finding_replacement",
+        "not_filling" => "not_filling"
       })
     end
   end

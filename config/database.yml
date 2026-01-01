@@ -3,10 +3,17 @@ default: &default
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   timeout: 5000
 
+postgres_default: &postgres_default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("DB_POOL") { ENV.fetch("RAILS_MAX_THREADS") { 5 } } %>
+  prepared_statements: false
+
 development:
   primary:
-    <<: *default
-    database: db/development.sqlite3
+    <<: *postgres_default
+    database: cocoscout_development
+    host: localhost
   cache:
     <<: *default
     database: db/development_cache.sqlite3
@@ -18,8 +25,9 @@ development:
 
 test:
   primary:
-    <<: *default
-    database: db/test.sqlite3
+    <<: *postgres_default
+    database: cocoscout_test
+    host: localhost
   queue:
     <<: *default
     database: storage/test.sqlite3
