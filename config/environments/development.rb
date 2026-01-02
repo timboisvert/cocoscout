@@ -35,8 +35,6 @@ Rails.application.configure do
   config.active_record.query_log_tags_enabled = true
 
   config.active_job.queue_adapter = :solid_queue
-  config.active_job.verbose_enqueue_logs = true
-
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
   config.action_view.annotate_rendered_view_with_filenames = true
