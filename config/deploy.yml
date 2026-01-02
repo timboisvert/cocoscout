@@ -9,13 +9,11 @@ servers:
   web:
     hosts:
       - ec2-18-220-53-219.us-east-2.compute.amazonaws.com
-    cmd:
-      - bin/rails server
+    cmd: bin/rails server
   job:
     hosts:
       - ec2-18-217-146-201.us-east-2.compute.amazonaws.com
-    cmd:
-      - bin/jobs
+    cmd: bin/jobs
 
 ssh:
   user: ec2-user
