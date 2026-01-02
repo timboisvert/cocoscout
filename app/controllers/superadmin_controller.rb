@@ -375,10 +375,18 @@ class SuperadminController < ApplicationController
     @legacy_attachments = ActiveStorage::Attachment.where(record_type: "Person", name: %w[headshot resume])
     @legacy_count = @legacy_attachments.count
 
-    # Key structure analysis
-    @flat_keys_count = ActiveStorage::Blob.where("key NOT LIKE '%/%'").count
+    # Key structure analysis - exclude variant records and preview images
+    # which are internal Active Storage derivatives that use flat keys by design
+    variant_blob_ids = ActiveStorage::Attachment.where(record_type: "ActiveStorage::VariantRecord").pluck(:blob_id)
+    preview_blob_ids = ActiveStorage::Attachment.where(record_type: "ActiveStorage::Blob", name: "preview_image").pluck(:blob_id)
+    excluded_blob_ids = variant_blob_ids + preview_blob_ids
+
+    flat_keys_query = ActiveStorage::Blob.where("key NOT LIKE '%/%'")
+    flat_keys_query = flat_keys_query.where.not(id: excluded_blob_ids) if excluded_blob_ids.any?
+
+    @flat_keys_count = flat_keys_query.count
     @hierarchical_keys_count = ActiveStorage::Blob.where("key LIKE '%/%'").count
-    @flat_keys_by_service = ActiveStorage::Blob.where("key NOT LIKE '%/%'").group(:service_name).count
+    @flat_keys_by_service = flat_keys_query.group(:service_name).count
 
     # Variant records
     @variant_count = ActiveStorage::VariantRecord.count
