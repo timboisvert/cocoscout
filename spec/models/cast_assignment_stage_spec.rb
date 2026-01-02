@@ -4,10 +4,26 @@ require "rails_helper"
 
 RSpec.describe CastAssignmentStage, type: :model do
   describe "associations" do
-    it { is_expected.to belong_to(:audition_cycle) }
-    it { is_expected.to belong_to(:talent_pool) }
-    it { is_expected.to belong_to(:assignable) }
-    it { is_expected.to have_one(:production).through(:audition_cycle) }
+    let(:audition_cycle) { create(:audition_cycle) }
+    let(:talent_pool) { create(:talent_pool, production: audition_cycle.production) }
+    let(:role) { create(:role, show: create(:show, production: audition_cycle.production)) }
+    let(:stage) { create(:cast_assignment_stage, audition_cycle: audition_cycle, talent_pool: talent_pool, assignable: role) }
+
+    it "belongs to audition_cycle" do
+      expect(stage.audition_cycle).to eq(audition_cycle)
+    end
+
+    it "belongs to talent_pool" do
+      expect(stage.talent_pool).to eq(talent_pool)
+    end
+
+    it "belongs to assignable" do
+      expect(stage.assignable).to eq(role)
+    end
+
+    it "has one production through audition_cycle" do
+      expect(stage.production).to eq(audition_cycle.production)
+    end
   end
 
   describe "validations" do

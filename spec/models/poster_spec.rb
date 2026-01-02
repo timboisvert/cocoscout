@@ -6,7 +6,10 @@ RSpec.describe Poster, type: :model do
   let(:production) { create(:production) }
 
   describe "associations" do
-    it { is_expected.to belong_to(:production) }
+    it "belongs to production" do
+      poster = Poster.new(production: production)
+      expect(poster.production).to eq(production)
+    end
   end
 
   describe "validations" do

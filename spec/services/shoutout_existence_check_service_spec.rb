@@ -4,8 +4,13 @@ require "rails_helper"
 
 RSpec.describe ShoutoutExistenceCheckService do
   let(:user) { create(:user) }
-  let(:person) { user.person }
+  let(:person) { create(:person, user: user) }
   let(:recipient) { create(:person) }
+
+  before do
+    # Ensure person is created and associated with user before each test
+    person
+  end
 
   describe "#call" do
     context "with blank parameters" do
@@ -41,7 +46,7 @@ RSpec.describe ShoutoutExistenceCheckService do
 
     context "when existing shoutout exists" do
       before do
-        create(:shoutout, shouter: person, shoutee: recipient)
+        create(:shoutout, author: person, shoutee: recipient)
       end
 
       it "returns true" do
@@ -52,8 +57,8 @@ RSpec.describe ShoutoutExistenceCheckService do
 
     context "when existing shoutout was replaced" do
       before do
-        original = create(:shoutout, shouter: person, shoutee: recipient)
-        create(:shoutout, shouter: person, shoutee: recipient, replaces: original)
+        original = create(:shoutout, author: person, shoutee: recipient)
+        create(:shoutout, author: person, shoutee: recipient, replaces_shoutout: original)
       end
 
       it "returns true for the replacement shoutout" do

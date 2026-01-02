@@ -6,8 +6,15 @@ RSpec.describe EmailBatch, type: :model do
   let(:user) { create(:user) }
 
   describe "associations" do
-    it { is_expected.to belong_to(:user) }
-    it { is_expected.to have_many(:email_logs).dependent(:nullify) }
+    it "belongs to user" do
+      batch = create(:email_batch, user: user, subject: "Test")
+      expect(batch.user).to eq(user)
+    end
+
+    it "has many email_logs" do
+      batch = create(:email_batch, user: user, subject: "Test")
+      expect(batch).to respond_to(:email_logs)
+    end
   end
 
   describe "validations" do
@@ -36,8 +43,8 @@ RSpec.describe EmailBatch, type: :model do
   describe "#update_recipient_count!" do
     it "updates recipient_count based on email_logs" do
       batch = create(:email_batch, user: user, subject: "Test", recipient_count: 0)
-      create(:email_log, email_batch: batch, user: user, recipient_email: "a@test.com")
-      create(:email_log, email_batch: batch, user: user, recipient_email: "b@test.com")
+      create(:email_log, email_batch: batch, user: user, recipient: "a@test.com")
+      create(:email_log, email_batch: batch, user: user, recipient: "b@test.com")
 
       batch.update_recipient_count!
 

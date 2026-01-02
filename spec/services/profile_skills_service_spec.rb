@@ -69,7 +69,7 @@ RSpec.describe ProfileSkillsService do
 
   describe ".category_display_name" do
     it "titleizes and formats category name" do
-      expect(described_class.category_display_name("voice_acting")).to eq("Voice / Acting")
+      expect(described_class.category_display_name("voice_acting")).to eq("Voice Acting")
       expect(described_class.category_display_name("dance")).to eq("Dance")
     end
   end

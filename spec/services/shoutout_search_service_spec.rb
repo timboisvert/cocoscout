@@ -4,6 +4,7 @@ require "rails_helper"
 
 RSpec.describe ShoutoutSearchService do
   let(:user) { create(:user) }
+  let!(:user_person) { create(:person, name: "Current User", user: user) }
   let!(:person1) { create(:person, name: "Alice Smith") }
   let!(:person2) { create(:person, name: "Bob Jones") }
   let!(:person3) { create(:person, name: "Alice Brown") }
