@@ -551,20 +551,24 @@ class SuperadminController < ApplicationController
     # Calculate table sizes based on database type
     table_sizes = {}
     if adapter.include?("postgresql")
-      # PostgreSQL: use pg_catalog tables for accurate size info
+      # PostgreSQL: use pg_class for table sizes (more reliable across different PG setups)
       begin
         results = ActiveRecord::Base.connection.execute(<<~SQL)
           SELECT
-            relname as name,
-            pg_total_relation_size(quote_ident(relname)) as size_bytes
-          FROM pg_catalog.pg_stat_user_tables
-          ORDER BY pg_total_relation_size(quote_ident(relname)) DESC
+            c.relname as name,
+            pg_total_relation_size(c.oid) as size_bytes
+          FROM pg_class c
+          LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.relkind = 'r'
+            AND n.nspname = 'public'
+          ORDER BY pg_total_relation_size(c.oid) DESC
         SQL
         results.each do |row|
           table_sizes[row["name"]] = row["size_bytes"].to_i
         end
       rescue StandardError => e
-        Rails.logger.warn "Could not query pg_catalog: #{e.message}"
+        Rails.logger.error "Could not query PostgreSQL table sizes: #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
       end
     else
       # SQLite: use dbstat virtual table
@@ -592,10 +596,9 @@ class SuperadminController < ApplicationController
       begin
         result = ActiveRecord::Base.connection.execute(<<~SQL)
           SELECT
-            SUM(pg_total_relation_size(quote_ident(relname))) as total_size,
             SUM(n_dead_tup) as dead_tuples,
             SUM(n_live_tup) as live_tuples
-          FROM pg_catalog.pg_stat_user_tables
+          FROM pg_stat_user_tables
         SQL
         row = result.first
         if row
@@ -608,7 +611,7 @@ class SuperadminController < ApplicationController
           end
         end
       rescue StandardError => e
-        Rails.logger.warn "Could not query PostgreSQL bloat: #{e.message}"
+        Rails.logger.error "Could not query PostgreSQL bloat: #{e.message}"
       end
     else
       # SQLite: check freelist for vacuum recommendation
