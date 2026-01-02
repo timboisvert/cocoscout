@@ -8,19 +8,19 @@ image: cocorunseverything/cocoscout
 servers:
   web:
     hosts:
-      - ec2-18-220-53-219.us-east-2.compute.amazonaws.com
-    cmd: bin/rails server
+      - ec2-18-188-157-224.us-east-2.compute.amazonaws.com # CocoScout Web 1
+      - ec2-18-224-17-140.us-east-2.compute.amazonaws.com # CocoScout Web 2
   job:
     hosts:
-      - ec2-18-217-146-201.us-east-2.compute.amazonaws.com
+      - ec2-18-217-146-201.us-east-2.compute.amazonaws.com # CocoScout Jobs
     cmd: bin/jobs
+    proxy: false
+    options:
+      health-cmd: "true"
 
 ssh:
   user: ec2-user
   keys: [ "~/.ssh/Tim.pem" ]
-
-boot:
-  skip_docker_install: true
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
@@ -88,4 +88,6 @@ asset_path: /rails/public/assets
 
 # Configure the image builder.
 builder:
-  arch: amd64
+  arch:
+    - amd64
+    - arm64
