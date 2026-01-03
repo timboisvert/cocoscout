@@ -80,18 +80,25 @@ class VacancyNotificationJob < ApplicationJob
                                        .map(&:user)
 
     # Get the organization owner if they don't have an explicit production permission
-    # (owners default to receiving notifications)
+    # and have notifications enabled on their organization role
     owner = organization.owner
     owner_without_explicit_permission = if owner && !users_with_production_permission_ids.include?(owner.id)
-      [ owner ]
+      owner_org_role = organization.organization_roles.find_by(user: owner)
+      # Only include owner if they have notifications enabled (default is true if nil)
+      if owner_org_role.nil? || owner_org_role.notifications_enabled?
+        [ owner ]
+      else
+        []
+      end
     else
       []
     end
 
     # Get users with global manager role who don't have a production permission
-    # (they use the default which is notifications enabled for managers)
+    # and have notifications enabled on their organization role
     users_with_global_manager = organization.organization_roles
                                             .where(company_role: "manager")
+                                            .where(notifications_enabled: true)
                                             .includes(:user)
                                             .map(&:user)
 

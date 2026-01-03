@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_02_221001) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_03_023405) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1073,6 +1073,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_02_221001) do
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
     t.datetime "last_seen_at"
+    t.jsonb "notification_preferences", default: {}, null: false
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
     t.string "password_reset_token"

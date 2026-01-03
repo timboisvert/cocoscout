@@ -580,6 +580,8 @@ module Manage
         # Send the email to each recipient
         recipients.each do |recipient|
           next unless email_body.present? && recipient.email.present?
+          # Check if user has audition invitation notifications enabled
+          next if recipient.user.present? && !recipient.user.notification_enabled?(:audition_invitations)
 
           # Replace [Name] placeholder with actual name
           personalized_body = email_body.gsub("[Name]", recipient.name)

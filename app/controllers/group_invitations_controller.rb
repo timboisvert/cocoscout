@@ -32,14 +32,16 @@ class GroupInvitationsController < ApplicationController
         permission_level: params[:permission_level] || "view"
       )
 
-      # Send notification email
-      GroupInvitationMailer.existing_member_added(
-        existing_person,
-        @group,
-        Current.user.person,
-        params[:invitation_subject],
-        params[:invitation_message]
-      ).deliver_later
+      # Send notification email if user has notifications enabled
+      if existing_person.user.nil? || existing_person.user.notification_enabled?(:group_invitations)
+        GroupInvitationMailer.existing_member_added(
+          existing_person,
+          @group,
+          Current.user.person,
+          params[:invitation_subject],
+          params[:invitation_message]
+        ).deliver_later
+      end
 
       respond_to do |format|
         format.turbo_stream do

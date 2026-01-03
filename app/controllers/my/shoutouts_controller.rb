@@ -88,9 +88,11 @@ module My
       @shoutout.replaces_shoutout = existing_shoutout if existing_shoutout
 
       if @shoutout.save
-        # Send email notification to recipient if they have an email
+        # Send email notification to recipient if they have an email and notifications enabled
         if @shoutee.respond_to?(:email) && @shoutee.email.present?
-          ShoutoutMailer.shoutout_received(@shoutout).deliver_later
+          if @shoutee.user.nil? || @shoutee.user.notification_enabled?(:shoutouts)
+            ShoutoutMailer.shoutout_received(@shoutout).deliver_later
+          end
         end
         redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
       else
@@ -133,8 +135,10 @@ module My
         @shoutout.replaces_shoutout = existing_shoutout if existing_shoutout
 
         if @shoutout.save
-          # Send email notification to recipient
-          ShoutoutMailer.shoutout_received(@shoutout).deliver_later if @shoutee.email.present?
+          # Send email notification to recipient if they have notifications enabled
+          if @shoutee.email.present? && (@shoutee.user.nil? || @shoutee.user.notification_enabled?(:shoutouts))
+            ShoutoutMailer.shoutout_received(@shoutout).deliver_later
+          end
           redirect_to my_shoutouts_path(tab: "given"), notice: "Shoutout sent successfully!"
         else
           redirect_to my_shoutouts_path(tab: "given", show_form: "true"), alert: "Could not save shoutout."

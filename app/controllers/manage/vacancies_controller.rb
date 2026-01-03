@@ -145,8 +145,10 @@ module Manage
           email_body: email_body
         )
 
-        # Send the invitation email
-        VacancyInvitationMailer.invitation_email(invitation).deliver_later
+        # Send the invitation email if user has notifications enabled
+        if person.user.nil? || person.user.notification_enabled?(:vacancy_invitations)
+          VacancyInvitationMailer.invitation_email(invitation).deliver_later
+        end
         invited_count += 1
       end
 

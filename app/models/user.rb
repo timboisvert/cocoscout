@@ -207,6 +207,23 @@ class User < ApplicationRecord
     SUPERADMIN_EMAILS.include?(email_address.to_s.downcase)
   end
 
+  # Notification preferences - all default to true (opted in)
+  NOTIFICATION_PREFERENCE_KEYS = %w[
+    vacancy_invitations
+    audition_invitations
+    group_invitations
+    shoutouts
+  ].freeze
+
+  def notification_enabled?(key)
+    # Default to true if not explicitly set to false
+    notification_preferences[key.to_s] != false
+  end
+
+  def set_notification_preference(key, enabled)
+    self.notification_preferences = notification_preferences.merge(key.to_s => enabled)
+  end
+
   # Generate an invitation token for setting password
   def generate_invitation_token
     self.invitation_token = SecureRandom.urlsafe_base64(32)

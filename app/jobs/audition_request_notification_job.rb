@@ -28,12 +28,28 @@ class AuditionRequestNotificationJob < ApplicationJob
   private
 
   def find_notifiable_producers(production)
-    # Get team members who are producers for this production
-    production.production_permissions
-              .includes(:user)
-              .select(&:notifications_enabled?)
-              .map(&:user)
-              .compact
-              .uniq
+    organization = production.organization
+    users_with_production_permission_ids = production.production_permissions.pluck(:user_id)
+
+    # Get team members who have explicit production permissions with notifications enabled
+    users_with_permissions = production.production_permissions
+                                       .includes(:user)
+                                       .select(&:notifications_enabled?)
+                                       .map(&:user)
+
+    # Get users with global manager/viewer role who don't have a production permission
+    # and have notifications enabled on their organization role
+    users_with_global_role = organization.organization_roles
+                                         .where(company_role: %w[manager viewer])
+                                         .where(notifications_enabled: true)
+                                         .includes(:user)
+                                         .map(&:user)
+
+    # Filter global role users to those without explicit production permissions
+    users_with_global_role_only = users_with_global_role.reject do |user|
+      users_with_production_permission_ids.include?(user.id)
+    end
+
+    (users_with_permissions + users_with_global_role_only).compact.uniq
   end
 end

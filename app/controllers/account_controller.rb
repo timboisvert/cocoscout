@@ -110,8 +110,18 @@ class AccountController < ApplicationController
   end
 
   def update_notifications
-    # TODO: Handle notification preferences
-    redirect_to account_notifications_path, notice: "Notification preferences updated."
+    notification_params = params[:notifications] || {}
+
+    User::NOTIFICATION_PREFERENCE_KEYS.each do |key|
+      enabled = notification_params[key] == "1"
+      Current.user.set_notification_preference(key, enabled)
+    end
+
+    if Current.user.save
+      redirect_to account_notifications_path, notice: "Notification preferences updated."
+    else
+      redirect_to account_notifications_path, alert: "Failed to update notification preferences."
+    end
   end
 
   def billing
