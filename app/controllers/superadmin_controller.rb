@@ -3,7 +3,9 @@
 class SuperadminController < ApplicationController
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
-                         queue_clear_pending people_list person_detail destroy_person organizations_list organization_detail]
+                         queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person organizations_list organization_detail
+                         email_templates email_template_new email_template_create email_template_edit email_template_update
+                         email_template_destroy email_template_preview]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -269,6 +271,9 @@ class SuperadminController < ApplicationController
                    .group(:queue_name)
                    .count
                    .sort_by { |_, count| -count }
+
+    # Recurring jobs from config
+    @recurring_jobs = load_recurring_jobs
   rescue ActiveRecord::StatementInvalid
     # Queue database not accessible
     @total_jobs = 0
@@ -347,6 +352,39 @@ class SuperadminController < ApplicationController
     redirect_to queue_monitor_path, notice: "Cleared #{count} pending jobs"
   rescue StandardError => e
     redirect_to queue_monitor_path, alert: "Failed to clear pending jobs: #{e.message}"
+  end
+
+  def queue_run_recurring_job
+    job_key = params[:job_key]
+
+    # Load recurring config to find the job
+    config_path = Rails.root.join("config", "recurring.yml")
+    config = YAML.load_file(config_path, permitted_classes: [ Symbol ])
+    env_config = config[Rails.env] || config["production"] || {}
+    job_config = env_config[job_key]
+
+    unless job_config
+      redirect_to queue_monitor_path, alert: "Job '#{job_key}' not found in recurring.yml"
+      return
+    end
+
+    job_class = job_config["class"]
+    unless job_class
+      redirect_to queue_monitor_path, alert: "Cannot run command-based jobs manually. Only job classes can be triggered."
+      return
+    end
+
+    klass = safe_constantize_job(job_class)
+    unless klass
+      redirect_to queue_monitor_path, alert: "Invalid job class: #{job_class}"
+      return
+    end
+
+    # Queue the job
+    klass.perform_later
+    redirect_to queue_monitor_path, notice: "Successfully queued #{job_class}"
+  rescue StandardError => e
+    redirect_to queue_monitor_path, alert: "Failed to queue job: #{e.message}"
   end
 
   def storage
@@ -914,7 +952,189 @@ class SuperadminController < ApplicationController
     redirect_to cache_monitor_path, alert: "Pattern clear failed: #{e.message}"
   end
 
+  # Email Templates Management
+  def email_templates
+    @templates = EmailTemplate.order(:category, :name)
+    @categories = EmailTemplate::CATEGORIES
+  end
+
+  def email_template_new
+    @template = EmailTemplate.new
+    @categories = EmailTemplate::CATEGORIES
+  end
+
+  def email_template_create
+    @template = EmailTemplate.new(email_template_params)
+
+    if @template.save
+      redirect_to email_templates_path, notice: "Email template '#{@template.name}' created successfully"
+    else
+      @categories = EmailTemplate::CATEGORIES
+      render :email_template_new, status: :unprocessable_entity
+    end
+  end
+
+  def email_template_edit
+    @template = EmailTemplate.find(params[:id])
+    @categories = EmailTemplate::CATEGORIES
+  end
+
+  def email_template_update
+    @template = EmailTemplate.find(params[:id])
+
+    if @template.update(email_template_params)
+      redirect_to email_templates_path, notice: "Email template '#{@template.name}' updated successfully"
+    else
+      @categories = EmailTemplate::CATEGORIES
+      render :email_template_edit, status: :unprocessable_entity
+    end
+  end
+
+  def email_template_destroy
+    @template = EmailTemplate.find(params[:id])
+    @template.destroy
+    redirect_to email_templates_path, notice: "Email template '#{@template.name}' deleted"
+  end
+
+  def email_template_preview
+    @template = EmailTemplate.find(params[:id])
+    @preview = EmailTemplateService.preview(@template.key)
+
+    # Generate sample values for editable preview
+    @sample_variables = @preview[:available_variables].map do |var|
+      {
+        name: var[:name],
+        description: var[:description],
+        value: EmailTemplateService.send(:sample_value_for, var[:name], @template.key)
+      }
+    end
+
+    # Generate styled email HTML using the mailer layout (inline, without attachments)
+    @styled_body = generate_email_preview_html(@preview[:body])
+
+    respond_to do |format|
+      format.html
+      format.json { render json: @preview.merge(styled_body: @styled_body) }
+    end
+  end
+
   private
+
+  def generate_email_preview_html(body_content)
+    # Generate a standalone HTML preview that mimics the mailer layout
+    # but uses a static logo URL instead of an attachment
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Coustard:wght@400&display=swap');
+
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+          }
+          .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f5f5f5;
+          }
+          .logo-container {
+            text-align: center;
+            padding: 30px 20px 0;
+          }
+          .logo {
+            width: 120px;
+            height: auto;
+          }
+          .email-container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            margin: 0 20px;
+          }
+          h1 {
+            font-family: 'Coustard', serif;
+            color: #ec4899;
+            font-size: 22px;
+            margin: 0 0 25px 0;
+            font-weight: 300;
+          }
+          p {
+            font-size: 15px;
+            color: #555555;
+            line-height: 1.5;
+            margin: 0 0 12px 0;
+          }
+          ul, ol {
+            font-size: 15px;
+            color: #555555;
+            line-height: 1.5;
+            margin: 0 0 12px 0;
+            padding-left: 20px;
+          }
+          li {
+            margin-bottom: 6px;
+          }
+          blockquote {
+            border-left: 3px solid #ec4899;
+            margin: 12px 0;
+            padding-left: 12px;
+            color: #666666;
+            font-style: italic;
+          }
+          strong, b {
+            font-weight: 600;
+          }
+          em, i {
+            font-style: italic;
+          }
+          a {
+            color: #ec4899;
+            text-decoration: underline;
+          }
+          .footer {
+            text-align: center;
+            padding: 20px;
+          }
+          .footer a {
+            font-family: 'Coustard', serif;
+            font-size: 28px;
+            color: #ec4899;
+            text-decoration: none;
+            display: inline-block;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-wrapper">
+          <div class="logo-container">
+            <img src="/cocoscout.png" alt="CocoScout" class="logo" />
+          </div>
+
+          <div class="email-container">
+            #{body_content}
+          </div>
+
+          <div class="footer">
+            <a href="https://www.cocoscout.com">CocoScout</a>
+          </div>
+        </div>
+      </body>
+      </html>
+    HTML
+  end
+
+  def email_template_params
+    params.require(:email_template).permit(:key, :name, :subject, :body, :description, :category, :active,
+                                           :template_type, :mailer_class, :mailer_action, :notes,
+                                           available_variables: [ :name, :description ])
+  end
 
   def require_superadmin
     return if Current.user&.superadmin?
@@ -1016,5 +1236,59 @@ class SuperadminController < ApplicationController
     klass if klass < ApplicationJob || klass < ActiveJob::Base
   rescue NameError
     nil
+  end
+
+  # Load recurring jobs from config/recurring.yml
+  def load_recurring_jobs
+    config_path = Rails.root.join("config", "recurring.yml")
+    return [] unless File.exist?(config_path)
+
+    config = YAML.load_file(config_path, permitted_classes: [ Symbol ])
+    env_config = config[Rails.env] || config["production"] || {}
+
+    env_config.map do |key, job_config|
+      job_class = job_config["class"]
+      command = job_config["command"]
+
+      # Get last execution info
+      last_run = find_last_job_run(job_class || command)
+
+      {
+        key: key,
+        class_name: job_class,
+        command: command,
+        schedule: job_config["schedule"],
+        queue: job_config["queue"] || "default",
+        description: job_description(job_class),
+        last_run_at: last_run&.finished_at || last_run&.created_at,
+        last_run_status: last_run ? (last_run.finished_at ? "success" : "running") : "never",
+        runnable: job_class.present? # Can only run job classes, not commands
+      }
+    end
+  end
+
+  def find_last_job_run(class_name_or_command)
+    return nil unless class_name_or_command
+
+    SolidQueue::Job
+      .where(class_name: class_name_or_command)
+      .order(created_at: :desc)
+      .first
+  rescue ActiveRecord::StatementInvalid
+    nil
+  end
+
+  # Returns a description of what each job does
+  JOB_DESCRIPTIONS = {
+    "MigrateStorageKeysJob" => "Migrates Active Storage blobs from flat keys to hierarchical folder structure for better S3 organization.",
+    "CleanupOrphanedS3FilesJob" => "Deletes orphaned S3 files that no longer have database records. Only removes files older than 7 days.",
+    "CalendarSyncJob" => "Synchronizes calendar events with external calendar services.",
+    "UpdateLastSeenJob" => "Updates the last_seen_at timestamp for active users.",
+    "AuditionRequestNotificationJob" => "Sends notification emails for new audition requests.",
+    "VacancyNotificationJob" => "Sends notification emails for role vacancies."
+  }.freeze
+
+  def job_description(class_name)
+    JOB_DESCRIPTIONS[class_name] || "No description available."
   end
 end

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["tab", "panel", "hiddenField"]
+    static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection"]
     static values = { initialTab: { type: Number, default: 0 } }
 
     connect() {
@@ -73,5 +73,21 @@ export default class extends Controller {
         this.panelTargets.forEach((panel, i) => {
             panel.classList.toggle("hidden", i !== idx);
         });
+    }
+
+    checkAllReviewed() {
+        // Check if all review checkboxes are checked
+        if (!this.hasReviewCheckboxTarget) return;
+        
+        const allChecked = this.reviewCheckboxTargets.every(checkbox => checkbox.checked);
+        
+        // Show/hide the send section based on whether all are reviewed
+        if (this.hasSendSectionTarget) {
+            if (allChecked) {
+                this.sendSectionTarget.classList.remove('hidden');
+            } else {
+                this.sendSectionTarget.classList.add('hidden');
+            }
+        }
     }
 }

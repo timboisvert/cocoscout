@@ -1,3 +1,2 @@
 web: bin/rails server -p 3000
 css: bin/rails tailwindcss:watch
-jobs: OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES bin/jobs

@@ -336,14 +336,11 @@ module Manage
         base
       end.join("\n")
 
-      <<~MESSAGE
-        Please submit your availability for the following upcoming #{@production.name} shows & events:
-
-        #{shows_list}
-
-        You can update your availability by visiting:
-        #{my_availability_url(host: request.host_with_port, protocol: request.protocol.chomp('://'))}
-      MESSAGE
+      EmailTemplateService.render_body("availability_request", {
+        production_name: @production.name,
+        shows_list: shows_list,
+        availability_url: my_availability_url(host: request.host_with_port, protocol: request.protocol.chomp("://"))
+      })
     end
 
     def generate_personalized_message(pending_shows, template)

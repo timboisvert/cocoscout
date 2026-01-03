@@ -1,0 +1,76 @@
+<% content_for :title, "Email Templates - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Email Templates",
+    links: [
+      { text: "New Template", path: email_template_new_path, color: "pink" }
+    ]
+  } %>
+
+  <div class="mt-4 space-y-4">
+    <% if @templates.empty? %>
+      <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+        <div class="text-gray-500 mb-4">No email templates yet.</div>
+        <%= render "shared/button", text: "Create your first template", path: email_template_new_path, variant: "primary", size: "medium" %>
+      </div>
+    <% else %>
+      <!-- Templates grouped by category -->
+      <% @templates.group_by(&:category).each do |category, templates| %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/card_header", title: (category || "Uncategorized").titleize %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% templates.each do |template| %>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3">
+                      <div class="font-medium text-gray-900"><%= template.name %></div>
+                      <% if template.description.present? %>
+                        <div class="text-xs text-gray-500 mt-1"><%= truncate(template.description, length: 80) %></div>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <code class="text-xs bg-gray-100 px-2 py-1 rounded font-mono"><%= template.key %></code>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                      <% if template.active? %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Active
+                        </span>
+                      <% else %>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          Inactive
+                        </span>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                      <div class="flex items-center gap-2">
+                        <%= render "shared/button", text: "Preview", path: email_template_preview_path(template), variant: "outline", size: "small" %>
+                        <%= render "shared/button", text: "Edit", path: email_template_edit_path(template), variant: "ghost", size: "small" %>
+                        <%= render "shared/button", text: "Delete", path: email_template_destroy_path(template), variant: "ghost", size: "small", data: { turbo_method: :delete, turbo_confirm: "Delete template '#{template.name}'? This cannot be undone." } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

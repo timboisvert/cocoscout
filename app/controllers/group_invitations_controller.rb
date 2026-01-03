@@ -67,7 +67,10 @@ class GroupInvitationsController < ApplicationController
 
       if invitation.save
         # Send invitation email
-        invitation_subject = params[:invitation_subject] || "You've been invited to join #{@group.name} on CocoScout"
+        default_subject = EmailTemplateService.render_subject("group_invitation", {
+          group_name: @group.name
+        })
+        invitation_subject = params[:invitation_subject] || default_subject
         invitation_message = params[:invitation_message]
 
         GroupInvitationMailer.invitation(invitation, invitation_subject, invitation_message).deliver_later

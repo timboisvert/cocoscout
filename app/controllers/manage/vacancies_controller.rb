@@ -68,12 +68,21 @@ module Manage
                                             )
                                             .order("roles.position ASC")
       @all_potential_people = @all_potential_members.select { |m| m.is_a?(Person) }
+
+      # Create email draft for invitation form
+      @vacancy_email_draft = EmailDraft.new(
+        title: default_vacancy_email_subject,
+        body: default_vacancy_email_body
+      )
     end
 
     def send_invitations
       invite_mode = params[:invite_mode]
-      email_subject = params[:email_subject]
-      email_body = params[:email_body]
+
+      # Get email content from EmailDraft form fields
+      email_draft_params = params[:email_draft] || {}
+      email_subject = email_draft_params[:title].presence || default_vacancy_email_subject
+      email_body = email_draft_params[:body].to_s.presence || default_vacancy_email_body
 
       # IDs to exclude: already invited, already cast in this show, or the person who vacated
       already_invited_ids = @vacancy.invitations.pluck(:person_id)
@@ -176,6 +185,55 @@ module Manage
                             .includes(:role)
                             .where(shows: { production_id: @production.id })
                             .find(params[:id])
+    end
+
+    def default_vacancy_email_subject
+      template_vars = vacancy_email_template_vars
+      if linked_vacancy?
+        EmailTemplateService.render_subject("vacancy_invitation_linked", template_vars)
+      else
+        EmailTemplateService.render_subject("vacancy_invitation", template_vars)
+      end
+    end
+
+    def default_vacancy_email_body
+      template_vars = vacancy_email_template_vars
+      if linked_vacancy?
+        EmailTemplateService.render_body("vacancy_invitation_linked", template_vars)
+      else
+        EmailTemplateService.render_body("vacancy_invitation", template_vars)
+      end
+    end
+
+    def linked_vacancy?
+      @vacancy.show.linked? && @vacancy.show.event_linkage.shows.count > 1
+    end
+
+    def vacancy_email_template_vars
+      show = @vacancy.show
+      if linked_vacancy?
+        all_shows_list = show.event_linkage.shows.order(:date_and_time).to_a
+        shows_text = all_shows_list.map do |s|
+          event_name = s.secondary_name.presence || s.event_type.titleize
+          "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{event_name}"
+        end.join("<br>")
+        {
+          production_name: @production.name,
+          role_name: @vacancy.role.name,
+          show_count: all_shows_list.size.to_s,
+          shows_list: shows_text
+        }
+      else
+        event_name = show.secondary_name.presence || show.event_type.titleize
+        shows_text = "#{show.date_and_time.strftime("%A, %B %d at %l:%M %p")} - #{event_name}"
+        {
+          production_name: @production.name,
+          role_name: @vacancy.role.name,
+          event_name: event_name,
+          show_date: show.date_and_time.strftime("%b %-d"),
+          show_info: shows_text
+        }
+      end
     end
   end
 end

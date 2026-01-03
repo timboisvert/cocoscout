@@ -10,6 +10,11 @@ default: &default
 
 development:
   <<: *default
+  workers:
+    - queues: "*"
+      threads: 3
+      processes: 1  # Single process to avoid fork issues on macOS
+      polling_interval: 0.1
 
 test:
   <<: *default

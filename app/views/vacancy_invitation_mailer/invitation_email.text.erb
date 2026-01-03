@@ -1,4 +1,4 @@
-<%= @invitation.email_body || "You've been invited to fill a role." %>
+<%= strip_tags(@invitation.email_body&.gsub(/<br\s*\/?>/, "\n")&.gsub(/<\/p>\s*<p>/, "\n\n")) || "You've been invited to fill a role." %>
 
 ---
 

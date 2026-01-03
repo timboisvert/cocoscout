@@ -1,0 +1,198 @@
+<%= form_with model: template, url: template.persisted? ? email_template_update_path(template) : email_template_create_path,
+              method: template.persisted? ? :patch : :post,
+              class: "space-y-6" do |f| %>
+
+  <% if template.errors.any? %>
+    <div class="bg-red-50 text-red-500 px-3 py-2 font-medium rounded-lg">
+      <ul class="list-disc ml-6">
+        <% template.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Metadata -->
+    <div class="lg:col-span-1 space-y-4">
+      <!-- Template Identity -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Template Identity" %>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= f.label :name, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :name,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500",
+                placeholder: "Audition Invitation" %>
+          </div>
+
+          <div>
+            <%= f.label :key, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :key,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
+                placeholder: "audition_invitation",
+                disabled: template.persisted? %>
+            <p class="text-xs text-gray-500 mt-1">Unique identifier (snake_case)</p>
+            <% if template.persisted? %>
+              <%= f.hidden_field :key %>
+            <% end %>
+          </div>
+
+          <div>
+            <%= f.label :category, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :category,
+                options_for_select(categories.map { |c| [c.titleize, c] }, template.category),
+                { include_blank: "Select category..." },
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-400 text-pink-500 focus:ring-pink-500" %>
+            <%= f.label :active, "Active", class: "text-sm text-gray-700" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Type & Mailer -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Template Type" %>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= f.label :template_type, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :template_type,
+                options_for_select([
+                  ["Structured", "structured"],
+                  ["Pass-through", "passthrough"],
+                  ["Hybrid", "hybrid"]
+                ], template.template_type || "structured"),
+                {},
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+            <p class="text-xs text-gray-500 mt-2">
+              <strong>Structured:</strong> Fixed layout with placeholders<br>
+              <strong>Pass-through:</strong> Content from user input<br>
+              <strong>Hybrid:</strong> Pre-filled but customizable
+            </p>
+          </div>
+
+          <div class="border-t border-gray-200 pt-4">
+            <%= f.label :mailer_class, "Mailer Class", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :mailer_class,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-xs",
+                placeholder: "Manage::CastingMailer" %>
+          </div>
+
+          <div>
+            <%= f.label :mailer_action, "Mailer Action", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :mailer_action,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-xs",
+                placeholder: "cast_notification" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description & Notes -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Documentation" %>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= f.label :description, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_area :description,
+                rows: 3,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm",
+                placeholder: "Describe when this template is used..." %>
+          </div>
+
+          <div>
+            <%= f.label :notes, "Internal Notes", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_area :notes,
+                rows: 3,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm",
+                placeholder: "Notes for developers..." %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variables -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Available Variables" %>
+        <div class="p-6">
+          <div id="variables-container" class="space-y-2">
+            <% if template.available_variables.present? %>
+              <% template.available_variables.each do |var| %>
+                <div class="flex items-center gap-2 variable-row">
+                  <input type="text" name="email_template[available_variables][][name]"
+                         value="<%= var.is_a?(Hash) ? var['name'] || var[:name] : var %>"
+                         placeholder="variable_name"
+                         class="flex-1 shadow-sm rounded-lg border border-gray-400 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-xs">
+                  <button type="button" onclick="this.parentElement.remove()"
+                          class="text-red-500 hover:text-red-700 text-xl leading-none px-2">&times;</button>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <button type="button" onclick="addVariableRow()"
+                  class="mt-3 text-sm text-pink-500 hover:text-pink-700 font-medium">
+            + Add Variable
+          </button>
+
+          <script>
+            function addVariableRow() {
+              const container = document.getElementById('variables-container');
+              const row = document.createElement('div');
+              row.className = 'flex items-center gap-2 variable-row';
+              row.innerHTML = \`
+                <input type="text" name="email_template[available_variables][][name]"
+                       placeholder="variable_name"
+                       class="flex-1 shadow-sm rounded-lg border border-gray-400 px-3 py-2 focus:border-pink-500 focus:ring-pink-500 font-mono text-xs">
+                <button type="button" onclick="this.parentElement.remove()"
+                        class="text-red-500 hover:text-red-700 text-xl leading-none px-2">&times;</button>
+              \`;
+              container.appendChild(row);
+            }
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Email Content -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Email Content" %>
+        <div class="p-6 space-y-4">
+          <div>
+            <%= f.label :subject, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :subject,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500",
+                placeholder: "You're invited to audition for {{production_title}}" %>
+            <p class="text-xs text-gray-500 mt-1">Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for dynamic values</p>
+          </div>
+
+          <div>
+            <%= f.label :body, class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_area :body,
+                rows: 24,
+                class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 font-mono text-sm",
+                placeholder: "<p>Dear {{recipient_name}},</p>
+
+<p>You have been invited to audition for the role of {{role_name}} in {{production_title}}.</p>
+
+<p>{{sender_name}}</p>" %>
+            <p class="text-xs text-gray-500 mt-1">HTML supported. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders. Use <code class="bg-gray-100 px-1 rounded font-mono">{{#var}}...{{/var}}</code> for conditional blocks.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-between border-t border-gray-200 pt-6">
+        <%= render "shared/button", text: "Cancel", path: email_templates_path, variant: "ghost-cancel", size: "medium" %>
+        <div class="flex items-center gap-3">
+          <% if template.persisted? %>
+            <%= render "shared/button", text: "Preview", path: email_template_preview_path(template), variant: "outline", size: "medium" %>
+          <% end %>
+          <%= render "shared/button", text: (template.persisted? ? "Save Changes" : "Create Template"), variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

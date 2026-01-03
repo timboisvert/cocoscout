@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_02_010423) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_02_221001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -305,6 +305,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_02_010423) do
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
     t.index ["sent_at"], name: "index_email_logs_on_sent_at"
     t.index ["user_id"], name: "index_email_logs_on_user_id"
+  end
+
+  create_table "email_templates", force: :cascade do |t|
+    t.boolean "active", default: true
+    t.jsonb "available_variables", default: []
+    t.text "body", null: false
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "key", null: false
+    t.string "mailer_action"
+    t.string "mailer_class"
+    t.string "name", null: false
+    t.text "notes"
+    t.string "subject", null: false
+    t.string "template_type"
+    t.datetime "updated_at", null: false
+    t.jsonb "usage_locations"
+    t.index ["active"], name: "index_email_templates_on_active"
+    t.index ["category"], name: "index_email_templates_on_category"
+    t.index ["key"], name: "index_email_templates_on_key", unique: true
   end
 
   create_table "event_linkages", force: :cascade do |t|

@@ -23,6 +23,12 @@ module Manage
 
     def show
       @questions = @questionnaire.questions.order(:position)
+
+      # Create email draft for invitation form
+      @questionnaire_email_draft = EmailDraft.new(
+        title: default_questionnaire_email_subject,
+        body: default_questionnaire_email_body
+      )
     end
 
     def new
@@ -193,8 +199,11 @@ module Manage
       talent_pool_id = params[:talent_pool_id]
       person_ids = params[:person_ids] || []
       group_ids = params[:group_ids] || []
-      subject_template = params[:subject]
-      message_template = params[:message]
+
+      # Get email content from EmailDraft form fields
+      email_draft_params = params[:email_draft] || {}
+      subject_template = email_draft_params[:title].presence || default_questionnaire_email_subject
+      message_template = email_draft_params[:body].to_s.presence || default_questionnaire_email_body
 
       # Get IDs of already invited people and groups
       already_invited_person_ids = @questionnaire.questionnaire_invitations
@@ -305,6 +314,21 @@ module Manage
     def question_params
       params.require(:question).permit(:text, :question_type, :required,
                                        question_options_attributes: %i[id text _destroy])
+    end
+
+    def default_questionnaire_email_subject
+      EmailTemplateService.render_subject("questionnaire_invitation", {
+        production_name: @production.name,
+        questionnaire_title: @questionnaire.title
+      })
+    end
+
+    def default_questionnaire_email_body
+      EmailTemplateService.render_body("questionnaire_invitation", {
+        production_name: @production.name,
+        questionnaire_title: @questionnaire.title,
+        questionnaire_url: @questionnaire.respond_url
+      })
     end
   end
 end

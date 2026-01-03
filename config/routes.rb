@@ -55,6 +55,7 @@ Rails.application.routes.draw do
     delete "/queue/job/:id",    to: "superadmin#queue_delete_job",    as: "queue_delete_job"
     delete "/queue/clear_failed", to: "superadmin#queue_clear_failed", as: "queue_clear_failed"
     delete "/queue/clear_pending", to: "superadmin#queue_clear_pending", as: "queue_clear_pending"
+    post "/queue/run_recurring/:job_key", to: "superadmin#queue_run_recurring_job", as: "queue_run_recurring_job"
     get "/people", to: "superadmin#people_list", as: "people_list"
     delete "/people/bulk_destroy", to: "superadmin#bulk_destroy_people", as: "bulk_destroy_people"
     delete "/people/suspicious/destroy_all", to: "superadmin#destroy_all_suspicious_people",
@@ -72,6 +73,13 @@ Rails.application.routes.draw do
     get  "/cache",              to: "superadmin#cache",               as: "cache_monitor"
     post "/cache/clear",        to: "superadmin#cache_clear",         as: "cache_clear"
     post "/cache/clear_pattern", to: "superadmin#cache_clear_pattern", as: "cache_clear_pattern"
+    get  "/email_templates",    to: "superadmin#email_templates",     as: "email_templates"
+    get  "/email_templates/new", to: "superadmin#email_template_new", as: "email_template_new"
+    post "/email_templates",    to: "superadmin#email_template_create", as: "email_template_create"
+    get  "/email_templates/:id/edit", to: "superadmin#email_template_edit", as: "email_template_edit"
+    patch "/email_templates/:id", to: "superadmin#email_template_update", as: "email_template_update"
+    delete "/email_templates/:id", to: "superadmin#email_template_destroy", as: "email_template_destroy"
+    get  "/email_templates/:id/preview", to: "superadmin#email_template_preview", as: "email_template_preview"
   end
 
   # Pilot user setup (superadmins only)
@@ -446,7 +454,7 @@ Rails.application.routes.draw do
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
-      resources :email_groups, only: %i[create update destroy]
+      # resources :email_groups, only: %i[create update destroy] (removed)
       resources :audition_email_assignments, only: %i[create update destroy]
       resources :auditions do
         collection do

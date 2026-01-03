@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-# Associate all people with production company 1 if it's namedCoco Runs Everything"
+# Associate all people with production company 1 if it's named "Coco Runs Everything"
 organization = Organization.find_by(id: 1)
 if organization && organization.name == 'Coco Runs Everything'
   Person.find_each do |person|
     unless person.organizations.include?(organization)
       person.organizations << organization
-      putsAdded # {person.name} to #{organization.name}"
+      puts "Added #{person.name} to #{organization.name}"
     end
   end
 end

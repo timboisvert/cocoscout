@@ -505,46 +505,18 @@
             <!-- Notification Email -->
             <div class="mb-2">
               <label class="block text-sm font-semibold text-gray-900 mb-2">Notification Email</label>
-              <%
-                # Get all shows in the linkage or just the primary show
-                if show.linked?
-                  all_shows_list = show.event_linkage.shows.order(:date_and_time).to_a
-                else
-                  all_shows_list = [show]
-                end
-                is_linked = all_shows_list.size > 1
-                if is_linked
-                  subject_text = "[#{@production.name}] Replacement needed for #{all_shows_list.size} linked shows"
-                  shows_text = all_shows_list.map do |s|
-                    event_name = s.secondary_name.presence || s.event_type.titleize
-                    "#{s.date_and_time.strftime("%A, %B %d at %l:%M %p").strip} - #{event_name}"
-                  end.join("\n")
-                else
-                  event_name = @vacancy.show.secondary_name.presence || @vacancy.show.event_type.titleize
-                  subject_text = "[#{@production.name}] Replacement needed for #{@vacancy.show.date_and_time.strftime('%b %-d')} #{event_name}"
-                  shows_text = "#{@vacancy.show.date_and_time.strftime("%A, %B %d at %l:%M %p")} - #{event_name}"
-                end
-              %>
-              <input type="text"
-                     name="email_subject"
-                     id="email_subject"
-                     value="<%= subject_text %>"
-                     placeholder="Subject"
-                     class="block w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">
-              <textarea name="email_body"
-                        id="email_body"
-                        rows="<%= is_linked ? 8 : 6 %>"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm">A replacement is needed for the <%= @vacancy.role.name %> role in <%= @production.name %>.
-
-<%= is_linked ? "Shows (#{all_shows_list.size} linked events):" : "Show:" %>
-<%= shows_text %>
-
-Role: <%= @vacancy.role.name %>
-
-If you're available and interested, click the link below to claim this spot.
-
-Thank you,
-<%= @production.name %></textarea>
+              <%= fields_for :email_draft, @vacancy_email_draft do |email_form| %>
+                <div class="space-y-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                    <%= email_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                    <%= email_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                  </div>
+                </div>
+              <% end %>
             </div>
 
             <%= render "shared/button",

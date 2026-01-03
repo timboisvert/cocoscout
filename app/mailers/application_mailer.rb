@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ApplicationMailer < ActionMailer::Base
-  default from: "info@cocoscout.com"
+  default from: "CocoScout <info@cocoscout.com>"
   layout "mailer"
 
   before_action :attach_logo

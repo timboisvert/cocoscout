@@ -196,11 +196,16 @@ module Manage
     end
 
     def default_invitation_subject
-      "You've been invited to join #{Current.organization.name} on CocoScout"
+      EmailTemplateService.render_subject("person_invitation", {
+        organization_name: Current.organization.name
+      })
     end
 
     def default_invitation_message
-      "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions, auditions, and casting.\n\nTo get started, please click the link below to set a password and create your account."
+      EmailTemplateService.render_body("person_invitation", {
+        organization_name: Current.organization.name,
+        setup_url: "[setup link will be included]"
+      })
     end
 
     public

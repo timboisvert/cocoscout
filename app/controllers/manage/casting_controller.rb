@@ -973,101 +973,53 @@ module Manage
     end
 
     def default_cast_email_subject
-      if @show.linked? && @linked_shows.present? && @linked_shows.any?
-        all_shows = [ @show ] + @linked_shows
-        dates = all_shows.sort_by(&:date_and_time).map { |s| s.date_and_time.strftime("%B %-d") }.uniq
-        if dates.count > 2
-          "Cast Confirmation: #{@production.name} - #{dates.first} - #{dates.last}"
-        else
-          "Cast Confirmation: #{@production.name} - #{dates.join(' & ')}"
-        end
-      else
-        "Cast Confirmation: #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
-      end
+      variables = build_casting_email_variables
+      EmailTemplateService.render_subject("cast_notification", variables)
     end
 
     def default_cast_email_body
-      if @show.linked? && @linked_shows.present? && @linked_shows.any?
-        all_shows = [ @show ] + @linked_shows
-        sorted_shows = all_shows.sort_by(&:date_and_time)
-        show_list = sorted_shows.map do |s|
-          show_name = s.secondary_name.presence || s.event_type.titleize
-          date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-          "<li>#{date}: #{show_name}</li>"
-        end.join("\n")
-
-        <<~BODY
-          <p>You have been cast in the following shows/events for #{@production.name}:</p>
-
-          <ul>
-          #{show_list}
-          </ul>
-
-          <p>Please let us know if you have any scheduling conflicts or questions.</p>
-        BODY
-      else
-        show_name = @show.secondary_name.presence || @show.event_type.titleize
-        show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-        <<~BODY
-          <p>You have been cast for #{@production.name}:</p>
-
-          <ul>
-          <li>#{show_date}: #{show_name}</li>
-          </ul>
-
-          <p>Please let us know if you have any scheduling conflicts or questions.</p>
-        BODY
-      end
+      variables = build_casting_email_variables
+      EmailTemplateService.render_body("cast_notification", variables)
     end
 
     def default_removed_email_subject
-      if @show.linked? && @linked_shows.present? && @linked_shows.any?
-        all_shows = [ @show ] + @linked_shows
-        dates = all_shows.sort_by(&:date_and_time).map { |s| s.date_and_time.strftime("%B %-d") }.uniq
-        if dates.count > 2
-          "Casting Update - #{@production.name} - #{dates.first} - #{dates.last}"
-        else
-          "Casting Update - #{@production.name} - #{dates.join(' & ')}"
-        end
-      else
-        "Casting Update - #{@production.name} - #{@show.date_and_time.strftime('%B %-d')}"
-      end
+      variables = build_casting_email_variables
+      EmailTemplateService.render_subject("removed_from_cast_notification", variables)
     end
 
     def default_removed_email_body
-      if @show.linked? && @linked_shows.present? && @linked_shows.any?
-        all_shows = [ @show ] + @linked_shows
-        sorted_shows = all_shows.sort_by(&:date_and_time)
-        show_list = sorted_shows.map do |s|
-          show_name = s.secondary_name.presence || s.event_type.titleize
-          date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-          "<li>#{date}: #{show_name}</li>"
-        end.join("\n")
+      variables = build_casting_email_variables
+      EmailTemplateService.render_body("removed_from_cast_notification", variables)
+    end
 
-        <<~BODY
-          <p>There has been a change to the casting for #{@production.name}.</p>
-
-          <p>You are no longer cast in the following shows/events:</p>
-          <ul>
-          #{show_list}
-          </ul>
-
-          <p>If you have any questions, please contact us.</p>
-        BODY
+    # Build variables for casting email templates
+    def build_casting_email_variables
+      all_shows = if @show.linked? && @linked_shows.present? && @linked_shows.any?
+                    [ @show ] + @linked_shows
       else
-        show_name = @show.secondary_name.presence || @show.event_type.titleize
-        show_date = @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
-        <<~BODY
-          <p>There has been a change to the casting for #{@production.name}.</p>
-
-          <p>You are no longer cast for:</p>
-          <ul>
-          <li>#{show_date}: #{show_name}</li>
-          </ul>
-
-          <p>If you have any questions, please contact us.</p>
-        BODY
+                    [ @show ]
       end
+
+      sorted_shows = all_shows.sort_by(&:date_and_time)
+      dates = sorted_shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
+
+      show_dates = if dates.count > 2
+                     "#{dates.first} - #{dates.last}"
+      else
+                     dates.join(" & ")
+      end
+
+      shows_list = sorted_shows.map do |s|
+        show_name = s.secondary_name.presence || s.event_type.titleize
+        date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
+        "<li>#{date}: #{show_name}</li>"
+      end.join("\n")
+
+      {
+        production_name: @production.name,
+        show_dates: show_dates,
+        shows_list: shows_list
+      }
     end
 
     # Build sync info comparing this show's cast with linked shows

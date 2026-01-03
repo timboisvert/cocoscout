@@ -92,6 +92,76 @@
       </div>
     <% end %>
 
+    <!-- Recurring Jobs -->
+    <% if @recurring_jobs.any? %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Recurring Jobs" %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% @recurring_jobs.each do |job| %>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm">
+                    <div class="font-medium text-gray-900"><%= job[:key] %></div>
+                    <div class="text-xs text-gray-500 font-mono"><%= job[:class_name] || job[:command]&.truncate(40) %></div>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded"><%= job[:schedule] %></span>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 max-w-md">
+                    <%= job[:description] %>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <% if job[:last_run_at] %>
+                      <%= time_ago_in_words(job[:last_run_at]) %> ago
+                    <% else %>
+                      <span class="text-gray-400">Never</span>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">
+                    <% case job[:last_run_status] %>
+                    <% when "success" %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Success
+                      </span>
+                    <% when "running" %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ⏳ Running
+                      </span>
+                    <% else %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        — Never
+                      </span>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm">
+                    <% if job[:runnable] %>
+                      <%= button_to "Run Now", queue_run_recurring_job_path(job_key: job[:key]),
+                          method: :post,
+                          class: "text-blue-600 hover:text-blue-800 font-medium",
+                          data: { confirm: "Run #{job[:class_name]} now?" } %>
+                    <% else %>
+                      <span class="text-gray-400 text-xs">Command only</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Recent Jobs -->
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <%= render "shared/card_header", title: "Recent Jobs (Last 50)" %>

@@ -13,8 +13,16 @@ module Manage
       @team_invitation = TeamInvitation.new(team_invitation_params)
       @team_invitation.organization = Current.organization
 
-      invitation_subject = params[:team_invitation][:invitation_subject] || "You've been invited to join #{Current.organization.name}'s team on CocoScout"
-      invitation_message = params[:team_invitation][:invitation_message] || "Welcome to CocoScout!\n\n#{Current.organization.name} is using CocoScout to manage its productions. You've been invited to join the team.\n\nClick the link below to accept the invitation and sign in or create an account."
+      default_subject = EmailTemplateService.render_subject("team_invitation", {
+        organization_name: Current.organization.name
+      })
+      default_message = EmailTemplateService.render_body("team_invitation", {
+        organization_name: Current.organization.name,
+        accept_url: "[accept link will be included]"
+      })
+
+      invitation_subject = params[:team_invitation][:invitation_subject] || default_subject
+      invitation_message = params[:team_invitation][:invitation_message] || default_message
 
       if @team_invitation.save
         expire_team_cache

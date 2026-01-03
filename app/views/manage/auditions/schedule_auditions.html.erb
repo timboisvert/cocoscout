@@ -59,7 +59,7 @@
         <div class="space-y-1">
           <% @available_people.each do |request| %>
             <%
-              auditionable = request.auditionable
+              auditionable = request.requestable
               is_scheduled = (@scheduled_request_ids || Set.new).include?(request.id)
             %>
             <button type="button"

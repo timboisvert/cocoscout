@@ -1,7 +1,8 @@
-#!/usr/bin/env ruby
-# frozen_string_literal: true
+#!/bin/bash
 
-require_relative '../config/environment'
-require 'solid_queue/cli'
+# Fix macOS fork safety issue with Solid Queue
+# Must be set before Ruby starts to prevent crashes on macOS
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
-SolidQueue::Cli.start(ARGV)
+# Run Solid Queue via bundler
+exec bundle exec rails solid_queue:start "$@"

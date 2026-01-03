@@ -404,12 +404,8 @@ module Manage
         return
       end
 
-      # Get all cast assignment stages and email assignments
+      # Get all cast assignment stages
       cast_assignment_stages = audition_cycle.cast_assignment_stages.includes(:talent_pool)
-      email_assignments = audition_cycle.audition_email_assignments.group_by do |a|
-        [ a.assignable_type, a.assignable_id ]
-      end.transform_values(&:first)
-      email_groups = audition_cycle.email_groups.index_by(&:group_id)
 
       # Get auditionees who need notifications:
       # 1. Auditionees with pending stages (being added now)
@@ -455,16 +451,10 @@ module Manage
         stage = cast_assignment_stages.find do |s|
           s.assignable_type == assignable.class.name && s.assignable_id == assignable.id
         end
-        email_assignment = email_assignments[[ assignable.class.name, assignable.id ]]
 
         # Determine which email template to use
         email_body = nil
-
-        if email_assignment&.email_group_id.present?
-          # Custom email group
-          custom_group = email_groups[email_assignment.email_group_id]
-          email_body = custom_group&.email_template
-        elsif stage
+        if stage
           # Default "added to cast" email
           talent_pool = talent_pools_by_id[stage.talent_pool_id]
           email_body = generate_default_cast_email(assignable, talent_pool, @production)
@@ -564,17 +554,12 @@ module Manage
         requestable = request.requestable
         next unless requestable # Skip if requestable was deleted
 
-        email_assignment = email_assignments[[ requestable.class.name, requestable.id ]]
 
         # Determine which email template to use
         email_body = nil
         is_scheduled = scheduled_auditionables.include?([ requestable.class.name, requestable.id ])
 
-        if email_assignment&.email_group_id.present?
-          # Custom email group
-          custom_group = email_groups[email_assignment.email_group_id]
-          email_body = custom_group&.email_template
-        elsif is_scheduled
+        if is_scheduled
           # Requestable is scheduled for an audition - send invitation
           email_body = generate_default_invitation_email(requestable, @production, audition_cycle)
         else
@@ -631,62 +616,33 @@ module Manage
       end
     end
 
-    def generate_default_cast_email(person, talent_pool, production)
-      <<~EMAIL
-        Dear #{person.name},
-
-        Congratulations! We're excited to invite you to join the #{talent_pool.name} for #{production.name}.
-
-        Your audition impressed us, and we believe you'll be a great addition to the team. We look forward to working with you.
-
-        Best regards,
-        The #{production.name} Team
-      EMAIL
+    def generate_default_cast_email(person, _talent_pool, production)
+      EmailTemplateService.render_body("audition_added_to_cast", {
+        recipient_name: person.name,
+        production_name: production.name,
+        confirm_by_date: "[date]"
+      })
     end
 
     def generate_default_rejection_email(person, production)
-      <<~EMAIL
-        Dear #{person.name},
-
-        Thank you so much for auditioning for #{production.name}. We truly appreciate the time and effort you put into your audition.
-
-        Unfortunately, we won't be able to offer you a role in this production at this time. We were impressed by your talent and encourage you to audition for future productions.
-
-        We hope to work with you in the future.
-
-        Best regards,
-        The #{production.name} Team
-      EMAIL
+      EmailTemplateService.render_body("audition_not_cast", {
+        recipient_name: person.name,
+        production_name: production.name
+      })
     end
 
     def generate_default_invitation_email(person, production, _audition_cycle)
-      <<~EMAIL
-        Dear #{person.name},
-
-        Congratulations! You've been invited to audition for #{production.name}.
-
-        Your audition schedule is now available. Please log in to view your audition time and location details.
-
-        We look forward to seeing you!
-
-        Best regards,
-        The #{production.name} Team
-      EMAIL
+      EmailTemplateService.render_body("audition_invitation", {
+        recipient_name: person.name,
+        production_name: production.name
+      })
     end
 
     def generate_default_not_invited_email(person, production)
-      <<~EMAIL
-        Dear #{person.name},
-
-        Thank you so much for your interest in #{production.name}. We truly appreciate you taking the time to apply.
-
-        Unfortunately, we won't be able to offer you an audition for this production at this time. We received many qualified applicants and had to make some difficult decisions.
-
-        We encourage you to apply for future productions and wish you all the best in your performing arts journey.
-
-        Best regards,
-        The #{production.name} Team
-      EMAIL
+      EmailTemplateService.render_body("audition_not_invited", {
+        recipient_name: person.name,
+        production_name: production.name
+      })
     end
 
     def set_production

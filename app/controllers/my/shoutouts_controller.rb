@@ -176,9 +176,14 @@ module My
             organization: nil
           )
 
-          # Send invitation email
-          invitation_subject = "#{Current.user.person.name} gave you a shoutout on CocoScout!"
-          invitation_message = "#{Current.user.person.name} gave you a shoutout on CocoScout!\n\nJoin CocoScout to see your shoutout and connect with others in the industry. Click the link below to set a password and create your account."
+          # Send invitation email using template
+          invitation_subject = EmailTemplateService.render_subject("shoutout_invitation", {
+            author_name: Current.user.person.name
+          })
+          invitation_message = EmailTemplateService.render_body("shoutout_invitation", {
+            author_name: Current.user.person.name,
+            setup_url: "[setup link will be included]"
+          })
 
           Manage::PersonMailer.person_invitation(person_invitation, invitation_subject,
                                                  invitation_message).deliver_later
