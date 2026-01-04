@@ -261,6 +261,20 @@ module Manage
 
       email_count = 0
 
+      # Count total recipients for batch
+      total_recipients = people.count { |p| p.user.present? } + groups.count
+
+      # Create batch if sending to multiple recipients
+      email_batch = nil
+      if total_recipients > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: "Please submit your availability for #{@production.name}",
+          recipient_count: total_recipients,
+          sent_at: Time.current
+        )
+      end
+
       # Send emails to people
       people.each do |person|
         next unless person.user
@@ -270,7 +284,9 @@ module Manage
         next if pending_shows.empty?
 
         personalized_message = generate_personalized_message(pending_shows, message_template)
-        Manage::AvailabilityMailer.request_availability(person, @production, personalized_message).deliver_later
+        Manage::AvailabilityMailer.request_availability(
+          person, @production, personalized_message, email_batch_id: email_batch&.id
+        ).deliver_later
         email_count += 1
       end
 
@@ -281,8 +297,9 @@ module Manage
         next if pending_shows.empty?
 
         personalized_message = generate_personalized_message(pending_shows, message_template)
-        Manage::AvailabilityMailer.request_availability_for_group(group, @production,
-                                                                  personalized_message).deliver_later
+        Manage::AvailabilityMailer.request_availability_for_group(
+          group, @production, personalized_message, email_batch_id: email_batch&.id
+        ).deliver_later
         email_count += 1
       end
 

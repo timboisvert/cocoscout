@@ -452,21 +452,102 @@ module Manage
 
     def cancel
       # Shows the cancel/delete options page
+
+      # Build cast member list for notification option
+      if @show.recurring?
+        all_show_ids = @show.recurrence_group.pluck(:id)
+        cast_assignments = ShowPersonRoleAssignment
+                            .where(show_id: all_show_ids)
+                            .includes(:role)
+        person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+        group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+      else
+        cast_assignments = @show.show_person_role_assignments.includes(:role)
+        person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
+        group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
+      end
+
+      @cast_people = Person.where(id: person_ids).includes(profile_headshots: { image_attachment: :blob }).to_a
+      @cast_groups = Group.where(id: group_ids).includes(:members, profile_headshots: { image_attachment: :blob }).to_a
+
+      # Get all unique people (including group members) with emails
+      all_person_ids = Set.new(person_ids)
+      @cast_groups.each do |group|
+        group.group_memberships.each { |gm| all_person_ids << gm.person_id }
+      end
+      @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
+
+      # Create email content for single occurrence
+      @single_subject = EmailTemplateService.render_subject("show_canceled", {
+        production_name: @production.name,
+        event_type: @show.event_type.titleize,
+        event_date: @show.date_and_time.strftime("%A, %B %-d, %Y")
+      })
+
+      @single_body = EmailTemplateService.render_body("show_canceled", {
+        recipient_name: "{{recipient_name}}",
+        production_name: @production.name,
+        event_type: @show.event_type.titleize,
+        event_date: @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p"),
+        location: @show.location&.name
+      })
+
+      # Create email content for all occurrences (if recurring)
+      if @show.recurring?
+        shows = @show.recurrence_group.order(:date_and_time)
+        dates_list = shows.map { |s| s.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") }.join("<br>")
+
+        @all_subject = EmailTemplateService.render_subject("show_canceled", {
+          production_name: @production.name,
+          event_type: "#{@show.event_type.titleize} Series",
+          event_date: "#{shows.count} occurrences"
+        })
+
+        @all_body = EmailTemplateService.render_body("show_canceled", {
+          recipient_name: "{{recipient_name}}",
+          production_name: @production.name,
+          event_type: "#{@show.event_type.titleize} series",
+          event_date: "the following dates:<br>#{dates_list}",
+          location: @show.location&.name
+        })
+      end
+
+      @email_draft = EmailDraft.new(
+        emailable: @show,
+        title: @single_subject,
+        body: @single_body
+      )
     end
 
     def cancel_show
       scope = params[:scope] || "this"
       event_label = @show.event_type.titleize
+      notify_cast = params[:notify_cast] == "1"
+      email_subject = params[:email_subject]
+      email_body = params[:email_body]
 
       if scope == "all" && @show.recurring?
         # Cancel all occurrences in the recurrence group
+        shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
         count = @show.recurrence_group.update_all(canceled: true)
+
+        # Send notifications if requested
+        if notify_cast && email_body.present?
+          send_cancellation_notifications(shows_to_cancel, email_subject, email_body)
+        end
+
         redirect_to manage_production_shows_path(@production),
                     notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}",
                     status: :see_other
       else
         # Cancel just this occurrence
         @show.update!(canceled: true)
+
+        # Send notifications if requested
+        if notify_cast && email_body.present?
+          send_cancellation_notifications([ @show ], email_subject, email_body)
+        end
+
         redirect_to manage_production_shows_path(@production),
                     notice: "#{event_label} was successfully canceled",
                     status: :see_other
@@ -720,6 +801,55 @@ module Manage
             )
           end
         end
+      end
+    end
+
+    # Send cancellation notification emails to cast members
+    def send_cancellation_notifications(shows, email_subject, email_body)
+      # Collect all unique people from all shows
+      all_person_ids = Set.new
+
+      shows.each do |show|
+        # People directly assigned
+        show.show_person_role_assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
+          all_person_ids << id
+        end
+
+        # People in groups assigned
+        group_ids = show.show_person_role_assignments.where(assignable_type: "Group").pluck(:assignable_id)
+        GroupMembership.where(group_id: group_ids).pluck(:person_id).each do |id|
+          all_person_ids << id
+        end
+      end
+
+      return if all_person_ids.empty?
+
+      # Get people with user accounts (they can receive emails)
+      people = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
+
+      # Create batch if sending to multiple people
+      email_batch = nil
+      if people.size > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: email_subject,
+          recipient_count: people.size,
+          sent_at: Time.current
+        )
+      end
+
+      people.each do |person|
+        # Replace placeholder with actual name
+        personalized_body = email_body.gsub("[Recipient Name]", person.name)
+
+        Manage::ShowMailer.canceled_notification(
+          person: person,
+          show: shows.first, # Use first show for subject line context
+          production: @production,
+          email_subject: email_subject,
+          email_body: personalized_body,
+          email_batch_id: email_batch&.id
+        ).deliver_later
       end
     end
   end

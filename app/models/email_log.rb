@@ -5,6 +5,7 @@ class EmailLog < ApplicationRecord
   belongs_to :recipient_entity, polymorphic: true, optional: true
   belongs_to :email_batch, optional: true
   belongs_to :organization, optional: true
+  belongs_to :production, optional: true
 
   # Store email body as an Active Storage attachment (HTML file in S3)
   has_one_attached :body_file
@@ -17,6 +18,7 @@ class EmailLog < ApplicationRecord
   scope :for_user, ->(user) { where(user: user) }
   scope :for_recipient_entity, ->(entity) { where(recipient_entity: entity) }
   scope :for_organization, ->(org) { where(organization: org) }
+  scope :for_production, ->(production) { where(production: production) }
   scope :recent, -> { order(sent_at: :desc) }
 
   # Helper to get body content (from Active Storage or legacy column)

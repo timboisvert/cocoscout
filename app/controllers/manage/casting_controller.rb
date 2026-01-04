@@ -556,6 +556,7 @@ module Manage
       cast_notifications_by_person = {}  # person => [{show:, role:, assignable:}, ...]
       removed_notifications_by_person = {} # person => [{show:, role:, assignable:}, ...]
 
+      # First pass to count recipients for batch creation
       shows_to_finalize.each do |show|
         # Get current cast members who need notification
         unnotified_assignments = show.unnotified_cast_members
@@ -592,14 +593,26 @@ module Manage
         end
       end
 
+      # Create email batch if sending to multiple recipients
+      total_recipients = cast_notifications_by_person.size + removed_notifications_by_person.size
+      email_batch = nil
+      if total_recipients > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: cast_subject,
+          recipient_count: total_recipients,
+          sent_at: Time.current
+        )
+      end
+
       # Send consolidated emails for cast members
       cast_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast)
+        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast, email_batch_id: email_batch&.id)
       end
 
       # Send consolidated emails for removed members
       removed_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed)
+        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed, email_batch_id: email_batch&.id)
       end
 
       # Finalize all shows and record notifications
@@ -870,7 +883,7 @@ module Manage
       params.require(:email_draft).permit(:title, :body)
     end
 
-    def send_casting_emails(assignables_with_roles, email_body, subject, notification_type)
+    def send_casting_emails(assignables_with_roles, email_body, subject, notification_type, email_batch_id: nil)
       assignables_with_roles.each do |assignable, role|
         # For groups, email all members with notifications enabled
         recipients = if assignable.is_a?(Group)
@@ -890,9 +903,9 @@ module Manage
                                          .gsub("[Production]", @production.name)
 
           if notification_type == :cast
-            Manage::CastingMailer.cast_notification(person, @show, personalized_body, subject).deliver_later
+            Manage::CastingMailer.cast_notification(person, @show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
           else
-            Manage::CastingMailer.removed_notification(person, @show, personalized_body, subject).deliver_later
+            Manage::CastingMailer.removed_notification(person, @show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
           end
         end
 
@@ -910,7 +923,7 @@ module Manage
     end
 
     # Send a single consolidated email to a person with all their assignments across linked shows
-    def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type)
+    def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type, email_batch_id: nil)
       # Build a list of all shows and roles for this person
       shows_info = assignments.map do |a|
         show = a[:show]
@@ -966,9 +979,9 @@ module Manage
       primary_show = assignments.first[:show]
 
       if notification_type == :cast
-        Manage::CastingMailer.cast_notification(person, primary_show, personalized_body, subject).deliver_later
+        Manage::CastingMailer.cast_notification(person, primary_show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
       else
-        Manage::CastingMailer.removed_notification(person, primary_show, personalized_body, subject).deliver_later
+        Manage::CastingMailer.removed_notification(person, primary_show, personalized_body, subject, email_batch_id: email_batch_id).deliver_later
       end
     end
 

@@ -443,6 +443,26 @@ module Manage
       talent_pool = @production.talent_pool
       talent_pools_by_id = talent_pool ? { talent_pool.id => talent_pool } : {}
 
+      # Count total recipients for batch creation
+      total_recipients = auditioned_assignables.sum do |assignable|
+        if assignable.is_a?(Group)
+          assignable.group_memberships.select(&:notifications_enabled?).count { |m| m.person.email.present? }
+        else
+          assignable.email.present? ? 1 : 0
+        end
+      end
+
+      # Create email batch if sending to multiple recipients
+      email_batch = nil
+      if total_recipients > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: "Audition Results for #{@production.name}",
+          recipient_count: total_recipients,
+          sent_at: Time.current
+        )
+      end
+
       emails_sent = 0
       auditionees_added_to_casts = 0
 
@@ -489,7 +509,7 @@ module Manage
           personalized_body = email_body.gsub("[Name]", person.name)
 
           begin
-            Manage::AuditionMailer.casting_notification(person, @production, personalized_body).deliver_later
+            Manage::AuditionMailer.casting_notification(person, @production, personalized_body, email_batch_id: email_batch&.id).deliver_later
             emails_sent += 1
           rescue StandardError => e
             Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
@@ -548,6 +568,28 @@ module Manage
                                         .index_by { |a| [ a.assignable_type, a.assignable_id ] }
       email_groups = audition_cycle.email_groups.where(group_type: "audition").index_by(&:group_id)
 
+      # Count total recipients for batch creation
+      total_recipients = requests_to_process.sum do |req|
+        requestable = req.requestable
+        next 0 unless requestable
+        if requestable.is_a?(Group)
+          requestable.group_memberships.includes(:person).select(&:notifications_enabled?).count { |m| m.person.email.present? && (m.person.user.nil? || m.person.user.notification_enabled?(:audition_invitations)) }
+        else
+          (requestable.email.present? && (requestable.user.nil? || requestable.user.notification_enabled?(:audition_invitations))) ? 1 : 0
+        end
+      end
+
+      # Create email batch if sending to multiple recipients
+      email_batch = nil
+      if total_recipients > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: "#{@production.name} Auditions",
+          recipient_count: total_recipients,
+          sent_at: Time.current
+        )
+      end
+
       emails_sent = 0
 
       requests_to_process.each do |request|
@@ -587,7 +629,7 @@ module Manage
           personalized_body = email_body.gsub("[Name]", recipient.name)
 
           begin
-            Manage::AuditionMailer.invitation_notification(recipient, @production, personalized_body).deliver_later
+            Manage::AuditionMailer.invitation_notification(recipient, @production, personalized_body, email_batch_id: email_batch&.id).deliver_later
             emails_sent += 1
           rescue StandardError => e
             Rails.logger.error "Failed to send email to #{recipient.email}: #{e.message}"

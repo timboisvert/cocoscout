@@ -5,7 +5,7 @@ class SuperadminController < ApplicationController
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person organizations_list organization_detail
                          email_templates email_template_new email_template_create email_template_edit email_template_update
-                         email_template_destroy email_template_preview]
+                         email_template_destroy email_template_preview search_users]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -37,6 +37,27 @@ class SuperadminController < ApplicationController
     else
       @recent_impersonations = []
     end
+  end
+
+  def search_users
+    query = params[:q].to_s.strip.downcase
+    return render json: [] if query.length < 2
+
+    # Search users by email or by their person's name
+    users = User.left_joins(:default_person)
+                .where("LOWER(users.email_address) LIKE ? OR LOWER(people.name) LIKE ?", "%#{query}%", "%#{query}%")
+                .includes(:default_person)
+                .order(:email_address)
+                .limit(10)
+
+    results = users.map do |user|
+      {
+        email: user.email_address,
+        name: user.default_person&.name || user.email_address
+      }
+    end
+
+    render json: results
   end
 
   def people_list

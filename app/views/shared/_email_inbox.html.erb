@@ -1,13 +1,6 @@
 <%# Shared email inbox partial - displays paginated list of emails sent to an entity %>
 <%# locals: email_logs, email_logs_pagy, entity, search_query (optional) %>
 
-<%# Note about CocoScout emails %>
-<div class="mb-4 px-3 py-2 border-l-2 border-gray-300 bg-gray-50">
-  <p class="text-xs text-gray-500">
-    Only shows emails sent through CocoScout.
-  </p>
-</div>
-
 <%# Search form - styled like directory search %>
 <div class="mb-4" data-controller="search-bar">
   <%= form_with url: url_for, method: :get, data: { turbo: false, search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
@@ -74,7 +67,7 @@
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
     <div class="divide-y divide-gray-200">
       <% email_logs.each do |log| %>
-        <%= link_to manage_email_log_path(log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
+        <%= link_to manage_directory_email_path(log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
           <div class="flex items-center justify-between gap-4">
             <div class="flex-1 min-w-0">
               <div class="text-sm text-gray-900 font-medium truncate group-hover:text-pink-600">

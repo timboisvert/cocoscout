@@ -5,9 +5,7 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Directory", manage_directory_path],
-      [@recipient_entity&.name || "Unknown", @emails_tab_path],
-      ["Emails", @emails_tab_path]
+      ["Communications", manage_production_communications_path(@production)]
     ],
     text: @email_log.subject || "(no subject)",
     links: []
@@ -24,7 +22,9 @@
         </p>
       </div>
 
-      <% if @other_recipients.any? %>
+      <%# Show all recipients if this was a batch email %>
+      <% total_recipients = @other_recipients.count + 1 %>
+      <% if total_recipients > 1 %>
         <div class="px-6 py-3 border-b border-gray-200 bg-gray-50" data-controller="disclosure">
           <button
             type="button"
@@ -34,10 +34,29 @@
             <svg data-disclosure-target="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 transition-transform">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
-            Also sent to <%= pluralize(@other_recipients.count, "other person") %>
+            Sent to <%= pluralize(total_recipients, "person") %>
           </button>
           <div data-disclosure-target="content" class="hidden mt-3">
             <div class="flex flex-wrap gap-3">
+              <%# First show the primary recipient %>
+              <% entity = @email_log.recipient_entity %>
+              <% if entity %>
+                <%= link_to(entity.is_a?(Person) ? manage_person_path(entity) : manage_group_path(entity), class: "flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-pink-300 hover:bg-pink-50 transition") do %>
+                  <% if entity.respond_to?(:headshot) && entity.headshot&.attached? %>
+                    <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= entity.name.first.upcase %></div>
+                    <% end %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= entity.name.first.upcase %></div>
+                  <% end %>
+                  <span class="text-sm text-gray-700"><%= entity.name %></span>
+                <% end %>
+              <% end %>
+
+              <%# Then show other recipients %>
               <% @other_recipients.each do |log| %>
                 <% entity = log.recipient_entity %>
                 <% if entity %>
@@ -58,6 +77,13 @@
               <% end %>
             </div>
           </div>
+        </div>
+      <% else %>
+        <%# Single recipient %>
+        <div class="px-6 py-3 border-b border-gray-200 bg-gray-50">
+          <p class="text-sm text-gray-600">
+            To: <%= @email_log.recipient %>
+          </p>
         </div>
       <% end %>
 

@@ -47,6 +47,11 @@
               active: controller_name == "questionnaires"
             },
             {
+              label: "Communications",
+              path: manage_production_communications_path(Current.production),
+              active: controller_name == "communications"
+            },
+            {
               label: "Directory",
               path: manage_directory_path,
               active: ["directory", "people", "groups"].include?(controller_name)

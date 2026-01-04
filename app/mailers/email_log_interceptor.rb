@@ -33,6 +33,10 @@ class EmailLogInterceptor
     organization_id = message.header["X-Organization-ID"]&.value
     organization = Organization.find_by(id: organization_id) if organization_id.present?
 
+    # Extract production if provided
+    production_id = message.header["X-Production-ID"]&.value
+    production = Production.find_by(id: production_id) if production_id.present?
+
     # Create the email log
     email_log = EmailLog.create!(
       user: user,
@@ -45,7 +49,8 @@ class EmailLogInterceptor
       delivery_status: "queued",
       recipient_entity: recipient_entity,
       email_batch: email_batch,
-      organization: organization
+      organization: organization,
+      production: production
     )
 
     # Attach body as Active Storage file (stored in S3 in production)

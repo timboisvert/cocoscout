@@ -46,9 +46,22 @@ class EmailTemplate < ApplicationRecord
     template_type == "structured" || template_type.blank?
   end
 
+  # Check if production name should be prepended to subject
+  def prepend_production_name?
+    prepend_production_name == true
+  end
+
   # Render the subject with variable substitution
+  # If prepend_production_name is true and production_name is provided, it's added in brackets
   def render_subject(variables = {})
-    interpolate(subject, variables)
+    rendered = interpolate(subject, variables)
+
+    # Prepend production name if flag is set and production_name variable provided
+    if prepend_production_name? && variables[:production_name].present?
+      rendered = "[#{variables[:production_name]}] #{rendered}"
+    end
+
+    rendered
   end
 
   # Render the body with variable substitution

@@ -50,6 +50,11 @@
             <%= f.check_box :active, class: "h-4 w-4 rounded border-gray-400 text-pink-500 focus:ring-pink-500" %>
             <%= f.label :active, "Active", class: "text-sm text-gray-700" %>
           </div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <%= f.check_box :prepend_production_name, class: "h-4 w-4 rounded border-gray-400 text-pink-500 focus:ring-pink-500" %>
+            <%= f.label :prepend_production_name, "Prepend [Production Name] to subject", class: "text-sm text-gray-700" %>
+          </div>
         </div>
       </div>
 

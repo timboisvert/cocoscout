@@ -50,6 +50,12 @@ class ApplicationMailer < ActionMailer::Base
       headers["X-Organization-ID"] = organization.id.to_s
     end
 
+    # Add production ID for scoping email logs to a production
+    production_id = find_production_id
+    if production_id
+      headers["X-Production-ID"] = production_id.to_s
+    end
+
     super(headers, &block)
   end
 
@@ -80,5 +86,15 @@ class ApplicationMailer < ActionMailer::Base
       @group&.organization ||
       @team_invitation&.organization ||
       Current.organization
+  end
+
+  def find_production_id
+    # Find the production ID from instance variables, params, or method override
+    # Priority: explicit instance variable, params, method override, @production, @show's production
+    @production_id ||
+      params[:production_id] ||
+      (respond_to?(:find_production_id_override, true) ? find_production_id_override : nil) ||
+      @production&.id ||
+      @show&.production_id
   end
 end

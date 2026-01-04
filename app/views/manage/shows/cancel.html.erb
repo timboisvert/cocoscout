@@ -1,138 +1,251 @@
-<% content_for :title, @show.canceled ? "Delete #{@show.event_type.titleize}" : "Cancel #{@show.event_type.titleize}" %>
+<% content_for :title, @show.canceled ? "Manage Canceled #{@show.event_type.titleize}" : "Cancel #{@show.event_type.titleize}" %>
 
-<div class="w-full">
+<div class="w-full"
+     data-controller="cancel-show"
+     data-cancel-show-event-type-value="<%= @show.event_type.titleize %>"
+     data-cancel-show-single-date-value="<%= @show.date_and_time.strftime('%B %-d, %Y') %>"
+     data-cancel-show-occurrence-count-value="<%= @show.recurring? ? @show.recurrence_group.count : 1 %>"
+     data-cancel-show-single-subject-value="<%= @single_subject %>"
+     data-cancel-show-all-subject-value="<%= @all_subject %>"
+     data-cancel-show-single-body-value="<%= j(@single_body.to_s) %>"
+     data-cancel-show-all-body-value="<%= j(@all_body.to_s) %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Shows & Events", manage_production_shows_path(@production)]
     ],
-    text: @show.canceled ? "Delete Show" : "Cancel Show",
+    text: @show.canceled ? "Manage Canceled Event" : "Cancel or Delete Event",
     links: []
   } %>
 
-  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "#{@show.canceled ? 'Manage Canceled' : 'Cancel'} #{@show.event_type.titleize}" do %>
-      <p class="text-sm text-gray-600 mt-1">
-        <%= @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") %>
-      </p>
-    <% end %>
-
+  <!-- Event Info Card -->
+  <div class="mt-5 bg-white border border-gray-200 rounded-lg overflow-hidden">
     <div class="p-6">
-      <div class="text-gray-700 text-sm pb-6 border-b border-gray-200">
-        <% if @show.canceled %>
-          <p>This event is currently canceled. You can uncancel it to restore it, or permanently delete it from CocoScout.</p>
-        <% else %>
-          <p>You can either cancel this event (which keeps it in the calendar but marks it as canceled) or permanently delete it from CocoScout.</p>
-        <% end %>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <% if @show.canceled %>
+            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+            </svg>
+          <% else %>
+            <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          <% end %>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-lg font-semibold text-gray-900">
+            <%= @show.event_type.titleize %>
+            <% if @show.secondary_name.present? %>
+              <span class="text-gray-500 font-normal">- <%= @show.secondary_name %></span>
+            <% end %>
+            <% if @show.canceled %>
+              <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Canceled</span>
+            <% end %>
+          </h2>
+          <p class="text-sm text-gray-600 mt-1">
+            <%= @show.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") %>
+          </p>
+          <% if @show.location.present? %>
+            <p class="text-sm text-gray-500 mt-0.5"><%= @show.location.name %></p>
+          <% end %>
+          <% if @show.recurring? %>
+            <p class="text-xs text-pink-600 mt-2">
+              <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Part of a recurring series (<%= @show.recurrence_group.count %> occurrences)
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @show.canceled %>
+    <!-- Uncancel Section -->
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Restore This Event" %>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">Remove the canceled status and restore this event to the calendar.</p>
+
         <% if @show.recurring? %>
-          <p class="mt-2">Since this is a recurring event, you can choose to apply the action to just this occurrence or all occurrences in the series.</p>
+          <div class="flex flex-wrap gap-2">
+            <%= button_to "Uncancel Only This Occurrence",
+                uncancel_manage_production_show_path(@production, @show, scope: "this"),
+                method: :patch,
+                class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
+
+            <%= button_to "Uncancel All Canceled Occurrences",
+                uncancel_manage_production_show_path(@production, @show, scope: "all"),
+                method: :patch,
+                class: "rounded-lg px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer transition-colors" %>
+          </div>
+        <% else %>
+          <%= button_to "Uncancel This #{@show.event_type.titleize}",
+              uncancel_manage_production_show_path(@production, @show),
+              method: :patch,
+              class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
         <% end %>
       </div>
+    </div>
+  <% else %>
+    <!-- Cancel Section -->
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Cancel This Event" %>
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-6">Mark as canceled but keep it visible in the calendar. You can uncancel it later if needed.</p>
 
-      <% if @show.canceled %>
-        <!-- Uncancel Section -->
-        <div class="mt-6 p-4 border border-green-200 rounded-lg bg-green-50">
-          <div class="flex items-start mb-3">
-            <svg class="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <h3 class="text-base font-semibold text-gray-900">Uncancel <%= @show.event_type.titleize %></h3>
+        <%= form_with url: cancel_show_manage_production_show_path(@production, @show), method: :patch, data: { turbo: false, "cancel-show-target": "cancelForm" } do |f| %>
+          <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
+          <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
+          <input type="hidden" name="email_subject" value="" data-cancel-show-target="emailSubjectField">
+          <input type="hidden" name="email_body" value="" data-cancel-show-target="emailBodyField">
+
+          <div class="space-y-4">
+            <% if @show.recurring? %>
+              <!-- Cancel All Occurrences Toggle -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Cancel all <%= @show.recurrence_group.count %> occurrences</p>
+                  <p class="text-xs text-gray-500 mt-1">Cancel the entire recurring series instead of just this one</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox"
+                         data-cancel-show-target="scopeCheckbox"
+                         data-action="change->cancel-show#toggleScope"
+                         class="sr-only peer">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+            <% end %>
+
+            <% if @people_with_email.any? %>
+              <!-- Notify Cast Toggle -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">Notify cast members</p>
+                  <p class="text-xs text-gray-500 mt-1"><%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox"
+                         data-cancel-show-target="notifyCheckbox"
+                         data-action="change->cancel-show#toggleNotifySection"
+                         class="sr-only peer">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+
+              <!-- Notify Cast Section (Hidden by default) -->
+              <div data-cancel-show-target="notifySection" class="hidden pt-4">
+                <!-- Cast Members List (styled like contact_cast) -->
+                <div class="mb-4">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="text-sm font-medium text-gray-700">Sending to</span>
+                    <span class="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-800">
+                      <%= @cast_people.count + @cast_groups.count %> cast <%= 'member'.pluralize(@cast_people.count + @cast_groups.count) %>
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <% @cast_people.sort_by(&:name).each do |person| %>
+                      <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                        <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
+                            <%= person.initials %>
+                          </div>
+                        <% end %>
+                        <span class="text-xs font-medium text-gray-700 truncate"><%= person.name %></span>
+                      </div>
+                    <% end %>
+
+                    <% @cast_groups.sort_by(&:name).each do |group| %>
+                      <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                        <% headshot_variant = group.safe_headshot_variant(:thumb) %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: group.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                        <% else %>
+                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
+                            <%= group.initials %>
+                          </div>
+                        <% end %>
+                        <span class="text-xs font-medium text-gray-700 truncate"><%= group.name %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Email Compose -->
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                    <input type="text"
+                           data-cancel-show-target="emailSubject"
+                           value="<%= @email_draft.title %>"
+                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500">
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                    <%= form_with model: @email_draft, url: "#", id: "email-draft-form", data: { "cancel-show-target": "emailDraftForm" } do |form| %>
+                      <%= form.rich_text_area :body,
+                        class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
-          <p class="text-sm text-gray-700 mb-4 ml-8">Restore this event and remove the canceled status.</p>
 
-          <% if @show.recurring? %>
-            <div class="ml-8 space-y-2 flex flex-wrap gap-2">
-              <%= button_to "Uncancel Only This Occurrence",
-                  uncancel_manage_production_show_path(@production, @show, scope: "this"),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer" %>
+          <div class="mt-6">
+            <%= f.submit "Cancel #{@show.event_type.titleize}",
+                class: "rounded-lg px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium cursor-pointer transition-colors",
+                data: { "cancel-show-target": "submitButton", turbo_confirm: "Are you sure you want to cancel this #{@show.event_type.downcase}?" } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
-              <%= button_to "Uncancel All Canceled Occurrences",
-                  uncancel_manage_production_show_path(@production, @show, scope: "all"),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer" %>
-            </div>
-          <% else %>
-            <div class="ml-8">
-              <%= button_to "Uncancel This #{@show.event_type.titleize}",
-                  uncancel_manage_production_show_path(@production, @show),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer" %>
-            </div>
-          <% end %>
+  <!-- Delete Section -->
+  <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Permanently Delete" %>
+    <div class="p-6">
+      <div class="flex items-start gap-3 mb-4">
+        <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+          <p class="text-sm text-gray-700 font-medium">This action cannot be undone</p>
+          <p class="text-sm text-gray-500 mt-0.5">The event and all associated data will be permanently removed.</p>
+        </div>
+      </div>
+
+      <% if @show.recurring? %>
+        <div class="flex flex-wrap gap-2">
+          <%= button_to "Delete Only This Occurrence",
+              delete_show_manage_production_show_path(@production, @show, scope: "this"),
+              method: :delete,
+              class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
+              data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } %>
+
+          <%= button_to "Delete All #{@show.recurrence_group.count} Occurrences",
+              delete_show_manage_production_show_path(@production, @show, scope: "all"),
+              method: :delete,
+              class: "rounded-lg px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium cursor-pointer transition-colors",
+              data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } %>
         </div>
       <% else %>
-        <!-- Cancel Section -->
-        <div class="mt-6 p-4 border border-yellow-200 rounded-lg bg-yellow-50">
-          <div class="flex items-start mb-3">
-            <svg class="w-5 h-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <h3 class="text-base font-semibold text-gray-900">Cancel <%= @show.event_type.titleize %></h3>
-          </div>
-          <p class="text-sm text-gray-700 mb-4 ml-8">Mark as canceled but keep it in the calendar. You can uncancel it later.</p>
-
-          <% if @show.recurring? %>
-            <div class="ml-8 space-y-2 flex flex-wrap gap-2">
-              <%= button_to "Cancel Only This Occurrence",
-                  cancel_show_manage_production_show_path(@production, @show, scope: "this"),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium cursor-pointer",
-                  data: { turbo_confirm: "Are you sure you want to cancel this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}?" } %>
-
-              <%= button_to "Cancel All #{@show.recurrence_group.count} Occurrences",
-                  cancel_show_manage_production_show_path(@production, @show, scope: "all"),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium cursor-pointer",
-                  data: { turbo_confirm: "Are you sure you want to cancel all #{@show.recurrence_group.count} occurrences in this series?" } %>
-            </div>
-          <% else %>
-            <div class="ml-8">
-              <%= button_to "Cancel This #{@show.event_type.titleize}",
-                  cancel_show_manage_production_show_path(@production, @show, scope: "this"),
-                  method: :patch,
-                  class: "rounded-lg px-3.5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium cursor-pointer",
-                  data: { turbo_confirm: "Are you sure you want to cancel this #{@show.event_type.downcase}?" } %>
-            </div>
-          <% end %>
-        </div>
+        <%= button_to "Delete This #{@show.event_type.titleize}",
+            delete_show_manage_production_show_path(@production, @show, scope: "this"),
+            method: :delete,
+            class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
+            data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } %>
       <% end %>
-
-      <!-- Delete Section -->
-      <div class="mt-6 p-4 border border-red-200 rounded-lg bg-red-50">
-        <div class="flex items-start mb-3">
-          <svg class="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-          </svg>
-          <h3 class="text-base font-semibold text-gray-900">Delete <%= @show.event_type.titleize %></h3>
-        </div>
-        <p class="text-sm text-gray-700 mb-4 ml-8">Permanently delete. This cannot be undone.</p>
-
-        <% if @show.recurring? %>
-          <div class="ml-8 space-y-2 flex flex-wrap gap-2">
-            <%= button_to "Delete Only This Occurrence",
-                delete_show_manage_production_show_path(@production, @show, scope: "this"),
-                method: :delete,
-                class: "rounded-lg px-3.5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer",
-                data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } %>
-
-            <%= button_to "Delete All #{@show.recurrence_group.count} Occurrences",
-                delete_show_manage_production_show_path(@production, @show, scope: "all"),
-                method: :delete,
-                class: "rounded-lg px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium cursor-pointer",
-                data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } %>
-          </div>
-        <% else %>
-          <div class="ml-8">
-            <%= button_to "Delete This #{@show.event_type.titleize}",
-                delete_show_manage_production_show_path(@production, @show, scope: "this"),
-                method: :delete,
-                class: "rounded-lg px-3.5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer",
-                data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } %>
-          </div>
-        <% end %>
-      </div>
     </div>
   </div>
 </div>

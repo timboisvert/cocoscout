@@ -45,6 +45,14 @@
                 </span>
               <% end %>
             </div>
+            <% if @template.prepend_production_name? %>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Prefix</label>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                  [Production Name] prepended
+                </span>
+              </div>
+            <% end %>
 
             <!-- Template Type -->
             <div>
@@ -232,6 +240,9 @@
               <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Subject</label>
               <div class="text-lg font-medium text-gray-900 bg-gray-50 p-3 rounded border border-gray-200"
                    data-email-template-preview-target="subjectPreview">
+                <% if @template.prepend_production_name? %>
+                  <span class="text-pink-600">[Sample Production]</span>
+                <% end %>
                 <%= @preview[:subject] %>
               </div>
             </div>

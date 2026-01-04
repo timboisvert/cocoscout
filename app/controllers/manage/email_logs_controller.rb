@@ -17,12 +17,16 @@ module Manage
       end
 
       # Determine back path based on recipient entity type
-      @back_path = if @recipient_entity.is_a?(Person)
-                     manage_person_path(@recipient_entity, tab: 3)
+      # Person has Emails at tab 5, Group has Emails at tab 4
+      if @recipient_entity.is_a?(Person)
+        @back_path = manage_person_path(@recipient_entity)
+        @emails_tab_path = "#{@back_path}#tab-5"
       elsif @recipient_entity.is_a?(Group)
-                     manage_group_path(@recipient_entity, tab: 3)
+        @back_path = manage_group_path(@recipient_entity)
+        @emails_tab_path = "#{@back_path}#tab-4"
       else
-                     manage_directory_path
+        @back_path = manage_directory_path
+        @emails_tab_path = @back_path
       end
     end
   end

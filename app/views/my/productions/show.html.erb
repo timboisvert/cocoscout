@@ -32,29 +32,29 @@
           <span class="text-xs text-gray-500 font-medium">In talent pool as:</span>
           <% @person_memberships.each do |membership| %>
             <% person = membership.member %>
-            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-pink-50 border border-pink-200 rounded">
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded">
               <% headshot = person.safe_headshot_variant(:thumb) %>
               <% if headshot %>
                 <%= image_tag headshot, class: "w-5 h-5 rounded object-cover" %>
               <% else %>
-                <div class="w-5 h-5 rounded bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-medium">
+                <div class="w-5 h-5 rounded bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium">
                   <%= person.initials %>
                 </div>
               <% end %>
-              <span class="text-xs font-medium text-pink-700"><%= person.name %></span>
+              <span class="text-xs font-medium text-gray-700"><%= person.name %></span>
             </div>
           <% end %>
           <% @group_memberships.each do |membership| %>
             <% group = membership.member %>
-            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 border border-purple-200 rounded">
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded">
               <% if group.headshot&.attached? %>
                 <%= image_tag group.headshot.variant(resize_to_fill: [20, 20]), class: "w-5 h-5 rounded object-cover" %>
               <% else %>
-                <div class="w-5 h-5 rounded bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-medium">
+                <div class="w-5 h-5 rounded bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium">
                   <%= group.name[0..1].upcase %>
                 </div>
               <% end %>
-              <span class="text-xs font-medium text-purple-700"><%= group.name %></span>
+              <span class="text-xs font-medium text-gray-700"><%= group.name %></span>
             </div>
           <% end %>
         </div>

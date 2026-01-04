@@ -134,6 +134,22 @@ module Manage
         return
       end
 
+      # Get eligible people for invitations (to count for batch)
+      eligible_people = Person.where(id: person_ids).select do |person|
+        @vacancy.can_invite?(person) && (person.user.nil? || person.user.notification_enabled?(:vacancy_invitations))
+      end
+
+      # Create email batch if sending to multiple recipients
+      email_batch = nil
+      if eligible_people.size > 1
+        email_batch = EmailBatch.create!(
+          user: Current.user,
+          subject: email_subject || "You're invited to fill a role in #{@production.name}",
+          recipient_count: eligible_people.size,
+          sent_at: Time.current
+        )
+      end
+
       invited_count = 0
 
       Person.where(id: person_ids).find_each do |person|
@@ -147,7 +163,7 @@ module Manage
 
         # Send the invitation email if user has notifications enabled
         if person.user.nil? || person.user.notification_enabled?(:vacancy_invitations)
-          VacancyInvitationMailer.invitation_email(invitation).deliver_later
+          VacancyInvitationMailer.invitation_email(invitation, email_batch_id: email_batch&.id).deliver_later
         end
         invited_count += 1
       end

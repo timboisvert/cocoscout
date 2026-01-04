@@ -9,6 +9,8 @@ module Manage
       @message = message
       @email_batch_id = email_batch_id
 
+      headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
+
       mail(
         to: person.user.email_address,
         subject: subject

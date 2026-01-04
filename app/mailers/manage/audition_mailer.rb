@@ -2,10 +2,13 @@
 
 module Manage
   class AuditionMailer < ApplicationMailer
-    def casting_notification(person, production, email_body)
+    def casting_notification(person, production, email_body, email_batch_id: nil)
       @person = person
       @production = production
       @email_body = email_body
+      @email_batch_id = email_batch_id
+
+      headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
 
       mail(
         to: person.email,
@@ -13,10 +16,13 @@ module Manage
       )
     end
 
-    def invitation_notification(person, production, email_body)
+    def invitation_notification(person, production, email_body, email_batch_id: nil)
       @person = person
       @production = production
       @email_body = email_body
+      @email_batch_id = email_batch_id
+
+      headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
 
       mail(
         to: person.email,
@@ -47,6 +53,12 @@ module Manage
         to: recipient_user.email_address,
         subject: "[#{@production.name}] #{@person.name} has left the talent pool"
       )
+    end
+
+    private
+
+    def find_email_batch_id
+      @email_batch_id
     end
   end
 end

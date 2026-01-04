@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_03_023405) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_03_180839) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -290,6 +290,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_023405) do
     t.string "mailer_class"
     t.string "message_id"
     t.integer "organization_id"
+    t.integer "production_id"
     t.string "recipient", null: false
     t.integer "recipient_entity_id"
     t.string "recipient_entity_type"
@@ -300,6 +301,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_023405) do
     t.index ["email_batch_id"], name: "index_email_logs_on_email_batch_id"
     t.index ["message_id"], name: "index_email_logs_on_message_id"
     t.index ["organization_id"], name: "index_email_logs_on_organization_id"
+    t.index ["production_id"], name: "index_email_logs_on_production_id"
     t.index ["recipient"], name: "index_email_logs_on_recipient"
     t.index ["recipient_entity_type", "recipient_entity_id"], name: "index_email_logs_on_recipient_entity"
     t.index ["sent_at", "user_id"], name: "index_email_logs_on_sent_at_desc_user_id", order: { sent_at: :desc }
@@ -319,6 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_023405) do
     t.string "mailer_class"
     t.string "name", null: false
     t.text "notes"
+    t.boolean "prepend_production_name", default: false
     t.string "subject", null: false
     t.string "template_type"
     t.datetime "updated_at", null: false

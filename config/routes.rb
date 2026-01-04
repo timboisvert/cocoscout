@@ -44,6 +44,7 @@ Rails.application.routes.draw do
   scope "/superadmin" do
     get  "/",                   to: "superadmin#index",               as: "superadmin"
     post "/impersonate",        to: "superadmin#impersonate",         as: "impersonate_user"
+    get  "/search_users",       to: "superadmin#search_users",        as: "search_users"
     post "/stop_impersonating", to: "superadmin#stop_impersonating",  as: "stop_impersonating_user"
     post "/change_email",       to: "superadmin#change_email",        as: "change_email_user"
     get  "/email_logs",         to: "superadmin#email_logs",          as: "email_logs"
@@ -151,6 +152,11 @@ Rails.application.routes.draw do
       get "/inactive", to: "questionnaires#inactive", as: "questionnaire_inactive"
     end
 
+    # Messages (inbox for talent)
+    get   "/messages",                          to: "messages#index",                     as: "messages"
+    post  "/messages/send",                     to: "messages#send_message",              as: "send_message_messages"
+    get   "/messages/:id",                      to: "messages#show",                      as: "email_log"
+
     # Shoutouts management
     get   "/shoutouts",                         to: "shoutouts#index",                    as: "shoutouts"
     post  "/shoutouts",                         to: "shoutouts#create",                   as: "create_shoutout"
@@ -247,7 +253,10 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :email_logs, only: [ :show ]
+    # Email logs are accessed through directory (people/groups)
+    scope "/directory" do
+      get "/emails/:id", to: "email_logs#show", as: "directory_email"
+    end
 
     resources :locations do
       member do
@@ -452,6 +461,12 @@ Rails.application.routes.draw do
       end
 
       get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
+
+      resources :communications, only: %i[index show] do
+        collection do
+          post :send_message
+        end
+      end
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)
