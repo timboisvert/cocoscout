@@ -47,6 +47,19 @@ module My
       subject = @email_draft.title
       body_html = @email_draft.body.to_s
 
+      # Prepare variables for the template
+      template_vars = {
+        sender_name: Current.user.person.name,
+        sender_email: Current.user.person.email,
+        production_name: production&.name,
+        body_html: body_html,
+        subject: subject
+      }
+
+      # Render subject and body using the passthrough template
+      rendered_subject = EmailTemplateService.render_subject("talent_pool_message", template_vars)
+      rendered_body = EmailTemplateService.render_body("talent_pool_message", template_vars)
+
       if production_id.blank?
         redirect_to my_messages_path, alert: "Please select a production to contact."
         return
@@ -71,15 +84,13 @@ module My
         return
       end
 
-      # Prepend production name to subject
-      prefixed_subject = "[#{production.name}] #{subject}"
 
       # Send the email to the production
       My::TalentMessageMailer.send_to_production(
         sender: Current.user.person,
         production: production,
-        subject: prefixed_subject,
-        body_html: body_html
+        subject: rendered_subject,
+        body_html: rendered_body
       ).deliver_later
 
       redirect_to my_messages_path,

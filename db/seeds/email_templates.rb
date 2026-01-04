@@ -16,6 +16,29 @@ module EmailTemplateSeeds
 
       templates = [
         # ============================================
+        # TALENT POOL MESSAGE
+        # For My::MessagesController#send_message
+        # ============================================
+        {
+          key: "talent_pool_message",
+          name: "Talent Pool Message",
+          category: "notification",
+          subject: "Message from {{sender_name}} via CocoScout",
+          description: "Message sent from a user to a production's team via the talent pool. Subject and body are passed through as provided by the sender.",
+          template_type: "passthrough",
+          mailer_class: "My::TalentMessageMailer",
+          mailer_action: "send_to_production",
+          prepend_production_name: true,
+          body: "{{body_html}}",
+          available_variables: [
+            { name: "sender_name", description: "Name of the sender (person)" },
+            { name: "sender_email", description: "Email address of the sender" },
+            { name: "production_name", description: "Name of the production" },
+            { name: "body_html", description: "HTML content of the message" },
+            { name: "subject", description: "Subject of the message" }
+          ]
+        },
+        # ============================================
         # AUTH EMAILS
         # ============================================
         {
