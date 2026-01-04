@@ -79,12 +79,28 @@
           </div>
         </div>
       <% else %>
-        <%# Single recipient %>
-        <div class="px-6 py-3 border-b border-gray-200 bg-gray-50">
-          <p class="text-sm text-gray-600">
-            To: <%= @email_log.recipient %>
-          </p>
-        </div>
+        <%# Single recipient: show 'Sent to' and the recipient info box %>
+        <% entity = @email_log.recipient_entity %>
+        <% if entity %>
+          <div class="px-6 py-3 border-b border-gray-200 bg-gray-50">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-600">Sent to</span>
+              <%= link_to(entity.is_a?(Person) ? manage_person_path(entity) : manage_group_path(entity), class: "flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-pink-300 hover:bg-pink-50 transition") do %>
+                <% if entity.respond_to?(:headshot) && entity.headshot&.attached? %>
+                  <% headshot_variant = entity.safe_headshot_variant(:thumb) %>
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, class: "w-6 h-6 rounded object-cover" %>
+                  <% else %>
+                    <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= entity.name.first.upcase %></div>
+                  <% end %>
+                <% else %>
+                  <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= entity.name.first.upcase %></div>
+                <% end %>
+                <span class="text-sm text-gray-700"><%= entity.name %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       <% end %>
 
       <div class="p-0">

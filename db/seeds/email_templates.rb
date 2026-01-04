@@ -23,7 +23,7 @@ module EmailTemplateSeeds
           key: "talent_pool_message",
           name: "Talent Pool Message",
           category: "notification",
-          subject: "Message from {{sender_name}} via CocoScout",
+          subject: "{{subject}}",
           description: "Message sent from a user to a production's team via the talent pool. Subject and body are passed through as provided by the sender.",
           template_type: "passthrough",
           mailer_class: "My::TalentMessageMailer",
