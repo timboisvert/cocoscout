@@ -30,18 +30,6 @@ export default class extends Controller {
         return this.element.dataset.productionId;
     }
 
-    connect() {
-        // Close modal on escape key
-        this.handleEscape = (event) => {
-            if (event.key === 'Escape') this.closeAssignModal();
-        };
-        document.addEventListener('keydown', this.handleEscape);
-    }
-
-    disconnect() {
-        document.removeEventListener('keydown', this.handleEscape);
-    }
-
     // Open the assign modal for mobile
     openAssignModal(event) {
         event.preventDefault();
@@ -108,6 +96,14 @@ export default class extends Controller {
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
                 }
 
                 // Update linkage sync section if present
@@ -226,53 +222,34 @@ export default class extends Controller {
             // Remove from source role first, then add to target role
             this.moveAssignment(productionId, showId, assignableId, sourceRoleId, roleId, assignableType);
         } else {
-            // Dragging from cast members list (cast-person drag)
-            // First, remove anyone from the target role
-            const removeBody = { role_id: roleId };
+            // Dragging from cast members list - assign directly
+            // For multi-slot roles, the backend checks if there's space
+            const requestBody = { role_id: roleId };
+            if (assignableType === "Person") {
+                requestBody.person_id = assignableId;
+            } else if (assignableType === "Group") {
+                requestBody.group_id = assignableId;
+            }
 
-            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
+            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
                 },
-                body: JSON.stringify(removeBody)
+                body: JSON.stringify(requestBody)
             })
                 .then(r => r.json())
                 .then(data => {
-                    // Get the entity who was removed from target role (if any)
-                    const removedAssignableType = data.assignable_type;
-                    const removedAssignableId = data.assignable_id;
-
-                    // Ungray the entity who was removed from the target role
-                    if (removedAssignableId && removedAssignableType) {
-                        const targetType = removedAssignableType === "Person" ? "person" : "group";
-                        const targetAttr = targetType === "person" ? "person-id" : "group-id";
-                        const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetAttr}="${removedAssignableId}"]`);
-                        if (entityElement) {
-                            entityElement.classList.remove('opacity-50');
-                        }
+                    if (data.error) {
+                        // Show error feedback (e.g., role is fully cast or already assigned)
+                        roleElement.classList.add('ring-2', 'ring-red-400', 'bg-red-50');
+                        setTimeout(() => {
+                            roleElement.classList.remove('ring-2', 'ring-red-400', 'bg-red-50');
+                        }, 500);
+                        return;
                     }
 
-                    // Now assign the entity to the target role
-                    const requestBody = { role_id: roleId };
-                    if (assignableType === "Person") {
-                        requestBody.person_id = assignableId;
-                    } else if (assignableType === "Group") {
-                        requestBody.group_id = assignableId;
-                    }
-
-                    return fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-                })
-                .then(r => r.json())
-                .then(data => {
                     // Find the entity element and add opacity-50
                     const targetType = assignableType === "Person" ? "person" : "group";
                     const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
@@ -283,6 +260,14 @@ export default class extends Controller {
                     // Update roles list
                     if (data.roles_html) {
                         document.getElementById("show-roles").outerHTML = data.roles_html;
+                    }
+
+                    // Update cast members list
+                    if (data.cast_members_html) {
+                        const castMembersList = document.getElementById("cast-members-list");
+                        if (castMembersList) {
+                            castMembersList.outerHTML = data.cast_members_html;
+                        }
                     }
 
                     // Update linkage sync section if present
@@ -324,16 +309,17 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
-                // Find the entity element and add opacity-50
-                const targetType = assignableType === "Person" ? "person" : "group";
-                const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
-                if (entityElement) {
-                    entityElement.classList.add('opacity-50');
-                }
-
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
                 }
 
                 // Update linkage sync section if present
@@ -348,9 +334,14 @@ export default class extends Controller {
     }
 
     moveAssignment(productionId, showId, assignableId, sourceRoleId, targetRoleId, assignableType) {
-        // All roles now use role_id
-        const sourceRemoveBody = { role_id: sourceRoleId };
-        const targetRemoveBody = { role_id: targetRoleId };
+        // For multi-slot roles: remove from source, then assign to target
+        // We need to find the specific assignment by assignable, not just by role
+
+        // Find the assignment element to get its ID
+        const assignmentEl = document.querySelector(`[data-source-role-id="${sourceRoleId}"][data-assignable-id="${assignableId}"]`);
+        const assignmentId = assignmentEl?.dataset.assignmentId;
+
+        const removeBody = assignmentId ? { assignment_id: assignmentId } : { role_id: sourceRoleId };
 
         // First, remove the entity from the source role
         fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
@@ -359,36 +350,10 @@ export default class extends Controller {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify(sourceRemoveBody)
+            body: JSON.stringify(removeBody)
         })
             .then(r => r.json())
             .then(data => {
-                // Now check if target role has an assignment and remove it
-                return fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify(targetRemoveBody)
-                });
-            })
-            .then(r => r.json())
-            .then(data => {
-                // Get the entity who was removed from target role (if any)
-                const removedAssignableType = data.assignable_type;
-                const removedAssignableId = data.assignable_id;
-
-                // Ungray the entity who was removed from the target role
-                if (removedAssignableId && removedAssignableType) {
-                    const targetType = removedAssignableType === "Person" ? "person" : "group";
-                    const targetAttr = targetType === "person" ? "person-id" : "group-id";
-                    const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetAttr}="${removedAssignableId}"]`);
-                    if (entityElement) {
-                        entityElement.classList.remove('opacity-50');
-                    }
-                }
-
                 // Now assign the entity to the target role
                 const requestBody = { role_id: targetRoleId };
                 if (assignableType === "Person") {
@@ -411,9 +376,23 @@ export default class extends Controller {
             })
             .then(r => r.json())
             .then(data => {
+                if (data.error) {
+                    // If target role is full, show error
+                    console.error("Move failed:", data.error);
+                    return;
+                }
+
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
                 }
 
                 // Update linkage sync section if present
@@ -445,19 +424,17 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
-                // Find the entity element and remove opacity-50
-                if (assignableId) {
-                    const targetType = assignableType === "Person" ? "person" : "group";
-                    const targetAttr = targetType === "person" ? "person-id" : "group-id";
-                    const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetAttr}="${assignableId}"]`);
-                    if (entityElement) {
-                        entityElement.classList.remove('opacity-50');
-                    }
-                }
-
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list (this properly reflects who is/isn't assigned)
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
                 }
 
                 // Update linkage sync section if present

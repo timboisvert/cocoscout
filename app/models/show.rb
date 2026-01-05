@@ -155,9 +155,21 @@ class Show < ApplicationRecord
     update!(casting_finalized_at: Time.current)
   end
 
-  # Check if show is fully cast (all roles have assignments)
+  # Check if show is fully cast (all role slots have assignments)
   def fully_cast?
-    available_roles.count == show_person_role_assignments.count
+    total_slots = available_roles.sum(:quantity)
+    total_slots == show_person_role_assignments.count
+  end
+
+  # Returns casting progress for this show
+  def casting_progress
+    total_slots = available_roles.sum(:quantity)
+    filled_slots = show_person_role_assignments.count
+    {
+      total: total_slots,
+      filled: filled_slots,
+      percentage: total_slots > 0 ? (filled_slots.to_f / total_slots * 100).round : 0
+    }
   end
 
   # Get assignables that were previously notified as cast but are no longer in current cast
@@ -248,7 +260,15 @@ class Show < ApplicationRecord
         name: role.name,
         position: role.position,
         restricted: role.restricted,
-        production: production
+        production: production,
+        # Multi-person and category fields
+        quantity: role.quantity,
+        category: role.category,
+        # Payment fields
+        payment_type: role.payment_type,
+        payment_amount: role.payment_amount,
+        payment_rate: role.payment_rate,
+        payment_minimum: role.payment_minimum
       )
 
       # Copy role eligibilities if restricted

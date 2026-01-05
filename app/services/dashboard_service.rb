@@ -17,7 +17,7 @@ class DashboardService
   end
 
   def self.invalidate(production)
-    Rails.cache.delete([ "dashboard_v3", production.id ])
+    Rails.cache.delete([ "dashboard_v4", production.id ])
   end
 
   private
@@ -28,14 +28,16 @@ class DashboardService
     max_request_updated = @production.audition_cycle&.audition_requests&.maximum(:updated_at)
     max_vacancy_updated = RoleVacancy.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)
     max_assignment_updated = ShowPersonRoleAssignment.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)
+    max_role_updated = @production.roles.maximum(:updated_at)
     [
-      "dashboard_v3",
+      "dashboard_v4",
       @production.id,
       @production.updated_at.to_i,
       max_show_updated&.to_i,
       max_request_updated&.to_i,
       max_vacancy_updated&.to_i,
-      max_assignment_updated&.to_i
+      max_assignment_updated&.to_i,
+      max_role_updated&.to_i
     ]
   end
 
@@ -78,8 +80,9 @@ class DashboardService
     shows.map do |show|
       # Use .size on already-loaded associations to avoid COUNT queries
       assignments_count = show.show_person_role_assignments.size
-      # Calculate roles count per show (respects custom roles)
-      roles_count = show.available_roles.count
+      # Calculate total slots (sum of quantities for multi-person roles)
+      roles = show.available_roles.to_a
+      roles_count = roles.sum { |r| r.quantity || 1 }
       uncast_count = roles_count - assignments_count
       days_until = (show.date_and_time.to_date - Date.today).to_i
 

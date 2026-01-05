@@ -80,7 +80,7 @@ module Manage
       # Preload data for the cast_card partial to avoid N+1 queries
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
-      @roles_count = @roles.size
+      @roles_count = @roles.sum { |r| r.quantity || 1 }
 
       # Preload assignables (people and groups) with their headshots
       assignments = @show.show_person_role_assignments.to_a
@@ -470,6 +470,9 @@ module Manage
       @cast_people = Person.where(id: person_ids).includes(profile_headshots: { image_attachment: :blob }).to_a
       @cast_groups = Group.where(id: group_ids).includes(:members, profile_headshots: { image_attachment: :blob }).to_a
 
+      # Get unique role categories from assignments
+      @role_categories = cast_assignments.map { |a| a.role&.category }.compact.uniq.sort
+
       # Get all unique people (including group members) with emails
       all_person_ids = Set.new(person_ids)
       @cast_groups.each do |group|
@@ -525,6 +528,7 @@ module Manage
       notify_cast = params[:notify_cast] == "1"
       email_subject = params[:email_subject]
       email_body = params[:email_body]
+      role_categories = params[:role_categories]&.reject(&:blank?)
 
       if scope == "all" && @show.recurring?
         # Cancel all occurrences in the recurrence group
@@ -533,7 +537,7 @@ module Manage
 
         # Send notifications if requested
         if notify_cast && email_body.present?
-          send_cancellation_notifications(shows_to_cancel, email_subject, email_body)
+          send_cancellation_notifications(shows_to_cancel, email_subject, email_body, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
@@ -545,7 +549,7 @@ module Manage
 
         # Send notifications if requested
         if notify_cast && email_body.present?
-          send_cancellation_notifications([ @show ], email_subject, email_body)
+          send_cancellation_notifications([ @show ], email_subject, email_body, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
@@ -805,18 +809,27 @@ module Manage
     end
 
     # Send cancellation notification emails to cast members
-    def send_cancellation_notifications(shows, email_subject, email_body)
+    # role_categories: optional array of category strings to filter by (e.g., ["performing", "technical"])
+    def send_cancellation_notifications(shows, email_subject, email_body, role_categories = nil)
       # Collect all unique people from all shows
       all_person_ids = Set.new
 
       shows.each do |show|
+        # Build base query for assignments
+        assignments = show.show_person_role_assignments
+
+        # Filter by role categories if specified
+        if role_categories.present?
+          assignments = assignments.joins(:role).where(roles: { category: role_categories })
+        end
+
         # People directly assigned
-        show.show_person_role_assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
+        assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
           all_person_ids << id
         end
 
         # People in groups assigned
-        group_ids = show.show_person_role_assignments.where(assignable_type: "Group").pluck(:assignable_id)
+        group_ids = assignments.where(assignable_type: "Group").pluck(:assignable_id)
         GroupMembership.where(group_id: group_ids).pluck(:person_id).each do |id|
           all_person_ids << id
         end

@@ -12,7 +12,9 @@ export default class extends Controller {
     "emailDraftForm",
     "emailBodyField",
     "cancelForm",
-    "submitButton"
+    "submitButton",
+    "categoryCheckbox",
+    "categoryField"
   ]
 
   static values = {
@@ -112,6 +114,26 @@ export default class extends Controller {
     }
     if (this.hasEmailBodyFieldTarget) {
       this.emailBodyFieldTarget.value = emailContent
+    }
+  }
+
+  // Toggle category hidden fields based on checkbox state
+  toggleCategory(event) {
+    const checkbox = event.target
+    const category = checkbox.dataset.category
+
+    // Find the corresponding hidden field
+    const hiddenField = this.categoryFieldTargets.find(field => field.dataset.category === category)
+
+    if (hiddenField) {
+      if (checkbox.checked) {
+        // Re-enable the hidden field by setting its value
+        hiddenField.disabled = false
+        hiddenField.value = category
+      } else {
+        // Disable the hidden field so it's not submitted
+        hiddenField.disabled = true
+      }
     }
   }
 

@@ -18,11 +18,12 @@
     roles = local_assigns[:roles] || @roles || show.production.roles.order(:position).to_a
   end
   roles_count = roles.size
+  total_slots = roles.sum { |r| r.quantity || 1 }
   people_by_id = local_assigns[:people_by_id] || @people_by_id || {}
   groups_by_id = local_assigns[:groups_by_id] || @groups_by_id || {}
 
   cast_count = show.show_person_role_assignments.size
-  percentage = roles_count > 0 ? (cast_count.to_f / roles_count * 100).round : 0
+  percentage = total_slots > 0 ? (cast_count.to_f / total_slots * 100).round : 0
   fully_cast = percentage == 100
 
   # Use precomputed timestamps if available, otherwise query (for backward compatibility)
@@ -47,13 +48,13 @@
 
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v7",
+    "cast_card_v8",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
     assignments_max&.to_i,
     roles_max&.to_i,
-    roles_count,
+    total_slots,
     cancelled_vacancies_key,
     open_vacancies_key,
     title.presence || "default"
@@ -120,76 +121,79 @@
           <% if fully_cast %>
             Fully cast
           <% else %>
-            <%= cast_count %>/<%= roles_count %> roles have been cast
+            <%= cast_count %>/<%= total_slots %> slots filled
           <% end %>
         </div>
 
-        <%# Cast member headshots %>
+        <%# Cast member headshots - show all slots for multi-person roles %>
         <div class="flex flex-wrap gap-1.5">
           <% roles.each do |role| %>
             <%
-              # All roles now use role_id (both production and show-specific roles are in Role model)
-              assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id }
+              role_quantity = role.quantity || 1
+              role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id }.sort_by { |a| a.position || 0 }
+              role_open_vacancies = open_vacancies_by_role[role.id] || []
             %>
-            <% if assignment %>
-              <%
-                assignable = if assignment.assignable_type == "Person"
-                  people_by_id[assignment.assignable_id] || assignment.assignable
-                else
-                  groups_by_id[assignment.assignable_id] || assignment.assignable
-                end
-                cant_make_it = cancelled_vacancies[[role.id, assignable.class.name, assignable.id]].present?
-                tooltip_text = "#{assignable.name} - #{role.name}"
-                tooltip_text += " (Can't make it)" if cant_make_it
-              %>
-              <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-              <div class="relative">
-                <% if headshot_variant %>
-                  <%= image_tag headshot_variant,
-                      alt: assignable.name,
-                      class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
-                      data: { controller: "tooltip", tooltip_text: tooltip_text } %>
-                <% else %>
-                  <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-green-100 text-green-700' %> flex items-center justify-center font-bold text-xs"
-                       data-controller="tooltip"
-                       data-tooltip-text="<%= tooltip_text %>">
-                    <%= assignable.initials %>
-                  </div>
-                <% end %>
-                <% if cant_make_it %>
-                  <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center" data-controller="tooltip" data-tooltip-text="Can't make it">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            <% (1..role_quantity).each do |slot_position| %>
+              <% assignment = role_assignments.find { |a| a.position == slot_position } %>
+              <% if assignment %>
+                <%
+                  assignable = if assignment.assignable_type == "Person"
+                    people_by_id[assignment.assignable_id] || assignment.assignable
+                  else
+                    groups_by_id[assignment.assignable_id] || assignment.assignable
+                  end
+                  cant_make_it = cancelled_vacancies[[role.id, assignable.class.name, assignable.id]].present?
+                  tooltip_text = "#{assignable.name} - #{role.name}"
+                  tooltip_text += " (Can't make it)" if cant_make_it
+                %>
+                <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                <div class="relative">
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant,
+                        alt: assignable.name,
+                        class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
+                        data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-green-100 text-green-700' %> flex items-center justify-center font-bold text-xs"
+                         data-controller="tooltip"
+                         data-tooltip-text="<%= tooltip_text %>">
+                      <%= assignable.initials %>
+                    </div>
+                  <% end %>
+                  <% if cant_make_it %>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center" data-controller="tooltip" data-tooltip-text="Can't make it">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <%
+                  # Check for open vacancy on this slot (non-linked shows)
+                  slot_vacancy = role_open_vacancies.find { |v| v.slot_position == slot_position }
+                  has_open_vacancy = slot_vacancy.present?
+                  vacated_by = slot_vacancy&.vacated_by
+                  tooltip_text = if has_open_vacancy && vacated_by
+                    "#{role.name} - #{vacated_by.name} can't make it"
+                  elsif has_open_vacancy
+                    "#{role.name} - Looking for someone"
+                  else
+                    "#{role.name} - Not Cast"
+                  end
+                %>
+                <div class="w-10 h-10 rounded-md border-2 border-dashed <%= has_open_vacancy ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-gray-50' %> flex items-center justify-center <%= has_open_vacancy ? 'text-amber-500' : 'text-gray-400' %> text-xs relative"
+                     data-controller="tooltip"
+                     data-tooltip-text="<%= tooltip_text %>">
+                  <% if has_open_vacancy %>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
-                  </div>
-                <% end %>
-              </div>
-            <% else %>
-              <%
-                # Check for open vacancy on this role (non-linked shows)
-                role_open_vacancies = open_vacancies_by_role[role.id] || []
-                has_open_vacancy = role_open_vacancies.any?
-                vacancy = role_open_vacancies.first
-                vacated_by = vacancy&.vacated_by
-                tooltip_text = if has_open_vacancy && vacated_by
-                  "#{role.name} - #{vacated_by.name} can't make it"
-                elsif has_open_vacancy
-                  "#{role.name} - Looking for someone"
-                else
-                  "#{role.name} - Not Cast"
-                end
-              %>
-              <div class="w-10 h-10 rounded-md border-2 border-dashed <%= has_open_vacancy ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-gray-50' %> flex items-center justify-center <%= has_open_vacancy ? 'text-amber-500' : 'text-gray-400' %> text-xs relative"
-                   data-controller="tooltip"
-                   data-tooltip-text="<%= tooltip_text %>">
-                <% if has_open_vacancy %>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                <% else %>
-                  +
-                <% end %>
-              </div>
+                  <% else %>
+                    +
+                  <% end %>
+                </div>
+              <% end %>
             <% end %>
           <% end %>
         </div>
@@ -197,8 +201,8 @@
         <%# Show "Can't make it" warning if any cast members have vacancies %>
         <% cant_make_it_list = [] %>
         <% roles.each do |role| %>
-          <% assignment = show.show_person_role_assignments.find { |a| a.role_id == role.id } %>
-          <% if assignment %>
+          <% role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id } %>
+          <% role_assignments.each do |assignment| %>
             <%
               assignable = if assignment.assignable_type == "Person"
                 people_by_id[assignment.assignable_id] || assignment.assignable

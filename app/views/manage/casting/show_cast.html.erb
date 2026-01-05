@@ -31,10 +31,10 @@
       ] %>
 
     <%
-      # Count roles that have at least one assignment
-      roles_with_assignments = @assignments_by_role_id.keys.count
-      role_count = @roles_count
-      percentage = role_count > 0 ? (roles_with_assignments.to_f / role_count * 100).round : 0
+      # Count filled slots (assignments) vs total slots
+      filled_slots = @assignments.size
+      total_slots = @roles_count  # This is now sum of quantities from controller
+      percentage = total_slots > 0 ? (filled_slots.to_f / total_slots * 100).round : 0
       fully_cast = percentage == 100
 
       # Linkage sync status
@@ -44,7 +44,7 @@
       can_finalize = fully_cast && (!is_linked || all_in_sync)
     %>
 
-    <% if role_count > 0 %>
+    <% if total_slots > 0 %>
       <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="p-4">
           <div class="flex items-center justify-between mb-3">
@@ -52,11 +52,11 @@
               <% if fully_cast %>
                 This show is 100% cast
               <% else %>
-                <%= roles_with_assignments %> of <%= role_count %> roles have been cast
+                <%= filled_slots %> of <%= total_slots %> slots filled
               <% end %>
             </span>
             <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
-              <%= roles_with_assignments %>/<%= role_count %> roles cast
+              <%= filled_slots %>/<%= total_slots %> cast
             </span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-2">

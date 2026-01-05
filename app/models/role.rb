@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 class Role < ApplicationRecord
+  # Role categories (performing = on stage, technical = backstage/crew)
+  CATEGORIES = %w[performing technical].freeze
+
+  # Payment types for roles
+  PAYMENT_TYPES = %w[non_paying flat_rate per_ticket per_ticket_with_minimum].freeze
+
   belongs_to :production
   belongs_to :show, optional: true  # nil for production-level roles, set for show-specific roles
 
@@ -16,8 +22,18 @@ class Role < ApplicationRecord
   scope :show_roles, -> { where.not(show_id: nil) }
   scope :for_show, ->(show) { where(show_id: show.id) }
 
+  # Scopes for role categories
+  scope :performing, -> { where(category: "performing") }
+  scope :technical, -> { where(category: "technical") }
+
   validates :name, presence: true
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
+  validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 20 }
+  validates :category, presence: true, inclusion: { in: CATEGORIES }
+  validates :payment_type, presence: true, inclusion: { in: PAYMENT_TYPES }
+  validates :payment_amount, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :payment_rate, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :payment_minimum, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
   default_scope { order(position: :asc, created_at: :asc) }
 
@@ -85,5 +101,50 @@ class Role < ApplicationRecord
     else
       (people.to_a + groups.to_a).sort_by(&:name)
     end
+  end
+
+  # Multi-person role methods
+
+  # Returns the total number of slots for this role
+  def total_slots
+    quantity
+  end
+
+  # Returns the number of filled slots for this role in a given show
+  def filled_slots(show)
+    show.show_person_role_assignments.where(role: self).count
+  end
+
+  # Returns the number of remaining slots for this role in a given show
+  def slots_remaining(show)
+    total_slots - filled_slots(show)
+  end
+
+  # Check if this role is fully filled for a given show
+  def fully_filled?(show)
+    filled_slots(show) >= total_slots
+  end
+
+  # Check if this role has room for more assignments
+  def has_open_slots?(show)
+    slots_remaining(show) > 0
+  end
+
+  # Payment helper methods
+
+  def paying?
+    payment_type != "non_paying"
+  end
+
+  def flat_rate?
+    payment_type == "flat_rate"
+  end
+
+  def per_ticket?
+    payment_type == "per_ticket" || payment_type == "per_ticket_with_minimum"
+  end
+
+  def has_minimum?
+    payment_type == "per_ticket_with_minimum"
   end
 end

@@ -72,7 +72,7 @@ module Manage
 
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
-      @roles_count = @roles.size
+      @roles_count = @roles.sum { |r| r.quantity || 1 }  # Total slots, not role count
 
       # Preload all assignments for this show with their roles
       @assignments = @show.show_person_role_assignments.includes(:role).to_a
@@ -264,14 +264,21 @@ module Manage
         return
       end
 
-      # Remove existing assignment for this role
-      existing_assignments = @show.show_person_role_assignments.where(role: role)
-      existing_assignments.destroy_all if existing_assignments.any?
+      # Check if this assignable is already assigned to this role
+      existing_assignment = @show.show_person_role_assignments.find_by(assignable: assignable, role: role)
+      if existing_assignment
+        render json: { error: "This cast member is already assigned to this role" }, status: :unprocessable_entity
+        return
+      end
 
-      # Make the assignment
-      assignment = @show.show_person_role_assignments.find_or_initialize_by(assignable: assignable, role: role)
+      # Check if role has available slots
+      if role.fully_filled?(@show)
+        render json: { error: "This role is already fully cast" }, status: :unprocessable_entity
+        return
+      end
 
-      assignment.save!
+      # Make the assignment (position is auto-assigned by model callback)
+      assignment = @show.show_person_role_assignments.create!(assignable: assignable, role: role)
 
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
@@ -290,11 +297,9 @@ module Manage
                                                      availability: @availability })
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
 
-      # Calculate progress for the progress bar - count roles with at least one assignment
-      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
-      role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
-      fully_cast = percentage == 100
+      # Calculate progress using quantity-based slot counting
+      progress = @show.casting_progress
+      fully_cast = progress[:percentage] == 100
 
       # Render linkage sync section if this is a linked show
       linkage_sync_html = nil
@@ -326,15 +331,15 @@ module Manage
         linkage_sync_html: linkage_sync_html,
         finalize_section_html: finalize_section_html,
         progress: {
-          assignment_count: roles_with_assignments,
-          role_count: role_count,
-          percentage: percentage
+          assignment_count: progress[:filled],
+          role_count: progress[:total],
+          percentage: progress[:percentage]
         }
       }
     end
 
     def remove_person_from_role
-      # Support assignment_id or role_id for removal
+      # Support assignment_id, or role_id + position for removal
       removed_assignable_type = nil
       removed_assignable_id = nil
 
@@ -345,15 +350,22 @@ module Manage
           removed_assignable_id = assignment.assignable_id
         end
         assignment&.destroy!
+      elsif params[:role_id] && params[:position]
+        # Remove specific slot by position (for multi-person roles)
+        assignment = @show.show_person_role_assignments.find_by(role_id: params[:role_id], position: params[:position])
+        if assignment
+          removed_assignable_type = assignment.assignable_type
+          removed_assignable_id = assignment.assignable_id
+          assignment.destroy!
+        end
       elsif params[:role_id]
-        # Get the assignable before removing (there should only be one per role)
+        # Legacy: remove first assignment for this role (backward compatibility)
         assignment = @show.show_person_role_assignments.where(role_id: params[:role_id]).first
         if assignment
           removed_assignable_type = assignment.assignable_type
           removed_assignable_id = assignment.assignable_id
+          assignment.destroy!
         end
-        # Remove all assignments for this role
-        @show.show_person_role_assignments.where(role_id: params[:role_id]).destroy_all
       end
 
       # Generate the HTML to return - pass availability data
@@ -373,11 +385,9 @@ module Manage
                                                      availability: @availability })
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
 
-      # Calculate progress for the progress bar - count roles with at least one assignment
-      roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
-      role_count = @show.available_roles.count
-      percentage = role_count.positive? ? (roles_with_assignments.to_f / role_count * 100).round : 0
-      fully_cast = percentage == 100
+      # Calculate progress using quantity-based slot counting
+      progress = @show.casting_progress
+      fully_cast = progress[:percentage] == 100
 
       # Render linkage sync section if this is a linked show
       linkage_sync_html = nil
@@ -412,9 +422,9 @@ module Manage
         assignable_id: removed_assignable_id,
         person_id: removed_assignable_id, # Backward compatibility
         progress: {
-          assignment_count: roles_with_assignments,
-          role_count: role_count,
-          percentage: percentage
+          assignment_count: progress[:filled],
+          role_count: progress[:total],
+          percentage: progress[:percentage]
         }
       }
     end

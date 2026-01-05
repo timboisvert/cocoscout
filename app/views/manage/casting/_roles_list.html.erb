@@ -34,6 +34,11 @@
 
   role_count = roles.size
 
+  # Group roles by category for section display
+  roles_by_category = roles.group_by { |r| r.category || "performing" }
+  # Order categories: performing first, then others alphabetically
+  category_order = ["performing"] + (roles_by_category.keys - ["performing"]).sort
+
   # Build vacancies lookup by role_id (include vacated_by for showing who can't make it)
   vacancies_by_role_id = local_assigns[:vacancies_by_role_id] || @vacancies_by_role_id
   unless vacancies_by_role_id
@@ -64,13 +69,56 @@
     </div>
   <% end %>
 
-  <div class="space-y-1">
+  <div class="space-y-4">
+    <% category_order.each do |category| %>
+      <% category_roles = roles_by_category[category] || [] %>
+      <% next if category_roles.empty? %>
 
-    <% roles.each do |role| %>
+      <% if roles_by_category.keys.size > 1 %>
+        <div class="flex items-center gap-2 pt-2 first:pt-0">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide capitalize"><%= category %></h3>
+          <div class="flex-1 border-t border-gray-200"></div>
+        </div>
+      <% end %>
+
+      <div class="space-y-1">
+    <% category_roles.each do |role| %>
 
       <%
         assignments = assignments_by_role_id[role.id] || []
+        # Sort assignments by position for display
+        sorted_assignments = assignments.sort_by { |a| a.position || 0 }
+
+        # Build a hash of slot_position => assignment
+        # Handle legacy assignments with position=0 by assigning them sequentially
+        assignments_by_slot = {}
+        legacy_assignments = []
+
+        sorted_assignments.each do |a|
+          if a.position.present? && a.position > 0
+            assignments_by_slot[a.position] = a
+          else
+            legacy_assignments << a
+          end
+        end
+
+        # Assign legacy (position=0) assignments to available slots
+        next_slot = 1
+        legacy_assignments.each do |a|
+          while assignments_by_slot[next_slot] && next_slot <= (role.quantity || 1)
+            next_slot += 1
+          end
+          if next_slot <= (role.quantity || 1)
+            assignments_by_slot[next_slot] = a
+            next_slot += 1
+          end
+        end
+
+        total_slots = role.quantity || 1
+        filled_slots = assignments.size
         has_assignment = assignments.any?
+        is_fully_filled = filled_slots >= total_slots
+
         is_restricted = role.restricted?
         eligible_members = is_restricted ? role.eligible_members : []
         eligible_member_keys = eligible_members.map { |m| "#{m.class.name}_#{m.id}" }
@@ -90,6 +138,11 @@
             <div class="flex flex-col sm:grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 sm:items-center">
               <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
                 <%= role.name %>
+                <% if total_slots > 1 %>
+                  <span class="text-xs px-1.5 py-0.5 rounded-full <%= is_fully_filled ? 'bg-green-100 text-green-700' : 'bg-pink-100 text-pink-700' %>">
+                    <%= filled_slots %>/<%= total_slots %>
+                  </span>
+                <% end %>
                 <span class="text-pink-500" title="Restricted role">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -97,119 +150,103 @@
                 </span>
               </div>
 
-              <div>
-                <% if has_assignment %>
-                  <%# Show the currently cast member with option to change %>
-                  <% assignment = assignments.first %>
-                  <%
-                    assignable = if assignment.assignable_type == "Person"
-                      people_by_id[assignment.assignable_id] || assignment.assignable
-                    else
-                      groups_by_id[assignment.assignable_id] || assignment.assignable
-                    end
-                    cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
-                  %>
-                  <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg group">
-                    <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}" %>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
-                        <%= assignable.initials %>
-                      </div>
-                    <% end %>
-
-                    <div class="flex-1 min-w-0">
-                      <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
-                      <% if cant_make_it_vacancy %>
-                        <div class="flex items-center gap-1 text-amber-600">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                          </svg>
-                          <span class="text-xs font-medium">
-                            <% if cant_make_it_vacancy.finding_replacement? %>
-                              Can't make it – looking for replacement
-                            <% elsif cant_make_it_vacancy.open? %>
-                              Can't make it
-                            <% elsif cant_make_it_vacancy.not_filling? %>
-                              Can't make it – no replacement
-                            <% elsif cant_make_it_vacancy.filled? %>
-                              Can't make it – replaced
-                            <% else %>
-                              Can't make it
-                            <% end %>
-                          </span>
+              <div class="space-y-2">
+                <%# Show all slots (filled and empty) for multi-person roles %>
+                <% (1..total_slots).each do |slot_position| %>
+                  <% assignment = assignments_by_slot[slot_position] %>
+                  <% if assignment %>
+                    <%# Filled slot - show the assigned person %>
+                    <%
+                      assignable = if assignment.assignable_type == "Person"
+                        people_by_id[assignment.assignable_id] || assignment.assignable
+                      else
+                        groups_by_id[assignment.assignable_id] || assignment.assignable
+                      end
+                      cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
+                    %>
+                    <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg group">
+                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}" %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          <%= assignable.initials %>
                         </div>
                       <% end %>
-                    </div>
-                    <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                      <button type="button"
-                        class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
-                        data-action="click->drop-role#removeAssignment"
-                        data-assignment-id="<%= assignment.id %>"
-                        data-assignable-type="<%= assignable.class.name %>"
-                        data-assignable-id="<%= assignable.id %>"
-                        title="Remove assignment"
-                      >
-                        Change
-                      </button>
-                    </div>
-                  </div>
-                <% else %>
-                  <%# Show vacancy warning if non-linked show has open vacancy %>
-                  <% if has_open_vacancy && !is_linked %>
-                    <% vacancy = open_vacancies.first %>
-                    <% vacated_by = vacancy.vacated_by %>
-                    <div class="mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
-                      <div class="flex items-center gap-1.5 text-amber-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                        </svg>
-                        <span class="text-xs font-medium">
-                          <% if vacated_by %>
-                            <%= vacated_by.name %> can't make it –
-                            select a replacement below or
-                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
-                          <% else %>
-                            Looking for replacement –
-                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
-                          <% end %>
-                        </span>
+
+                      <div class="flex-1 min-w-0">
+                        <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
+                        <% if cant_make_it_vacancy %>
+                          <div class="flex items-center gap-1 text-amber-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                            <span class="text-xs font-medium">
+                              <% if cant_make_it_vacancy.finding_replacement? %>
+                                Can't make it – looking for replacement
+                              <% elsif cant_make_it_vacancy.open? %>
+                                Can't make it
+                              <% elsif cant_make_it_vacancy.not_filling? %>
+                                Can't make it – no replacement
+                              <% elsif cant_make_it_vacancy.filled? %>
+                                Can't make it – replaced
+                              <% else %>
+                                Can't make it
+                              <% end %>
+                            </span>
+                          </div>
+                        <% end %>
+                      </div>
+                      <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                        <button type="button"
+                          class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
+                          data-action="click->drop-role#removeAssignment"
+                          data-assignment-id="<%= assignment.id %>"
+                          data-assignable-type="<%= assignable.class.name %>"
+                          data-assignable-id="<%= assignable.id %>"
+                          title="Remove assignment"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
-                  <% end %>
-                  <%# Show eligible members as clickable options %>
-                  <% if eligible_members.any? %>
-                    <div class="flex flex-wrap gap-2">
-                      <% eligible_members.each do |member| %>
-                        <%
-                          # Check if this member is already assigned to another role in this show
-                          member_key = "#{member.class.name}_#{member.id}"
-                          is_assigned_elsewhere = (local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new).include?(member_key)
-                        %>
-                        <button type="button"
-                          class="flex items-center gap-2 p-2 border rounded-lg transition-all cursor-pointer <%= is_assigned_elsewhere ? 'border-gray-200 bg-gray-50 opacity-50' : 'border-gray-200 hover:border-pink-400 hover:bg-pink-50' %>"
-                          data-action="click->drop-role#assignFromClick"
-                          <%= role_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>
-                          data-assignable-type="<%= member.class.name %>"
-                          data-assignable-id="<%= member.id %>"
-                          title="<%= is_assigned_elsewhere ? "#{member.name} is assigned to another role" : "Cast #{member.name}" %>"
-                          <%= 'disabled' if is_assigned_elsewhere %>
-                        >
-                          <% headshot_variant = member.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-                          <% else %>
-                            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">
-                              <%= member.initials %>
-                            </div>
+                  <% else %>
+                    <%# Empty slot - show eligible members to select from %>
+                    <div class="p-2 border-2 border-dashed border-gray-200 rounded-lg">
+                      <% if eligible_members.any? %>
+                        <div class="flex flex-wrap gap-2">
+                          <% eligible_members.each do |member| %>
+                            <%
+                              member_key = "#{member.class.name}_#{member.id}"
+                              is_assigned_elsewhere = (local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new).include?(member_key)
+                              # Also check if already assigned to this role
+                              is_assigned_to_this_role = sorted_assignments.any? { |a| a.assignable_type == member.class.name && a.assignable_id == member.id }
+                            %>
+                            <button type="button"
+                              class="flex items-center gap-2 p-1.5 border rounded-lg transition-all cursor-pointer <%= (is_assigned_elsewhere || is_assigned_to_this_role) ? 'border-gray-200 bg-gray-50 opacity-50' : 'border-gray-200 hover:border-pink-400 hover:bg-pink-50' %>"
+                              data-action="click->drop-role#assignFromClick"
+                              <%= role_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>
+                              data-assignable-type="<%= member.class.name %>"
+                              data-assignable-id="<%= member.id %>"
+                              title="<%= (is_assigned_elsewhere || is_assigned_to_this_role) ? "#{member.name} is already assigned" : "Cast #{member.name}" %>"
+                              <%= 'disabled' if is_assigned_elsewhere || is_assigned_to_this_role %>
+                            >
+                              <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                              <% if headshot_variant %>
+                                <%= image_tag headshot_variant, alt: member.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                              <% else %>
+                                <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-[10px] flex-shrink-0">
+                                  <%= member.initials %>
+                                </div>
+                              <% end %>
+                              <span class="text-xs font-medium text-gray-700 max-w-16 truncate"><%= member.name %></span>
+                            </button>
                           <% end %>
-                          <span class="text-xs font-medium text-gray-700 max-w-20 truncate"><%= member.name %></span>
-                        </button>
+                        </div>
+                      <% else %>
+                        <p class="text-sm text-gray-400 italic text-center">No eligible members</p>
                       <% end %>
                     </div>
-                  <% else %>
-                    <p class="text-sm text-gray-500 italic">No eligible cast members configured for this role.</p>
                   <% end %>
                 <% end %>
               </div>
@@ -229,137 +266,151 @@
             <div class="flex flex-col sm:grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 sm:items-center">
               <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
                 <%= role.name %>
+                <% if total_slots > 1 %>
+                  <span class="text-xs px-1.5 py-0.5 rounded-full <%= is_fully_filled ? 'bg-green-100 text-green-700' : 'bg-pink-100 text-pink-700' %>">
+                    <%= filled_slots %>/<%= total_slots %>
+                  </span>
+                <% end %>
               </div>
 
-              <div>
-                <% if has_assignment %>
-                  <div class="space-y-2">
-                    <% assignments.each do |assignment| %>
-                      <%
-                        # Get assignable from preloaded hash
-                        assignable = if assignment.assignable_type == "Person"
-                          people_by_id[assignment.assignable_id] || assignment.assignable
-                        else
-                          groups_by_id[assignment.assignable_id] || assignment.assignable
-                        end
-                        cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
-                      %>
-                      <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all group relative cursor-grab active:cursor-grabbing"
-                          draggable="true"
-                          data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
-                          data-assignable-type="<%= assignable.class.name %>"
-                          data-assignable-id="<%= assignable.id %>"
-                          data-assignment-id="<%= assignment.id %>"
-                          data-source-role-id="<%= role.id %>">
-                        <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-                        <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
-                        <% else %>
-                          <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
-                            <%= assignable.initials %>
-                          </div>
-                        <% end %>
+              <div class="space-y-2">
+                <%# Show all slots (filled and empty) for multi-person roles %>
+                <% (1..total_slots).each do |slot_position| %>
+                  <% assignment = assignments_by_slot[slot_position] %>
+                  <% if assignment %>
+                    <%# Filled slot - show the assigned person with drag-drop %>
+                    <%
+                      assignable = if assignment.assignable_type == "Person"
+                        people_by_id[assignment.assignable_id] || assignment.assignable
+                      else
+                        groups_by_id[assignment.assignable_id] || assignment.assignable
+                      end
+                      cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
+                    %>
+                    <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all group relative cursor-grab active:cursor-grabbing"
+                        draggable="true"
+                        data-action="dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd"
+                        data-assignable-type="<%= assignable.class.name %>"
+                        data-assignable-id="<%= assignable.id %>"
+                        data-assignment-id="<%= assignment.id %>"
+                        data-source-role-id="<%= role.id %>">
+                      <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 #{cant_make_it_vacancy ? 'ring-2 ring-amber-400' : ''}", draggable: false %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-lg <%= cant_make_it_vacancy ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          <%= assignable.initials %>
+                        </div>
+                      <% end %>
 
-                        <div class="flex-1 min-w-0">
-                          <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
-                          <% if cant_make_it_vacancy %>
-                            <div class="flex items-center gap-1 text-amber-600">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                              </svg>
-                              <span class="text-xs font-medium">
-                                <% if cant_make_it_vacancy.finding_replacement? %>
-                                  Can't make it – looking for replacement
-                                <% elsif cant_make_it_vacancy.open? %>
-                                  Can't make it
-                                <% elsif cant_make_it_vacancy.not_filling? %>
-                                  Can't make it – no replacement
-                                <% elsif cant_make_it_vacancy.filled? %>
-                                  Can't make it – replaced
-                                <% else %>
-                                  Can't make it
-                                <% end %>
-                              </span>
-                            </div>
-                          <% end %>
-                        </div>
-                        <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                          <button type="button"
-                            class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
-                            data-action="click->drop-role#removeAssignment"
-                            data-assignment-id="<%= assignment.id %>"
-                            data-assignable-type="<%= assignable.class.name %>"
-                            data-assignable-id="<%= assignable.id %>"
-                            title="Remove assignment"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                <% else %>
-                  <% if has_open_vacancy && !is_linked %>
-                    <%# Non-linked show with open vacancy - show who can't make it %>
-                    <% vacancy = open_vacancies.first %>
-                    <% vacated_by = vacancy.vacated_by %>
-                    <div class="p-3 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg">
-                      <div class="flex items-center gap-2">
-                        <% if vacated_by %>
-                          <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
-                          <% if headshot_variant %>
-                            <%= image_tag headshot_variant, alt: vacated_by.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 opacity-50 grayscale" %>
-                          <% else %>
-                            <div class="w-8 h-8 rounded-lg bg-gray-300 flex items-center justify-center text-gray-500 font-bold text-xs flex-shrink-0">
-                              <%= vacated_by.initials %>
-                            </div>
-                          <% end %>
-                        <% end %>
-                        <div class="flex-1">
-                          <div class="flex items-center gap-1.5 text-amber-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                      <div class="flex-1 min-w-0">
+                        <span class="font-medium text-sm truncate block"><%= assignable.name %></span>
+                        <% if cant_make_it_vacancy %>
+                          <div class="flex items-center gap-1 text-amber-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                             </svg>
                             <span class="text-xs font-medium">
-                              <% if vacated_by %>
-                                <%= vacated_by.name %> can't make it
+                              <% if cant_make_it_vacancy.finding_replacement? %>
+                                Can't make it – looking for replacement
+                              <% elsif cant_make_it_vacancy.open? %>
+                                Can't make it
+                              <% elsif cant_make_it_vacancy.not_filling? %>
+                                Can't make it – no replacement
+                              <% elsif cant_make_it_vacancy.filled? %>
+                                Can't make it – replaced
                               <% else %>
-                                Looking for replacement
+                                Can't make it
                               <% end %>
                             </span>
                           </div>
-                          <p class="text-xs text-amber-600 mt-0.5">
-                            <span class="hidden md:inline">Drag a talent pool member here, or</span>
-                            <%= link_to "find a replacement", manage_production_vacancy_path(production, vacancy), class: "underline hover:text-amber-800" %>
-                          </p>
-                        </div>
+                        <% end %>
                       </div>
-                      <%# Mobile assign button %>
+                      <div class="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                        <button type="button"
+                          class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
+                          data-action="click->drop-role#removeAssignment"
+                          data-assignment-id="<%= assignment.id %>"
+                          data-assignable-type="<%= assignable.class.name %>"
+                          data-assignable-id="<%= assignable.id %>"
+                          title="Remove assignment"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  <% else %>
+                    <%# Empty slot - check for vacancy or show drop zone %>
+                    <%
+                      # Find if there's an open vacancy for this role
+                      slot_vacancy = open_vacancies.find { |v| v.slot_position == slot_position } if open_vacancies.any?
+                    %>
+                    <% if slot_vacancy && !is_linked %>
+                      <%# Non-linked show with open vacancy - show who can't make it %>
+                      <% vacated_by = slot_vacancy.vacated_by %>
+                      <div class="p-3 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg"
+                          data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave"
+                          data-slot-position="<%= slot_position %>">
+                        <div class="flex items-center gap-2">
+                          <% if vacated_by %>
+                            <% headshot_variant = vacated_by.safe_headshot_variant(:thumb) %>
+                            <% if headshot_variant %>
+                              <%= image_tag headshot_variant, alt: vacated_by.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 opacity-50 grayscale" %>
+                            <% else %>
+                              <div class="w-8 h-8 rounded-lg bg-gray-300 flex items-center justify-center text-gray-500 font-bold text-xs flex-shrink-0">
+                                <%= vacated_by.initials %>
+                              </div>
+                            <% end %>
+                          <% end %>
+                          <div class="flex-1">
+                            <div class="flex items-center gap-1.5 text-amber-700">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                              </svg>
+                              <span class="text-xs font-medium">
+                                <% if vacated_by %>
+                                  <%= vacated_by.name %> can't make it
+                                <% else %>
+                                  Looking for replacement
+                                <% end %>
+                              </span>
+                            </div>
+                            <p class="text-xs text-amber-600 mt-0.5">
+                              <span class="hidden md:inline">Drag a talent pool member here, or</span>
+                              <%= link_to "find a replacement", manage_production_vacancy_path(production, slot_vacancy), class: "underline hover:text-amber-800" %>
+                            </p>
+                          </div>
+                        </div>
+                        <%# Mobile assign button %>
+                        <button type="button"
+                          class="md:hidden mt-2 flex items-center justify-center gap-2 w-full p-2 bg-amber-100 border border-amber-300 rounded-lg text-amber-700 text-sm hover:bg-amber-200 transition-all cursor-pointer"
+                          data-action="click->drop-role#openAssignModal"
+                          data-role-id="<%= role.id %>"
+                          data-role-name="<%= role.name %>">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          Assign replacement
+                        </button>
+                      </div>
+                    <% else %>
+                      <%# Regular empty slot %>
+                      <div class="hidden md:flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all"
+                          data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave"
+                          data-slot-position="<%= slot_position %>">
+                        Drag a talent pool member here
+                      </div>
                       <button type="button"
-                        class="md:hidden mt-2 flex items-center justify-center gap-2 w-full p-2 bg-amber-100 border border-amber-300 rounded-lg text-amber-700 text-sm hover:bg-amber-200 transition-all cursor-pointer"
+                        class="md:hidden flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all cursor-pointer"
                         data-action="click->drop-role#openAssignModal"
                         data-role-id="<%= role.id %>"
                         data-role-name="<%= role.name %>">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        Assign replacement
+                        Assign someone
                       </button>
-                    </div>
-                  <% else %>
-                    <div class="hidden md:flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all">
-                      Drag a talent pool member here
-                    </div>
-                    <button type="button"
-                      class="md:hidden flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all cursor-pointer"
-                      data-action="click->drop-role#openAssignModal"
-                      data-role-id="<%= role.id %>"
-                      data-role-name="<%= role.name %>">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      Assign someone
-                    </button>
+                    <% end %>
                   <% end %>
                 <% end %>
               </div>
@@ -368,6 +419,8 @@
 
         </div>
       <% end %>
+    <% end %>
+      </div>
     <% end %>
   </div>
 

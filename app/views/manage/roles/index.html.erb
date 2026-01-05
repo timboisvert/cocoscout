@@ -38,6 +38,10 @@
               <div class="flex-1">
                 <div class="font-bold text-md flex items-center gap-2">
                   <%= role.name %>
+                  <% if role.quantity > 1 %>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><%= role.quantity %> slots</span>
+                  <% end %>
+                  <span class="text-xs font-medium text-gray-500 capitalize"><%= role.category %></span>
                 </div>
                 <% if role.restricted? %>
                   <div class="flex items-center gap-1 mt-2">
@@ -63,13 +67,37 @@
                 <% else %>
                   <p class="text-xs text-gray-500 mt-1">Available to all talent pool members</p>
                 <% end %>
+                <%# Payment info %>
+                <p class="text-xs text-gray-500 mt-1">
+                  <% case role.payment_type %>
+                  <% when "non_paying" %>
+                    Non-paying
+                  <% when "flat_rate" %>
+                    Flat rate: $<%= number_with_precision(role.payment_amount, precision: 2, strip_insignificant_zeros: true) %>
+                  <% when "per_ticket" %>
+                    $<%= number_with_precision(role.payment_rate, precision: 2, strip_insignificant_zeros: true) %> per ticket
+                  <% when "per_ticket_with_minimum" %>
+                    $<%= number_with_precision(role.payment_rate, precision: 2, strip_insignificant_zeros: true) %> per ticket (min $<%= number_with_precision(role.payment_minimum, precision: 2, strip_insignificant_zeros: true) %>)
+                  <% end %>
+                </p>
               </div>
               <% if current_user_can_manage?(@production) %>
                 <%
                   eligible_member_keys = role.role_eligibilities.map { |e| "#{e.member_type}_#{e.member_id}" }
                 %>
                 <div class="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button data-action="role-modal#openForEdit" data-role-name="<%= role.name %>" data-role-restricted="<%= role.restricted? %>" data-eligible-member-keys="<%= eligible_member_keys.to_json %>" data-update-path="<%= manage_production_role_path(@production, role) %>" class="text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer">
+                  <button data-action="role-modal#openForEdit"
+                          data-role-name="<%= role.name %>"
+                          data-role-restricted="<%= role.restricted? %>"
+                          data-role-quantity="<%= role.quantity %>"
+                          data-role-category="<%= role.category %>"
+                          data-role-payment-type="<%= role.payment_type %>"
+                          data-role-payment-amount="<%= role.payment_amount %>"
+                          data-role-payment-rate="<%= role.payment_rate %>"
+                          data-role-payment-minimum="<%= role.payment_minimum %>"
+                          data-eligible-member-keys="<%= eligible_member_keys.to_json %>"
+                          data-update-path="<%= manage_production_role_path(@production, role) %>"
+                          class="text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer">
                     Edit
                   </button>
                   <%= link_to "Delete",
@@ -96,7 +124,7 @@
   <!-- Modal for adding/editing roles -->
   <% if current_user_can_manage?(@production) %>
     <div data-role-modal-target="modal" class="<%= @role.errors.any? ? '' : 'hidden' %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->role-modal#close">
-      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->role-modal#stopPropagation">
+      <div class="relative top-10 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-md bg-white mb-10" data-action="click->role-modal#stopPropagation">
         <div class="flex items-center justify-between pb-3 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900" data-role-modal-target="title"><%= @role.persisted? ? 'Edit Role' : 'Add Role' %></h3>
           <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="role-modal#close">
@@ -113,7 +141,20 @@
             <% if @role.errors[:name].any? %>
               <p class="text-sm text-pink-600 mb-2"><%= @role.errors[:name].first %></p>
             <% end %>
-            <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: "e.g., Host, Comic 1", class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
+            <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: "e.g., Host, Comic", class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
+          </div>
+
+          <!-- Quantity and Category in a row -->
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <%= form.label :quantity, "How many?", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= form.number_field :quantity, min: 1, max: 20, value: @role.quantity || 1, data: { role_modal_target: "quantityInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="text-xs text-gray-500 mt-1">e.g., 4 for 4 comics</p>
+            </div>
+            <div>
+              <%= form.label :category, "Category", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= form.select :category, [["Performing", "performing"], ["Technical", "technical"]], {}, data: { role_modal_target: "categorySelect" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
           </div>
 
           <!-- Restricted toggle -->
@@ -161,6 +202,41 @@
             <% else %>
               <p class="text-sm text-gray-500 italic">No cast members in talent pools yet. Add people or groups to talent pools first.</p>
             <% end %>
+          </div>
+
+          <!-- Payment section -->
+          <div class="mb-4 border-t border-gray-200 pt-4">
+            <%= form.label :payment_type, "Payment", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <%= form.select :payment_type,
+                [
+                  ["Non-paying", "non_paying"],
+                  ["Flat rate", "flat_rate"],
+                  ["Per ticket sold", "per_ticket"],
+                  ["Per ticket with minimum", "per_ticket_with_minimum"]
+                ],
+                {},
+                data: { role_modal_target: "paymentTypeSelect", action: "change->role-modal#togglePaymentFields" },
+                class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+
+            <div data-role-modal-target="paymentFieldsSection" class="hidden mt-3 space-y-3">
+              <!-- Flat rate amount -->
+              <div data-role-modal-target="flatRateField" class="hidden">
+                <%= form.label :payment_amount, "Flat Rate Amount ($)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :payment_amount, step: 0.01, min: 0, data: { role_modal_target: "paymentAmountInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+
+              <!-- Per ticket rate -->
+              <div data-role-modal-target="perTicketField" class="hidden">
+                <%= form.label :payment_rate, "Rate per ticket ($)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :payment_rate, step: 0.01, min: 0, data: { role_modal_target: "paymentRateInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+
+              <!-- Minimum (for per_ticket_with_minimum) -->
+              <div data-role-modal-target="minimumField" class="hidden">
+                <%= form.label :payment_minimum, "Minimum guaranteed ($)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :payment_minimum, step: 0.01, min: 0, data: { role_modal_target: "paymentMinimumInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+            </div>
           </div>
 
           <div class="flex justify-end gap-2">

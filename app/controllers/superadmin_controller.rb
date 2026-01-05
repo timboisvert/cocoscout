@@ -1154,6 +1154,7 @@ class SuperadminController < ApplicationController
   def email_template_params
     params.require(:email_template).permit(:key, :name, :subject, :body, :description, :category, :active,
                                            :template_type, :mailer_class, :mailer_action, :notes,
+                                           :prepend_production_name,
                                            available_variables: [ :name, :description ])
   end
 

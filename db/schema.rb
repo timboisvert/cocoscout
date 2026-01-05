@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_03_180839) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_04_195453) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -763,13 +763,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_180839) do
   end
 
   create_table "roles", force: :cascade do |t|
+    t.string "category", default: "performing", null: false
     t.datetime "created_at", null: false
     t.string "name"
+    t.decimal "payment_amount", precision: 10, scale: 2
+    t.decimal "payment_minimum", precision: 10, scale: 2
+    t.decimal "payment_rate", precision: 10, scale: 2
+    t.string "payment_type", default: "non_paying", null: false
     t.integer "position"
     t.integer "production_id", null: false
+    t.integer "quantity", default: 1, null: false
     t.boolean "restricted", default: false, null: false
     t.integer "show_id"
     t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_roles_on_category"
     t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name", unique: true
     t.index ["show_id"], name: "index_roles_on_show_id"
   end
@@ -840,12 +847,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_180839) do
     t.string "assignable_type"
     t.datetime "created_at", null: false
     t.integer "person_id"
+    t.integer "position", default: 0, null: false
     t.integer "role_id"
     t.integer "show_id", null: false
     t.datetime "updated_at", null: false
     t.index ["assignable_type", "assignable_id"], name: "index_show_role_assignments_on_assignable"
     t.index ["person_id"], name: "index_show_person_role_assignments_on_person_id"
     t.index ["role_id"], name: "index_show_person_role_assignments_on_role_id"
+    t.index ["show_id", "role_id", "position"], name: "idx_assignments_show_role_position"
     t.index ["show_id"], name: "index_show_person_role_assignments_on_show_id"
   end
 

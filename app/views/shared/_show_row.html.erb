@@ -263,7 +263,7 @@
   <% elsif right_panel == :cast_summary && cast_summary.present? %>
     <%# Right Section: Cast Summary (for shows list) - headshots with tooltips %>
     <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
-      <div class="flex-1 min-w-0 flex items-center gap-1">
+      <div class="flex-1 min-w-0 flex items-center gap-1 flex-wrap">
         <%
           roles = cast_summary[:roles] || []
           assignments_by_role = cast_summary[:assignments_by_role] || {}
@@ -271,42 +271,73 @@
         %>
         <% roles.each do |role| %>
           <%
-            assignment = assignments_by_role[role.id]&.first
+            role_quantity = role.quantity || 1
+            role_assignments = (assignments_by_role[role.id] || []).sort_by { |a| a.position || 0 }
+
+            # Build a hash of slot_position => assignment for multi-slot roles
+            assignments_by_slot = {}
+            legacy_assignments = []
+
+            role_assignments.each do |a|
+              if a.position.present? && a.position > 0
+                assignments_by_slot[a.position] = a
+              else
+                legacy_assignments << a
+              end
+            end
+
+            # Assign legacy (position=0) assignments to available slots
+            next_slot = 1
+            legacy_assignments.each do |a|
+              while assignments_by_slot[next_slot] && next_slot <= role_quantity
+                next_slot += 1
+              end
+              if next_slot <= role_quantity
+                assignments_by_slot[next_slot] = a
+                next_slot += 1
+              end
+            end
           %>
-          <% if assignment %>
-            <%
-              assignable = assignment.assignable
-              # Check if this person can't make it by looking up [assignable_type, assignable_id]
-              cant_make_it = cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
-              headshot = assignable.safe_headshot_variant(:thumb)
-              tooltip_text = "#{assignable.name} - #{role.name}"
-              tooltip_text += " (Can't make it)" if cant_make_it
-            %>
-            <div class="relative">
-              <% if headshot %>
-                <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}", data: { controller: "tooltip", tooltip_text: tooltip_text } %>
-              <% else %>
-                <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
-                     data-controller="tooltip"
-                     data-tooltip-text="<%= tooltip_text %>">
-                  <%= assignable.initials %>
-                </div>
-              <% end %>
-              <% if cant_make_it %>
-                <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                  </svg>
-                </div>
-              <% end %>
-            </div>
-          <% else %>
-            <%# Empty role - show placeholder %>
-            <div data-controller="tooltip" data-tooltip-text="<%= role.name %> (not assigned)" class="w-10 h-10 rounded-md bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
-            </div>
+          <% (1..role_quantity).each do |slot_position| %>
+            <% assignment = assignments_by_slot[slot_position] %>
+            <% if assignment %>
+              <%
+                assignable = assignment.assignable
+                cant_make_it = cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
+                headshot = assignable.safe_headshot_variant(:thumb)
+                slot_label = role_quantity > 1 ? " (slot #{slot_position})" : ""
+                tooltip_text = "#{assignable.name} - #{role.name}#{slot_label}"
+                tooltip_text += " (Can't make it)" if cant_make_it
+              %>
+              <div class="relative">
+                <% if headshot %>
+                  <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}", data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
+                       data-controller="tooltip"
+                       data-tooltip-text="<%= tooltip_text %>">
+                    <%= assignable.initials %>
+                  </div>
+                <% end %>
+                <% if cant_make_it %>
+                  <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-2.5 h-2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <%# Empty slot - show placeholder %>
+              <%
+                slot_label = role_quantity > 1 ? " (slot #{slot_position})" : ""
+              %>
+              <div data-controller="tooltip" data-tooltip-text="<%= role.name %><%= slot_label %> (not assigned)" class="w-10 h-10 rounded-md bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </div>
+            <% end %>
           <% end %>
         <% end %>
         <% if roles.empty? %>

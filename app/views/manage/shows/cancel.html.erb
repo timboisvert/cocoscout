@@ -102,6 +102,9 @@
           <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
           <input type="hidden" name="email_subject" value="" data-cancel-show-target="emailSubjectField">
           <input type="hidden" name="email_body" value="" data-cancel-show-target="emailBodyField">
+          <% @role_categories.each do |category| %>
+            <input type="hidden" name="role_categories[]" value="<%= category %>" data-cancel-show-target="categoryField" data-category="<%= category %>">
+          <% end %>
 
           <div class="space-y-4">
             <% if @show.recurring? %>
@@ -139,6 +142,26 @@
 
               <!-- Notify Cast Section (Hidden by default) -->
               <div data-cancel-show-target="notifySection" class="hidden pt-4">
+                <% if @role_categories.size > 1 %>
+                  <!-- Category Filter -->
+                  <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div class="text-sm font-medium text-gray-700 mb-2">Notify roles in these categories:</div>
+                    <div class="flex flex-wrap gap-3">
+                      <% @role_categories.each do |category| %>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox"
+                                 checked
+                                 data-cancel-show-target="categoryCheckbox"
+                                 data-category="<%= category %>"
+                                 data-action="change->cancel-show#toggleCategory"
+                                 class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                          <span class="text-sm text-gray-700 capitalize"><%= category %></span>
+                        </label>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+
                 <!-- Cast Members List (styled like contact_cast) -->
                 <div class="mb-4">
                   <div class="flex items-center gap-2 mb-3">
