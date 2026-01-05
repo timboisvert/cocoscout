@@ -8,7 +8,10 @@ class User < ApplicationRecord
   has_secure_password
 
   # Override default password reset token expiry (default is 15 minutes, we want 2 hours)
-  generates_token_for :password_reset, expires_in: 2.hours
+  # The block invalidates the token when password_digest changes (i.e., when password is reset)
+  generates_token_for :password_reset, expires_in: 2.hours do
+    password_digest
+  end
 
   has_many :sessions, dependent: :destroy
 
