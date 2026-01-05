@@ -214,7 +214,7 @@ class AuthController < ApplicationController
       redirect_to signin_path and return
     else
       @password_unsuccessfully_reset = true
-      render :reset
+      render :reset, status: :unprocessable_entity
     end
   end
 
