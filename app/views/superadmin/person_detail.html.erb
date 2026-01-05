@@ -228,7 +228,8 @@
                 # Determine status based on scheduling (in_person) or casting (video_upload)
                 cycle = request.audition_cycle
                 if cycle.video_only?
-                  if request.cast_assignment_stages.any?
+                  # Check if this person has been selected in any cast assignment stages
+                  if cycle.cast_assignment_stages.exists?(assignable: request.requestable)
                     status_text = "Selected"
                     status_class = "bg-green-100 text-green-800"
                   else

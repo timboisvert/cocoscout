@@ -154,7 +154,7 @@
                         class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}",
                         data: { controller: "tooltip", tooltip_text: tooltip_text } %>
                   <% else %>
-                    <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-green-100 text-green-700' %> flex items-center justify-center font-bold text-xs"
+                    <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-100 text-gray-700' %> flex items-center justify-center font-bold text-xs"
                          data-controller="tooltip"
                          data-tooltip-text="<%= tooltip_text %>">
                       <%= assignable.initials %>

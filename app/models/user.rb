@@ -6,6 +6,10 @@ class User < ApplicationRecord
   belongs_to :default_person, class_name: "Person", optional: true
 
   has_secure_password
+
+  # Override default password reset token expiry (default is 15 minutes, we want 2 hours)
+  generates_token_for :password_reset, expires_in: 2.hours
+
   has_many :sessions, dependent: :destroy
 
   has_many :organization_roles, dependent: :destroy

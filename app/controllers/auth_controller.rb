@@ -176,8 +176,8 @@ class AuthController < ApplicationController
     if sanitized_email.match?(URI::MailTo::EMAIL_REGEXP)
       user = User.find_by(email_address: sanitized_email)
       if user
-        token = SecureRandom.urlsafe_base64(32)
-        user.update(password_reset_token: token, password_reset_sent_at: Time.current)
+        # Generate token using Rails 8's generates_token_for
+        token = user.generate_token_for(:password_reset)
         AuthMailer.password(user, token).deliver_later
       end
     end
@@ -188,16 +188,20 @@ class AuthController < ApplicationController
   end
 
   def reset
-    @user = User.find_by(password_reset_token: params[:token])
-    return unless @user.nil? || @user.password_reset_sent_at < 2.hours.ago
+    # Use Rails 8's find_by_token_for which validates token and expiry
+    @user = User.find_by_token_for(:password_reset, params[:token])
+    if @user.nil?
+      session[:reset_link_expired_or_invalid] = true
+      redirect_to password_path and return
+    end
 
-    session[:reset_link_expired_or_invalid] = true
-    redirect_to password_path and return
+    # Token is valid, render the reset password form
   end
 
   def handle_reset
-    @user = User.find_by(password_reset_token: params[:token])
-    if @user.nil? || @user.password_reset_sent_at < 2.hours.ago
+    # Use Rails 8's find_by_token_for which validates token and expiry
+    @user = User.find_by_token_for(:password_reset, params[:token])
+    if @user.nil?
       session[:reset_link_expired_or_invalid] = true
       redirect_to password_path and return
     end
@@ -205,7 +209,7 @@ class AuthController < ApplicationController
     # Remove null bytes from password to prevent BCrypt errors
     sanitized_password = params[:password].to_s.delete("\0")
 
-    if @user.update(password: sanitized_password, password_reset_token: nil, password_reset_sent_at: nil)
+    if @user.update(password: sanitized_password)
       session[:password_successfully_reset] = true
       redirect_to signin_path and return
     else
