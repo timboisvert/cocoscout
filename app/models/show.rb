@@ -46,6 +46,8 @@ class Show < ApplicationRecord
 
   # Sign-up forms can be associated with specific shows
   has_many :sign_up_forms, dependent: :destroy
+  has_many :sign_up_form_instances, dependent: :destroy
+  has_many :sign_up_form_shows, dependent: :destroy
 
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
@@ -64,6 +66,11 @@ class Show < ApplicationRecord
   # Calendar sync - trigger sync for affected people when show changes
   after_commit :trigger_calendar_sync, on: [ :create, :update ]
   after_destroy :trigger_calendar_sync_for_destruction
+
+  # Sign-up form instance management
+  after_commit :create_sign_up_form_instances, on: :create
+  after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
+  before_destroy :cleanup_sign_up_form_instances
 
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
@@ -334,6 +341,34 @@ class Show < ApplicationRecord
   alias_method :cancelled_vacancies_by_assignment, :cant_make_it_vacancies_by_assignment
 
   private
+
+  def create_sign_up_form_instances
+    # Find all per-event forms for this production that match this show
+    production.sign_up_forms.per_event.active.find_each do |form|
+      form.create_instance_for_show!(self) if form.matches_event?(self)
+    end
+  end
+
+  def sync_sign_up_form_instances_on_cancel
+    # When a show is canceled, cancel all its sign-up form instances
+    if canceled?
+      SignUpFormInstance.where(show_id: id).find_each do |instance|
+        instance.update!(status: "cancelled") unless instance.cancelled?
+      end
+    else
+      # If uncanceled, reopen the instances (set to scheduled, let status logic determine actual state)
+      SignUpFormInstance.where(show_id: id, status: "cancelled").find_each do |instance|
+        instance.update!(status: "scheduled")
+        instance.update_status! # Let it recalculate based on current time
+      end
+    end
+  end
+
+  def cleanup_sign_up_form_instances
+    # When a show is deleted, destroy all its sign-up form instances
+    # This cascades to slots and registrations via dependent: :destroy
+    SignUpFormInstance.where(show_id: id).destroy_all
+  end
 
   def invalidate_production_caches
     # Invalidate production dashboard cache when show changes

@@ -103,6 +103,9 @@ Rails.application.routes.draw do
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
+  # Short URL for sign-up forms
+  get "/s/:code", to: "sign_up_shortlink#show", as: "sign_up_shortlink"
+
   # Selection interface (under manage namespace)
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
@@ -457,9 +460,31 @@ Rails.application.routes.draw do
         end
       end
 
+      # Sign-up form creation wizard
+      scope "sign-up-wizard", as: "sign_up_wizard" do
+        get    "/",           to: "sign_up_form_wizard#scope",           as: "scope"
+        post   "scope",       to: "sign_up_form_wizard#save_scope",      as: "save_scope"
+        get    "events",      to: "sign_up_form_wizard#events",          as: "events"
+        post   "events",      to: "sign_up_form_wizard#save_events",     as: "save_events"
+        get    "slots",       to: "sign_up_form_wizard#slots",           as: "slots"
+        post   "slots",       to: "sign_up_form_wizard#save_slots",      as: "save_slots"
+        get    "rules",       to: "sign_up_form_wizard#rules",           as: "rules"
+        post   "rules",       to: "sign_up_form_wizard#save_rules",      as: "save_rules"
+        get    "schedule",    to: "sign_up_form_wizard#schedule",        as: "schedule"
+        post   "schedule",    to: "sign_up_form_wizard#save_schedule",   as: "save_schedule"
+        get    "review",      to: "sign_up_form_wizard#review",          as: "review"
+        post   "create",      to: "sign_up_form_wizard#create_form",     as: "create_form"
+        delete "cancel",      to: "sign_up_form_wizard#cancel",          as: "cancel"
+      end
+
       # Sign-up forms for events
       resources :sign_up_forms, path: "sign-ups" do
+        collection do
+          get "archived", to: "sign_up_forms#archived", as: "archived"
+        end
         member do
+          get    "settings",          to: "sign_up_forms#settings",          as: "settings"
+          patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
           get    "slots",             to: "sign_up_forms#slots",             as: "slots"
           post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
           patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
@@ -480,6 +505,8 @@ Rails.application.routes.draw do
           delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
           get    "preview",           to: "sign_up_forms#preview",           as: "preview"
           patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
+          patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
+          patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"
         end
       end
 

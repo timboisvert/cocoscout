@@ -1,6 +1,6 @@
-<% content_for :title, "Edit #{@sign_up_form.name}" %>
+<% content_for :title, "Edit - #{@sign_up_form.name}" %>
 
-<div class="w-full pb-56 lg:pb-48" data-controller="question-modal tabs"
+<div class="w-full pb-16" data-controller="question-modal tabs"
      data-create-path="<%= create_question_manage_production_sign_up_form_path(@production, @sign_up_form) %>"
      data-new-description="Custom Questions are shown on the sign-up form."
      data-has-errors="<%= @question.errors.any? %>"
@@ -8,12 +8,13 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
     ],
-    text: @sign_up_form.name,
+    text: "Edit Form",
     links: [
-      { text: "Preview Form", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank" },
-      { text: "View Registrations", path: manage_production_sign_up_form_path(@production, @sign_up_form) }
+      { text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form) },
+      { text: "Preview Form", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank" }
     ]
   } %>
 
@@ -21,8 +22,7 @@
   <nav class="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Basic Info</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Instructions</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Slots</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Questions</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Questions</button>
   </nav>
 
   <%# ==================== TAB 0: BASIC INFO ==================== %>
@@ -31,72 +31,21 @@
       <%= hidden_field_tag :tab, "0" %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Sign-up Form Settings" %>
+        <%= render "shared/card_header", title: "Form Name" %>
         <div class="p-5 space-y-6">
           <div>
             <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <p class="text-xs text-gray-500 mb-2">This is the name shown to people signing up</p>
             <%= form.text_field :name, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Open Mic Night Sign-ups" %>
             <% if @sign_up_form.errors[:name].any? %>
               <p class="mt-1 text-sm text-pink-600"><%= @sign_up_form.errors[:name].first %></p>
             <% end %>
           </div>
-
-          <div>
-            <%= form.label :show_id, "Link to Show (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-            <p class="text-xs text-gray-500 mb-2">Optionally link this form to a specific show</p>
-            <%= form.select :show_id, 
-              options_from_collection_for_select(@shows, :id, :name_with_date, @sign_up_form.show_id),
-              { include_blank: "No specific show" },
-              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <%= form.label :opens_at, "Opens At (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <%= form.datetime_local_field :opens_at, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-            </div>
-
-            <div>
-              <%= form.label :closes_at, "Closes At (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <%= form.datetime_local_field :closes_at, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-            </div>
-          </div>
-
-          <div>
-            <%= form.label :slots_per_registration, class: "block text-sm font-medium text-gray-700 mb-1" %>
-            <p class="text-xs text-gray-500 mb-2">How many slots can one person sign up for?</p>
-            <%= form.number_field :slots_per_registration, min: 1, class: "block w-32 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
-          </div>
-
-          <div class="flex items-center gap-4">
-            <label class="relative inline-flex items-center cursor-pointer">
-              <%= form.check_box :require_login, class: "sr-only peer" %>
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-              <span class="ml-3 text-sm font-medium text-gray-700">Require login to sign up</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <%# Danger Zone %>
-      <div class="bg-white border border-red-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Danger Zone" %>
-        <div class="p-5">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-900">Delete this sign-up form</p>
-              <p class="text-xs text-gray-500">This action cannot be undone. All registrations will be lost.</p>
-            </div>
-            <%= link_to "Delete Form", manage_production_sign_up_form_path(@production, @sign_up_form), 
-                method: :delete,
-                data: { turbo_confirm: "Are you sure you want to delete this sign-up form? This cannot be undone." },
-                class: "px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200" %>
-          </div>
         </div>
       </div>
 
       <div>
-        <%= render partial: "shared/button", locals: { text: "Save Settings", variant: "primary", type: "submit" } %>
+        <%= render partial: "shared/button", locals: { text: "Save Name", variant: "primary", type: "submit" } %>
       </div>
     <% end %>
   </div>
@@ -134,93 +83,7 @@
     <% end %>
   </div>
 
-  <%# ==================== TAB 2: SLOTS ==================== %>
-  <div data-tabs-target="panel" class="hidden">
-    <p class="text-sm text-gray-600 mb-5">Configure the slots available for sign-up. Each slot can have its own capacity.</p>
-
-    <%# Bulk create slots %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Quick Add Slots" %>
-      <div class="p-5">
-        <%= form_with url: generate_slots_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post, local: true, class: "flex flex-wrap gap-4 items-end" do |form| %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
-            <%= text_field_tag :prefix, "Slot", class: "block w-32 rounded-lg border border-gray-300 px-3 py-2" %>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Count</label>
-            <%= number_field_tag :count, 5, min: 1, max: 100, class: "block w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Capacity each</label>
-            <%= number_field_tag :capacity, 1, min: 1, class: "block w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-          </div>
-          <%= render partial: "shared/button", locals: { text: "Generate Slots", variant: "secondary", type: "submit" } %>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Slot list %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Slots" do %>
-        <span class="text-sm text-gray-500"><%= @slots.count %> slots</span>
-      <% end %>
-      <div class="p-5">
-        <% if @slots.any? %>
-          <div class="space-y-2" data-controller="slot-order" data-slot-order-url="<%= reorder_slots_manage_production_sign_up_form_path(@production, @sign_up_form) %>">
-            <% @slots.each do |slot| %>
-              <div class="flex items-center gap-4 p-3 <%= slot.is_held? ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 border border-gray-200' %> rounded-lg group" draggable="true" data-slot-order-target="item" data-id="<%= slot.id %>" data-action="dragstart->slot-order#startDrag dragend->slot-order#endDrag dragover->slot-order#dragOver drop->slot-order#drop touchstart->slot-order#touchStart touchmove->slot-order#touchMove touchend->slot-order#touchEnd">
-                <span class="text-gray-400 cursor-move">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
-                  </svg>
-                </span>
-                <div class="flex-1 min-w-0">
-                  <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
-                  <span class="text-xs text-gray-500 ml-2">(Capacity: <%= slot.capacity %>)</span>
-                  <% if slot.is_held? %>
-                    <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
-                      Held<%= slot.held_reason.present? ? ": #{slot.held_reason}" : "" %>
-                    </span>
-                  <% end %>
-                </div>
-                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <%= link_to toggle_slot_hold_manage_production_sign_up_form_path(@production, @sign_up_form, slot_id: slot.id), method: :patch, class: "text-xs px-2 py-1 rounded #{slot.is_held? ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'}" do %>
-                    <%= slot.is_held? ? 'Release' : 'Hold' %>
-                  <% end %>
-                  <%= link_to destroy_slot_manage_production_sign_up_form_path(@production, @sign_up_form, slot_id: slot.id), method: :delete, data: { turbo_confirm: "Delete this slot?" }, class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200" do %>
-                    Delete
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <p class="text-gray-500 text-sm">No slots created yet. Use Quick Add above to create slots.</p>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Add single slot %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <%= render "shared/card_header", title: "Add Single Slot" %>
-      <div class="p-5">
-        <%= form_with url: create_slot_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post, local: true, class: "flex flex-wrap gap-4 items-end" do %>
-          <div class="flex-1 min-w-48">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Slot Name</label>
-            <%= text_field_tag "slot[name]", "", class: "block w-full rounded-lg border border-gray-300 px-3 py-2", placeholder: "e.g., 8:00 PM" %>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
-            <%= number_field_tag "slot[capacity]", 1, min: 1, class: "block w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-          </div>
-          <%= render partial: "shared/button", locals: { text: "Add Slot", variant: "secondary", type: "submit" } %>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <%# ==================== TAB 3: QUESTIONS ==================== %>
+  <%# ==================== TAB 2: QUESTIONS ==================== %>
   <div data-tabs-target="panel" class="hidden">
     <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information. Questions appear on the sign-up form.</p>
     <%= render partial: "questions" %>
@@ -230,32 +93,31 @@
   <%= render "shared/question_modal" %>
 </div>
 
-<%# Sticky Preview Box %>
-<div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
-  <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-    <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Sign-up Form</h3>
-  </div>
-  <div class="p-3 space-y-3">
-    <%# Status and Actions %>
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= @sign_up_form.active? ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800' %>">
-          <%= @sign_up_form.active? ? 'Active' : 'Inactive' %>
-        </span>
-        <% if @sign_up_form.active? && @sign_up_form.open? %>
-          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
-            Open
-          </span>
-        <% end %>
-      </div>
-      <div class="flex items-center gap-2">
-        <%= link_to toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, class: "inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg #{@sign_up_form.active? ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-white bg-pink-500 hover:bg-pink-600'}" do %>
-          <%= @sign_up_form.active? ? 'Deactivate' : 'Activate' %>
-        <% end %>
-        <%= link_to preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank", class: "inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-pink-700 bg-pink-100 hover:bg-pink-200" do %>
-          Preview
-        <% end %>
-      </div>
+<%# Sticky Action Bar %>
+<div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+  <div class="px-4 py-3 flex items-center justify-between gap-4">
+    <%# Status %>
+    <div class="flex items-center gap-3">
+      <% color = @sign_up_form.registration_status_color %>
+      <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-<%= color %>-100 text-<%= color %>-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-<%= color %>-500"></span>
+        <%= @sign_up_form.registration_status_label %>
+      </span>
+      <% if @sign_up_form.short_code.present? %>
+        <span class="text-xs text-gray-500 hidden sm:inline">Code: <span class="font-mono font-medium"><%= @sign_up_form.short_code %></span></span>
+      <% end %>
+    </div>
+    
+    <%# Actions %>
+    <div class="flex items-center gap-2">
+      <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form), class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200" do %>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        View Registrations
+      <% end %>
+      <%= link_to preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank", class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-pink-700 bg-pink-100 hover:bg-pink-200" do %>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        Preview
+      <% end %>
     </div>
   </div>
 </div>

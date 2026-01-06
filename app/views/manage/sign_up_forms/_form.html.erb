@@ -16,7 +16,7 @@
     <div>
       <%= form.label :show_id, "Link to Show (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
       <p class="text-xs text-gray-500 mb-2">Optionally link this form to a specific show</p>
-      <%= form.select :show_id, 
+      <%= form.select :show_id,
         options_from_collection_for_select(shows, :id, :name_with_date, sign_up_form.show_id),
         { include_blank: "No specific show" },
         class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>

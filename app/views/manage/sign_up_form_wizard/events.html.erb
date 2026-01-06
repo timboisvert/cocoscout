@@ -1,0 +1,250 @@
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: 2, step_name: "Events" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">
+    <% if @wizard_state[:scope] == 'single_event' %>
+      Which event is this for?
+    <% else %>
+      Which events should have sign-ups?
+    <% end %>
+  </h2>
+  <p class="text-gray-600 mb-6">
+    <% if @wizard_state[:scope] == 'single_event' %>
+      Click on an event to select it.
+    <% else %>
+      Choose which events will get their own sign-up form. New events matching your criteria will automatically be included.
+    <% end %>
+  </p>
+
+  <% if flash[:alert].present? %>
+    <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium text-pink-800"><%= flash[:alert] %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @wizard_state[:scope] == 'single_event' %>
+    <%= form_with url: manage_sign_up_wizard_production_save_events_path(@production), method: :post, local: true, data: { controller: "single-event-select", "single-event-select-selected-id-value": @wizard_state[:selected_show_ids]&.first } do |form| %>
+      <!-- Single Event Selection - show_row style -->
+      <div class="space-y-2 max-h-[28rem] overflow-y-auto">
+        <% @shows.each do |show| %>
+          <%
+            is_selected = @wizard_state[:selected_show_ids]&.include?(show.id.to_s)
+          %>
+          <div class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+               data-single-event-select-target="row"
+               data-show-id="<%= show.id %>"
+               data-action="click->single-event-select#select">
+            <input type="radio" name="selected_show_ids[]" value="<%= show.id %>"
+                   <%= "checked" if is_selected %>
+                   class="sr-only"
+                   data-single-event-select-target="input">
+
+            <%# Date Box %>
+            <div class="flex-shrink-0 w-14 text-center mr-4">
+              <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+              <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+              <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+            </div>
+
+            <%# Show Details %>
+            <div class="flex-1 min-w-0 flex flex-col justify-center">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium text-gray-900">
+                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                </span>
+                <% if show.recurring? %>
+                  <span title="Recurring event">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                  </span>
+                <% end %>
+              </div>
+              <div class="text-sm text-gray-600">
+                <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                <% if show.location.present? %>
+                  · <%= show.location.name %>
+                <% elsif show.is_online %>
+                  · Online
+                <% end %>
+              </div>
+            </div>
+
+            <%# Selection indicator %>
+            <div class="flex items-center ml-4" data-single-event-select-target="checkmark">
+              <% if is_selected %>
+                <div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              <% else %>
+                <div class="w-6 h-6 rounded-full border-2 border-gray-300"></div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% if @shows.empty? %>
+          <div class="text-gray-500 text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p class="mt-2 text-sm">No upcoming events found.</p>
+            <p class="mt-1 text-xs text-gray-400">Schedule some events first, then come back to create sign-ups.</p>
+          </div>
+        <% end %>
+      </div>
+      <input type="hidden" name="event_matching" value="manual">
+
+      <div class="mt-8 flex justify-between">
+        <%= link_to manage_sign_up_wizard_production_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% else %>
+    <%= form_with url: manage_sign_up_wizard_production_save_events_path(@production), method: :post, local: true, data: { controller: "event-matching multi-event-select", "event-matching-selected-value": @wizard_state[:event_matching] || 'all' } do |form| %>
+      <!-- Per Event Matching Options -->
+      <div class="space-y-4">
+        <!-- All Events -->
+        <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:event_matching] == 'all' || @wizard_state[:event_matching].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+             data-event-matching-target="option"
+             data-value="all"
+             data-action="click->event-matching#select">
+          <input type="radio" name="event_matching" value="all"
+                 <%= "checked" if @wizard_state[:event_matching] == 'all' || @wizard_state[:event_matching].nil? %>
+                 class="sr-only"
+                 data-event-matching-target="input">
+          <p class="font-medium text-gray-900">All Events</p>
+          <p class="text-sm text-gray-500 mt-1">Every event in this production will get its own sign-up form.</p>
+        </div>
+
+        <!-- By Event Type -->
+        <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:event_matching] == 'event_types' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+             data-event-matching-target="option"
+             data-value="event_types"
+             data-action="click->event-matching#select">
+          <input type="radio" name="event_matching" value="event_types"
+                 <%= "checked" if @wizard_state[:event_matching] == 'event_types' %>
+                 class="sr-only"
+                 data-event-matching-target="input">
+          <p class="font-medium text-gray-900">By Event Type</p>
+          <p class="text-sm text-gray-500 mt-1">Only specific types of events will get sign-ups.</p>
+        </div>
+
+        <!-- Event Type Selection (shown when event_types selected) -->
+        <div data-event-matching-target="eventTypes" class="<%= @wizard_state[:event_matching] == 'event_types' ? '' : 'hidden' %> ml-4 space-y-2">
+          <p class="text-sm text-gray-600 mb-2">Click to select event types:</p>
+          <div class="flex flex-wrap gap-2">
+            <% @event_types.each do |label, key| %>
+              <%
+                is_type_selected = @wizard_state[:event_type_filter]&.include?(key.to_s)
+              %>
+              <div class="px-3 py-1.5 rounded-full border-2 cursor-pointer transition-colors text-sm <%= is_type_selected ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-300 bg-white text-gray-700' %> hover:border-pink-300"
+                   data-event-matching-target="eventTypeChip"
+                   data-value="<%= key %>"
+                   data-action="click->event-matching#selectEventType">
+                <input type="checkbox" name="event_type_filter[]" value="<%= key %>"
+                       <%= "checked" if is_type_selected %>
+                       class="sr-only"
+                       data-event-matching-target="eventTypeInput">
+                <%= label %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Manual Selection -->
+        <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:event_matching] == 'manual' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+             data-event-matching-target="option"
+             data-value="manual"
+             data-action="click->event-matching#select">
+          <input type="radio" name="event_matching" value="manual"
+                 <%= "checked" if @wizard_state[:event_matching] == 'manual' %>
+                 class="sr-only"
+                 data-event-matching-target="input">
+          <p class="font-medium text-gray-900">Manual Selection</p>
+          <p class="text-sm text-gray-500 mt-1">Choose specific events from the list below.</p>
+        </div>
+
+        <!-- Manual Event Selection (shown when manual selected) - show_row style -->
+        <div data-event-matching-target="manual" class="<%= @wizard_state[:event_matching] == 'manual' ? '' : 'hidden' %> ml-4 space-y-2 max-h-72 overflow-y-auto">
+          <p class="text-sm text-gray-600 mb-2">Click events to select or deselect:</p>
+          <% @shows.each do |show| %>
+            <%
+              is_selected = @wizard_state[:selected_show_ids]&.include?(show.id.to_s)
+            %>
+            <div class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+                 data-multi-event-select-target="row"
+                 data-show-id="<%= show.id %>"
+                 data-action="click->multi-event-select#toggle">
+              <input type="checkbox" name="selected_show_ids[]" value="<%= show.id %>"
+                     <%= "checked" if is_selected %>
+                     class="sr-only"
+                     data-multi-event-select-target="input">
+
+              <%# Date Box %>
+              <div class="flex-shrink-0 w-12 text-center mr-3">
+                <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                <div class="text-xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+              </div>
+
+              <%# Show Details %>
+              <div class="flex-1 min-w-0 flex flex-col justify-center">
+                <span class="font-medium text-gray-900 text-sm">
+                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                </span>
+                <div class="text-xs text-gray-600">
+                  <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                  <% if show.location.present? %>
+                    · <%= show.location.name %>
+                  <% elsif show.is_online %>
+                    · Online
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Selection indicator %>
+              <div class="flex items-center ml-2" data-checkmark>
+                <% if is_selected %>
+                  <div class="w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                <% else %>
+                  <div class="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          <% if @shows.empty? %>
+            <p class="text-gray-500 text-center py-4 text-sm">No upcoming events found.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mt-8 flex justify-between">
+        <%= link_to manage_sign_up_wizard_production_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        <% end %>
+        <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

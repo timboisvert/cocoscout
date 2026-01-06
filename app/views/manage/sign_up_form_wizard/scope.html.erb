@@ -1,0 +1,52 @@
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: 1, step_name: "Scope" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What kind of sign-up form?</h2>
+  <p class="text-gray-600 mb-6">Choose how registrations should be organized across your events.</p>
+
+  <%= form_with url: manage_sign_up_wizard_production_save_scope_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": @wizard_state[:scope] } do |form| %>
+    <div class="space-y-3">
+      <!-- Single Event -->
+      <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:scope] == 'single_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+           data-option-select-target="option"
+           data-value="single_event"
+           data-action="click->option-select#select">
+        <input type="radio" name="scope" value="single_event"
+               <%= "checked" if @wizard_state[:scope] == 'single_event' %>
+               class="sr-only"
+               data-option-select-target="input">
+        <p class="font-medium text-gray-900">Single Event</p>
+        <p class="text-sm text-gray-500 mt-1">Create a sign-up form for one specific event. Best for standalone workshops, classes, or special events.</p>
+      </div>
+
+      <!-- Per Event -->
+      <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:scope] == 'per_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+           data-option-select-target="option"
+           data-value="per_event"
+           data-action="click->option-select#select">
+        <input type="radio" name="scope" value="per_event"
+               <%= "checked" if @wizard_state[:scope] == 'per_event' %>
+               class="sr-only"
+               data-option-select-target="input">
+        <p class="font-medium text-gray-900">Per Event</p>
+        <p class="text-sm text-gray-500 mt-1">Create separate registration pools for each matching event. Perfect for open mics, recurring shows, or any events where each performance needs its own sign-up list.</p>
+        <p class="text-xs text-gray-400 mt-1">New events that match your criteria will automatically get their own sign-up form.</p>
+      </div>
+
+      <!-- General Waitlist -->
+      <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:scope] == 'shared_pool' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+           data-option-select-target="option"
+           data-value="shared_pool"
+           data-action="click->option-select#select">
+        <input type="radio" name="scope" value="shared_pool"
+               <%= "checked" if @wizard_state[:scope] == 'shared_pool' %>
+               class="sr-only"
+               data-option-select-target="input">
+        <p class="font-medium text-gray-900">General Waitlist</p>
+        <p class="text-sm text-gray-500 mt-1">One sign-up list not tied to any specific event. Best for interest lists, volunteer pools, or when you'll assign people to events later.</p>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

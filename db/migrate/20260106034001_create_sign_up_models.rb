@@ -14,7 +14,7 @@ class CreateSignUpModels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :sign_up_forms, [:production_id, :active]
+    add_index :sign_up_forms, [ :production_id, :active ]
 
     # SignUpSlot - individual slots that can be reserved
     create_table :sign_up_slots do |t|
@@ -27,7 +27,7 @@ class CreateSignUpModels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :sign_up_slots, [:sign_up_form_id, :position]
+    add_index :sign_up_slots, [ :sign_up_form_id, :position ]
 
     # SignUpRegistration - a person's registration for a specific slot
     create_table :sign_up_registrations do |t|
@@ -42,8 +42,8 @@ class CreateSignUpModels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :sign_up_registrations, [:sign_up_slot_id, :position]
-    add_index :sign_up_registrations, [:sign_up_slot_id, :person_id], unique: true, where: "person_id IS NOT NULL AND status != 'cancelled'", name: "idx_sign_up_regs_slot_person_unique"
+    add_index :sign_up_registrations, [ :sign_up_slot_id, :position ]
+    add_index :sign_up_registrations, [ :sign_up_slot_id, :person_id ], unique: true, where: "person_id IS NOT NULL AND status != 'cancelled'", name: "idx_sign_up_regs_slot_person_unique"
     add_index :sign_up_registrations, :person_id, where: "person_id IS NOT NULL", name: "idx_sign_up_regs_person"
 
     # SignUpFormHoldout - configuration for automatically holding slots
@@ -55,6 +55,6 @@ class CreateSignUpModels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :sign_up_form_holdouts, [:sign_up_form_id, :holdout_type], unique: true
+    add_index :sign_up_form_holdouts, [ :sign_up_form_id, :holdout_type ], unique: true
   end
 end

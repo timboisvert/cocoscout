@@ -1,0 +1,215 @@
+<%
+  # Calculate step number based on scope
+  step_num = @wizard_state[:scope] == "shared_pool" ? 5 : 6
+%>
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Review" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review & Create</h2>
+  <p class="text-gray-600 mb-6">Review your sign-up form settings before creating it.</p>
+
+  <%= form_with url: manage_sign_up_wizard_production_create_form_path(@production), method: :post, local: true do |form| %>
+    <!-- Form Name -->
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Form Name</label>
+      <input type="text" name="name"
+             placeholder="<%= @wizard_state[:scope] == 'single_event' && @selected_show ? "Sign-ups for #{@selected_show.name_with_date}" : 'Sign-up Form' %>"
+             class="block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500">
+      <p class="text-xs text-gray-500 mt-1">Leave blank to use a default name</p>
+    </div>
+
+    <!-- Settings Summary -->
+    <div class="space-y-4">
+      <!-- Scope -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium text-gray-900">Scope</h3>
+            <p class="text-sm text-gray-600 mt-1">
+              <% case @wizard_state[:scope] %>
+              <% when 'single_event' %>
+                Single Event
+                <% if @selected_show %>
+                  — <span class="text-pink-600"><%= @selected_show.name_with_date %></span>
+                <% end %>
+              <% when 'per_event' %>
+                Per Event (separate registrations for each event)
+              <% when 'shared_pool' %>
+                General Waitlist (one sign-up list not tied to specific events)
+              <% end %>
+            </p>
+          </div>
+          <%= link_to "Edit", manage_sign_up_wizard_production_scope_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+
+      <!-- Events (for per_event scope) -->
+      <% if @wizard_state[:scope] == 'per_event' %>
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="font-medium text-gray-900">Events</h3>
+              <p class="text-sm text-gray-600 mt-1">
+                <% case @wizard_state[:event_matching] %>
+                <% when 'all' %>
+                  All events in this production
+                <% when 'event_types' %>
+                  Events of type: <%= @wizard_state[:event_type_filter]&.map(&:humanize)&.join(', ') %>
+                <% when 'manual' %>
+                  <% if @selected_shows&.any? %>
+                    <%= pluralize(@selected_shows.count, 'selected event') %>
+                  <% else %>
+                    Manually selected events
+                  <% end %>
+                <% end %>
+              </p>
+            </div>
+            <%= link_to "Edit", manage_sign_up_wizard_production_events_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Slots & Capacity -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium text-gray-900">Slots & Capacity</h3>
+            <p class="text-sm text-gray-600 mt-1">
+              <% case @wizard_state[:slot_generation_mode] %>
+              <% when 'numbered' %>
+                <%= @wizard_state[:slot_count] %> numbered slots (<%= @wizard_state[:slot_prefix] %> 1, <%= @wizard_state[:slot_prefix] %> 2, etc.)
+                with <%= pluralize(@wizard_state[:slot_capacity], 'spot') %> each
+              <% when 'time_based' %>
+                <%= @wizard_state[:slot_count] %> time slots starting at <%= @wizard_state[:slot_start_time] %>,
+                <%= @wizard_state[:slot_interval_minutes] %> minutes apart,
+                with <%= pluralize(@wizard_state[:slot_capacity], 'spot') %> each
+              <% when 'named' %>
+                <%= pluralize(@wizard_state[:slot_names]&.length || 0, 'named slot') %>
+                with <%= pluralize(@wizard_state[:slot_capacity], 'spot') %> each
+              <% when 'open_list' %>
+                Open list
+                <% if @wizard_state[:open_list_limit] == 'unlimited' %>
+                  (no limit)
+                <% else %>
+                  (max <%= @wizard_state[:open_list_capacity] || 20 %> people)
+                <% end %>
+              <% end %>
+            </p>
+          </div>
+          <%= link_to "Edit", manage_sign_up_wizard_production_slots_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium text-gray-900">Rules</h3>
+            <ul class="text-sm text-gray-600 mt-1 space-y-1">
+              <li>• <%= @wizard_state[:registrations_per_person] == 999 ? 'Unlimited' : @wizard_state[:registrations_per_person] %> registration(s) per person</li>
+              <li>•
+                <% case @wizard_state[:slot_selection_mode] %>
+                <% when 'admin_assign' %>
+                  Admin assigns slots
+                <% when 'auto_assign' %>
+                  Auto-assigned to next available
+                <% else %>
+                  People choose their slot
+                <% end %>
+              </li>
+              <% if @wizard_state[:enable_holdbacks] && @wizard_state[:scope] != 'shared_pool' %>
+                <li>• Every <%= @wizard_state[:holdback_interval] || 5 %> slot held back ("<%= @wizard_state[:holdback_label] || 'Hold for walk-ins' %>") - <%= @wizard_state[:holdback_visible] ? 'visible' : 'hidden' %> to registrants</li>
+              <% end %>
+              <li>• <%= @wizard_state[:require_login] ? 'Login required' : 'Guest sign-ups allowed' %></li>
+              <% if @wizard_state[:allow_edit] %>
+                <% if @wizard_state[:edit_has_cutoff] && @wizard_state[:scope] != 'shared_pool' %>
+                  <li>• Edits allowed
+                    <% case @wizard_state[:edit_cutoff_mode] %>
+                    <% when 'at_event' %>
+                      (until event starts)
+                    <% when 'before_event' %>
+                      (until <%= @wizard_state[:edit_cutoff_hours] || 1 %>h before event)
+                    <% when 'after_event' %>
+                      (until <%= @wizard_state[:edit_cutoff_hours] || 1 %>h after event starts)
+                    <% end %>
+                  </li>
+                <% else %>
+                  <li>• Edits allowed</li>
+                <% end %>
+              <% else %>
+                <li>• Edits not allowed</li>
+              <% end %>
+              <% if @wizard_state[:allow_cancel] %>
+                <% if @wizard_state[:cancel_has_cutoff] && @wizard_state[:scope] != 'shared_pool' %>
+                  <li>• Cancellations allowed
+                    <% case @wizard_state[:cancel_cutoff_mode] %>
+                    <% when 'at_event' %>
+                      (until event starts)
+                    <% when 'before_event' %>
+                      (until <%= @wizard_state[:cancel_cutoff_hours] || 1 %>h before event)
+                    <% when 'after_event' %>
+                      (until <%= @wizard_state[:cancel_cutoff_hours] || 1 %>h after event starts)
+                    <% end %>
+                  </li>
+                <% else %>
+                  <li>• Cancellations allowed</li>
+                <% end %>
+              <% else %>
+                <li>• Cancellations not allowed</li>
+              <% end %>
+            </ul>
+          </div>
+          <%= link_to "Edit", manage_sign_up_wizard_production_rules_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium text-gray-900"><%= @wizard_state[:scope] == 'shared_pool' ? 'Activation' : 'Schedule' %></h3>
+            <p class="text-sm text-gray-600 mt-1">
+              <% if @wizard_state[:scope] == 'shared_pool' %>
+                <% if @wizard_state[:opens_at].present? %>
+                  Activates: <%= @wizard_state[:opens_at].is_a?(String) ? Time.parse(@wizard_state[:opens_at]).strftime('%b %-d, %Y at %-l:%M %p') : @wizard_state[:opens_at].strftime('%b %-d, %Y at %-l:%M %p') rescue @wizard_state[:opens_at] %>
+                <% else %>
+                  Activates immediately
+                <% end %>
+              <% elsif @wizard_state[:schedule_mode] == 'relative' %>
+                <%
+                  opens_value = @wizard_state[:opens_value] || 7
+                  opens_unit = @wizard_state[:opens_unit] || 'days'
+                  closes_value = @wizard_state[:closes_value] || 0
+                  closes_unit = @wizard_state[:closes_unit] || 'hours'
+                %>
+                Opens <%= opens_value %> <%= opens_unit %> before each event,
+                closes <%= closes_value %> <%= closes_unit %> before
+              <% else %>
+                <% if @wizard_state[:opens_at].present? %>
+                  Opens: <%= @wizard_state[:opens_at].is_a?(String) ? Time.parse(@wizard_state[:opens_at]).strftime('%b %-d, %Y at %-l:%M %p') : @wizard_state[:opens_at].strftime('%b %-d, %Y at %-l:%M %p') rescue @wizard_state[:opens_at] %>
+                <% else %>
+                  Opens immediately
+                <% end %>
+                <br>
+                <% if @wizard_state[:closes_at].present? %>
+                  Closes: <%= @wizard_state[:closes_at].is_a?(String) ? Time.parse(@wizard_state[:closes_at]).strftime('%b %-d, %Y at %-l:%M %p') : @wizard_state[:closes_at].strftime('%b %-d, %Y at %-l:%M %p') rescue @wizard_state[:closes_at] %>
+                <% else %>
+                  No closing date
+                <% end %>
+              <% end %>
+            </p>
+          </div>
+          <%= link_to "Edit", manage_sign_up_wizard_production_schedule_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_sign_up_wizard_production_schedule_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Create Sign-Up Form", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

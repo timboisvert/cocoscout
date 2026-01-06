@@ -1,0 +1,284 @@
+<%
+  # Calculate step number based on scope
+  step_num = @wizard_state[:scope] == "shared_pool" ? 3 : 4
+  is_waitlist = @wizard_state[:scope] == "shared_pool"
+
+  # Default require_login to true if not set
+  require_login_checked = @wizard_state[:require_login].nil? ? true : @wizard_state[:require_login]
+
+  # Default cutoff modes
+  edit_cutoff_mode = @wizard_state[:edit_cutoff_mode] || 'at_event'
+  cancel_cutoff_mode = @wizard_state[:cancel_cutoff_mode] || 'at_event'
+
+  # Default slot selection mode - auto_assign for waitlist
+  default_slot_mode = is_waitlist ? 'auto_assign' : 'choose_slot'
+  slot_selection_mode = @wizard_state[:slot_selection_mode] || default_slot_mode
+%>
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Rules" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Registration Rules</h2>
+  <p class="text-gray-600 mb-6">Set limits and permissions for how people can register.</p>
+
+  <%= form_with url: manage_sign_up_wizard_production_save_rules_path(@production), method: :post, local: true, data: { controller: "rules-form" } do |form| %>
+    <div class="space-y-8">
+      <!-- Registration Limits Section -->
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Registration Limits</h3>
+
+        <div class="w-full sm:flex sm:space-x-5">
+          <div class="w-full sm:w-1/2">
+            <label class="block text-gray-700 font-medium">Registrations per person</label>
+            <select name="registrations_per_person" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full">
+              <option value="1" <%= "selected" if @wizard_state[:registrations_per_person].nil? || @wizard_state[:registrations_per_person] == 1 %>>1 (one slot per person)</option>
+              <option value="2" <%= "selected" if @wizard_state[:registrations_per_person] == 2 %>>2</option>
+              <option value="3" <%= "selected" if @wizard_state[:registrations_per_person] == 3 %>>3</option>
+              <option value="5" <%= "selected" if @wizard_state[:registrations_per_person] == 5 %>>5</option>
+              <option value="10" <%= "selected" if @wizard_state[:registrations_per_person] == 10 %>>10</option>
+              <option value="999" <%= "selected" if @wizard_state[:registrations_per_person] && @wizard_state[:registrations_per_person] >= 999 %>>Unlimited</option>
+            </select>
+          </div>
+
+          <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+            <label class="block text-gray-700 font-medium">Slot selection</label>
+            <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full">
+              <option value="choose_slot" <%= "selected" if slot_selection_mode == 'choose_slot' %>>People choose their slot</option>
+              <option value="auto_assign" <%= "selected" if slot_selection_mode == 'auto_assign' %>>Auto-assign to next available</option>
+              <option value="admin_assign" <%= "selected" if slot_selection_mode == 'admin_assign' %>>I'll assign slots</option>
+            </select>
+            <p class="text-sm text-gray-500 mt-1">
+              <% case slot_selection_mode %>
+              <% when 'admin_assign' %>
+                You'll review submissions and assign slots manually.
+              <% when 'auto_assign' %>
+                Good for waitlists or when slot choice doesn't matter.
+              <% else %>
+                People select their preferred slot when signing up.
+              <% end %>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <% unless is_waitlist %>
+      <!-- Hold-backs Section (not for waitlist) -->
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="holdback-toggle">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold text-gray-900">Hold-back Slots</h3>
+            <p class="text-sm text-gray-500 mt-1">Reserve some slots that won't be available for public sign-ups</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="enable_holdbacks" value="0">
+            <input type="checkbox" name="enable_holdbacks" value="1"
+                   <%= "checked" if @wizard_state[:enable_holdbacks] %>
+                   data-action="change->holdback-toggle#toggle"
+                   data-holdback-toggle-target="toggle"
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <div data-holdback-toggle-target="options" class="<%= @wizard_state[:enable_holdbacks] ? '' : 'hidden' %> mt-4 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-gray-700 font-medium">Hold every</label>
+              <div class="flex items-center gap-2 mt-2">
+                <input type="number" name="holdback_interval" value="<%= @wizard_state[:holdback_interval] || 5 %>" min="2" max="20"
+                       class="w-20 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
+                <span class="text-gray-600">slot(s)</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">e.g., "5" means slots 5, 10, 15... are held back</p>
+            </div>
+            <div>
+              <label class="block text-gray-700 font-medium">Label for held slots</label>
+              <input type="text" name="holdback_label" value="<%= @wizard_state[:holdback_label] || 'Hold for walk-ins' %>"
+                     placeholder="Hold for walk-ins"
+                     class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="holdback_visible" value="0">
+              <input type="checkbox" name="holdback_visible" value="1"
+                     <%= "checked" if @wizard_state[:holdback_visible] %>
+                     class="sr-only peer">
+              <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+            <div>
+              <span class="text-sm text-gray-700">Show held slots to people signing up</span>
+              <p class="text-xs text-gray-500">When enabled, held slots are visible but marked as unavailable</p>
+            </div>
+          </div>
+
+          <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  <strong>Tip:</strong> You can manually assign people to held slots or release them later from your dashboard.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <!-- Require Login Section -->
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold text-gray-900">Require Login</h3>
+            <p class="text-sm text-gray-500 mt-1">Only logged-in users can register (no guest sign-ups)</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="require_login" value="0">
+            <input type="checkbox" name="require_login" value="1"
+                   <%= "checked" if require_login_checked %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <!-- Why Require Login info box -->
+        <div class="mt-4 p-3 bg-green-50 rounded-lg border border-green-100">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-green-800">
+                <strong>Recommended:</strong> Requiring login helps prevent duplicate sign-ups, lets people manage their own registrations, and allows you to contact registrants through the platform.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Changes & Cancellations Section -->
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Changes & Cancellations</h3>
+
+        <!-- Allow Editing -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-gray-900">Allow edits</p>
+              <p class="text-sm text-gray-500 mt-1">People can change their registration details</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="allow_edit" value="0">
+              <input type="checkbox" name="allow_edit" value="1"
+                     <%= "checked" if @wizard_state[:allow_edit].nil? || @wizard_state[:allow_edit] %>
+                     data-action="change->rules-form#toggleEditSection"
+                     data-rules-form-target="allowEdit"
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <% unless is_waitlist %>
+          <div data-rules-form-target="editSection" class="<%= @wizard_state[:allow_edit] == false ? 'hidden' : '' %> ml-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="edit_has_cutoff" value="0">
+                <input type="checkbox" name="edit_has_cutoff" value="1"
+                       <%= "checked" if @wizard_state[:edit_has_cutoff] %>
+                       data-action="change->rules-form#toggleEditCutoff"
+                       data-rules-form-target="editHasCutoff"
+                       class="sr-only peer">
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+              <span class="text-sm text-gray-700">Set a cutoff for edits</span>
+            </div>
+
+            <div data-rules-form-target="editCutoff" class="<%= @wizard_state[:edit_has_cutoff] ? '' : 'hidden' %> space-y-2">
+              <select name="edit_cutoff_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 w-full sm:w-auto"
+                      data-action="change->rules-form#toggleEditCutoffHours"
+                      data-rules-form-target="editCutoffMode">
+                <option value="at_event" <%= "selected" if edit_cutoff_mode == 'at_event' %>>At time of event</option>
+                <option value="before_event" <%= "selected" if edit_cutoff_mode == 'before_event' %>>Before the event</option>
+                <option value="after_event" <%= "selected" if edit_cutoff_mode == 'after_event' %>>After the event starts</option>
+              </select>
+              <div data-rules-form-target="editCutoffHours" class="<%= edit_cutoff_mode == 'at_event' ? 'hidden' : '' %> flex items-center gap-2 mt-2">
+                <input type="number" name="edit_cutoff_hours" value="<%= @wizard_state[:edit_cutoff_hours] || 1 %>" min="0"
+                       class="w-20 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
+                <span class="text-sm text-gray-600">hours <%= edit_cutoff_mode == 'after_event' ? 'after' : 'before' %> event</span>
+              </div>
+            </div>
+          </div>
+          <% end %>
+        </div>
+
+        <div class="border-t border-gray-200 my-4"></div>
+
+        <!-- Allow Cancellation -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-gray-900">Allow cancellations</p>
+              <p class="text-sm text-gray-500 mt-1">People can cancel their own registration</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="allow_cancel" value="0">
+              <input type="checkbox" name="allow_cancel" value="1"
+                     <%= "checked" if @wizard_state[:allow_cancel].nil? || @wizard_state[:allow_cancel] %>
+                     data-action="change->rules-form#toggleCancelSection"
+                     data-rules-form-target="allowCancel"
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+
+          <% unless is_waitlist %>
+          <div data-rules-form-target="cancelSection" class="<%= @wizard_state[:allow_cancel] == false ? 'hidden' : '' %> ml-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="cancel_has_cutoff" value="0">
+                <input type="checkbox" name="cancel_has_cutoff" value="1"
+                       <%= "checked" if @wizard_state[:cancel_has_cutoff] %>
+                       data-action="change->rules-form#toggleCancelCutoff"
+                       data-rules-form-target="cancelHasCutoff"
+                       class="sr-only peer">
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+              <span class="text-sm text-gray-700">Set a cutoff for cancellations</span>
+            </div>
+
+            <div data-rules-form-target="cancelCutoff" class="<%= @wizard_state[:cancel_has_cutoff] ? '' : 'hidden' %> space-y-2">
+              <select name="cancel_cutoff_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 w-full sm:w-auto"
+                      data-action="change->rules-form#toggleCancelCutoffHours"
+                      data-rules-form-target="cancelCutoffMode">
+                <option value="at_event" <%= "selected" if cancel_cutoff_mode == 'at_event' %>>At time of event</option>
+                <option value="before_event" <%= "selected" if cancel_cutoff_mode == 'before_event' %>>Before the event</option>
+                <option value="after_event" <%= "selected" if cancel_cutoff_mode == 'after_event' %>>After the event starts</option>
+              </select>
+              <div data-rules-form-target="cancelCutoffHours" class="<%= cancel_cutoff_mode == 'at_event' ? 'hidden' : '' %> flex items-center gap-2 mt-2">
+                <input type="number" name="cancel_cutoff_hours" value="<%= @wizard_state[:cancel_cutoff_hours] || 1 %>" min="0"
+                       class="w-20 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
+                <span class="text-sm text-gray-600">hours <%= cancel_cutoff_mode == 'after_event' ? 'after' : 'before' %> event</span>
+              </div>
+            </div>
+          </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_sign_up_wizard_production_slots_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

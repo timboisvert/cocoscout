@@ -115,7 +115,7 @@
         <%= render "shared/card_header", title: "Holdout Rules" %>
         <div class="p-4">
           <p class="text-xs text-gray-500 mb-4">Automatically reserve slots based on rules</p>
-          
+
           <% if @holdouts.any? %>
             <div class="space-y-2 mb-4">
               <% @holdouts.each do |holdout| %>
@@ -132,9 +132,9 @@
           <%= form_with url: create_holdout_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post do |form| %>
             <div class="space-y-3">
               <div>
-                <%= form.select :holdout_type, 
-                  [["Reserve first N slots", "first_n"], ["Reserve last N slots", "last_n"], ["Reserve every Nth slot", "every_n"]], 
-                  {}, 
+                <%= form.select :holdout_type,
+                  [["Reserve first N slots", "first_n"], ["Reserve last N slots", "last_n"], ["Reserve every Nth slot", "every_n"]],
+                  {},
                   name: "holdout[holdout_type]",
                   class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
               </div>

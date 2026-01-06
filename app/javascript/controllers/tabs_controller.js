@@ -36,7 +36,11 @@ export default class extends Controller {
 
     select(e) {
         e.preventDefault();
-        const idx = parseInt(e.target.dataset.index, 10);
+        // Use closest to find the button with data-index, in case click was on child element
+        const tab = e.target.closest('[data-index]');
+        if (!tab) return;
+        const idx = parseInt(tab.dataset.index, 10);
+        if (isNaN(idx)) return;
 
         // Check if we need to reload the page to clear pagination
         const urlParams = new URLSearchParams(window.location.search);
@@ -60,7 +64,9 @@ export default class extends Controller {
 
         // Update the URL hash
         history.replaceState(null, '', `#tab-${idx}`);
-    } show(idx) {
+    }
+
+    show(idx) {
         this.tabTargets.forEach((tab, i) => {
             if (i === idx) {
                 tab.classList.add("border-pink-500", "text-pink-600", "bg-white");

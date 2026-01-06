@@ -2,6 +2,7 @@
 
 class SignUpSlot < ApplicationRecord
   belongs_to :sign_up_form
+  belongs_to :sign_up_form_instance, optional: true
 
   has_many :sign_up_registrations, -> { order(:position) }, dependent: :destroy
   has_many :people, through: :sign_up_registrations
@@ -11,6 +12,8 @@ class SignUpSlot < ApplicationRecord
 
   scope :available, -> { where(is_held: false) }
   scope :held, -> { where(is_held: true) }
+  scope :for_instance, ->(instance) { where(sign_up_form_instance: instance) }
+  scope :direct, -> { where(sign_up_form_instance: nil) }
   scope :with_capacity, -> {
     available.left_joins(:sign_up_registrations)
              .where("sign_up_registrations.id IS NULL OR sign_up_registrations.status = 'cancelled'")

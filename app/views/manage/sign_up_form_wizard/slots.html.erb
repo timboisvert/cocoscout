@@ -1,0 +1,233 @@
+<%
+  # Calculate step number based on scope
+  step_num = @wizard_state[:scope] == "shared_pool" ? 2 : 3
+%>
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Slots & Capacity" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How are registration slots structured?</h2>
+  <p class="text-gray-600 mb-6">Choose how people will sign up and set the capacity for each slot.</p>
+
+  <% if flash[:alert].present? && @wizard_state[:slot_generation_mode].blank? %>
+    <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium text-pink-800"><%= flash[:alert] %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%= form_with url: manage_sign_up_wizard_production_save_slots_path(@production), method: :post, local: true, data: { controller: "slot-mode" } do |form| %>
+    <div class="space-y-6">
+      <!-- Slot Generation Mode Selection -->
+      <div class="grid grid-cols-2 gap-3">
+        <% if @wizard_state[:scope] != "shared_pool" %>
+          <!-- Numbered Slots (not for waitlist) -->
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @wizard_state[:slot_generation_mode] == 'numbered' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors">
+              <input type="radio" name="slot_generation_mode" value="numbered"
+                     <%= "checked" if @wizard_state[:slot_generation_mode] == 'numbered' %>
+                     data-action="change->slot-mode#toggle"
+                     class="sr-only">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Numbered Slots</p>
+              <p class="text-xs text-gray-500 mt-1">Slot 1, Slot 2, etc.</p>
+            </div>
+          </label>
+
+          <!-- Time-Based Slots (not for waitlist) -->
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @wizard_state[:slot_generation_mode] == 'time_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors">
+              <input type="radio" name="slot_generation_mode" value="time_based"
+                     <%= "checked" if @wizard_state[:slot_generation_mode] == 'time_based' %>
+                     data-action="change->slot-mode#toggle"
+                     class="sr-only">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Timed Slots</p>
+              <p class="text-xs text-gray-500 mt-1">Based on event start time</p>
+            </div>
+          </label>
+        <% end %>
+
+        <!-- Named Slots -->
+        <label class="block cursor-pointer">
+          <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @wizard_state[:slot_generation_mode] == 'named' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors">
+            <input type="radio" name="slot_generation_mode" value="named"
+                   <%= "checked" if @wizard_state[:slot_generation_mode] == 'named' %>
+                   data-action="change->slot-mode#toggle"
+                   class="sr-only">
+            <div class="flex justify-center mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-900 text-sm">Named Slots</p>
+            <p class="text-xs text-gray-500 mt-1">Custom names you define</p>
+          </div>
+        </label>
+
+        <!-- Open List -->
+        <label class="block cursor-pointer">
+          <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @wizard_state[:slot_generation_mode] == 'open_list' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors">
+            <input type="radio" name="slot_generation_mode" value="open_list"
+                   <%= "checked" if @wizard_state[:slot_generation_mode] == 'open_list' %>
+                   data-action="change->slot-mode#toggle"
+                   class="sr-only">
+            <div class="flex justify-center mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+              </svg>
+            </div>
+            <p class="font-medium text-gray-900 text-sm">Open List</p>
+            <p class="text-xs text-gray-500 mt-1">No slots, just sign-ups</p>
+          </div>
+        </label>
+      </div>
+
+      <% if @wizard_state[:scope] != "shared_pool" %>
+      <!-- Numbered Slots Options -->
+      <div data-slot-mode-target="numbered" class="<%= @wizard_state[:slot_generation_mode] == 'numbered' ? '' : 'hidden' %>">
+        <div class="space-y-5">
+          <div class="w-full sm:flex sm:space-x-5">
+            <div class="w-full sm:w-1/2">
+              <label class="block text-gray-700 font-medium">Number of Slots</label>
+              <input type="number" name="slot_count" value="<%= @wizard_state[:slot_count] || 10 %>" min="1" max="100"
+                     class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+            </div>
+            <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+              <label class="block text-gray-700 font-medium">People per Slot</label>
+              <input type="number" name="slot_capacity" value="<%= @wizard_state[:slot_capacity] || 1 %>" min="1"
+                     class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+              <p class="text-sm text-gray-500 mt-1">How many people can sign up for each slot</p>
+            </div>
+          </div>
+          <input type="hidden" name="slot_prefix" value="Slot">
+        </div>
+      </div>
+
+      <!-- Time-Based Slots Options -->
+      <div data-slot-mode-target="timeBased" class="<%= @wizard_state[:slot_generation_mode] == 'time_based' ? '' : 'hidden' %>">
+        <div class="space-y-5">
+          <!-- Explanation -->
+          <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  <strong>Slots start when your event starts.</strong> If your event is at 7:00 PM, the first slot will be at 7:00 PM, the second at 7:05 PM (with 5-minute slots), and so on.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full sm:flex sm:space-x-5">
+            <div class="w-full sm:w-1/2">
+              <label class="block text-gray-700 font-medium">Number of Slots</label>
+              <input type="number" name="slot_count" value="<%= @wizard_state[:slot_count] || 10 %>" min="1" max="100"
+                     class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+            </div>
+            <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
+              <label class="block text-gray-700 font-medium">Slot Length (minutes)</label>
+              <input type="number" name="slot_interval_minutes" value="<%= @wizard_state[:slot_interval_minutes] || 5 %>" min="1"
+                     class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+              <p class="text-sm text-gray-500 mt-1">Duration of each slot</p>
+            </div>
+          </div>
+          <div class="w-full sm:w-1/2">
+            <label class="block text-gray-700 font-medium">People per Slot</label>
+            <input type="number" name="slot_capacity" value="<%= @wizard_state[:slot_capacity] || 1 %>" min="1"
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-32">
+          </div>
+        </div>
+      </div>
+      <% end %>
+      <!-- Named Slots Options -->
+      <div data-slot-mode-target="named" class="<%= @wizard_state[:slot_generation_mode] == 'named' ? '' : 'hidden' %>">
+        <div class="space-y-5">
+          <div>
+            <% if flash[:alert].present? && @wizard_state[:slot_generation_mode] == 'named' %>
+              <div class="mb-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm font-medium text-pink-800"><%= flash[:alert] %></p>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+            <label class="block text-gray-700 font-medium">Slot Names</label>
+            <div class="text-sm text-gray-500 mt-1">Enter one slot name per line</div>
+            <textarea name="slot_names" rows="5" placeholder="Group A&#10;Group B&#10;Solo Performance"
+                      class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full"><%= @wizard_state[:slot_names]&.join("\n") %></textarea>
+          </div>
+          <div class="w-full sm:w-1/2">
+            <label class="block text-gray-700 font-medium">People per Slot</label>
+            <input type="number" name="slot_capacity" value="<%= @wizard_state[:slot_capacity] || 1 %>" min="1"
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full sm:w-32">
+          </div>
+        </div>
+      </div>
+
+      <!-- Open List Options -->
+      <div data-slot-mode-target="openList" class="<%= @wizard_state[:slot_generation_mode] == 'open_list' ? '' : 'hidden' %>">
+        <div class="space-y-5">
+          <div class="w-full">
+            <label class="block text-gray-700 font-medium">Capacity</label>
+            <div class="mt-2 space-y-2">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="open_list_limit" value="limited"
+                       <%= "checked" if @wizard_state[:open_list_limit] != 'unlimited' %>
+                       data-action="change->slot-mode#toggleOpenListLimit"
+                       class="h-4 w-4 border-gray-300 accent-pink-500">
+                <span class="text-gray-700">Set a limit</span>
+                <input type="number" name="open_list_capacity" value="<%= @wizard_state[:open_list_capacity] || 20 %>" min="1"
+                       data-slot-mode-target="openListCapacity"
+                       class="w-24 shadow-sm rounded-lg border border-gray-300 px-3 py-2 <%= @wizard_state[:open_list_limit] == 'unlimited' ? 'opacity-50' : '' %>">
+                <span class="text-sm text-gray-500">people</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="open_list_limit" value="unlimited"
+                       <%= "checked" if @wizard_state[:open_list_limit] == 'unlimited' %>
+                       data-action="change->slot-mode#toggleOpenListLimit"
+                       class="h-4 w-4 border-gray-300 accent-pink-500">
+                <span class="text-gray-700">No limit</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <% back_path = @wizard_state[:scope] == "shared_pool" ? manage_sign_up_wizard_production_scope_path(@production) : manage_sign_up_wizard_production_events_path(@production) %>
+      <%= link_to back_path, class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -7,114 +7,416 @@
       ["Sign-ups", manage_production_sign_up_forms_path(@production)]
     ],
     text: @sign_up_form.name,
-    links: [
-      { text: "Edit", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form) },
-      { text: "Preview", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank" }
-    ]
+    links: []
   } %>
 
-  <!-- Status and Actions -->
-  <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium <%= @sign_up_form.active? ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800' %>">
-          <%= @sign_up_form.active? ? 'Active' : 'Inactive' %>
-        </span>
-        <% if @sign_up_form.active? %>
-          <% if @sign_up_form.open? %>
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-green-100 text-green-800">
-              Open for Sign-ups
+  <%# Status bar %>
+  <div class="bg-white border border-gray-200 rounded-lg mb-6">
+    <div class="px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <%# For per-event, calculate next opening %>
+        <% if @sign_up_form.per_event? %>
+          <% next_opening = @sign_up_form.sign_up_form_instances.joins(:show)
+               .where("shows.date_and_time > ?", Time.current)
+               .where("sign_up_form_instances.opens_at > ?", Time.current)
+               .where(status: %w[scheduled open])
+               .order("sign_up_form_instances.opens_at ASC").first %>
+          <% next_open = @sign_up_form.sign_up_form_instances.joins(:show)
+               .where("shows.date_and_time > ?", Time.current)
+               .where(status: "open").first %>
+          <% if next_open %>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-green-100 text-green-800">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              Accepting Sign-ups
             </span>
-          <% elsif @sign_up_form.opens_at.present? && @sign_up_form.opens_at > Time.current %>
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800">
-              Opens <%= @sign_up_form.opens_at.strftime("%B %d at %l:%M %p") %>
+          <% elsif next_opening %>
+            <% days_until_open = ((next_opening.opens_at - Time.current) / 1.day).ceil %>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-amber-100 text-amber-800">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              Opens in <%= pluralize(days_until_open, 'day') %>
             </span>
-          <% elsif @sign_up_form.closes_at.present? && @sign_up_form.closes_at <= Time.current %>
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800">
-              Closed
+          <% elsif @sign_up_form.active? %>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800">
+              <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+              No upcoming events
+            </span>
+          <% else %>
+            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800">
+              <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+              Sign-ups Off
             </span>
           <% end %>
+        <% else %>
+          <% color = @sign_up_form.registration_status_color %>
+          <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-<%= color %>-100 text-<%= color %>-800">
+            <span class="w-2 h-2 rounded-full bg-<%= color %>-500"></span>
+            <%= @sign_up_form.registration_status_label %>
+          </span>
+          <span class="text-sm text-gray-500">
+            <% case @sign_up_form.scope %>
+            <% when "single_event" %>
+              Single Event
+            <% else %>
+              Waitlist
+            <% end %>
+          </span>
+          <span class="text-sm text-gray-500">• <%= @sign_up_form.sign_up_slots.count %> slots</span>
         <% end %>
       </div>
       <div class="flex items-center gap-2">
-        <%= link_to toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, class: "inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg #{@sign_up_form.active? ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-white bg-pink-500 hover:bg-pink-600'}" do %>
-          <%= @sign_up_form.active? ? 'Deactivate' : 'Activate' %>
-        <% end %>
+        <%= render "shared/button", text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
+        <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
       </div>
     </div>
-  </div>
 
-  <!-- Quick Stats -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white border border-gray-200 rounded-lg p-4">
-      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.count %></div>
-      <div class="text-sm text-gray-500">Total Slots</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4">
-      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.available.count %></div>
-      <div class="text-sm text-gray-500">Available Slots</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4">
-      <div class="text-2xl font-bold text-gray-900"><%= @registrations.count %></div>
-      <div class="text-sm text-gray-500">Registrations</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-lg p-4">
-      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.held.count %></div>
-      <div class="text-sm text-gray-500">Held Slots</div>
-    </div>
-  </div>
-
-  <!-- Registrations Table -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Registrations" do %>
-      <span class="text-sm text-gray-500"><%= @registrations.count %> total</span>
+    <%# Single event info using show_row style %>
+    <% if @sign_up_form.single_event? && @sign_up_form.show %>
+      <div class="px-5 pb-4">
+        <%= render "shared/show_row", show: @sign_up_form.show, show_location: true %>
+      </div>
     <% end %>
-    <div class="divide-y divide-gray-100">
-      <% if @registrations.any? %>
-        <% @registrations.each do |registration| %>
-          <div class="flex items-center justify-between p-4 hover:bg-gray-50 group">
-            <div class="flex items-center gap-4">
-              <div class="flex-shrink-0">
-                <% if registration.person&.avatar&.attached? %>
-                  <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-10 h-10 rounded-full object-cover" %>
-                <% else %>
-                  <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
-                    <%= registration.display_name.first.upcase %>
+  </div>
+
+  <% if @sign_up_form.per_event? %>
+    <%# 50/50 Grid Layout for Per-Event Mode %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <%# Left Column - Registrations (50%) %>
+      <div>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="event-picker-modal">
+          <% if @current_instance %>
+            <%# Event Navigator Header %>
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Registrations</h3>
+              <% if @instances.size > 1 %>
+                <button type="button" data-action="event-picker-modal#open" class="inline-flex items-center gap-1.5 text-sm text-pink-600 hover:text-pink-700 font-medium">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  Select event
+                </button>
+              <% end %>
+            </div>
+
+            <%# Current Event using show_row style %>
+            <div class="px-3 py-3 bg-gray-50 border-b border-gray-100">
+              <div class="flex items-center gap-2">
+                <% if @instances.size > 1 %>
+                  <% prev_instance = @instances.to_a[@instances.find_index(@current_instance).to_i - 1] if @instances.find_index(@current_instance).to_i > 0 %>
+                  <% if prev_instance %>
+                    <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: prev_instance.id),
+                        class: "p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 shrink-0",
+                        data: { turbo_action: "replace" } do %>
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <% end %>
+                  <% else %>
+                    <div class="w-8"></div>
+                  <% end %>
+                <% end %>
+
+                <div class="flex-1">
+                  <%= render partial: "shared/show_row", locals: {
+                    show: @current_instance.show,
+                    show_location: true
+                  } %>
+                </div>
+
+                <% if @instances.size > 1 %>
+                  <% next_instance_nav = @instances.to_a[@instances.find_index(@current_instance).to_i + 1] %>
+                  <% if next_instance_nav %>
+                    <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: next_instance_nav.id),
+                        class: "p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 shrink-0",
+                        data: { turbo_action: "replace" } do %>
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <% end %>
+                  <% else %>
+                    <div class="w-8"></div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Event Picker Modal %>
+            <% if @instances.size > 1 %>
+              <div class="hidden fixed inset-0 z-50" data-event-picker-modal-target="modal">
+                <div class="absolute inset-0 bg-black/50" data-action="click->event-picker-modal#close"></div>
+                <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white rounded-lg shadow-xl flex flex-col max-h-[80vh]">
+                  <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <h3 class="font-semibold text-gray-900">Select Event</h3>
+                    <button type="button" data-action="event-picker-modal#close" class="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                  <div class="flex-1 overflow-y-auto p-3 space-y-1">
+                    <% @instances.each do |inst| %>
+                      <% is_current = inst == @current_instance %>
+                      <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: inst.id),
+                          class: "block #{is_current ? 'ring-2 ring-pink-500 ring-offset-1 rounded-lg' : ''}",
+                          data: { turbo_action: "replace" } do %>
+                        <%= render partial: "shared/show_row", locals: {
+                          show: inst.show,
+                          show_location: true
+                        } %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <%# All Slots with Registrations - One per row %>
+            <% slots = @current_instance.sign_up_slots.order(:position) %>
+            <% registrations_by_slot = @current_instance.sign_up_registrations.active.includes(:sign_up_slot, :person).group_by(&:sign_up_slot_id) %>
+
+            <% if slots.any? %>
+              <div class="p-4 space-y-3">
+                <% slots.each do |slot| %>
+                  <% slot_registrations = registrations_by_slot[slot.id] || [] %>
+                  <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <%# Slot header with count on left %>
+                    <div class="flex items-center gap-3 mb-3">
+                      <span class="text-sm font-medium text-gray-500 tabular-nums">
+                        <%= slot_registrations.count %>/<%= slot.capacity %>
+                      </span>
+                      <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
+                      <% if slot.is_held %>
+                        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
+                      <% end %>
+                      <% if slot_registrations.count >= slot.capacity && !slot.is_held %>
+                        <span class="text-xs text-amber-600 font-medium">Full</span>
+                      <% end %>
+                    </div>
+
+                    <%# Registrations in this slot %>
+                    <% if slot_registrations.any? %>
+                      <div class="space-y-2">
+                        <% slot_registrations.each do |registration| %>
+                          <div class="flex items-center justify-between group bg-white rounded-lg px-3 py-2 border border-gray-100">
+                            <div class="flex items-center gap-2">
+                              <% if registration.person&.avatar&.attached? %>
+                                <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-6 h-6 rounded-full object-cover" %>
+                              <% else %>
+                                <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                                  <%= registration.display_name.first.upcase %>
+                                </div>
+                              <% end %>
+                              <span class="text-sm text-gray-700"><%= registration.display_name %></span>
+                            </div>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <%= render "shared/button", text: "Cancel", path: cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id), variant: "danger", size: "small", data: { turbo_method: :delete, turbo_confirm: "Cancel this registration?" } %>
+                            </div>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
                   </div>
                 <% end %>
               </div>
-              <div>
-                <p class="text-sm font-medium text-gray-900"><%= registration.display_name %></p>
-                <% if registration.sign_up_slot %>
-                  <p class="text-xs text-gray-500">Slot: <%= registration.sign_up_slot.display_name %></p>
-                <% end %>
-                <% if registration.created_at %>
-                  <p class="text-xs text-gray-400">Signed up <%= time_ago_in_words(registration.created_at) %> ago</p>
+            <% else %>
+              <div class="px-5 py-8 text-center text-gray-500">
+                <p class="text-sm">No slots configured for this event.</p>
+              </div>
+            <% end %>
+          <% else %>
+            <%# No Events Yet %>
+            <div class="p-8 text-center">
+              <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <p class="text-gray-500">No upcoming events.</p>
+              <p class="text-sm text-gray-400 mt-1">Instances will be created automatically for matching events.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Right Column - Hero + Share (50%) %>
+      <div class="space-y-6">
+        <%# Upcoming Events Accordion %>
+        <%
+          is_auto_sync = @sign_up_form.event_matching == 'all'
+          event_types_label = if @sign_up_form.event_matching == 'event_types' && @sign_up_form.event_type_filter.present?
+            @sign_up_form.event_type_filter.map(&:titleize).to_sentence
+          end
+        %>
+        <div class="bg-white border border-gray-200 rounded-lg" data-controller="accordion">
+          <button type="button" class="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-t-lg" data-action="accordion#toggle">
+            <span class="text-sm font-medium text-gray-700">
+              <% if is_auto_sync %>
+                Enabled for all upcoming events
+              <% elsif event_types_label %>
+                Enabled for upcoming <%= event_types_label %> events
+              <% else %>
+                Enabled for selected events
+              <% end %>
+            </span>
+            <div class="flex items-center gap-2">
+              <% if is_auto_sync %>
+                <span class="inline-flex items-center gap-1 text-xs font-medium text-pink-600">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Auto-sync
+                </span>
+              <% end %>
+              <svg class="w-5 h-5 text-gray-400 transition-transform" data-accordion-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </button>
+          <div class="hidden border-t border-gray-100" data-accordion-target="content">
+            <% future_instances = @sign_up_form.sign_up_form_instances
+                 .includes(:show)
+                 .joins(:show)
+                 .where("shows.date_and_time > ?", Time.current)
+                 .order("shows.date_and_time ASC")
+                 .limit(20) %>
+            <% if future_instances.any? %>
+              <div class="p-3 space-y-1">
+                <% future_instances.each do |instance| %>
+                  <% 
+                    is_cancelled = instance.cancelled? || instance.show.canceled?
+                    days_until = ((instance.show.date_and_time - Time.current) / 1.day).to_i
+                    is_far_away = days_until > 7 && !is_cancelled
+                  %>
+                  <div class="<%= is_cancelled ? 'opacity-50' : (is_far_away ? 'opacity-40' : '') %>">
+                    <%= render partial: "shared/show_row", locals: {
+                      show: instance.show,
+                      show_location: true,
+                      show_canceled: is_cancelled
+                    } %>
+                  </div>
                 <% end %>
               </div>
-            </div>
-            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <%= link_to cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id),
-                  method: :delete,
-                  data: { turbo_confirm: "Cancel this registration?" },
-                  class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200" do %>
-                Cancel
+              <% if is_auto_sync %>
+                <div class="px-5 py-3 bg-pink-50 border-t border-pink-100 flex items-center gap-2 rounded-b-lg">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                  </span>
+                  <span class="text-xs text-pink-700">New events are automatically added when they're created</span>
+                </div>
               <% end %>
+            <% else %>
+              <div class="px-5 py-6 text-center text-gray-500 text-sm">
+                <% if is_auto_sync %>
+                  <p>No upcoming events yet. New events will be automatically added when they're created.</p>
+                <% else %>
+                  <p>No upcoming events configured.</p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Share Card %>
+        <div class="bg-white border border-gray-200 rounded-lg">
+          <%= render "shared/card_header", title: "Share" %>
+          <div class="p-5 space-y-4">
+            <%# Public Sign-up Link (short link) %>
+            <% if @sign_up_form.short_code.present? %>
+              <% public_signup_url = "#{request.base_url}#{@sign_up_form.short_url_path}" %>
+              <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link" %>
+            <% end %>
+
+            <%# Edit and Preview buttons %>
+            <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100">
+              <%= render "shared/button", text: "Edit Form", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "pencil" %>
+              <%= render "shared/button", text: "Preview Form", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "eye", target: "_blank" %>
             </div>
           </div>
-        <% end %>
-      <% else %>
-        <div class="p-6 text-center text-gray-500">
-          <p class="text-sm">No registrations yet.</p>
-          <% if @sign_up_form.active? && @sign_up_form.sign_up_slots.any? %>
-            <p class="text-xs mt-1">Share the form link to start collecting registrations.</p>
-          <% elsif !@sign_up_form.active? %>
-            <p class="text-xs mt-1">Activate the form to start accepting registrations.</p>
-          <% elsif @sign_up_form.sign_up_slots.none? %>
-            <p class="text-xs mt-1"><%= link_to "Add slots", edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2), class: "text-pink-500 underline" %> to start accepting registrations.</p>
+        </div>
+
+        <%# Archive Link %>
+        <div class="mt-4 text-center">
+          <%= link_to archive_manage_production_sign_up_form_path(@production, @sign_up_form),
+                      data: { turbo_method: :patch, turbo_confirm: "Archive this sign-up form? It will be hidden from your list but can be restored later." },
+                      class: "text-sm text-gray-500 hover:text-gray-700" do %>
+            Archive this sign-up form
           <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%# Non-per-event modes: Original layout with Share box first %>
+    <%# Share Card %>
+    <div class="bg-white border border-gray-200 rounded-lg mb-6">
+      <%= render "shared/card_header", title: "Share" %>
+      <div class="p-5 space-y-4">
+        <%# Public Sign-up Link (short link) %>
+        <% if @sign_up_form.short_code.present? %>
+          <% public_signup_url = "#{request.base_url}#{@sign_up_form.short_url_path}" %>
+          <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link" %>
+        <% end %>
+
+        <%# Edit and Preview buttons %>
+        <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100">
+          <%= render "shared/button", text: "Edit Form", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "pencil" %>
+          <%= render "shared/button", text: "Preview Form", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "eye", target: "_blank" %>
+        </div>
+      </div>
+    </div>
+
+    <%# Archive Link %>
+    <div class="mb-6 text-center">
+      <%= link_to archive_manage_production_sign_up_form_path(@production, @sign_up_form),
+                  data: { turbo_method: :patch, turbo_confirm: "Archive this sign-up form? It will be hidden from your list but can be restored later." },
+                  class: "text-sm text-gray-500 hover:text-gray-700" do %>
+        Archive this sign-up form
+      <% end %>
+    </div>
+
+    <%# Single Event / Waitlist: Show slots with registrations %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Sign-up Slots" do %>
+        <span class="text-sm text-gray-500">
+          <%= @registrations.count %> of <%= @sign_up_form.sign_up_slots.sum(:capacity) %> spots filled
+        </span>
+      <% end %>
+
+      <% if @sign_up_form.sign_up_slots.any? %>
+        <div class="p-4 space-y-3">
+          <% @sign_up_form.sign_up_slots.order(:position).each do |slot| %>
+            <% registrations_in_slot = slot.sign_up_registrations.active.includes(:person) %>
+            <% active_count = registrations_in_slot.count %>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <%# Slot header with count on left %>
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-sm font-medium text-gray-500 tabular-nums">
+                  <%= active_count %>/<%= slot.capacity %>
+                </span>
+                <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
+                <% if slot.is_held %>
+                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
+                <% end %>
+                <% if active_count >= slot.capacity && !slot.is_held %>
+                  <span class="text-xs text-amber-600 font-medium">Full</span>
+                <% end %>
+              </div>
+
+              <%# Registrations in this slot %>
+              <% if registrations_in_slot.any? %>
+                <div class="space-y-2">
+                  <% registrations_in_slot.each do |registration| %>
+                    <div class="flex items-center justify-between group bg-white rounded-lg px-3 py-2 border border-gray-100">
+                      <div class="flex items-center gap-2">
+                        <% if registration.person&.avatar&.attached? %>
+                          <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-6 h-6 rounded-full object-cover" %>
+                        <% else %>
+                          <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                            <%= registration.display_name.first.upcase %>
+                          </div>
+                        <% end %>
+                        <span class="text-sm text-gray-700"><%= registration.display_name %></span>
+                      </div>
+                      <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <%= render "shared/button", text: "Cancel", path: cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id), variant: "danger", size: "small", data: { turbo_method: :delete, turbo_confirm: "Cancel this registration?" } %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="px-5 py-12 text-center">
+          <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <p class="text-gray-500">No slots configured yet.</p>
+          <p class="text-sm text-gray-400 mt-1">Go to Settings to configure slots.</p>
         </div>
       <% end %>
     </div>
-  </div>
+  <% end %>
 </div>

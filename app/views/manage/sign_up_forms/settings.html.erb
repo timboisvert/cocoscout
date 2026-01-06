@@ -1,0 +1,602 @@
+<% content_for :title, "Settings - #{@sign_up_form.name}" %>
+
+<%
+  # Prepare data for the form
+  is_waitlist = @sign_up_form.shared_pool?
+  schedule_mode = @sign_up_form.schedule_mode || 'relative'
+%>
+
+<div class="w-full pb-24" data-controller="tabs settings-form"
+     data-tabs-initial-tab-value="<%= params[:tab].to_i %>"
+     data-settings-form-scope-value="<%= @sign_up_form.scope %>"
+     data-settings-form-event-matching-value="<%= @sign_up_form.event_matching %>"
+     data-settings-form-slot-mode-value="<%= @sign_up_form.slot_generation_mode %>"
+     data-settings-form-schedule-mode-value="<%= schedule_mode %>">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Settings",
+    links: [
+      { text: "View Registrations", path: manage_production_sign_up_form_path(@production, @sign_up_form) },
+      { text: "Edit Form", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form) }
+    ]
+  } %>
+
+  <%= form_with model: [:manage, @production, @sign_up_form], url: update_settings_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true, data: { "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
+
+    <%# Tab Navigation %>
+    <nav class="flex space-x-1 border-b border-gray-200 mb-6 overflow-x-auto">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
+        Scope
+      </button>
+      <button type="button" data-tabs-target="tab" data-settings-form-target="eventsTab" data-index="1" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= @sign_up_form.shared_pool? ? 'hidden' : '' %>">
+        Events
+      </button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
+        Slots
+      </button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
+        Rules
+      </button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
+        Schedule
+      </button>
+    </nav>
+
+    <%# ==================== TAB 0: SCOPE ==================== %>
+    <div data-tabs-target="panel">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Registration Scope" %>
+        <div class="p-5 space-y-4">
+          <p class="text-sm text-gray-600 mb-4">What type of sign-up form is this?</p>
+
+          <div class="space-y-3">
+            <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= form.radio_button :scope, "single_event", class: "mt-0.5 h-4 w-4 accent-pink-500", data: { action: "change->settings-form#scopeChanged" } %>
+              <div>
+                <span class="font-medium text-gray-900">Single Event</span>
+                <p class="text-sm text-gray-500">Sign-ups for one specific show or event</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= form.radio_button :scope, "per_event", class: "mt-0.5 h-4 w-4 accent-pink-500", data: { action: "change->settings-form#scopeChanged" } %>
+              <div>
+                <span class="font-medium text-gray-900">Per Event</span>
+                <p class="text-sm text-gray-500">Creates separate sign-up opportunities for matching events</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= form.radio_button :scope, "shared_pool", class: "mt-0.5 h-4 w-4 accent-pink-500", data: { action: "change->settings-form#scopeChanged" } %>
+              <div>
+                <span class="font-medium text-gray-900">Waitlist / Shared Pool</span>
+                <p class="text-sm text-gray-500">A general sign-up list not tied to specific events</p>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ==================== TAB 1: EVENTS ==================== %>
+    <div data-tabs-target="panel" data-settings-form-target="eventsPanel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Event Selection" %>
+        <div class="p-5 space-y-4">
+          <%# Single Event Selection %>
+          <div data-settings-form-target="singleEventSection" class="<%= @sign_up_form.single_event? ? '' : 'hidden' %>">
+            <p class="text-sm text-gray-600 mb-4">Click on an event to select it:</p>
+            <div class="space-y-2 max-h-96 overflow-y-auto">
+              <% @shows.each do |show| %>
+                <% is_selected = @sign_up_form.show_id == show.id %>
+                <label class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>">
+                  <%= form.radio_button :show_id, show.id, class: "sr-only" %>
+                  <div class="flex-shrink-0 w-14 text-center mr-4">
+                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                    <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                    <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                  </div>
+                  <div class="flex-1 min-w-0 flex flex-col justify-center">
+                    <span class="font-medium text-gray-900"><%= show.secondary_name.presence || show.event_type.titleize %></span>
+                    <div class="text-sm text-gray-600">
+                      <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                      <% if show.location.present? %>· <%= show.location.name %><% elsif show.is_online %>· Online<% end %>
+                    </div>
+                  </div>
+                  <div class="flex items-center ml-4">
+                    <div class="w-6 h-6 rounded-full <%= is_selected ? 'bg-pink-500' : 'border-2 border-gray-300' %> flex items-center justify-center">
+                      <% if is_selected %>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      <% end %>
+                    </div>
+                  </div>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <%# Per Event Selection %>
+          <div data-settings-form-target="perEventSection" class="<%= @sign_up_form.per_event? ? '' : 'hidden' %> space-y-4">
+            <p class="text-sm text-gray-600 mb-4">Which events should this form create sign-ups for?</p>
+
+            <%# Matching Mode Options %>
+            <div class="space-y-3">
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.event_matching == 'all' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="matchingOption" data-value="all" data-action="click->settings-form#selectEventMatching">
+                <%= form.radio_button :event_matching, "all", class: "sr-only" %>
+                <p class="font-medium text-gray-900">All Events</p>
+                <p class="text-sm text-gray-500 mt-1">Every event in this production will get its own sign-up form.</p>
+              </div>
+
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.event_matching == 'event_types' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="matchingOption" data-value="event_types" data-action="click->settings-form#selectEventMatching">
+                <%= form.radio_button :event_matching, "event_types", class: "sr-only" %>
+                <p class="font-medium text-gray-900">By Event Type</p>
+                <p class="text-sm text-gray-500 mt-1">Only specific types of events will get sign-ups.</p>
+                <%# Event Type Selection - inline %>
+                <div data-settings-form-target="eventTypesSection" class="<%= @sign_up_form.event_matching == 'event_types' ? '' : 'hidden' %> mt-4 pt-4 border-t border-pink-200">
+                  <p class="text-sm text-gray-600 mb-2">Click to select event types:</p>
+                  <div class="flex flex-wrap gap-2">
+                    <% @event_types.each do |label, key| %>
+                      <% is_type_selected = @sign_up_form.event_type_filter&.include?(key.to_s) %>
+                      <label class="px-3 py-1.5 rounded-full border-2 cursor-pointer transition-colors text-sm <%= is_type_selected ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-300 bg-white text-gray-700' %> hover:border-pink-300"
+                             data-action="click->settings-form#toggleEventType">
+                        <%= check_box_tag "sign_up_form[event_type_filter][]", key, is_type_selected, class: "sr-only" %>
+                        <%= label %>
+                      </label>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.event_matching == 'manual' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="matchingOption" data-value="manual" data-action="click->settings-form#selectEventMatching">
+                <%= form.radio_button :event_matching, "manual", class: "sr-only" %>
+                <p class="font-medium text-gray-900">Specific Events</p>
+                <p class="text-sm text-gray-500 mt-1">Manually select which events to include.</p>
+                <%# Manual Event Selection - inline %>
+                <div data-settings-form-target="manualEventsSection" class="<%= @sign_up_form.event_matching == 'manual' ? '' : 'hidden' %> mt-4 pt-4 border-t border-pink-200 max-h-72 overflow-y-auto space-y-2">
+                  <p class="text-sm text-gray-600 mb-2">Click events to select or deselect:</p>
+                  <% @shows.each do |show| %>
+                    <% is_selected = @sign_up_form.sign_up_form_instances.any? { |i| i.show_id == show.id } %>
+                    <label class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+                           data-action="click->settings-form#toggleManualEvent">
+                  <%= check_box_tag "selected_show_ids[]", show.id, is_selected, class: "sr-only" %>
+                  <div class="flex-shrink-0 w-12 text-center mr-3">
+                    <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+                    <div class="text-xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+                    <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+                  </div>
+                  <div class="flex-1 min-w-0 flex flex-col justify-center">
+                    <span class="font-medium text-gray-900 text-sm"><%= show.secondary_name.presence || show.event_type.titleize %></span>
+                    <div class="text-xs text-gray-600">
+                      <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                      <% if show.location.present? %>· <%= show.location.name %><% elsif show.is_online %>· Online<% end %>
+                    </div>
+                  </div>
+                  <div class="flex items-center ml-2">
+                    <div class="w-5 h-5 rounded-full <%= is_selected ? 'bg-pink-500' : 'border-2 border-gray-300' %> flex items-center justify-center">
+                      <% if is_selected %>
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      <% end %>
+                    </div>
+                  </div>
+                </label>
+              <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ==================== TAB 2: SLOTS ==================== %>
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Slot Structure" %>
+        <div class="p-5 space-y-6">
+          <p class="text-sm text-gray-600 mb-4">How are registration slots structured?</p>
+
+          <%# Slot Mode Grid %>
+          <div class="grid grid-cols-2 gap-3">
+            <% unless is_waitlist %>
+              <%# Numbered Slots %>
+              <label class="block cursor-pointer" data-action="click->settings-form#selectSlotMode" data-value="numbered">
+                <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @sign_up_form.slot_generation_mode == 'numbered' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                     data-settings-form-target="slotModeOption" data-value="numbered">
+                  <%= form.radio_button :slot_generation_mode, "numbered", class: "sr-only" %>
+                  <div class="flex justify-center mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Numbered Slots</p>
+                  <p class="text-xs text-gray-500 mt-1">Slot 1, Slot 2, etc.</p>
+                </div>
+              </label>
+
+              <%# Time-Based Slots %>
+              <label class="block cursor-pointer" data-action="click->settings-form#selectSlotMode" data-value="time_based">
+                <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @sign_up_form.slot_generation_mode == 'time_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                     data-settings-form-target="slotModeOption" data-value="time_based">
+                  <%= form.radio_button :slot_generation_mode, "time_based", class: "sr-only" %>
+                  <div class="flex justify-center mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Timed Slots</p>
+                  <p class="text-xs text-gray-500 mt-1">Based on event start time</p>
+                </div>
+              </label>
+            <% end %>
+
+            <%# Named Slots %>
+            <label class="block cursor-pointer" data-action="click->settings-form#selectSlotMode" data-value="named">
+              <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @sign_up_form.slot_generation_mode == 'named' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                   data-settings-form-target="slotModeOption" data-value="named">
+                <%= form.radio_button :slot_generation_mode, "named", class: "sr-only" %>
+                <div class="flex justify-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+                  </svg>
+                </div>
+                <p class="font-medium text-gray-900 text-sm">Named Slots</p>
+                <p class="text-xs text-gray-500 mt-1">Custom names you define</p>
+              </div>
+            </label>
+
+            <%# Open List %>
+            <label class="block cursor-pointer" data-action="click->settings-form#selectSlotMode" data-value="open_list">
+              <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= @sign_up_form.slot_generation_mode == 'open_list' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                   data-settings-form-target="slotModeOption" data-value="open_list">
+                <%= form.radio_button :slot_generation_mode, "open_list", class: "sr-only" %>
+                <div class="flex justify-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                  </svg>
+                </div>
+                <p class="font-medium text-gray-900 text-sm">Open List</p>
+                <p class="text-xs text-gray-500 mt-1">No slots, just sign-ups</p>
+              </div>
+            </label>
+          </div>
+
+          <%# Numbered Slots Options %>
+          <div data-settings-form-target="numberedOptions" class="<%= @sign_up_form.slot_generation_mode == 'numbered' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Number of Slots</label>
+                <%= form.number_field :slot_count, min: 1, max: 100, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">People per Slot</label>
+                <%= form.number_field :slot_capacity, min: 1, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Slot Prefix</label>
+              <%= form.text_field :slot_prefix, class: "block w-full rounded-lg border border-gray-300 px-3 py-2", placeholder: "Slot" %>
+            </div>
+          </div>
+
+          <%# Time-Based Slots Options %>
+          <div data-settings-form-target="timeBasedOptions" class="<%= @sign_up_form.slot_generation_mode == 'time_based' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <p class="text-sm text-blue-800">
+                <strong>Slots start when your event starts.</strong> If your event is at 7:00 PM, the first slot will be at 7:00 PM, the second at 7:05 PM (with 5-minute slots), and so on.
+              </p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Number of Slots</label>
+                <%= form.number_field :slot_count, min: 1, max: 100, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Slot Length (minutes)</label>
+                <%= form.number_field :slot_interval_minutes, min: 1, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">People per Slot</label>
+              <%= form.number_field :slot_capacity, min: 1, class: "block w-32 rounded-lg border border-gray-300 px-3 py-2" %>
+            </div>
+          </div>
+
+          <%# Named Slots Options %>
+          <div data-settings-form-target="namedOptions" class="<%= @sign_up_form.slot_generation_mode == 'named' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Slot Names</label>
+              <p class="text-xs text-gray-500 mb-2">Enter one name per line</p>
+              <%= form.text_area :slot_names, value: @sign_up_form.slot_names&.join("\n"), rows: 5, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm", placeholder: "Group A\nGroup B\nSolo Performance" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">People per Slot</label>
+              <%= form.number_field :slot_capacity, min: 1, class: "block w-32 rounded-lg border border-gray-300 px-3 py-2" %>
+            </div>
+          </div>
+
+          <%# Open List Options %>
+          <div data-settings-form-target="openListOptions" class="<%= @sign_up_form.slot_generation_mode == 'open_list' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <%= radio_button_tag "open_list_limit", "limited", @sign_up_form.slot_count.present? && @sign_up_form.slot_count > 0, class: "h-4 w-4 border-gray-300 accent-pink-500", data: { action: "change->settings-form#openListLimitChanged" } %>
+                  <span class="text-gray-700">Set a limit</span>
+                  <%= form.number_field :slot_count, min: 1, class: "w-24 rounded-lg border border-gray-300 px-3 py-2", data: { "settings-form-target": "openListCapacity" } %>
+                  <span class="text-sm text-gray-500">people</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <%= radio_button_tag "open_list_limit", "unlimited", @sign_up_form.slot_count.nil? || @sign_up_form.slot_count == 0, class: "h-4 w-4 border-gray-300 accent-pink-500", data: { action: "change->settings-form#openListLimitChanged" } %>
+                  <span class="text-gray-700">No limit</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ==================== TAB 3: RULES ==================== %>
+    <div data-tabs-target="panel" class="hidden">
+      <div class="space-y-6">
+        <%# Registration Limits %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Registration Limits</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Registrations per person</label>
+              <%= form.select :registrations_per_person,
+                [["1 (one slot per person)", 1], ["2", 2], ["3", 3], ["5", 5], ["10", 10], ["Unlimited", 999]],
+                {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Slot selection</label>
+              <%= form.select :slot_selection_mode,
+                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"], ["I'll assign slots", "admin_assign"]],
+                {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+            </div>
+          </div>
+        </div>
+
+        <%# Require Login %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Require Login</h3>
+              <p class="text-sm text-gray-500 mt-1">Only logged-in users can register (no guest sign-ups)</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.hidden_field :require_login, value: "0" %>
+              <%= form.check_box :require_login, class: "sr-only peer", value: "1" %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+        </div>
+
+        <% unless is_waitlist %>
+        <%# Hold-back Slots %>
+        <% every_n_holdout = @sign_up_form.sign_up_form_holdouts.find_by(holdout_type: 'every_n') %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Hold-back Slots</h3>
+              <p class="text-sm text-gray-500 mt-1">Reserve some slots that won't be available for public sign-ups</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="enable_holdbacks" value="0">
+              <input type="checkbox" name="enable_holdbacks" value="1"
+                     <%= "checked" if every_n_holdout.present? %>
+                     data-action="change->toggle-section#toggle"
+                     data-toggle-section-target="toggle"
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <div data-toggle-section-target="content" class="<%= every_n_holdout.present? ? '' : 'hidden' %> mt-4 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hold every</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" name="holdback_interval" value="<%= every_n_holdout&.holdout_value || 5 %>" min="2" max="20"
+                         class="w-20 rounded-lg border border-gray-300 px-3 py-2">
+                  <span class="text-gray-600 text-sm">slot(s)</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">e.g., "5" means slots 5, 10, 15... are held back</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Label for held slots</label>
+                <input type="text" name="holdback_label" value="<%= every_n_holdout&.reason || 'Hold for walk-ins' %>"
+                       placeholder="Hold for walk-ins"
+                       class="block w-full rounded-lg border border-gray-300 px-3 py-2">
+              </div>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-blue-800">
+                    <strong>Tip:</strong> You can manually assign people to held slots or release them later from the registrations page.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <% end %>
+
+        <%# Allow Editing %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Allow Editing</h3>
+              <p class="text-sm text-gray-500 mt-1">Users can edit their registration after signing up</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.hidden_field :allow_edit, value: "0" %>
+              <%= form.check_box :allow_edit, class: "sr-only peer", value: "1", data: { action: "change->toggle-section#toggle", "toggle-section-target": "toggle" } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <% unless is_waitlist %>
+          <div data-toggle-section-target="content" class="<%= @sign_up_form.allow_edit ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200" data-controller="toggle-section">
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="edit_has_cutoff" value="0">
+                <input type="checkbox" name="edit_has_cutoff" value="1"
+                       <%= "checked" if @sign_up_form.edit_cutoff_hours && @sign_up_form.edit_cutoff_hours > 0 %>
+                       data-action="change->toggle-section#toggle"
+                       data-toggle-section-target="toggle"
+                       class="sr-only peer">
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+              <span class="text-sm text-gray-700">Set a cutoff for edits</span>
+            </div>
+            <div data-toggle-section-target="content" class="<%= @sign_up_form.edit_cutoff_hours && @sign_up_form.edit_cutoff_hours > 0 ? '' : 'hidden' %> mt-3 flex items-center gap-2">
+              <%= form.number_field :edit_cutoff_hours, min: 1, value: [@sign_up_form.edit_cutoff_hours || 1, 1].max, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
+              <span class="text-sm text-gray-600">hours before event</span>
+            </div>
+          </div>
+          <% end %>
+        </div>
+
+        <%# Allow Cancellation %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Allow Cancellation</h3>
+              <p class="text-sm text-gray-500 mt-1">Users can cancel their registration</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.hidden_field :allow_cancel, value: "0" %>
+              <%= form.check_box :allow_cancel, class: "sr-only peer", value: "1", data: { action: "change->toggle-section#toggle", "toggle-section-target": "toggle" } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <% unless is_waitlist %>
+          <div data-toggle-section-target="content" class="<%= @sign_up_form.allow_cancel ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200" data-controller="toggle-section">
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="hidden" name="cancel_has_cutoff" value="0">
+                <input type="checkbox" name="cancel_has_cutoff" value="1"
+                       <%= "checked" if @sign_up_form.cancel_cutoff_hours && @sign_up_form.cancel_cutoff_hours > 0 %>
+                       data-action="change->toggle-section#toggle"
+                       data-toggle-section-target="toggle"
+                       class="sr-only peer">
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+              <span class="text-sm text-gray-700">Set a cutoff for cancellations</span>
+            </div>
+            <div data-toggle-section-target="content" class="<%= @sign_up_form.cancel_cutoff_hours && @sign_up_form.cancel_cutoff_hours > 0 ? '' : 'hidden' %> mt-3 flex items-center gap-2">
+              <%= form.number_field :cancel_cutoff_hours, min: 1, value: [@sign_up_form.cancel_cutoff_hours || 1, 1].max, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
+              <span class="text-sm text-gray-600">hours before event</span>
+            </div>
+          </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ==================== TAB 4: SCHEDULE ==================== %>
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: is_waitlist ? "Activation" : "Schedule" %>
+        <div class="p-5 space-y-6">
+          <% if is_waitlist %>
+            <%# Waitlist: Simple activation %>
+            <%= form.hidden_field :schedule_mode, value: "fixed" %>
+            <div class="space-y-3">
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.opens_at.blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="scheduleOption" data-value="now" data-action="click->settings-form#selectWaitlistMode">
+                <p class="font-medium text-gray-900">Activate immediately</p>
+                <p class="text-sm text-gray-500 mt-1">The waitlist will be open for sign-ups as soon as you save.</p>
+              </div>
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.opens_at.present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="scheduleOption" data-value="scheduled" data-action="click->settings-form#selectWaitlistMode">
+                <p class="font-medium text-gray-900">Activate on a specific date</p>
+                <p class="text-sm text-gray-500 mt-1">Schedule the waitlist to open at a future date and time.</p>
+              </div>
+            </div>
+            <div data-settings-form-target="scheduledDateSection" class="<%= @sign_up_form.opens_at.present? ? '' : 'hidden' %>">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Opens at</label>
+              <%= form.datetime_local_field :opens_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2" %>
+            </div>
+
+          <% else %>
+            <%# Event-based: Relative or fixed %>
+            <div class="space-y-3">
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="scheduleOption" data-value="relative" data-action="click->settings-form#selectScheduleMode">
+                <%= form.radio_button :schedule_mode, "relative", class: "sr-only" %>
+                <p class="font-medium text-gray-900">Relative to Event</p>
+                <p class="text-sm text-gray-500 mt-1">Sign-ups open and close based on each event's date/time. Recommended for recurring events.</p>
+              </div>
+              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'fixed' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+                   data-settings-form-target="scheduleOption" data-value="fixed" data-action="click->settings-form#selectScheduleMode">
+                <%= form.radio_button :schedule_mode, "fixed", class: "sr-only" %>
+                <p class="font-medium text-gray-900">Fixed Dates</p>
+                <p class="text-sm text-gray-500 mt-1">All sign-ups open and close at the same time, regardless of event dates.</p>
+              </div>
+            </div>
+
+            <%# Relative Schedule Options %>
+            <div data-settings-form-target="relativeScheduleSection" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Open registration</label>
+                <div class="flex items-center gap-2">
+                  <%= form.number_field :opens_days_before, min: 0, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
+                  <span class="text-sm text-gray-600">days before each event</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Close registration</label>
+                <div class="flex items-center gap-2">
+                  <%= form.number_field :closes_hours_before, min: 0, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
+                  <span class="text-sm text-gray-600">hours before each event</span>
+                </div>
+              </div>
+            </div>
+
+            <%# Fixed Schedule Options %>
+            <div data-settings-form-target="fixedScheduleSection" class="<%= schedule_mode == 'fixed' ? '' : 'hidden' %> space-y-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Opens at</label>
+                <%= form.datetime_local_field :opens_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2" %>
+                <p class="text-xs text-gray-500 mt-1">Leave empty to open immediately</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Closes at</label>
+                <%= form.datetime_local_field :closes_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2" %>
+                <p class="text-xs text-gray-500 mt-1">Leave empty to stay open indefinitely</p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Floating Save Bar %>
+    <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-40">
+      <div class="px-4 py-3 flex items-center justify-between">
+        <div class="text-sm text-gray-500" data-settings-form-target="changeIndicator">
+          <span class="hidden" data-settings-form-target="unsavedChanges">You have unsaved changes</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <%= link_to "Cancel", manage_production_sign_up_form_path(@production, @sign_up_form), class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" %>
+          <%= render "shared/button", type: :submit, text: "Save Changes", variant: "primary", size: "medium" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

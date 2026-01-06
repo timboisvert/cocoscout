@@ -4,21 +4,42 @@ module Manage
   class SignUpFormsController < Manage::ManageController
     before_action :set_production
     before_action :set_sign_up_form, only: %i[
-      show edit update destroy
+      show edit update destroy settings update_settings
       slots create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
       holdouts create_holdout destroy_holdout
       questions create_question update_question destroy_question reorder_questions
       registrations register cancel_registration
-      preview toggle_active
+      preview toggle_active archive unarchive
     ]
 
     def index
-      @sign_up_forms = @production.sign_up_forms.order(created_at: :desc)
+      @sign_up_forms = @production.sign_up_forms.not_archived.order(created_at: :desc)
+      @archived_count = @production.sign_up_forms.archived.count
+    end
+
+    def archived
+      @sign_up_forms = @production.sign_up_forms.archived.order(archived_at: :desc)
     end
 
     def show
       @slots = @sign_up_form.sign_up_slots.order(:position)
       @registrations = @sign_up_form.sign_up_registrations.includes(:sign_up_slot, :person).active.order("sign_up_slots.position, sign_up_registrations.position")
+
+      # For per-event mode, load instances for event navigation
+      if @sign_up_form.per_event?
+        @instances = @sign_up_form.sign_up_form_instances
+          .joins(:show)
+          .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
+          .where("shows.date_and_time > ?", Time.current)
+          .where.not(status: "cancelled")
+          .order("shows.date_and_time ASC")
+
+        # Allow selecting a specific instance via params
+        if params[:instance_id].present?
+          @current_instance = @instances.find_by(id: params[:instance_id])
+        end
+        @current_instance ||= @instances.first
+      end
     end
 
     def new
@@ -41,9 +62,7 @@ module Manage
     end
 
     def edit
-      @shows = available_shows
       @question = Question.new
-      @slots = @sign_up_form.sign_up_slots.order(:position)
       @questions = @sign_up_form.questions.order(:position)
     end
 
@@ -60,9 +79,7 @@ module Manage
       else
         respond_to do |format|
           format.html do
-            @shows = available_shows
             @question = Question.new
-            @slots = @sign_up_form.sign_up_slots.order(:position)
             @questions = @sign_up_form.questions.order(:position)
             render :edit, status: :unprocessable_entity
           end
@@ -74,6 +91,90 @@ module Manage
     def destroy
       @sign_up_form.destroy
       redirect_to manage_production_sign_up_forms_path(@production), notice: "Sign-up form deleted"
+    end
+
+    # Settings - Configuration from wizard
+    def settings
+      @shows = available_shows
+      @event_types = EventTypes.for_select
+      @slots = @sign_up_form.sign_up_slots.order(:position)
+    end
+
+    def update_settings
+      success = false
+
+      ActiveRecord::Base.transaction do
+        # Handle manual event selection - sync instances
+        if params[:selected_show_ids].present? && settings_params[:event_matching] == "manual"
+          sync_manual_event_instances(params[:selected_show_ids])
+        end
+
+        # Handle holdback settings
+        handle_holdback_settings
+
+        # Handle cutoff toggles - set to 0 if disabled
+        adjust_cutoff_settings
+
+        if @sign_up_form.update(settings_params)
+          success = true
+        else
+          raise ActiveRecord::Rollback
+        end
+      end
+
+      if success
+        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+                    notice: "Settings updated successfully"
+      else
+        @shows = available_shows
+        @event_types = EventTypes.for_select
+        @slots = @sign_up_form.sign_up_slots.order(:position)
+        render :settings, status: :unprocessable_entity
+      end
+    end
+
+    def handle_holdback_settings
+      if params[:enable_holdbacks] == "1"
+        # Create or update the every_n holdout
+        interval = params[:holdback_interval].to_i
+        interval = 5 if interval < 2
+        label = params[:holdback_label].presence || "Hold for walk-ins"
+
+        holdout = @sign_up_form.sign_up_form_holdouts.find_or_initialize_by(holdout_type: "every_n")
+        holdout.update!(holdout_value: interval, reason: label)
+      else
+        # Remove the every_n holdout if it exists
+        @sign_up_form.sign_up_form_holdouts.where(holdout_type: "every_n").destroy_all
+      end
+    end
+
+    def adjust_cutoff_settings
+      # If edit cutoff toggle is off, ensure hours are 0
+      if params[:edit_has_cutoff] == "0" && params[:sign_up_form]
+        params[:sign_up_form][:edit_cutoff_hours] = 0
+      end
+
+      # If cancel cutoff toggle is off, ensure hours are 0
+      if params[:cancel_has_cutoff] == "0" && params[:sign_up_form]
+        params[:sign_up_form][:cancel_cutoff_hours] = 0
+      end
+    end
+
+    def sync_manual_event_instances(show_ids)
+      show_ids = Array(show_ids).map(&:to_i)
+      
+      # Remove instances for shows no longer selected
+      @sign_up_form.sign_up_form_instances.each do |instance|
+        instance.destroy unless show_ids.include?(instance.show_id)
+      end
+      
+      # Add instances for newly selected shows
+      existing_show_ids = @sign_up_form.sign_up_form_instances.pluck(:show_id)
+      show_ids.each do |show_id|
+        unless existing_show_ids.include?(show_id)
+          @sign_up_form.sign_up_form_instances.create!(show_id: show_id)
+        end
+      end
     end
 
     # Slots management
@@ -267,6 +368,18 @@ module Manage
                   notice: "Sign-up form #{status}"
     end
 
+    def archive
+      @sign_up_form.archive!
+      redirect_to manage_production_sign_up_forms_path(@production),
+                  notice: "Sign-up form archived"
+    end
+
+    def unarchive
+      @sign_up_form.unarchive!
+      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                  notice: "Sign-up form restored"
+    end
+
     private
 
     def set_production
@@ -282,6 +395,22 @@ module Manage
         :name, :description, :show_id, :active, :require_login,
         :opens_at, :closes_at, :slots_per_registration,
         :instruction_text, :success_text
+      )
+    end
+
+    def settings_params
+      params.require(:sign_up_form).permit(
+        :name,
+        :scope, :event_matching, :show_id,
+        :slot_generation_mode, :slot_count, :slot_prefix, :slot_capacity,
+        :slot_start_time, :slot_interval_minutes, :slot_names,
+        :registrations_per_person, :slot_selection_mode,
+        :require_login, :allow_edit, :allow_cancel,
+        :edit_cutoff_hours, :cancel_cutoff_hours,
+        :enable_holdbacks, :holdback_interval, :holdback_label, :holdback_visible,
+        :schedule_mode, :opens_days_before, :closes_hours_before,
+        :opens_at, :closes_at,
+        event_type_filter: []
       )
     end
 

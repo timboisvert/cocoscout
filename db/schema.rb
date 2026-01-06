@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_06_045506) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_06_205255) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -900,23 +900,73 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_045506) do
     t.index ["sign_up_form_id"], name: "index_sign_up_form_holdouts_on_sign_up_form_id"
   end
 
-  create_table "sign_up_forms", force: :cascade do |t|
-    t.boolean "active", default: false, null: false
+  create_table "sign_up_form_instances", force: :cascade do |t|
     t.datetime "closes_at"
     t.datetime "created_at", null: false
+    t.datetime "edit_cutoff_at"
+    t.datetime "opens_at"
+    t.bigint "show_id", null: false
+    t.bigint "sign_up_form_id", null: false
+    t.string "status", default: "scheduled", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id", "status"], name: "index_sign_up_form_instances_on_show_id_and_status"
+    t.index ["show_id"], name: "index_sign_up_form_instances_on_show_id"
+    t.index ["sign_up_form_id", "show_id"], name: "index_sign_up_form_instances_on_sign_up_form_id_and_show_id", unique: true
+    t.index ["sign_up_form_id"], name: "index_sign_up_form_instances_on_sign_up_form_id"
+  end
+
+  create_table "sign_up_form_shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "show_id", null: false
+    t.bigint "sign_up_form_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id"], name: "index_sign_up_form_shows_on_show_id"
+    t.index ["sign_up_form_id", "show_id"], name: "index_sign_up_form_shows_on_sign_up_form_id_and_show_id", unique: true
+    t.index ["sign_up_form_id"], name: "index_sign_up_form_shows_on_sign_up_form_id"
+  end
+
+  create_table "sign_up_forms", force: :cascade do |t|
+    t.boolean "active", default: false, null: false
+    t.boolean "allow_cancel", default: true
+    t.boolean "allow_edit", default: true
+    t.datetime "archived_at"
+    t.integer "cancel_cutoff_hours", default: 2
+    t.datetime "closes_at"
+    t.integer "closes_hours_before", default: 2
+    t.datetime "created_at", null: false
     t.text "description"
+    t.integer "edit_cutoff_hours", default: 24
+    t.string "event_matching", default: "all"
+    t.jsonb "event_type_filter", default: []
     t.text "instruction_text"
     t.string "name", null: false
     t.datetime "opens_at"
+    t.integer "opens_days_before", default: 7
     t.bigint "production_id", null: false
+    t.integer "registrations_per_person", default: 1
     t.boolean "require_login", default: false, null: false
+    t.string "schedule_mode", default: "relative"
+    t.string "scope", default: "single_event", null: false
+    t.string "short_code"
     t.bigint "show_id"
+    t.integer "slot_capacity", default: 1
+    t.integer "slot_count", default: 10
+    t.string "slot_generation_mode", default: "numbered"
+    t.integer "slot_interval_minutes"
+    t.jsonb "slot_names", default: []
+    t.string "slot_prefix", default: "Slot"
+    t.string "slot_selection_mode", default: "choose"
+    t.string "slot_start_time"
     t.integer "slots_per_registration", default: 1, null: false
     t.text "success_text"
     t.datetime "updated_at", null: false
+    t.string "url_slug"
     t.index ["production_id", "active"], name: "index_sign_up_forms_on_production_id_and_active"
+    t.index ["production_id", "scope"], name: "index_sign_up_forms_on_production_id_and_scope"
     t.index ["production_id"], name: "index_sign_up_forms_on_production_id"
+    t.index ["short_code"], name: "index_sign_up_forms_on_short_code", unique: true
     t.index ["show_id"], name: "index_sign_up_forms_on_show_id"
+    t.index ["url_slug"], name: "index_sign_up_forms_on_url_slug"
   end
 
   create_table "sign_up_registrations", force: :cascade do |t|
@@ -945,9 +995,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_045506) do
     t.string "name"
     t.integer "position", null: false
     t.bigint "sign_up_form_id", null: false
+    t.bigint "sign_up_form_instance_id"
     t.datetime "updated_at", null: false
     t.index ["sign_up_form_id", "position"], name: "index_sign_up_slots_on_sign_up_form_id_and_position"
     t.index ["sign_up_form_id"], name: "index_sign_up_slots_on_sign_up_form_id"
+    t.index ["sign_up_form_instance_id"], name: "index_sign_up_slots_on_sign_up_form_instance_id"
   end
 
   create_table "socials", force: :cascade do |t|
@@ -1242,10 +1294,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_045506) do
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
   add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
+  add_foreign_key "sign_up_form_instances", "shows"
+  add_foreign_key "sign_up_form_instances", "sign_up_forms"
+  add_foreign_key "sign_up_form_shows", "shows"
+  add_foreign_key "sign_up_form_shows", "sign_up_forms"
   add_foreign_key "sign_up_forms", "productions"
   add_foreign_key "sign_up_forms", "shows"
   add_foreign_key "sign_up_registrations", "people"
   add_foreign_key "sign_up_registrations", "sign_up_slots"
+  add_foreign_key "sign_up_slots", "sign_up_form_instances"
   add_foreign_key "sign_up_slots", "sign_up_forms"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

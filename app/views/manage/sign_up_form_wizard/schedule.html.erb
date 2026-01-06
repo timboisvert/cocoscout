@@ -1,0 +1,182 @@
+<%
+  # Calculate step number based on scope
+  step_num = @wizard_state[:scope] == "shared_pool" ? 4 : 5
+  is_waitlist = @wizard_state[:scope] == "shared_pool"
+
+  # Get current values or defaults
+  opens_value = @wizard_state[:opens_value] || 7
+  opens_unit = @wizard_state[:opens_unit] || 'days'
+  closes_value = @wizard_state[:closes_value] || 0
+  closes_unit = @wizard_state[:closes_unit] || 'hours'
+  schedule_mode = @wizard_state[:schedule_mode] || 'relative'
+%>
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: is_waitlist ? "Activation" : "Schedule" } do %>
+  <% if is_waitlist %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When should this waitlist go live?</h2>
+    <p class="text-gray-600 mb-6">Choose when people can start signing up.</p>
+  <% else %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When can people register?</h2>
+    <p class="text-gray-600 mb-6">Set when sign-ups open and close.</p>
+  <% end %>
+
+  <%= form_with url: manage_sign_up_wizard_production_save_schedule_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": schedule_mode } do |form| %>
+    <div class="space-y-6">
+      <% if is_waitlist %>
+        <!-- Simple activation date for waitlist -->
+        <input type="hidden" name="schedule_mode" value="fixed">
+
+        <div class="space-y-3">
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:opens_at].blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="now"
+               data-action="click->option-select#select">
+            <input type="radio" name="activation_mode" value="now"
+                   <%= "checked" if @wizard_state[:opens_at].blank? %>
+                   class="sr-only"
+                   data-option-select-target="input">
+            <p class="font-medium text-gray-900">Activate immediately</p>
+            <p class="text-sm text-gray-500 mt-1">The waitlist will be open for sign-ups as soon as you create it.</p>
+          </div>
+
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:opens_at].present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="scheduled"
+               data-action="click->option-select#select">
+            <input type="radio" name="activation_mode" value="scheduled"
+                   <%= "checked" if @wizard_state[:opens_at].present? %>
+                   class="sr-only"
+                   data-option-select-target="input">
+            <p class="font-medium text-gray-900">Activate on a specific date</p>
+            <p class="text-sm text-gray-500 mt-1">Schedule the waitlist to open at a future date and time.</p>
+          </div>
+        </div>
+
+        <div data-option-select-target="conditionalScheduled" class="<%= @wizard_state[:opens_at].present? ? '' : 'hidden' %>">
+          <div class="w-full sm:w-2/3">
+            <label class="block text-gray-700 font-medium">Opens at</label>
+            <input type="datetime-local" name="opens_at"
+                   value="<%= @wizard_state[:opens_at].is_a?(String) ? @wizard_state[:opens_at] : @wizard_state[:opens_at]&.strftime('%Y-%m-%dT%H:%M') %>"
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+          </div>
+        </div>
+
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-blue-800">
+                <strong>Note:</strong> The waitlist will remain open until you close it manually. You can pause or close it at any time from your dashboard.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      <% elsif @wizard_state[:scope] == 'per_event' || @wizard_state[:scope] == 'single_event' %>
+        <!-- Schedule Mode Selection -->
+        <div class="space-y-3">
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="relative"
+               data-action="click->option-select#select">
+            <input type="radio" name="schedule_mode" value="relative"
+                   <%= "checked" if schedule_mode == 'relative' %>
+                   class="sr-only"
+                   data-option-select-target="input">
+            <p class="font-medium text-gray-900">Relative to Event</p>
+            <p class="text-sm text-gray-500 mt-1">Sign-ups open and close based on each event's date/time. Recommended for recurring events.</p>
+          </div>
+
+          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'fixed' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+               data-option-select-target="option"
+               data-value="fixed"
+               data-action="click->option-select#select">
+            <input type="radio" name="schedule_mode" value="fixed"
+                   <%= "checked" if schedule_mode == 'fixed' %>
+                   class="sr-only"
+                   data-option-select-target="input">
+            <p class="font-medium text-gray-900">Fixed Dates</p>
+            <p class="text-sm text-gray-500 mt-1">All sign-ups open and close at the same time, regardless of event dates.</p>
+          </div>
+        </div>
+
+        <!-- Relative Schedule Options -->
+        <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-5">
+          <div class="w-full">
+            <label class="block text-gray-700 font-medium">Open registration</label>
+            <div class="flex items-center gap-2 mt-2">
+              <input type="number" name="opens_value" value="<%= opens_value %>" min="0"
+                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+              <select name="opens_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+                <option value="days" <%= "selected" if opens_unit == 'days' %>>days</option>
+                <option value="hours" <%= "selected" if opens_unit == 'hours' %>>hours</option>
+              </select>
+              <span class="text-sm text-gray-600">before each event</span>
+            </div>
+          </div>
+
+          <div class="w-full">
+            <label class="block text-gray-700 font-medium">Close registration</label>
+            <div class="flex items-center gap-2 mt-2">
+              <input type="number" name="closes_value" value="<%= closes_value %>" min="0"
+                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+              <select name="closes_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+                <option value="hours" <%= "selected" if closes_unit == 'hours' %>>hours</option>
+                <option value="days" <%= "selected" if closes_unit == 'days' %>>days</option>
+              </select>
+              <span class="text-sm text-gray-600">before each event</span>
+            </div>
+          </div>
+
+          <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  <strong>Example:</strong> For an event on Saturday at 8 PM, sign-ups would open
+                  <%= opens_value %> <%= opens_unit %> before and close
+                  <%= closes_value %> <%= closes_unit %> before showtime.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fixed Schedule Options -->
+        <div data-option-select-target="conditionalFixed" class="<%= schedule_mode == 'fixed' ? '' : 'hidden' %> space-y-5">
+          <div class="w-full sm:w-2/3">
+            <label class="block text-gray-700 font-medium">Opens at</label>
+            <input type="datetime-local" name="opens_at"
+                   value="<%= @wizard_state[:opens_at].is_a?(String) ? @wizard_state[:opens_at] : @wizard_state[:opens_at]&.strftime('%Y-%m-%dT%H:%M') %>"
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+          </div>
+
+          <div class="w-full sm:w-2/3">
+            <label class="block text-gray-700 font-medium">Closes at</label>
+            <div class="text-sm text-gray-500">Leave blank to keep sign-ups open until you close them manually</div>
+            <input type="datetime-local" name="closes_at"
+                   value="<%= @wizard_state[:closes_at].is_a?(String) ? @wizard_state[:closes_at] : @wizard_state[:closes_at]&.strftime('%Y-%m-%dT%H:%M') %>"
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_sign_up_wizard_production_rules_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
