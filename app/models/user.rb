@@ -25,7 +25,10 @@ class User < ApplicationRecord
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false },
                             format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
-  validates :password, length: { minimum: 8, message: "must be at least 8 characters" }, if: -> { password.present? }
+  validates :password, length: { minimum: 8, maximum: 72, message: "must be between 8 and 72 characters" },
+                       format: { with: /\A\S.*\S\z|\A\S\z/, message: "cannot be only whitespace" },
+                       if: -> { password.present? }
+  validate :password_complexity, if: -> { password.present? }
   validate :email_not_malicious
 
   SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
@@ -241,5 +244,16 @@ class User < ApplicationRecord
   # Check if invitation token is still valid
   def invitation_token_valid?
     invitation_token.present?
+  end
+
+  private
+
+  def password_complexity
+    return unless password.present?
+
+    errors.add(:password, "must include at least one uppercase letter") unless password.match?(/[A-Z]/)
+    errors.add(:password, "must include at least one lowercase letter") unless password.match?(/[a-z]/)
+    errors.add(:password, "must include at least one number") unless password.match?(/[0-9]/)
+    errors.add(:password, "must include at least one special character") unless password.match?(/[^A-Za-z0-9]/)
   end
 end

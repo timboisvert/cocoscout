@@ -443,35 +443,13 @@ module EmailTemplateSeeds
           ]
         },
         {
-          key: "cast_email",
-          name: "Cast Email (Free-form)",
+          key: "production_message",
+          name: "Production Message",
           category: "notification",
           subject: "{{subject}}",
-          description: "Generic casting-related email with fully customizable content.",
+          description: "General-purpose email from production team to talent. Can be used for casting announcements, directory messages, or any production-related communication. Subject and body are fully customizable.",
           template_type: "passthrough",
-          mailer_class: "Manage::CastingMailer",
-          mailer_action: "cast_email",
-          body: <<~HTML,
-            {{body_content}}
-          HTML
-          available_variables: [
-            { name: "subject", description: "Custom email subject" },
-            { name: "body_content", description: "Custom HTML body content" }
-          ]
-        },
-
-        # ============================================
-        # CONTACT / DIRECTORY EMAILS
-        # Source: manage/directory_controller.rb
-        # ============================================
-        {
-          key: "contact_message",
-          name: "Contact Message",
-          category: "marketing",
-          subject: "{{subject}}",
-          description: "General-purpose contact email from producers to talent. The subject and body are fully customizable.",
-          template_type: "passthrough",
-          mailer_class: "Manage::ContactMailer",
+          mailer_class: "Manage::ProductionMailer",
           mailer_action: "send_message",
           body: <<~HTML,
             {{body_content}}

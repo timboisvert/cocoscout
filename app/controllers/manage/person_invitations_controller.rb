@@ -64,6 +64,7 @@ module Manage
           @user = user
           render :accept, status: :unprocessable_entity and return
         end
+        AdminMailer.user_account_created(user).deliver_later
       end
 
       # Ensure person exists and is linked to user

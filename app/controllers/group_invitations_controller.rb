@@ -152,6 +152,7 @@ class GroupInvitationsController < ApplicationController
           @user = user
           render :accept, status: :unprocessable_entity and return
         end
+        AdminMailer.user_account_created(user).deliver_later
       else
         # No password provided
         @user = User.new(email_address: @invitation.email.downcase)

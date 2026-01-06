@@ -92,7 +92,7 @@ module Manage
 
       # Send emails
       people_to_email.each do |person|
-        Manage::ContactMailer.send_message(
+        Manage::ProductionMailer.send_message(
           person,
           prefixed_subject,
           body_html,

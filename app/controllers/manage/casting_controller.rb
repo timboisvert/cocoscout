@@ -237,7 +237,7 @@ module Manage
 
       # Send email to each person
       people_to_email.each do |person|
-        Manage::CastingMailer.cast_email(person, @show, @email_draft.title, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
+        Manage::ProductionMailer.send_message(person, @email_draft.title, body_html, Current.user, email_batch_id: email_batch&.id, production_id: @production.id).deliver_later
       end
 
       redirect_to manage_production_show_path(@production, @show),

@@ -39,6 +39,7 @@ module Manage
         end
 
         user.save!
+        AdminMailer.user_account_created(user).deliver_later
       end
 
       # Now link the person and user if they aren't already linked. Create the

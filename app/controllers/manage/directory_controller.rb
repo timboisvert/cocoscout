@@ -159,7 +159,7 @@ module Manage
 
       # Send emails
       people_to_email.each do |person|
-        Manage::ContactMailer.send_message(person, subject, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
+        Manage::ProductionMailer.send_message(person, subject, body_html, Current.user, email_batch_id: email_batch&.id).deliver_later
       end
 
       redirect_to manage_directory_path,

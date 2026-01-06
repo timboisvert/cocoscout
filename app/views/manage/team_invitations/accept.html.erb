@@ -97,24 +97,23 @@
               </div>
             </div>
 
-            <div class="mb-6" data-controller="password-visibility">
-              <% if @user&.errors&.[](:password)&.any? %>
-                <label class="block text-sm font-semibold text-pink-600 mb-2">
-                  Password must be at least 8 characters
-                </label>
-              <% else %>
-                <label class="block text-sm font-semibold text-slate-700 mb-2">
-                  Password
-                </label>
-              <% end %>
+            <div class="mb-6" data-controller="password-visibility<%= User.exists?(email_address: @team_invitation.email.downcase) ? '' : ' password-strength' %>">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">
+                Password
+              </label>
               <div class="relative">
                 <%= form.password_field :password,
                       required: true,
+                      minlength: 8,
                       autocomplete: User.exists?(email_address: @team_invitation.email.downcase) ? "current-password" : "new-password",
-                      placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password",
+                      placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password (at least 8 characters)",
                       maxlength: 72,
                       class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
-                      data: { password_visibility_target: "input" }
+                      data: {
+                        password_visibility_target: "input",
+                        password_strength_target: User.exists?(email_address: @team_invitation.email.downcase) ? nil : "input",
+                        action: User.exists?(email_address: @team_invitation.email.downcase) ? nil : "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength"
+                      }.compact
                 %>
                 <button type="button"
                         data-action="password-visibility#toggle"
@@ -127,10 +126,55 @@
                   </span>
                 </button>
               </div>
-            </div>
+              <% unless User.exists?(email_address: @team_invitation.email.downcase) %>
+                <div class="mt-2 bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
+                  <p class="text-xs font-medium text-slate-700 mb-1.5">Password requirements:</p>
+                  <div class="space-y-1">
+                    <div class="flex items-start gap-2" data-password-strength-target="lengthCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">At least 8 characters</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="uppercaseCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One uppercase letter (A-Z)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="lowercaseCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One lowercase letter (a-z)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="numberCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One number (0-9)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="specialCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One special character (!@#$%)</span>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
 
-            <div class="flex flex-col gap-3">
-              <%= render "shared/button", text: "Join #{sanitize(@team_invitation.organization.name)}", variant: "primary", size: "medium", type: :submit, class: "w-full" %>
+              <div class="flex flex-col gap-3 mt-6">
+                <%= render "shared/button",
+                    text: "Join #{sanitize(@team_invitation.organization.name)}",
+                    variant: "primary",
+                    size: "medium",
+                    type: :submit,
+                    class: "w-full",
+                    disabled: User.exists?(email_address: @team_invitation.email.downcase) ? false : true,
+                    classes: User.exists?(email_address: @team_invitation.email.downcase) ? "" : "!opacity-50 !cursor-not-allowed",
+                    data: User.exists?(email_address: @team_invitation.email.downcase) ? {} : { password_strength_target: "submit" } %>
+              </div>
             </div>
           <% end %>
 
