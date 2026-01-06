@@ -112,7 +112,7 @@
               </svg>
             </div>
             <h4 class="text-sm font-semibold mb-2 <%= defined?(current_step) && current_step == :prepare ? 'text-pink-600' : 'text-gray-900 group-hover:text-pink-500' %>">Prepare</h4>
-            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.video_only? ? 'Configure settings and customize audition form' : 'Configure settings, plan sessions, and customize sign-up form' %></p>
+            <p class="text-xs text-gray-500"><%= @production.audition_cycle&.video_only? ? 'Configure settings and customize audition form' : 'Configure settings, plan sessions, and customize audition form' %></p>
           </div>
         <% end %>
         <% end %>

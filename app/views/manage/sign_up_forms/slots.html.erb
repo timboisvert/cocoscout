@@ -1,0 +1,154 @@
+<% content_for :title, "Slots - #{@sign_up_form.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Configure Slots",
+    links: []
+  } %>
+
+  <!-- Navigation Tabs -->
+  <div class="mb-6">
+    <nav class="flex space-x-4 border-b border-gray-200">
+      <%= link_to "Overview", manage_production_sign_up_form_path(@production, @sign_up_form), class: "px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" %>
+      <%= link_to "Slots", slots_manage_production_sign_up_form_path(@production, @sign_up_form), class: "px-3 py-2 text-sm font-medium border-b-2 border-pink-500 text-pink-600" %>
+      <%= link_to "Questions", questions_manage_production_sign_up_form_path(@production, @sign_up_form), class: "px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" %>
+      <%= link_to "Registrations", registrations_manage_production_sign_up_form_path(@production, @sign_up_form), class: "px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" %>
+    </nav>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Slots List -->
+    <div class="lg:col-span-2">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Slots (#{@slots.count})" %>
+        <div class="p-4">
+          <% if @slots.any? %>
+            <div class="space-y-2" data-controller="sortable" data-sortable-url-value="<%= reorder_slots_manage_production_sign_up_form_path(@production, @sign_up_form) %>">
+              <% @slots.each do |slot| %>
+                <div class="flex items-center justify-between py-3 px-4 <%= slot.is_held? ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 border border-gray-200' %> rounded-lg" data-sortable-item data-id="<%= slot.id %>">
+                  <div class="flex items-center gap-3">
+                    <span class="cursor-move text-gray-400" data-sortable-handle>
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                      </svg>
+                    </span>
+                    <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
+                    <span class="text-xs text-gray-500">Capacity: <%= slot.capacity %></span>
+                    <% if slot.is_held? %>
+                      <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Held<%= slot.held_reason.present? ? ": #{slot.held_reason}" : "" %>
+                      </span>
+                    <% end %>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <%= link_to toggle_slot_hold_manage_production_sign_up_form_path(@production, @sign_up_form, slot_id: slot.id), method: :patch, class: "text-sm text-gray-500 hover:text-gray-700" do %>
+                      <%= slot.is_held? ? 'Release' : 'Hold' %>
+                    <% end %>
+                    <%= link_to destroy_slot_manage_production_sign_up_form_path(@production, @sign_up_form, slot_id: slot.id), method: :delete, data: { turbo_confirm: "Delete this slot?" }, class: "text-sm text-red-500 hover:text-red-700" do %>
+                      Delete
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm text-center py-8">No slots configured yet. Add slots individually or generate them in bulk.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Add Single Slot -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Add Slot" %>
+        <div class="p-4">
+          <%= form_with url: create_slot_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post do |form| %>
+            <div class="space-y-4">
+              <div>
+                <%= form.label :name, "Name (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.text_field :name, name: "slot[name]", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "e.g., 5-minute set" %>
+              </div>
+              <div>
+                <%= form.label :capacity, class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :capacity, name: "slot[capacity]", value: 1, min: 1, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <%= form.submit "Add Slot", class: "w-full px-4 py-2 text-sm font-medium text-white bg-pink-500 rounded-lg hover:bg-pink-600 cursor-pointer" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Generate Slots -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Generate Slots" %>
+        <div class="p-4">
+          <%= form_with url: generate_slots_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post do |form| %>
+            <div class="space-y-4">
+              <div>
+                <%= form.label :count, "Number of Slots", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :count, value: 10, min: 1, max: 100, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <div>
+                <%= form.label :name_pattern, "Name Pattern (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <p class="text-xs text-gray-500 mb-1">Use {n} for slot number</p>
+                <%= form.text_field :name_pattern, placeholder: "Slot {n}", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <div>
+                <%= form.label :capacity, "Capacity per Slot", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :capacity, value: 1, min: 1, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <%= form.submit "Generate Slots", class: "w-full px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700 cursor-pointer" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Holdout Rules -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Holdout Rules" %>
+        <div class="p-4">
+          <p class="text-xs text-gray-500 mb-4">Automatically reserve slots based on rules</p>
+          
+          <% if @holdouts.any? %>
+            <div class="space-y-2 mb-4">
+              <% @holdouts.each do |holdout| %>
+                <div class="flex items-center justify-between py-2 px-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <span class="text-sm text-yellow-800"><%= holdout.description %></span>
+                  <%= link_to destroy_holdout_manage_production_sign_up_form_path(@production, @sign_up_form, holdout_id: holdout.id), method: :delete, class: "text-xs text-red-500 hover:text-red-700" do %>
+                    Remove
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%= form_with url: create_holdout_manage_production_sign_up_form_path(@production, @sign_up_form), method: :post do |form| %>
+            <div class="space-y-3">
+              <div>
+                <%= form.select :holdout_type, 
+                  [["Reserve first N slots", "first_n"], ["Reserve last N slots", "last_n"], ["Reserve every Nth slot", "every_n"]], 
+                  {}, 
+                  name: "holdout[holdout_type]",
+                  class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <div>
+                <%= form.number_field :holdout_value, name: "holdout[holdout_value]", value: 1, min: 1, placeholder: "N value", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <div>
+                <%= form.text_field :reason, name: "holdout[reason]", placeholder: "Reason (optional)", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+              </div>
+              <%= form.submit "Add Rule", class: "w-full px-4 py-2 text-sm font-medium text-yellow-800 bg-yellow-100 rounded-lg hover:bg-yellow-200 cursor-pointer" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

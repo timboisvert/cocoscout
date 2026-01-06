@@ -44,6 +44,9 @@ class Show < ApplicationRecord
 
   has_many :show_cast_notifications, dependent: :destroy
 
+  # Sign-up forms can be associated with specific shows
+  has_many :sign_up_forms, dependent: :destroy
+
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
 
@@ -138,6 +141,12 @@ class Show < ApplicationRecord
   # Check if this show is in the past
   def past?
     date_and_time < Time.current
+  end
+
+  # Display name with date for select dropdowns
+  def name_with_date
+    name = secondary_name.presence || event_type&.titleize || "Show"
+    "#{name} - #{date_and_time&.strftime('%b %-d, %Y at %-I:%M %p')}"
   end
 
   # Check if casting has been finalized for this show

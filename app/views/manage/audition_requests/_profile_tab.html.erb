@@ -45,9 +45,9 @@
               <% end %>
 
               <% if @audition_request.present? %>
-                <%= link_to "Delete Sign-up",
+                <%= link_to "Delete Audition Request",
                     manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
-                    data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this sign-up?" },
+                    data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this audition request?" },
                     class: "block text-sm text-pink-500 hover:underline mt-1"
                 %>
               <% end %>

@@ -1,0 +1,56 @@
+<%= form_with(model: [:manage, production, sign_up_form]) do |form| %>
+  <div class="space-y-6">
+    <div>
+      <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_field :name, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Open Mic Night Sign-ups" %>
+      <% if sign_up_form.errors[:name].any? %>
+        <p class="mt-1 text-sm text-pink-600"><%= sign_up_form.errors[:name].first %></p>
+      <% end %>
+    </div>
+
+    <div>
+      <%= form.label :description, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.textarea :description, rows: 3, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "Describe what people are signing up for..." %>
+    </div>
+
+    <div>
+      <%= form.label :show_id, "Link to Show (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <p class="text-xs text-gray-500 mb-2">Optionally link this form to a specific show</p>
+      <%= form.select :show_id, 
+        options_from_collection_for_select(shows, :id, :name_with_date, sign_up_form.show_id),
+        { include_blank: "No specific show" },
+        class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <%= form.label :opens_at, "Opens At (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.datetime_local_field :opens_at, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+
+      <div>
+        <%= form.label :closes_at, "Closes At (Optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.datetime_local_field :closes_at, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :slots_per_registration, class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <p class="text-xs text-gray-500 mb-2">How many slots can one person sign up for?</p>
+      <%= form.number_field :slots_per_registration, min: 1, class: "block w-32 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <label class="relative inline-flex items-center cursor-pointer">
+        <%= form.check_box :require_login, class: "sr-only peer" %>
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        <span class="ml-3 text-sm font-medium text-gray-700">Require login to sign up</span>
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+      <%= link_to "Cancel", sign_up_form.persisted? ? manage_production_sign_up_form_path(production, sign_up_form) : manage_production_sign_up_forms_path(production), class: "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" %>
+      <%= form.submit sign_up_form.persisted? ? "Save Changes" : "Create Sign-up Form", class: "px-4 py-2 text-sm font-medium text-white bg-pink-500 border border-transparent rounded-lg hover:bg-pink-600 cursor-pointer" %>
+    </div>
+  </div>
+<% end %>

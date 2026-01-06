@@ -61,6 +61,112 @@ export default class extends Controller {
         this.currentAssignRoleId = null;
     }
 
+    // Open the add guest modal
+    openGuestModal(event) {
+        event.preventDefault();
+        const modal = document.getElementById('add-guest-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            // Focus on name input
+            setTimeout(() => {
+                document.getElementById('guest-name-input')?.focus();
+            }, 100);
+        }
+    }
+
+    // Close the add guest modal
+    closeGuestModal() {
+        const modal = document.getElementById('add-guest-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            // Clear inputs
+            const nameInput = document.getElementById('guest-name-input');
+            const emailInput = document.getElementById('guest-email-input');
+            const roleSelect = document.getElementById('guest-role-select');
+            if (nameInput) nameInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (roleSelect) roleSelect.value = '';
+        }
+    }
+
+    // Submit guest assignment
+    submitGuestAssignment(event) {
+        event.preventDefault();
+        const nameInput = document.getElementById('guest-name-input');
+        const emailInput = document.getElementById('guest-email-input');
+        const roleSelect = document.getElementById('guest-role-select');
+
+        const guestName = nameInput?.value?.trim() || '';
+        const guestEmail = emailInput?.value?.trim() || '';
+        const roleId = roleSelect?.value || '';
+
+        if (!guestName) {
+            nameInput?.focus();
+            nameInput?.classList.add('border-pink-500');
+            return;
+        }
+
+        if (!roleId) {
+            roleSelect?.focus();
+            roleSelect?.classList.add('border-pink-500');
+            return;
+        }
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        // Close modal immediately
+        this.closeGuestModal();
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({
+                role_id: roleId,
+                guest_name: guestName,
+                guest_email: guestEmail
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
+                }
+
+                // Update linkage sync section if present
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
+
+                // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            })
+            .catch(error => {
+                console.error('Error assigning guest:', error);
+                alert('Failed to assign guest. Please try again.');
+            });
+    }
+
     // Assign from the mobile modal
     assignFromModal(event) {
         event.preventDefault();

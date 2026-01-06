@@ -40,7 +40,19 @@
               label: "Auditions",
               path: manage_production_auditions_path(Current.production),
               active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
-            },
+            }
+          ]
+
+          # Add Sign-ups link only if the feature is enabled
+          if Current.production.has_sign_up_slots
+            links << {
+              label: "Sign-ups",
+              path: manage_production_sign_up_forms_path(Current.production),
+              active: controller_name == "sign_up_forms"
+            }
+          end
+
+          links += [
             {
               label: "Questionnaires",
               path: manage_production_questionnaires_path(Current.production),

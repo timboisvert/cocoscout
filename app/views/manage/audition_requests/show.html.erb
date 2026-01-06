@@ -1,4 +1,4 @@
-<% content_for :title, "Sign-ups" %>
+<% content_for :title, "Audition Requests" %>
 <div class="w-full pb-48 lg:pb-40 relative">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
@@ -31,7 +31,7 @@
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
-      [(@audition_cycle.video_only? ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
+      [(@audition_cycle.video_only? ? "Video Auditions" : "Audition Requests"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
     ],
     text: @requestable&.name&.truncate(40, omission: "...") || "Deleted",
     links: []
@@ -86,7 +86,7 @@
       <% end %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Availability</button>
       <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Audition Questions</button>
       <% idx += 1 %>
       <% if current_user_can_review?(@production) %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Votes</button>
@@ -313,7 +313,7 @@
       <% end %>
     </div>
 
-    <%# Sign-up Questions Tab %>
+    <%# Audition Questions Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% if @answers&.any? %>
         <div class="mt-2">
@@ -329,7 +329,7 @@
           </div>
         <% end %>
       <% else %>
-        <p class="text-center mt-10">No sign-up questions answered</p>
+        <p class="text-center mt-10">No audition questions answered</p>
       <% end %>
     </div>
 

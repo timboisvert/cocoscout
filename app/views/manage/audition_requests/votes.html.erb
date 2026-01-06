@@ -5,8 +5,8 @@
     breadcrumbs: [
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)],
-      [(@audition_cycle.video_only? ? "Video Auditions" : "Sign-ups"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
-      [@audition_request.requestable&.name&.truncate(20) || "Sign-up", manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
+      [(@audition_cycle.video_only? ? "Video Auditions" : "Audition Requests"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)],
+      [@audition_request.requestable&.name&.truncate(20) || "Audition Request", manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)]
     ],
     text: "All Votes",
     links: []

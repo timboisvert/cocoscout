@@ -17,6 +17,7 @@ class Production < ApplicationRecord
   has_many :production_permissions, dependent: :delete_all
   has_many :team_invitations, dependent: :destroy
   has_many :questionnaires, dependent: :destroy
+  has_many :sign_up_forms, dependent: :destroy
   belongs_to :organization
 
   has_one_attached :logo, dependent: :purge_later do |attachable|

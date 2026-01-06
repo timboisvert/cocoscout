@@ -1,8 +1,8 @@
-<% content_for :title, "Sign-up Form" %>
+<% content_for :title, "Audition Form" %>
 
 <div class="w-full pb-56 lg:pb-48" data-controller="question-modal tabs availability-wizard"
      data-create-path="<%= create_question_manage_production_audition_cycle_path(@production, @audition_cycle) %>"
-     data-new-description="Custom Questions are shown at the bottom of the Audition sign-up form."
+     data-new-description="Custom Questions are shown at the bottom of the audition form."
      data-has-errors="<%= @question.errors.any? %>"
      data-tabs-initial-tab-value="<%= params[:tab].to_i %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -11,7 +11,7 @@
       ["Auditions", manage_production_auditions_path(@production)],
       ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
-    text: "Sign-up Form",
+    text: "Audition Form",
     links: [
       { text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "eye", target: "_blank" }
     ]
@@ -28,7 +28,7 @@
         </div>
         <div>
           <h3 class="font-semibold text-pink-900 mb-1">Your audition cycle is set up!</h3>
-          <p class="text-sm text-pink-700">Now customize what information you collect on the sign-up form. Add custom questions, configure availability options, and preview how it will look to auditionees.</p>
+          <p class="text-sm text-pink-700">Now customize what information you collect on the audition form. Add custom questions, configure availability options, and preview how it will look to auditionees.</p>
         </div>
       </div>
     </div>
@@ -51,7 +51,7 @@
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <%= render "shared/card_header", title: "Introduction Instructions" %>
         <div class="p-5">
-          <p class="text-sm text-gray-600 mb-4">This text appears at the top of the sign-up form, before any questions.</p>
+          <p class="text-sm text-gray-600 mb-4">This text appears at the top of the audition form, before any questions.</p>
           <%= form.rich_text_area :instruction_text,
                                   class: "w-full prose max-w-none",
                                   data: { controller: "trix-no-files" } %>
@@ -75,7 +75,7 @@
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <%= render "shared/card_header", title: "Success Message" %>
         <div class="p-5">
-          <p class="text-sm text-gray-600 mb-4">This text is shown after someone successfully submits the sign-up form.</p>
+          <p class="text-sm text-gray-600 mb-4">This text is shown after someone successfully submits the audition form.</p>
           <%= form.rich_text_area :success_text,
                                   class: "w-full prose max-w-none",
                                   data: { controller: "trix-no-files" } %>
@@ -243,7 +243,7 @@
 
   <%# ==================== TAB 2: CUSTOM QUESTIONS ==================== %>
   <div data-tabs-target="panel" class="hidden">
-    <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information from auditionees. Questions appear at the bottom of the sign-up form.</p>
+    <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information from auditionees. Questions appear at the bottom of the audition form.</p>
     <%= render partial: "questions" %>
   </div>
 
@@ -257,7 +257,7 @@
 <%# Sticky Preview Box %>
 <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
   <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-    <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Review Sign-up Form</h3>
+    <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Review Audition Form</h3>
   </div>
   <div class="p-3 space-y-3">
     <%# URL Copy Row %>

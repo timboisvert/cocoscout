@@ -1,0 +1,75 @@
+<% content_for :title, "Sign-ups - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Sign-ups",
+    links: [
+      {text: "Create a Sign-up Form", path: new_manage_production_sign_up_form_path(@production)}
+    ]
+  } %>
+
+  <% if @sign_up_forms.any? %>
+    <div class="space-y-1">
+      <% @sign_up_forms.each do |form| %>
+        <%= link_to manage_production_sign_up_form_path(@production, form), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 bg-white transition-colors no-underline" do %>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <h3 class="text-md font-semibold text-gray-900 truncate"><%= form.name %></h3>
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600">
+                <span>
+                  <%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %>
+                </span>
+                <span>
+                  <%= form.sign_up_registrations.active.count %> registration<%= form.sign_up_registrations.active.count == 1 ? '' : 's' %>
+                </span>
+                <% if form.show.present? %>
+                  <span class="text-gray-400">•</span>
+                  <span><%= form.show.name_with_date %></span>
+                <% end %>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= form.active? ? 'bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-600/20' : 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10' %>">
+                <%= form.active? ? 'Active' : 'Inactive' %>
+              </span>
+              <% if form.open? %>
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                  Open
+                </span>
+              <% elsif form.opens_at.present? && form.opens_at > Time.current %>
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
+                  Opens <%= form.opens_at.strftime("%b %d") %>
+                </span>
+              <% elsif form.closes_at.present? && form.closes_at <= Time.current %>
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-600/20">
+                  Closed
+                </span>
+              <% end %>
+              <svg class="w-5 h-5 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No sign-up forms yet</h3>
+      <p class="mt-1 text-sm text-gray-500">Create a sign-up form to let people register for events, open mics, workshops, and more.</p>
+      <div class="mt-6">
+        <%= link_to new_manage_production_sign_up_form_path(@production), class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-pink-500 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500" do %>
+          <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          </svg>
+          Create a Sign-up Form
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

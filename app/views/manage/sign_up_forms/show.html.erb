@@ -1,0 +1,120 @@
+<% content_for :title, "#{@sign_up_form.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+    ],
+    text: @sign_up_form.name,
+    links: [
+      { text: "Edit", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form) },
+      { text: "Preview", path: preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank" }
+    ]
+  } %>
+
+  <!-- Status and Actions -->
+  <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium <%= @sign_up_form.active? ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800' %>">
+          <%= @sign_up_form.active? ? 'Active' : 'Inactive' %>
+        </span>
+        <% if @sign_up_form.active? %>
+          <% if @sign_up_form.open? %>
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-green-100 text-green-800">
+              Open for Sign-ups
+            </span>
+          <% elsif @sign_up_form.opens_at.present? && @sign_up_form.opens_at > Time.current %>
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800">
+              Opens <%= @sign_up_form.opens_at.strftime("%B %d at %l:%M %p") %>
+            </span>
+          <% elsif @sign_up_form.closes_at.present? && @sign_up_form.closes_at <= Time.current %>
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800">
+              Closed
+            </span>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-2">
+        <%= link_to toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, class: "inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg #{@sign_up_form.active? ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-white bg-pink-500 hover:bg-pink-600'}" do %>
+          <%= @sign_up_form.active? ? 'Deactivate' : 'Activate' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.count %></div>
+      <div class="text-sm text-gray-500">Total Slots</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.available.count %></div>
+      <div class="text-sm text-gray-500">Available Slots</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @registrations.count %></div>
+      <div class="text-sm text-gray-500">Registrations</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= @sign_up_form.sign_up_slots.held.count %></div>
+      <div class="text-sm text-gray-500">Held Slots</div>
+    </div>
+  </div>
+
+  <!-- Registrations Table -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Registrations" do %>
+      <span class="text-sm text-gray-500"><%= @registrations.count %> total</span>
+    <% end %>
+    <div class="divide-y divide-gray-100">
+      <% if @registrations.any? %>
+        <% @registrations.each do |registration| %>
+          <div class="flex items-center justify-between p-4 hover:bg-gray-50 group">
+            <div class="flex items-center gap-4">
+              <div class="flex-shrink-0">
+                <% if registration.person&.avatar&.attached? %>
+                  <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-10 h-10 rounded-full object-cover" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
+                    <%= registration.display_name.first.upcase %>
+                  </div>
+                <% end %>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= registration.display_name %></p>
+                <% if registration.sign_up_slot %>
+                  <p class="text-xs text-gray-500">Slot: <%= registration.sign_up_slot.display_name %></p>
+                <% end %>
+                <% if registration.created_at %>
+                  <p class="text-xs text-gray-400">Signed up <%= time_ago_in_words(registration.created_at) %> ago</p>
+                <% end %>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <%= link_to cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id),
+                  method: :delete,
+                  data: { turbo_confirm: "Cancel this registration?" },
+                  class: "text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200" do %>
+                Cancel
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="p-6 text-center text-gray-500">
+          <p class="text-sm">No registrations yet.</p>
+          <% if @sign_up_form.active? && @sign_up_form.sign_up_slots.any? %>
+            <p class="text-xs mt-1">Share the form link to start collecting registrations.</p>
+          <% elsif !@sign_up_form.active? %>
+            <p class="text-xs mt-1">Activate the form to start accepting registrations.</p>
+          <% elsif @sign_up_form.sign_up_slots.none? %>
+            <p class="text-xs mt-1"><%= link_to "Add slots", edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2), class: "text-pink-500 underline" %> to start accepting registrations.</p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

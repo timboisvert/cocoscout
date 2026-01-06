@@ -34,6 +34,9 @@ class Person < ApplicationRecord
   has_many :show_availabilities, as: :available_entity, dependent: :destroy
   has_many :available_shows, through: :show_availabilities, source: :show
 
+  # Sign-up registrations
+  has_many :sign_up_registrations, dependent: :destroy
+
   has_many :group_memberships, dependent: :destroy
   has_many :groups, through: :group_memberships
 

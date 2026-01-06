@@ -30,10 +30,10 @@
       <%= render partial: "sessions_list", locals: { audition_sessions: @audition_sessions, available_people: @available_people, production: @production, audition_cycle: @audition_cycle, scheduled_request_ids: @scheduled_request_ids } %>
     </div>
 
-    <!-- Sign-ups on the right (larger) - hidden on mobile -->
+    <!-- Audition Requests on the right (larger) - hidden on mobile -->
     <div class="hidden lg:block w-1/2 flex-shrink-0">
       <div class="sticky top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
-        <%= render "shared/card_header", title: "Sign-ups" do %>
+        <%= render "shared/card_header", title: "Audition Requests" do %>
           <p class="text-xs text-gray-500">
             Drag each person to an audition slot to schedule them.
           </p>

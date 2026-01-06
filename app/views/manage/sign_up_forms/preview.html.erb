@@ -1,0 +1,146 @@
+<% content_for :title, "Preview - #{@sign_up_form.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, edit_manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Preview Sign-up Form",
+    links: [
+      { text: "Edit Form", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form) }
+    ]
+  } %>
+
+  <!-- Shareable Link -->
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <%= render "shared/card_header", title: "Shareable Link" %>
+    <div class="p-6">
+      <% if @sign_up_form.active? %>
+        <p class="text-sm text-gray-500">Public sign-up form link coming soon.</p>
+      <% else %>
+        <p class="text-sm text-gray-500">Activate this form to enable public sign-ups.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 pt-12">
+    <div class="max-w-6xl mx-auto">
+
+      <!-- Full-Width Header -->
+      <div class="mb-8 sm:mb-10">
+        <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @sign_up_form.name %></h1>
+        <% if @sign_up_form.show.present? %>
+          <p class="text-lg text-slate-600">
+            <svg class="inline-block w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <%= @sign_up_form.show.name_with_date %>
+          </p>
+        <% end %>
+      </div>
+
+      <!-- Two Column Layout: Instruction Text & Form -->
+      <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+
+        <!-- Left Column: Instruction Text -->
+        <div class="space-y-6">
+          <% if @sign_up_form.instruction_text.present? %>
+            <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+              <div class="prose prose-slate max-w-none text-slate-700">
+                <%= @sign_up_form.instruction_text %>
+              </div>
+            </div>
+          <% else %>
+            <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
+              <p class="text-sm text-gray-500 italic">No instructions configured. Add instructions in the "Instructions" tab when editing the form.</p>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Right Column: Form -->
+        <div class="space-y-4">
+
+          <!-- Profile Section (preview only) -->
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
+            <div class="p-5">
+              <label class="block text-sm font-medium text-gray-700 mb-3">Signing up as:</label>
+              <div class="flex items-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg">
+                <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                  </svg>
+                </div>
+                <div class="flex-1 text-left min-w-0">
+                  <div class="font-medium text-gray-900 truncate">Preview User</div>
+                  <div class="text-sm text-gray-500 truncate">@preview</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slot Selection -->
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
+            <div class="p-5">
+              <label class="block text-sm font-medium text-gray-700 mb-3">
+                Select a Slot
+                <% if @sign_up_form.slots_per_registration > 1 %>
+                  <span class="text-gray-500 font-normal">(up to <%= @sign_up_form.slots_per_registration %>)</span>
+                <% end %>
+              </label>
+              <% if @slots.any? %>
+                <div class="space-y-2">
+                  <% @slots.each do |slot| %>
+                    <% if slot.is_held? %>
+                      <div class="flex items-center justify-between py-3 px-4 bg-yellow-50 border border-yellow-200 rounded-lg opacity-60">
+                        <span class="text-sm text-yellow-800"><%= slot.display_name %></span>
+                        <span class="text-xs text-yellow-600"><%= slot.held_reason.presence || "Reserved" %></span>
+                      </div>
+                    <% elsif slot.full? %>
+                      <div class="flex items-center justify-between py-3 px-4 bg-gray-100 border border-gray-200 rounded-lg opacity-60">
+                        <span class="text-sm text-gray-600"><%= slot.display_name %></span>
+                        <span class="text-xs text-gray-500">Full</span>
+                      </div>
+                    <% else %>
+                      <label class="flex items-center justify-between py-3 px-4 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 hover:bg-pink-50">
+                        <div class="flex items-center gap-3">
+                          <input type="<%= @sign_up_form.slots_per_registration > 1 ? 'checkbox' : 'radio' %>" name="slot" value="<%= slot.id %>" class="text-pink-500 focus:ring-pink-500" disabled>
+                          <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
+                        </div>
+                        <span class="text-xs text-green-600"><%= slot.spots_remaining %> spot<%= slot.spots_remaining == 1 ? '' : 's' %> left</span>
+                      </label>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-sm text-gray-500 text-center py-4">No slots configured. Add slots in the "Slots" tab when editing the form.</p>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Questions Section -->
+          <% if @questions.any? %>
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-5">
+              <% @questions.each do |question| %>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <%= question.text %>
+                    <% if question.required? %>
+                      <span class="text-gray-500 text-sm">(required)</span>
+                    <% end %>
+                  </label>
+
+                  <%= render_question_input(question, {}) %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <!-- Submit Button -->
+          <%= render "shared/button", text: "Sign Up (Preview Mode)", variant: "primary", size: "jumbo", type: :submit, disabled: true, class: "w-full" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

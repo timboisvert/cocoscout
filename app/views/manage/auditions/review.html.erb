@@ -23,7 +23,7 @@
     </div>
   <% else %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <% review_title = @audition_cycle.video_only? ? "Video Auditions" : "Sign-ups" %>
+      <% review_title = @audition_cycle.video_only? ? "Video Auditions" : "Audition Requests" %>
       <%= render "shared/card_header", title: review_title %>
       <div class="p-6">
         <p class="text-sm text-gray-500 mb-6">Review and vote on each auditionee's application.</p>
@@ -38,7 +38,7 @@
                 <% if @audition_cycle.video_only? %>
                   Total Video Auditions
                 <% else %>
-                  Total Sign-ups
+                  Total Audition Requests
                 <% end %>
               </p>
             </div>
@@ -58,7 +58,7 @@
         </div>
 
         <%
-          button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Sign-ups"
+          button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Audition Requests"
         %>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
@@ -188,8 +188,8 @@
                 <div class="flex-1">
                   <h4 class="text-sm font-semibold text-green-900 mb-1">All Audition decision notifications have been sent</h4>
                   <p class="text-sm text-green-800 mb-0">
-                    Notification emails have been sent to all <%= notified_people_count %> <%= 'sign-up'.pluralize(notified_people_count) %>.
-                    If new people sign up or more people are offered an audition, they will appear here for notification.
+                    Notification emails have been sent to all <%= notified_people_count %> <%= 'audition request'.pluralize(notified_people_count) %>.
+                    If new people submit an audition request or more people are offered an audition, they will appear here for notification.
                   </p>
                 </div>
               </div>

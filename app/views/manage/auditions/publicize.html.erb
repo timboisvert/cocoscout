@@ -22,11 +22,11 @@
     <% audition_cycle = @audition_cycle %>
 
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Sign-up Form" %>
+      <%= render "shared/card_header", title: "Audition Form" %>
       <div class="p-6">
-        <p class="text-sm text-gray-500 mb-6">Share the sign-up link with potential auditionees and manage the form content.</p>
+        <p class="text-sm text-gray-500 mb-6">Share the audition form link with potential auditionees and manage the form content.</p>
         <div>
-          <%= render "shared/copy_url", url: audition_cycle.respond_url, label: "Sign-up Link" %>
+          <%= render "shared/copy_url", url: audition_cycle.respond_url, label: "Audition Form Link" %>
         </div>
       </div>
     </div>
@@ -34,7 +34,7 @@
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <%= render "shared/card_header", title: "Share" %>
       <div class="p-6">
-        <p class="text-sm text-gray-600 mb-6">Share the audition sign-up link to recruit performers.</p>
+        <p class="text-sm text-gray-600 mb-6">Share the audition form link to recruit performers.</p>
 
         <div class="space-y-3">
           <!-- Email Sharing -->

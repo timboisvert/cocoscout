@@ -89,7 +89,7 @@
       <% end %>
       <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Availability</button>
       <% idx += 1 %>
-      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Sign-up Questions</button>
+      <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Audition Questions</button>
       <% idx += 1 %>
       <% if current_user_can_review?(@production) %>
         <button type="button" data-tabs-target="tab" data-index="<%= idx %>" data-action="tabs#select" class="px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Votes</button>
@@ -237,14 +237,14 @@
       <% end %>
     </div>
 
-    <%# Sign-up Questions Tab %>
+    <%# Audition Questions Tab %>
     <div data-tabs-target="panel" class="hidden">
       <% if @audition.audition_request&.answers&.any? %>
         <div class="mt-2">
           <%= render "manage/audition_requests/answers", answers: @audition.audition_request.answers.includes(:question) %>
         </div>
       <% else %>
-        <p class="text-center mt-10">No sign-up questions answered</p>
+        <p class="text-center mt-10">No audition questions answered</p>
       <% end %>
     </div>
 

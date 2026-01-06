@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
+                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
     def index
       @upcoming_shows = @production.shows
@@ -317,6 +317,114 @@ module Manage
       end
 
       # Render finalize section if fully cast AND (not linked OR in sync)
+      finalize_section_html = nil
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
+      end
+
+      render json: {
+        cast_members_html: cast_members_html,
+        roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
+        finalize_section_html: finalize_section_html,
+        progress: {
+          assignment_count: progress[:filled],
+          role_count: progress[:total],
+          percentage: progress[:percentage]
+        }
+      }
+    end
+
+    def assign_guest_to_role
+      # Get guest info
+      guest_name = params[:guest_name].to_s.strip
+      guest_email = params[:guest_email].to_s.strip.presence
+
+      if guest_name.blank?
+        render json: { error: "Guest name is required" }, status: :unprocessable_entity
+        return
+      end
+
+      # Find the role
+      role = Role.find(params[:role_id])
+
+      # Check if role is restricted - guests cannot be assigned to restricted roles
+      if role.restricted?
+        render json: { error: "Guests cannot be assigned to restricted roles" }, status: :unprocessable_entity
+        return
+      end
+
+      # Check if role has available slots
+      if role.fully_filled?(@show)
+        render json: { error: "This role is already fully cast" }, status: :unprocessable_entity
+        return
+      end
+
+      # Check if there's an existing Person with this email - if so, use that person instead
+      if guest_email.present?
+        existing_person = Current.organization.people.find_by(email: guest_email)
+        if existing_person
+          # Found matching person - assign them instead of creating a guest
+          existing_assignment = @show.show_person_role_assignments.find_by(assignable: existing_person, role: role)
+          if existing_assignment
+            render json: { error: "This person is already assigned to this role" }, status: :unprocessable_entity
+            return
+          end
+
+          @show.show_person_role_assignments.create!(assignable: existing_person, role: role)
+        else
+          # Create guest assignment
+          @show.show_person_role_assignments.create!(
+            role: role,
+            guest_name: guest_name,
+            guest_email: guest_email
+          )
+        end
+      else
+        # Create guest assignment without email
+        @show.show_person_role_assignments.create!(
+          role: role,
+          guest_name: guest_name,
+          guest_email: nil
+        )
+      end
+
+      # Generate the HTML to return
+      @availability = build_availability_hash(@show)
+
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
+      cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
+                                           locals: { show: @show,
+                                                     availability: @availability })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
+
+      progress = @show.casting_progress
+      fully_cast = progress[:percentage] == 100
+
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
       finalize_section_html = nil
       all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
       can_finalize = fully_cast && (!is_linked || all_in_sync)

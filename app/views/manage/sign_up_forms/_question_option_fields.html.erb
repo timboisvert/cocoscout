@@ -1,0 +1,12 @@
+<div class="nested-fields" data-nested-form-target="target">
+    <div class="flex items-center gap-2">
+        <%= form.text_field :text, placeholder: "Option text", class: ["block shadow-sm rounded-lg border px-3 py-2 flex-1", {"border-gray-400": @question.errors[:text].none?, "border-pink-500": @question.errors[:text].any?}] %>
+        <%= form.hidden_field :_destroy %>
+        <%= render "shared/button",
+            text: "Remove",
+            variant: "danger",
+            size: "small",
+            type: :button,
+            data: { action: "nested-form#remove" } %>
+    </div>
+</div>

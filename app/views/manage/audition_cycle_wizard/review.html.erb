@@ -21,7 +21,7 @@
     <!-- Schedule -->
     <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
       <div class="flex items-center justify-between">
-        <h3 class="font-medium text-gray-900">Sign-up Window</h3>
+        <h3 class="font-medium text-gray-900">Request Window</h3>
         <%= link_to "Edit", manage_audition_wizard_production_schedule_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
       </div>
       <div class="mt-2 text-sm text-gray-600">
@@ -106,9 +106,9 @@
       </div>
       <div class="mt-2 text-sm text-gray-600">
         <% if @wizard_state[:voting_enabled] != false %>
-          <p>✓ Voting on sign-ups enabled</p>
+          <p>✓ Voting on audition requests enabled</p>
         <% else %>
-          <p>Voting on sign-ups disabled</p>
+          <p>Voting on audition requests disabled</p>
         <% end %>
         <% if @wizard_state[:allow_in_person_auditions] %>
           <% if @wizard_state[:audition_voting_enabled] != false %>

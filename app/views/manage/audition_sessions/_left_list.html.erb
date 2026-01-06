@@ -1,6 +1,6 @@
 <div class="p-4 rounded-lg border border-gray-200" id="left_panel">
 
-    <h2 class="font-semibold text-lg mb-1">Sign-ups</h2>
+    <h2 class="font-semibold text-lg mb-1">Audition Requests</h2>
 
     <span class="text-sm text-gray-500 mb-3 block">
         Drag each person from the list on the left to an audition slot on the right to schedule them.
@@ -11,7 +11,7 @@
         filters: [
           { text: "To Be Scheduled", path: manage_production_audition_sessions_path(production, filter: "to_be_scheduled"), active: filter.blank? || filter == "to_be_scheduled" },
           { text: "All Yes", path: manage_production_audition_sessions_path(production, filter: "accepted"), active: filter == "accepted" },
-          { text: "All Sign-ups", path: manage_production_audition_sessions_path(production, filter: "all"), active: filter == "all" }
+          { text: "All Requests", path: manage_production_audition_sessions_path(production, filter: "all"), active: filter == "all" }
         ]
       }
     ] %>
@@ -69,9 +69,9 @@
         </div>
     <% else %>
         <% if filter == "to_be_scheduled" %>
-            <p class="text-gray-500 text-sm">All accepted sign-ups have been scheduled</p>
+            <p class="text-gray-500 text-sm">All accepted audition requests have been scheduled</p>
         <% else %>
-            <p class="text-gray-500 text-sm">No sign-ups</p>
+            <p class="text-gray-500 text-sm">No audition requests</p>
         <% end %>
     <% end %>
 </div>

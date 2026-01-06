@@ -1,0 +1,19 @@
+<% content_for :title, "New Sign-up Form - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+    ],
+    text: "New Sign-up Form",
+    links: []
+  } %>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Sign-up Form Details" %>
+    <div class="p-6">
+      <%= render "form", sign_up_form: @sign_up_form, production: @production, shows: @shows %>
+    </div>
+  </div>
+</div>

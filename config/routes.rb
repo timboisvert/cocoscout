@@ -277,10 +277,6 @@ Rails.application.routes.draw do
       end
 
       resources :availability, only: %i[index show] do
-        collection do
-          get  :request_availability
-          post :handle_request_availability
-        end
         member do
           patch :update_show_availability
         end
@@ -356,6 +352,7 @@ Rails.application.routes.draw do
       get "casting/shows/:show_id/contact", to: "casting#contact_cast", as: "show_contact_cast"
       post "casting/shows/:show_id/contact", to: "casting#send_cast_email", as: "send_cast_email"
       post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
+      post "casting/shows/:show_id/assign_guest_to_role", to: "casting#assign_guest_to_role"
       post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
       post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
       post "casting/shows/:show_id/finalize", to: "casting#finalize_casting", as: "finalize_casting"
@@ -457,6 +454,32 @@ Rails.application.routes.draw do
           patch  "unarchive",         to: "questionnaires#unarchive",         as: "unarchive"
           get    "responses",         to: "questionnaires#responses",         as: "responses"
           get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
+        end
+      end
+
+      # Sign-up forms for events
+      resources :sign_up_forms, path: "sign-ups" do
+        member do
+          get    "slots",             to: "sign_up_forms#slots",             as: "slots"
+          post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
+          patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
+          delete "destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot",  as: "destroy_slot"
+          post   "reorder_slots",     to: "sign_up_forms#reorder_slots",     as: "reorder_slots"
+          post   "generate_slots",    to: "sign_up_forms#generate_slots",    as: "generate_slots"
+          patch  "toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold"
+          get    "holdouts",          to: "sign_up_forms#holdouts",          as: "holdouts"
+          post   "create_holdout",    to: "sign_up_forms#create_holdout",    as: "create_holdout"
+          delete "destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout"
+          get    "questions",         to: "sign_up_forms#questions",         as: "questions"
+          post   "create_question",   to: "sign_up_forms#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions"
+          get    "registrations",     to: "sign_up_forms#registrations",     as: "registrations"
+          post   "register",          to: "sign_up_forms#register",          as: "register"
+          delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
+          get    "preview",           to: "sign_up_forms#preview",           as: "preview"
+          patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
         end
       end
 

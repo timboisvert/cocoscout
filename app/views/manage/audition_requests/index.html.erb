@@ -1,4 +1,4 @@
-<% content_for :title, "Sign-ups" %>
+<% content_for :title, "Audition Requests" %>
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -6,7 +6,7 @@
       ["Auditions", manage_production_auditions_path(@production)],
       ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
     ],
-    text: @audition_cycle.video_only? ? "Video Auditions" : "Sign-ups",
+    text: @audition_cycle.video_only? ? "Video Auditions" : "Audition Requests",
     links: []
   } %>
 

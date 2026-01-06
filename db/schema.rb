@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_06_014602) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_06_045506) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -570,6 +570,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_014602) do
     t.datetime "created_at", null: false
     t.text "description"
     t.text "event_visibility_overrides"
+    t.boolean "has_auditions", default: true, null: false
+    t.boolean "has_roles", default: true, null: false
+    t.boolean "has_sign_up_slots", default: false, null: false
+    t.boolean "has_talent_pool", default: true, null: false
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -846,6 +850,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_014602) do
     t.bigint "assignable_id"
     t.string "assignable_type"
     t.datetime "created_at", null: false
+    t.string "guest_email"
+    t.string "guest_name"
     t.integer "person_id"
     t.integer "position", default: 0, null: false
     t.integer "role_id"
@@ -881,6 +887,67 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_014602) do
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
+  end
+
+  create_table "sign_up_form_holdouts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "holdout_type", null: false
+    t.integer "holdout_value", null: false
+    t.string "reason"
+    t.bigint "sign_up_form_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sign_up_form_id", "holdout_type"], name: "idx_on_sign_up_form_id_holdout_type_bd84302aad", unique: true
+    t.index ["sign_up_form_id"], name: "index_sign_up_form_holdouts_on_sign_up_form_id"
+  end
+
+  create_table "sign_up_forms", force: :cascade do |t|
+    t.boolean "active", default: false, null: false
+    t.datetime "closes_at"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.text "instruction_text"
+    t.string "name", null: false
+    t.datetime "opens_at"
+    t.bigint "production_id", null: false
+    t.boolean "require_login", default: false, null: false
+    t.bigint "show_id"
+    t.integer "slots_per_registration", default: 1, null: false
+    t.text "success_text"
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "active"], name: "index_sign_up_forms_on_production_id_and_active"
+    t.index ["production_id"], name: "index_sign_up_forms_on_production_id"
+    t.index ["show_id"], name: "index_sign_up_forms_on_show_id"
+  end
+
+  create_table "sign_up_registrations", force: :cascade do |t|
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.string "guest_email"
+    t.string "guest_name"
+    t.bigint "person_id"
+    t.integer "position", null: false
+    t.datetime "registered_at", null: false
+    t.bigint "sign_up_slot_id", null: false
+    t.string "status", default: "confirmed", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "idx_sign_up_regs_person", where: "(person_id IS NOT NULL)"
+    t.index ["person_id"], name: "index_sign_up_registrations_on_person_id"
+    t.index ["sign_up_slot_id", "person_id"], name: "idx_sign_up_regs_slot_person_unique", unique: true, where: "((person_id IS NOT NULL) AND ((status)::text <> 'cancelled'::text))"
+    t.index ["sign_up_slot_id", "position"], name: "index_sign_up_registrations_on_sign_up_slot_id_and_position"
+    t.index ["sign_up_slot_id"], name: "index_sign_up_registrations_on_sign_up_slot_id"
+  end
+
+  create_table "sign_up_slots", force: :cascade do |t|
+    t.integer "capacity", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "held_reason"
+    t.boolean "is_held", default: false, null: false
+    t.string "name"
+    t.integer "position", null: false
+    t.bigint "sign_up_form_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sign_up_form_id", "position"], name: "index_sign_up_slots_on_sign_up_form_id_and_position"
+    t.index ["sign_up_form_id"], name: "index_sign_up_slots_on_sign_up_form_id"
   end
 
   create_table "socials", force: :cascade do |t|
@@ -1174,6 +1241,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_014602) do
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
+  add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
+  add_foreign_key "sign_up_forms", "productions"
+  add_foreign_key "sign_up_forms", "shows"
+  add_foreign_key "sign_up_registrations", "people"
+  add_foreign_key "sign_up_registrations", "sign_up_slots"
+  add_foreign_key "sign_up_slots", "sign_up_forms"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
