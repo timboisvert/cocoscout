@@ -6,8 +6,10 @@
   # Get current values or defaults
   opens_value = @wizard_state[:opens_value] || 7
   opens_unit = @wizard_state[:opens_unit] || 'days'
-  closes_value = @wizard_state[:closes_value] || 0
-  closes_unit = @wizard_state[:closes_unit] || 'hours'
+  closes_mode = @wizard_state[:closes_mode] || 'event_start'
+  closes_offset_value = @wizard_state[:closes_offset_value] || 2
+  closes_offset_unit = @wizard_state[:closes_offset_unit] || 'hours'
+  closes_before_after = @wizard_state[:closes_before_after] || 'before'
   schedule_mode = @wizard_state[:schedule_mode] || 'relative'
 %>
 <%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: is_waitlist ? "Activation" : "Schedule" } do %>
@@ -104,10 +106,11 @@
         </div>
 
         <!-- Relative Schedule Options -->
-        <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-5">
-          <div class="w-full">
-            <label class="block text-gray-700 font-medium">Open registration</label>
-            <div class="flex items-center gap-2 mt-2">
+        <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
+          <%# Open Registration Box %>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <label class="block text-gray-700 font-medium mb-2">Open registration</label>
+            <div class="flex items-center gap-2">
               <input type="number" name="opens_value" value="<%= opens_value %>" min="0"
                      class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
               <select name="opens_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2">
@@ -118,16 +121,60 @@
             </div>
           </div>
 
-          <div class="w-full">
-            <label class="block text-gray-700 font-medium">Close registration</label>
-            <div class="flex items-center gap-2 mt-2">
-              <input type="number" name="closes_value" value="<%= closes_value %>" min="0"
-                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-              <select name="closes_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-                <option value="hours" <%= "selected" if closes_unit == 'hours' %>>hours</option>
-                <option value="days" <%= "selected" if closes_unit == 'days' %>>days</option>
-              </select>
-              <span class="text-sm text-gray-600">before each event</span>
+          <%# Close Registration Box %>
+          <div class="p-4 bg-gray-50 rounded-lg" data-controller="option-select" data-option-select-selected-value="<%= closes_mode %>">
+            <label class="block text-gray-700 font-medium mb-3">Close registration</label>
+            <div class="space-y-2">
+              <%# Option 1: When event begins %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-option-select-target="option" data-value="event_start"
+                   data-action="click->option-select#select">
+                <input type="radio" name="closes_mode" value="event_start"
+                       <%= "checked" if closes_mode == 'event_start' %>
+                       class="sr-only"
+                       data-option-select-target="input">
+                <span class="text-sm font-medium text-gray-900">When the event begins</span>
+              </div>
+
+              <%# Option 2: After event ends %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'event_end' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-option-select-target="option" data-value="event_end"
+                   data-action="click->option-select#select">
+                <input type="radio" name="closes_mode" value="event_end"
+                       <%= "checked" if closes_mode == 'event_end' %>
+                       class="sr-only"
+                       data-option-select-target="input">
+                <span class="text-sm font-medium text-gray-900">After the event ends</span>
+              </div>
+
+              <%# Option 3: Custom before/after %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-option-select-target="option" data-value="custom"
+                   data-action="click->option-select#select">
+                <input type="radio" name="closes_mode" value="custom"
+                       <%= "checked" if closes_mode == 'custom' %>
+                       class="sr-only"
+                       data-option-select-target="input">
+                <div class="flex flex-wrap items-center gap-2">
+                  <input type="number" name="closes_offset_value" value="<%= closes_offset_value %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                         onclick="event.stopPropagation()">
+                  <select name="closes_offset_unit" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                          onclick="event.stopPropagation()">
+                    <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
+                    <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
+                  </select>
+                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                          onclick="event.stopPropagation()">
+                    <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
+                    <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
+                  </select>
+                  <span class="text-sm text-gray-600">the event begins</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -141,8 +188,7 @@
               <div class="ml-3">
                 <p class="text-sm text-blue-800">
                   <strong>Example:</strong> For an event on Saturday at 8 PM, sign-ups would open
-                  <%= opens_value %> <%= opens_unit %> before and close
-                  <%= closes_value %> <%= closes_unit %> before showtime.
+                  <%= opens_value %> <%= opens_unit %> before showtime.
                 </p>
               </div>
             </div>
@@ -150,20 +196,22 @@
         </div>
 
         <!-- Fixed Schedule Options -->
-        <div data-option-select-target="conditionalFixed" class="<%= schedule_mode == 'fixed' ? '' : 'hidden' %> space-y-5">
-          <div class="w-full sm:w-2/3">
-            <label class="block text-gray-700 font-medium">Opens at</label>
+        <div data-option-select-target="conditionalFixed" class="<%= schedule_mode == 'fixed' ? '' : 'hidden' %> space-y-4">
+          <%# Opens At Box %>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <label class="block text-gray-700 font-medium mb-2">Opens at</label>
             <input type="datetime-local" name="opens_at"
                    value="<%= @wizard_state[:opens_at].is_a?(String) ? @wizard_state[:opens_at] : @wizard_state[:opens_at]&.strftime('%Y-%m-%dT%H:%M') %>"
-                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-2/3">
           </div>
 
-          <div class="w-full sm:w-2/3">
-            <label class="block text-gray-700 font-medium">Closes at</label>
-            <div class="text-sm text-gray-500">Leave blank to keep sign-ups open until you close them manually</div>
+          <%# Closes At Box %>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <label class="block text-gray-700 font-medium mb-1">Closes at</label>
+            <div class="text-sm text-gray-500 mb-2">Leave blank to keep sign-ups open until you close them manually</div>
             <input type="datetime-local" name="closes_at"
                    value="<%= @wizard_state[:closes_at].is_a?(String) ? @wizard_state[:closes_at] : @wizard_state[:closes_at]&.strftime('%Y-%m-%dT%H:%M') %>"
-                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-2/3">
           </div>
         </div>
       <% end %>

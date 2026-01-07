@@ -1,0 +1,58 @@
+<% content_for :title, "Archived Sign-ups - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+    ],
+    text: "Archived",
+    links: []
+  } %>
+
+  <% if @sign_up_forms.any? %>
+    <div class="space-y-1">
+      <% @sign_up_forms.each do |form| %>
+        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <div class="flex-1 min-w-0">
+            <h3 class="text-md font-semibold text-gray-700 truncate"><%= form.name %></h3>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-500">
+              <% if form.per_event? %>
+                <span><%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %></span>
+              <% else %>
+                <span><%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %></span>
+                <span><%= form.sign_up_registrations.active.count %> registration<%= form.sign_up_registrations.active.count == 1 ? '' : 's' %></span>
+              <% end %>
+              <span class="text-gray-400">•</span>
+              <span>Archived <%= time_ago_in_words(form.archived_at) %> ago</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 ml-4">
+            <%= link_to unarchive_manage_production_sign_up_form_path(@production, form),
+                        data: { turbo_method: :patch },
+                        class: "px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors" do %>
+              Restore
+            <% end %>
+            <%= button_to manage_production_sign_up_form_path(@production, form),
+                          method: :delete,
+                          form: { data: { turbo_confirm: "Permanently delete this sign-up form? This cannot be undone and all registrations will be lost." } },
+                          class: "px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" do %>
+              Delete
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No archived sign-up forms</h3>
+      <p class="mt-1 text-sm text-gray-500">Archived forms will appear here.</p>
+      <div class="mt-6">
+        <%= link_to "Back to Sign-ups", manage_production_sign_up_forms_path(@production), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -5,7 +5,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Sign-ups", manage_production_sign_up_forms_path(@production)],
-      [@sign_up_form.name, edit_manage_production_sign_up_form_path(@production, @sign_up_form)]
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
     ],
     text: "Preview Sign-up Form",
     links: [
@@ -17,10 +17,13 @@
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
     <%= render "shared/card_header", title: "Shareable Link" %>
     <div class="p-6">
-      <% if @sign_up_form.active? %>
-        <p class="text-sm text-gray-500">Public sign-up form link coming soon.</p>
-      <% else %>
+      <% if @sign_up_form.active? && @sign_up_form.short_code.present? %>
+        <% public_url = "#{request.base_url}/s/#{@sign_up_form.short_code}" %>
+        <%= render "shared/copy_url", url: public_url, help_text: "Share this link with people who want to sign up" %>
+      <% elsif !@sign_up_form.active? %>
         <p class="text-sm text-gray-500">Activate this form to enable public sign-ups.</p>
+      <% else %>
+        <p class="text-sm text-gray-500">Generating shareable link...</p>
       <% end %>
     </div>
   </div>
@@ -44,7 +47,7 @@
       <!-- Two Column Layout: Instruction Text & Form -->
       <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
 
-        <!-- Left Column: Instruction Text -->
+        <!-- Left Column: Instruction Text, Show Info, Map -->
         <div class="space-y-6">
           <% if @sign_up_form.instruction_text.present? %>
             <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
@@ -56,6 +59,67 @@
             <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
               <p class="text-sm text-gray-500 italic">No instructions configured. Add instructions in the "Instructions" tab when editing the form.</p>
             </div>
+          <% end %>
+
+          <%# Show Info - just the show_row, no wrapper box %>
+          <% if @preview_show.present? %>
+            <%= render "shared/show_row", show: @preview_show, show_location: true %>
+
+            <%# Location Box with Map %>
+            <% if @preview_show.location.present? && !@preview_show.is_online %>
+              <% loc = @preview_show.location %>
+              <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
+              <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <div class="p-4 space-y-4">
+                  <%# Location name and address %>
+                  <div>
+                    <div class="font-semibold text-gray-900"><%= loc.name %></div>
+                    <div class="text-sm text-gray-600 mt-1">
+                      <% if loc.address1.present? %>
+                        <%= loc.address1 %><br>
+                      <% end %>
+                      <% if loc.address2.present? %>
+                        <%= loc.address2 %><br>
+                      <% end %>
+                      <% if loc.city.present? || loc.state.present? || loc.postal_code.present? %>
+                        <%= loc.city %><% if loc.city.present? && loc.state.present? %>,<% end %> <%= loc.state %> <%= loc.postal_code %>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%# Full-width Map %>
+                  <div class="w-full h-[200px]">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      style="border:0; border-radius: 0.5rem;"
+                      loading="lazy"
+                      allowfullscreen
+                      referrerpolicy="no-referrer-when-downgrade"
+                      src="https://www.google.com/maps?q=<%= URI.encode_www_form_component(address) %>&output=embed">
+                    </iframe>
+                  </div>
+
+                  <%# 50/50 buttons %>
+                  <div class="grid grid-cols-2 gap-2">
+                    <a href="http://maps.apple.com/?address=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                      </svg>
+                      Open in Maps
+                    </a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=<%= URI.encode_www_form_component(address) %>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                      </svg>
+                      Google Maps
+                    </a>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           <% end %>
         </div>
 
@@ -93,9 +157,10 @@
                 <div class="space-y-2">
                   <% @slots.each do |slot| %>
                     <% if slot.is_held? %>
-                      <div class="flex items-center justify-between py-3 px-4 bg-yellow-50 border border-yellow-200 rounded-lg opacity-60">
-                        <span class="text-sm text-yellow-800"><%= slot.display_name %></span>
-                        <span class="text-xs text-yellow-600"><%= slot.held_reason.presence || "Reserved" %></span>
+                      <div class="relative py-3 px-4 bg-gray-100 border border-gray-200 rounded-lg">
+                        <div class="flex items-center justify-center">
+                          <span class="text-sm font-medium text-gray-500"><%= slot.held_reason.presence || "Unavailable" %></span>
+                        </div>
                       </div>
                     <% elsif slot.full? %>
                       <div class="flex items-center justify-between py-3 px-4 bg-gray-100 border border-gray-200 rounded-lg opacity-60">
@@ -103,13 +168,12 @@
                         <span class="text-xs text-gray-500">Full</span>
                       </div>
                     <% else %>
-                      <label class="flex items-center justify-between py-3 px-4 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 hover:bg-pink-50">
-                        <div class="flex items-center gap-3">
-                          <input type="<%= @sign_up_form.slots_per_registration > 1 ? 'checkbox' : 'radio' %>" name="slot" value="<%= slot.id %>" class="text-pink-500 focus:ring-pink-500" disabled>
-                          <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
-                        </div>
-                        <span class="text-xs text-green-600"><%= slot.spots_remaining %> spot<%= slot.spots_remaining == 1 ? '' : 's' %> left</span>
-                      </label>
+                      <div class="flex items-center justify-between py-3 px-4 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 hover:bg-pink-50">
+                        <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
+                        <% if slot.capacity > 1 %>
+                          <span class="text-xs text-pink-600 font-medium"><%= slot.spots_remaining %> spot<%= slot.spots_remaining == 1 ? '' : 's' %> left</span>
+                        <% end %>
+                      </div>
                     <% end %>
                   <% end %>
                 </div>

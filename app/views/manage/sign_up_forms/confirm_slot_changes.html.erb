@@ -1,0 +1,141 @@
+<% content_for :title, "Confirm Slot Changes" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)],
+      ["Settings", settings_manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Confirm Slot Changes",
+    links: []
+  } %>
+
+  <div class="mb-8">
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-amber-800">Slot Layout Will Change</h3>
+          <p class="mt-1 text-sm text-amber-700">
+            Your slot settings have changed. Review the changes below before applying them.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <%# Current Slots (Left Side) %>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">1</span>
+          Current Layout
+          <span class="text-sm font-normal text-gray-500">(<%= @current_slots.count %> slots)</span>
+        </h3>
+        <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          <% @current_slots.each do |slot| %>
+            <div class="p-3 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-gray-900"><%= slot.name =~ /^\d+$/ ? "Slot #{slot.name}" : slot.name %></span>
+                <% if slot.is_held %>
+                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
+                <% end %>
+              </div>
+              <% if slot.sign_up_registrations.active.any? %>
+                <span class="text-xs text-gray-500"><%= slot.sign_up_registrations.active.count %> registered</span>
+              <% end %>
+            </div>
+          <% end %>
+          <% if @current_slots.empty? %>
+            <div class="p-6 text-center text-gray-500">No slots configured</div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# New Slots (Right Side) %>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">2</span>
+          New Layout
+          <span class="text-sm font-normal text-gray-500">(<%= @preview_slots.count %> slots)</span>
+        </h3>
+        <div class="bg-white border border-pink-200 rounded-lg divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          <% @preview_slots.each do |slot| %>
+            <% is_new = slot.position > @current_slots.count %>
+            <div class="p-3 flex items-center justify-between <%= is_new ? 'bg-green-50' : '' %>">
+              <div class="flex items-center gap-3">
+                <span class="text-gray-900"><%= slot.name =~ /^\d+$/ ? "Slot #{slot.name}" : slot.name %></span>
+                <% if slot.is_held %>
+                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
+                <% end %>
+                <% if is_new %>
+                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">New</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          <% if @preview_slots.empty? %>
+            <div class="p-6 text-center text-gray-500">No slots will be created</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Summary of Changes %>
+    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+      <h4 class="font-medium text-gray-900 mb-2">Summary of Changes</h4>
+      <ul class="space-y-1 text-sm text-gray-600">
+        <% if @pending_changes["old_count"] != @sign_up_form.slot_count %>
+          <li class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            Slot count: <span class="font-medium"><%= @pending_changes["old_count"] %></span> → <span class="font-medium text-pink-600"><%= @sign_up_form.slot_count %></span>
+          </li>
+        <% end %>
+        <% if @pending_changes["old_capacity"] != @sign_up_form.slot_capacity %>
+          <li class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            Capacity per slot: <span class="font-medium"><%= @pending_changes["old_capacity"] %></span> → <span class="font-medium text-pink-600"><%= @sign_up_form.slot_capacity %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <%# Warning about registrations %>
+    <% if @current_slots.any? { |s| s.sign_up_registrations.active.any? } %>
+      <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Existing Registrations</h3>
+            <p class="mt-1 text-sm text-red-700">
+              Some slots have active registrations. Existing registrations will be preserved. Slots with registrations cannot be removed.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Action Buttons %>
+    <div class="mt-8 flex justify-between">
+      <%= link_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+                  class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Cancel & Go Back
+      <% end %>
+
+      <%= form_with url: apply_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true do %>
+        <%= render "shared/button", text: "Apply Changes", variant: "primary", size: "medium", type: :submit %>
+      <% end %>
+    </div>
+  </div>
+</div>

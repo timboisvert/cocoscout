@@ -7,6 +7,8 @@ module Manage
     before_action :ensure_user_is_manager
     before_action :load_wizard_state
 
+    helper_method :generate_default_name
+
     # Step 1: Scope - What type of sign-up form?
     def scope
       @wizard_state[:scope] ||= "single_event"
@@ -139,6 +141,7 @@ module Manage
       @wizard_state[:allow_cancel] = true if @wizard_state[:allow_cancel].nil?
       @wizard_state[:edit_cutoff_hours] ||= 24
       @wizard_state[:cancel_cutoff_hours] ||= 2
+      @wizard_state[:holdback_visible] = true if @wizard_state[:holdback_visible].nil?
     end
 
     def save_rules
@@ -177,7 +180,10 @@ module Manage
     def schedule
       @wizard_state[:schedule_mode] ||= @wizard_state[:scope] == "single_event" ? "fixed" : "relative"
       @wizard_state[:opens_days_before] ||= 7
-      @wizard_state[:closes_hours_before] ||= 2
+      @wizard_state[:closes_mode] ||= "event_start"
+      @wizard_state[:closes_offset_value] ||= 2
+      @wizard_state[:closes_offset_unit] ||= "hours"
+      @wizard_state[:closes_before_after] ||= "before"
       @wizard_state[:opens_at] ||= 1.day.from_now.beginning_of_day
       @wizard_state[:closes_at] ||= nil
     end
@@ -186,11 +192,33 @@ module Manage
       @wizard_state[:schedule_mode] = params[:schedule_mode]
 
       if @wizard_state[:schedule_mode] == "relative"
-        @wizard_state[:opens_days_before] = params[:opens_days_before].to_i
-        @wizard_state[:closes_hours_before] = params[:closes_hours_before].to_i
+        # Opens settings
+        @wizard_state[:opens_value] = params[:opens_value].to_i
+        @wizard_state[:opens_unit] = params[:opens_unit]
+        # Convert to days_before for storage
+        if params[:opens_unit] == "days"
+          @wizard_state[:opens_days_before] = params[:opens_value].to_i
+        else
+          @wizard_state[:opens_days_before] = (params[:opens_value].to_i / 24.0).ceil
+        end
+
+        # Closes settings - new modes
+        @wizard_state[:closes_mode] = params[:closes_mode]
+        @wizard_state[:closes_offset_value] = params[:closes_offset_value].to_i
+        @wizard_state[:closes_offset_unit] = params[:closes_offset_unit]
+        @wizard_state[:closes_before_after] = params[:closes_before_after]
       else
         @wizard_state[:opens_at] = params[:opens_at]
         @wizard_state[:closes_at] = params[:closes_at].presence
+      end
+
+      # Handle waitlist activation mode
+      if params[:activation_mode].present?
+        if params[:activation_mode] == "now"
+          @wizard_state[:opens_at] = nil
+        else
+          @wizard_state[:opens_at] = params[:opens_at]
+        end
       end
 
       save_wizard_state
@@ -231,7 +259,10 @@ module Manage
           cancel_cutoff_hours: @wizard_state[:cancel_cutoff_hours],
           schedule_mode: @wizard_state[:schedule_mode],
           opens_days_before: @wizard_state[:opens_days_before],
-          closes_hours_before: @wizard_state[:closes_hours_before]
+          closes_mode: @wizard_state[:closes_mode] || "event_start",
+          closes_offset_value: calculate_closes_offset_value,
+          closes_offset_unit: @wizard_state[:closes_offset_unit] || "hours",
+          holdback_visible: @wizard_state.fetch(:holdback_visible, true)
         )
 
         # Set fixed schedule dates for single_event or fixed mode
@@ -246,6 +277,18 @@ module Manage
         end
 
         if @sign_up_form.save
+          # Create holdback if enabled
+          if @wizard_state[:enable_holdbacks] && @wizard_state[:scope] != "shared_pool"
+            interval = @wizard_state[:holdback_interval].to_i
+            interval = 5 if interval < 2
+            label = @wizard_state[:holdback_label].presence || "Hold for walk-ins"
+            @sign_up_form.sign_up_form_holdouts.create!(
+              holdout_type: "every_n",
+              holdout_value: interval,
+              reason: label
+            )
+          end
+
           # Create sign_up_form_shows for manual selection
           if @wizard_state[:event_matching] == "manual" && @wizard_state[:selected_show_ids].present?
             @wizard_state[:selected_show_ids].each do |show_id|
@@ -259,20 +302,14 @@ module Manage
           # Generate short code for /s/:code URLs
           @sign_up_form.generate_short_code!
 
-          # For per_event scope, create instances for matching existing shows
-          if @wizard_state[:scope] == "per_event"
-            create_instances_for_matching_shows
-          elsif @wizard_state[:scope] == "single_event"
-            # Create instance for the single show
-            create_single_event_instance
-          else
-            # shared_pool: generate slots directly on the form
-            generate_shared_pool_slots
+          # Use SlotManagementService to provision all slots
+          slot_service = SlotManagementService.new(@sign_up_form)
+          unless slot_service.provision_initial_slots!
+            Rails.logger.warn "Slot provisioning had errors: #{slot_service.errors.join(', ')}"
           end
 
           clear_wizard_state
-          redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
-                      notice: "Sign-up form created! You can customize content using Edit Content, or change configuration in Settings."
+          redirect_to manage_production_sign_up_form_path(@production, @sign_up_form, just_created: true)
         else
           flash.now[:alert] = @sign_up_form.errors.full_messages.to_sentence
           render :review, status: :unprocessable_entity
@@ -315,12 +352,84 @@ module Manage
       case @wizard_state[:scope]
       when "single_event"
         show = @production.shows.find_by(id: @wizard_state[:selected_show_ids].first)
-        show_name = show&.secondary_name.presence || show&.event_type&.titleize || "Event"
-        "Sign-ups for #{show_name}"
+        if show
+          if show.secondary_name.present?
+            # Use secondary_name directly - it's the most specific
+            "#{show.secondary_name} Sign-ups"
+          else
+            # Fall back to production name + date
+            date_str = show.date_and_time.strftime("%b %-d")
+            "#{@production.name} Sign-ups (#{date_str})"
+          end
+        else
+          "#{@production.name} Sign-ups"
+        end
       when "per_event"
-        "Event Sign-ups"
+        generate_per_event_name
       else
-        "Sign-up Form"
+        "#{@production.name} Waitlist"
+      end
+    end
+
+    def generate_per_event_name
+      case @wizard_state[:event_matching]
+      when "event_types"
+        event_types = @wizard_state[:event_type_filter]
+        if event_types.present? && event_types.any?
+          # Use human-readable labels from config
+          type_labels = event_types.map { |t| EventTypes.labels[t] || t.titleize }
+          if type_labels.size == 1
+            label = type_labels.first
+            # For generic "Show" type, use production name instead
+            if label.downcase == "show"
+              "#{@production.name} Sign-ups"
+            else
+              "#{@production.name} #{label.pluralize} Sign-ups"
+            end
+          elsif type_labels.size <= 3
+            "#{@production.name} Sign-ups"
+          else
+            "#{@production.name} Sign-ups"
+          end
+        else
+          "#{@production.name} Sign-ups"
+        end
+      when "manual"
+        show_ids = @wizard_state[:selected_show_ids]
+        if show_ids.present? && show_ids.any?
+          shows = @production.shows.where(id: show_ids).order(:date_and_time)
+          if shows.count == 1
+            show = shows.first
+            # Use secondary_name if present, otherwise production name + date
+            if show.secondary_name.present?
+              "#{show.secondary_name} Sign-ups"
+            else
+              date_str = show.date_and_time.strftime("%b %-d")
+              "#{@production.name} Sign-ups (#{date_str})"
+            end
+          else
+            # Multiple manual events - check for common secondary_name pattern
+            secondary_names = shows.pluck(:secondary_name).compact.reject(&:blank?).uniq
+            if secondary_names.size == 1
+              # All share the same secondary name
+              "#{secondary_names.first} Sign-ups"
+            else
+              # Use production name with date range
+              first_date = shows.first.date_and_time.strftime("%b %-d")
+              last_date = shows.last.date_and_time.strftime("%b %-d")
+              if first_date == last_date
+                "#{@production.name} Sign-ups (#{first_date})"
+              else
+                "#{@production.name} Sign-ups (#{first_date}–#{last_date})"
+              end
+            end
+          end
+        else
+          "#{@production.name} Sign-ups"
+        end
+      else
+        # "all" matching - use production name
+        "#{@production.name} Sign-ups"
       end
     end
 
@@ -363,7 +472,7 @@ module Manage
         @wizard_state[:slot_count].times do |i|
           @sign_up_form.sign_up_slots.create!(
             position: i + 1,
-            name: "#{@wizard_state[:slot_prefix]} #{i + 1}",
+            name: (i + 1).to_s,
             capacity: @wizard_state[:slot_capacity]
           )
         end
@@ -391,6 +500,16 @@ module Manage
           name: nil,
           capacity: @wizard_state[:slot_count]
         )
+      end
+    end
+
+    def calculate_closes_offset_value
+      value = @wizard_state[:closes_offset_value].to_i
+      # If "after" the event, store as negative value
+      if @wizard_state[:closes_before_after] == "after"
+        -value
+      else
+        value
       end
     end
   end

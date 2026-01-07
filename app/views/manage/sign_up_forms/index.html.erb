@@ -45,37 +45,76 @@
   <% if @sign_up_forms.any? %>
     <div class="space-y-1">
       <% @sign_up_forms.each do |form| %>
-        <%= link_to manage_production_sign_up_form_path(@production, form), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 bg-white transition-colors no-underline" do %>
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <h3 class="text-md font-semibold text-gray-900 truncate"><%= form.name %></h3>
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600">
-                <% if form.per_event? %>
-                  <span><%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %></span>
-                <% else %>
-                  <span><%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %></span>
-                  <span><%= form.sign_up_registrations.active.count %> registration<%= form.sign_up_registrations.active.count == 1 ? '' : 's' %></span>
-                <% end %>
-                <% if form.single_event? && form.show.present? %>
-                  <span class="text-gray-400">•</span>
-                  <span><%= form.show.name_with_date %></span>
-                <% end %>
+        <% form_status = form.current_status %>
+        <%= link_to manage_production_sign_up_form_path(@production, form), class: "block px-4 py-3 border border-gray-200 rounded-lg hover:border-gray-400 bg-white transition-all no-underline" do %>
+          <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+            <%# Left third: Name and details %>
+            <div class="w-full md:w-1/3 flex items-center">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-base font-medium text-gray-900 truncate"><%= form.name %></h3>
+                <div class="text-sm text-gray-500">
+                  <% if form.per_event? %>
+                    <%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %>
+                  <% elsif form.shared_pool? %>
+                    Waitlist · <%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %>
+                  <% elsif form.single_event? && form.show.present? %>
+                    <%= form.show.date_and_time.strftime("%a %b %-d") %>
+                    <% if form.show.secondary_name.present? %>
+                      · <%= form.show.secondary_name %>
+                    <% end %>
+                  <% end %>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <% if form.per_event? %>
-                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
-                  Per Event
+
+            <%# Middle third: Status %>
+            <div class="w-full md:w-1/3 md:border-l border-gray-200 md:pl-4 flex items-center md:self-stretch border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+              <% if form_status[:accepting_registrations] %>
+                <span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm font-medium bg-green-100 text-green-700">
+                  <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                  </span>
+                  <%= form_status[:label] %>
                 </span>
-              <% elsif form.shared_pool? %>
-                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20">
-                  General Waitlist
+              <% elsif !form.active? %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-gray-100 text-gray-600">
+                  Off
+                </span>
+              <% elsif form_status[:state] == :scheduled %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-amber-100 text-amber-700">
+                  <%= form_status[:label] %>
+                </span>
+              <% elsif form_status[:state] == :initializing %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-blue-100 text-blue-700">
+                  Initializing
+                </span>
+              <% else %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium bg-gray-100 text-gray-600">
+                  <%= form_status[:label] %>
                 </span>
               <% end %>
-              <% color = form.registration_status_color %>
-              <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-<%= color %>-50 text-<%= color %>-700 ring-1 ring-inset ring-<%= color %>-600/20">
-                <%= form.registration_status_label %>
-              </span>
+            </div>
+
+            <%# Right third: Registrations %>
+            <div class="w-full md:w-1/3 md:border-l border-gray-200 md:pl-4 flex items-center md:self-stretch justify-between border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+              <div class="flex-1">
+                <% if form_status[:accepting_registrations] %>
+                  <div class="text-xs text-gray-400 uppercase tracking-wide">Registrations</div>
+                  <div class="text-base">
+                    <span class="text-gray-900 font-medium tabular-nums"><%= form_status[:total_registrations] || 0 %></span>
+                    <span class="text-gray-400">/</span>
+                    <span class="text-gray-500 tabular-nums"><%= form_status[:total_capacity] || 0 %> slots</span>
+                  </div>
+                <% elsif form_status[:state] == :scheduled && form_status[:next_event] %>
+                  <div class="text-xs text-gray-400 uppercase tracking-wide">Next event</div>
+                  <div class="text-base text-gray-600">
+                    in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
+                  </div>
+                <% else %>
+                  <div class="text-sm text-gray-500">&nbsp;</div>
+                <% end %>
+              </div>
               <svg class="w-5 h-5 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
@@ -96,4 +135,12 @@
       </div>
     </div>
   <% end %>
-</div>
+
+  <%# Archived sign-ups link %>
+  <% if @archived_count > 0 %>
+    <div class="mt-6 text-center">
+      <%= link_to archived_manage_production_sign_up_forms_path(@production), class: "text-sm text-gray-500 hover:text-gray-700" do %>
+        View <%= pluralize(@archived_count, 'archived sign-up form') %>
+      <% end %>
+    </div>
+  <% end %>

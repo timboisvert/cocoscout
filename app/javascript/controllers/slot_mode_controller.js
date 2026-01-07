@@ -3,30 +3,45 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["numbered", "timeBased", "named", "openList", "openListCapacity"]
 
+    connect() {
+        // On initial load, disable inputs in hidden sections
+        this.initializeSections()
+    }
+
+    initializeSections() {
+        // Find which mode is currently selected
+        const selectedRadio = this.element.querySelector('input[name="slot_generation_mode"]:checked')
+        const currentMode = selectedRadio ? selectedRadio.value : null
+
+        // Disable inputs in hidden sections to prevent form submission conflicts
+        this.updateSection(this.numberedTarget, currentMode === 'numbered')
+        this.updateSection(this.timeBasedTarget, currentMode === 'time_based')
+        this.updateSection(this.namedTarget, currentMode === 'named')
+        this.updateSection(this.openListTarget, currentMode === 'open_list')
+    }
+
+    updateSection(section, isActive) {
+        if (!section) return
+
+        section.classList.toggle("hidden", !isActive)
+
+        // Disable/enable all form inputs in this section
+        const inputs = section.querySelectorAll('input, textarea, select')
+        inputs.forEach(input => {
+            // Don't disable the openListCapacity field here - that's handled by toggleOpenListLimit
+            if (this.hasOpenListCapacityTarget && input === this.openListCapacityTarget) return
+            input.disabled = !isActive
+        })
+    }
+
     toggle(event) {
         const value = event.target.value
 
-        // Hide all mode option panels
-        if (this.hasNumberedTarget) this.numberedTarget.classList.add("hidden")
-        if (this.hasTimeBasedTarget) this.timeBasedTarget.classList.add("hidden")
-        if (this.hasNamedTarget) this.namedTarget.classList.add("hidden")
-        if (this.hasOpenListTarget) this.openListTarget.classList.add("hidden")
-
-        // Show the selected mode's options
-        switch (value) {
-            case 'numbered':
-                if (this.hasNumberedTarget) this.numberedTarget.classList.remove("hidden")
-                break
-            case 'time_based':
-                if (this.hasTimeBasedTarget) this.timeBasedTarget.classList.remove("hidden")
-                break
-            case 'named':
-                if (this.hasNamedTarget) this.namedTarget.classList.remove("hidden")
-                break
-            case 'open_list':
-                if (this.hasOpenListTarget) this.openListTarget.classList.remove("hidden")
-                break
-        }
+        // Update all sections - show/hide and enable/disable inputs
+        this.updateSection(this.numberedTarget, value === 'numbered')
+        this.updateSection(this.timeBasedTarget, value === 'time_based')
+        this.updateSection(this.namedTarget, value === 'named')
+        this.updateSection(this.openListTarget, value === 'open_list')
 
         // Update visual selection state on all cards
         this.element.querySelectorAll('input[name="slot_generation_mode"]').forEach(radio => {

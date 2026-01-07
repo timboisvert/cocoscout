@@ -82,38 +82,20 @@ class SignUpForm < ApplicationRecord
     end
   end
 
-  def open?
-    return false unless active?
-    return false if opens_at.present? && opens_at > Time.current
-    return false if closes_at.present? && closes_at <= Time.current
-    true
+  # Get the status service for this form - provides unified status/timing info
+  # This is the ONLY way to get status information - no inline queries allowed
+  def status_service
+    @status_service ||= SignUpFormStatusService.new(self)
   end
 
-  # Returns a user-friendly status for display
-  # Possible values: :paused, :scheduled, :accepting, :closed
-  def registration_status
-    return :paused unless active?
-    return :scheduled if opens_at.present? && opens_at > Time.current
-    return :closed if closes_at.present? && closes_at <= Time.current
-    :accepting
+  # Delegate to status service for the canonical status
+  def current_status
+    status_service.status
   end
 
-  def registration_status_label
-    case registration_status
-    when :paused then "Paused"
-    when :scheduled then "Opens #{opens_at.strftime('%b %-d')}"
-    when :closed then "Closed"
-    when :accepting then "Accepting Sign-ups"
-    end
-  end
-
-  def registration_status_color
-    case registration_status
-    when :paused then "gray"
-    when :scheduled then "yellow"
-    when :closed then "gray"
-    when :accepting then "green"
-    end
+  # Convenience methods that delegate to status service
+  def accepting_registrations?
+    current_status[:accepting_registrations]
   end
 
   # Scope helpers
@@ -165,19 +147,7 @@ class SignUpForm < ApplicationRecord
 
   # Create an instance for a specific show
   def create_instance_for_show!(show)
-    return nil unless per_event? && matches_event?(show)
-    return sign_up_form_instances.find_by(show: show) if sign_up_form_instances.exists?(show: show)
-
-    instance = sign_up_form_instances.create!(
-      show: show,
-      opens_at: calculate_opens_at(show),
-      closes_at: calculate_closes_at(show),
-      edit_cutoff_at: calculate_edit_cutoff_at(show),
-      status: "scheduled"
-    )
-
-    instance.generate_slots_from_template!
-    instance
+    SlotManagementService.new(self).create_instance_for_show!(show)
   end
 
   # Calculate dates based on show time

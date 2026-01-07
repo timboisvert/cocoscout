@@ -485,6 +485,8 @@ Rails.application.routes.draw do
         member do
           get    "settings",          to: "sign_up_forms#settings",          as: "settings"
           patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
+          get    "confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes"
+          patch  "apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes"
           get    "slots",             to: "sign_up_forms#slots",             as: "slots"
           post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
           patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"

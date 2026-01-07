@@ -34,9 +34,9 @@ Rails.application.configure do
   config.active_record.verbose_query_logs = true
   config.active_record.query_log_tags_enabled = true
 
-  # Use inline adapter in development to avoid fork issues on macOS
-  # Jobs run synchronously when enqueued
-  config.active_job.queue_adapter = :inline
+  # Use Solid Queue for background jobs in development
+  # Run `bin/jobs` or use `bin/dev` to start the job worker
+  config.active_job.queue_adapter = :solid_queue
 
   config.action_view.annotate_rendered_view_with_filenames = true
 

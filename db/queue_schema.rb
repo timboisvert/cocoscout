@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_06_205255) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_06_214322) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -933,11 +933,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_06_205255) do
     t.integer "cancel_cutoff_hours", default: 2
     t.datetime "closes_at"
     t.integer "closes_hours_before", default: 2
+    t.string "closes_mode", default: "event_start", null: false
+    t.string "closes_offset_unit", default: "hours"
+    t.integer "closes_offset_value", default: 0
     t.datetime "created_at", null: false
     t.text "description"
     t.integer "edit_cutoff_hours", default: 24
     t.string "event_matching", default: "all"
     t.jsonb "event_type_filter", default: []
+    t.boolean "holdback_visible", default: true, null: false
     t.text "instruction_text"
     t.string "name", null: false
     t.datetime "opens_at"

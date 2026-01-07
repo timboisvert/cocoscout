@@ -84,9 +84,9 @@ export default class extends Controller {
     checkAllReviewed() {
         // Check if all review checkboxes are checked
         if (!this.hasReviewCheckboxTarget) return;
-        
+
         const allChecked = this.reviewCheckboxTargets.every(checkbox => checkbox.checked);
-        
+
         // Show/hide the send section based on whether all are reviewed
         if (this.hasSendSectionTarget) {
             if (allChecked) {

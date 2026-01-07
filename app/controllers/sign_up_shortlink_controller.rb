@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class SignUpShortlinkController < ApplicationController
-  skip_before_action :authenticate_user!
+  allow_unauthenticated_access
 
   def show
     sign_up_form = SignUpForm.find_by(short_code: params[:code])

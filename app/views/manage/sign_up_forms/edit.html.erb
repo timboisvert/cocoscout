@@ -98,16 +98,16 @@
   <div class="px-4 py-3 flex items-center justify-between gap-4">
     <%# Status %>
     <div class="flex items-center gap-3">
-      <% color = @sign_up_form.registration_status_color %>
-      <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-<%= color %>-100 text-<%= color %>-800">
-        <span class="w-1.5 h-1.5 rounded-full bg-<%= color %>-500"></span>
-        <%= @sign_up_form.registration_status_label %>
+      <% form_status = @sign_up_form.current_status %>
+      <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-<%= form_status[:color] %>-100 text-<%= form_status[:color] %>-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-<%= form_status[:color] %>-500"></span>
+        <%= form_status[:label] %>
       </span>
       <% if @sign_up_form.short_code.present? %>
         <span class="text-xs text-gray-500 hidden sm:inline">Code: <span class="font-mono font-medium"><%= @sign_up_form.short_code %></span></span>
       <% end %>
     </div>
-    
+
     <%# Actions %>
     <div class="flex items-center gap-2">
       <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form), class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200" do %>
