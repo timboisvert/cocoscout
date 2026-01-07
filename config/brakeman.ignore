@@ -15,7 +15,7 @@
           "type": "controller",
           "class": "My::ShowsController",
           "method": "show",
-          "line": 282,
+          "line": 283,
           "file": "app/controllers/my/shows_controller.rb",
           "rendered": {
             "name": "my/shows/show",
@@ -41,7 +41,7 @@
       "check_name": "SQL",
       "message": "Possible SQL injection",
       "file": "app/controllers/superadmin_controller.rb",
-      "line": 635,
+      "line": 705,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
       "code": "ActiveRecord::Base.connection.execute(\"SELECT COUNT(*) FROM #{table_name}\")",
       "render_path": null,
@@ -83,13 +83,13 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 84,
-      "fingerprint": "86124411749e39a215a9ba2e62e5e2215a60646e1994f5f44b98b9f2a98deae2",
+      "fingerprint": "faf3f37f7848ac0e771b3d98ad0c6a10e6e9c67a14e946abfe6099b582018ff0",
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/person_invitations/accept.html.erb",
-      "line": 164,
+      "line": 198,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
-      "code": "render(text => \"Accept & Join #{PersonInvitation.find_by(:token => params[:token]).organization.name}\", { :variant => \"primary\", :size => \"jumbo\", :type => :submit })",
+      "code": "render(text => \"Accept & Join #{PersonInvitation.find_by(:token => params[:token]).organization.name}\", { :variant => \"primary\", :size => \"jumbo\", :type => :submit, :disabled => true, :classes => \"!opacity-50 !cursor-not-allowed\", :data => ({ :password_strength_target => \"submit\" }) })",
       "render_path": [
         {
           "type": "controller",
