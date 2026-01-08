@@ -194,6 +194,12 @@ module My
       @my_registration = @my_registrations.first # For backward compatibility
       @registrations_remaining = registrations_remaining_for_user(@my_registrations)
       @can_register_more = @registrations_remaining > 0
+
+      # If user has reached their max registrations, redirect to success page
+      if @my_registrations.present? && !@can_register_more
+        redirect_to my_sign_up_success_path(@code), status: :see_other
+        nil
+      end
     end
 
     def submit_form

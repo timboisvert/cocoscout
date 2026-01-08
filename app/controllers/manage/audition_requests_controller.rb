@@ -125,6 +125,17 @@ module Manage
       vote.vote = params[:vote] if params[:vote].present?
       vote.comment = params[:comment] if params.key?(:comment)
 
+      # Can only save a comment if we have a vote (vote is required)
+      if vote.vote.blank? && vote.new_record?
+        respond_to do |format|
+          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
+          format.html { redirect_back_or_to redirect_url, alert: "Please cast a vote before adding a comment" }
+          format.json { render json: { success: false, errors: [ "Please cast a vote first" ] }, status: :unprocessable_entity }
+        end
+        return
+      end
+
       if vote.save
         respond_to do |format|
           redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)

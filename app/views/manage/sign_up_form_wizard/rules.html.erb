@@ -11,8 +11,8 @@
   edit_cutoff_mode = @wizard_state[:edit_cutoff_mode] || 'at_event'
   cancel_cutoff_mode = @wizard_state[:cancel_cutoff_mode] || 'at_event'
 
-  # Default slot selection mode - auto_assign for waitlist
-  default_slot_mode = is_waitlist ? 'auto_assign' : 'choose_slot'
+  # Default slot selection mode - auto_assign for waitlist and open_list
+  default_slot_mode = (is_waitlist || is_open_list) ? 'auto_assign' : 'choose_slot'
   slot_selection_mode = @wizard_state[:slot_selection_mode] || default_slot_mode
 %>
 <%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Rules" } do %>

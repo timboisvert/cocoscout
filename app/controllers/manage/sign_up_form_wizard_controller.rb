@@ -138,7 +138,11 @@ module Manage
     # Step 4: Rules - Registration limits, editing, cancellation
     def rules
       @wizard_state[:registrations_per_person] ||= 1
-      @wizard_state[:slot_selection_mode] ||= "choose_slot"
+      # Default to auto_assign for waitlist (shared_pool) and open_list modes
+      if @wizard_state[:slot_selection_mode].nil?
+        is_waitlist_or_open_list = @wizard_state[:scope] == "shared_pool" || @wizard_state[:slot_generation_mode] == "open_list"
+        @wizard_state[:slot_selection_mode] = is_waitlist_or_open_list ? "auto_assign" : "choose_slot"
+      end
       @wizard_state[:require_login] = true if @wizard_state[:require_login].nil?
       @wizard_state[:allow_edit] = true if @wizard_state[:allow_edit].nil?
       @wizard_state[:allow_cancel] = true if @wizard_state[:allow_cancel].nil?
