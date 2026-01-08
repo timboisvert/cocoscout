@@ -107,8 +107,6 @@
               <li>• <%= @wizard_state[:registrations_per_person] == 999 ? 'Unlimited' : @wizard_state[:registrations_per_person] %> registration(s) per person</li>
               <li>•
                 <% case @wizard_state[:slot_selection_mode] %>
-                <% when 'admin_assign' %>
-                  Admin assigns slots
                 <% when 'auto_assign' %>
                   Auto-assigned to next available
                 <% else %>

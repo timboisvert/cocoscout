@@ -41,10 +41,10 @@ class SignUpRegistrationNotificationJob < ApplicationJob
                                        .map(&:user)
 
     # Get users with global manager/viewer role who don't have a production permission
-    # and have notifications enabled on their organization role
+    # and have notifications enabled on their organization role (nil = enabled)
     users_with_global_role = organization.organization_roles
                                          .where(company_role: %w[manager viewer])
-                                         .where(notifications_enabled: true)
+                                         .where(notifications_enabled: [true, nil])
                                          .includes(:user)
                                          .map(&:user)
 

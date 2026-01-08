@@ -6,10 +6,10 @@ module Manage
     before_action :set_sign_up_form, only: %i[
       show edit update destroy settings update_settings
       confirm_slot_changes apply_slot_changes
-      slots create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
+      create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
       holdouts create_holdout destroy_holdout
-      questions create_question update_question destroy_question reorder_questions
-      registrations register cancel_registration move_registration
+      create_question update_question destroy_question reorder_questions
+      register cancel_registration move_registration
       preview toggle_active archive unarchive
     ]
 
@@ -262,12 +262,6 @@ module Manage
       end
     end
 
-    # Slots management
-    def slots
-      @slots = @sign_up_form.sign_up_slots.order(:position)
-      @holdouts = @sign_up_form.sign_up_form_holdouts
-    end
-
     def create_slot
       next_position = (@sign_up_form.sign_up_slots.maximum(:position) || 0) + 1
       @slot = @sign_up_form.sign_up_slots.new(slot_params.merge(position: next_position))
@@ -362,11 +356,6 @@ module Manage
                   notice: "Holdout rule removed"
     end
 
-    # Questions management
-    def questions
-      @questions = @sign_up_form.questions.order(:position)
-    end
-
     def create_question
       next_position = (@sign_up_form.questions.maximum(:position) || 0) + 1
       @question = @sign_up_form.questions.new(question_params.merge(position: next_position))
@@ -406,13 +395,6 @@ module Manage
       head :ok
     end
 
-    # Registrations management
-    def registrations
-      @registrations = @sign_up_form.sign_up_registrations
-                                    .includes(:sign_up_slot, :person)
-                                    .order("sign_up_slots.position, sign_up_registrations.position")
-    end
-
     def register
       @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
@@ -426,10 +408,10 @@ module Manage
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
-        redirect_to registrations_manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
                     notice: "Registration added"
       rescue StandardError => e
-        redirect_to registrations_manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
                     alert: e.message
       end
     end
@@ -437,7 +419,7 @@ module Manage
     def cancel_registration
       @registration = SignUpRegistration.find(params[:registration_id])
       @registration.cancel!
-      redirect_to registrations_manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
                   notice: "Registration cancelled"
     end
 

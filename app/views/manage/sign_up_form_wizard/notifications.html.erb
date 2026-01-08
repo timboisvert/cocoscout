@@ -10,20 +10,21 @@
     <div class="space-y-6">
       <!-- Notification Toggle -->
       <div class="p-5 bg-white rounded-lg border border-gray-200">
-        <label class="flex items-start gap-4 cursor-pointer">
-          <div class="mt-0.5">
-            <input type="hidden" name="notify_on_registration" value="0">
-            <input type="checkbox" name="notify_on_registration" value="1"
-                   <%= "checked" if @wizard_state[:notify_on_registration] %>
-                   class="h-5 w-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500">
-          </div>
+        <div class="flex items-center justify-between">
           <div class="flex-1">
             <span class="font-medium text-gray-900">Notify team when someone registers</span>
             <p class="text-sm text-gray-500 mt-1">
               Production team members will receive an email each time someone signs up for a slot.
             </p>
           </div>
-        </label>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="hidden" name="notify_on_registration" value="0">
+            <input type="checkbox" name="notify_on_registration" value="1"
+                   <%= "checked" if @wizard_state[:notify_on_registration] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
       </div>
 
       <!-- Info about notification settings -->
@@ -37,7 +38,7 @@
           <div class="ml-3">
             <p class="text-sm text-blue-800">
               <strong>Note:</strong> Team members will only receive notifications if they have notifications enabled in their settings.
-              <%= link_to "Manage Production Team →", edit_manage_production_path(@production, anchor: "tab-2"), class: "underline text-blue-600 hover:text-blue-700", target: "_blank" %>
+              <%= link_to "Manage Production Team", edit_manage_production_path(@production, anchor: "tab-4"), class: "underline text-blue-600 hover:text-blue-700", target: "_blank" %>
             </p>
           </div>
         </div>

@@ -363,7 +363,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Slot selection</label>
               <%= form.select :slot_selection_mode,
-                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"], ["I'll assign slots", "admin_assign"]],
+                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"]],
                 {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
             </div>
           </div>
@@ -712,17 +712,20 @@
           <p class="text-sm text-gray-600">Choose whether to notify your production team when someone registers.</p>
 
           <!-- Notification Toggle -->
-          <label class="flex items-start gap-4 cursor-pointer p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition-colors">
-            <div class="mt-0.5">
-              <%= form.check_box :notify_on_registration, class: "h-5 w-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500" %>
+          <div class="p-5 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <span class="font-medium text-gray-900">Notify team when someone registers</span>
+                <p class="text-sm text-gray-500 mt-1">
+                  Production team members will receive an email each time someone signs up for a slot.
+                </p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer ml-4">
+                <%= form.check_box :notify_on_registration, class: "sr-only peer" %>
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
             </div>
-            <div class="flex-1">
-              <span class="font-medium text-gray-900">Notify team when someone registers</span>
-              <p class="text-sm text-gray-500 mt-1">
-                Production team members will receive an email each time someone signs up for a slot.
-              </p>
-            </div>
-          </label>
+          </div>
 
           <!-- Info about notification settings -->
           <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
@@ -735,7 +738,7 @@
               <div class="ml-3">
                 <p class="text-sm text-blue-800">
                   <strong>Note:</strong> Team members will only receive notifications if they have notifications enabled in their settings.
-                  <%= link_to "Manage Production Team →", edit_manage_production_path(@production, anchor: "tab-2"), class: "underline text-blue-600 hover:text-blue-700" %>
+                  <%= link_to "Manage Production Team", edit_manage_production_path(@production, anchor: "tab-4"), class: "underline text-blue-600 hover:text-blue-700" %>
                 </p>
               </div>
             </div>

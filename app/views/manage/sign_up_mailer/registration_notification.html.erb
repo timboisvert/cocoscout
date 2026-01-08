@@ -15,12 +15,12 @@
 <% end %>
 
 <p>
-  <a href="<%= registrations_manage_production_sign_up_form_url(@production, @form) %>" style="display: inline-block; background-color: #ec4899; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; line-height: 1.25rem;">
+  <a href="<%= manage_production_sign_up_form_url(@production, @form) %>" style="display: inline-block; background-color: #ec4899; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14px; line-height: 1.25rem;">
     View Registrations
   </a>
 </p>
 
 <p style="color: #6b7280; font-size: 14px;">
   You're receiving this email because you have notifications enabled for <%= @production.name %>.
-  <a href="<%= manage_production_settings_url(@production, tab: 2) %>" style="color: #ec4899;">Manage notification preferences</a>
+  <a href="<%= edit_manage_production_url(@production, anchor: 'tab-4') %>" style="color: #ec4899;">Manage notification preferences</a>
 </p>

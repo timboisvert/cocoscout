@@ -48,12 +48,9 @@
             <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full">
               <option value="choose_slot" <%= "selected" if slot_selection_mode == 'choose_slot' %>>People choose their slot</option>
               <option value="auto_assign" <%= "selected" if slot_selection_mode == 'auto_assign' %>>Auto-assign to next available</option>
-              <option value="admin_assign" <%= "selected" if slot_selection_mode == 'admin_assign' %>>I'll assign slots</option>
             </select>
             <p class="text-sm text-gray-500 mt-1">
               <% case slot_selection_mode %>
-              <% when 'admin_assign' %>
-                You'll review submissions and assign slots manually.
               <% when 'auto_assign' %>
                 Good for waitlists or when slot choice doesn't matter.
               <% else %>

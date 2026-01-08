@@ -235,7 +235,7 @@ module Manage
 
     # Step 6: Notifications - Notify team when someone registers?
     def notifications
-      @wizard_state[:notify_on_registration] = false if @wizard_state[:notify_on_registration].nil?
+      @wizard_state[:notify_on_registration] = true if @wizard_state[:notify_on_registration].nil?
     end
 
     def save_notifications

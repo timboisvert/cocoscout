@@ -69,7 +69,7 @@
         <% end %>
 
         <% if @sign_up_form.allow_cancel %>
-          <%= link_to my_cancel_sign_up_registration_path(@code), method: :post, data: { confirm: "Are you sure? This will cancel all your registrations." }, class: "inline-flex items-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-lg text-red-600 bg-white hover:bg-red-50 transition-colors" do %>
+          <%= link_to my_cancel_sign_up_registration_path(@code), data: { turbo_method: :post, turbo_confirm: "Are you sure? This will cancel all your registrations." }, class: "inline-flex items-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-lg text-red-600 bg-white hover:bg-red-50 transition-colors" do %>
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
