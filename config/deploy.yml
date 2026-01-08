@@ -84,7 +84,6 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
   ps: app exec "ps aux"
-  prune: app prune --all
 
 # Automatically clean up old images/containers after deploy
 retain_containers: 2
