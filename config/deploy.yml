@@ -34,6 +34,16 @@ ssh:
   user: ec2-user
   keys: [ "~/.ssh/Tim.pem" ]
 
+# Deploy to all hosts in parallel (instead of one at a time)
+boot:
+  limit: 100%
+
+# Faster health checks for quicker rollouts
+proxy:
+  healthcheck:
+    interval: 1
+    timeout: 2
+
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
 #
@@ -74,6 +84,10 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole"
   ps: app exec "ps aux"
+  prune: app prune --all
+
+# Automatically clean up old images/containers after deploy
+retain_containers: 2
 
 # Bridge fingerprinted assets, like JS and CSS, between versions to avoid
 # hitting 404 on in-flight requests. Combines all files from new and old
@@ -84,3 +98,5 @@ asset_path: /rails/public/assets
 builder:
   arch:
     - arm64
+  cache:
+    type: registry
