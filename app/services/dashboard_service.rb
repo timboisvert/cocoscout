@@ -11,7 +11,8 @@ class DashboardService
         open_calls: open_calls_summary,
         upcoming_shows: upcoming_shows,
         availability_summary: availability_summary,
-        open_vacancies: open_vacancies
+        open_vacancies: open_vacancies,
+        sign_up_forms: sign_up_forms_summary
       }
     end
   end
@@ -180,5 +181,33 @@ class DashboardService
                    is_linked: is_linked
                  }
                end
+  end
+
+  def sign_up_forms_summary
+    forms = @production.sign_up_forms.where(active: true, archived_at: nil).order(created_at: :desc)
+
+    forms.map do |form|
+      # Get the current/next instance for repeated forms
+      instance = if form.repeated?
+        form.sign_up_form_instances
+            .joins(:show)
+            .where("shows.date_and_time > ?", Time.current)
+            .order("shows.date_and_time ASC")
+            .first
+      else
+        form.sign_up_form_instances.first
+      end
+
+      next nil unless instance
+
+      # Get full status from the status service
+      form_status = form.current_status
+
+      {
+        form: form,
+        instance: instance,
+        form_status: form_status
+      }
+    end.compact
   end
 end

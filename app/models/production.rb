@@ -29,6 +29,14 @@ class Production < ApplicationRecord
 
   normalizes :contact_email, with: ->(e) { e.strip.downcase }
 
+  # Casting source determines how performers are assigned to shows in this production
+  enum :casting_source, {
+    talent_pool: "talent_pool",   # Traditional casting from production members
+    sign_up: "sign_up",           # Self-service registration via sign-up forms
+    manual: "manual",             # Admin manually adds names/emails
+    hybrid: "hybrid"              # All sources: talent pool + sign-up + manual
+  }, default: :talent_pool, prefix: :casting
+
   validates :name, presence: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :public_key, uniqueness: true, allow_nil: true

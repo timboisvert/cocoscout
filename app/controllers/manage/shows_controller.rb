@@ -297,6 +297,10 @@ module Manage
           event_type: params[:show][:event_type],
           secondary_name: params[:show][:secondary_name],
           location_id: params[:show][:location_id],
+          is_online: params[:show][:is_online],
+          online_location_info: params[:show][:online_location_info],
+          casting_enabled: params[:show][:casting_enabled],
+          casting_source: params[:show][:casting_source],
           date_and_time: datetime,
           production: @production,
           recurrence_group_id: recurrence_group_id
@@ -373,6 +377,10 @@ module Manage
       event_type = params[:show][:event_type] || @show.event_type
       secondary_name = params[:show][:secondary_name] || @show.secondary_name
       location_id = params[:show][:location_id] || @show.location_id
+      is_online = params[:show][:is_online].nil? ? @show.is_online : params[:show][:is_online]
+      online_location_info = params[:show][:online_location_info] || @show.online_location_info
+      casting_enabled = params[:show][:casting_enabled].nil? ? @show.casting_enabled : params[:show][:casting_enabled]
+      casting_source = params[:show][:casting_source] || @show.casting_source
 
       # Delete all existing events in the series
       @show.recurrence_group.destroy_all
@@ -439,6 +447,10 @@ module Manage
           event_type: event_type,
           secondary_name: secondary_name,
           location_id: location_id,
+          is_online: is_online,
+          online_location_info: online_location_info,
+          casting_enabled: casting_enabled,
+          casting_source: casting_source,
           date_and_time: datetime,
           production: @production,
           recurrence_group_id: recurrence_group_id
@@ -763,7 +775,7 @@ module Manage
     def show_params
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :poster, :remove_poster, :production_id, :location_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
-                                               :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :is_online, :online_location_info,
+                                               :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled,
                                                show_links_attributes: %i[id url text _destroy])
 
@@ -781,6 +793,11 @@ module Manage
         permitted[:public_profile_visible] = permitted[:public_profile_visible] == "true"
       else
         permitted[:public_profile_visible] = nil
+      end
+
+      # Handle casting_source override: if clear_casting_source is set, clear casting_source to inherit from production
+      if params[:clear_casting_source] == "1"
+        permitted[:casting_source] = nil
       end
 
       permitted

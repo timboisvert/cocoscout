@@ -22,13 +22,18 @@ class SignUpForm < ApplicationRecord
   has_rich_text :instruction_text
   has_rich_text :success_text
 
+  # Sync instance when show changes for single_event forms
+  after_save :sync_single_event_instance_show, if: :saved_change_to_show_id?
+
   validates :name, presence: true
   validates :slots_per_registration, numericality: { greater_than: 0 }, allow_nil: true
   validates :scope, presence: true, inclusion: { in: %w[single_event repeated shared_pool] }
   validates :event_matching, inclusion: { in: %w[all event_types manual] }, allow_nil: true
   validates :slot_generation_mode, inclusion: { in: %w[numbered time_based named simple_capacity open_list] }, allow_nil: true
+  validates :slot_selection_mode, inclusion: { in: %w[choose_slot auto_assign admin_assigns] }, allow_nil: true
   validates :url_slug, uniqueness: { scope: :production_id }, allow_blank: true
   validates :short_code, uniqueness: true, allow_blank: true
+  validates :queue_limit, numericality: { greater_than: 0 }, allow_nil: true
 
   # Default values
   attribute :scope, default: "single_event"
@@ -48,6 +53,7 @@ class SignUpForm < ApplicationRecord
   attribute :schedule_mode, default: "relative"
   attribute :opens_days_before, default: 7
   attribute :closes_hours_before, default: 2
+  attribute :queue_carryover, default: false
 
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }
@@ -110,6 +116,19 @@ class SignUpForm < ApplicationRecord
 
   def shared_pool?
     scope == "shared_pool"
+  end
+
+  # Slot selection mode helpers
+  def admin_assigns?
+    slot_selection_mode == "admin_assigns"
+  end
+
+  def auto_assign?
+    slot_selection_mode == "auto_assign"
+  end
+
+  def choose_slot?
+    slot_selection_mode == "choose_slot"
   end
 
   # Event matching
@@ -262,6 +281,28 @@ class SignUpForm < ApplicationRecord
   end
 
   private
+
+  def sync_single_event_instance_show
+    return unless single_event?
+    return unless show_id.present?
+
+    # For single_event forms, update the instance's show to match the form's show
+    instance = sign_up_form_instances.first
+    return unless instance
+
+    # Update instance show and recalculate timings
+    service = SlotManagementService.new(self)
+    instance.update!(
+      show_id: show_id,
+      opens_at: service.send(:calculate_opens_at, show),
+      closes_at: service.send(:calculate_closes_at, show),
+      edit_cutoff_at: service.send(:calculate_edit_cutoff_at, show),
+      status: "initializing"
+    )
+
+    # Run status job to set correct status
+    UpdateSignUpStatusesJob.perform_later
+  end
 
   def apply_holdout_to_slots(holdout, slots)
     ordered_slots = slots.order(:position)

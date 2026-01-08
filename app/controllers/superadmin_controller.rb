@@ -5,7 +5,8 @@ class SuperadminController < ApplicationController
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person organizations_list organization_detail
                          email_templates email_template_new email_template_create email_template_edit email_template_update
-                         email_template_destroy email_template_preview search_users]
+                         email_template_destroy email_template_preview search_users
+                         dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
   before_action :hide_sidebar
 
   def hide_sidebar
@@ -1037,6 +1038,78 @@ class SuperadminController < ApplicationController
       format.html
       format.json { render json: @preview.merge(styled_body: @styled_body) }
     end
+  end
+
+  # =========================================================================
+  # Dev Tools (development only)
+  # =========================================================================
+
+  def dev_tools
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    @stats = DevSeedService.stats
+  end
+
+  def dev_create_users
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    count = params[:count].to_i
+    count = 10 if count <= 0
+
+    created = DevSeedService.create_users(count)
+    redirect_to dev_tools_path, notice: "Created #{created} test users."
+  end
+
+  def dev_submit_auditions
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    count = params[:count].to_i
+    count = 10 if count <= 0
+
+    submitted = DevSeedService.submit_audition_requests(count_per_cycle: count)
+    redirect_to dev_tools_path, notice: "Submitted #{submitted} audition requests."
+  end
+
+  def dev_submit_signups
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    count = params[:count].to_i
+    count = 10 if count <= 0
+
+    registered = DevSeedService.submit_signups(count_per_form: count)
+    redirect_to dev_tools_path, notice: "Registered #{registered} sign-ups."
+  end
+
+  def dev_delete_signups
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    deleted = DevSeedService.delete_all_signups
+    redirect_to dev_tools_path, notice: "Deleted #{deleted} sign-up forms."
+  end
+
+  def dev_delete_users
+    unless Rails.env.development?
+      redirect_to superadmin_path, alert: "Dev tools only available in development."
+      return
+    end
+
+    deleted = DevSeedService.delete_test_users
+    redirect_to dev_tools_path, notice: "Deleted #{deleted} test users."
   end
 
   private

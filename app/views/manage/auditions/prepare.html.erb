@@ -104,7 +104,7 @@
                   <% seconds_until = (audition_cycle.opens_at - Time.current).to_i %>
                   <% if seconds_until > 0 && seconds_until < 172800 %>
                     <p class="text-gray-600">
-                      Opens in <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.opens_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
+                      Opens <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.opens_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
                     </p>
                   <% elsif seconds_until > 0 %>
                     <p class="text-gray-600">Opens in <span class="text-pink-600 font-medium"><%= distance_of_time_in_words(Time.current, audition_cycle.opens_at) %></span></p>
@@ -113,7 +113,7 @@
                   <% seconds_until = (audition_cycle.closes_at - Time.current).to_i %>
                   <% if seconds_until > 0 && seconds_until < 172800 %>
                     <p class="text-gray-600">
-                      Closes in <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
+                      Closes <span class="text-pink-600 font-medium" data-controller="countdown" data-countdown-until-value="<%= audition_cycle.closes_at.utc.iso8601 %>"><span data-countdown-target="clock"></span></span>
                     </p>
                   <% elsif seconds_until > 0 %>
                     <p class="text-gray-600">Closes in <span class="text-pink-600 font-medium"><%= distance_of_time_in_words(Time.current, audition_cycle.closes_at) %></span></p>

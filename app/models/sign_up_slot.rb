@@ -3,6 +3,7 @@
 class SignUpSlot < ApplicationRecord
   belongs_to :sign_up_form
   belongs_to :sign_up_form_instance, optional: true
+  belongs_to :role, optional: true  # For casting integration - links slot to a castable role
 
   has_many :sign_up_registrations, -> { order(:position) }, dependent: :destroy
   has_many :people, through: :sign_up_registrations
@@ -48,6 +49,14 @@ class SignUpSlot < ApplicationRecord
     raise "Slot is held" if is_held?
     raise "Slot is full" if full?
     raise "Must provide person or guest info" if person.nil? && guest_name.blank?
+
+    # Add person to the organization if not already a member
+    if person.present?
+      organization = sign_up_form.production.organization
+      unless person.organizations.include?(organization)
+        person.organizations << organization
+      end
+    end
 
     next_position = (sign_up_registrations.maximum(:position) || 0) + 1
 

@@ -1,0 +1,105 @@
+<% content_for :title, "Casting Settings" %>
+
+<% show_talent_pool = @production.casting_talent_pool? || @production.casting_hybrid? %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_production_casting_path(@production)]
+    ],
+    text: "Casting Settings",
+    links: []
+  } %>
+
+  <!-- Tabs Section -->
+  <div class="w-full" data-controller="tabs casting-source" data-casting-source-update-url-value="<%= manage_production_casting_settings_path(@production) %>">
+    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Casting Source</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Roles</button>
+      <button type="button"
+              data-tabs-target="tab"
+              data-casting-source-target="talentPoolTab"
+              data-index="2"
+              data-action="tabs#select"
+              class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap <%= 'hidden' unless show_talent_pool %>">Talent Pool</button>
+    </nav>
+
+    <!-- Tab 1: Casting Source -->
+    <div data-tabs-target="panel">
+      <div class="max-w-3xl">
+        <p class="text-sm text-gray-600 mb-4">
+          Choose where cast members for this production come from. Individual events can override this setting if needed.
+        </p>
+
+        <div class="space-y-3">
+          <label data-casting-source-target="option" class="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= @production.casting_talent_pool? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+            <input type="radio"
+                   name="casting_source"
+                   value="talent_pool"
+                   <%= 'checked' if @production.casting_talent_pool? %>
+                   data-casting-source-target="radio"
+                   data-action="change->casting-source#select"
+                   class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+            <div class="flex-1">
+              <span class="block font-medium text-gray-900">Talent Pool</span>
+              <span class="block text-sm text-gray-500 mt-0.5">Cast from your production's talent pool members. Best for traditional casting workflows.</span>
+            </div>
+          </label>
+
+          <label data-casting-source-target="option" class="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= @production.casting_sign_up? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+            <input type="radio"
+                   name="casting_source"
+                   value="sign_up"
+                   <%= 'checked' if @production.casting_sign_up? %>
+                   data-casting-source-target="radio"
+                   data-action="change->casting-source#select"
+                   class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+            <div class="flex-1">
+              <span class="block font-medium text-gray-900">Sign-Up Forms</span>
+              <span class="block text-sm text-gray-500 mt-0.5">Cast from people who register via sign-up forms. Great for open mics, showcases, and self-service events.</span>
+            </div>
+          </label>
+
+          <label data-casting-source-target="option" class="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= @production.casting_manual? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+            <input type="radio"
+                   name="casting_source"
+                   value="manual"
+                   <%= 'checked' if @production.casting_manual? %>
+                   data-casting-source-target="radio"
+                   data-action="change->casting-source#select"
+                   class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+            <div class="flex-1">
+              <span class="block font-medium text-gray-900">Manual Entry</span>
+              <span class="block text-sm text-gray-500 mt-0.5">Manually add anyone by name or email. Flexible for one-off events or guest performers.</span>
+            </div>
+          </label>
+
+          <label data-casting-source-target="option" class="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= @production.casting_hybrid? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+            <input type="radio"
+                   name="casting_source"
+                   value="hybrid"
+                   <%= 'checked' if @production.casting_hybrid? %>
+                   data-casting-source-target="radio"
+                   data-action="change->casting-source#select"
+                   class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+            <div class="flex-1">
+              <span class="block font-medium text-gray-900">All Sources (Hybrid)</span>
+              <span class="block text-sm text-gray-500 mt-0.5">Combine talent pool, sign-ups, and manual entry. Maximum flexibility for complex productions.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Roles -->
+    <div data-tabs-target="panel" class="hidden">
+      <%= render "manage/casting_settings/roles_tab" %>
+    </div>
+
+    <!-- Tab 3: Talent Pool -->
+    <div data-tabs-target="panel" data-casting-source-target="talentPoolPanel" class="hidden">
+      <%= render "manage/casting_settings/talent_pool_tab" %>
+    </div>
+  </div>
+</div>

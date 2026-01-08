@@ -81,6 +81,14 @@ Rails.application.routes.draw do
     patch "/email_templates/:id", to: "superadmin#email_template_update", as: "email_template_update"
     delete "/email_templates/:id", to: "superadmin#email_template_destroy", as: "email_template_destroy"
     get  "/email_templates/:id/preview", to: "superadmin#email_template_preview", as: "email_template_preview"
+
+    # Dev tools (development only)
+    get  "/dev_tools",                    to: "superadmin#dev_tools",                 as: "dev_tools"
+    post "/dev_tools/create_users",       to: "superadmin#dev_create_users",          as: "dev_create_users"
+    post "/dev_tools/submit_auditions",   to: "superadmin#dev_submit_auditions",      as: "dev_submit_auditions"
+    post "/dev_tools/submit_signups",     to: "superadmin#dev_submit_signups",        as: "dev_submit_signups"
+    delete "/dev_tools/delete_signups",   to: "superadmin#dev_delete_signups",        as: "dev_delete_signups"
+    delete "/dev_tools/delete_users",     to: "superadmin#dev_delete_users",          as: "dev_delete_users"
   end
 
   # Pilot user setup (superadmins only)
@@ -342,6 +350,7 @@ Rails.application.routes.draw do
       # Single talent pool per production - no CRUD, just member management
       resources :talent_pools, path: "talent-pools", only: %i[index] do
         collection do
+          get :members
           get :search_people
           post :add_person
           get "confirm-remove-person/:person_id", action: :confirm_remove_person, as: :confirm_remove_person
@@ -349,11 +358,18 @@ Rails.application.routes.draw do
           post :add_group
           get "confirm-remove-group/:group_id", action: :confirm_remove_group, as: :confirm_remove_group
           post :remove_group
+          get "upcoming_assignments/:id", action: :upcoming_assignments, as: :upcoming_assignments
         end
       end
 
       # Casting routes - manage roles and cast assignments
       get "casting", to: "casting#index", as: "casting"
+
+      # Casting settings
+      resource :casting_settings, only: [ :show, :update ], path: "casting/settings" do
+        get :setup, on: :member
+        post :complete_setup, on: :member
+      end
 
       resources :roles do
         collection do
@@ -516,6 +532,10 @@ Rails.application.routes.draw do
           post   "register",          to: "sign_up_forms#register",          as: "register"
           delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
           patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
+          get    "assign",            to: "sign_up_forms#assign",            as: "assign"
+          patch  "assign_registration/:registration_id", to: "sign_up_forms#assign_registration", as: "assign_registration"
+          patch  "unassign_registration/:registration_id", to: "sign_up_forms#unassign_registration", as: "unassign_registration"
+          post   "auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue"
           get    "preview",           to: "sign_up_forms#preview",           as: "preview"
           patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
           patch  "archive",           to: "sign_up_forms#archive",           as: "archive"

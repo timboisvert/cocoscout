@@ -4,6 +4,7 @@ module Manage
   class CastingController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
+    before_action :check_casting_setup, only: :index
     before_action :set_show,
                   only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
@@ -850,6 +851,12 @@ module Manage
     end
 
     private
+
+    def check_casting_setup
+      unless @production.casting_setup_completed?
+        redirect_to setup_manage_production_casting_settings_path(@production)
+      end
+    end
 
     # Sync roles from source to target show
     def sync_roles_to_show(target_show, source_roles, source_using_custom)

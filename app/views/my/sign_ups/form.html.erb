@@ -1,6 +1,6 @@
 <% content_for :title, @sign_up_form.name %>
 
-<div class="min-h-screen bg-gray-50 py-8" data-controller="sign-up-confirmation" data-sign-up-confirmation-submit-url-value="<%= my_submit_sign_up_form_path(@code) %>" data-sign-up-confirmation-change-mode-value="<%= @my_registration.blank? %>">
+<div class="min-h-screen bg-gray-50 py-8" data-controller="sign-up-confirmation" data-sign-up-confirmation-submit-url-value="<%= my_submit_sign_up_form_path(@code, instance_id: @instance&.id) %>" data-sign-up-confirmation-change-mode-value="<%= @my_registration.blank? %>">
   <div class="max-w-6xl mx-auto px-4">
 
     <!-- Full-Width Header -->
@@ -10,7 +10,29 @@
 
     <%= render partial: "shared/notice", locals: { notice: notice, alert: flash[:alert] } %>
 
+    <%# Event Picker - shown when multiple events are open %>
+    <% if @show_event_picker && @open_instances.present? %>
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold text-slate-900 mb-2">Select an Event</h2>
+        <p class="text-sm text-slate-600 mb-4">Multiple events are currently accepting sign-ups. Please select the one you'd like to register for.</p>
+
+        <div class="space-y-2">
+          <% @open_instances.each do |instance| %>
+            <%= render "shared/show_row",
+                show: instance.show,
+                link_path: my_sign_up_form_path(@code, instance_id: instance.id),
+                right_panel: instance.closes_at.present? && instance.closes_at > Time.current ? :countdown : nil,
+                closes_at: instance.closes_at %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
     <% if @my_registrations.present? %>
+      <%
+        queued_regs = @my_registrations.select(&:queued?)
+        assigned_regs = @my_registrations.reject(&:queued?)
+      %>
       <div class="mb-8 bg-pink-50 border border-pink-200 rounded-lg p-5 sm:p-6" data-sign-up-confirmation-target="changeSlotSection">
         <div class="flex items-start gap-4">
           <div class="flex-shrink-0 mt-0.5">
@@ -19,16 +41,24 @@
             </svg>
           </div>
           <div class="flex-1">
-            <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
-            <% if @my_registrations.count == 1 %>
+            <% if queued_regs.any? %>
+              <h3 class="font-semibold text-pink-900 mb-2">You're in the Queue</h3>
               <p class="text-sm text-pink-800 mb-3">
-                Your slot: <span class="font-medium"><%= @my_registrations.first.sign_up_slot.display_name %></span>
+                <% queue_position = queued_regs.first.position %>
+                Your position: <span class="font-medium">#<%= queue_position %></span>
+              </p>
+              <p class="text-sm text-pink-700 mb-3">The organizer will assign you to a slot.</p>
+            <% elsif assigned_regs.count == 1 %>
+              <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
+              <p class="text-sm text-pink-800 mb-3">
+                Your slot: <span class="font-medium"><%= assigned_regs.first.sign_up_slot.display_name %></span>
               </p>
             <% else %>
+              <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
               <div class="text-sm text-pink-800 mb-3">
                 <p class="mb-1">Your slots:</p>
                 <ul class="list-disc list-inside space-y-1">
-                  <% @my_registrations.each do |reg| %>
+                  <% assigned_regs.each do |reg| %>
                     <li><span class="font-medium"><%= reg.sign_up_slot.display_name %></span></li>
                   <% end %>
                 </ul>
@@ -58,6 +88,26 @@
       </div>
     <% end %>
 
+    <%# Registration Deadline Countdown - shown when closes_at is set %>
+    <% if !@show_event_picker && @instance&.closes_at.present? && @instance.closes_at > Time.current %>
+      <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3"
+           data-controller="countdown"
+           data-countdown-until-value="<%= @instance.closes_at.iso8601 %>"
+           data-countdown-expired-action-value="refresh">
+        <div class="flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <span class="text-sm text-amber-800">Registration closes </span>
+          <span class="text-sm font-semibold text-amber-900 tabular-nums" data-countdown-target="clock">--</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Only show the form content if we're not in event picker mode %>
+    <% unless @show_event_picker %>
     <!-- Two Column Layout: Info & Form -->
     <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
 
@@ -184,7 +234,39 @@
         </div>
 
         <!-- Slot Selection -->
-        <% if @sign_up_form.slot_selection_mode == "auto_assign" %>
+        <% if @sign_up_form.admin_assigns? %>
+          <%# Admin Assigns mode: User joins a queue, admin assigns later %>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
+            <div class="p-5">
+              <%
+                # Calculate queue position (what position they'd be in)
+                current_queue_size = @instance&.queued_registrations&.count || 0
+                queue_limit = @sign_up_form.queue_limit
+                queue_full = queue_limit.present? && current_queue_size >= queue_limit
+              %>
+              <div class="text-center space-y-4">
+                <div>
+                  <p class="text-sm text-gray-600 mb-2">Join the queue and the organizer will assign you to a slot</p>
+                  <% if current_queue_size > 0 %>
+                    <p class="text-2xl font-bold text-gray-900"><%= current_queue_size %></p>
+                    <p class="text-sm text-gray-500">people in queue</p>
+                  <% end %>
+                </div>
+                <% if queue_full %>
+                  <p class="text-sm text-gray-500 py-2">Queue is full</p>
+                <% else %>
+                  <button
+                    type="button"
+                    data-action="click->sign-up-confirmation#joinQueue"
+                    class="w-full py-3 px-4 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    Join Queue
+                  </button>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% elsif @sign_up_form.slot_selection_mode == "auto_assign" %>
           <%# Auto-assign mode: Single button to get next available slot %>
           <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
             <div class="p-5">
@@ -201,11 +283,13 @@
               %>
               <% if available_slot %>
                 <div class="text-center space-y-4">
-                  <div>
-                    <p class="text-sm text-gray-600 mb-2">You'll be assigned the next available spot</p>
-                    <p class="text-2xl font-bold text-gray-900"><%= total_spots_remaining %></p>
-                    <p class="text-sm text-gray-500">spot<%= total_spots_remaining == 1 ? '' : 's' %> remaining</p>
-                  </div>
+                  <% if total_spots_remaining < 1000 %>
+                    <div>
+                      <p class="text-sm text-gray-600 mb-2">You'll be assigned the next available spot</p>
+                      <p class="text-2xl font-bold text-gray-900"><%= total_spots_remaining %></p>
+                      <p class="text-sm text-gray-500">spot<%= total_spots_remaining == 1 ? '' : 's' %> remaining</p>
+                    </div>
+                  <% end %>
                   <button
                     type="button"
                     data-action="click->sign-up-confirmation#selectSlot"
@@ -313,7 +397,7 @@
                             <% end %>
                           <% end %>
                         </div>
-                        <% if slot.capacity > 1 %>
+                        <% if slot.capacity > 1 && slot.capacity < 1000 %>
                           <span class="text-xs text-pink-600 font-medium flex-shrink-0 ml-4"><%= slot.spots_remaining %> spot<%= slot.spots_remaining == 1 ? '' : 's' %> left</span>
                         <% else %>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 group-hover:text-pink-500 flex-shrink-0 ml-4">
@@ -350,6 +434,7 @@
         <% end %>
       </div>
     </div>
+    <% end %> <%# end unless @show_event_picker %>
   </div>
 
   <!-- Confirmation Modal -->
@@ -435,7 +520,7 @@
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <%= form_with url: my_submit_sign_up_form_path(@code), method: :post, local: true, class: "flex gap-3 justify-end" do |form| %>
+        <%= form_with url: my_submit_sign_up_form_path(@code, instance_id: @instance&.id), method: :post, local: true, class: "flex gap-3 justify-end" do |form| %>
           <input type="hidden" name="slot_id" value="" data-sign-up-confirmation-target="hiddenSlotId">
           <%= render "shared/button", text: "Cancel", type: :button, variant: "secondary", size: "large", data: { action: "click->sign-up-confirmation#close" } %>
           <%= render "shared/button", text: "Confirm Sign-Up", variant: "primary", size: "large", data: { "sign-up-confirmation-target": "confirmButton", action: "click->sign-up-confirmation#confirm" } %>

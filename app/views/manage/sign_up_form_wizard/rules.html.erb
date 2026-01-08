@@ -45,18 +45,31 @@
 
           <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
             <label class="block text-gray-700 font-medium">Slot selection</label>
-            <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full">
+            <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full" data-controller="slot-selection-help" data-action="change->slot-selection-help#update">
               <option value="choose_slot" <%= "selected" if slot_selection_mode == 'choose_slot' %>>People choose their slot</option>
               <option value="auto_assign" <%= "selected" if slot_selection_mode == 'auto_assign' %>>Auto-assign to next available</option>
+              <option value="admin_assigns" <%= "selected" if slot_selection_mode == 'admin_assigns' %>>I'll assign people to slots</option>
             </select>
-            <p class="text-sm text-gray-500 mt-1">
+            <p class="text-sm text-gray-500 mt-1" data-slot-selection-help-target="description">
               <% case slot_selection_mode %>
               <% when 'auto_assign' %>
                 Good for waitlists or when slot choice doesn't matter.
+              <% when 'admin_assigns' %>
+                People sign up to a queue. You assign them to slots later.
               <% else %>
                 People select their preferred slot when signing up.
               <% end %>
             </p>
+            <% if slot_selection_mode == 'admin_assigns' %>
+            <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p class="text-sm text-blue-800 font-medium">Great for:</p>
+              <ul class="text-sm text-blue-700 mt-1 list-disc list-inside space-y-0.5">
+                <li>Audition time slots where you want control over scheduling</li>
+                <li>Performance running order determined after sign-ups close</li>
+                <li>Workshop groups assigned based on skill level</li>
+              </ul>
+            </div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -129,21 +142,6 @@
             <div>
               <span class="text-sm text-gray-700">Show held slots to people signing up</span>
               <p class="text-xs text-gray-500">When enabled, held slots are visible but marked as unavailable</p>
-            </div>
-          </div>
-
-          <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-blue-800">
-                  <strong>Tip:</strong> You can manually assign people to held slots or release them later from your dashboard.
-                </p>
-              </div>
             </div>
           </div>
         </div>

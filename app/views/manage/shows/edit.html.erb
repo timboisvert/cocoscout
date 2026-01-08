@@ -27,7 +27,7 @@
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Schedule</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Poster & Links</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting & Roles</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
     <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Linked Events</button>
     <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
   </nav>
@@ -325,6 +325,46 @@
           } %>
         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
       </label>
+    </div>
+
+    <!-- Casting Source Override Section -->
+    <div class="mt-6 pt-6 border-t border-gray-200" data-controller="casting-source-override">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-700">Override casting source</p>
+          <p class="text-xs text-gray-500 mt-1">
+            By default, this event uses the production's casting source (<strong><%= @production.casting_source.titleize %></strong>).
+            Enable to use a different source for this event only.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer ml-4">
+          <input type="checkbox"
+                 <%= "checked" if @show.uses_custom_casting_source? %>
+                 class="sr-only peer"
+                 data-casting-source-override-target="toggle"
+                 data-action="change->casting-source-override#toggle">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <!-- Casting Source Dropdown (shown when override is enabled) -->
+      <div data-casting-source-override-target="options" class="<%= @show.uses_custom_casting_source? ? '' : 'hidden' %> ml-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="w-full sm:w-1/2">
+          <%= form.label :casting_source, "Casting Source for This Event", class: "text-sm font-medium text-gray-700" %>
+          <%= form.select :casting_source,
+            [
+              ["Talent Pool", "talent_pool"],
+              ["Sign-Up Form", "sign_up"],
+              ["Manual Entry", "manual"],
+              ["All Sources (Hybrid)", "hybrid"]
+            ],
+            { include_blank: false },
+            { class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full" } %>
+        </div>
+      </div>
+
+      <!-- Hidden field to clear casting_source when override is disabled -->
+      <input type="hidden" name="clear_casting_source" value="0" data-casting-source-override-target="clearField">
     </div>
 
     <!-- Custom Roles Section -->

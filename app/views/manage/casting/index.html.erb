@@ -1,13 +1,12 @@
-<% content_for :title, "Casting & Roles" %>
+<% content_for :title, "Casting" %>
 
 <div class="w-full" data-controller="linked-highlight">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "Casting & Roles",
+    text: "Casting",
     links: [
-      { text: "Manage Talent Pool", path: manage_production_talent_pools_path(@production) },
-      { text: "Manage Roles", path: manage_production_roles_path(@production) }
+      { text: "Casting Settings", path: manage_production_casting_settings_path(@production) }
     ]
   } %>
 

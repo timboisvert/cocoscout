@@ -112,6 +112,7 @@ class SignUpFormStatusService
     # Calculate totals for open instances
     total_regs = open_instances.sum { |i| i[:registration_count] }
     total_cap = open_instances.sum { |i| i[:total_capacity] }
+    total_spots_remaining = open_instances.sum { |i| i[:spots_remaining] }
 
     if !sign_up_form.active?
       {
@@ -125,6 +126,20 @@ class SignUpFormStatusService
         scheduled_count: 0,
         total_registrations: 0,
         total_capacity: 0
+      }
+    elsif open && total_spots_remaining <= 0
+      # All open instances are full
+      {
+        state: :full,
+        label: "Full",
+        color: "gray",
+        accepting_registrations: false,
+        next_event: open,
+        next_opening: scheduled,
+        open_count: open_instances.count,
+        scheduled_count: scheduled_instances.count,
+        total_registrations: total_regs,
+        total_capacity: total_cap
       }
     elsif open
       {
@@ -264,16 +279,30 @@ class SignUpFormStatusService
         total_capacity: total_cap
       }
     elsif instance.status == "open"
-      {
-        state: :accepting,
-        label: "Accepting Sign-ups",
-        color: "green",
-        accepting_registrations: true,
-        event_date: show&.date_and_time,
-        instance_status: "open",
-        total_registrations: total_regs,
-        total_capacity: total_cap
-      }
+      # Check if full before allowing registrations
+      if instance.spots_remaining <= 0
+        {
+          state: :full,
+          label: "Full",
+          color: "gray",
+          accepting_registrations: false,
+          event_date: show&.date_and_time,
+          instance_status: "open",
+          total_registrations: total_regs,
+          total_capacity: total_cap
+        }
+      else
+        {
+          state: :accepting,
+          label: "Accepting Sign-ups",
+          color: "green",
+          accepting_registrations: true,
+          event_date: show&.date_and_time,
+          instance_status: "open",
+          total_registrations: total_regs,
+          total_capacity: total_cap
+        }
+      end
     elsif instance.status == "scheduled" && instance.opens_at
       days_until = days_until_date(instance.opens_at)
       {
@@ -339,6 +368,16 @@ class SignUpFormStatusService
       {
         state: :closed,
         label: "Closed",
+        color: "gray",
+        accepting_registrations: false,
+        total_registrations: total_regs,
+        total_capacity: total_cap
+      }
+    elsif total_regs >= total_cap && total_cap > 0
+      # All spots filled
+      {
+        state: :full,
+        label: "Full",
         color: "gray",
         accepting_registrations: false,
         total_registrations: total_regs,

@@ -1,0 +1,139 @@
+<% content_for :title, "Dev Tools - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Dev Tools",
+    links: []
+  } %>
+
+  <div class="mt-4 border border-amber-200 rounded-lg p-4 bg-amber-50">
+    <p class="text-amber-800 font-medium">⚠️ Development Only</p>
+    <p class="text-sm text-amber-600 mt-1">These tools create fake data for testing purposes. They are only available in development mode.</p>
+  </div>
+
+  <!-- Current Stats -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:test_users]) %></div>
+      <div class="text-sm text-gray-500">Test Users</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:test_audition_requests]) %></div>
+      <div class="text-sm text-gray-500">Test Audition Requests</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:test_signups]) %></div>
+      <div class="text-sm text-gray-500">Test Sign-ups</div>
+    </div>
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:open_audition_cycles]) %></div>
+      <div class="text-sm text-gray-500">Open Audition Cycles</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="mt-6 space-y-6">
+    <!-- Create Test Users -->
+    <div class="border border-gray-200 rounded-lg p-5">
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Create Test Users</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        Creates fake users with random names and headshots. Users are marked with
+        <code class="bg-gray-100 px-1 rounded">@testuser.cocoscout.dev</code> email suffix for easy cleanup.
+      </p>
+      <%= form_with url: dev_create_users_path, method: :post, class: "flex items-center gap-4" do |f| %>
+        <div class="flex items-center gap-2">
+          <label for="create_users_count" class="text-sm text-gray-600">Number of users:</label>
+          <input type="number" name="count" id="create_users_count" value="25" min="1" max="500"
+                 class="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm">
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">
+          Create Users
+        </button>
+      <% end %>
+    </div>
+
+    <!-- Submit Audition Requests -->
+    <div class="border border-gray-200 rounded-lg p-5">
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Submit Audition Requests</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        Have test users submit audition requests to all open audition cycles.
+        Currently <strong><%= @stats[:open_audition_cycles] %></strong> open cycles available.
+      </p>
+      <%= form_with url: dev_submit_auditions_path, method: :post, class: "flex items-center gap-4" do |f| %>
+        <div class="flex items-center gap-2">
+          <label for="audition_count" class="text-sm text-gray-600">Requests per cycle:</label>
+          <input type="number" name="count" id="audition_count" value="10" min="1" max="100"
+                 class="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm">
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                <%= @stats[:test_users] == 0 ? 'disabled' : '' %>>
+          Submit Requests
+        </button>
+      <% end %>
+      <% if @stats[:test_users] == 0 %>
+        <p class="text-sm text-amber-600 mt-2">Create test users first.</p>
+      <% end %>
+    </div>
+
+    <!-- Submit Sign-ups -->
+    <div class="border border-gray-200 rounded-lg p-5">
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Submit Sign-ups</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        Have test users sign up for all active sign-up forms.
+        Currently <strong><%= @stats[:active_signup_forms] %></strong> active forms available.
+      </p>
+      <%= form_with url: dev_submit_signups_path, method: :post, class: "flex items-center gap-4" do |f| %>
+        <div class="flex items-center gap-2">
+          <label for="signup_count" class="text-sm text-gray-600">Sign-ups per form:</label>
+          <input type="number" name="count" id="signup_count" value="10" min="1" max="100"
+                 class="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm">
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                <%= @stats[:test_users] == 0 ? 'disabled' : '' %>>
+          Submit Sign-ups
+        </button>
+      <% end %>
+      <% if @stats[:test_users] == 0 %>
+        <p class="text-sm text-amber-600 mt-2">Create test users first.</p>
+      <% end %>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="border border-red-200 rounded-lg p-5 bg-red-50">
+      <h3 class="text-lg font-semibold text-red-900 mb-4">Danger Zone</h3>
+
+      <div class="space-y-4">
+        <!-- Delete All Sign-up Forms -->
+        <div class="flex items-center justify-between p-4 bg-white rounded-md border border-red-200">
+          <div>
+            <p class="font-medium text-gray-900">Delete All Sign-up Forms</p>
+            <p class="text-sm text-gray-600">Permanently deletes all sign-up forms, slots, and registrations.</p>
+          </div>
+          <%= button_to "Delete Sign-up Forms", dev_delete_signups_path,
+              method: :delete,
+              class: "px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium",
+              data: { confirm: "Are you sure? This will delete ALL sign-up forms, slots, and registrations." } %>
+        </div>
+
+        <!-- Delete Test Users -->
+        <div class="flex items-center justify-between p-4 bg-white rounded-md border border-red-200">
+          <div>
+            <p class="font-medium text-gray-900">Delete All Test Users</p>
+            <p class="text-sm text-gray-600">
+              Deletes users with <code class="bg-gray-100 px-1 rounded">@testuser.cocoscout.dev</code> suffix and their data.
+            </p>
+          </div>
+          <%= button_to "Delete Test Users", dev_delete_users_path,
+              method: :delete,
+              class: "px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium",
+              data: { confirm: "Are you sure? This will delete all test users and their associated data." } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

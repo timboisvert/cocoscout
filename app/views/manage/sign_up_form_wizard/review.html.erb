@@ -109,6 +109,8 @@
                 <% case @wizard_state[:slot_selection_mode] %>
                 <% when 'auto_assign' %>
                   Auto-assigned to next available
+                <% when 'admin_assigns' %>
+                  You assign people to slots
                 <% else %>
                   People choose their slot
                 <% end %>

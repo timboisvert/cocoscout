@@ -52,6 +52,25 @@ class Show < ApplicationRecord
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
 
+  # Casting source determines how performers are assigned to this show
+  # nil means "inherit from production"
+  enum :casting_source, {
+    talent_pool: "talent_pool",   # Traditional casting from production members
+    sign_up: "sign_up",           # Self-service registration via sign-up forms
+    manual: "manual",             # Admin manually adds names/emails
+    hybrid: "hybrid"              # All sources: talent pool + sign-up + manual
+  }, default: nil, prefix: :casting
+
+  # Returns the effective casting source (inheriting from production if not overridden)
+  def effective_casting_source
+    casting_source || production&.casting_source || "talent_pool"
+  end
+
+  # Check if this show uses a custom casting source (overriding production default)
+  def uses_custom_casting_source?
+    casting_source.present?
+  end
+
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
@@ -70,6 +89,7 @@ class Show < ApplicationRecord
   # Sign-up form instance management
   after_commit :create_sign_up_form_instances, on: :create
   after_commit :sync_sign_up_form_instances_on_cancel, on: :update, if: :saved_change_to_canceled?
+  after_commit :sync_sign_up_form_instances_on_date_change, on: :update, if: :saved_change_to_date_and_time?
   before_destroy :cleanup_sign_up_form_instances
 
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
@@ -363,6 +383,29 @@ class Show < ApplicationRecord
       # Run status job to calculate correct state based on current time
       UpdateSignUpStatusesJob.perform_now
     end
+  end
+
+  def sync_sign_up_form_instances_on_date_change
+    # When a show's date/time changes, recalculate opens_at, closes_at, edit_cutoff_at for all instances
+    SignUpFormInstance.where(show_id: id).find_each do |instance|
+      form = instance.sign_up_form
+      service = SlotManagementService.new(form)
+
+      new_opens_at = service.send(:calculate_opens_at, self)
+      new_closes_at = service.send(:calculate_closes_at, self)
+      new_edit_cutoff_at = service.send(:calculate_edit_cutoff_at, self)
+
+      # Update the instance with recalculated dates and reset status to recalculate
+      instance.update!(
+        opens_at: new_opens_at,
+        closes_at: new_closes_at,
+        edit_cutoff_at: new_edit_cutoff_at,
+        status: "initializing"
+      )
+    end
+
+    # Run status job to calculate correct state based on current time
+    UpdateSignUpStatusesJob.perform_now
   end
 
   def cleanup_sign_up_form_instances

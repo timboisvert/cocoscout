@@ -233,13 +233,30 @@
                    class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-2/3">
           </div>
 
-          <%# Closes At Box %>
-          <div class="p-4 bg-gray-50 rounded-lg">
-            <label class="block text-gray-700 font-medium mb-1">Closes at</label>
-            <div class="text-sm text-gray-500 mb-2">Leave blank to keep sign-ups open until you close them manually</div>
-            <input type="datetime-local" name="closes_at"
-                   value="<%= @wizard_state[:closes_at].is_a?(String) ? @wizard_state[:closes_at] : @wizard_state[:closes_at]&.strftime('%Y-%m-%dT%H:%M') %>"
-                   class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-2/3">
+          <%# Closes At Box with Toggle %>
+          <% has_close_date = @wizard_state[:closes_at].present? %>
+          <div class="p-4 bg-gray-50 rounded-lg" data-controller="toggle-section">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-gray-700 font-medium">Set a close date</label>
+                <p class="text-sm text-gray-500 mt-1">When disabled, sign-ups stay open until you close them manually</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox"
+                       data-toggle-section-target="toggle"
+                       data-action="toggle-section#toggle"
+                       class="sr-only peer"
+                       <%= 'checked' if has_close_date %>>
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+            <div data-toggle-section-target="content" class="<%= has_close_date ? '' : 'hidden' %> mt-4">
+              <label class="block text-gray-700 text-sm font-medium mb-2">Closes at</label>
+              <input type="datetime-local" name="closes_at"
+                     value="<%= @wizard_state[:closes_at].is_a?(String) ? @wizard_state[:closes_at] : @wizard_state[:closes_at]&.strftime('%Y-%m-%dT%H:%M') %>"
+                     class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-2/3"
+                     data-toggle-section-target="requiredField">
+            </div>
           </div>
         </div>
       <% end %>

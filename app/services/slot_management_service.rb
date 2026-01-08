@@ -274,14 +274,26 @@ class SlotManagementService
       }
 
     when "open_list"
-      # Open list (waitlist): N slots with capacity 1 each
+      # Open list (waitlist): use single slot with capacity for unlimited/large lists
+      # For smaller lists, create individual slots for numbered positions
       slot_count = sign_up_form.slot_count || 10
-      slot_count.times do |i|
+
+      if slot_count > 1000
+        # For "unlimited" waitlists (999,999), use a single slot with high capacity
         slots << {
-          position: i + 1,
+          position: 1,
           name: nil,
-          capacity: 1
+          capacity: slot_count
         }
+      else
+        # For smaller lists, create individual slots
+        slot_count.times do |i|
+          slots << {
+            position: i + 1,
+            name: nil,
+            capacity: 1
+          }
+        end
       end
     end
 

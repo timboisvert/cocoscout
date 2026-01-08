@@ -182,7 +182,7 @@
                             </div>
                           <% end %>
                         </div>
-                        <% if slot.capacity > 1 %>
+                        <% if slot.capacity > 1 && slot.capacity < 1000 %>
                           <span class="text-xs text-pink-600 font-medium flex-shrink-0 ml-4"><%= slot.spots_remaining %> spot<%= slot.spots_remaining == 1 ? '' : 's' %> left</span>
                         <% end %>
                       </div>

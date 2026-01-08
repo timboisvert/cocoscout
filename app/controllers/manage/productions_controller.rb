@@ -259,8 +259,7 @@ module Manage
                                          :show_upcoming_event_types,
                                          :cast_talent_pool_ids,
                                          :auto_create_event_pages, :auto_create_event_pages_mode,
-                                         :event_visibility_overrides,
-                                         :has_talent_pool, :has_roles, :has_auditions, :has_sign_up_slots).merge(organization_id: Current.organization&.id)
+                                         :event_visibility_overrides).merge(organization_id: Current.organization&.id)
     end
 
     # Convert event_visibility checkboxes to JSON stored in event_visibility_overrides

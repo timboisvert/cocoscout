@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_08_211511) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -553,14 +553,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.boolean "auto_create_event_pages", default: true
     t.string "auto_create_event_pages_mode", default: "all"
     t.text "cast_talent_pool_ids"
+    t.boolean "casting_setup_completed", default: false, null: false
+    t.string "casting_source", default: "talent_pool", null: false
     t.string "contact_email"
     t.datetime "created_at", null: false
     t.text "description"
     t.text "event_visibility_overrides"
-    t.boolean "has_auditions", default: true, null: false
-    t.boolean "has_roles", default: true, null: false
-    t.boolean "has_sign_up_slots", default: true, null: false
-    t.boolean "has_talent_pool", default: true, null: false
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -572,6 +570,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.boolean "show_upcoming_events", default: true, null: false
     t.string "show_upcoming_events_mode", default: "all"
     t.datetime "updated_at", null: false
+    t.index ["casting_source"], name: "index_productions_on_casting_source"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
     t.index ["public_key"], name: "index_productions_on_public_key", unique: true
   end
@@ -857,6 +856,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.boolean "canceled", default: false, null: false
     t.boolean "casting_enabled", default: true, null: false
     t.datetime "casting_finalized_at"
+    t.string "casting_source"
     t.datetime "created_at", null: false
     t.datetime "date_and_time"
     t.bigint "event_linkage_id"
@@ -871,6 +871,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.string "secondary_name"
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
+    t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["production_id"], name: "index_shows_on_production_id"
@@ -935,6 +936,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.datetime "opens_at"
     t.integer "opens_days_before", default: 7
     t.bigint "production_id", null: false
+    t.boolean "queue_carryover", default: false, null: false
+    t.integer "queue_limit"
     t.integer "registrations_per_person", default: 1
     t.boolean "require_login", default: false, null: false
     t.string "schedule_mode", default: "relative"
@@ -970,11 +973,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.bigint "person_id"
     t.integer "position", null: false
     t.datetime "registered_at", null: false
-    t.bigint "sign_up_slot_id", null: false
+    t.bigint "sign_up_form_instance_id"
+    t.bigint "sign_up_slot_id"
     t.string "status", default: "confirmed", null: false
     t.datetime "updated_at", null: false
     t.index ["person_id"], name: "idx_sign_up_regs_person", where: "(person_id IS NOT NULL)"
     t.index ["person_id"], name: "index_sign_up_registrations_on_person_id"
+    t.index ["sign_up_form_instance_id", "status"], name: "idx_registrations_instance_status"
+    t.index ["sign_up_form_instance_id"], name: "index_sign_up_registrations_on_sign_up_form_instance_id"
     t.index ["sign_up_slot_id", "person_id"], name: "idx_sign_up_regs_slot_person_unique", unique: true, where: "((person_id IS NOT NULL) AND ((status)::text <> 'cancelled'::text))"
     t.index ["sign_up_slot_id", "position"], name: "index_sign_up_registrations_on_sign_up_slot_id_and_position"
     t.index ["sign_up_slot_id"], name: "index_sign_up_registrations_on_sign_up_slot_id"
@@ -987,9 +993,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
     t.boolean "is_held", default: false, null: false
     t.string "name"
     t.integer "position", null: false
+    t.bigint "role_id"
     t.bigint "sign_up_form_id", null: false
     t.bigint "sign_up_form_instance_id"
     t.datetime "updated_at", null: false
+    t.index ["role_id"], name: "index_sign_up_slots_on_role_id"
     t.index ["sign_up_form_id", "position"], name: "index_sign_up_slots_on_sign_up_form_id_and_position"
     t.index ["sign_up_form_id"], name: "index_sign_up_slots_on_sign_up_form_id"
     t.index ["sign_up_form_instance_id"], name: "index_sign_up_slots_on_sign_up_form_instance_id"
@@ -1291,7 +1299,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
   add_foreign_key "sign_up_forms", "productions"
   add_foreign_key "sign_up_forms", "shows"
   add_foreign_key "sign_up_registrations", "people"
+  add_foreign_key "sign_up_registrations", "sign_up_form_instances"
   add_foreign_key "sign_up_registrations", "sign_up_slots"
+  add_foreign_key "sign_up_slots", "roles"
   add_foreign_key "sign_up_slots", "sign_up_form_instances"
   add_foreign_key "sign_up_slots", "sign_up_forms"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

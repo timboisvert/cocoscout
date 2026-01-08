@@ -1,0 +1,71 @@
+<div data-controller="talent-pool-inline"
+     data-talent-pool-inline-search-url-value="<%= search_people_manage_production_talent_pools_path(@production) %>"
+     data-talent-pool-inline-add-person-url-value="<%= add_person_manage_production_talent_pools_path(@production) %>"
+     data-talent-pool-inline-add-group-url-value="<%= add_group_manage_production_talent_pools_path(@production) %>"
+     data-talent-pool-inline-remove-person-url-value="<%= remove_person_manage_production_talent_pools_path(@production) %>"
+     data-talent-pool-inline-remove-group-url-value="<%= remove_group_manage_production_talent_pools_path(@production) %>"
+     data-talent-pool-inline-members-url-value="<%= members_manage_production_talent_pools_path(@production) %>">
+  <div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-gray-500">The talent pool contains the people and groups available for casting in this production.</p>
+    <% if current_user_can_manage?(Current.production) %>
+      <%= render "shared/button",
+          text: "Add Member",
+          variant: "primary",
+          size: "small",
+          type: :button,
+          data: { action: "click->talent-pool-inline#openAddModal" } %>
+    <% end %>
+  </div>
+
+  <div data-talent-pool-inline-target="membersList">
+    <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
+  </div>
+
+  <!-- Modal for adding members -->
+  <% if current_user_can_manage?(Current.production) %>
+    <div data-talent-pool-inline-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->talent-pool-inline#closeAddModal keydown.esc@window->talent-pool-inline#closeAddModal">
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->talent-pool-inline#stopPropagation">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Add Person or Group to Talent Pool</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="talent-pool-inline#closeAddModal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <input type="text"
+            data-talent-pool-inline-target="searchInput"
+            data-action="input->talent-pool-inline#search"
+            class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+            placeholder="Search People and Groups">
+          <div class="mt-3 max-h-96 overflow-y-auto space-y-2" data-talent-pool-inline-target="searchResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for confirming removal -->
+    <div data-talent-pool-inline-target="removeModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->talent-pool-inline#closeRemoveModal keydown.esc@window->talent-pool-inline#closeRemoveModal">
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->talent-pool-inline#stopPropagation">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Remove from Talent Pool</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="talent-pool-inline#closeRemoveModal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <p class="text-sm text-gray-600">
+            Are you sure you want to remove <strong data-talent-pool-inline-target="removePersonName"></strong> from the talent pool?
+          </p>
+          <div data-talent-pool-inline-target="removeWarning" class="mt-3"></div>
+          <div class="flex justify-end gap-2 mt-4">
+            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "talent-pool-inline#closeRemoveModal" } %>
+            <%= render "shared/button", text: "Remove", variant: "danger", size: "small", type: :button, data: { action: "talent-pool-inline#confirmRemove" } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

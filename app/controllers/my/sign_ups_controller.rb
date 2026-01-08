@@ -186,7 +186,30 @@ module My
         return
       end
 
-      @instance = find_current_instance
+      # For repeated events, check if there are multiple open instances
+      if @sign_up_form.repeated?
+        @open_instances = @sign_up_form.sign_up_form_instances
+          .joins(:show)
+          .where(status: "open")
+          .where("shows.date_and_time > ?", Time.current)
+          .order("shows.date_and_time ASC")
+          .includes(:show)
+
+        # If an instance_id is specified, use that one
+        if params[:instance_id].present?
+          @instance = @open_instances.find_by(id: params[:instance_id])
+        end
+
+        # If no specific instance and multiple are open, user needs to pick
+        if @instance.nil? && @open_instances.count > 1
+          @show_event_picker = true
+        else
+          @instance ||= @open_instances.first
+        end
+      else
+        @instance = find_current_instance
+      end
+
       @slots = @instance&.sign_up_slots&.order(:position) || []
       @questions = @sign_up_form.questions.order(:position)
       @show = @instance&.show
@@ -213,7 +236,18 @@ module My
         return
       end
 
-      @instance = find_current_instance
+      # For repeated events with instance_id param, find that specific instance
+      if @sign_up_form.repeated? && params[:instance_id].present?
+        @instance = @sign_up_form.sign_up_form_instances.find_by(id: params[:instance_id])
+      end
+      @instance ||= find_current_instance
+
+      # Handle admin_assigns mode - user joins the queue, doesn't pick a slot
+      if @sign_up_form.admin_assigns?
+        submit_to_queue
+        return
+      end
+
       slot = @instance.sign_up_slots.find(params[:slot_id])
 
       # Check if user already has registrations
@@ -355,16 +389,21 @@ module My
 
     def find_user_registrations
       return [] unless @instance
+      return [] unless Current.user&.person
 
-      # Find user's active registrations on any slot for this instance
-      if Current.user&.person
-        @instance.sign_up_registrations
-          .where(person: Current.user.person)
-          .where.not(status: "cancelled")
-          .to_a
-      else
-        []
-      end
+      # Find user's active registrations on slots for this instance
+      slot_registrations = @instance.sign_up_registrations
+        .where(person: Current.user.person)
+        .where.not(status: "cancelled")
+        .to_a
+
+      # Also find queued registrations for this instance (admin_assigns mode)
+      queued_registrations = SignUpRegistration
+        .where(sign_up_form_instance_id: @instance.id, person: Current.user.person)
+        .where.not(status: "cancelled")
+        .to_a
+
+      (slot_registrations + queued_registrations).uniq
     end
 
     def find_user_registration
@@ -378,6 +417,34 @@ module My
       max_allowed = @sign_up_form.registrations_per_person || 1
       current_count = existing_registrations ? existing_registrations.count : find_user_registrations.count
       [ max_allowed - current_count, 0 ].max
+    end
+
+    def submit_to_queue
+      # Check if user already has a queued registration for this instance
+      if Current.user&.person
+        existing = SignUpRegistration.where(
+          sign_up_form_instance_id: @instance.id,
+          person_id: Current.user.person.id
+        ).where.not(status: "cancelled").exists?
+
+        if existing
+          flash[:notice] = "You're already in the queue for this event."
+          redirect_to my_sign_up_success_path(@code)
+          return
+        end
+      end
+
+      begin
+        @instance.register_to_queue!(
+          person: Current.user&.person,
+          guest_name: params[:guest_name],
+          guest_email: params[:guest_email]
+        )
+        redirect_to my_sign_up_success_path(@code)
+      rescue => e
+        flash[:alert] = e.message
+        redirect_to my_sign_up_form_path(@code)
+      end
     end
   end
 end

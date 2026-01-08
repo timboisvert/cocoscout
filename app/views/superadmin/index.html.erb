@@ -156,6 +156,18 @@
           </div>
         </div>
       <% end %>
+
+      <% if Rails.env.development? %>
+        <!-- Dev Tools Link Card (development only) -->
+        <%= link_to dev_tools_path, class: "block" do %>
+          <div class="border border-amber-300 rounded-lg overflow-hidden hover:border-amber-500 transition-all bg-amber-50">
+            <div class="p-6">
+              <h3 class="text-lg font-semibold text-gray-900 coustard-regular">🛠️ Dev Tools</h3>
+              <p class="text-sm text-gray-600 mt-1">Create test users and simulate activity</p>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
     </div>
   </div>
 

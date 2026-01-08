@@ -32,7 +32,7 @@
               active: controller_name == "availability"
             },
             {
-              label: "Casting & Roles",
+              label: "Casting",
               path: manage_production_casting_path(Current.production),
               active: ["casting", "roles", "talent_pools"].include?(controller_name)
             },
@@ -43,16 +43,12 @@
             }
           ]
 
-          # Add Sign-ups link only if the feature is enabled
-          if Current.production.has_sign_up_slots
-            links << {
+          links += [
+            {
               label: "Sign-ups",
               path: manage_production_sign_up_forms_path(Current.production),
               active: controller_name == "sign_up_forms"
-            }
-          end
-
-          links += [
+            },
             {
               label: "Questionnaires",
               path: manage_production_questionnaires_path(Current.production),

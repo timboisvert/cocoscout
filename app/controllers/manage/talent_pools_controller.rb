@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_talent_pool
-    before_action :ensure_user_is_manager, except: %i[index]
+    before_action :ensure_user_is_manager, except: %i[index members]
 
     # Each production has exactly one talent pool
     # This controller manages membership in that pool
@@ -14,10 +14,19 @@ module Manage
       # @talent_pool is set by before_action
     end
 
+    def members
+      render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+    end
+
     def add_person
       person = Current.organization.people.find(params[:person_id])
       @talent_pool.people << person unless @talent_pool.people.exists?(person.id)
-      render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+
+      if request.xhr?
+        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+      else
+        render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+      end
     end
 
     def confirm_remove_person
@@ -91,7 +100,7 @@ module Manage
     end
 
     def search_people
-      q = params[:q].to_s.strip
+      q = (params[:q] || params[:query]).to_s.strip
 
       if q.present?
         @people = Current.organization.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
@@ -109,6 +118,29 @@ module Manage
 
       render partial: "manage/talent_pools/search_results",
              locals: { members: @members, talent_pool_id: @talent_pool.id }
+    end
+
+    def upcoming_assignments
+      member_id = params[:id]
+      member_type = params[:member_type] || "Person"
+
+      assignments = ShowPersonRoleAssignment.joins(:show)
+                                             .includes(:show, :role)
+                                             .where(shows: { production_id: @production.id })
+                                             .where(assignable_type: member_type, assignable_id: member_id)
+                                             .where("shows.date_and_time >= ?", Time.current)
+                                             .order("shows.date_and_time ASC")
+
+      render json: {
+        assignments: assignments.map do |a|
+          {
+            id: a.id,
+            show_name: a.show.name_or_formatted_date,
+            role_name: a.role&.name,
+            date: a.show.date_and_time
+          }
+        end
+      }
     end
 
     private

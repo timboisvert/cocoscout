@@ -135,7 +135,7 @@
             <%= link_to manage_production_auditions_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
               Auditions
             <% end %>
-            <% if has_team_access && Current.production.has_sign_up_slots %>
+            <% if has_team_access %>
               <%= link_to manage_production_sign_up_forms_path(Current.production), class: "block px-2 py-2 rounded hover:bg-gray-50 text-sm font-medium text-gray-700" do %>
                 Sign-ups
               <% end %>

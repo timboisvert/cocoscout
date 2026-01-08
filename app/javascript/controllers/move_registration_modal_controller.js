@@ -54,32 +54,23 @@ export default class extends Controller {
 
                 if (slotId === String(currentSlotId)) {
                     // This is the current slot - disable it and mark as current
-                    label.classList.add('opacity-60', 'cursor-not-allowed', 'bg-pink-50', 'border-pink-300');
-                    label.classList.remove('hover:border-pink-300', 'hover:bg-pink-50', 'border-gray-200');
+                    label.classList.add('opacity-50', 'cursor-not-allowed');
+                    label.classList.remove('hover:bg-pink-50', 'cursor-pointer');
                     if (radio) {
                         radio.disabled = true;
                         radio.checked = false;
                     }
-                    // Update the "Available" text to "Current slot"
-                    const statusText = label.querySelector('p.text-green-600, p.text-gray-500');
-                    if (statusText) {
-                        statusText.className = 'text-sm text-pink-600 mt-1';
-                        statusText.textContent = 'Current slot';
+                    // Update the middle section to show "Current slot"
+                    const middleDiv = label.querySelector('.flex-1');
+                    if (middleDiv) {
+                        middleDiv.innerHTML = '<span class="text-sm text-pink-600 font-medium">Current slot</span>';
                     }
                 } else {
-                    // Reset to original state
-                    label.classList.remove('opacity-60', 'cursor-not-allowed', 'bg-pink-50', 'border-pink-300');
-                    label.classList.add('border-gray-200');
-
-                    // Re-enable radio if not originally disabled
-                    if (radio && !radio.hasAttribute('data-originally-disabled')) {
-                        // Check if slot has availability (not filled)
-                        const statusText = label.querySelector('p');
-                        const isAvailable = statusText && statusText.classList.contains('text-green-600');
-                        if (isAvailable) {
-                            radio.disabled = false;
-                            label.classList.add('hover:border-pink-300', 'hover:bg-pink-50');
-                        }
+                    // Reset to original state - ensure it's enabled
+                    label.classList.remove('opacity-50', 'cursor-not-allowed');
+                    label.classList.add('hover:bg-pink-50', 'cursor-pointer');
+                    if (radio) {
+                        radio.disabled = false;
                     }
                 }
             });

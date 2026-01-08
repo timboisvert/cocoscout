@@ -28,18 +28,25 @@ module Manage
 
       # For repeated mode, load instances for event navigation
       if @sign_up_form.repeated?
+        # Get all instances that are navigable: open instances OR past closed instances
+        # We want to show: past events (read-only) and currently open events
         @instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
           .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
-          .where("shows.date_and_time > ?", Time.current)
           .where.not(status: "cancelled")
           .order("shows.date_and_time ASC")
+
+        # For the right-side list, only show current and upcoming (not past closed)
+        @upcoming_instances = @instances.select do |inst|
+          inst.show.date_and_time > Time.current || inst.open?
+        end
 
         # Allow selecting a specific instance via params
         if params[:instance_id].present?
           @current_instance = @instances.find_by(id: params[:instance_id])
         end
-        @current_instance ||= @instances.first
+        # Default to first open instance, or first upcoming, or just first
+        @current_instance ||= @instances.find(&:open?) || @upcoming_instances.first || @instances.last
       elsif @sign_up_form.shared_pool?
         # For shared_pool, get the single instance (no show association)
         @current_instance = @sign_up_form.sign_up_form_instances.where(show_id: nil).first
@@ -496,7 +503,79 @@ module Manage
                   notice: "Sign-up form restored"
     end
 
+    # Queue assignment UI for admin_assigns mode
+    def assign
+      unless @sign_up_form.admin_assigns?
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "Assignment is only available for forms with 'I'll assign people to slots' mode"
+        return
+      end
+
+      load_assignment_data
+    end
+
+    def assign_registration
+      registration = SignUpRegistration.find(params[:registration_id])
+      slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
+
+      if slot.full?
+        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+                    alert: "Slot is full"
+        return
+      end
+
+      registration.assign_to_slot!(slot)
+      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+                  notice: "#{registration.display_name} assigned to #{slot.display_name}"
+    end
+
+    def unassign_registration
+      registration = SignUpRegistration.find(params[:registration_id])
+      registration.unassign!
+      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+                  notice: "#{registration.display_name} returned to queue"
+    end
+
+    def auto_assign_queue
+      @instance = find_instance_for_assignment
+      return unless @instance
+
+      assigned_count = 0
+      @instance.queued_registrations.each do |registration|
+        # Find first available slot
+        slot = @instance.sign_up_slots.available.find { |s| !s.full? }
+        break unless slot
+
+        registration.assign_to_slot!(slot)
+        assigned_count += 1
+      end
+
+      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+                  notice: "Auto-assigned #{assigned_count} people to slots"
+    end
+
     private
+
+    def load_assignment_data
+      @instance = find_instance_for_assignment
+      return unless @instance
+
+      @slots = @instance.sign_up_slots.order(:position).includes(:sign_up_registrations)
+      @queue = @instance.queued_registrations.includes(:person)
+      @assigned = @instance.sign_up_registrations.assigned.includes(:person, :sign_up_slot)
+    end
+
+    def find_instance_for_assignment
+      if params[:instance_id].present?
+        @sign_up_form.sign_up_form_instances.find_by(id: params[:instance_id])
+      elsif @sign_up_form.repeated?
+        @sign_up_form.sign_up_form_instances.joins(:show)
+          .where("shows.date_and_time > ?", Time.current)
+          .order("shows.date_and_time ASC").first
+      else
+        @sign_up_form.sign_up_form_instances.first
+      end
+    end
 
     def set_production
       @production = Current.organization.productions.find(params[:production_id])
@@ -528,6 +607,7 @@ module Manage
         :closes_mode, :closes_offset_value, :closes_offset_unit,
         :opens_at, :closes_at,
         :notify_on_registration,
+        :queue_limit, :queue_carryover,
         event_type_filter: []
       )
     end

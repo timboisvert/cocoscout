@@ -20,9 +20,10 @@
     - cant_make_it_person: Person to generate vacancy token for (default: nil)
     - my_vacancies: Array of vacancies user created for this show (default: [])
     - has_groups: Whether the user has any groups (used to determine if headshot should be shown)
-    - right_panel: Type of right panel content (:cast_assignment, :availability, :cast_summary, or nil for no panel)
+    - right_panel: Type of right panel content (:cast_assignment, :availability, :cast_summary, :countdown, or nil for no panel)
     - entity_assignments: Array of {entity:, role_assignments:} for multiple stacked cast assignment panels
     - cast_summary: Hash with {assignments_count:, roles_count:, vacancies:} for cast summary panel
+    - closes_at: DateTime for countdown right panel (when right_panel: :countdown)
 %>
 
 <%
@@ -344,6 +345,15 @@
           <span class="text-sm text-gray-400 pl-2">No roles</span>
         <% end %>
       </div>
+    </div>
+
+  <% elsif right_panel == :countdown && local_assigns[:closes_at].present? && local_assigns[:closes_at] > Time.current %>
+    <%# Right Section: Countdown timer for closing time %>
+    <div class="flex-shrink-0 w-32 sm:w-40 md:border-l border-gray-200 md:pl-4 flex flex-col items-center justify-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0"
+         data-controller="countdown"
+         data-countdown-until-value="<%= local_assigns[:closes_at].iso8601 %>">
+      <span class="text-xs text-gray-500 uppercase tracking-wide">Closes</span>
+      <span class="text-sm font-semibold text-gray-700 tabular-nums" data-countdown-target="clock">--</span>
     </div>
 
   <% elsif right_panel == :availability && local_assigns[:entity].present? %>

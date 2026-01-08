@@ -58,6 +58,9 @@
         </svg>
       </button>
       <div class="flex items-center gap-2">
+        <% if @sign_up_form.admin_assigns? %>
+          <%= render "shared/button", text: "Assign Slots", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "primary", size: "small", icon: "users" %>
+        <% end %>
         <%= render "shared/button", text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
         <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
       </div>
@@ -97,29 +100,61 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%# Left Column - Registrations (50%) %>
       <div>
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="event-picker-modal">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <% if @current_instance %>
-            <%# Event Navigator Header %>
             <%
               instance_slots = @current_instance.sign_up_slots
               instance_registrations = instance_slots.joins(:sign_up_registrations).where(sign_up_registrations: { status: [:confirmed, :pending] }).count
               instance_capacity = instance_slots.sum(:capacity)
+              is_instance_open = @current_instance.open?
+              is_instance_closed = @current_instance.closed? || @current_instance.show.date_and_time <= Time.current
             %>
+            <%# Event Navigator Header with Open/Closed status %>
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 class="font-semibold text-gray-900">Registrations</h3>
-              <% if @instances.size > 1 %>
-                <button type="button" data-action="event-picker-modal#open" class="inline-flex items-center gap-1.5 text-sm text-pink-600 hover:text-pink-700 font-medium">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  Select event
-                </button>
+              <div class="flex items-center gap-3">
+                <h3 class="font-semibold text-gray-900">Registrations</h3>
+                <% if is_instance_open %>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    Open
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                    Closed
+                  </span>
+                <% end %>
+              </div>
+              <% if instance_capacity < 1000 %>
+                <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> spots filled</span>
+              <% else %>
+                <span class="text-sm text-gray-500"><%= instance_registrations %> registered</span>
               <% end %>
             </div>
 
-            <%# Current Event using show_row style %>
+            <%# Urgent countdown bar - only show if under 24 hours %>
+            <%
+              instance_closes_at = @current_instance.closes_at
+              seconds_until_instance_close = instance_closes_at.present? ? (instance_closes_at - Time.current).to_i : 0
+            %>
+            <% if is_instance_open && instance_closes_at.present? && seconds_until_instance_close > 0 && seconds_until_instance_close < 86400 %>
+              <div class="px-5 py-2 bg-pink-500 flex items-center"
+                   data-controller="countdown"
+                   data-countdown-until-value="<%= instance_closes_at.iso8601 %>">
+                <span class="text-white font-medium text-sm">Closes in </span>
+                <span class="text-white font-semibold text-sm tabular-nums ml-1" data-countdown-target="clock">--</span>
+              </div>
+            <% end %>
+
+            <%# Current Event using show_row style with arrows %>
             <div class="px-3 py-3 bg-gray-50 border-b border-gray-100">
               <div class="flex items-center gap-2">
                 <% if @instances.size > 1 %>
-                  <% prev_instance = @instances.to_a[@instances.find_index(@current_instance).to_i - 1] if @instances.find_index(@current_instance).to_i > 0 %>
+                  <% current_idx = @instances.find_index(@current_instance).to_i %>
+                  <% prev_instance = current_idx > 0 ? @instances.to_a[current_idx - 1] : nil %>
                   <% if prev_instance %>
                     <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: prev_instance.id),
                         class: "p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 shrink-0",
@@ -139,7 +174,7 @@
                 </div>
 
                 <% if @instances.size > 1 %>
-                  <% next_instance_nav = @instances.to_a[@instances.find_index(@current_instance).to_i + 1] %>
+                  <% next_instance_nav = @instances.to_a[current_idx + 1] %>
                   <% if next_instance_nav %>
                     <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: next_instance_nav.id),
                         class: "p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 shrink-0",
@@ -152,39 +187,6 @@
                 <% end %>
               </div>
             </div>
-
-            <%# Spots filled indicator %>
-            <div class="px-5 py-2 bg-white border-b border-gray-100">
-              <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> spots filled</span>
-            </div>
-
-            <%# Event Picker Modal %>
-            <% if @instances.size > 1 %>
-              <div class="hidden fixed inset-0 z-50" data-event-picker-modal-target="modal">
-                <div class="absolute inset-0 bg-black/50" data-action="click->event-picker-modal#close"></div>
-                <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white rounded-lg shadow-xl flex flex-col max-h-[80vh]">
-                  <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-                    <h3 class="font-semibold text-gray-900">Select Event</h3>
-                    <button type="button" data-action="event-picker-modal#close" class="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                  </div>
-                  <div class="flex-1 overflow-y-auto p-3 space-y-1">
-                    <% @instances.each do |inst| %>
-                      <% is_current = inst == @current_instance %>
-                      <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: inst.id),
-                          class: "block #{is_current ? 'ring-2 ring-pink-500 ring-offset-1 rounded-lg' : ''}",
-                          data: { turbo_action: "replace" } do %>
-                        <%= render partial: "shared/show_row", locals: {
-                          show: inst.show,
-                          show_location: true
-                        } %>
-                      <% end %>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
 
             <%# All Slots with Registrations %>
             <% slots = @current_instance.sign_up_slots.order(:position) %>
@@ -203,79 +205,83 @@
         </div>
       </div>
 
-      <%# Right Column - Hero + Share (50%) %>
+      <%# Right Column - Events List + Share (50%) %>
       <div class="space-y-6">
-        <%# Upcoming Events Accordion %>
+        <%# Upcoming Events List (clickable, scrollable) %>
         <%
           is_auto_sync = @sign_up_form.event_matching == 'all'
           event_types_label = if @sign_up_form.event_matching == 'event_types' && @sign_up_form.event_type_filter.present?
             @sign_up_form.event_type_filter.map(&:titleize).to_sentence
           end
         %>
-        <div class="bg-white border border-gray-200 rounded-lg" data-controller="accordion">
-          <button type="button" class="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-t-lg" data-action="accordion#toggle">
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <span class="text-sm font-medium text-gray-700">
               <% if is_auto_sync %>
-                Enabled for all upcoming events
+                All upcoming events
               <% elsif event_types_label %>
-                Enabled for upcoming <%= event_types_label %> events
+                Upcoming <%= event_types_label %> events
               <% else %>
-                Enabled for selected events
+                Upcoming events
               <% end %>
             </span>
-            <div class="flex items-center gap-2">
-              <% if is_auto_sync %>
-                <span class="inline-flex items-center gap-1 text-xs font-medium text-pink-600">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                  Auto-sync
-                </span>
-              <% end %>
-              <svg class="w-5 h-5 text-gray-400 transition-transform" data-accordion-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </div>
-          </button>
-          <div class="hidden border-t border-gray-100" data-accordion-target="content">
-            <% future_instances = @sign_up_form.sign_up_form_instances
-                 .includes(:show)
-                 .joins(:show)
-                 .where("shows.date_and_time > ?", Time.current)
-                 .order("shows.date_and_time ASC")
-                 .limit(20) %>
-            <% if future_instances.any? %>
-              <div class="p-3 space-y-1">
-                <% future_instances.each do |instance| %>
-                  <%
-                    is_cancelled = instance.cancelled? || instance.show.canceled?
-                    days_until = ((instance.show.date_and_time - Time.current) / 1.day).to_i
-                    is_far_away = days_until > 7 && !is_cancelled
-                  %>
-                  <div class="<%= is_cancelled ? 'opacity-50' : (is_far_away ? 'opacity-40' : '') %>">
-                    <%= render partial: "shared/show_row", locals: {
-                      show: instance.show,
-                      show_location: true,
-                      show_canceled: is_cancelled
-                    } %>
-                  </div>
-                <% end %>
-              </div>
-              <% if is_auto_sync %>
-                <div class="px-5 py-3 bg-pink-50 border-t border-pink-100 flex items-center gap-2 rounded-b-lg">
-                  <span class="relative flex h-2 w-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
-                  </span>
-                  <span class="text-xs text-pink-700">New events are automatically added when they're created</span>
-                </div>
-              <% end %>
-            <% else %>
-              <div class="px-5 py-6 text-center text-gray-500 text-sm">
-                <% if is_auto_sync %>
-                  <p>No upcoming events yet. New events will be automatically added when they're created.</p>
-                <% else %>
-                  <p>No upcoming events configured.</p>
-                <% end %>
-              </div>
+            <% if is_auto_sync %>
+              <span class="inline-flex items-center gap-1 text-xs font-medium text-pink-600">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Auto-sync
+              </span>
             <% end %>
           </div>
+
+          <% if @upcoming_instances.present? %>
+            <%# Scrollable event list - max height of ~4 items %>
+            <div class="max-h-[280px] overflow-y-auto">
+              <div class="p-2 space-y-1">
+                <% @upcoming_instances.each do |instance| %>
+                  <%
+                    is_current = instance == @current_instance
+                    is_cancelled = instance.cancelled? || instance.show.canceled?
+                    is_open = instance.open?
+                  %>
+                  <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: instance.id),
+                      class: "block rounded-lg transition-colors #{is_current ? 'ring-2 ring-pink-500 ring-inset bg-pink-50' : 'hover:bg-gray-50'} #{is_cancelled ? 'opacity-50' : ''} #{!is_open && !is_cancelled ? 'opacity-60' : ''}",
+                      data: { turbo_action: "replace" } do %>
+                    <div class="flex items-center gap-2 p-1">
+                      <div class="flex-1">
+                        <%= render partial: "shared/show_row", locals: {
+                          show: instance.show,
+                          show_location: false,
+                          show_canceled: is_cancelled
+                        } %>
+                      </div>
+                      <% if is_open %>
+                        <span class="shrink-0 w-2 h-2 rounded-full bg-green-500 mr-2" title="Open"></span>
+                      <% elsif !is_cancelled %>
+                        <span class="shrink-0 w-2 h-2 rounded-full bg-gray-300 mr-2" title="Not yet open"></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+            <% if is_auto_sync %>
+              <div class="px-5 py-2 bg-pink-50 border-t border-pink-100 flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                </span>
+                <span class="text-xs text-pink-700">New events are automatically added</span>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="px-5 py-6 text-center text-gray-500 text-sm">
+              <% if is_auto_sync %>
+                <p>No upcoming events yet. New events will be automatically added when they're created.</p>
+              <% else %>
+                <p>No upcoming events configured.</p>
+              <% end %>
+            </div>
+          <% end %>
         </div>
 
         <%# Share Card %>
@@ -307,14 +313,38 @@
       </div>
     </div>
   <% else %>
-    <%# Non-repeated modes: 50/50 grid layout like repeated %>
+    <%# Non-repeated modes (single event, shared pool) %>
+
+    <%# Countdown Box for Single Events - only show if under 24 hours %>
+    <% if @sign_up_form.single_event? && form_status[:accepting_registrations] %>
+      <%
+        single_event_closes_at = @current_instance&.closes_at
+        seconds_until_close = single_event_closes_at.present? ? (single_event_closes_at - Time.current).to_i : 0
+      %>
+      <% if single_event_closes_at.present? && seconds_until_close > 0 && seconds_until_close < 86400 %>
+        <div class="mb-6 bg-pink-500 rounded-lg px-5 py-3"
+             data-controller="countdown"
+             data-countdown-until-value="<%= single_event_closes_at.iso8601 %>"
+             data-countdown-expired-action-value="refresh">
+          <span class="text-white font-medium">Closes in </span>
+          <span class="text-white font-semibold tabular-nums" data-countdown-target="clock">--</span>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%# 50/50 grid layout %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%# Left Column - Registrations (50%) %>
       <div>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <% total_capacity = @current_instance&.sign_up_slots&.sum(:capacity) || 0 %>
           <%= render "shared/card_header", title: "Registrations" do %>
             <span class="text-sm text-gray-500">
-              <%= @registrations.count %> of <%= @current_instance&.sign_up_slots&.sum(:capacity) || 0 %> spots filled
+              <% if total_capacity < 1000 %>
+                <%= @registrations.count %> of <%= total_capacity %> spots filled
+              <% else %>
+                <%= @registrations.count %> registered
+              <% end %>
             </span>
           <% end %>
 

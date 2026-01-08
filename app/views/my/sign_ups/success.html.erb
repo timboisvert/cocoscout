@@ -1,19 +1,25 @@
-<% content_for :title, "Sign-up Confirmed" %>
+<%
+  is_queued = @my_registrations&.any?(&:queued?)
+  page_title = is_queued ? "Joined Queue" : "Sign-up Confirmed"
+%>
+<% content_for :title, page_title %>
 
 <div class="min-h-screen bg-gray-50 py-12">
   <div class="max-w-2xl mx-auto px-4">
     <!-- Success Header -->
     <div class="mb-8">
       <div class="flex items-center gap-4 mb-3">
-        <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-pink-100">
-          <svg class="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full <%= is_queued ? 'bg-amber-100' : 'bg-pink-100' %>">
+          <svg class="h-6 w-6 <%= is_queued ? 'text-amber-600' : 'text-pink-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
           </svg>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 coustard-regular">You're Signed Up!</h1>
+        <h1 class="text-2xl font-bold text-gray-900 coustard-regular"><%= is_queued ? "You're in the Queue!" : "You're Signed Up!" %></h1>
       </div>
       <% if @sign_up_form.success_text.present? %>
         <p class="text-gray-600"><%= @sign_up_form.success_text %></p>
+      <% elsif is_queued %>
+        <p class="text-gray-600">The organizer will assign you to a slot.</p>
       <% else %>
         <p class="text-gray-600">Your registration has been confirmed.</p>
       <% end %>
@@ -28,20 +34,33 @@
       <% end %>
 
       <% if @my_registrations.present? %>
-        <div class="bg-pink-50 rounded-lg p-4 mb-5 border border-pink-100">
-          <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">
-            Your Slot<%= @my_registrations.count > 1 ? 's' : '' %>
-          </p>
-          <% if @my_registrations.count == 1 %>
-            <p class="text-lg font-semibold text-gray-900"><%= @my_registrations.first.sign_up_slot.display_name %></p>
-          <% else %>
-            <ul class="space-y-1">
-              <% @my_registrations.each do |reg| %>
-                <li class="text-lg font-semibold text-gray-900"><%= reg.sign_up_slot.display_name %></li>
-              <% end %>
-            </ul>
-          <% end %>
-        </div>
+        <%
+          queued_regs = @my_registrations.select(&:queued?)
+          assigned_regs = @my_registrations.reject(&:queued?)
+        %>
+        <% if queued_regs.any? %>
+          <%# Queued registration (admin_assigns mode) %>
+          <div class="bg-amber-50 rounded-lg p-4 mb-5 border border-amber-100">
+            <p class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1">Queue Position</p>
+            <p class="text-lg font-semibold text-gray-900">#<%= queued_regs.first.position %></p>
+            <p class="text-sm text-amber-700 mt-2">The organizer will assign you to a slot. You'll be notified when that happens.</p>
+          </div>
+        <% elsif assigned_regs.any? %>
+          <div class="bg-pink-50 rounded-lg p-4 mb-5 border border-pink-100">
+            <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">
+              Your Slot<%= assigned_regs.count > 1 ? 's' : '' %>
+            </p>
+            <% if assigned_regs.count == 1 %>
+              <p class="text-lg font-semibold text-gray-900"><%= assigned_regs.first.sign_up_slot.display_name %></p>
+            <% else %>
+              <ul class="space-y-1">
+                <% assigned_regs.each do |reg| %>
+                  <li class="text-lg font-semibold text-gray-900"><%= reg.sign_up_slot.display_name %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        <% end %>
 
         <% if @can_register_more %>
           <div class="mb-5 p-3 bg-blue-50 border border-blue-100 rounded-lg">

@@ -182,4 +182,55 @@ export default class extends Controller {
       form.submit()
     }
   }
+
+  joinQueue(event) {
+    event.preventDefault()
+
+    const button = event.currentTarget
+    button.disabled = true
+    button.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Joining Queue...
+    `
+
+    // Get guest info if present
+    const guestNameInput = document.getElementById('guest_name')
+    const guestEmailInput = document.getElementById('guest_email')
+
+    // Submit to the queue endpoint
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = this.submitUrlValue
+
+    const csrfToken = document.querySelector('[name="csrf-token"]')?.content
+    if (csrfToken) {
+      const tokenInput = document.createElement('input')
+      tokenInput.type = 'hidden'
+      tokenInput.name = 'authenticity_token'
+      tokenInput.value = csrfToken
+      form.appendChild(tokenInput)
+    }
+
+    if (guestNameInput?.value) {
+      const nameInput = document.createElement('input')
+      nameInput.type = 'hidden'
+      nameInput.name = 'guest_name'
+      nameInput.value = guestNameInput.value
+      form.appendChild(nameInput)
+    }
+
+    if (guestEmailInput?.value) {
+      const emailInput = document.createElement('input')
+      emailInput.type = 'hidden'
+      emailInput.name = 'guest_email'
+      emailInput.value = guestEmailInput.value
+      form.appendChild(emailInput)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+  }
 }

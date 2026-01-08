@@ -11,12 +11,11 @@
   <div class="w-full" data-controller="tabs">
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Features</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-      <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     </nav>
 
     <!-- Tab 1: Basic Information -->
@@ -64,83 +63,7 @@
       <% end %>
     </div>
 
-    <!-- Tab 2: Features -->
-    <div data-tabs-target="panel" class="hidden">
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Production Features" %>
-        <div class="p-6">
-          <p class="text-sm text-gray-500 mb-6">
-            Enable or disable features for this production. These settings control which capabilities are available.
-          </p>
-
-          <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch, data: { turbo: true }) do |form| %>
-            <div class="space-y-6">
-              <!-- Talent Pool -->
-              <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">Talent Pool</p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Manage a pool of people and groups who can be cast in shows
-                  </p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer ml-4">
-                  <%= form.check_box :has_talent_pool, { class: "sr-only peer" } %>
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
-              </div>
-
-              <!-- Roles -->
-              <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">Roles</p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Define roles and cast people to specific positions within shows
-                  </p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer ml-4">
-                  <%= form.check_box :has_roles, { class: "sr-only peer" } %>
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
-              </div>
-
-              <!-- Auditions -->
-              <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">Auditions</p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Run audition cycles to accept and evaluate submissions from talent
-                  </p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer ml-4">
-                  <%= form.check_box :has_auditions, { class: "sr-only peer" } %>
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
-              </div>
-
-              <!-- Sign-ups -->
-              <div class="flex items-center justify-between py-3">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">Sign-ups</p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Create sign-up forms with configurable slots for events like open mics, classes, or workshops
-                  </p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer ml-4">
-                  <%= form.check_box :has_sign_up_slots, { class: "sr-only peer" } %>
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
-              </div>
-            </div>
-
-            <div class="flex justify-end mt-6 pt-4 border-t border-gray-200">
-              <%= render "shared/button", text: "Save Features", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab 3: Visual Assets -->
+    <!-- Tab 2: Visual Assets -->
     <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= create_poster_manage_production_visual_assets_path(@production) %>">
       <!-- Logo Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -277,7 +200,7 @@
       </div>
     </div>
 
-    <!-- Tab 4: Notes -->
+    <!-- Tab 3: Notes -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%= render "shared/card_header", title: "Production Notes" %>
@@ -295,12 +218,12 @@
       </div>
     </div>
 
-    <!-- Tab 5: Team -->
+    <!-- Tab 4: Team -->
     <div data-tabs-target="panel" class="hidden">
       <%= render "team_permissions" %>
     </div>
 
-    <!-- Tab 6: Public Profile -->
+    <!-- Tab 5: Public Profile -->
     <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -470,7 +393,7 @@
       <% end %>
     </div>
 
-    <!-- Tab 7: Danger Zone -->
+    <!-- Tab 6: Danger Zone -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">

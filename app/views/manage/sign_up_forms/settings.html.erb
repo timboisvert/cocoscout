@@ -363,9 +363,51 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Slot selection</label>
               <%= form.select :slot_selection_mode,
-                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"]],
+                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"], ["I'll assign people to slots", "admin_assigns"]],
                 {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              <p class="text-xs text-gray-500 mt-1">
+                <% case @sign_up_form.slot_selection_mode %>
+                <% when 'auto_assign' %>
+                  Good for waitlists or when slot choice doesn't matter.
+                <% when 'admin_assigns' %>
+                  People sign up to a queue. You assign them to slots later.
+                <% else %>
+                  People select their preferred slot when signing up.
+                <% end %>
+              </p>
             </div>
+          </div>
+        </div>
+        <% end %>
+
+        <%# Queue Settings - only shown for admin_assigns mode %>
+        <% if @sign_up_form.admin_assigns? %>
+        <div class="bg-blue-50 rounded-lg border border-blue-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Queue Settings</h3>
+          <p class="text-sm text-gray-600 mb-4">Since you're assigning people to slots, registrations go into a queue first.</p>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Queue limit</label>
+              <div class="flex items-center gap-2">
+                <%= form.number_field :queue_limit, min: 1, placeholder: "Unlimited", class: "w-32 rounded-lg border border-gray-300 px-3 py-2" %>
+                <span class="text-sm text-gray-500">Leave empty for unlimited</span>
+              </div>
+            </div>
+
+            <% if @sign_up_form.repeated? %>
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-sm font-medium text-gray-900">Carry over unassigned to next event</h4>
+                <p class="text-sm text-gray-500 mt-0.5">People not assigned for one event automatically join the queue for the next</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <%= form.hidden_field :queue_carryover, value: "0" %>
+                <%= form.check_box :queue_carryover, class: "sr-only peer", value: "1" %>
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+            <% end %>
           </div>
         </div>
         <% end %>
@@ -450,21 +492,6 @@
                 <%= form.check_box :holdback_visible, class: "sr-only peer", value: "1" %>
                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
               </label>
-            </div>
-
-            <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm text-blue-800">
-                    <strong>Tip:</strong> You can manually assign people to held slots or release them later from the registrations page.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -692,11 +719,27 @@
                 <p class="text-xs text-gray-500 mt-1">Leave empty to open immediately</p>
               </div>
 
-              <%# Closes At Box %>
-              <div class="p-4 bg-gray-50 rounded-lg">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Closes at</label>
-                <%= form.datetime_local_field :closes_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2" %>
-                <p class="text-xs text-gray-500 mt-1">Leave empty to stay open indefinitely</p>
+              <%# Closes At Box with Toggle %>
+              <% has_close_date = @sign_up_form.closes_at.present? %>
+              <div class="p-4 bg-gray-50 rounded-lg" data-controller="toggle-section">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700">Set a close date</label>
+                    <p class="text-xs text-gray-500 mt-1">When disabled, sign-ups stay open until you close them manually</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox"
+                           data-toggle-section-target="toggle"
+                           data-action="toggle-section#toggle"
+                           class="sr-only peer"
+                           <%= 'checked' if has_close_date %>>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                  </label>
+                </div>
+                <div data-toggle-section-target="content" class="<%= has_close_date ? '' : 'hidden' %> mt-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Closes at</label>
+                  <%= form.datetime_local_field :closes_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2", data: { toggle_section_target: "requiredField" } %>
+                </div>
               </div>
             </div>
           <% end %>
