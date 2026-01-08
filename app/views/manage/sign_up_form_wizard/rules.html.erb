@@ -2,6 +2,7 @@
   # Calculate step number based on scope
   step_num = @wizard_state[:scope] == "shared_pool" ? 3 : 4
   is_waitlist = @wizard_state[:scope] == "shared_pool"
+  is_open_list = @wizard_state[:slot_generation_mode] == "open_list"
 
   # Default require_login to true if not set
   require_login_checked = @wizard_state[:require_login].nil? ? true : @wizard_state[:require_login]
@@ -20,6 +21,11 @@
 
   <%= form_with url: manage_sign_up_wizard_production_save_rules_path(@production), method: :post, local: true, data: { controller: "rules-form" } do |form| %>
     <div class="space-y-8">
+      <% if is_waitlist %>
+      <%# For waitlists, use sensible defaults - no need to show this section %>
+      <input type="hidden" name="registrations_per_person" value="1">
+      <input type="hidden" name="slot_selection_mode" value="auto_assign">
+      <% else %>
       <!-- Registration Limits Section -->
       <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
         <h3 class="font-semibold text-gray-900 mb-4">Registration Limits</h3>
@@ -56,6 +62,25 @@
             </p>
           </div>
         </div>
+      </div>
+      <% end %>
+
+      <!-- Show Registrations Section -->
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold text-gray-900">Show registered names</h3>
+            <p class="text-sm text-gray-500 mt-1">Display who's signed up in each slot</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="show_registrations" value="0">
+            <input type="checkbox" name="show_registrations" value="1"
+                   <%= "checked" if @wizard_state[:show_registrations] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+        <p class="text-sm text-gray-500 mt-3">When enabled, the names of registered participants will be displayed below each slot on the sign-up form. This helps participants see who else is signed up.</p>
       </div>
 
       <% unless is_waitlist %>
@@ -165,7 +190,8 @@
       <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
         <h3 class="font-semibold text-gray-900 mb-4">Changes & Cancellations</h3>
 
-        <!-- Allow Editing -->
+        <!-- Allow Editing (not for open_list - nothing to edit) -->
+        <% unless is_open_list %>
         <div class="space-y-3">
           <div class="flex items-center justify-between">
             <div>
@@ -215,6 +241,7 @@
           </div>
           <% end %>
         </div>
+        <% end %>
 
         <div class="border-t border-gray-200 my-4"></div>
 
@@ -269,6 +296,7 @@
           <% end %>
         </div>
       </div>
+
     </div>
 
     <div class="mt-8 flex justify-between">

@@ -146,7 +146,8 @@ module Manage
 
       # Load audition sessions for audition availability section if enabled
       if @audition_cycle.include_audition_availability_section
-        @audition_sessions = @audition_cycle.audition_sessions.where("start_at >= ?", Time.current).order(:start_at)
+        # For preview, show all sessions (not just future ones) so managers can see what was set up
+        @audition_sessions = @audition_cycle.audition_sessions.order(:start_at)
 
         # Initialize empty audition availability data for preview
         @audition_availability = {}

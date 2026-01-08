@@ -1,0 +1,105 @@
+<%#
+  Modal for moving a registration to a different slot.
+
+  Usage:
+    render "manage/sign_up_forms/move_registration_modal",
+      sign_up_form: @sign_up_form,
+      production: @production,
+      slots: @slots
+%>
+
+<div data-move-registration-modal-target="modal"
+     class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50"
+     data-action="click->move-registration-modal#close keydown.escape@window->move-registration-modal#close">
+  <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white"
+       data-action="click->move-registration-modal#stopPropagation">
+
+    <%# Header - solid pink like welcome modal %>
+    <div class="flex items-center justify-between -mx-5 -mt-5 px-5 py-4 bg-pink-500 rounded-t-lg">
+      <h3 class="text-lg font-semibold text-white">Move Registration</h3>
+      <button type="button" class="text-white/70 hover:text-white" data-action="move-registration-modal#close">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%# Person being moved - styled like person boxes elsewhere %>
+    <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200" data-move-registration-modal-target="personBox">
+      <div class="flex items-center gap-3">
+        <div data-move-registration-modal-target="personHeadshot" class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">
+          <!-- Will be populated by JS -->
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900" data-move-registration-modal-target="personName"></p>
+          <p class="text-xs text-gray-500">Select a new slot below</p>
+        </div>
+      </div>
+    </div>
+
+    <%# Form %>
+    <%= form_with url: "#", method: :patch, local: true,
+                  data: { move_registration_modal_target: "form" } do |f| %>
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Select new slot</label>
+
+        <div class="border border-gray-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto divide-y divide-gray-100" data-move-registration-modal-target="slotList">
+          <% slots.each do |slot| %>
+            <% registrations = slot.sign_up_registrations.active.includes(:person).order(:position) %>
+            <% is_available = !slot.is_held && slot.spots_remaining > 0 %>
+
+            <% if slot.is_held %>
+              <%# Held slot - grayed out row %>
+              <div class="px-4 py-2 bg-gray-100 text-center">
+                <span class="text-gray-500 text-sm"><%= slot.held_reason.presence || "Unavailable" %></span>
+              </div>
+            <% else %>
+              <label class="flex items-center cursor-pointer transition-colors
+                            <%= is_available ? 'hover:bg-pink-50' : 'bg-gray-50 opacity-60 cursor-not-allowed' %>"
+                     data-slot-id="<%= slot.id %>">
+                <%# Left: slot label %>
+                <div class="flex-shrink-0 w-16 flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+                  <span class="text-sm font-medium text-gray-500"><%= slot.name.presence || slot.position %></span>
+                </div>
+
+                <%# Middle: registrations or Available %>
+                <div class="flex-1 px-3 py-2 flex items-center gap-2">
+                  <% if registrations.any? %>
+                    <% reg = registrations.first %>
+                    <% headshot = reg.person&.safe_headshot_variant(:thumb) %>
+                    <% if headshot %>
+                      <%= image_tag headshot, class: "w-6 h-6 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                        <%= reg.display_name.first.upcase %>
+                      </div>
+                    <% end %>
+                    <span class="text-sm text-gray-900"><%= reg.display_name %></span>
+                  <% else %>
+                    <span class="text-sm text-gray-400 italic">Available</span>
+                  <% end %>
+                </div>
+
+                <%# Right: faux checkbox %>
+                <div class="flex-shrink-0 px-3 py-2 flex items-center">
+                  <input type="radio"
+                         name="target_slot_id"
+                         value="<%= slot.id %>"
+                         <%= 'disabled' unless is_available %>
+                         class="w-5 h-5 accent-pink-500 focus:ring-pink-500"
+                         data-action="change->move-registration-modal#selectSlot">
+                </div>
+              </label>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Actions %>
+      <div class="flex justify-end gap-2 border-t border-gray-200 pt-4 mt-4">
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "move-registration-modal#close" } %>
+        <%= render "shared/button", text: "Move", variant: "primary", size: "small", type: :submit, data: { move_registration_modal_target: "submitButton", disabled: true } %>
+      </div>
+    <% end %>
+  </div>
+</div>

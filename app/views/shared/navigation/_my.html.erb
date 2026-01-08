@@ -7,7 +7,7 @@
       <%= render "shared/nav_link", text: "My Shows & Events", path: my_shows_path, active: controller_name == "shows" %>
       <%= render "shared/nav_link", text: "My Availability", path: my_availability_path, active: controller_name == "availability" %>
       <%= render "shared/nav_link", text: "My Auditions", path: my_auditions_path, active: controller_name == "auditions" %>
-      <%= render "shared/nav_link", text: "My Sign-ups", path: my_audition_requests_path, active: controller_name == "audition_requests" %>
+      <%= render "shared/nav_link", text: "My Sign-ups", path: my_sign_ups_path, active: controller_name == "sign_ups" && action_name == "index" %>
       <%= render "shared/nav_link", text: "My Questionnaires", path: my_questionnaires_path, active: controller_name == "questionnaires" %>
       <%= render "shared/nav_link", text: "My Shoutouts", path: my_shoutouts_path, active: controller_name == "shoutouts" %>
       <%= render "shared/nav_link", text: "My Productions", path: my_productions_path, active: controller_name == "productions" %>

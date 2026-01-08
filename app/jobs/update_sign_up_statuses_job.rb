@@ -56,8 +56,15 @@ class UpdateSignUpStatusesJob < ApplicationJob
       return "closed"
     end
 
+    # Determine the effective opens_at time
+    # For fixed schedule mode, use the form's opens_at if instance's is nil
+    effective_opens_at = instance.opens_at
+    if effective_opens_at.nil? && instance.sign_up_form&.schedule_mode == "fixed"
+      effective_opens_at = instance.sign_up_form.opens_at
+    end
+
     # Check if should be open (opens_at passed or not set)
-    if instance.opens_at.nil? || instance.opens_at <= now
+    if effective_opens_at.nil? || effective_opens_at <= now
       return "open"
     end
 

@@ -2,21 +2,22 @@
 
 class SignUpFormInstance < ApplicationRecord
   belongs_to :sign_up_form
-  belongs_to :show
+  belongs_to :show, optional: true  # Optional for shared_pool forms
 
   has_many :sign_up_slots, dependent: :destroy
   has_many :sign_up_registrations, through: :sign_up_slots
 
-  validates :status, presence: true, inclusion: { in: %w[initializing scheduled open closed cancelled] }
-  validates :show_id, uniqueness: { scope: :sign_up_form_id, message: "already has an instance for this form" }
+  validates :status, presence: true, inclusion: { in: %w[initializing updating scheduled open closed cancelled] }
+  validates :show_id, uniqueness: { scope: :sign_up_form_id, message: "already has an instance for this form", allow_nil: true }
 
   scope :initializing, -> { where(status: "initializing") }
+  scope :updating, -> { where(status: "updating") }
   scope :scheduled, -> { where(status: "scheduled") }
   scope :open_status, -> { where(status: "open") }
   scope :closed, -> { where(status: "closed") }
   scope :cancelled, -> { where(status: "cancelled") }
-  scope :active, -> { where(status: %w[initializing scheduled open]) }
-  scope :needs_status_update, -> { where(status: %w[initializing scheduled open]) }
+  scope :active, -> { where(status: %w[initializing updating scheduled open]) }
+  scope :needs_status_update, -> { where(status: %w[initializing updating scheduled open]) }
   scope :upcoming, -> { joins(:show).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC") }
 
   delegate :production, to: :sign_up_form
@@ -27,6 +28,10 @@ class SignUpFormInstance < ApplicationRecord
   # Status helpers
   def initializing?
     status == "initializing"
+  end
+
+  def updating?
+    status == "updating"
   end
 
   def scheduled?
@@ -129,21 +134,6 @@ class SignUpFormInstance < ApplicationRecord
   # Generate slots from template
   def generate_slots_from_template!
     SlotManagementService.new(sign_up_form).generate_slots_for_instance!(self)
-  end
-
-  # Update status based on current time
-  def update_status!
-    new_status = if cancelled?
-      "cancelled"
-    elsif closes_at.present? && closes_at <= Time.current
-      "closed"
-    elsif opens_at.present? && opens_at <= Time.current
-      "open"
-    else
-      "scheduled"
-    end
-
-    update!(status: new_status) if status != new_status
   end
 
   # Display helpers

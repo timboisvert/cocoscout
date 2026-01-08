@@ -51,7 +51,7 @@ class SignUpSlot < ApplicationRecord
 
     next_position = (sign_up_registrations.maximum(:position) || 0) + 1
 
-    sign_up_registrations.create!(
+    registration = sign_up_registrations.create!(
       person: person,
       guest_name: guest_name,
       guest_email: guest_email,
@@ -59,6 +59,11 @@ class SignUpSlot < ApplicationRecord
       status: "confirmed",
       registered_at: Time.current
     )
+
+    # Notify production team if enabled
+    SignUpRegistrationNotificationJob.perform_later(registration.id)
+
+    registration
   end
 
   def hold!(reason: nil)

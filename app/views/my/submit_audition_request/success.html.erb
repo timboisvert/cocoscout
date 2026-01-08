@@ -1,74 +1,106 @@
-<div class="min-h-screen bg-white">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+<% content_for :title, "Audition Request Submitted" %>
 
-    <!-- Full-Width Header -->
-    <div class="mb-8 sm:mb-10">
-      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @production.name %></h1>
-      <% if @audition_cycle.hybrid_auditions? %>
-        <p class="text-lg text-slate-600">Audition sign-up</p>
-      <% elsif @audition_cycle.video_only? %>
-        <p class="text-lg text-slate-600">Video audition submission</p>
+<div class="min-h-screen bg-gray-50 py-12">
+  <div class="max-w-2xl mx-auto px-4">
+    <!-- Success Header -->
+    <div class="mb-8">
+      <div class="flex items-center gap-4 mb-3">
+        <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-pink-100">
+          <svg class="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 coustard-regular">You're All Set!</h1>
+      </div>
+      <% if @audition_cycle.success_text.present? %>
+        <div class="text-gray-600"><%= @audition_cycle.success_text %></div>
       <% else %>
-        <p class="text-lg text-slate-600">Sign up for an in-person audition</p>
+        <p class="text-gray-600">Your audition request has been received.</p>
       <% end %>
     </div>
 
-    <!-- Success Message -->
-    <div class="bg-gradient-to-br from-green-50 to-white border border-green-200 rounded-lg p-6 sm:p-8 shadow-sm mb-6">
-      <div class="flex items-start gap-4">
-        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <div class="flex-1">
-          <h2 class="text-xl font-bold text-slate-900 mb-2">Success!</h2>
-          <div class="text-slate-700 prose prose-slate max-w-none">
-            <% if @audition_cycle.success_text.present? %>
-              <%= @audition_cycle.success_text %>
-            <% else %>
-              <p>Your audition request has been received.</p>
-            <% end %>
+    <!-- Production Details Card -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div class="mb-5">
+        <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">Production</p>
+        <p class="text-lg font-semibold text-gray-900"><%= @production.name %></p>
+        <p class="text-gray-600 mt-1">
+          <% if @audition_cycle.hybrid_auditions? %>
+            Audition sign-up
+          <% elsif @audition_cycle.video_only? %>
+            Video audition submission
+          <% else %>
+            In-person audition
+          <% end %>
+        </p>
+      </div>
+
+      <!-- What's Next -->
+      <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">What happens next?</p>
+        <ul class="space-y-2">
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="text-sm text-gray-600">You'll receive updates about your audition via email</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="text-sm text-gray-600">View your audition status anytime in your dashboard</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Profile CTA -->
+    <%= link_to edit_profile_path(Current.user.person), class: "block mt-6 group" do %>
+      <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-pink-300 hover:shadow-sm transition-all">
+        <div class="flex items-center gap-4">
+          <div class="flex-shrink-0 h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+            <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
           </div>
+          <div class="flex-1">
+            <p class="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">While you're here, polish your profile</p>
+            <p class="text-gray-500 text-sm mt-0.5">Fresh headshots and an updated bio help you stand out</p>
+          </div>
+          <svg class="h-5 w-5 text-gray-300 group-hover:text-pink-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
         </div>
       </div>
-    </div>
+    <% end %>
 
-    <!-- Next Steps -->
-    <div class="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
-      <h3 class="text-lg font-semibold text-slate-900 mb-4">What happens next?</h3>
-      <ul class="space-y-3">
-        <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    <!-- Dashboard CTA -->
+    <%= link_to my_dashboard_path, class: "block mt-4 group" do %>
+      <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-pink-300 hover:shadow-sm transition-all">
+        <div class="flex items-center gap-4">
+          <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+            <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <p class="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">Go to Dashboard</p>
+            <p class="text-gray-500 text-sm mt-0.5">View your auditions, shows, and messages</p>
+          </div>
+          <svg class="h-5 w-5 text-gray-300 group-hover:text-pink-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
-          <span class="text-sm text-slate-700">You'll receive updates about your audition via email</span>
-        </li>
-        <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span class="text-sm text-slate-700">You can view your audition status anytime in your CocoScout dashboard</span>
-        </li>
-        <li class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span class="text-sm text-slate-700">Check your email for important notifications about casting decisions</span>
-        </li>
-      </ul>
-
-      <div class="mt-6 pt-6 border-t border-slate-200">
-        <%= link_to "Go to Dashboard", my_dashboard_path, class: "inline-block rounded-lg px-5 py-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold cursor-pointer transition shadow-sm hover:shadow-md" %>
+        </div>
       </div>
+    <% end %>
+
+    <!-- CocoScout Footer -->
+    <div class="mt-8 pb-8 text-center">
+      <%= link_to root_path, class: "inline-flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors" do %>
+        <%= image_tag "cocoscoutsmall.png", class: "h-5 w-5", alt: "CocoScout" %>
+        <span class="text-sm font-medium">CocoScout</span>
+      <% end %>
     </div>
-
-  </div>
-
-  <!-- Coco Link -->
-  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
-    <a href="https://cocoscout.com/app" target="_blank" rel="noopener">
-      <%= render "shared/cocoscout_logo", size: :small, class: "mr-5" %>
-    </a>
   </div>
 </div>

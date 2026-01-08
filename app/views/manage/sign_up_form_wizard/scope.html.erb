@@ -17,16 +17,16 @@
         <p class="text-sm text-gray-500 mt-1">Create a sign-up form for one specific event. Best for standalone workshops, classes, or special events.</p>
       </div>
 
-      <!-- Per Event -->
-      <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:scope] == 'per_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+      <!-- Repeated Event -->
+      <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:scope] == 'repeated' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
            data-option-select-target="option"
-           data-value="per_event"
+           data-value="repeated"
            data-action="click->option-select#select">
-        <input type="radio" name="scope" value="per_event"
-               <%= "checked" if @wizard_state[:scope] == 'per_event' %>
+        <input type="radio" name="scope" value="repeated"
+               <%= "checked" if @wizard_state[:scope] == 'repeated' %>
                class="sr-only"
                data-option-select-target="input">
-        <p class="font-medium text-gray-900">Per Event</p>
+        <p class="font-medium text-gray-900">Repeated Event</p>
         <p class="text-sm text-gray-500 mt-1">Create separate registration pools for each matching event. Perfect for open mics, recurring shows, or any events where each performance needs its own sign-up list.</p>
         <p class="text-xs text-gray-400 mt-1">New events that match your criteria will automatically get their own sign-up form.</p>
       </div>

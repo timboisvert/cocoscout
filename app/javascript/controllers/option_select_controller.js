@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Generic controller for click-to-select option cards (no visible radio buttons)
 export default class extends Controller {
-    static targets = ["option", "input", "conditionalRelative", "conditionalFixed"]
+    static targets = ["option", "input", "conditionalRelative", "conditionalFixed", "conditionalScheduled"]
     static values = { selected: String }
 
     connect() {
@@ -10,7 +10,7 @@ export default class extends Controller {
     }
 
     select(event) {
-        const option = event.currentTarget
+        const option = event.currentTarget.closest("[data-option-select-target='option']") || event.currentTarget
         const value = option.dataset.value
 
         // Find the hidden input for this option and select it
@@ -50,6 +50,15 @@ export default class extends Controller {
                 this.conditionalFixedTarget.classList.remove("hidden")
             } else {
                 this.conditionalFixedTarget.classList.add("hidden")
+            }
+        }
+
+        // Handle waitlist scheduled section
+        if (this.hasConditionalScheduledTarget) {
+            if (this.selectedValue === "scheduled") {
+                this.conditionalScheduledTarget.classList.remove("hidden")
+            } else {
+                this.conditionalScheduledTarget.classList.add("hidden")
             }
         }
     }

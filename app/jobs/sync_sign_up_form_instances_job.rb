@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Job to sync sign-up form instances for per_event forms
+# Job to sync sign-up form instances for repeated forms
 # This is a maintenance job that can be run manually to ensure consistency.
 # Normally, instances are created automatically when shows are created (via Show callbacks).
 #
@@ -25,8 +25,8 @@ class SyncSignUpFormInstancesJob < ApplicationJob
   private
 
   def sync_production(production)
-    # Find all per_event sign-up forms that are active
-    production.sign_up_forms.where(scope: "per_event", active: true).find_each do |form|
+    # Find all repeated sign-up forms that are active
+    production.sign_up_forms.where(scope: "repeated", active: true).find_each do |form|
       sync_form_instances(form)
     end
   end

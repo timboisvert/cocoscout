@@ -115,7 +115,7 @@
     <% end %>
   <% else %>
     <%= form_with url: manage_sign_up_wizard_production_save_events_path(@production), method: :post, local: true, data: { controller: "event-matching multi-event-select", "event-matching-selected-value": @wizard_state[:event_matching] || 'all' } do |form| %>
-      <!-- Per Event Matching Options -->
+      <!-- Repeated Event Matching Options -->
       <div class="space-y-4">
         <!-- All Events -->
         <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:event_matching] == 'all' || @wizard_state[:event_matching].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"

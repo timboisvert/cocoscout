@@ -51,12 +51,12 @@ class SignUpFormStatusService
   end
 
   # ===========================================
-  # PER-EVENT SPECIFIC
+  # REPEATED EVENT SPECIFIC
   # ===========================================
 
   # Get all upcoming instances with their status
   def upcoming_instances
-    return [] unless sign_up_form.per_event?
+    return [] unless sign_up_form.repeated?
 
     @upcoming_instances ||= sign_up_form.sign_up_form_instances
       .includes(:show, :sign_up_slots)
@@ -78,12 +78,22 @@ class SignUpFormStatusService
     upcoming_instances.select { |i| i[:status] == "scheduled" }
   end
 
+  # Get instances that are still initializing
+  def initializing_instances
+    upcoming_instances.select { |i| i[:status] == "initializing" }
+  end
+
+  # Get instances that are updating (settings recently changed)
+  def updating_instances
+    upcoming_instances.select { |i| i[:status] == "updating" }
+  end
+
   private
 
   def build_status
     case sign_up_form.scope
-    when "per_event"
-      build_per_event_status
+    when "repeated"
+      build_repeated_status
     when "single_event"
       build_single_event_status
     when "shared_pool"
@@ -93,7 +103,7 @@ class SignUpFormStatusService
     end
   end
 
-  def build_per_event_status
+  def build_repeated_status
     # Find currently open instances (for upcoming events)
     open = open_instances.first
     scheduled = scheduled_instances.first
@@ -140,6 +150,34 @@ class SignUpFormStatusService
         next_opening: scheduled,
         open_count: 0,
         scheduled_count: scheduled_instances.count,
+        total_registrations: 0,
+        total_capacity: 0
+      }
+    elsif updating_instances.any?
+      # Has upcoming events but they're updating after settings change
+      {
+        state: :updating,
+        label: "Updating...",
+        color: "blue",
+        accepting_registrations: false,
+        next_event: next_upcoming,
+        next_opening: nil,
+        open_count: 0,
+        scheduled_count: 0,
+        total_registrations: 0,
+        total_capacity: 0
+      }
+    elsif initializing_instances.any?
+      # Has upcoming events but they're still initializing
+      {
+        state: :initializing,
+        label: "Initializing...",
+        color: "blue",
+        accepting_registrations: false,
+        next_event: next_upcoming,
+        next_opening: nil,
+        open_count: 0,
+        scheduled_count: 0,
         total_registrations: 0,
         total_capacity: 0
       }
@@ -211,6 +249,17 @@ class SignUpFormStatusService
         accepting_registrations: false,
         event_date: show&.date_and_time,
         instance_status: "initializing",
+        total_registrations: total_regs,
+        total_capacity: total_cap
+      }
+    elsif instance.status == "updating"
+      {
+        state: :updating,
+        label: "Updating...",
+        color: "blue",
+        accepting_registrations: false,
+        event_date: show&.date_and_time,
+        instance_status: "updating",
         total_registrations: total_regs,
         total_capacity: total_cap
       }
@@ -372,8 +421,8 @@ class SignUpFormStatusService
     end
 
     case sign_up_form.scope
-    when "per_event"
-      build_per_event_explanation(explanations)
+    when "repeated"
+      build_repeated_explanation(explanations)
     when "single_event"
       build_single_event_explanation(explanations)
     when "shared_pool"
@@ -383,7 +432,7 @@ class SignUpFormStatusService
     explanations
   end
 
-  def build_per_event_explanation(explanations)
+  def build_repeated_explanation(explanations)
     # Check event matching rules
     case sign_up_form.event_matching
     when "all"
@@ -412,17 +461,24 @@ class SignUpFormStatusService
     end
 
     if open_count > 0
-      explanations << { check: true, text: "#{open_count} event#{'s' if open_count != 1} currently accepting sign-ups" }
+      # Show timing context for open events
+      next_open = open_instances.first
+      timing_context = build_repeated_timing_context(next_open)
+      if timing_context
+        explanations << { check: true, text: "#{open_count} event#{'s' if open_count != 1} currently accepting sign-ups (#{timing_context})" }
+      else
+        explanations << { check: true, text: "#{open_count} event#{'s' if open_count != 1} currently accepting sign-ups" }
+      end
     elsif scheduled_count > 0
       next_open = scheduled_instances.first
       if next_open && next_open[:opens_at]
         days_until = (next_open[:opens_at].to_date - @now.to_date).to_i
         time_context = if days_until == 0
-          "today at #{next_open[:opens_at].strftime('%l:%M %p').strip}"
+          "today at #{next_open[:opens_at].strftime('%-l:%M %p').strip}"
         elsif days_until == 1
-          "tomorrow at #{next_open[:opens_at].strftime('%l:%M %p').strip}"
+          "tomorrow at #{next_open[:opens_at].strftime('%-l:%M %p').strip}"
         else
-          next_open[:opens_at].strftime("%B %d at %l:%M %p").strip
+          next_open[:opens_at].strftime("%B %d at %-l:%M %p").strip
         end
         explanations << { check: false, text: "Next event opens #{time_context}" }
       else
@@ -442,7 +498,7 @@ class SignUpFormStatusService
 
     # Show event info with date context
     days_until = (show.date_and_time.to_date - @now.to_date).to_i
-    event_info = "#{show.event_type.titleize} on #{show.date_and_time.strftime('%B %d, %Y')}"
+    event_info = "#{show.event_type.titleize} on #{show.date_and_time.strftime('%B %d, %Y at %-I:%M %p')}"
     if days_until == 0
       event_info += " (today)"
     elsif days_until == 1
@@ -459,16 +515,24 @@ class SignUpFormStatusService
 
     case instance&.status
     when "open"
-      explanations << { check: true, text: "Registration window is open" }
+      # Include open date context if there was a scheduled opens_at
+      if instance.opens_at.present?
+        opened_on = instance.opens_at.strftime("%B %-d").strip
+        explanations << { check: true, text: "Registration window is open (opened #{opened_on})" }
+      else
+        explanations << { check: true, text: "Registration window is open" }
+      end
     when "scheduled"
-      if instance.opens_at
-        days_until = (instance.opens_at.to_date - @now.to_date).to_i
+      # For fixed schedule forms, use the form's opens_at if instance doesn't have one
+      effective_opens_at = instance.opens_at || @sign_up_form.opens_at
+      if effective_opens_at
+        days_until = (effective_opens_at.to_date - @now.to_date).to_i
         time_context = if days_until == 0
-          "today at #{instance.opens_at.strftime('%l:%M %p').strip}"
+          "today at #{effective_opens_at.strftime('%-l:%M %p').strip}"
         elsif days_until == 1
-          "tomorrow at #{instance.opens_at.strftime('%l:%M %p').strip}"
+          "tomorrow at #{effective_opens_at.strftime('%-l:%M %p').strip}"
         else
-          instance.opens_at.strftime("%B %d at %l:%M %p").strip
+          effective_opens_at.strftime("%B %d at %-l:%M %p").strip
         end
         explanations << { check: false, text: "Registration opens #{time_context}" }
       else
@@ -483,14 +547,57 @@ class SignUpFormStatusService
     if instance&.closes_at && instance.closes_at > @now
       days_until = (instance.closes_at.to_date - @now.to_date).to_i
       time_context = if days_until == 0
-        "today at #{instance.closes_at.strftime('%l:%M %p').strip}"
+        "today at #{instance.closes_at.strftime('%-l:%M %p').strip}"
       elsif days_until == 1
-        "tomorrow at #{instance.closes_at.strftime('%l:%M %p').strip}"
+        "tomorrow at #{instance.closes_at.strftime('%-l:%M %p').strip}"
       else
-        instance.closes_at.strftime("%B %d at %l:%M %p").strip
+        instance.closes_at.strftime("%B %d at %-l:%M %p").strip
       end
       explanations << { check: true, text: "Closes #{time_context}" }
     end
+  end
+
+  def build_repeated_timing_context(instance_status)
+    return nil unless instance_status
+
+    # Build a context string like "opens 7 days before, closes when event starts"
+    parts = []
+
+    # Opening info
+    if sign_up_form.schedule_mode == "relative" && sign_up_form.opens_days_before.present? && sign_up_form.opens_days_before > 0
+      parts << "opens #{sign_up_form.opens_days_before} day#{'s' if sign_up_form.opens_days_before != 1} before"
+    end
+
+    # Closing info
+    if sign_up_form.schedule_mode == "relative"
+      case sign_up_form.closes_mode
+      when "event_start"
+        parts << "closes when event starts"
+      when "event_end"
+        parts << "closes when event ends"
+      when "custom"
+        if sign_up_form.closes_offset_value.present?
+          value = sign_up_form.closes_offset_value.abs
+          unit = sign_up_form.closes_offset_unit || "hours"
+          direction = sign_up_form.closes_offset_value < 0 ? "after" : "before"
+          parts << "closes #{value} #{unit} #{direction} event"
+        end
+      end
+    end
+
+    # Add next event timing
+    if instance_status[:days_until_show]
+      days = instance_status[:days_until_show].round
+      if days == 0
+        parts << "next event today"
+      elsif days == 1
+        parts << "next event tomorrow"
+      elsif days > 0
+        parts << "next event in #{days} days"
+      end
+    end
+
+    parts.any? ? parts.join(", ") : nil
   end
 
   def build_shared_pool_explanation(explanations)
@@ -499,11 +606,11 @@ class SignUpFormStatusService
       if sign_up_form.opens_at > @now
         days_until = (sign_up_form.opens_at.to_date - @now.to_date).to_i
         time_context = if days_until == 0
-          "today at #{sign_up_form.opens_at.strftime('%l:%M %p').strip}"
+          "today at #{sign_up_form.opens_at.strftime('%-l:%M %p').strip}"
         elsif days_until == 1
-          "tomorrow at #{sign_up_form.opens_at.strftime('%l:%M %p').strip}"
+          "tomorrow at #{sign_up_form.opens_at.strftime('%-l:%M %p').strip}"
         else
-          sign_up_form.opens_at.strftime("%B %d at %l:%M %p").strip
+          sign_up_form.opens_at.strftime("%B %d at %-l:%M %p").strip
         end
         explanations << { check: false, text: "Opens #{time_context}" }
       else
@@ -520,11 +627,11 @@ class SignUpFormStatusService
       else
         days_until = (sign_up_form.closes_at.to_date - @now.to_date).to_i
         time_context = if days_until == 0
-          "today at #{sign_up_form.closes_at.strftime('%l:%M %p').strip}"
+          "today at #{sign_up_form.closes_at.strftime('%-l:%M %p').strip}"
         elsif days_until == 1
-          "tomorrow at #{sign_up_form.closes_at.strftime('%l:%M %p').strip}"
+          "tomorrow at #{sign_up_form.closes_at.strftime('%-l:%M %p').strip}"
         else
-          sign_up_form.closes_at.strftime("%B %d at %l:%M %p").strip
+          sign_up_form.closes_at.strftime("%B %d at %-l:%M %p").strip
         end
         explanations << { check: true, text: "Closes #{time_context}" }
       end

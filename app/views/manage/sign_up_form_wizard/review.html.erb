@@ -1,6 +1,6 @@
 <%
   # Calculate step number based on scope
-  step_num = @wizard_state[:scope] == "shared_pool" ? 5 : 6
+  step_num = @wizard_state[:scope] == "shared_pool" ? 6 : 7
 %>
 <%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Review" } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review & Create</h2>
@@ -30,8 +30,8 @@
                 <% if @selected_show %>
                   — <span class="text-pink-600"><%= @selected_show.name_with_date %></span>
                 <% end %>
-              <% when 'per_event' %>
-                Per Event (separate registrations for each event)
+              <% when 'repeated' %>
+                Repeated Event (separate registrations for each event)
               <% when 'shared_pool' %>
                 General Waitlist (one sign-up list not tied to specific events)
               <% end %>
@@ -41,8 +41,8 @@
         </div>
       </div>
 
-      <!-- Events (for per_event scope) -->
-      <% if @wizard_state[:scope] == 'per_event' %>
+      <!-- Events (for repeated scope) -->
+      <% if @wizard_state[:scope] == 'repeated' %>
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div class="flex justify-between items-start">
             <div>
@@ -200,10 +200,27 @@
           <%= link_to "Edit", manage_sign_up_wizard_production_schedule_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
         </div>
       </div>
+
+      <!-- Notifications -->
+      <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium text-gray-900">Notifications</h3>
+            <p class="text-sm text-gray-600 mt-1">
+              <% if @wizard_state[:notify_on_registration] %>
+                Team will be notified when someone registers
+              <% else %>
+                No notifications on registration
+              <% end %>
+            </p>
+          </div>
+          <%= link_to "Edit", manage_sign_up_wizard_production_notifications_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
     </div>
 
     <div class="mt-8 flex justify-between">
-      <%= link_to manage_sign_up_wizard_production_schedule_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+      <%= link_to manage_sign_up_wizard_production_notifications_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>

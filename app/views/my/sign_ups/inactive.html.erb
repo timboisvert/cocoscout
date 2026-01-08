@@ -1,0 +1,29 @@
+<% content_for :title, "Sign-up Not Available" %>
+
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-2xl mx-auto px-4">
+    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
+      <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
+        <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+
+      <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-4">Sign-up Not Available</h1>
+
+      <p class="text-gray-600 mb-6">
+        This sign-up form is not currently accepting registrations.
+        <% form_status = @sign_up_form.current_status %>
+        <% if form_status[:state] == :scheduled && form_status[:next_opening] %>
+          It will open <%= form_status[:label].downcase %>.
+        <% elsif form_status[:state] == :closed %>
+          Registration has closed.
+        <% end %>
+      </p>
+
+      <% if authenticated? %>
+        <%= link_to "Back to Dashboard", my_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <% end %>
+    </div>
+  </div>
+</div>

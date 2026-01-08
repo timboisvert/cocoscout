@@ -3,7 +3,7 @@
 # SlotManagementService handles all slot lifecycle operations:
 # - Creating slots when sign-up forms are created
 # - Updating slots when form settings change
-# - Creating slots for new shows that match per-event forms
+# - Creating slots for new shows that match repeated forms
 # - Syncing slots across instances when templates change
 #
 # This is the central authority for slot creation and management.
@@ -27,8 +27,8 @@ class SlotManagementService
     @errors = []
 
     case sign_up_form.scope
-    when "per_event"
-      provision_per_event_slots!
+    when "repeated"
+      provision_repeated_slots!
     when "single_event"
       provision_single_event_slots!
     when "shared_pool"
@@ -42,8 +42,8 @@ class SlotManagementService
   # Returns a preview of changes without applying them
   def preview_slot_changes
     case sign_up_form.scope
-    when "per_event"
-      preview_per_event_changes
+    when "repeated"
+      preview_repeated_changes
     when "single_event"
       preview_single_event_changes
     when "shared_pool"
@@ -51,28 +51,110 @@ class SlotManagementService
     end
   end
 
+  # Analyze the impact of slot changes on existing registrations
+  # Returns a hash with detailed analysis for the confirm page
+  def analyze_slot_change_impact
+    new_slot_count = build_slot_template.size
+
+    # Get current slots based on scope
+    current_slots = case sign_up_form.scope
+    when "repeated"
+      sign_up_form.sign_up_form_instances.first&.sign_up_slots&.order(:position)&.to_a || []
+    when "single_event"
+      sign_up_form.sign_up_form_instances.first&.sign_up_slots&.order(:position)&.to_a || []
+    when "shared_pool"
+      sign_up_form.sign_up_slots.order(:position).to_a
+    else
+      []
+    end
+
+    current_slot_count = current_slots.size
+
+    # Identify slots that would be removed (if reducing count)
+    slots_being_removed = new_slot_count < current_slot_count ? current_slots[new_slot_count..] : []
+
+    # Find registrations in slots being removed
+    affected_registrations = slots_being_removed.flat_map do |slot|
+      slot.sign_up_registrations.active.includes(:person).map do |reg|
+        {
+          registration: reg,
+          slot: slot,
+          person: reg.person,
+          display_name: reg.display_name
+        }
+      end
+    end
+
+    # Build analysis result
+    {
+      current_slot_count: current_slot_count,
+      new_slot_count: new_slot_count,
+      is_increasing: new_slot_count > current_slot_count,
+      is_decreasing: new_slot_count < current_slot_count,
+      slots_being_added: [ new_slot_count - current_slot_count, 0 ].max,
+      slots_being_removed: slots_being_removed,
+      affected_registrations: affected_registrations,
+      has_affected_registrations: affected_registrations.any?,
+      total_current_registrations: current_slots.sum { |s| s.sign_up_registrations.active.count },
+      current_slots: current_slots,
+      preview_slots: build_slot_template
+    }
+  end
+
   # Apply slot changes based on the current form settings
-  def apply_slot_changes!(preserve_registrations: true)
+  # affected_registration_action can be:
+  #   :reassign - move registrations to available slots (default)
+  #   :cancel - cancel the registrations
+  def apply_slot_changes!(affected_registration_action: :reassign)
     @errors = []
+    @affected_registration_action = affected_registration_action
 
     case sign_up_form.scope
-    when "per_event"
-      apply_per_event_changes!(preserve_registrations)
+    when "repeated"
+      apply_repeated_changes!
     when "single_event"
-      apply_single_event_changes!(preserve_registrations)
+      apply_single_event_changes!
     when "shared_pool"
-      apply_shared_pool_changes!(preserve_registrations)
+      apply_shared_pool_changes!
     end
 
     errors.empty?
   end
 
-  # Called when a new show is created that might match per-event forms
+  # Recalculate opens_at, closes_at, and edit_cutoff_at for all instances
+  # Called when schedule settings (opens_days_before, closes_mode, etc.) change
+  def recalculate_instance_timings!
+    @errors = []
+
+    # First, set all non-cancelled instances to "updating" status
+    sign_up_form.sign_up_form_instances.where.not(status: "cancelled").update_all(status: "updating")
+
+    sign_up_form.sign_up_form_instances.where.not(status: "cancelled").find_each do |instance|
+      show = instance.show
+      next unless show
+
+      instance.update!(
+        opens_at: calculate_opens_at(show),
+        closes_at: calculate_closes_at(show),
+        edit_cutoff_at: calculate_edit_cutoff_at(show)
+      )
+    end
+
+    # Run status update job immediately to apply new timing
+    UpdateSignUpStatusesJob.perform_now
+
+    errors.empty?
+  rescue StandardError => e
+    @errors << "Failed to recalculate instance timings: #{e.message}"
+    false
+  end
+
+  # Called when a new show is created that might match repeated forms
   # This is typically called from a Show model callback or job
   def self.sync_show_with_forms!(show)
     return unless show.production
 
-    show.production.sign_up_forms.where(scope: "per_event", active: true).find_each do |form|
+    show.production.sign_up_forms.where(scope: "repeated", active: true).find_each do |form|
       next unless form.matches_event?(show)
 
       service = new(form)
@@ -82,7 +164,7 @@ class SlotManagementService
 
   # Create an instance for a specific show
   def create_instance_for_show!(show)
-    return nil unless sign_up_form.per_event?
+    return nil unless sign_up_form.repeated?
     return nil unless sign_up_form.matches_event?(show)
 
     # Check if instance already exists
@@ -183,12 +265,24 @@ class SlotManagementService
         }
       end
 
-    when "simple_capacity", "open_list"
+    when "simple_capacity"
+      # Simple capacity: one slot with capacity = slot_count
       slots << {
         position: 1,
         name: nil,
         capacity: sign_up_form.slot_count || 10
       }
+
+    when "open_list"
+      # Open list (waitlist): N slots with capacity 1 each
+      slot_count = sign_up_form.slot_count || 10
+      slot_count.times do |i|
+        slots << {
+          position: i + 1,
+          name: nil,
+          capacity: 1
+        }
+      end
     end
 
     slots
@@ -232,7 +326,7 @@ class SlotManagementService
 
   private
 
-  def provision_per_event_slots!
+  def provision_repeated_slots!
     sign_up_form.matching_shows.find_each do |show|
       create_instance_for_show!(show)
     rescue StandardError => e
@@ -242,7 +336,20 @@ class SlotManagementService
 
   def provision_single_event_slots!
     instance = sign_up_form.sign_up_form_instances.first
-    return unless instance
+
+    # Create instance if it doesn't exist
+    unless instance
+      show = sign_up_form.show
+      return unless show
+
+      instance = sign_up_form.sign_up_form_instances.create!(
+        show: show,
+        opens_at: calculate_opens_at(show),
+        closes_at: calculate_closes_at(show),
+        edit_cutoff_at: calculate_edit_cutoff_at(show),
+        status: determine_initial_status(show)
+      )
+    end
 
     generate_slots_for_instance!(instance)
   rescue StandardError => e
@@ -250,12 +357,28 @@ class SlotManagementService
   end
 
   def provision_shared_pool_slots!
-    generate_slots_for_form!
+    # Create a single instance for the shared pool (no show association)
+    instance = sign_up_form.sign_up_form_instances.find_or_create_by!(show_id: nil) do |inst|
+      inst.status = determine_shared_pool_status
+      inst.opens_at = sign_up_form.opens_at
+      inst.closes_at = sign_up_form.closes_at
+    end
+
+    generate_slots_for_instance!(instance)
   rescue StandardError => e
     @errors << "Failed to provision shared pool slots: #{e.message}"
   end
 
-  def preview_per_event_changes
+  def determine_shared_pool_status
+    now = Time.current
+    if sign_up_form.opens_at.present? && sign_up_form.opens_at > now
+      "scheduled"
+    else
+      "open"
+    end
+  end
+
+  def preview_repeated_changes
     template = build_slot_template
     changes = []
 
@@ -303,24 +426,24 @@ class SlotManagementService
     } ]
   end
 
-  def apply_per_event_changes!(preserve_registrations)
+  def apply_repeated_changes!
     sign_up_form.sign_up_form_instances.find_each do |instance|
-      sync_instance_slots!(instance, preserve_registrations)
+      sync_instance_slots!(instance)
     end
   end
 
-  def apply_single_event_changes!(preserve_registrations)
+  def apply_single_event_changes!
     instance = sign_up_form.sign_up_form_instances.first
     return unless instance
 
-    sync_instance_slots!(instance, preserve_registrations)
+    sync_instance_slots!(instance)
   end
 
-  def apply_shared_pool_changes!(preserve_registrations)
-    sync_form_slots!(preserve_registrations)
+  def apply_shared_pool_changes!
+    sync_form_slots!
   end
 
-  def sync_instance_slots!(instance, preserve_registrations)
+  def sync_instance_slots!(instance)
     template = build_slot_template
     current_slots = instance.sign_up_slots.order(:position).to_a
     new_count = template.size
@@ -336,13 +459,36 @@ class SlotManagementService
       if new_count > current_count
         # Add new slots
         (current_count...new_count).each do |i|
-          instance.sign_up_slots.create!(template[i])
+          instance.sign_up_slots.create!(template[i].merge(sign_up_form_id: sign_up_form.id))
         end
-      elsif new_count < current_count && !preserve_registrations
-        # Remove excess slots only if no registrations
+      elsif new_count < current_count
+        # Remove excess slots and handle registrations
         slots_to_remove = current_slots[new_count..]
+        remaining_slots = current_slots[0...new_count]
+
         slots_to_remove.each do |slot|
-          slot.destroy if slot.sign_up_registrations.empty?
+          active_registrations = slot.sign_up_registrations.active
+
+          if active_registrations.any?
+            case @affected_registration_action
+            when :reassign
+              # Find available slots and reassign registrations
+              active_registrations.each do |reg|
+                available_slot = remaining_slots.find { |s| !s.full? }
+                if available_slot
+                  reg.update!(sign_up_slot: available_slot)
+                else
+                  # No available slot, cancel the registration
+                  reg.update!(status: "cancelled")
+                end
+              end
+            when :cancel
+              # Cancel all registrations in this slot
+              active_registrations.update_all(status: "cancelled")
+            end
+          end
+
+          slot.destroy
         end
       end
 
@@ -350,7 +496,7 @@ class SlotManagementService
     end
   end
 
-  def sync_form_slots!(preserve_registrations)
+  def sync_form_slots!
     template = build_slot_template
     current_slots = sign_up_form.sign_up_slots.order(:position).to_a
     new_count = template.size
@@ -368,11 +514,34 @@ class SlotManagementService
         (current_count...new_count).each do |i|
           sign_up_form.sign_up_slots.create!(template[i])
         end
-      elsif new_count < current_count && !preserve_registrations
-        # Remove excess slots only if no registrations
+      elsif new_count < current_count
+        # Remove excess slots and handle registrations
         slots_to_remove = current_slots[new_count..]
+        remaining_slots = current_slots[0...new_count]
+
         slots_to_remove.each do |slot|
-          slot.destroy if slot.sign_up_registrations.empty?
+          active_registrations = slot.sign_up_registrations.active
+
+          if active_registrations.any?
+            case @affected_registration_action
+            when :reassign
+              # Find available slots and reassign registrations
+              active_registrations.each do |reg|
+                available_slot = remaining_slots.find { |s| !s.full? }
+                if available_slot
+                  reg.update!(sign_up_slot: available_slot)
+                else
+                  # No available slot, cancel the registration
+                  reg.update!(status: "cancelled")
+                end
+              end
+            when :cancel
+              # Cancel all registrations in this slot
+              active_registrations.update_all(status: "cancelled")
+            end
+          end
+
+          slot.destroy
         end
       end
 

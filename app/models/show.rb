@@ -343,8 +343,8 @@ class Show < ApplicationRecord
   private
 
   def create_sign_up_form_instances
-    # Find all per-event forms for this production that match this show
-    production.sign_up_forms.per_event.active.find_each do |form|
+    # Find all repeated forms for this production that match this show
+    production.sign_up_forms.repeated.active.find_each do |form|
       form.create_instance_for_show!(self) if form.matches_event?(self)
     end
   end
@@ -356,11 +356,12 @@ class Show < ApplicationRecord
         instance.update!(status: "cancelled") unless instance.cancelled?
       end
     else
-      # If uncanceled, reopen the instances (set to scheduled, let status logic determine actual state)
+      # If uncanceled, set to initializing and let the job determine actual state
       SignUpFormInstance.where(show_id: id, status: "cancelled").find_each do |instance|
-        instance.update!(status: "scheduled")
-        instance.update_status! # Let it recalculate based on current time
+        instance.update!(status: "initializing")
       end
+      # Run status job to calculate correct state based on current time
+      UpdateSignUpStatusesJob.perform_now
     end
   end
 

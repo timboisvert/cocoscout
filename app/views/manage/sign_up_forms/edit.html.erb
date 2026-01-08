@@ -92,32 +92,3 @@
   <!-- Question Modal -->
   <%= render "shared/question_modal" %>
 </div>
-
-<%# Sticky Action Bar %>
-<div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-  <div class="px-4 py-3 flex items-center justify-between gap-4">
-    <%# Status %>
-    <div class="flex items-center gap-3">
-      <% form_status = @sign_up_form.current_status %>
-      <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-<%= form_status[:color] %>-100 text-<%= form_status[:color] %>-800">
-        <span class="w-1.5 h-1.5 rounded-full bg-<%= form_status[:color] %>-500"></span>
-        <%= form_status[:label] %>
-      </span>
-      <% if @sign_up_form.short_code.present? %>
-        <span class="text-xs text-gray-500 hidden sm:inline">Code: <span class="font-mono font-medium"><%= @sign_up_form.short_code %></span></span>
-      <% end %>
-    </div>
-
-    <%# Actions %>
-    <div class="flex items-center gap-2">
-      <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form), class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200" do %>
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-        View Registrations
-      <% end %>
-      <%= link_to preview_manage_production_sign_up_form_path(@production, @sign_up_form), target: "_blank", class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-pink-700 bg-pink-100 hover:bg-pink-200" do %>
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-        Preview
-      <% end %>
-    </div>
-  </div>
-</div>

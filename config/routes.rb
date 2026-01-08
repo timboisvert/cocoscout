@@ -137,7 +137,7 @@ Rails.application.routes.draw do
     patch "/availability/:show_id",         to: "availability#update",      as: "update_availability"
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
-    get   "/audition_requests",             to: "audition_requests#index",  as: "audition_requests"
+    get   "/signups",                       to: "sign_ups#index",           as: "sign_ups"
     get   "/questionnaires",                to: "questionnaires#index",     as: "questionnaires"
 
     scope "/auditions/:token" do
@@ -153,6 +153,17 @@ Rails.application.routes.draw do
       post "/form", to: "questionnaires#submitform", as: "submit_questionnaire_form"
       get "/success", to: "questionnaires#success", as: "questionnaire_success"
       get "/inactive", to: "questionnaires#inactive", as: "questionnaire_inactive"
+    end
+
+    # Sign-up forms (public-facing)
+    scope "/signups/:code" do
+      get "/", to: "sign_ups#entry", as: "sign_up_entry"
+      get "/form", to: "sign_ups#form", as: "sign_up_form"
+      post "/form", to: "sign_ups#submit_form", as: "submit_sign_up_form"
+      get "/success", to: "sign_ups#success", as: "sign_up_success"
+      post "/change-slot", to: "sign_ups#change_slot", as: "change_sign_up_slot"
+      post "/cancel", to: "sign_ups#cancel_registration", as: "cancel_sign_up_registration"
+      get "/inactive", to: "sign_ups#inactive", as: "sign_up_inactive"
     end
 
     # Messages (inbox for talent)
@@ -472,6 +483,8 @@ Rails.application.routes.draw do
         post   "rules",       to: "sign_up_form_wizard#save_rules",      as: "save_rules"
         get    "schedule",    to: "sign_up_form_wizard#schedule",        as: "schedule"
         post   "schedule",    to: "sign_up_form_wizard#save_schedule",   as: "save_schedule"
+        get    "notifications", to: "sign_up_form_wizard#notifications", as: "notifications"
+        post   "notifications", to: "sign_up_form_wizard#save_notifications", as: "save_notifications"
         get    "review",      to: "sign_up_form_wizard#review",          as: "review"
         post   "create",      to: "sign_up_form_wizard#create_form",     as: "create_form"
         delete "cancel",      to: "sign_up_form_wizard#cancel",          as: "cancel"
@@ -505,6 +518,7 @@ Rails.application.routes.draw do
           get    "registrations",     to: "sign_up_forms#registrations",     as: "registrations"
           post   "register",          to: "sign_up_forms#register",          as: "register"
           delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
+          patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
           get    "preview",           to: "sign_up_forms#preview",           as: "preview"
           patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
           patch  "archive",           to: "sign_up_forms#archive",           as: "archive"

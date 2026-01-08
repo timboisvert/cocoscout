@@ -1,0 +1,192 @@
+<%#
+  Unified registration list partial for sign-up forms.
+
+  Usage:
+    render "manage/sign_up_forms/registration_list",
+      slots: @slots,
+      sign_up_form: @sign_up_form,
+      production: @production
+
+  Handles all slot_generation_modes consistently:
+  - numbered: shows slot position on left
+  - time_based: shows time on left
+  - named: shows slot name on left
+  - simple_capacity/open_list: no label on left (waitlist style)
+%>
+
+<%
+  # Determine if we should show slot labels based on generation mode
+  show_slot_label = !%w[simple_capacity open_list].include?(sign_up_form.slot_generation_mode)
+
+  # Get all active registrations grouped by slot
+  all_registrations = slots.flat_map { |s| s.sign_up_registrations.active.includes(:person).to_a }
+  total_registrations = all_registrations.count
+%>
+
+<% if slots.any? %>
+  <div class="divide-y divide-gray-100">
+    <% slots.each do |slot| %>
+      <% registrations_in_slot = slot.sign_up_registrations.active.includes(:person).order(:position).to_a %>
+      <% registrations_by_position = registrations_in_slot.index_by(&:position) %>
+
+      <%# Determine label width - wider for named slots or time_based %>
+      <% has_name = slot.name.present? %>
+      <% label_width_class = if sign_up_form.slot_generation_mode == 'time_based'
+           'w-28'
+         elsif has_name
+           'w-32'
+         else
+           'w-16'
+         end %>
+
+      <% if slot.is_held %>
+        <%# Held slot - grayed out with label in center %>
+        <div class="px-4 py-3 bg-gray-100 text-center">
+          <span class="text-gray-500 text-sm"><%= slot.held_reason.presence || "Unavailable" %></span>
+        </div>
+      <% elsif slot.capacity > 1 && show_slot_label %>
+        <%# Multi-capacity slot: show label on left, individual rows on right %>
+        <div class="flex">
+          <%# Left side: slot label (vertically centered) %>
+          <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3">
+            <span class="text-sm font-medium <%= registrations_in_slot.any? ? 'text-gray-500' : 'text-gray-400' %>"><%= slot.name.presence || slot.position %></span>
+          </div>
+
+          <%# Right side: one row per capacity position %>
+          <div class="flex-1 divide-y divide-gray-50">
+            <% (1..slot.capacity).each do |pos| %>
+              <% registration = registrations_by_position[pos] %>
+              <% if registration %>
+                <%# Filled position %>
+                <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
+                    <% if headshot %>
+                      <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                        <%= registration.display_name.first.upcase %>
+                      </div>
+                    <% end %>
+                    <% if registration.person&.public_key.present? %>
+                      <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                    <% else %>
+                      <span class="text-sm text-gray-900"><%= registration.display_name %></span>
+                    <% end %>
+                  </div>
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <% headshot_url = headshot ? url_for(headshot) : nil %>
+                    <button type="button"
+                            class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                            data-action="click->move-registration-modal#open"
+                            data-registration-id="<%= registration.id %>"
+                            data-person-name="<%= registration.display_name %>"
+                            data-person-initial="<%= registration.display_name.first.upcase %>"
+                            data-person-headshot-url="<%= headshot_url %>"
+                            data-current-slot-id="<%= slot.id %>"
+                            data-form-action-url="<%= move_registration_manage_production_sign_up_form_path(production, sign_up_form, registration_id: registration.id) %>">
+                      Move
+                    </button>
+                    <%= link_to cancel_registration_manage_production_sign_up_form_path(production, sign_up_form, registration_id: registration.id),
+                        class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
+                        data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
+                      Remove
+                    <% end %>
+                  </div>
+                </div>
+              <% else %>
+                <%# Available position %>
+                <div class="px-4 py-2">
+                  <span class="text-sm text-gray-400 italic">Available</span>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% elsif registrations_in_slot.any? %>
+        <%# Single-capacity slot with registrations %>
+        <div class="flex">
+          <% if show_slot_label %>
+            <%# Left side: slot label (vertically centered, left-aligned) %>
+            <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+              <span class="text-sm font-medium text-gray-500"><%= slot.name.presence || slot.position %></span>
+            </div>
+          <% end %>
+
+          <%# Right side: registrations %>
+          <div class="flex-1 divide-y divide-gray-50">
+            <% registrations_in_slot.each do |registration| %>
+              <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50">
+                <div class="flex items-center gap-3">
+                  <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
+                  <% if headshot %>
+                    <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                      <%= registration.display_name.first.upcase %>
+                    </div>
+                  <% end %>
+                  <% if registration.person&.public_key.present? %>
+                    <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                  <% else %>
+                    <span class="text-sm text-gray-900"><%= registration.display_name %></span>
+                  <% end %>
+                </div>
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <% if show_slot_label %>
+                    <% headshot_url = headshot ? url_for(headshot) : nil %>
+                    <button type="button"
+                            class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                            data-action="click->move-registration-modal#open"
+                            data-registration-id="<%= registration.id %>"
+                            data-person-name="<%= registration.display_name %>"
+                            data-person-initial="<%= registration.display_name.first.upcase %>"
+                            data-person-headshot-url="<%= headshot_url %>"
+                            data-current-slot-id="<%= slot.id %>"
+                            data-form-action-url="<%= move_registration_manage_production_sign_up_form_path(production, sign_up_form, registration_id: registration.id) %>">
+                      Move
+                    </button>
+                  <% end %>
+                  <%= link_to cancel_registration_manage_production_sign_up_form_path(production, sign_up_form, registration_id: registration.id),
+                      class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
+                      data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
+                    Remove
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <%# Empty slot - only show for numbered/time_based/named modes %>
+        <% if show_slot_label %>
+          <div class="flex">
+            <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+              <span class="text-sm font-medium text-gray-400"><%= slot.name.presence || slot.position %></span>
+            </div>
+            <div class="flex-1 px-4 py-2">
+              <span class="text-sm text-gray-400 italic">Available</span>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# For waitlist modes with no registrations, show empty state %>
+  <% if !show_slot_label && total_registrations == 0 %>
+    <div class="px-5 py-12 text-center">
+      <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+      </svg>
+      <p class="text-gray-500">No one has registered yet.</p>
+    </div>
+  <% end %>
+<% else %>
+  <div class="px-5 py-12 text-center">
+    <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+    </svg>
+    <p class="text-gray-500">No slots configured yet.</p>
+  </div>
+<% end %>

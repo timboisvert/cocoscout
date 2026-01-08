@@ -190,6 +190,49 @@ module My
         item[:audition_request].audition_cycle.closes_at || Time.new(9999)
       end.first(5)
 
+      # Sign-up registrations for all profiles (open forms only)
+      @open_sign_up_registrations = SignUpRegistration
+        .eager_load(sign_up_slot: { sign_up_form_instance: :show, sign_up_form: :production })
+        .where(person_id: people_ids)
+        .where.not(status: "cancelled")
+        .to_a
+        .select do |reg|
+          form = reg.sign_up_slot&.sign_up_form
+          form&.active? && form&.status_service&.accepting_registrations?
+        end
+        .sort_by { |reg| reg.sign_up_slot&.sign_up_form_instance&.show&.date_and_time || Time.new(9999) }
+
+      # Build sign-up registration entities mapping for headshot display
+      @sign_up_registration_entities = {}
+      @open_sign_up_registrations.each do |registration|
+        if registration.person_id && people_ids.include?(registration.person_id)
+          person = people_by_id[registration.person_id]
+          @sign_up_registration_entities[registration.id] = [ { type: "person", entity: person } ] if person
+        end
+      end
+
+      # Build combined list for unified "Open Sign-ups" display
+      @open_signups_combined = []
+
+      # Group sign-up registrations by form
+      registrations_by_form = @open_sign_up_registrations.group_by { |reg| reg.sign_up_slot&.sign_up_form&.id }
+      registrations_by_form.each do |form_id, registrations|
+        next unless form_id
+        sort_date = registrations.map { |reg| reg.sign_up_slot&.sign_up_form_instance&.show&.date_and_time }.compact.min || Time.new(9999)
+        @open_signups_combined << { type: :sign_up_registrations, records: registrations, sort_date: sort_date }
+      end
+
+      # Add audition requests
+      @open_audition_request_entities.each do |item|
+        req = item[:audition_request]
+        sort_date = req.audition_cycle.closes_at || Time.new(9999)
+        @open_signups_combined << { type: :audition_request, item: item, sort_date: sort_date }
+      end
+
+      # Sort by date and limit to 5
+      @open_signups_combined.sort_by! { |item| item[:sort_date] }
+      @open_signups_combined = @open_signups_combined.first(5)
+
       # Pending questionnaires for person and groups - batch query
       @pending_questionnaire_entities = []
 

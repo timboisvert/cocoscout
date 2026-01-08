@@ -17,7 +17,7 @@
           <div class="flex-1 min-w-0">
             <h3 class="text-md font-semibold text-gray-700 truncate"><%= form.name %></h3>
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-500">
-              <% if form.per_event? %>
+              <% if form.repeated? %>
                 <span><%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %></span>
               <% else %>
                 <span><%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %></span>

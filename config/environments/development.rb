@@ -19,7 +19,7 @@ Rails.application.configure do
 
   config.cache_store = :solid_cache_store
 
-  config.active_storage.service = :local
+  config.active_storage.service = :amazon
 
   config.action_mailer.delivery_method = :letter_opener
   config.action_mailer.perform_deliveries = true

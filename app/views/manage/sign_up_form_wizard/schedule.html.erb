@@ -21,36 +21,58 @@
     <p class="text-gray-600 mb-6">Set when sign-ups open and close.</p>
   <% end %>
 
-  <%= form_with url: manage_sign_up_wizard_production_save_schedule_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": schedule_mode } do |form| %>
+  <%
+    # For waitlists, use activation_mode (now/scheduled); for events, use schedule_mode
+    initial_selected = if is_waitlist
+      @wizard_state[:opens_at].present? ? 'scheduled' : 'now'
+    else
+      schedule_mode
+    end
+  %>
+  <%= form_with url: manage_sign_up_wizard_production_save_schedule_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": initial_selected } do |form| %>
     <div class="space-y-6">
       <% if is_waitlist %>
         <!-- Simple activation date for waitlist -->
         <input type="hidden" name="schedule_mode" value="fixed">
 
-        <div class="space-y-3">
-          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:opens_at].blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-               data-option-select-target="option"
-               data-value="now"
-               data-action="click->option-select#select">
-            <input type="radio" name="activation_mode" value="now"
-                   <%= "checked" if @wizard_state[:opens_at].blank? %>
-                   class="sr-only"
-                   data-option-select-target="input">
-            <p class="font-medium text-gray-900">Activate immediately</p>
-            <p class="text-sm text-gray-500 mt-1">The waitlist will be open for sign-ups as soon as you create it.</p>
-          </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center h-full <%= @wizard_state[:opens_at].blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="now">
+              <input type="radio" name="activation_mode" value="now"
+                     <%= "checked" if @wizard_state[:opens_at].blank? %>
+                     class="sr-only"
+                     data-option-select-target="input"
+                     data-action="change->option-select#select">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Activate immediately</p>
+              <p class="text-xs text-gray-500 mt-1">Open as soon as you create it</p>
+            </div>
+          </label>
 
-          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:opens_at].present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-               data-option-select-target="option"
-               data-value="scheduled"
-               data-action="click->option-select#select">
-            <input type="radio" name="activation_mode" value="scheduled"
-                   <%= "checked" if @wizard_state[:opens_at].present? %>
-                   class="sr-only"
-                   data-option-select-target="input">
-            <p class="font-medium text-gray-900">Activate on a specific date</p>
-            <p class="text-sm text-gray-500 mt-1">Schedule the waitlist to open at a future date and time.</p>
-          </div>
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center h-full <%= @wizard_state[:opens_at].present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="scheduled">
+              <input type="radio" name="activation_mode" value="scheduled"
+                     <%= "checked" if @wizard_state[:opens_at].present? %>
+                     class="sr-only"
+                     data-option-select-target="input"
+                     data-action="change->option-select#select">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Activate on a date</p>
+              <p class="text-xs text-gray-500 mt-1">Schedule for a future time</p>
+            </div>
+          </label>
         </div>
 
         <div data-option-select-target="conditionalScheduled" class="<%= @wizard_state[:opens_at].present? ? '' : 'hidden' %>">
@@ -60,49 +82,63 @@
                    value="<%= @wizard_state[:opens_at].is_a?(String) ? @wizard_state[:opens_at] : @wizard_state[:opens_at]&.strftime('%Y-%m-%dT%H:%M') %>"
                    class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
           </div>
-        </div>
 
-        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm text-blue-800">
-                <strong>Note:</strong> The waitlist will remain open until you close it manually. You can pause or close it at any time from your dashboard.
-              </p>
+          <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  <strong>Note:</strong> The waitlist will remain open until you close it manually.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-      <% elsif @wizard_state[:scope] == 'per_event' || @wizard_state[:scope] == 'single_event' %>
+      <% elsif @wizard_state[:scope] == 'repeated' || @wizard_state[:scope] == 'single_event' %>
         <!-- Schedule Mode Selection -->
-        <div class="space-y-3">
-          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-               data-option-select-target="option"
-               data-value="relative"
-               data-action="click->option-select#select">
-            <input type="radio" name="schedule_mode" value="relative"
-                   <%= "checked" if schedule_mode == 'relative' %>
-                   class="sr-only"
-                   data-option-select-target="input">
-            <p class="font-medium text-gray-900">Relative to Event</p>
-            <p class="text-sm text-gray-500 mt-1">Sign-ups open and close based on each event's date/time. Recommended for recurring events.</p>
-          </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="relative"
+                 data-action="click->option-select#select">
+              <input type="radio" name="schedule_mode" value="relative"
+                     <%= "checked" if schedule_mode == 'relative' %>
+                     class="sr-only"
+                     data-option-select-target="input">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Relative to Event</p>
+              <p class="text-xs text-gray-500 mt-1">Based on each event's date</p>
+            </div>
+          </label>
 
-          <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'fixed' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-               data-option-select-target="option"
-               data-value="fixed"
-               data-action="click->option-select#select">
-            <input type="radio" name="schedule_mode" value="fixed"
-                   <%= "checked" if schedule_mode == 'fixed' %>
-                   class="sr-only"
-                   data-option-select-target="input">
-            <p class="font-medium text-gray-900">Fixed Dates</p>
-            <p class="text-sm text-gray-500 mt-1">All sign-ups open and close at the same time, regardless of event dates.</p>
-          </div>
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'fixed' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="fixed"
+                 data-action="click->option-select#select">
+              <input type="radio" name="schedule_mode" value="fixed"
+                     <%= "checked" if schedule_mode == 'fixed' %>
+                     class="sr-only"
+                     data-option-select-target="input">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 2.994v2.25m10.5-2.25v2.25m-14.252 13.5V7.491a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v11.251m-18 0a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25m-18 0v-7.5a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v7.5m-6.75-6h2.25m-9 2.25h4.5m.002-2.25h.005v.006H12v-.006Zm-.001 4.5h.006v.006h-.006v-.005Zm-2.25.001h.005v.006H9.75v-.006Zm-2.25 0h.005v.005h-.006v-.005Zm6.75-2.247h.005v.005h-.005v-.005Zm0 2.247h.006v.006h-.006v-.006Zm2.25-2.248h.006V15H16.5v-.005Z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Fixed Dates</p>
+              <p class="text-xs text-gray-500 mt-1">Same open/close for all</p>
+            </div>
+          </label>
         </div>
 
         <!-- Relative Schedule Options -->
@@ -122,48 +158,40 @@
           </div>
 
           <%# Close Registration Box %>
-          <div class="p-4 bg-gray-50 rounded-lg" data-controller="option-select" data-option-select-selected-value="<%= closes_mode %>">
+          <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
             <label class="block text-gray-700 font-medium mb-3">Close registration</label>
             <div class="space-y-2">
-              <%# Option 1: When event begins %>
+              <%# Option 1: Don't close %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
-                          <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
-                   data-option-select-target="option" data-value="event_start"
-                   data-action="click->option-select#select">
-                <input type="radio" name="closes_mode" value="event_start"
-                       <%= "checked" if closes_mode == 'event_start' %>
-                       class="sr-only"
-                       data-option-select-target="input">
-                <span class="text-sm font-medium text-gray-900">When the event begins</span>
+                          <%= closes_mode == 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectNever">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="never"
+                         <%= "checked" if closes_mode == 'never' %>
+                         class="sr-only"
+                         data-closes-mode-target="neverRadio">
+                  <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
+                </label>
               </div>
 
-              <%# Option 2: After event ends %>
+              <%# Option 2: Close relative to event %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
-                          <%= closes_mode == 'event_end' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
-                   data-option-select-target="option" data-value="event_end"
-                   data-action="click->option-select#select">
-                <input type="radio" name="closes_mode" value="event_end"
-                       <%= "checked" if closes_mode == 'event_end' %>
-                       class="sr-only"
-                       data-option-select-target="input">
-                <span class="text-sm font-medium text-gray-900">After the event ends</span>
-              </div>
-
-              <%# Option 3: Custom before/after %>
-              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
-                          <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
-                   data-option-select-target="option" data-value="custom"
-                   data-action="click->option-select#select">
-                <input type="radio" name="closes_mode" value="custom"
-                       <%= "checked" if closes_mode == 'custom' %>
-                       class="sr-only"
-                       data-option-select-target="input">
-                <div class="flex flex-wrap items-center gap-2">
+                          <%= closes_mode != 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectCustom">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="custom"
+                         <%= "checked" if closes_mode != 'never' %>
+                         class="sr-only"
+                         data-closes-mode-target="customRadio">
+                  <span class="text-sm font-medium text-gray-900">Close registration</span>
+                </label>
+                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
                   <input type="number" name="closes_offset_value" value="<%= closes_offset_value %>" min="0"
                          class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
                          onclick="event.stopPropagation()">
                   <select name="closes_offset_unit" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
                           onclick="event.stopPropagation()">
+                    <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
                     <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
                     <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
                   </select>
@@ -172,7 +200,7 @@
                     <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
                     <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
                   </select>
-                  <span class="text-sm text-gray-600">the event begins</span>
+                  <span class="text-sm text-gray-600">event start</span>
                 </div>
               </div>
             </div>

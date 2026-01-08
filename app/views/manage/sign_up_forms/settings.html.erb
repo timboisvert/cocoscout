@@ -3,6 +3,7 @@
 <%
   # Prepare data for the form
   is_waitlist = @sign_up_form.shared_pool?
+  is_open_list = @sign_up_form.slot_generation_mode == "open_list"
   schedule_mode = @sign_up_form.schedule_mode || 'relative'
 %>
 
@@ -44,6 +45,9 @@
       <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
         Schedule
       </button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">
+        Notifications
+      </button>
     </nav>
 
     <%# ==================== TAB 0: SCOPE ==================== %>
@@ -63,9 +67,9 @@
             </label>
 
             <label class="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <%= form.radio_button :scope, "per_event", class: "mt-0.5 h-4 w-4 accent-pink-500", data: { action: "change->settings-form#scopeChanged" } %>
+              <%= form.radio_button :scope, "repeated", class: "mt-0.5 h-4 w-4 accent-pink-500", data: { action: "change->settings-form#scopeChanged" } %>
               <div>
-                <span class="font-medium text-gray-900">Per Event</span>
+                <span class="font-medium text-gray-900">Repeated Event</span>
                 <p class="text-sm text-gray-500 mt-1">Create separate registration pools for each matching event. Perfect for open mics, recurring shows, or any events where each performance needs its own sign-up list.</p>
                 <p class="text-xs text-gray-400 mt-1">New events that match your criteria will automatically get their own sign-up form.</p>
               </div>
@@ -94,7 +98,8 @@
             <div class="space-y-2 max-h-96 overflow-y-auto">
               <% @shows.each do |show| %>
                 <% is_selected = @sign_up_form.show_id == show.id %>
-                <label class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>">
+                <label class="flex items-stretch px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+                       data-action="click->settings-form#selectSingleEvent">
                   <%= form.radio_button :show_id, show.id, class: "sr-only" %>
                   <div class="flex-shrink-0 w-14 text-center mr-4">
                     <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
@@ -120,8 +125,8 @@
             </div>
           </div>
 
-          <%# Per Event Selection %>
-          <div data-settings-form-target="perEventSection" class="<%= @sign_up_form.per_event? ? '' : 'hidden' %> space-y-4">
+          <%# Repeated Event Selection %>
+          <div data-settings-form-target="repeatedSection" class="<%= @sign_up_form.repeated? ? '' : 'hidden' %> space-y-4">
             <p class="text-sm text-gray-600 mb-4">Which events should this form create sign-ups for?</p>
 
             <%# Matching Mode Options %>
@@ -344,6 +349,7 @@
     <%# ==================== TAB 3: RULES ==================== %>
     <div data-tabs-target="panel" class="hidden">
       <div class="space-y-6">
+        <% unless is_waitlist %>
         <%# Registration Limits %>
         <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
           <h3 class="font-semibold text-gray-900 mb-4">Registration Limits</h3>
@@ -361,6 +367,23 @@
                 {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
             </div>
           </div>
+        </div>
+        <% end %>
+
+        <%# Show Registrations %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Show registered names</h3>
+              <p class="text-sm text-gray-500 mt-1">Display who's signed up in each slot</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.hidden_field :show_registrations, value: "0" %>
+              <%= form.check_box :show_registrations, class: "sr-only peer", value: "1" %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <p class="text-sm text-gray-500 mt-3">When enabled, the names of registered participants will be displayed below each slot on the sign-up form. This helps participants see who else is signed up.</p>
         </div>
 
         <%# Require Login %>
@@ -447,7 +470,8 @@
         </div>
         <% end %>
 
-        <%# Allow Editing %>
+        <%# Allow Editing (not for open_list - nothing to edit) %>
+        <% unless is_open_list %>
         <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
           <div class="flex items-center justify-between">
             <div>
@@ -481,6 +505,7 @@
           </div>
           <% end %>
         </div>
+        <% end %>
 
         <%# Allow Cancellation %>
         <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
@@ -525,28 +550,58 @@
         <%= render "shared/card_header", title: is_waitlist ? "Activation" : "Schedule" %>
         <div class="p-5 space-y-6">
           <% if is_waitlist %>
-            <%# Waitlist: Simple activation %>
+            <%# Waitlist: Simple activation matching wizard style %>
             <%= form.hidden_field :schedule_mode, value: "fixed" %>
-            <div class="space-y-3">
-              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.opens_at.blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-                   data-settings-form-target="scheduleOption" data-value="now" data-action="click->settings-form#selectWaitlistMode">
-                <p class="font-medium text-gray-900">Activate immediately</p>
-                <p class="text-sm text-gray-500 mt-1">The waitlist will be open for sign-ups as soon as you save.</p>
-              </div>
-              <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @sign_up_form.opens_at.present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
-                   data-settings-form-target="scheduleOption" data-value="scheduled" data-action="click->settings-form#selectWaitlistMode">
-                <p class="font-medium text-gray-900">Activate on a specific date</p>
-                <p class="text-sm text-gray-500 mt-1">Schedule the waitlist to open at a future date and time.</p>
-              </div>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block cursor-pointer">
+                <div class="p-4 bg-gray-50 rounded-lg border-2 text-center h-full <%= @sign_up_form.opens_at.blank? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                     data-settings-form-target="scheduleOption" data-value="now" data-action="click->settings-form#selectWaitlistMode">
+                  <div class="flex justify-center mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Activate immediately</p>
+                  <p class="text-xs text-gray-500 mt-1">Open as soon as you save</p>
+                </div>
+              </label>
+              <label class="block cursor-pointer">
+                <div class="p-4 bg-gray-50 rounded-lg border-2 text-center h-full <%= @sign_up_form.opens_at.present? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                     data-settings-form-target="scheduleOption" data-value="scheduled" data-action="click->settings-form#selectWaitlistMode">
+                  <div class="flex justify-center mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Activate on a date</p>
+                  <p class="text-xs text-gray-500 mt-1">Schedule for a future time</p>
+                </div>
+              </label>
             </div>
             <div data-settings-form-target="scheduledDateSection" class="<%= @sign_up_form.opens_at.present? ? '' : 'hidden' %>">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Opens at</label>
-              <%= form.datetime_local_field :opens_at, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2" %>
+              <div class="w-full sm:w-2/3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Opens at</label>
+                <%= form.datetime_local_field :opens_at, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
+              </div>
+              <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm text-blue-800">
+                      <strong>Note:</strong> The waitlist will remain open until you close it manually.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
           <% else %>
             <%# Event-based: Relative or fixed %>
-            <div class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
                    data-settings-form-target="scheduleOption" data-value="relative" data-action="click->settings-form#selectScheduleMode">
                 <%= form.radio_button :schedule_mode, "relative", class: "sr-only" %>
@@ -564,7 +619,9 @@
             <%# Relative Schedule Options %>
             <% closes_mode = @sign_up_form.closes_mode || "event_start" %>
             <% closes_offset_value = @sign_up_form.closes_offset_value&.abs || 0 %>
+            <% closes_offset_unit = @sign_up_form.closes_offset_unit || "hours" %>
             <% closes_before_after = (@sign_up_form.closes_offset_value || 0) < 0 ? "after" : "before" %>
+            <% is_never_close = closes_mode == "never" %>
             <div data-settings-form-target="relativeScheduleSection" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
               <%# Open Registration Box %>
               <div class="p-4 bg-gray-50 rounded-lg">
@@ -576,40 +633,52 @@
               </div>
 
               <%# Close Registration Box %>
-              <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
                 <label class="block text-sm font-medium text-gray-700 mb-3">Close registration</label>
                 <div class="space-y-2">
-                  <%# Option 1: When event begins %>
-                  <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                                <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
-                    <%= form.radio_button :closes_mode, "event_start", class: "w-4 h-4 text-pink-500 border-gray-300 focus:ring-pink-500" %>
-                    <span class="text-sm text-gray-700">When the event begins</span>
+                  <%# Option 1: Don't close %>
+                  <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors
+                                <%= is_never_close ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                         data-action="click->closes-mode#selectNever">
+                    <input type="radio" name="sign_up_form[closes_mode]" value="never"
+                           <%= "checked" if is_never_close %>
+                           class="sr-only"
+                           data-closes-mode-target="neverRadio">
+                    <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
                   </label>
 
-                  <%# Option 2: After event ends %>
-                  <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                                <%= closes_mode == 'event_end' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
-                    <%= form.radio_button :closes_mode, "event_end", class: "w-4 h-4 text-pink-500 border-gray-300 focus:ring-pink-500" %>
-                    <span class="text-sm text-gray-700">After the event ends</span>
-                  </label>
-
-                  <%# Option 3: Custom before/after %>
-                  <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                                <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
-                    <%= form.radio_button :closes_mode, "custom", class: "w-4 h-4 mt-0.5 text-pink-500 border-gray-300 focus:ring-pink-500" %>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <input type="number" name="sign_up_form[closes_offset_value]" value="<%= closes_offset_value %>" min="0"
-                             class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                             onclick="event.stopPropagation()">
-                      <%= form.select :closes_offset_unit, [["hours", "hours"], ["days", "days"]], {}, class: "rounded-lg border border-gray-300 px-2 py-1.5 text-sm", onclick: "event.stopPropagation()" %>
-                      <select name="closes_before_after" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                              onclick="event.stopPropagation()">
-                        <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
-                        <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
-                      </select>
-                      <span class="text-sm text-gray-600">the event begins</span>
+                  <%# Option 2: Close relative to event %>
+                  <label class="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors
+                                <%= !is_never_close ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                         data-action="click->closes-mode#selectCustom">
+                    <input type="radio" name="closes_mode_toggle" value="custom"
+                           <%= "checked" unless is_never_close %>
+                           class="sr-only"
+                           data-closes-mode-target="customRadio">
+                    <div>
+                      <span class="text-sm font-medium text-gray-900">Close registration</span>
+                      <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
+                        <input type="number" name="sign_up_form[closes_offset_value]" value="<%= closes_offset_value == 0 && !is_never_close && closes_mode == 'event_start' ? 0 : closes_offset_value %>" min="0"
+                               class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                               onclick="event.stopPropagation()">
+                        <select name="sign_up_form[closes_offset_unit]" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                                onclick="event.stopPropagation()">
+                          <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
+                          <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
+                          <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
+                        </select>
+                        <select name="closes_before_after" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                                onclick="event.stopPropagation()">
+                          <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
+                          <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
+                        </select>
+                        <span class="text-sm text-gray-600">event start</span>
+                      </div>
                     </div>
                   </label>
+                  <%# Hidden field for actual closes_mode when custom is selected %>
+                  <input type="hidden" name="sign_up_form[closes_mode]" value="<%= is_never_close ? 'never' : 'custom' %>"
+                         data-closes-mode-target="modeField">
                 </div>
               </div>
             </div>
@@ -631,6 +700,46 @@
               </div>
             </div>
           <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ==================== TAB 5: NOTIFICATIONS ==================== %>
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <%= render "shared/card_header", title: "Team Notifications" %>
+        <div class="p-5 space-y-6">
+          <p class="text-sm text-gray-600">Choose whether to notify your production team when someone registers.</p>
+
+          <!-- Notification Toggle -->
+          <label class="flex items-start gap-4 cursor-pointer p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition-colors">
+            <div class="mt-0.5">
+              <%= form.check_box :notify_on_registration, class: "h-5 w-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500" %>
+            </div>
+            <div class="flex-1">
+              <span class="font-medium text-gray-900">Notify team when someone registers</span>
+              <p class="text-sm text-gray-500 mt-1">
+                Production team members will receive an email each time someone signs up for a slot.
+              </p>
+            </div>
+          </label>
+
+          <!-- Info about notification settings -->
+          <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  <strong>Note:</strong> Team members will only receive notifications if they have notifications enabled in their settings.
+                  <%= link_to "Manage Production Team →", edit_manage_production_path(@production, anchor: "tab-2"), class: "underline text-blue-600 hover:text-blue-700" %>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -344,6 +344,36 @@ module EmailTemplateSeeds
             { name: "talent_pool_url", description: "URL to view the talent pool" }
           ]
         },
+        {
+          key: "sign_up_registration_notification",
+          name: "Sign-Up Registration Received",
+          category: "notification",
+          subject: "New sign-up from {{registrant_name}}",
+          description: "Notifies production team when someone registers for a sign-up form.",
+          template_type: "structured",
+          mailer_class: "Manage::SignUpMailer",
+          mailer_action: "registration_notification",
+          prepend_production_name: true,
+          body: <<~HTML,
+            <p>Hello {{recipient_name}},</p>
+            <p>A new registration has been submitted for <strong>{{sign_up_form_name}}</strong>.</p>
+            <p><strong>From:</strong> {{registrant_name}}</p>
+            <p><strong>Slot:</strong> {{slot_name}}</p>
+            {{#event_info}}
+            <p><strong>Event:</strong> {{event_info}}</p>
+            {{/event_info}}
+            <p><a href="{{registrations_url}}">View Registrations</a></p>
+          HTML
+          available_variables: [
+            { name: "recipient_name", description: "Name of the producer receiving notification" },
+            { name: "production_name", description: "Name of the production" },
+            { name: "sign_up_form_name", description: "Name of the sign-up form" },
+            { name: "registrant_name", description: "Name of the person who registered" },
+            { name: "slot_name", description: "Name of the slot they registered for" },
+            { name: "event_info", description: "Event date and time if applicable" },
+            { name: "registrations_url", description: "URL to view registrations" }
+          ]
+        },
 
         # ============================================
         # AVAILABILITY REQUESTS

@@ -6,7 +6,7 @@ export default class extends Controller {
         "eventsTab",
         "eventsPanel",
         "singleEventSection",
-        "perEventSection",
+        "repeatedSection",
         "matchingOption",
         "eventTypesSection",
         "manualEventsSection",
@@ -82,8 +82,8 @@ export default class extends Controller {
         if (this.hasSingleEventSectionTarget) {
             this.singleEventSectionTarget.classList.toggle("hidden", scope !== "single_event")
         }
-        if (this.hasPerEventSectionTarget) {
-            this.perEventSectionTarget.classList.toggle("hidden", scope !== "per_event")
+        if (this.hasRepeatedSectionTarget) {
+            this.repeatedSectionTarget.classList.toggle("hidden", scope !== "repeated")
         }
     }
 
@@ -161,6 +161,43 @@ export default class extends Controller {
         }
 
         event.preventDefault()
+        this.markDirty()
+    }
+
+    // ==================== SINGLE EVENT SELECTION ====================
+    selectSingleEvent(event) {
+        const label = event.currentTarget
+        const radio = label.querySelector('input[type="radio"]')
+        if (radio) {
+            radio.checked = true
+        }
+
+        // Update visual state for all event options
+        const container = label.closest('.space-y-2')
+        if (container) {
+            container.querySelectorAll('label').forEach(option => {
+                const isSelected = option === label
+                option.classList.toggle('border-pink-500', isSelected)
+                option.classList.toggle('bg-pink-50', isSelected)
+                option.classList.toggle('border-gray-200', !isSelected)
+                option.classList.toggle('bg-white', !isSelected)
+
+                // Update the indicator circle
+                const indicator = option.querySelector('.rounded-full')
+                if (indicator) {
+                    if (isSelected) {
+                        indicator.classList.remove('border-2', 'border-gray-300')
+                        indicator.classList.add('bg-pink-500')
+                        indicator.innerHTML = '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+                    } else {
+                        indicator.classList.add('border-2', 'border-gray-300')
+                        indicator.classList.remove('bg-pink-500')
+                        indicator.innerHTML = ''
+                    }
+                }
+            })
+        }
+
         this.markDirty()
     }
 

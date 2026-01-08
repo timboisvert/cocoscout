@@ -1,10 +1,18 @@
 <% content_for :title, "#{@sign_up_form.name}" %>
 
+<%
+  # Calculate status early so we can use it for auto-refresh decision
+  form_status = @sign_up_form.current_status
+  needs_refresh = form_status[:state] == :initializing || form_status[:state] == :updating
+%>
+
 <div class="w-full mb-10"
+     data-controller="move-registration-modal<%= ' welcome-modal' if params[:just_created] %><%= ' auto-refresh' if needs_refresh %>"
      <% if params[:just_created] %>
-       data-controller="welcome-modal"
-       data-welcome-modal-storage-key-value="sign_up_form_welcome_dismissed"
        data-welcome-modal-auto-show-value="true"
+     <% end %>
+     <% if needs_refresh %>
+       data-auto-refresh-interval-value="15000"
      <% end %>>
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -16,7 +24,6 @@
   } %>
 
   <%# Status bar %>
-  <% form_status = @sign_up_form.current_status %>
   <% status_explanation = @sign_up_form.status_service.status_explanation %>
   <div class="bg-white border border-gray-200 rounded-lg mb-6" data-controller="disclosure">
     <div class="px-5 py-4 flex items-center justify-between">
@@ -37,11 +44,11 @@
           <% end %>
           <%= form_status[:label] %>
         </span>
-        <% if @sign_up_form.per_event? && form_status[:open_count].to_i > 0 %>
+        <% if @sign_up_form.repeated? && form_status[:open_count].to_i > 0 %>
           <span class="text-sm text-gray-500">
             <%= pluralize(form_status[:open_count], 'event') %> accepting sign-ups
           </span>
-        <% elsif @sign_up_form.per_event? && form_status[:next_event] %>
+        <% elsif @sign_up_form.repeated? && form_status[:next_event] %>
           <span class="text-sm text-gray-500">
             Next event in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
           </span>
@@ -85,8 +92,8 @@
     <% end %>
   </div>
 
-  <% if @sign_up_form.per_event? %>
-    <%# 50/50 Grid Layout for Per-Event Mode %>
+  <% if @sign_up_form.repeated? %>
+    <%# 50/50 Grid Layout for Repeated Event Mode %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%# Left Column - Registrations (50%) %>
       <div>
@@ -169,77 +176,12 @@
               </div>
             <% end %>
 
-            <%# All Slots with Registrations - One per row %>
+            <%# All Slots with Registrations %>
             <% slots = @current_instance.sign_up_slots.order(:position) %>
-            <% registrations_by_slot = @current_instance.sign_up_registrations.active.includes(:sign_up_slot, :person).group_by(&:sign_up_slot_id) %>
-
-            <% if slots.any? %>
-              <div class="p-4 space-y-3">
-                <% slots.each do |slot| %>
-                  <% slot_registrations = registrations_by_slot[slot.id] || [] %>
-                  <% if slot.is_held %>
-                    <%# Held slot - grayed out with label in center %>
-                    <div class="bg-gray-100 rounded-lg p-4 border border-gray-200 relative">
-                      <div class="absolute inset-0 flex items-center justify-center">
-                        <span class="text-gray-500 font-medium text-sm"><%= slot.held_reason.presence || "Unavailable" %></span>
-                      </div>
-                      <div class="opacity-30">
-                        <div class="flex items-center gap-3 mb-3">
-                          <% if slot.capacity > 1 %>
-                            <span class="text-sm font-medium text-gray-500 tabular-nums">
-                              0/<%= slot.capacity %>
-                            </span>
-                          <% end %>
-                          <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
-                        </div>
-                      </div>
-                    </div>
-                  <% else %>
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <%# Slot header with count on left (only if capacity > 1) %>
-                    <div class="flex items-center gap-3 mb-3">
-                      <% if slot.capacity > 1 %>
-                        <span class="text-sm font-medium text-gray-500 tabular-nums">
-                          <%= slot_registrations.count %>/<%= slot.capacity %>
-                        </span>
-                      <% end %>
-                      <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
-                      <% if slot_registrations.count >= slot.capacity %>
-                        <span class="text-xs text-amber-600 font-medium">Full</span>
-                      <% end %>
-                    </div>
-
-                    <%# Registrations in this slot %>
-                    <% if slot_registrations.any? %>
-                      <div class="space-y-2">
-                        <% slot_registrations.each do |registration| %>
-                          <div class="flex items-center justify-between group bg-white rounded-lg px-3 py-2 border border-gray-100">
-                            <div class="flex items-center gap-2">
-                              <% if registration.person&.avatar&.attached? %>
-                                <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-6 h-6 rounded-full object-cover" %>
-                              <% else %>
-                                <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
-                                  <%= registration.display_name.first.upcase %>
-                                </div>
-                              <% end %>
-                              <span class="text-sm text-gray-700"><%= registration.display_name %></span>
-                            </div>
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <%= render "shared/button", text: "Cancel", path: cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id), variant: "danger", size: "small", data: { turbo_method: :delete, turbo_confirm: "Cancel this registration?" } %>
-                            </div>
-                          </div>
-                        <% end %>
-                      </div>
-                    <% end %>
-                  </div>
-                  <% end %>
-                <% end %>
-              </div>
-            <% else %>
-              <div class="px-5 py-8 text-center text-gray-500">
-                <p class="text-sm">No slots configured for this event.</p>
-              </div>
-            <% end %>
+            <%= render "manage/sign_up_forms/registration_list",
+                slots: slots,
+                sign_up_form: @sign_up_form,
+                production: @production %>
           <% else %>
             <%# No Events Yet %>
             <div class="p-8 text-center">
@@ -355,82 +297,23 @@
       </div>
     </div>
   <% else %>
-    <%# Non-per-event modes: 50/50 grid layout like per-event %>
+    <%# Non-repeated modes: 50/50 grid layout like repeated %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%# Left Column - Registrations (50%) %>
       <div>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <%= render "shared/card_header", title: "Registrations" do %>
             <span class="text-sm text-gray-500">
-              <%= @registrations.count %> of <%= @sign_up_form.sign_up_slots.sum(:capacity) %> spots filled
+              <%= @registrations.count %> of <%= @current_instance&.sign_up_slots&.sum(:capacity) || 0 %> spots filled
             </span>
           <% end %>
 
-          <% if @sign_up_form.sign_up_slots.any? %>
-            <div class="divide-y divide-gray-100">
-              <% @sign_up_form.sign_up_slots.order(:position).each do |slot| %>
-                <% registrations_in_slot = slot.sign_up_registrations.active.includes(:person) %>
-                <% active_count = registrations_in_slot.count %>
-                <% if slot.is_held %>
-                  <%# Held slot - grayed out with label in center %>
-                  <div class="p-4 bg-gray-100 relative">
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span class="text-gray-500 font-medium text-sm"><%= slot.held_reason.presence || "Unavailable" %></span>
-                    </div>
-                    <div class="opacity-30">
-                      <div class="flex items-center gap-3 mb-2">
-                        <% if slot.capacity > 1 %>
-                          <span class="text-sm font-medium text-gray-500 tabular-nums">
-                            0/<%= slot.capacity %>
-                          </span>
-                        <% end %>
-                        <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
-                      </div>
-                    </div>
-                  </div>
-                <% else %>
-                <div class="p-4">
-                  <%# Slot header: slot number on left %>
-                  <div class="flex items-center gap-3 mb-2">
-                    <% if slot.capacity > 1 %>
-                      <span class="text-sm font-medium text-gray-500 tabular-nums">
-                        <%= active_count %>/<%= slot.capacity %>
-                      </span>
-                    <% end %>
-                    <span class="font-medium text-gray-900"><%= slot.name.presence || "General" %></span>
-                    <% if active_count >= slot.capacity %>
-                      <span class="text-xs text-amber-600 font-medium">Full</span>
-                    <% end %>
-                  </div>
-
-                  <%# Registrations in this slot %>
-                  <% if registrations_in_slot.any? %>
-                    <div class="space-y-2">
-                      <% registrations_in_slot.each do |registration| %>
-                        <div class="flex items-center justify-between group bg-gray-50 rounded-lg px-3 py-2">
-                          <div class="flex items-center gap-2">
-                            <% if registration.person&.avatar&.attached? %>
-                              <%= image_tag registration.person.avatar.variant(:thumbnail), class: "w-6 h-6 rounded-full object-cover" %>
-                            <% else %>
-                              <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
-                                <%= registration.display_name.first.upcase %>
-                              </div>
-                            <% end %>
-                            <span class="text-sm text-gray-700"><%= registration.display_name %></span>
-                          </div>
-                          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <%= render "shared/button", text: "Cancel", path: cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id), variant: "danger", size: "small", data: { turbo_method: :delete, turbo_confirm: "Cancel this registration?" } %>
-                          </div>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% end %>
-                </div>
-                <% end %>
-              <% end %>
-            </div>
-          <% else %>
-            <% if form_status[:state] == :initializing %>
+          <% if @current_instance&.sign_up_slots&.any? %>
+            <%= render "manage/sign_up_forms/registration_list",
+                slots: @current_instance.sign_up_slots.order(:position),
+                sign_up_form: @sign_up_form,
+                production: @production %>
+          <% elsif form_status[:state] == :initializing %>
               <%# Form is being set up - show loading state %>
               <div class="px-5 py-12 text-center" data-controller="auto-refresh" data-auto-refresh-interval-value="30000">
                 <div class="inline-flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-full bg-blue-100">
@@ -442,13 +325,12 @@
                 <p class="text-gray-700 font-medium">Setting up your sign-up form...</p>
                 <p class="text-sm text-gray-500 mt-1">This will only take a moment.</p>
               </div>
-            <% else %>
+          <% else %>
               <div class="px-5 py-12 text-center">
                 <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <p class="text-gray-500">No slots configured yet.</p>
                 <p class="text-sm text-gray-400 mt-1">Go to Settings to configure slots.</p>
               </div>
-            <% end %>
           <% end %>
         </div>
       </div>
@@ -534,15 +416,24 @@
 
         <%# Footer %>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <div class="flex items-center justify-between">
-            <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
-              <input type="checkbox" class="rounded border-gray-300 text-pink-500 focus:ring-pink-500" data-action="change->welcome-modal#dismissForever">
-              <span>Don't show this again</span>
-            </label>
+          <div class="flex justify-end">
             <%= render "shared/button", text: "Got it!", variant: "primary", size: "medium", data: { action: "welcome-modal#close" } %>
           </div>
         </div>
       </div>
     </div>
+  <% end %>
+
+  <%# Move Registration Modal - for all slot-based modes %>
+  <% if @sign_up_form.repeated? && @current_instance %>
+    <%= render "manage/sign_up_forms/move_registration_modal",
+        sign_up_form: @sign_up_form,
+        production: @production,
+        slots: @current_instance.sign_up_slots.order(:position) %>
+  <% elsif !@sign_up_form.repeated? %>
+    <%= render "manage/sign_up_forms/move_registration_modal",
+        sign_up_form: @sign_up_form,
+        production: @production,
+        slots: @sign_up_form.sign_up_slots.order(:position) %>
   <% end %>
 </div>

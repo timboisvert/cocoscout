@@ -24,7 +24,7 @@ class SignUpForm < ApplicationRecord
 
   validates :name, presence: true
   validates :slots_per_registration, numericality: { greater_than: 0 }, allow_nil: true
-  validates :scope, presence: true, inclusion: { in: %w[single_event per_event shared_pool] }
+  validates :scope, presence: true, inclusion: { in: %w[single_event repeated shared_pool] }
   validates :event_matching, inclusion: { in: %w[all event_types manual] }, allow_nil: true
   validates :slot_generation_mode, inclusion: { in: %w[numbered time_based named simple_capacity open_list] }, allow_nil: true
   validates :url_slug, uniqueness: { scope: :production_id }, allow_blank: true
@@ -44,6 +44,7 @@ class SignUpForm < ApplicationRecord
   attribute :allow_cancel, default: true
   attribute :edit_cutoff_hours, default: 24
   attribute :cancel_cutoff_hours, default: 2
+  attribute :show_registrations, default: false
   attribute :schedule_mode, default: "relative"
   attribute :opens_days_before, default: 7
   attribute :closes_hours_before, default: 2
@@ -53,7 +54,7 @@ class SignUpForm < ApplicationRecord
   scope :open, -> { where("opens_at IS NULL OR opens_at <= ?", Time.current) }
   scope :not_closed, -> { where("closes_at IS NULL OR closes_at > ?", Time.current) }
   scope :available, -> { active.open.not_closed }
-  scope :per_event, -> { where(scope: "per_event") }
+  scope :repeated, -> { where(scope: "repeated") }
   scope :single_event, -> { where(scope: "single_event") }
   scope :shared_pool, -> { where(scope: "shared_pool") }
   scope :archived, -> { where.not(archived_at: nil) }
@@ -103,8 +104,8 @@ class SignUpForm < ApplicationRecord
     scope == "single_event"
   end
 
-  def per_event?
-    scope == "per_event"
+  def repeated?
+    scope == "repeated"
   end
 
   def shared_pool?
@@ -128,7 +129,7 @@ class SignUpForm < ApplicationRecord
 
   # Get all shows that match this form's event criteria
   def matching_shows
-    return Show.none unless per_event?
+    return Show.none unless repeated?
 
     base_scope = production.shows.where(canceled: false).where("date_and_time > ?", Time.current)
 
@@ -215,14 +216,14 @@ class SignUpForm < ApplicationRecord
 
   # Get the appropriate instance or form for a show
   def instance_for_show(show)
-    if per_event?
+    if repeated?
       sign_up_form_instances.find_by(show: show)
     else
       self # For single_event or shared_pool, use the form directly
     end
   end
 
-  # All upcoming instances for per-event forms
+  # All upcoming instances for repeated forms
   def upcoming_instances
     sign_up_form_instances.upcoming.includes(:show)
   end

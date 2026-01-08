@@ -98,48 +98,153 @@
 
   <!-- Open Sign-ups -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Open Sign-ups", links: [{ text: "My Sign-ups", path: my_audition_requests_path(requests_filter: :all) }] %>
+    <%= render "shared/card_header", title: "Open Sign-ups", links: [{ text: "My Sign-ups", path: my_sign_ups_path(requests_filter: :open) }] %>
     <div class="p-4">
-      <% if @open_audition_request_entities.any? %>
-        <div class="grid grid-cols-1 gap-1">
-          <% @open_audition_request_entities.each do |item| %>
-            <% audition_request = item[:audition_request] %>
-            <% entity = item[:entity] %>
-            <% cycle = audition_request.audition_cycle %>
-            <% production = cycle.production %>
-            <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex items-start">
-              <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 w-full">
-                <div class="col-span-1 sm:col-span-3 items-center">
-                  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <% logo_variant = production.safe_logo_variant(:small) %>
-                    <% if logo_variant %>
-                      <div class="w-full sm:w-auto sm:flex-shrink-0">
-                        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full sm:w-[100px] object-contain rounded" %>
+      <% if @open_signups_combined.any? %>
+        <div class="space-y-2">
+          <% @open_signups_combined.each do |item| %>
+            <% if item[:type] == :sign_up_registrations %>
+              <% registrations = item[:records] %>
+              <% first_reg = registrations.first %>
+              <% form = first_reg.sign_up_slot&.sign_up_form %>
+              <% production = form&.production %>
+              <% next unless form && production %>
+
+              <%# Get the show for this form - use form.show for single_event, or instance shows for repeated %>
+              <% if form.scope == 'single_event' %>
+                <% single_show = form.show %>
+              <% else %>
+                <% shows = registrations.map { |r| r.sign_up_slot&.sign_up_form_instance&.show }.compact.uniq %>
+                <% single_show = shows.length == 1 ? shows.first : nil %>
+              <% end %>
+
+              <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200 hover:border-gray-400 transition-all">
+                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+                  <%# Left Section: Date & Details %>
+                  <div class="w-full md:w-1/2 flex items-center gap-4">
+                    <% if single_show %>
+                      <%# Date Box for event-tied registrations %>
+                      <div class="flex-shrink-0 w-14 text-center">
+                        <div class="text-xs font-semibold text-pink-600 uppercase"><%= single_show.date_and_time.strftime("%b") %></div>
+                        <div class="text-2xl font-bold text-gray-900"><%= single_show.date_and_time.strftime("%-d") %></div>
+                        <div class="text-xs text-gray-500"><%= single_show.date_and_time.strftime("%a") %></div>
+                      </div>
+
+                      <%# Show Details %>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-medium text-gray-900">
+                            <%= single_show.secondary_name.presence || single_show.event_type.titleize %>
+                          </span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                          <%= single_show.date_and_time.strftime("%l:%M %p").strip %>
+                          <% if single_show.location.present? %>
+                            · <%= single_show.location.name %>
+                          <% elsif single_show.is_online %>
+                            · Online
+                          <% end %>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                          <%= production.name %>
+                        </div>
+                      </div>
+                    <% else %>
+                      <%# No show or multiple shows - show form name %>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-medium text-gray-900"><%= form.name %></span>
+                        </div>
+                        <div class="text-sm text-gray-600"><%= production.name %></div>
                       </div>
                     <% end %>
-                    <div class="w-full sm:w-auto text-left">
-                      <div class="font-bold text-lg sm:text-xl"><%= production.name %></div>
-                      <% if cycle.closes_at.present? && cycle.closes_at > 1.day.from_now %>
-                        <div class="text-xs text-gray-500 mt-1">
-                          <% if cycle.video_only? %>
-                            Video auditions
-                          <% else %>
-                            Sign-ups
-                          <% end %>
-                          close on <%= cycle.closes_at.strftime('%b %d, %Y') %> at <%= cycle.closes_at.strftime('%l:%M %p') %>
-                        </div>
-                      <% elsif cycle.closes_at.present? %>
-                        <div class="text-xs <%= cycle.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-gray-500' %> mt-1" data-controller="countdown" data-countdown-until-value="<%= cycle.closes_at.utc.iso8601 %>">
-                          <% if cycle.video_only? %>
-                            Video auditions
-                          <% else %>
-                            Sign-ups
-                          <% end %>
-                          close in <span data-countdown-target="clock" class="text-pink-500"></span>
-                        </div>
+                  </div>
+
+                  <%# Right Section: Slots & Actions %>
+                  <div class="w-full md:w-1/2 flex items-center border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 md:border-l md:border-gray-200 md:pl-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">
+                        <%= registrations.size == 1 ? "Your Slot" : "Your Slots" %>
+                      </div>
+                      <% if registrations.size == 1 %>
+                        <div class="text-sm font-medium text-gray-900"><%= first_reg.sign_up_slot&.display_name %></div>
                       <% else %>
-                        <div class="text-xs text-gray-500 mt-1">(open-ended)</div>
+                        <div class="text-sm font-medium text-gray-900">
+                          <%= registrations.map { |r| r.sign_up_slot&.display_name }.compact.join(", ") %>
+                        </div>
                       <% end %>
+                      <%= link_to my_sign_up_form_path(form.short_code), class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
+                        View Registration
+                      <% end %>
+                    </div>
+
+                    <% if @groups.any? %>
+                      <%# Collect all unique entities from all registrations %>
+                      <%
+                        all_entities = registrations.flat_map { |r| @sign_up_registration_entities[r.id] || [] }.uniq { |e| [e[:type], e[:entity].id] }
+                      %>
+                      <% if all_entities.any? %>
+                        <div class="flex flex-col gap-1 ml-3">
+                          <% all_entities.each do |entity_info| %>
+                            <% headshot = entity_info[:entity].safe_headshot_variant(:thumb) %>
+                            <% if headshot %>
+                              <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover", alt: entity_info[:entity].try(:preferred_name) || entity_info[:entity].name %>
+                            <% end %>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+            <% elsif item[:type] == :audition_request %>
+              <% audition_request = item[:item][:audition_request] %>
+              <% entity = item[:item][:entity] %>
+              <% cycle = audition_request.audition_cycle %>
+              <% production = cycle.production %>
+
+              <div class="flex items-stretch px-4 py-3 border rounded-lg bg-white border-gray-200 hover:border-gray-400 transition-all">
+                <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-0 w-full">
+                  <%# Left Section: Production Info %>
+                  <div class="w-full md:w-1/2 flex items-center gap-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-lg font-medium text-gray-900"><%= production.name %></div>
+                      <div class="text-sm text-gray-600">
+                        <% if cycle.video_only? %>
+                          Video Audition
+                        <% else %>
+                          In-Person Audition
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <%# Right Section: Status & Actions %>
+                  <div class="w-full md:w-1/2 flex items-center border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 md:border-l md:border-gray-200 md:pl-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="mb-2">
+                        <% if cycle.video_only? %>
+                          <span class="inline-flex items-center bg-green-500 text-white px-2.5 py-1 text-sm font-medium rounded">
+                            Video Submitted
+                          </span>
+                        <% else %>
+                          <span class="inline-flex items-center bg-green-500 text-white px-2.5 py-1 text-sm font-medium rounded">
+                            Signed Up
+                          </span>
+                        <% end %>
+                      </div>
+                      <div class="text-sm text-gray-500">
+                        <% if cycle.closes_at.present? && cycle.closes_at > 1.day.from_now %>
+                          You can edit until <%= cycle.closes_at.strftime('%b %d') %> at <%= cycle.closes_at.strftime('%l:%M %p') %>.
+                        <% elsif cycle.closes_at.present? %>
+                          <span data-controller="countdown" data-countdown-until-value="<%= cycle.closes_at.utc.iso8601 %>">
+                            You can edit for <span data-countdown-target="clock" class="<%= cycle.closes_at < 4.hours.from_now ? 'text-red-500' : 'text-pink-500' %>"></span>.
+                          </span>
+                        <% else %>
+                          No deadline — edit whenever you need to.
+                        <% end %>
+                      </div>
                       <%
                         edit_url = if @groups.any?
                           my_submit_audition_request_form_path(
@@ -151,40 +256,25 @@
                           my_submit_audition_request_form_path(cycle.token)
                         end
                       %>
-                      <%= link_to "Edit my Sign-up", edit_url, class: "text-xs text-pink-500 underline", target: "_blank" %>
+                      <%= link_to "Edit Sign-up", edit_url, class: "text-xs text-pink-500 hover:text-pink-600 underline mt-1 inline-block" %>
                     </div>
-                  </div>
-                </div>
-                <div class="col-span-1 sm:col-span-2 mt-2 sm:mt-0 flex flex-col justify-center items-start">
-                  <div class="text-lg">
-                    <% if cycle.video_only? %>
-                      <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Video Submitted</div>
-                    <% else %>
-                      <div class="bg-green-500 text-white px-2 py-1 text-sm rounded-lg">Signed Up</div>
-                    <% end %>
-                  </div>
-                  <div class="text-sm text-gray-500 mt-1">
-                    <% if cycle.video_only? %>
-                      Your video audition has been submitted. You can still edit it until the window closes.
-                    <% else %>
-                      Your sign-up has been submitted. You can still edit it until the window closes.
+
+                    <% if @groups.any? %>
+                      <div class="flex flex-col gap-1 ml-4">
+                        <% headshot = entity.safe_headshot_variant(:thumb) %>
+                        <% if headshot %>
+                          <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover", alt: entity.try(:preferred_name) || entity.name %>
+                        <% end %>
+                      </div>
                     <% end %>
                   </div>
                 </div>
               </div>
-              <% if @groups.any? %>
-                <div class="flex flex-col gap-2 ml-2">
-                  <% headshot = entity.safe_headshot_variant(:thumb) %>
-                  <% if headshot %>
-                    <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover", alt: entity.name %>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
+            <% end %>
           <% end %>
         </div>
       <% else %>
-        <p class="text-gray-500 text-sm">None of the shows you've applied for are currently auditioning.</p>
+        <p class="text-gray-500 text-sm">You don't have any sign-ups in currently open windows.</p>
       <% end %>
     </div>
   </div>

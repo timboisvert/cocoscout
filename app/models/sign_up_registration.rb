@@ -4,8 +4,9 @@ class SignUpRegistration < ApplicationRecord
   belongs_to :sign_up_slot
   belongs_to :person, optional: true
 
-  # Answers use polymorphic respondable association like questionnaire_responses
-  has_many :answers, as: :respondable, dependent: :destroy
+  # TODO: When adding custom questions to sign-up forms, create a migration to add
+  # respondable_id and respondable_type columns to answers table for polymorphic association
+  # has_many :answers, as: :respondable, dependent: :destroy
 
   validates :position, presence: true, numericality: { greater_than: 0 }
   validates :status, presence: true, inclusion: { in: %w[confirmed waitlisted cancelled] }
@@ -27,7 +28,7 @@ class SignUpRegistration < ApplicationRecord
   end
 
   def display_name
-    return person.display_name if person.present?
+    return person.name if person.present?
     guest_name
   end
 

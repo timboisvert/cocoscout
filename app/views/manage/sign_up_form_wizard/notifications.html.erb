@@ -1,0 +1,57 @@
+<%
+  # Calculate step number based on scope
+  step_num = @wizard_state[:scope] == "shared_pool" ? 5 : 6
+%>
+<%= render layout: "manage/sign_up_form_wizard/wizard_layout", locals: { current_step: step_num, step_name: "Notifications" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Team Notifications</h2>
+  <p class="text-gray-600 mb-6">Choose whether to notify your production team when someone registers.</p>
+
+  <%= form_with url: manage_sign_up_wizard_production_save_notifications_path(@production), method: :post, local: true do |form| %>
+    <div class="space-y-6">
+      <!-- Notification Toggle -->
+      <div class="p-5 bg-white rounded-lg border border-gray-200">
+        <label class="flex items-start gap-4 cursor-pointer">
+          <div class="mt-0.5">
+            <input type="hidden" name="notify_on_registration" value="0">
+            <input type="checkbox" name="notify_on_registration" value="1"
+                   <%= "checked" if @wizard_state[:notify_on_registration] %>
+                   class="h-5 w-5 rounded border-gray-300 text-pink-500 focus:ring-pink-500">
+          </div>
+          <div class="flex-1">
+            <span class="font-medium text-gray-900">Notify team when someone registers</span>
+            <p class="text-sm text-gray-500 mt-1">
+              Production team members will receive an email each time someone signs up for a slot.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <!-- Info about notification settings -->
+      <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-blue-800">
+              <strong>Note:</strong> Team members will only receive notifications if they have notifications enabled in their settings.
+              <%= link_to "Manage Production Team →", edit_manage_production_path(@production, anchor: "tab-2"), class: "underline text-blue-600 hover:text-blue-700", target: "_blank" %>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_sign_up_wizard_production_schedule_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

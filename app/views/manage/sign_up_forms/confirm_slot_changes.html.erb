@@ -12,112 +12,258 @@
   } %>
 
   <div class="mb-8">
-    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+    <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
       <div class="flex">
         <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
           </svg>
         </div>
         <div class="ml-3">
-          <h3 class="text-sm font-medium text-amber-800">Slot Layout Will Change</h3>
-          <p class="mt-1 text-sm text-amber-700">
+          <h3 class="text-sm font-medium text-pink-800">Slot Layout Will Change</h3>
+          <p class="mt-1 text-sm text-pink-700">
             Your slot settings have changed. Review the changes below before applying them.
           </p>
         </div>
       </div>
     </div>
 
+    <%
+      # Determine display mode based on slot generation mode
+      is_waitlist_mode = %w[simple_capacity open_list].include?(@sign_up_form.slot_generation_mode)
+    %>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <%# Current Slots (Left Side) %>
+      <%# Current Layout (Left Side) %>
       <div>
         <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">1</span>
           Current Layout
-          <span class="text-sm font-normal text-gray-500">(<%= @current_slots.count %> slots)</span>
         </h3>
-        <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-96 overflow-y-auto">
-          <% @current_slots.each do |slot| %>
-            <div class="p-3 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="text-gray-900"><%= slot.name =~ /^\d+$/ ? "Slot #{slot.name}" : slot.name %></span>
-                <% if slot.is_held %>
-                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <% if @current_slots.any? %>
+            <% if is_waitlist_mode %>
+              <%# Waitlist mode: Show summary + registration list %>
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-medium text-gray-700"><%= @change_analysis[:current_slot_count] %> spots</span>
+                  <span class="text-sm text-gray-500"><%= @change_analysis[:total_current_registrations] %> registered</span>
+                </div>
+              </div>
+              <% registrations = @current_slots.flat_map { |s| s.sign_up_registrations.active.includes(:person).to_a } %>
+              <% if registrations.any? %>
+                <div class="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                  <% registrations.each_with_index do |registration, idx| %>
+                    <div class="flex items-center gap-3 px-4 py-2">
+                      <span class="text-sm font-medium text-gray-400 w-6 text-center"><%= idx + 1 %></span>
+                      <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
+                      <% if headshot %>
+                        <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                      <% else %>
+                        <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                          <%= registration.display_name.first.upcase %>
+                        </div>
+                      <% end %>
+                      <% if registration.person&.public_key.present? %>
+                        <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                      <% else %>
+                        <span class="text-sm text-gray-900"><%= registration.display_name %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="px-4 py-8 text-center text-gray-500 text-sm">No registrations yet</div>
+              <% end %>
+            <% else %>
+              <%# Regular mode: Show slot list %>
+              <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                <% @current_slots.each do |slot| %>
+                  <% slot_registrations = slot.sign_up_registrations.active.includes(:person) %>
+                  <div class="flex">
+                    <div class="flex-shrink-0 w-24 flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+                      <span class="text-sm font-medium text-gray-500"><%= slot.name.presence || slot.position %></span>
+                    </div>
+                    <div class="flex-1 px-3 py-2 flex items-center">
+                      <% if slot.is_held %>
+                        <span class="text-sm text-pink-600"><%= slot.held_reason.presence || "Held" %></span>
+                      <% elsif slot_registrations.any? %>
+                        <% slot_reg = slot_registrations.first %>
+                        <div class="flex items-center gap-2">
+                          <% headshot = slot_reg.person&.safe_headshot_variant(:thumb) %>
+                          <% if headshot %>
+                            <%= image_tag headshot, class: "w-6 h-6 rounded-lg object-cover" %>
+                          <% else %>
+                            <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                              <%= slot_reg.display_name.first.upcase %>
+                            </div>
+                          <% end %>
+                          <% if slot_reg.person&.public_key.present? %>
+                            <%= link_to slot_reg.display_name, public_profile_path(slot_reg.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                          <% else %>
+                            <span class="text-sm text-gray-900"><%= slot_reg.display_name %></span>
+                          <% end %>
+                        </div>
+                      <% else %>
+                        <span class="text-sm text-gray-400 italic">Available</span>
+                      <% end %>
+                    </div>
+                  </div>
                 <% end %>
               </div>
-              <% if slot.sign_up_registrations.active.any? %>
-                <span class="text-xs text-gray-500"><%= slot.sign_up_registrations.active.count %> registered</span>
-              <% end %>
-            </div>
-          <% end %>
-          <% if @current_slots.empty? %>
+            <% end %>
+          <% else %>
             <div class="p-6 text-center text-gray-500">No slots configured</div>
           <% end %>
         </div>
       </div>
 
-      <%# New Slots (Right Side) %>
+      <%# New Layout (Right Side) %>
       <div>
         <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">2</span>
           New Layout
-          <span class="text-sm font-normal text-gray-500">(<%= @preview_slots.count %> slots)</span>
         </h3>
-        <div class="bg-white border border-pink-200 rounded-lg divide-y divide-gray-100 max-h-96 overflow-y-auto">
-          <% @preview_slots.each do |slot| %>
-            <% is_new = slot.position > @current_slots.count %>
-            <div class="p-3 flex items-center justify-between <%= is_new ? 'bg-green-50' : '' %>">
-              <div class="flex items-center gap-3">
-                <span class="text-gray-900"><%= slot.name =~ /^\d+$/ ? "Slot #{slot.name}" : slot.name %></span>
-                <% if slot.is_held %>
-                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">Held</span>
-                <% end %>
-                <% if is_new %>
-                  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">New</span>
+        <div class="bg-white border border-pink-200 rounded-lg overflow-hidden">
+          <% if @preview_slots.any? %>
+            <% if is_waitlist_mode %>
+              <%# Waitlist mode: Just show the new count %>
+              <div class="px-4 py-3 bg-pink-50 border-b border-pink-100">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-medium text-pink-700"><%= @change_analysis[:new_slot_count] %> spots</span>
+                  <% if @change_analysis[:is_increasing] %>
+                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                      +<%= @change_analysis[:slots_being_added] %> spots
+                    </span>
+                  <% elsif @change_analysis[:is_decreasing] %>
+                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700">
+                      -<%= @change_analysis[:slots_being_removed].count %> spots
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+              <% if @change_analysis[:total_current_registrations] > 0 %>
+                <div class="px-4 py-3 text-sm text-gray-600">
+                  <% if @change_analysis[:new_slot_count] >= @change_analysis[:total_current_registrations] %>
+                    All <%= @change_analysis[:total_current_registrations] %> current registration<%= @change_analysis[:total_current_registrations] == 1 ? '' : 's' %> will be preserved.
+                  <% else %>
+                    <span class="text-red-600 font-medium">Warning:</span> Only <%= @change_analysis[:new_slot_count] %> spots available for <%= @change_analysis[:total_current_registrations] %> registrations.
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="px-4 py-8 text-center text-gray-500 text-sm">Ready to accept registrations</div>
+              <% end %>
+            <% else %>
+              <%# Regular mode: Show slot preview list %>
+              <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                <% @preview_slots.each_with_index do |slot, idx| %>
+                  <% is_new = idx >= @change_analysis[:current_slot_count] %>
+                  <div class="flex <%= is_new ? 'bg-green-50' : '' %>">
+                    <div class="flex-shrink-0 w-24 flex items-center border-r border-gray-100 <%= is_new ? 'bg-green-100' : 'bg-gray-50' %> px-3 py-2">
+                      <span class="text-sm font-medium <%= is_new ? 'text-green-700' : 'text-gray-500' %>"><%= slot.name || (idx + 1) %></span>
+                    </div>
+                    <div class="flex-1 px-3 py-2 flex items-center justify-between">
+                      <% if is_new %>
+                        <span class="text-sm text-gray-400 italic">Available</span>
+                        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">New</span>
+                      <% else %>
+                        <%# Show existing registration if any %>
+                        <% existing_slot = @current_slots[idx] %>
+                        <% if existing_slot %>
+                          <% slot_reg = existing_slot.sign_up_registrations.active.first %>
+                          <% if existing_slot.is_held %>
+                            <span class="text-sm text-amber-600"><%= existing_slot.held_reason.presence || "Held" %></span>
+                          <% elsif slot_reg %>
+                            <div class="flex items-center gap-2">
+                              <% headshot = slot_reg.person&.safe_headshot_variant(:thumb) %>
+                              <% if headshot %>
+                                <%= image_tag headshot, class: "w-6 h-6 rounded-lg object-cover" %>
+                              <% else %>
+                                <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                                  <%= slot_reg.display_name.first.upcase %>
+                                </div>
+                              <% end %>
+                              <span class="text-sm text-gray-900"><%= slot_reg.display_name %></span>
+                            </div>
+                          <% else %>
+                            <span class="text-sm text-gray-400 italic">Available</span>
+                          <% end %>
+                        <% else %>
+                          <span class="text-sm text-gray-400 italic">Available</span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
                 <% end %>
               </div>
-            </div>
-          <% end %>
-          <% if @preview_slots.empty? %>
+            <% end %>
+          <% else %>
             <div class="p-6 text-center text-gray-500">No slots will be created</div>
           <% end %>
         </div>
       </div>
     </div>
 
-    <%# Summary of Changes %>
-    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-      <h4 class="font-medium text-gray-900 mb-2">Summary of Changes</h4>
-      <ul class="space-y-1 text-sm text-gray-600">
-        <% if @pending_changes["old_count"] != @sign_up_form.slot_count %>
-          <li class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            Slot count: <span class="font-medium"><%= @pending_changes["old_count"] %></span> → <span class="font-medium text-pink-600"><%= @sign_up_form.slot_count %></span>
-          </li>
-        <% end %>
-        <% if @pending_changes["old_capacity"] != @sign_up_form.slot_capacity %>
-          <li class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            Capacity per slot: <span class="font-medium"><%= @pending_changes["old_capacity"] %></span> → <span class="font-medium text-pink-600"><%= @sign_up_form.slot_capacity %></span>
-          </li>
-        <% end %>
-      </ul>
-    </div>
-
-    <%# Warning about registrations %>
-    <% if @current_slots.any? { |s| s.sign_up_registrations.active.any? } %>
-      <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-        <div class="flex">
+    <%# Warning about affected registrations - only show if there are actually affected registrations %>
+    <% if @change_analysis[:has_affected_registrations] %>
+      <div class="mt-6 bg-pink-50 border border-pink-200 rounded-lg p-5">
+        <div class="flex items-start gap-3">
           <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+            <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
           </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Existing Registrations</h3>
-            <p class="mt-1 text-sm text-red-700">
-              Some slots have active registrations. Existing registrations will be preserved. Slots with registrations cannot be removed.
+          <div class="flex-1">
+            <h3 class="text-base font-semibold text-pink-900">What should happen to these registrations?</h3>
+            <p class="mt-1 text-sm text-pink-800">
+              <%= @change_analysis[:affected_registrations].count == 1 ? 'This registration is' : 'These registrations are' %> in slots that will be removed. Choose what to do:
             </p>
+
+            <div class="mt-4 space-y-3">
+              <% @change_analysis[:affected_registrations].each do |affected| %>
+                <div class="flex items-center justify-between bg-white rounded-lg px-4 py-3 border border-pink-200">
+                  <div class="flex items-center gap-3">
+                    <% headshot = affected[:person]&.safe_headshot_variant(:thumb) %>
+                    <% if headshot %>
+                      <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                        <%= affected[:display_name].first.upcase %>
+                      </div>
+                    <% end %>
+                    <div>
+                      <% if affected[:person]&.public_key.present? %>
+                        <%= link_to affected[:display_name], public_profile_path(affected[:person].public_key), class: "text-sm font-medium text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                      <% else %>
+                        <span class="text-sm font-medium text-gray-900"><%= affected[:display_name] %></span>
+                      <% end %>
+                      <% unless is_waitlist_mode %>
+                        <p class="text-xs text-gray-500">Currently in slot <%= affected[:slot].name.presence || affected[:slot].position %></p>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="mt-4 p-3 bg-white rounded-lg border border-pink-200">
+              <div class="space-y-2">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="affected_action" value="reassign" checked class="mt-1 accent-pink-500 focus:ring-pink-500" form="apply_changes_form">
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Move to next available spot</span>
+                    <p class="text-xs text-gray-500">Registrations will be reassigned to available slots</p>
+                  </div>
+                </label>
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="affected_action" value="cancel" class="mt-1 accent-pink-500 focus:ring-pink-500" form="apply_changes_form">
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Cancel these registrations</span>
+                    <p class="text-xs text-gray-500">Registrations will be marked as cancelled</p>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -133,7 +279,7 @@
         Cancel & Go Back
       <% end %>
 
-      <%= form_with url: apply_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true do %>
+      <%= form_with url: apply_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true, id: "apply_changes_form" do %>
         <%= render "shared/button", text: "Apply Changes", variant: "primary", size: "medium", type: :submit %>
       <% end %>
     </div>

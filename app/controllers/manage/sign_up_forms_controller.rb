@@ -9,7 +9,7 @@ module Manage
       slots create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
       holdouts create_holdout destroy_holdout
       questions create_question update_question destroy_question reorder_questions
-      registrations register cancel_registration
+      registrations register cancel_registration move_registration
       preview toggle_active archive unarchive
     ]
 
@@ -26,8 +26,8 @@ module Manage
       @slots = @sign_up_form.sign_up_slots.order(:position)
       @registrations = @sign_up_form.sign_up_registrations.includes(:sign_up_slot, :person).active.order("sign_up_slots.position, sign_up_registrations.position")
 
-      # For per-event mode, load instances for event navigation
-      if @sign_up_form.per_event?
+      # For repeated mode, load instances for event navigation
+      if @sign_up_form.repeated?
         @instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
           .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
@@ -40,6 +40,12 @@ module Manage
           @current_instance = @instances.find_by(id: params[:instance_id])
         end
         @current_instance ||= @instances.first
+      elsif @sign_up_form.shared_pool?
+        # For shared_pool, get the single instance (no show association)
+        @current_instance = @sign_up_form.sign_up_form_instances.where(show_id: nil).first
+      elsif @sign_up_form.single_event?
+        # For single_event, get the single instance
+        @current_instance = @sign_up_form.sign_up_form_instances.first
       end
     end
 
@@ -105,6 +111,9 @@ module Manage
       # Check if slot-related settings are changing
       slot_settings_changed = slot_settings_will_change?
 
+      # Check if schedule settings are changing
+      schedule_settings_changed = schedule_settings_will_change?
+
       success = false
 
       ActiveRecord::Base.transaction do
@@ -119,7 +128,16 @@ module Manage
         # Handle cutoff toggles - set to 0 if disabled
         adjust_cutoff_settings
 
+        # Clear opens_at/closes_at when using relative schedule mode
+        # (timings are calculated from event dates, not stored on the form)
+        clear_fixed_dates_for_relative_mode
+
         if @sign_up_form.update(settings_params)
+          # Recalculate instance timings if schedule settings changed
+          if schedule_settings_changed
+            SlotManagementService.new(@sign_up_form).recalculate_instance_timings!
+          end
+
           success = true
         else
           raise ActiveRecord::Rollback
@@ -128,7 +146,14 @@ module Manage
 
       if success
         # If slot settings changed and form has existing slots, show confirmation
-        if slot_settings_changed && @sign_up_form.sign_up_slots.any?
+        has_existing_slots = case @sign_up_form.scope
+        when "shared_pool"
+          @sign_up_form.sign_up_slots.any?
+        else
+          @sign_up_form.sign_up_form_instances.joins(:sign_up_slots).exists?
+        end
+
+        if slot_settings_changed && has_existing_slots
           # Store pending changes in session for confirmation
           session[:pending_slot_changes] = {
             form_id: @sign_up_form.id,
@@ -158,19 +183,12 @@ module Manage
         return
       end
 
-      # For per_event forms, show slots from the first instance as a representative sample
-      if @sign_up_form.per_event?
-        first_instance = @sign_up_form.sign_up_form_instances.first
-        @current_slots = first_instance&.sign_up_slots&.order(:position) || []
-      else
-        @current_slots = @sign_up_form.sign_up_slots.order(:position)
-      end
+      # Use the service to analyze the impact of changes
+      service = SlotManagementService.new(@sign_up_form)
+      @change_analysis = service.analyze_slot_change_impact
 
-      @new_slot_count = @sign_up_form.slot_count
-      @new_capacity = @sign_up_form.slot_capacity
-
-      # Calculate what new layout would look like
-      @preview_slots = build_preview_slots
+      @current_slots = @change_analysis[:current_slots]
+      @preview_slots = @change_analysis[:preview_slots].map { |s| OpenStruct.new(s) }
     end
 
     def apply_slot_changes
@@ -182,9 +200,14 @@ module Manage
         return
       end
 
-      # Regenerate slots based on new settings using the service
+      # Handle affected registrations based on user choice
+      affected_action = params[:affected_action] || "reassign"
+
+      # Apply slot changes using the service
       service = SlotManagementService.new(@sign_up_form)
-      service.apply_slot_changes!(preserve_registrations: true)
+      service.apply_slot_changes!(
+        affected_registration_action: affected_action.to_sym
+      )
 
       redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
                   notice: "Slot layout updated successfully"
@@ -418,10 +441,40 @@ module Manage
                   notice: "Registration cancelled"
     end
 
+    def move_registration
+      @registration = SignUpRegistration.find(params[:registration_id])
+      target_slot = SignUpSlot.find(params[:target_slot_id])
+
+      # Ensure the target slot belongs to the same form
+      unless target_slot.sign_up_form_id == @sign_up_form.id ||
+             target_slot.sign_up_form_instance&.sign_up_form_id == @sign_up_form.id
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "Invalid target slot"
+        return
+      end
+
+      # Check if slot has available capacity
+      unless target_slot.spots_remaining > 0
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "Target slot is full"
+        return
+      end
+
+      # Move the registration
+      old_slot = @registration.sign_up_slot
+      @registration.update!(
+        sign_up_slot: target_slot,
+        position: target_slot.sign_up_registrations.active.count + 1
+      )
+
+      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                  notice: "Moved #{@registration.display_name} to #{target_slot.name.presence || "slot #{target_slot.position}"}"
+    end
+
     def preview
-      # For per_event forms, get slots from the first upcoming instance
+      # For repeated forms, get slots from the first upcoming instance
       # For other forms, get slots directly from the form
-      if @sign_up_form.per_event?
+      if @sign_up_form.repeated?
         @preview_instance = @sign_up_form.sign_up_form_instances
           .includes(show: :location, sign_up_slots: [])
           .joins(:show)
@@ -486,12 +539,13 @@ module Manage
         :slot_generation_mode, :slot_count, :slot_prefix, :slot_capacity,
         :slot_start_time, :slot_interval_minutes, :slot_names,
         :registrations_per_person, :slot_selection_mode,
-        :require_login, :allow_edit, :allow_cancel,
+        :require_login, :show_registrations, :allow_edit, :allow_cancel,
         :edit_cutoff_hours, :cancel_cutoff_hours,
         :enable_holdbacks, :holdback_interval, :holdback_label, :holdback_visible,
         :schedule_mode, :opens_days_before, :closes_hours_before,
         :closes_mode, :closes_offset_value, :closes_offset_unit,
         :opens_at, :closes_at,
+        :notify_on_registration,
         event_type_filter: []
       )
     end
@@ -527,6 +581,29 @@ module Manage
 
       (new_count.present? && new_count != @sign_up_form.slot_count) ||
         (new_capacity.present? && new_capacity != @sign_up_form.slot_capacity)
+    end
+
+    def schedule_settings_will_change?
+      new_schedule_mode = settings_params[:schedule_mode]
+      new_opens_days_before = settings_params[:opens_days_before]&.to_i
+      new_closes_mode = settings_params[:closes_mode]
+      new_closes_offset_value = settings_params[:closes_offset_value]&.to_i
+      new_closes_offset_unit = settings_params[:closes_offset_unit]
+
+      (new_schedule_mode.present? && new_schedule_mode != @sign_up_form.schedule_mode) ||
+        (new_opens_days_before.present? && new_opens_days_before != @sign_up_form.opens_days_before) ||
+        (new_closes_mode.present? && new_closes_mode != @sign_up_form.closes_mode) ||
+        (new_closes_offset_value.present? && new_closes_offset_value != @sign_up_form.closes_offset_value) ||
+        (new_closes_offset_unit.present? && new_closes_offset_unit != @sign_up_form.closes_offset_unit)
+    end
+
+    def clear_fixed_dates_for_relative_mode
+      # When using relative schedule mode, clear any fixed dates
+      # Instance timings are calculated from event dates, not stored on the form
+      if settings_params[:schedule_mode] == "relative"
+        @sign_up_form.opens_at = nil
+        @sign_up_form.closes_at = nil
+      end
     end
 
     def build_preview_slots

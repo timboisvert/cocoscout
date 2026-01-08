@@ -17,14 +17,14 @@ module Manage
     def save_scope
       @wizard_state[:scope] = params[:scope]
 
-      unless %w[single_event per_event shared_pool].include?(@wizard_state[:scope])
+      unless %w[single_event repeated shared_pool].include?(@wizard_state[:scope])
         flash.now[:alert] = "Please select a registration scope"
         render :scope, status: :unprocessable_entity and return
       end
 
       save_wizard_state
 
-      # If single_event or per_event, go to events selection; shared_pool skips to slots
+      # If single_event or repeated, go to events selection; shared_pool skips to slots
       if @wizard_state[:scope] == "shared_pool"
         redirect_to manage_sign_up_wizard_production_slots_path(@production)
       else
@@ -77,7 +77,10 @@ module Manage
 
     # Step 3: Slots & Capacity - How are registration slots structured?
     def slots
-      @wizard_state[:slot_generation_mode] ||= "numbered"
+      # Default slot_generation_mode based on scope - shared_pool doesn't have numbered/time_based
+      if @wizard_state[:slot_generation_mode].blank?
+        @wizard_state[:slot_generation_mode] = @wizard_state[:scope] == "shared_pool" ? "open_list" : "numbered"
+      end
       @wizard_state[:slot_count] ||= 10
       @wizard_state[:slot_prefix] ||= "Slot"
       @wizard_state[:slot_capacity] ||= 1
@@ -139,6 +142,7 @@ module Manage
       @wizard_state[:require_login] = true if @wizard_state[:require_login].nil?
       @wizard_state[:allow_edit] = true if @wizard_state[:allow_edit].nil?
       @wizard_state[:allow_cancel] = true if @wizard_state[:allow_cancel].nil?
+      @wizard_state[:show_registrations] = true if @wizard_state[:show_registrations].nil?
       @wizard_state[:edit_cutoff_hours] ||= 24
       @wizard_state[:cancel_cutoff_hours] ||= 2
       @wizard_state[:holdback_visible] = true if @wizard_state[:holdback_visible].nil?
@@ -150,6 +154,7 @@ module Manage
       @wizard_state[:require_login] = params[:require_login] == "1"
       @wizard_state[:allow_edit] = params[:allow_edit] == "1"
       @wizard_state[:allow_cancel] = params[:allow_cancel] == "1"
+      @wizard_state[:show_registrations] = params[:show_registrations] == "1"
       @wizard_state[:edit_cutoff_hours] = params[:edit_cutoff_hours].to_i if params[:allow_edit] == "1"
       @wizard_state[:cancel_cutoff_hours] = params[:cancel_cutoff_hours].to_i if params[:allow_cancel] == "1"
 
@@ -178,13 +183,16 @@ module Manage
 
     # Step 5: Schedule - When does registration open/close?
     def schedule
-      @wizard_state[:schedule_mode] ||= @wizard_state[:scope] == "single_event" ? "fixed" : "relative"
+      @wizard_state[:schedule_mode] ||= "relative"
       @wizard_state[:opens_days_before] ||= 7
-      @wizard_state[:closes_mode] ||= "event_start"
+      @wizard_state[:closes_mode] ||= "custom"
       @wizard_state[:closes_offset_value] ||= 2
       @wizard_state[:closes_offset_unit] ||= "hours"
-      @wizard_state[:closes_before_after] ||= "before"
-      @wizard_state[:opens_at] ||= 1.day.from_now.beginning_of_day
+      @wizard_state[:closes_before_after] ||= "after"
+      # Only set default opens_at for non-waitlist scopes (waitlist defaults to "now")
+      unless @wizard_state[:scope] == "shared_pool"
+        @wizard_state[:opens_at] ||= 1.day.from_now.beginning_of_day
+      end
       @wizard_state[:closes_at] ||= nil
     end
 
@@ -222,10 +230,22 @@ module Manage
       end
 
       save_wizard_state
+      redirect_to manage_sign_up_wizard_production_notifications_path(@production)
+    end
+
+    # Step 6: Notifications - Notify team when someone registers?
+    def notifications
+      @wizard_state[:notify_on_registration] = false if @wizard_state[:notify_on_registration].nil?
+    end
+
+    def save_notifications
+      @wizard_state[:notify_on_registration] = params[:notify_on_registration] == "1"
+
+      save_wizard_state
       redirect_to manage_sign_up_wizard_production_review_path(@production)
     end
 
-    # Step 6: Review - Summary of all settings
+    # Step 7: Review - Summary of all settings
     def review
       # Load shows for display if needed
       if @wizard_state[:scope] == "single_event" && @wizard_state[:selected_show_ids].present?
@@ -237,6 +257,17 @@ module Manage
 
     def create_form
       ActiveRecord::Base.transaction do
+        # For open_list mode, map open_list_capacity to slot_count (which is used as the single slot's capacity)
+        slot_count = if @wizard_state[:slot_generation_mode] == "open_list"
+                       if @wizard_state[:open_list_limit] == "unlimited"
+                         999_999 # Effectively unlimited
+                       else
+                         @wizard_state[:open_list_capacity].to_i.clamp(1, 999_999)
+                       end
+        else
+                       @wizard_state[:slot_count]
+        end
+
         @sign_up_form = @production.sign_up_forms.new(
           name: params[:name].presence || generate_default_name,
           active: true,
@@ -244,7 +275,7 @@ module Manage
           event_matching: @wizard_state[:event_matching],
           event_type_filter: @wizard_state[:event_type_filter],
           slot_generation_mode: @wizard_state[:slot_generation_mode],
-          slot_count: @wizard_state[:slot_count],
+          slot_count: slot_count,
           slot_prefix: @wizard_state[:slot_prefix],
           slot_capacity: @wizard_state[:slot_capacity],
           slot_start_time: @wizard_state[:slot_start_time],
@@ -255,6 +286,7 @@ module Manage
           require_login: @wizard_state[:require_login],
           allow_edit: @wizard_state[:allow_edit],
           allow_cancel: @wizard_state[:allow_cancel],
+          show_registrations: @wizard_state[:show_registrations],
           edit_cutoff_hours: @wizard_state[:edit_cutoff_hours],
           cancel_cutoff_hours: @wizard_state[:cancel_cutoff_hours],
           schedule_mode: @wizard_state[:schedule_mode],
@@ -262,7 +294,8 @@ module Manage
           closes_mode: @wizard_state[:closes_mode] || "event_start",
           closes_offset_value: calculate_closes_offset_value,
           closes_offset_unit: @wizard_state[:closes_offset_unit] || "hours",
-          holdback_visible: @wizard_state.fetch(:holdback_visible, true)
+          holdback_visible: @wizard_state.fetch(:holdback_visible, true),
+          notify_on_registration: @wizard_state.fetch(:notify_on_registration, false)
         )
 
         # Set fixed schedule dates for single_event or fixed mode
@@ -364,14 +397,14 @@ module Manage
         else
           "#{@production.name} Sign-ups"
         end
-      when "per_event"
-        generate_per_event_name
+      when "repeated"
+        generate_repeated_name
       else
         "#{@production.name} Waitlist"
       end
     end
 
-    def generate_per_event_name
+    def generate_repeated_name
       case @wizard_state[:event_matching]
       when "event_types"
         event_types = @wizard_state[:event_type_filter]
@@ -450,20 +483,6 @@ module Manage
       shows.find_each do |show|
         @sign_up_form.create_instance_for_show!(show)
       end
-    end
-
-    def create_single_event_instance
-      show = @production.shows.find_by(id: @wizard_state[:selected_show_ids].first)
-      return unless show
-
-      instance = @sign_up_form.sign_up_form_instances.create!(
-        show: show,
-        opens_at: @sign_up_form.opens_at,
-        closes_at: @sign_up_form.closes_at,
-        edit_cutoff_at: @sign_up_form.opens_at,
-        status: "scheduled"
-      )
-      instance.generate_slots_from_template!
     end
 
     def generate_shared_pool_slots
