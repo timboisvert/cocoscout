@@ -6,9 +6,7 @@ if [ -z "${LD_PRELOAD+x}" ]; then
     export LD_PRELOAD
 fi
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
-fi
+# Migrations are run via Kamal's pre-deploy hook on a single host to avoid
+# ConcurrentMigrationError on multi-server deployments
 
 exec "${@}"

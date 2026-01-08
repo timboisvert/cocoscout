@@ -134,7 +134,7 @@ module My
         next unless form_id
         form = registrations.first.sign_up_slot&.sign_up_form
         # Use form.show for single_event, or instance shows for repeated
-        sort_date = if form&.scope == 'single_event'
+        sort_date = if form&.scope == "single_event"
           form.show&.date_and_time || Time.new(9999)
         else
           registrations.map { |reg| reg.sign_up_slot&.sign_up_form_instance&.show&.date_and_time }.compact.min || Time.new(9999)

@@ -41,7 +41,7 @@ class AuditionRequestNotificationJob < ApplicationJob
     # and have notifications enabled on their organization role (nil = enabled)
     users_with_global_role = organization.organization_roles
                                          .where(company_role: %w[manager viewer])
-                                         .where(notifications_enabled: [true, nil])
+                                         .where(notifications_enabled: [ true, nil ])
                                          .includes(:user)
                                          .map(&:user)
 

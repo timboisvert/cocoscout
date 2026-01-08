@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_08_025215) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_08_040705) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -559,7 +559,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_025215) do
     t.text "event_visibility_overrides"
     t.boolean "has_auditions", default: true, null: false
     t.boolean "has_roles", default: true, null: false
-    t.boolean "has_sign_up_slots", default: false, null: false
+    t.boolean "has_sign_up_slots", default: true, null: false
     t.boolean "has_talent_pool", default: true, null: false
     t.string "name"
     t.text "old_keys"

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Run database migrations on a single host before deploying to avoid
+# ConcurrentMigrationError when multiple servers try to migrate simultaneously.
+#
+# This runs BEFORE the new containers are started, using the new image.
+
+set -e
+
+# Get the first web host
+FIRST_HOST=$(echo "$KAMAL_HOSTS" | cut -d',' -f1)
+
+echo "Running database migrations on $FIRST_HOST..."
+
+# Run migrations on the first host only using the new image
+kamal app exec --hosts="$FIRST_HOST" --version="$KAMAL_VERSION" -p "bin/rails db:prepare"
+
+echo "Migrations completed successfully"

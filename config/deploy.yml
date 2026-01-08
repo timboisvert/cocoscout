@@ -1,8 +1,8 @@
 # Name of your application. Used to uniquely configure containers.
 service: cocoscout
 
-# Name of the container image.
-image: cocorunseverything/cocoscout
+# Name of the container image (ECR in us-east-2).
+image: cocoscout
 
 # Deploy to these servers.
 servers:
@@ -10,6 +10,13 @@ servers:
     hosts:
       - ec2-18-188-157-224.us-east-2.compute.amazonaws.com # CocoScout Web 1
       - ec2-18-224-17-140.us-east-2.compute.amazonaws.com # CocoScout Web 2
+    options:
+      memory: 3g  # Limit to leave headroom on 4GB instance
+    env:
+      clear:
+        WEB_CONCURRENCY: 2  # Puma workers (1 per vCPU on t4g.medium)
+        RAILS_MAX_THREADS: 5
+        DB_POOL: 5
   job:
     hosts:
       - ec2-18-217-146-201.us-east-2.compute.amazonaws.com # CocoScout Jobs
@@ -17,6 +24,11 @@ servers:
     proxy: false
     options:
       health-cmd: "true"
+      memory: 1500m  # Limit to leave headroom on 2GB instance
+    env:
+      clear:
+        JOB_CONCURRENCY: 5  # Solid Queue workers
+        DB_POOL: 10  # Jobs need more connections
 
 ssh:
   user: ec2-user
@@ -32,13 +44,10 @@ ssh:
 #     - cocoscout.com
 #     - www.cocoscout.com
 
-# Credentials for your image host.
+# ECR registry (password fetched dynamically via AWS CLI)
 registry:
-  # Specify the registry server, if you're not using Docker Hub
-  # server: registry.digitalocean.com / ghcr.io / ...
-  username: cocorunseverything
-
-  # Always use an access token rather than real password when possible.
+  server: 769979514680.dkr.ecr.us-east-2.amazonaws.com
+  username: AWS
   password:
     - KAMAL_REGISTRY_PASSWORD
 
@@ -52,24 +61,9 @@ env:
     - MAILGUN_API_KEY
     - SENTRY_DSN
   clear:
-    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
-    # When you start using multiple servers, you should split out job processing to a dedicated machine.
-    SOLID_QUEUE_IN_PUMA: true
+    # Job processing is handled by the dedicated job server (bin/jobs)
+    SOLID_QUEUE_IN_PUMA: false
 
-    # Set number of processes dedicated to Solid Queue (default: 1)
-    JOB_CONCURRENCY: 3
-
-    # Set number of cores available to the application on each server (default: 1).
-    WEB_CONCURRENCY: 1
-
-    # Set maximum number of threads per process (default: 3-5)
-    RAILS_MAX_THREADS: 5
-
-    # Database connection pool size (should be at least RAILS_MAX_THREADS)
-    DB_POOL: 5
-
-    # Match this to any external database server to configure Active Record correctly
-    # Use cocoscout-db for a db accessory server on same machine via local kamal docker network.
     RAILS_ENV: production
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
