@@ -8,12 +8,12 @@
         </svg>
       </a>
     </div>
-    
+
     <div class="mt-4">
       <p class="text-sm text-gray-600">
         The following productions have talent pool members. Choose which members to add to the shared pool:
       </p>
-      
+
       <form action="<%= update_shares_manage_production_talent_pools_path(@production) %>" method="post" accept-charset="UTF-8" data-turbo="false">
         <input type="hidden" name="_method" value="patch">
         <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
@@ -25,14 +25,14 @@
           <input type="hidden" name="productions_to_remove[]" value="<%= prod_id %>">
         <% end %>
         <input type="hidden" name="confirmed" value="1">
-        
+
         <div class="mt-4 space-y-4 max-h-96 overflow-y-auto">
           <% @members_to_merge.each do |merge_info| %>
             <div class="border border-gray-200 rounded-lg overflow-hidden">
               <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100">
-                <input type="checkbox" 
-                       name="merge_production_ids[]" 
-                       value="<%= merge_info[:production].id %>" 
+                <input type="checkbox"
+                       name="merge_production_ids[]"
+                       value="<%= merge_info[:production].id %>"
                        checked
                        class="w-5 h-5 rounded border-gray-300 text-pink-600 accent-pink-600 focus:ring-pink-500 focus:ring-offset-0 cursor-pointer">
                 <div class="flex-1">
@@ -77,11 +77,11 @@
             </div>
           <% end %>
         </div>
-        
+
         <p class="mt-4 text-sm text-gray-500">
           Unchecked productions will join the shared pool but their current members will not be added.
         </p>
-        
+
         <div class="flex justify-end gap-2 mt-6">
           <a href="<%= manage_production_casting_settings_path(@production, anchor: "talent-pool") %>" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
             Cancel

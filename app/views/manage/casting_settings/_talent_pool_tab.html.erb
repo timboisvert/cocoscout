@@ -15,7 +15,7 @@
   <%# Sharing Section %>
   <% if current_user_can_manage?(Current.production) %>
     <% sibling_productions = @production.sibling_productions %>
-    
+
     <% if @production.uses_shared_pool? %>
       <%# This production uses a shared pool from another production %>
       <% all_sharing_productions = @production.shared_pool_productions %>
@@ -43,14 +43,14 @@
           <h4 class="text-sm font-semibold text-gray-900">Share Talent Pool</h4>
           <p class="text-sm text-gray-500 mt-0.5">Share this talent pool with other productions in your organization.</p>
         </div>
-        
+
         <%= form_with url: update_shares_manage_production_talent_pools_path(@production), method: :patch, data: { turbo: false, talent_pool_sharing_target: "form" } do |f| %>
           <div class="divide-y divide-gray-100">
             <% sibling_productions.each do |sibling| %>
               <% is_shared = @production.talent_pool.shared_productions.include?(sibling) %>
               <% sibling_uses_other_pool = sibling.uses_shared_pool? && sibling.effective_talent_pool != @production.talent_pool %>
               <% sibling_member_count = sibling.talent_pool.cached_member_counts[:total] %>
-              
+
               <label class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer <%= sibling_uses_other_pool ? 'opacity-50 cursor-not-allowed' : '' %>">
                 <% if sibling_uses_other_pool %>
                   <div class="w-5 h-5 rounded border-2 border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -59,9 +59,9 @@
                     </svg>
                   </div>
                 <% else %>
-                  <input type="checkbox" 
-                         name="shared_production_ids[]" 
-                         value="<%= sibling.id %>" 
+                  <input type="checkbox"
+                         name="shared_production_ids[]"
+                         value="<%= sibling.id %>"
                          <%= 'checked' if is_shared %>
                          class="w-5 h-5 rounded border-gray-300 text-pink-600 accent-pink-600 focus:ring-pink-500 focus:ring-offset-0 cursor-pointer"
                          data-action="change->talent-pool-sharing#markChanged"
@@ -81,10 +81,10 @@
               </label>
             <% end %>
           </div>
-          
+
           <%# Hidden field to handle unchecking all boxes %>
           <input type="hidden" name="shared_production_ids[]" value="">
-          
+
           <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-end" data-talent-pool-sharing-target="saveSection">
             <%= render "shared/button", text: "Save Sharing Settings", variant: "primary", size: "small", type: :submit %>
           </div>

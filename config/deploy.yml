@@ -27,7 +27,7 @@ servers:
       memory: 1500m  # Limit to leave headroom on 2GB instance
     env:
       clear:
-        JOB_CONCURRENCY: 5  # Solid Queue workers
+        JOB_CONCURRENCY: 3  # Solid Queue workers
         DB_POOL: 10  # Jobs need more connections
 
 ssh:

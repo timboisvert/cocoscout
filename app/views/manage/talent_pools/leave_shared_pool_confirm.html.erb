@@ -11,7 +11,7 @@
           </svg>
         <% end %>
       </div>
-      
+
       <div class="mt-4">
         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
           <div class="flex gap-2">
@@ -26,11 +26,11 @@
             </div>
           </div>
         </div>
-        
+
         <p class="text-sm text-gray-600">
           Are you sure you want to leave the shared talent pool from <strong><%= @production.effective_talent_pool.production.name %></strong>?
         </p>
-        
+
         <div class="flex justify-end gap-2 mt-6">
           <%= link_to "Cancel",
               manage_production_casting_settings_path(@production, anchor: "talent-pool"),
