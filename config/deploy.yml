@@ -19,7 +19,7 @@ servers:
         DB_POOL: 5
   job:
     hosts:
-      - ec2-18-217-146-201.us-east-2.compute.amazonaws.com # CocoScout Jobs
+      - ec2-18-221-254-112.us-east-2.compute.amazonaws.com # CocoScout Jobs
     cmd: bin/jobs
     proxy: false
     options:
