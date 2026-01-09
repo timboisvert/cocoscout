@@ -97,7 +97,7 @@ module Manage
                       .index_by(&:id)
 
       # For cast_members_list: preload talent pool members with headshots
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
 
       @pool_people = @talent_pool.people
                      .includes(profile_headshots: { image_attachment: :blob })

@@ -29,7 +29,7 @@ module Manage
     # GET /auditions/prepare
     def prepare
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
-      @talent_pool_people = @production.talent_pool.people.order(:name)
+      @talent_pool_people = @production.effective_talent_pool.people.order(:name)
 
       # Check for wizard in progress
       @wizard_in_progress = session[:audition_wizard].present? && session[:audition_wizard][@production.id.to_s].present?

@@ -1,0 +1,48 @@
+<%= turbo_frame_tag "leave_pool_modal" do %>
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+    <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white mx-4">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Leave Shared Pool</h3>
+        <%= link_to manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+            class: "text-gray-400 hover:text-gray-600 cursor-pointer",
+            data: { turbo_frame: "_top" } do %>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        <% end %>
+      </div>
+      
+      <div class="mt-4">
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+          <div class="flex gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-amber-800">This will disconnect you from the shared pool</p>
+              <p class="text-sm text-amber-700 mt-1">
+                You'll start using a separate talent pool only for this production. The current shared members will not be copied to your new pool.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <p class="text-sm text-gray-600">
+          Are you sure you want to leave the shared talent pool from <strong><%= @production.effective_talent_pool.production.name %></strong>?
+        </p>
+        
+        <div class="flex justify-end gap-2 mt-6">
+          <%= link_to "Cancel",
+              manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+              class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900",
+              data: { turbo_frame: "_top" } %>
+          <%= button_to "Leave Shared Pool",
+              leave_shared_pool_manage_production_talent_pools_path(@production),
+              method: :post,
+              class: "px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-md cursor-pointer",
+              data: { turbo_frame: "_top" } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

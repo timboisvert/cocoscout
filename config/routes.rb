@@ -359,6 +359,10 @@ Rails.application.routes.draw do
           get "confirm-remove-group/:group_id", action: :confirm_remove_group, as: :confirm_remove_group
           post :remove_group
           get "upcoming_assignments/:id", action: :upcoming_assignments, as: :upcoming_assignments
+          # Shared talent pool actions
+          patch :update_shares
+          get :leave_shared_pool_confirm
+          post :leave_shared_pool
         end
       end
 

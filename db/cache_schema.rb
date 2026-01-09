@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_08_211511) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_09_163313) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -1158,6 +1158,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_211511) do
     t.index ["talent_pool_id"], name: "index_talent_pool_memberships_on_talent_pool_id"
   end
 
+  create_table "talent_pool_shares", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "production_id", null: false
+    t.bigint "talent_pool_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_talent_pool_shares_on_production_id"
+    t.index ["talent_pool_id", "production_id"], name: "index_talent_pool_shares_on_talent_pool_id_and_production_id", unique: true
+    t.index ["talent_pool_id"], name: "index_talent_pool_shares_on_talent_pool_id"
+  end
+
   create_table "talent_pools", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
@@ -1311,6 +1321,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_08_211511) do
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "talent_pool_memberships", "talent_pools"
+  add_foreign_key "talent_pool_shares", "productions"
+  add_foreign_key "talent_pool_shares", "talent_pools"
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"

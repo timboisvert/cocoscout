@@ -11,6 +11,7 @@ class Production < ApplicationRecord
   has_many :audition_cycles, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles
   has_many :talent_pools, dependent: :delete_all
+  has_many :talent_pool_shares, dependent: :destroy
   has_many :roles, -> { where(show_id: nil) }, dependent: :delete_all  # Production-level roles only
   has_many :all_roles, class_name: "Role", dependent: false  # All roles including show-specific
   has_many :show_person_role_assignments, through: :shows
@@ -59,6 +60,33 @@ class Production < ApplicationRecord
   # This is the canonical way to access it
   def talent_pool
     talent_pools.first || create_default_talent_pool
+  end
+
+  # Returns the shared talent pool if this production is linked to one,
+  # otherwise returns its own talent pool
+  def effective_talent_pool
+    shared_pool = TalentPoolShare.find_by(production_id: id)&.talent_pool
+    shared_pool || talent_pool
+  end
+
+  # Returns true if this production uses a shared talent pool from another production
+  def uses_shared_pool?
+    TalentPoolShare.exists?(production_id: id)
+  end
+
+  # Returns true if this production's talent pool is shared with other productions
+  def shares_talent_pool?
+    talent_pool.talent_pool_shares.exists?
+  end
+
+  # Returns all productions that share the same effective talent pool
+  def shared_pool_productions
+    effective_talent_pool.all_productions.where.not(id: id)
+  end
+
+  # Sibling productions in the same organization (for sharing UI)
+  def sibling_productions
+    organization.productions.where.not(id: id).order(:name)
   end
 
   def active_audition_cycle

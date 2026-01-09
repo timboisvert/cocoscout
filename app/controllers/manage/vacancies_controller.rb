@@ -96,7 +96,7 @@ module Manage
       person_ids = case invite_mode
       when "all"
         # All talent pool members (not restricted role)
-        @production.talent_pool.people
+        @production.effective_talent_pool.people
               .where.not(id: excluded_ids)
               .pluck(:id)
       else

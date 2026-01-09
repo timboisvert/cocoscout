@@ -143,14 +143,108 @@ module Manage
       }
     end
 
+    # Update sharing settings - add/remove productions from the shared pool
+    def update_shares
+      shared_production_ids = (params[:shared_production_ids] || []).reject(&:blank?).map(&:to_i)
+      current_shared_ids = @production.talent_pool.shared_productions.pluck(:id)
+
+      # Productions being added to the share
+      productions_to_add = shared_production_ids - current_shared_ids
+      # Productions being removed from the share
+      productions_to_remove = current_shared_ids - shared_production_ids
+
+      # If this is a confirmed submission from the merge modal, just do the update
+      if params[:confirmed] == "1"
+        merge_production_ids = (params[:merge_production_ids] || []).map(&:to_i)
+        perform_share_update(productions_to_add, productions_to_remove, merge_production_ids: merge_production_ids)
+        return
+      end
+
+      # Check if any productions being added have members that need to be merged
+      members_to_merge = []
+      productions_to_add.each do |prod_id|
+        prod = Current.organization.productions.find(prod_id)
+        next if prod.uses_shared_pool? # Skip if already using another pool
+
+        prod_pool = prod.talent_pool
+        member_count = prod_pool.cached_member_counts[:total]
+        if member_count > 0
+          members_to_merge << {
+            production: prod,
+            people: prod_pool.people.to_a,
+            groups: prod_pool.groups.to_a
+          }
+        end
+      end
+
+      # If there are members to merge, show the confirmation modal
+      if members_to_merge.any?
+        @members_to_merge = members_to_merge
+        @shared_production_ids = shared_production_ids
+        @productions_to_remove = productions_to_remove
+        render :merge_members_confirm
+        return
+      end
+
+      # No merge needed, just update the shares
+      perform_share_update(productions_to_add, productions_to_remove)
+    end
+
+    # Confirm leaving the shared pool
+    def leave_shared_pool_confirm
+      render :leave_shared_pool_confirm
+    end
+
+    # Leave the shared pool and use own pool again
+    def leave_shared_pool
+      TalentPoolShare.find_by(production: @production)&.destroy
+
+      redirect_to manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+                  notice: "You are now using a separate talent pool for this production."
+    end
+
     private
+
+    def perform_share_update(productions_to_add, productions_to_remove, merge_all: false, merge_production_ids: [])
+      ActiveRecord::Base.transaction do
+        # Remove shares
+        TalentPoolShare.where(
+          talent_pool: @production.talent_pool,
+          production_id: productions_to_remove
+        ).destroy_all
+
+        # Add shares
+        productions_to_add.each do |prod_id|
+          prod = Current.organization.productions.find(prod_id)
+          next if prod.uses_shared_pool? # Skip if already using another pool
+
+          # Merge members if requested
+          if merge_all || merge_production_ids.include?(prod_id)
+            prod.talent_pool.people.each do |person|
+              @production.talent_pool.people << person unless @production.talent_pool.people.exists?(person.id)
+            end
+            prod.talent_pool.groups.each do |group|
+              @production.talent_pool.groups << group unless @production.talent_pool.groups.exists?(group.id)
+            end
+          end
+
+          TalentPoolShare.create!(
+            talent_pool: @production.talent_pool,
+            production: prod
+          )
+        end
+      end
+
+      flash[:notice] = "Sharing settings updated."
+      redirect_to manage_production_casting_settings_path(@production, anchor: "talent-pool"), status: :see_other
+    end
 
     def set_production
       @production = Current.organization.productions.find(params.require(:production_id))
     end
 
     def set_talent_pool
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
     end
   end
 end

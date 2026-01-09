@@ -57,11 +57,11 @@ module Manage
     end
 
     def load_talent_pool_data
-      @talent_pool = @production.talent_pool || @production.create_talent_pool!
+      @talent_pool = @production.effective_talent_pool
     end
 
     def load_talent_pool_members_for_roles
-      talent_pool = @production.talent_pool
+      talent_pool = @production.effective_talent_pool
 
       if talent_pool
         people = Person.joins(:talent_pool_memberships)

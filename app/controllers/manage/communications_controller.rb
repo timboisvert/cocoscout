@@ -32,7 +32,7 @@ module Manage
       @email_draft = EmailDraft.new
 
       # Load talent pool for recipient selection
-      @talent_pool_people = @production.talent_pool.people
+      @talent_pool_people = @production.effective_talent_pool.people
                                        .includes(profile_headshots: { image_attachment: :blob })
                                        .order(:name)
     end
@@ -62,13 +62,13 @@ module Manage
 
       # Determine recipients
       if send_to_all
-        people_to_email = @production.talent_pool.people.to_a
+        people_to_email = @production.effective_talent_pool.people.to_a
       else
         if person_ids.empty?
           redirect_to manage_production_communications_path(@production), alert: "Please select at least one recipient."
           return
         end
-        people_to_email = @production.talent_pool.people.where(id: person_ids).to_a
+        people_to_email = @production.effective_talent_pool.people.where(id: person_ids).to_a
       end
 
       if people_to_email.empty?

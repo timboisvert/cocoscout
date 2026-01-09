@@ -179,7 +179,7 @@ module Manage
 
     # Step 4: Reviewer Team
     def reviewers
-      @people = @production.talent_pool&.people&.order(:name) || []
+      @people = @production.effective_talent_pool&.people&.order(:name) || []
       @selected_reviewer_ids = @wizard_state[:reviewer_person_ids] || []
 
       # Get managers (global + production team)
@@ -188,7 +188,7 @@ module Manage
       @managers = (global_managers + production_team).uniq { |t| t[:user].id }
 
       # Get talent pool people
-      @talent_pool_people = @production.talent_pool&.people&.order(:name) || []
+      @talent_pool_people = @production.effective_talent_pool&.people&.order(:name) || []
     end
 
     def save_reviewers

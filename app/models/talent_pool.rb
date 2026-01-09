@@ -3,6 +3,8 @@
 class TalentPool < ApplicationRecord
   belongs_to :production
   has_many :talent_pool_memberships, dependent: :destroy
+  has_many :talent_pool_shares, dependent: :destroy
+  has_many :shared_productions, through: :talent_pool_shares, source: :production
   has_many :people, through: :talent_pool_memberships, source: :member, source_type: "Person"
   has_many :groups, through: :talent_pool_memberships, source: :member, source_type: "Group"
   # NOTE: cast_assignment_stages are deleted via Production's before_destroy callback
@@ -10,6 +12,11 @@ class TalentPool < ApplicationRecord
   has_many :cast_assignment_stages
 
   validates :name, presence: true
+
+  # All productions that use this pool (owner + shared)
+  def all_productions
+    Production.where(id: [production_id] + shared_productions.pluck(:id))
+  end
 
   # Helper method to get all members (both people and groups)
   def members

@@ -142,13 +142,6 @@
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Talent Pool</h3>
-            <button type="button" data-action="click->drop-role#openGuestModal"
-                    class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 px-2 py-1 rounded cursor-pointer flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-              </svg>
-              Add Guest
-            </button>
           </div>
           <%
             is_linked = @show.linked?
@@ -328,58 +321,6 @@
               </button>
             <% end %>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <%# Add Guest Modal %>
-    <div id="add-guest-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->drop-role#closeGuestModal">
-      <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->drop-role#stopPropagation">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900">Add Guest</h2>
-          <button type="button" data-action="click->drop-role#closeGuestModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="px-6 py-4 space-y-4">
-          <p class="text-sm text-gray-500">Add someone who isn't in your talent pool. If their email matches an existing person, they'll be linked automatically.</p>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-pink-500">*</span></label>
-            <input type="text" id="guest-name-input" placeholder="Guest name"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-gray-400 text-xs">(optional)</span></label>
-            <input type="email" id="guest-email-input" placeholder="guest@example.com"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-pink-500">*</span></label>
-            <select id="guest-role-select"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <option value="">Select a role...</option>
-              <% (@roles || @show.available_roles).reject(&:restricted?).each do |role| %>
-                <% unless role.fully_filled?(@show) %>
-                  <option value="<%= role.id %>"><%= role.name %></option>
-                <% end %>
-              <% end %>
-            </select>
-          </div>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button type="button" data-action="click->drop-role#closeGuestModal"
-                  class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer">
-            Cancel
-          </button>
-          <button type="button" data-action="click->drop-role#submitGuestAssignment"
-                  class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-md cursor-pointer">
-            Add Guest
-          </button>
         </div>
       </div>
     </div>
