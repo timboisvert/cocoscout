@@ -209,15 +209,7 @@
           <%# Subject with production prefix preview %>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-            <div class="flex items-stretch">
-              <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap">
-                [<%= @production.name %>]
-              </span>
-              <%= form.text_field :title,
-                class: "block w-full min-w-0 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-                placeholder: "Email subject...",
-                required: true %>
-            </div>
+            <%= render "shared/subject_field_with_prefix", form: form, field_name: :title, production: @production, placeholder: "Email subject...", required: true %>
           </div>
 
           <div>

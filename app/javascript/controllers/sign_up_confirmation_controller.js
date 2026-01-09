@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "slotName", "slotInfo", "hiddenSlotId", "confirmButton", "changeSlotSection", "formSection", "slotList", "lockedSlot"]
+  static targets = ["modal", "slotName", "slotInfo", "hiddenSlotId", "confirmButton", "changeSlotSection", "formSection", "slotList", "lockedSlot", "modalTitle", "modalForm"]
   static values = {
     submitUrl: String,
-    changeMode: Boolean
+    changeMode: Boolean,
+    changeSlotUrl: String
   }
 
   connect() {
@@ -121,6 +122,54 @@ export default class extends Controller {
     }
   }
 
+  changeSlot(event) {
+    event.preventDefault()
+
+    const slotId = event.currentTarget.dataset.slotId
+    const slotName = event.currentTarget.dataset.slotName
+    const spotsRemaining = event.currentTarget.dataset.spotsRemaining
+    const capacity = event.currentTarget.dataset.capacity
+
+    // Update modal for change mode
+    this.changeModeValue = true
+
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Change Your Slot'
+    }
+
+    if (this.hasConfirmButtonTarget) {
+      this.confirmButtonTarget.textContent = 'Confirm Change'
+    }
+
+    // Update modal content
+    if (this.hasSlotNameTarget) {
+      this.slotNameTarget.textContent = slotName
+    }
+    this.hiddenSlotIdTarget.value = slotId
+
+    // Show spots info if capacity > 1
+    if (this.hasSlotInfoTarget) {
+      if (parseInt(capacity) > 1) {
+        this.slotInfoTarget.textContent = `${spotsRemaining} spot${spotsRemaining === '1' ? '' : 's'} remaining`
+        this.slotInfoTarget.classList.remove('hidden')
+      } else {
+        this.slotInfoTarget.classList.add('hidden')
+      }
+    }
+
+    // Update form action if we have the target
+    if (this.hasModalFormTarget && this.hasChangeSlotUrlValue) {
+      this.modalFormTarget.action = this.changeSlotUrlValue
+    }
+
+    // Show modal
+    this.modalTarget.classList.remove('hidden')
+    document.addEventListener('keydown', this.keyHandler)
+
+    // Focus confirm button for accessibility
+    setTimeout(() => this.confirmButtonTarget.focus(), 100)
+  }
+
   selectSlot(event) {
     event.preventDefault()
 
@@ -128,6 +177,22 @@ export default class extends Controller {
     const slotName = event.currentTarget.dataset.slotName
     const spotsRemaining = event.currentTarget.dataset.spotsRemaining
     const capacity = event.currentTarget.dataset.capacity
+
+    // Reset to normal mode (not change mode)
+    this.changeModeValue = false
+
+    if (this.hasModalTitleTarget) {
+      this.modalTitleTarget.textContent = 'Confirm Sign-Up'
+    }
+
+    if (this.hasConfirmButtonTarget) {
+      this.confirmButtonTarget.textContent = 'Confirm Sign-Up'
+    }
+
+    // Reset form action to original submit URL if available
+    if (this.hasModalFormTarget && this.hasSubmitUrlValue) {
+      this.modalFormTarget.action = this.submitUrlValue
+    }
 
     // Update modal content (targets may not exist for waitlist modes)
     if (this.hasSlotNameTarget) {

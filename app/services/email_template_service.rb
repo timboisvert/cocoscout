@@ -52,6 +52,17 @@ class EmailTemplateService
       template.render_subject(variables.transform_keys(&:to_s))
     end
 
+    # Render subject WITHOUT production name prefix (for UI forms where prefix is shown separately)
+    # @param key [String] The template key
+    # @param variables [Hash] Variables to interpolate
+    # @return [String] The rendered subject without prefix
+    def render_subject_without_prefix(key, variables = {})
+      template = find_template(key)
+      raise TemplateNotFoundError, "Email template '#{key}' not found" unless template
+
+      template.render_subject_without_prefix(variables.transform_keys(&:to_s))
+    end
+
     # Render only the body from a template
     # @param key [String] The template key
     # @param variables [Hash] Variables to interpolate

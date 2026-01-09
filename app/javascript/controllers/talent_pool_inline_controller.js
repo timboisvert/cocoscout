@@ -228,26 +228,28 @@ export default class extends Controller {
   }
 
   showNotice(message) {
-    const flash = document.createElement('div')
-    flash.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg transition-opacity duration-300'
-    flash.textContent = message
-    document.body.appendChild(flash)
+    // Remove any existing notices first
+    document.querySelectorAll('[data-controller="notice"]').forEach(el => el.remove())
 
-    setTimeout(() => {
-      flash.classList.add('opacity-0')
-      setTimeout(() => flash.remove(), 300)
-    }, 3000)
+    const flash = document.createElement('div')
+    flash.setAttribute('data-controller', 'notice')
+    flash.setAttribute('data-notice-timeout-value', '2000')
+    flash.setAttribute('data-notice-target', 'container')
+    flash.className = 'fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-pink-500 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg'
+    flash.innerHTML = `<span class="font-medium">${message}</span>`
+    document.body.appendChild(flash)
   }
 
   showError(message) {
-    const flash = document.createElement('div')
-    flash.className = 'fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg transition-opacity duration-300'
-    flash.textContent = message
-    document.body.appendChild(flash)
+    // Remove any existing notices first
+    document.querySelectorAll('[data-controller="notice"]').forEach(el => el.remove())
 
-    setTimeout(() => {
-      flash.classList.add('opacity-0')
-      setTimeout(() => flash.remove(), 300)
-    }, 3000)
+    const flash = document.createElement('div')
+    flash.setAttribute('data-controller', 'notice')
+    flash.setAttribute('data-notice-timeout-value', '5000')
+    flash.setAttribute('data-notice-target', 'container')
+    flash.className = 'fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-red-600 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg'
+    flash.innerHTML = `<span class="font-medium">${message}</span>`
+    document.body.appendChild(flash)
   }
 }

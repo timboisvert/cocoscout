@@ -303,16 +303,24 @@
             <% assignment = assignments_by_slot[slot_position] %>
             <% if assignment %>
               <%
-                assignable = assignment.assignable
-                cant_make_it = cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
-                headshot = assignable.safe_headshot_variant(:thumb)
+                is_guest = assignment.guest?
+                assignable = assignment.assignable unless is_guest
+                next unless is_guest || assignable # Skip if assignable was deleted
+                cant_make_it = !is_guest && cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
+                headshot = assignable&.safe_headshot_variant(:thumb)
                 slot_label = role_quantity > 1 ? " (slot #{slot_position})" : ""
-                tooltip_text = "#{assignable.name} - #{role.name}#{slot_label}"
+                tooltip_text = is_guest ? "#{assignment.guest_name} - #{role.name}#{slot_label}" : "#{assignable.name} - #{role.name}#{slot_label}"
                 tooltip_text += " (Can't make it)" if cant_make_it
               %>
               <div class="relative">
                 <% if headshot %>
                   <%= image_tag headshot, class: "w-10 h-10 rounded-md object-cover #{cant_make_it ? 'ring-2 ring-amber-400' : ''}", data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                <% elsif is_guest %>
+                  <div class="w-10 h-10 rounded-md bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs"
+                       data-controller="tooltip"
+                       data-tooltip-text="<%= tooltip_text %>">
+                    <%= assignment.display_initials %>
+                  </div>
                 <% else %>
                   <div class="w-10 h-10 rounded-md <%= cant_make_it ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-200 text-gray-700' %> flex items-center justify-center font-bold text-xs"
                        data-controller="tooltip"

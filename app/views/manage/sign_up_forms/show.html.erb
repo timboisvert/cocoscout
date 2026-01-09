@@ -58,9 +58,6 @@
         </svg>
       </button>
       <div class="flex items-center gap-2">
-        <% if @sign_up_form.admin_assigns? %>
-          <%= render "shared/button", text: "Assign Slots", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "primary", size: "small", icon: "users" %>
-        <% end %>
         <%= render "shared/button", text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
         <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
       </div>
@@ -95,6 +92,33 @@
     <% end %>
   </div>
 
+  <%# Queue Banner for admin_assigns mode %>
+  <% if @sign_up_form.admin_assigns? && @current_instance %>
+    <% queue_count = @current_instance.queued_registrations.count %>
+    <div class="bg-white border border-gray-200 rounded-lg mb-6">
+      <div class="px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="inline-flex items-center justify-center w-10 h-10 bg-pink-100 rounded-full">
+              <svg class="w-5 h-5 text-pink-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900"><%= queue_count %> <%= queue_count == 1 ? 'person' : 'people' %> in queue</p>
+              <% if queue_count > 0 %>
+                <p class="text-sm text-gray-500">Waiting to be assigned to slots</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <% if queue_count > 0 %>
+          <%= render "shared/button", text: "Assign Slots", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "users" %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <% if @sign_up_form.repeated? %>
     <%# 50/50 Grid Layout for Repeated Event Mode %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -112,7 +136,7 @@
             <%# Event Navigator Header with Open/Closed status %>
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <h3 class="font-semibold text-gray-900">Registrations</h3>
+                <h3 class="font-semibold text-gray-900"><%= @sign_up_form.admin_assigns? ? 'Slot Assignments' : 'Registrations' %></h3>
                 <% if is_instance_open %>
                   <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <span class="relative flex h-2 w-2">
@@ -129,9 +153,9 @@
                 <% end %>
               </div>
               <% if instance_capacity < 1000 %>
-                <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> spots filled</span>
+                <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> <%= @sign_up_form.admin_assigns? ? 'slots filled' : 'spots filled' %></span>
               <% else %>
-                <span class="text-sm text-gray-500"><%= instance_registrations %> registered</span>
+                <span class="text-sm text-gray-500"><%= instance_registrations %> <%= @sign_up_form.admin_assigns? ? 'assigned' : 'registered' %></span>
               <% end %>
             </div>
 
@@ -207,6 +231,31 @@
 
       <%# Right Column - Events List + Share (50%) %>
       <div class="space-y-6">
+        <%# Queue card for admin_assigns mode %>
+        <% if @sign_up_form.admin_assigns? && @current_instance %>
+          <% instance_queue_count = @current_instance.queued_registrations.count %>
+          <div class="bg-white border border-gray-200 rounded-lg">
+            <div class="px-5 py-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="inline-flex items-center justify-center w-10 h-10 bg-pink-100 rounded-full">
+                  <svg class="w-5 h-5 text-pink-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="font-semibold text-gray-900"><%= instance_queue_count %> <%= instance_queue_count == 1 ? 'person' : 'people' %> in queue</p>
+                  <% if instance_queue_count > 0 %>
+                    <p class="text-sm text-gray-500">Waiting to be assigned</p>
+                  <% end %>
+                </div>
+              </div>
+              <% if instance_queue_count > 0 %>
+                <%= render "shared/button", text: "Assign", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "users" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
         <%# Upcoming Events List (clickable, scrollable) %>
         <%
           is_auto_sync = @sign_up_form.event_matching == 'all'
@@ -334,18 +383,31 @@
 
     <%# 50/50 grid layout %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <%# Left Column - Registrations (50%) %>
+      <%# Left Column - Registrations/Assignments (50%) %>
       <div>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <% total_capacity = @current_instance&.sign_up_slots&.sum(:capacity) || 0 %>
-          <%= render "shared/card_header", title: "Registrations" do %>
-            <span class="text-sm text-gray-500">
-              <% if total_capacity < 1000 %>
-                <%= @registrations.count %> of <%= total_capacity %> spots filled
-              <% else %>
-                <%= @registrations.count %> registered
-              <% end %>
-            </span>
+          <% assigned_count = @current_instance&.sign_up_slots&.joins(:sign_up_registrations)&.where(sign_up_registrations: { status: [:confirmed, :pending] })&.count || 0 %>
+          <% if @sign_up_form.admin_assigns? %>
+            <%= render "shared/card_header", title: "Slot Assignments" do %>
+              <span class="text-sm text-gray-500">
+                <% if total_capacity < 1000 %>
+                  <%= assigned_count %> of <%= total_capacity %> slots filled
+                <% else %>
+                  <%= assigned_count %> assigned
+                <% end %>
+              </span>
+            <% end %>
+          <% else %>
+            <%= render "shared/card_header", title: "Registrations" do %>
+              <span class="text-sm text-gray-500">
+                <% if total_capacity < 1000 %>
+                  <%= @registrations.count %> of <%= total_capacity %> spots filled
+                <% else %>
+                  <%= @registrations.count %> registered
+                <% end %>
+              </span>
+            <% end %>
           <% end %>
 
           <% if @current_instance&.sign_up_slots&.any? %>

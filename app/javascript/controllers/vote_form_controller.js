@@ -4,10 +4,22 @@ export default class extends Controller {
     static targets = ["comment"]
     static values = { saveUrl: String }
 
+    // Get the visible comment input (handles mobile/desktop dual inputs)
+    getVisibleCommentValue() {
+        for (const target of this.commentTargets) {
+            // Check if the element or its parent container is visible
+            if (target.offsetParent !== null) {
+                return target.value
+            }
+        }
+        // Fallback to first target if none visible (shouldn't happen)
+        return this.commentTarget.value
+    }
+
     submitVote(event) {
         const vote = event.params.vote
         const url = event.params.url
-        const comment = this.commentTarget.value
+        const comment = this.getVisibleCommentValue()
 
         // Save current tab
         const currentTab = this.getCurrentTab()
@@ -72,7 +84,7 @@ export default class extends Controller {
 
     submitComment(event) {
         const url = event.params.url
-        const comment = this.commentTarget.value
+        const comment = this.getVisibleCommentValue()
 
         // Save current tab
         const currentTab = this.getCurrentTab()
@@ -116,7 +128,7 @@ export default class extends Controller {
     async navigateWithSave(event) {
         event.preventDefault()
         const targetUrl = event.currentTarget.href
-        const comment = this.commentTarget.value
+        const comment = this.getVisibleCommentValue()
         const saveUrl = this.saveUrlValue
 
         // Only save if there's a comment and a save URL

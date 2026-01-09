@@ -95,7 +95,9 @@ class SignUpFormInstance < ApplicationRecord
   end
 
   def can_edit?
-    allow_edit && !past_edit_cutoff? && !closed? && !cancelled? && !initializing?
+    # Editing is allowed based on edit_cutoff_at, not closes_at
+    # Users can edit registrations even after registration closes, until edit_cutoff_at
+    allow_edit && !past_edit_cutoff? && !cancelled? && !initializing?
   end
 
   def can_cancel?

@@ -66,11 +66,9 @@
     <!-- Email Compose -->
     <%= form_with model: @email_draft, url: manage_production_send_cast_email_path(@production, @show), method: :post, class: "space-y-4" do |form| %>
 
-      <div class="relative">
-        <%= form.text_field :title,
-          class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-          placeholder: "Email subject...",
-          required: true %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+        <%= render "shared/subject_field_with_prefix", form: form, field_name: :title, production: @production, placeholder: "Email subject...", required: true %>
       </div>
 
       <div class="relative">

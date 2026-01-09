@@ -414,11 +414,18 @@ module Manage
       finalized_stage_tuples = cast_assignment_stages.where(status: :finalized).pluck(:assignable_type,
                                                                                       :assignable_id).uniq
 
-      audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
-      audition_tuples = Audition.where(audition_session_id: audition_session_ids)
-                                .select(:auditionable_type, :auditionable_id)
-                                .distinct
-                                .pluck(:auditionable_type, :auditionable_id)
+      # Get auditioned assignables - for video-only cycles, use audition requests
+      # For in-person or hybrid cycles, use auditions from audition sessions
+      if audition_cycle.video_only?
+        audition_requests = audition_cycle.audition_requests.includes(:requestable)
+        audition_tuples = audition_requests.map { |r| [ r.requestable_type, r.requestable_id ] }.uniq
+      else
+        audition_session_ids = audition_cycle.audition_sessions.pluck(:id)
+        audition_tuples = Audition.where(audition_session_id: audition_session_ids)
+                                  .select(:auditionable_type, :auditionable_id)
+                                  .distinct
+                                  .pluck(:auditionable_type, :auditionable_id)
+      end
 
       # Load all auditioned assignables efficiently
       person_ids = audition_tuples.select { |type, _| type == "Person" }.map(&:last)
@@ -473,11 +480,14 @@ module Manage
         end
 
         # Determine which email template to use
+        email_subject = nil
         email_body = nil
         if stage
           # Default "added to cast" email
           talent_pool = talent_pools_by_id[stage.talent_pool_id]
-          email_body = generate_default_cast_email(assignable, talent_pool, @production)
+          email_result = generate_default_cast_email(assignable, talent_pool, @production)
+          email_subject = email_result[:subject]
+          email_body = email_result[:body]
 
           # Add assignable to the actual talent pool (not just the staging area)
           membership_exists = TalentPoolMembership.exists?(
@@ -495,7 +505,9 @@ module Manage
           end
         else
           # Default "not being added" email
-          email_body = generate_default_rejection_email(assignable, @production)
+          email_result = generate_default_rejection_email(assignable, @production)
+          email_subject = email_result[:subject]
+          email_body = email_result[:body]
         end
 
         # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
@@ -509,7 +521,7 @@ module Manage
           personalized_body = email_body.gsub("[Name]", person.name)
 
           begin
-            Manage::AuditionMailer.casting_notification(person, @production, personalized_body, email_batch_id: email_batch&.id).deliver_later
+            Manage::AuditionMailer.casting_notification(person, @production, personalized_body, subject: email_subject, email_batch_id: email_batch&.id).deliver_later
             emails_sent += 1
           rescue StandardError => e
             Rails.logger.error "Failed to send email to #{person.email}: #{e.message}"
@@ -661,7 +673,7 @@ module Manage
     end
 
     def generate_default_cast_email(person, _talent_pool, production)
-      EmailTemplateService.render_body("audition_added_to_cast", {
+      EmailTemplateService.render("audition_added_to_cast", {
         recipient_name: person.name,
         production_name: production.name,
         confirm_by_date: "[date]"
@@ -669,7 +681,7 @@ module Manage
     end
 
     def generate_default_rejection_email(person, production)
-      EmailTemplateService.render_body("audition_not_cast", {
+      EmailTemplateService.render("audition_not_cast", {
         recipient_name: person.name,
         production_name: production.name
       })

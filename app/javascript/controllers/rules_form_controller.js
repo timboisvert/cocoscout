@@ -2,7 +2,32 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["allowEdit", "editSection", "editHasCutoff", "editCutoff", "editCutoffMode", "editCutoffHours",
-        "allowCancel", "cancelSection", "cancelHasCutoff", "cancelCutoff", "cancelCutoffMode", "cancelCutoffHours"]
+        "allowCancel", "cancelSection", "cancelHasCutoff", "cancelCutoff", "cancelCutoffMode", "cancelCutoffHours",
+        "slotSelectionMode", "queueSettings", "slotSelectionDescription"]
+
+    toggleSlotSelectionMode(event) {
+        const mode = event.target.value
+
+        // Toggle queue settings visibility
+        if (this.hasQueueSettingsTarget) {
+            if (mode === "admin_assigns") {
+                this.queueSettingsTarget.classList.remove("hidden")
+            } else {
+                this.queueSettingsTarget.classList.add("hidden")
+            }
+        }
+
+        // Update description text
+        if (this.hasSlotSelectionDescriptionTarget) {
+            let description = "People select their preferred slot when signing up."
+            if (mode === "auto_assign") {
+                description = "Good for waitlists or when slot choice doesn't matter."
+            } else if (mode === "admin_assigns") {
+                description = "People sign up to a queue. You assign them to slots later."
+            }
+            this.slotSelectionDescriptionTarget.textContent = description
+        }
+    }
 
     toggleEditSection() {
         if (this.hasEditSectionTarget && this.hasAllowEditTarget) {

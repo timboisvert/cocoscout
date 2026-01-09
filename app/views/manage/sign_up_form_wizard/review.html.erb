@@ -108,11 +108,11 @@
               <li>•
                 <% case @wizard_state[:slot_selection_mode] %>
                 <% when 'auto_assign' %>
-                  Auto-assigned to next available
+                  Registrant automatically assigned to next available slot
                 <% when 'admin_assigns' %>
-                  You assign people to slots
+                  Production team assigns registrants to slots
                 <% else %>
-                  People choose their slot
+                  Registrant chooses their slot
                 <% end %>
               </li>
               <% if @wizard_state[:enable_holdbacks] && @wizard_state[:scope] != 'shared_pool' %>

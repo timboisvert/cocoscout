@@ -50,12 +50,15 @@
   # Hash keyed by [role_id, assignable_type, assignable_id]
   cancelled_vacancies_by_assignment = local_assigns[:cancelled_vacancies_by_assignment] || @cancelled_vacancies_by_assignment || {}
 
+  # Click-to-add mode for Manual Entry or Hybrid casting
+  click_to_add = local_assigns[:click_to_add] || false
+
   # Linkage info for JS finalize logic
   is_linked = show.linked?
   sync_info = local_assigns[:sync_info]
   all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
 %>
-<div id="show-roles" data-drop-role-target="rolesContainer" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>" data-is-linked="<%= is_linked %>" data-all-in-sync="<%= all_in_sync %>">
+<div id="show-roles" data-drop-role-target="rolesContainer" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>" data-is-linked="<%= is_linked %>" data-all-in-sync="<%= all_in_sync %>" data-click-to-add="<%= click_to_add %>">
 
   <% if role_count == 0 %>
     <div class="text-sm text-gray-500">
@@ -189,9 +192,6 @@
                       <div class="flex-1 min-w-0">
                         <span class="font-medium text-sm truncate block">
                           <%= is_guest ? assignment.guest_name : assignable&.name %>
-                          <% if is_guest %>
-                            <span class="text-purple-600 text-xs font-normal">(Guest)</span>
-                          <% end %>
                         </span>
                         <% if cant_make_it_vacancy %>
                           <div class="flex items-center gap-1 text-amber-600">
@@ -335,9 +335,6 @@
                       <div class="flex-1 min-w-0">
                         <span class="font-medium text-sm truncate block">
                           <%= is_guest ? assignment.guest_name : assignable&.name %>
-                          <% if is_guest %>
-                            <span class="text-purple-600 text-xs font-normal">(Guest)</span>
-                          <% end %>
                         </span>
                         <% if cant_make_it_vacancy %>
                           <div class="flex items-center gap-1 text-amber-600">
@@ -429,11 +426,27 @@
                       </div>
                     <% else %>
                       <%# Regular empty slot %>
-                      <div class="hidden md:flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all"
-                          data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave"
+                      <% if click_to_add %>
+                        <%# Click-to-add mode: Make desktop slots clickable too %>
+                        <button type="button"
+                          class="hidden md:flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all cursor-pointer"
+                          data-action="click->drop-role#openAddPersonModal drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave"
+                          data-role-id="<%= role.id %>"
+                          data-role-name="<%= role.name %>"
                           data-slot-position="<%= slot_position %>">
-                        Drag a talent pool member here
-                      </div>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          Click to add someone
+                        </button>
+                      <% else %>
+                        <%# Talent pool mode: Show drag zone on desktop %>
+                        <div class="hidden md:flex items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all"
+                            data-action="drop->drop-role#assign dragover->drop-role#allowDrop dragleave->drop-role#dragLeave"
+                            data-slot-position="<%= slot_position %>">
+                          Drag a talent pool member here
+                        </div>
+                      <% end %>
                       <button type="button"
                         class="md:hidden flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 transition-all cursor-pointer"
                         data-action="click->drop-role#openAssignModal"

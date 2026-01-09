@@ -64,11 +64,11 @@
           </div>
         </div>
 
-        <%= fields_for :cast_email_draft, EmailDraft.new(title: EmailTemplateService.render_subject("audition_added_to_cast", { production_name: @production.name }), body: EmailTemplateService.render_body("audition_added_to_cast", { recipient_name: "[Name]", production_name: @production.name, confirm_by_date: "[date]" })) do |email_form| %>
+        <%= fields_for :cast_email_draft, EmailDraft.new(title: EmailTemplate.find_by(key: "audition_added_to_cast")&.subject || "Audition Results", body: EmailTemplateService.render_body("audition_added_to_cast", { recipient_name: "[Name]", production_name: @production.name, confirm_by_date: "[date]" })) do |email_form| %>
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-              <%= email_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+              <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, production: @production, placeholder: "Email subject..." %>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>
@@ -114,11 +114,11 @@
           </div>
         </div>
 
-        <%= fields_for :not_cast_email_draft, EmailDraft.new(title: EmailTemplateService.render_subject("audition_not_cast", { production_name: @production.name }), body: EmailTemplateService.render_body("audition_not_cast", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
+        <%= fields_for :not_cast_email_draft, EmailDraft.new(title: EmailTemplate.find_by(key: "audition_not_cast")&.subject || "Audition Results", body: EmailTemplateService.render_body("audition_not_cast", { recipient_name: "[Name]", production_name: @production.name })) do |email_form| %>
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-              <%= email_form.text_field :title, class: "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+              <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, production: @production, placeholder: "Email subject..." %>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Body</label>

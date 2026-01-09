@@ -162,6 +162,12 @@ module Manage
       @wizard_state[:edit_cutoff_hours] = params[:edit_cutoff_hours].to_i if params[:allow_edit] == "1"
       @wizard_state[:cancel_cutoff_hours] = params[:cancel_cutoff_hours].to_i if params[:allow_cancel] == "1"
 
+      # Queue settings (for admin_assigns mode)
+      if params[:slot_selection_mode] == "admin_assigns"
+        @wizard_state[:queue_limit] = params[:queue_limit].presence&.to_i
+        @wizard_state[:queue_carryover] = params[:queue_carryover] == "1"
+      end
+
       # Holdback settings
       @wizard_state[:enable_holdbacks] = params[:enable_holdbacks] == "1"
       if @wizard_state[:enable_holdbacks]
@@ -287,6 +293,8 @@ module Manage
           slot_names: @wizard_state[:slot_names],
           registrations_per_person: @wizard_state[:registrations_per_person],
           slot_selection_mode: @wizard_state[:slot_selection_mode],
+          queue_limit: @wizard_state[:queue_limit],
+          queue_carryover: @wizard_state[:queue_carryover] || false,
           require_login: @wizard_state[:require_login],
           allow_edit: @wizard_state[:allow_edit],
           allow_cancel: @wizard_state[:allow_cancel],
@@ -367,17 +375,20 @@ module Manage
     end
 
     def load_wizard_state
-      session[:sign_up_wizard] ||= {}
-      session[:sign_up_wizard][@production.id.to_s] ||= {}
-      @wizard_state = session[:sign_up_wizard][@production.id.to_s].with_indifferent_access
+      @wizard_state = Rails.cache.read(wizard_cache_key) || {}
+      @wizard_state = @wizard_state.with_indifferent_access
     end
 
     def save_wizard_state
-      session[:sign_up_wizard][@production.id.to_s] = @wizard_state.to_h
+      Rails.cache.write(wizard_cache_key, @wizard_state.to_h, expires_in: 24.hours)
     end
 
     def clear_wizard_state
-      session[:sign_up_wizard]&.delete(@production.id.to_s)
+      Rails.cache.delete(wizard_cache_key)
+    end
+
+    def wizard_cache_key
+      "sign_up_wizard:#{Current.user.id}:#{@production.id}"
     end
 
     def parse_slot_names(names_string)

@@ -1,15 +1,28 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["role", "person", "show", "assignment", "assignModal", "rolesContainer"];
-    static values = { showId: String, productionId: String };
+    static targets = [
+        "role", "person", "show", "assignment", "assignModal", "rolesContainer",
+        // Add Person modal targets
+        "addPersonModal", "addPersonRoleName", "addPersonRoleId", "addPersonSlotPosition",
+        "addPersonSearchTab", "addPersonGuestTab",
+        "personSearchInput", "personSearchSpinner", "personSearchResults",
+        "addPersonGuestName", "addPersonGuestEmail"
+    ];
+    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean };
 
     connect() {
         // Close modal on escape key
         this.handleEscape = (event) => {
-            if (event.key === 'Escape') this.closeAssignModal();
+            if (event.key === 'Escape') {
+                this.closeAssignModal();
+                this.closeAddPersonModal();
+            }
         };
         document.addEventListener('keydown', this.handleEscape);
+
+        // Debounce timer for search
+        this.searchTimeout = null;
     }
 
     disconnect() {
@@ -89,6 +102,398 @@ export default class extends Controller {
             if (emailInput) emailInput.value = '';
             if (roleSelect) roleSelect.value = '';
         }
+    }
+
+    // ========================================
+    // Add Person Modal (Manual Entry / Hybrid)
+    // ========================================
+
+    // Open the add person modal when clicking on an empty slot
+    openAddPersonModal(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const button = event.currentTarget;
+        const roleId = button.dataset.roleId;
+        const roleName = button.dataset.roleName;
+        const slotPosition = button.dataset.slotPosition;
+
+        if (!this.hasAddPersonModalTarget) return;
+
+        // Store role info
+        if (this.hasAddPersonRoleIdTarget) {
+            this.addPersonRoleIdTarget.value = roleId;
+        }
+        if (this.hasAddPersonSlotPositionTarget) {
+            this.addPersonSlotPositionTarget.value = slotPosition;
+        }
+        if (this.hasAddPersonRoleNameTarget) {
+            this.addPersonRoleNameTarget.textContent = roleName;
+        }
+
+        // Reset to search tab
+        this.switchToSearchTab();
+
+        // Clear previous search
+        if (this.hasPersonSearchInputTarget) {
+            this.personSearchInputTarget.value = '';
+        }
+        if (this.hasPersonSearchResultsTarget) {
+            this.personSearchResultsTarget.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Type to search...</p>';
+        }
+
+        // Clear guest inputs
+        if (this.hasAddPersonGuestNameTarget) {
+            this.addPersonGuestNameTarget.value = '';
+        }
+        if (this.hasAddPersonGuestEmailTarget) {
+            this.addPersonGuestEmailTarget.value = '';
+        }
+
+        // Show modal
+        this.addPersonModalTarget.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
+        // Focus on search input
+        setTimeout(() => {
+            this.personSearchInputTarget?.focus();
+        }, 100);
+    }
+
+    // Close the add person modal
+    closeAddPersonModal() {
+        if (!this.hasAddPersonModalTarget) return;
+
+        this.addPersonModalTarget.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    // Switch between search and guest tabs
+    switchAddPersonTab(event) {
+        const tab = event.currentTarget.dataset.tab;
+        if (tab === 'search') {
+            this.switchToSearchTab();
+        } else if (tab === 'guest') {
+            this.switchToGuestTab();
+        }
+    }
+
+    switchToSearchTab() {
+        if (!this.hasAddPersonSearchTabTarget || !this.hasAddPersonGuestTabTarget) return;
+
+        // Update tab styles
+        const tabs = this.element.querySelectorAll('.add-person-tab');
+        tabs.forEach(t => {
+            if (t.dataset.tab === 'search') {
+                t.classList.add('border-pink-500', 'text-pink-600');
+                t.classList.remove('border-transparent', 'text-gray-500');
+            } else {
+                t.classList.remove('border-pink-500', 'text-pink-600');
+                t.classList.add('border-transparent', 'text-gray-500');
+            }
+        });
+
+        // Show search tab, hide guest tab
+        this.addPersonSearchTabTarget.classList.remove('hidden');
+        this.addPersonGuestTabTarget.classList.add('hidden');
+    }
+
+    switchToGuestTab() {
+        if (!this.hasAddPersonSearchTabTarget || !this.hasAddPersonGuestTabTarget) return;
+
+        // Update tab styles
+        const tabs = this.element.querySelectorAll('.add-person-tab');
+        tabs.forEach(t => {
+            if (t.dataset.tab === 'guest') {
+                t.classList.add('border-pink-500', 'text-pink-600');
+                t.classList.remove('border-transparent', 'text-gray-500');
+            } else {
+                t.classList.remove('border-pink-500', 'text-pink-600');
+                t.classList.add('border-transparent', 'text-gray-500');
+            }
+        });
+
+        // Show guest tab, hide search tab
+        this.addPersonGuestTabTarget.classList.remove('hidden');
+        this.addPersonSearchTabTarget.classList.add('hidden');
+
+        // Focus on name input
+        setTimeout(() => {
+            this.addPersonGuestNameTarget?.focus();
+        }, 100);
+    }
+
+    // Search for people in the organization
+    searchPeople() {
+        if (!this.hasPersonSearchInputTarget) return;
+
+        const query = this.personSearchInputTarget.value.trim();
+
+        // Clear existing timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+
+        // Need at least 2 characters
+        if (query.length < 2) {
+            if (this.hasPersonSearchResultsTarget) {
+                this.personSearchResultsTarget.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Type at least 2 characters...</p>';
+            }
+            return;
+        }
+
+        // Show spinner
+        if (this.hasPersonSearchSpinnerTarget) {
+            this.personSearchSpinnerTarget.classList.remove('hidden');
+        }
+
+        // Debounce the search
+        this.searchTimeout = setTimeout(() => {
+            this.performSearch(query);
+        }, 250);
+    }
+
+    async performSearch(query) {
+        const productionId = this.productionId;
+
+        try {
+            const response = await fetch(`/manage/productions/${productionId}/casting/search_people?q=${encodeURIComponent(query)}`, {
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                }
+            });
+
+            const data = await response.json();
+
+            // Hide spinner
+            if (this.hasPersonSearchSpinnerTarget) {
+                this.personSearchSpinnerTarget.classList.add('hidden');
+            }
+
+            // Render results
+            this.renderSearchResults(data.people || [], data.groups || []);
+
+        } catch (error) {
+            console.error('Error searching people:', error);
+            if (this.hasPersonSearchSpinnerTarget) {
+                this.personSearchSpinnerTarget.classList.add('hidden');
+            }
+            if (this.hasPersonSearchResultsTarget) {
+                this.personSearchResultsTarget.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error searching. Please try again.</p>';
+            }
+        }
+    }
+
+    renderSearchResults(people, groups) {
+        if (!this.hasPersonSearchResultsTarget) return;
+
+        if (people.length === 0 && groups.length === 0) {
+            this.personSearchResultsTarget.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">No results found</p>';
+            return;
+        }
+
+        let html = '';
+
+        people.forEach(person => {
+            html += this.renderPersonResult(person);
+        });
+
+        groups.forEach(group => {
+            html += this.renderGroupResult(group);
+        });
+
+        this.personSearchResultsTarget.innerHTML = html;
+    }
+
+    renderPersonResult(person) {
+        const headshot = person.headshot_url
+            ? `<img src="${person.headshot_url}" alt="${person.name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">${person.initials || ''}</div>`;
+
+        return `
+            <button type="button"
+                class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-pink-50 transition-all cursor-pointer text-left"
+                data-action="click->drop-role#selectPersonFromSearch"
+                data-person-id="${person.id}"
+                data-person-type="Person">
+                ${headshot}
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm text-gray-900 truncate">${person.name}</div>
+                    <div class="text-xs text-gray-500 truncate">${person.email || ''}</div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+            </button>
+        `;
+    }
+
+    renderGroupResult(group) {
+        const headshot = group.headshot_url
+            ? `<img src="${group.headshot_url}" alt="${group.name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs flex-shrink-0">${group.initials || ''}</div>`;
+
+        return `
+            <button type="button"
+                class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-pink-50 transition-all cursor-pointer text-left"
+                data-action="click->drop-role#selectPersonFromSearch"
+                data-group-id="${group.id}"
+                data-person-type="Group">
+                ${headshot}
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm text-gray-900 truncate">${group.name}</div>
+                    <div class="text-xs text-purple-600">Group</div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+            </button>
+        `;
+    }
+
+    // Select a person from search results
+    selectPersonFromSearch(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const personId = button.dataset.personId;
+        const groupId = button.dataset.groupId;
+        const personType = button.dataset.personType;
+
+        const roleId = this.hasAddPersonRoleIdTarget ? this.addPersonRoleIdTarget.value : null;
+
+        if (!roleId) return;
+
+        // Close modal
+        this.closeAddPersonModal();
+
+        // Assign the person/group
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        const payload = {
+            role_id: roleId
+        };
+
+        if (personType === 'Person' && personId) {
+            payload.person_id = personId;
+        } else if (personType === 'Group' && groupId) {
+            payload.group_id = groupId;
+        }
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
+                }
+
+                // Update linkage sync section if present
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
+
+                // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            })
+            .catch(error => {
+                console.error('Error assigning person:', error);
+                alert('Failed to assign person. Please try again.');
+            });
+    }
+
+    // Add a guest from the Add Person modal
+    addGuestFromModal(event) {
+        event.preventDefault();
+
+        const guestName = this.hasAddPersonGuestNameTarget ? this.addPersonGuestNameTarget.value.trim() : '';
+        const guestEmail = this.hasAddPersonGuestEmailTarget ? this.addPersonGuestEmailTarget.value.trim() : '';
+        const roleId = this.hasAddPersonRoleIdTarget ? this.addPersonRoleIdTarget.value : null;
+
+        if (!guestName) {
+            this.addPersonGuestNameTarget?.focus();
+            this.addPersonGuestNameTarget?.classList.add('border-pink-500');
+            return;
+        }
+
+        if (!roleId) {
+            alert('Please select a role first');
+            return;
+        }
+
+        // Close modal
+        this.closeAddPersonModal();
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({
+                role_id: roleId,
+                guest_name: guestName,
+                guest_email: guestEmail
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Update roles list
+                if (data.roles_html) {
+                    document.getElementById("show-roles").outerHTML = data.roles_html;
+                }
+
+                // Update cast members list
+                if (data.cast_members_html) {
+                    const castMembersList = document.getElementById("cast-members-list");
+                    if (castMembersList) {
+                        castMembersList.outerHTML = data.cast_members_html;
+                    }
+                }
+
+                // Update linkage sync section if present
+                if (data.linkage_sync_html) {
+                    this.updateLinkageSyncSection(data.linkage_sync_html);
+                }
+
+                // Update progress bar and finalize section
+                this.updateProgressBar(data.progress);
+                this.updateFinalizeSection(data.finalize_section_html);
+            })
+            .catch(error => {
+                console.error('Error assigning guest:', error);
+                alert('Failed to add guest. Please try again.');
+            });
     }
 
     // Submit guest assignment

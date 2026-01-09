@@ -173,28 +173,54 @@ class DevSeedService
         # Shuffle users and spread them across slots
         users_to_register = eligible_users.shuffle.take(count_per_form)
 
-        # Distribute users across slots round-robin style
-        slot_index = 0
-        users_to_register.each do |user|
-          person = user.person
+        # Handle admin_assigns mode differently - queue people instead of assigning slots
+        if form.admin_assigns?
+          users_to_register.each do |user|
+            person = user.person
 
-          # Find the next available slot starting from slot_index
-          attempts = 0
-          while attempts < available_slots.length
-            slot = available_slots[slot_index % available_slots.length]
-            slot_index += 1
-            attempts += 1
-
-            # Check if slot has capacity and person isn't already in it
-            next if slot.full?
-            next if slot.sign_up_registrations.where(person: person).where.not(status: "cancelled").exists?
+            # Check if person is already queued
+            next if SignUpRegistration.where(sign_up_form_instance_id: instance.id, person: person).where.not(status: "cancelled").exists?
 
             begin
-              slot.register!(person: person)
+              # Calculate next queue position
+              queue_position = (instance.queued_registrations.maximum(:position) || 0) + 1
+
+              SignUpRegistration.create!(
+                sign_up_form_instance_id: instance.id,
+                person: person,
+                status: "queued",
+                position: queue_position,
+                registered_at: Time.current
+              )
               registered += 1
-              break
             rescue => e
-              puts "Error registering #{person.name}: #{e.message}"
+              puts "Error queuing #{person.name}: #{e.message}"
+            end
+          end
+        else
+          # Distribute users across slots round-robin style
+          slot_index = 0
+          users_to_register.each do |user|
+            person = user.person
+
+            # Find the next available slot starting from slot_index
+            attempts = 0
+            while attempts < available_slots.length
+              slot = available_slots[slot_index % available_slots.length]
+              slot_index += 1
+              attempts += 1
+
+              # Check if slot has capacity and person isn't already in it
+              next if slot.full?
+              next if slot.sign_up_registrations.where(person: person).where.not(status: "cancelled").exists?
+
+              begin
+                slot.register!(person: person)
+                registered += 1
+                break
+              rescue => e
+                puts "Error registering #{person.name}: #{e.message}"
+              end
             end
           end
         end
@@ -211,6 +237,8 @@ class DevSeedService
       SignUpRegistration.delete_all
       SignUpSlot.delete_all
       SignUpFormInstance.delete_all
+      SignUpFormShow.delete_all
+      SignUpFormHoldout.delete_all
       SignUpForm.delete_all
 
       puts "Deleted #{count} sign-up forms and all related records"

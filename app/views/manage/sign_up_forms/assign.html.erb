@@ -1,121 +1,317 @@
 <% content_for :title, "Assign Slots - #{@sign_up_form.name}" %>
 
-<div class="mb-6">
-  <%= render "shared/breadcrumbs", items: [
-    { label: @production.name, path: manage_production_path(@production) },
-    { label: "Sign-ups", path: manage_production_sign_up_forms_path(@production) },
-    { label: @sign_up_form.name, path: manage_production_sign_up_form_path(@production, @sign_up_form) },
-    { label: "Assign Slots" }
-  ] %>
-</div>
+<%
+  is_open_list = @sign_up_form.slot_generation_mode == "open_list"
+  show_slot_label = !%w[simple_capacity open_list].include?(@sign_up_form.slot_generation_mode)
+  supports_drag = show_slot_label  # Drag-drop for numbered, time_based, named lists
+%>
 
-<div class="flex items-center justify-between mb-6">
-  <div>
-    <h1 class="text-2xl font-bold text-gray-900"><%= @sign_up_form.name %></h1>
-    <p class="text-gray-600 mt-1">Assign people from the queue to slots</p>
-  </div>
-  <div class="flex items-center gap-2">
-    <% if @queue&.any? %>
-      <%= link_to auto_assign_queue_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance&.id),
-          method: :post,
-          class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors",
-          data: { turbo_method: :post } do %>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-        Auto-assign All
-      <% end %>
-    <% end %>
-    <%= link_to manage_production_sign_up_form_path(@production, @sign_up_form), class: "text-gray-600 hover:text-gray-900" do %>
-      ← Back to Sign-up Form
-    <% end %>
-  </div>
-</div>
+<div class="w-full" data-controller="<%= supports_drag ? 'assign-drag' : '' %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: flash[:alert] } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [@production.name, manage_production_path(@production)],
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Assign Slots",
+    links: []
+  } %>
 
-<%= render partial: "shared/notice", locals: { notice: notice, alert: flash[:alert] } %>
-
-<% if @sign_up_form.repeated? %>
-  <%# Instance selector for repeated forms %>
   <div class="mb-6">
-    <label class="block text-sm font-medium text-gray-700 mb-2">Select Event</label>
-    <div class="flex flex-wrap gap-2">
-      <% @sign_up_form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", 1.week.ago).order("shows.date_and_time ASC").limit(10).each do |inst| %>
-        <% is_current = @instance&.id == inst.id %>
-        <%= link_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: inst.id),
-            class: "px-3 py-2 rounded-lg border text-sm #{is_current ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400'}" do %>
-          <%= inst.show.date_and_time.strftime("%b %-d") %>
-          <span class="text-xs opacity-75">(<%= inst.queue_count %> queued)</span>
-        <% end %>
-      <% end %>
-    </div>
+    <p class="text-gray-600">Assign people from the queue to slots</p>
   </div>
-<% end %>
 
-<% if @instance.nil? %>
-  <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-    <p class="text-yellow-800">No instance found. Create an event first.</p>
-  </div>
-<% else %>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <%# Left panel: Queue %>
-    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-gray-900">Queue</h2>
-          <span class="text-sm text-gray-500"><%= @queue.count %> waiting</span>
-        </div>
+  <% if @sign_up_form.repeated? %>
+    <%# Instance selector for repeated forms %>
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Select Event</label>
+      <div class="flex flex-wrap gap-2">
+        <% @sign_up_form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", 1.week.ago).order("shows.date_and_time ASC").limit(10).each do |inst| %>
+          <% is_current = @instance&.id == inst.id %>
+          <%= link_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: inst.id),
+              class: "px-3 py-2 rounded-lg border text-sm #{is_current ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400'}" do %>
+            <%= inst.show.date_and_time.strftime("%b %-d") %>
+            <span class="text-xs opacity-75">(<%= inst.queue_count %> queued)</span>
+          <% end %>
+        <% end %>
       </div>
-      <div class="p-4">
-        <% if @queue.empty? %>
-          <p class="text-gray-500 text-center py-8">No one in the queue</p>
-        <% else %>
-          <div class="space-y-2">
-            <% @queue.each_with_index do |registration, index| %>
-              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div class="flex items-center gap-3">
-                  <span class="text-sm font-medium text-gray-400 w-6">#<%= index + 1 %></span>
-                  <% if registration.person %>
-                    <% headshot = registration.person.safe_headshot_variant(:thumb) %>
+    </div>
+  <% end %>
+
+  <% if @instance.nil? %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+      <p class="text-yellow-800">No instance found. Create an event first.</p>
+    </div>
+  <% else %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <%# Left panel: Slots/Assigned - matches _registration_list.html.erb style %>
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-gray-900"><%= is_open_list ? "Assigned" : "Slots" %></h2>
+            <span class="text-sm text-gray-500">
+              <%= @assigned.count %> assigned
+            </span>
+          </div>
+        </div>
+
+        <% if is_open_list %>
+          <%# Open list mode: flat list matching _registration_list style %>
+          <% if @assigned.empty? %>
+            <div class="p-8 text-center">
+              <p class="text-sm text-gray-400 italic">No one assigned yet</p>
+            </div>
+          <% else %>
+            <div class="divide-y divide-gray-100">
+              <% @assigned.each do |reg| %>
+                <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <% headshot = reg.person&.safe_headshot_variant(:thumb) %>
                     <% if headshot %>
-                      <%= image_tag headshot, class: "w-8 h-8 rounded-full object-cover" %>
+                      <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
                     <% else %>
-                      <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 text-xs font-medium">
-                        <%= registration.display_initials %>
+                      <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                        <%= reg.display_name.first.upcase %>
                       </div>
                     <% end %>
-                  <% else %>
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium">
-                      <%= registration.display_initials %>
-                    </div>
-                  <% end %>
-                  <div>
-                    <div class="font-medium text-gray-900"><%= registration.display_name %></div>
-                    <% if registration.guest? %>
-                      <div class="text-xs text-gray-500">Guest</div>
+                    <% if reg.person&.public_key.present? %>
+                      <%= link_to reg.display_name, public_profile_path(reg.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                    <% else %>
+                      <span class="text-sm text-gray-900"><%= reg.display_name %></span>
+                    <% end %>
+                  </div>
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <%= render "shared/button",
+                        text: "Return to Queue",
+                        variant: "ghost",
+                        size: "small",
+                        path: unassign_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                        method: :patch,
+                        data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <%# Slot-based mode: matches _registration_list.html.erb structure %>
+          <%
+            label_width_class = case @sign_up_form.slot_generation_mode
+              when 'time_based' then 'w-28'
+              when 'named' then 'w-32'
+              else 'w-16'
+            end
+          %>
+          <div class="divide-y divide-gray-100" data-assign-drag-target="slotList">
+            <% @slots.each do |slot| %>
+              <% slot_registrations = slot.sign_up_registrations.active.order(:position).to_a %>
+
+              <% if slot.is_held %>
+                <%# Held slot - grayed out %>
+                <div class="px-4 py-3 bg-gray-100 text-center">
+                  <span class="text-gray-500 text-sm"><%= slot.held_reason.presence || "Unavailable" %></span>
+                </div>
+              <% elsif slot.capacity > 1 && show_slot_label %>
+                <%# Multi-capacity slot: show label on left, individual rows on right %>
+                <div class="flex">
+                  <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3">
+                    <span class="text-sm font-medium <%= slot_registrations.any? ? 'text-gray-500' : 'text-gray-400' %>"><%= slot.name.presence || slot.position %></span>
+                  </div>
+                  <div class="flex-1 divide-y divide-gray-50"
+                       data-assign-drag-target="dropZone"
+                       data-slot-id="<%= slot.id %>"
+                       data-slot-capacity="<%= slot.capacity %>"
+                       data-slot-count="<%= slot_registrations.size %>">
+                    <% slot_registrations.each do |reg| %>
+                      <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50"
+                           draggable="<%= supports_drag %>"
+                           data-assign-drag-target="draggable"
+                           data-registration-id="<%= reg.id %>"
+                           data-current-slot-id="<%= slot.id %>">
+                        <div class="flex items-center gap-3">
+                          <% if supports_drag %>
+                            <svg class="w-4 h-4 text-gray-400 cursor-grab" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                            </svg>
+                          <% end %>
+                          <% headshot = reg.person&.safe_headshot_variant(:thumb) %>
+                          <% if headshot %>
+                            <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                          <% else %>
+                            <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                              <%= reg.display_name.first.upcase %>
+                            </div>
+                          <% end %>
+                          <% if reg.person&.public_key.present? %>
+                            <%= link_to reg.display_name, public_profile_path(reg.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                          <% else %>
+                            <span class="text-sm text-gray-900"><%= reg.display_name %></span>
+                          <% end %>
+                        </div>
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <%= render "shared/button",
+                              text: "Return to Queue",
+                              variant: "ghost",
+                              size: "small",
+                              path: unassign_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              method: :patch,
+                              data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                        </div>
+                      </div>
+                    <% end %>
+                    <% available_count = [slot.capacity - slot_registrations.size, 0].max %>
+                    <% available_count.times do %>
+                      <div class="px-4 py-2 min-h-[40px]" data-assign-drag-target="emptySlot" data-slot-id="<%= slot.id %>">
+                        <span class="text-sm text-gray-400 italic">Available</span>
+                      </div>
                     <% end %>
                   </div>
                 </div>
-                <div class="relative" data-controller="dropdown">
-                  <button type="button" data-action="click->dropdown#toggle" class="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors">
-                    Assign →
-                  </button>
-                  <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                    <% @slots.each do |slot| %>
-                      <% if slot.full? %>
-                        <div class="px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
-                          <%= slot.display_name %> <span class="text-xs">(full)</span>
+              <% elsif slot_registrations.any? %>
+                <%# Single-capacity slot with registrations %>
+                <div class="flex"
+                     data-assign-drag-target="dropZone"
+                     data-slot-id="<%= slot.id %>"
+                     data-slot-capacity="<%= slot.capacity %>"
+                     data-slot-count="<%= slot_registrations.size %>">
+                  <% if show_slot_label %>
+                    <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+                      <span class="text-sm font-medium text-gray-500"><%= slot.name.presence || slot.position %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 divide-y divide-gray-50">
+                    <% slot_registrations.each do |reg| %>
+                      <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50"
+                           draggable="<%= supports_drag %>"
+                           data-assign-drag-target="draggable"
+                           data-registration-id="<%= reg.id %>"
+                           data-current-slot-id="<%= slot.id %>">
+                        <div class="flex items-center gap-3">
+                          <% if supports_drag %>
+                            <svg class="w-4 h-4 text-gray-400 cursor-grab" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                            </svg>
+                          <% end %>
+                          <% headshot = reg.person&.safe_headshot_variant(:thumb) %>
+                          <% if headshot %>
+                            <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                          <% else %>
+                            <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                              <%= reg.display_name.first.upcase %>
+                            </div>
+                          <% end %>
+                          <% if reg.person&.public_key.present? %>
+                            <%= link_to reg.display_name, public_profile_path(reg.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                          <% else %>
+                            <span class="text-sm text-gray-900"><%= reg.display_name %></span>
+                          <% end %>
                         </div>
-                      <% else %>
-                        <%= link_to assign_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id, slot_id: slot.id, instance_id: @instance.id),
-                            method: :patch,
-                            data: { turbo_method: :patch },
-                            class: "block px-3 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700" do %>
-                          <%= slot.display_name %>
-                          <span class="text-xs text-gray-400">(<%= slot.spots_remaining %> left)</span>
-                        <% end %>
-                      <% end %>
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <%= render "shared/button",
+                              text: "Return to Queue",
+                              variant: "ghost",
+                              size: "small",
+                              path: unassign_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              method: :patch,
+                              data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
+                        </div>
+                      </div>
                     <% end %>
                   </div>
+                </div>
+              <% else %>
+                <%# Empty slot %>
+                <div class="flex"
+                     data-assign-drag-target="dropZone"
+                     data-slot-id="<%= slot.id %>"
+                     data-slot-capacity="<%= slot.capacity %>"
+                     data-slot-count="0">
+                  <% if show_slot_label %>
+                    <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+                      <span class="text-sm font-medium text-gray-400"><%= slot.name.presence || slot.position %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 px-4 py-2 min-h-[40px]" data-assign-drag-target="emptySlot" data-slot-id="<%= slot.id %>">
+                    <span class="text-sm text-gray-400 italic">Available</span>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Right panel: Queue %>
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <h2 class="font-semibold text-gray-900">Queue</h2>
+              <span class="text-sm text-gray-500"><%= @queue.count %> waiting</span>
+            </div>
+            <%= render "shared/button",
+                text: "Auto-assign All",
+                variant: "primary",
+                size: "small",
+                path: auto_assign_queue_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance&.id),
+                method: :post,
+                disabled: @queue.empty?,
+                data: { turbo_method: :post } %>
+          </div>
+        </div>
+
+        <% if @queue.empty? %>
+          <div class="p-8 text-center">
+            <p class="text-gray-500">No one in the queue</p>
+          </div>
+        <% else %>
+          <div class="divide-y divide-gray-100" data-assign-drag-target="queueList">
+            <% @queue.each do |registration| %>
+              <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50"
+                   draggable="<%= supports_drag %>"
+                   data-assign-drag-target="queueItem"
+                   data-registration-id="<%= registration.id %>">
+                <div class="flex items-center gap-3">
+                  <% if supports_drag %>
+                    <svg class="w-4 h-4 text-gray-400 cursor-grab" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                    </svg>
+                  <% end %>
+                  <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
+                  <% if headshot %>
+                    <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                      <%= registration.display_name.first.upcase %>
+                    </div>
+                  <% end %>
+                  <div>
+                    <% if registration.person&.public_key.present? %>
+                      <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                    <% else %>
+                      <span class="text-sm text-gray-900"><%= registration.display_name %></span>
+                    <% end %>
+                    <% if registration.guest? %>
+                      <span class="text-xs text-gray-500 ml-1">(Guest)</span>
+                    <% end %>
+                  </div>
+                </div>
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <%= render "shared/button",
+                      text: "Auto-assign",
+                      variant: "primary",
+                      size: "small",
+                      path: auto_assign_one_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id, instance_id: @instance.id),
+                      method: :post,
+                      data: { turbo_method: :post } %>
+                  <%= render "shared/button",
+                      text: "Remove",
+                      variant: "ghost",
+                      size: "small",
+                      path: cancel_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: registration.id),
+                      method: :delete,
+                      data: { turbo_method: :delete, turbo_confirm: "Remove #{registration.display_name} from the queue?" } %>
                 </div>
               </div>
             <% end %>
@@ -123,68 +319,5 @@
         <% end %>
       </div>
     </div>
-
-    <%# Right panel: Slots %>
-    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-gray-900">Slots</h2>
-          <span class="text-sm text-gray-500">
-            <%= @assigned.count %>/<%= @slots.sum(&:capacity) %> assigned
-          </span>
-        </div>
-      </div>
-      <div class="p-4 space-y-4">
-        <% @slots.each do |slot| %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-              <div class="font-medium text-gray-900"><%= slot.display_name %></div>
-              <div class="text-sm text-gray-500">
-                <%= slot.active_registrations_count %>/<%= slot.capacity %>
-                <% if slot.is_held? %>
-                  <span class="ml-1 text-xs text-amber-600">(held)</span>
-                <% end %>
-              </div>
-            </div>
-            <div class="p-3">
-              <% slot_registrations = slot.sign_up_registrations.active.order(:position) %>
-              <% if slot_registrations.empty? %>
-                <p class="text-sm text-gray-400 italic">Empty</p>
-              <% else %>
-                <div class="space-y-2">
-                  <% slot_registrations.each do |reg| %>
-                    <div class="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
-                      <div class="flex items-center gap-2">
-                        <% if reg.person %>
-                          <% headshot = reg.person.safe_headshot_variant(:thumb) %>
-                          <% if headshot %>
-                            <%= image_tag headshot, class: "w-6 h-6 rounded-full object-cover" %>
-                          <% else %>
-                            <div class="w-6 h-6 rounded-full bg-green-200 flex items-center justify-center text-green-700 text-xs font-medium">
-                              <%= reg.display_initials %>
-                            </div>
-                          <% end %>
-                        <% else %>
-                          <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs">
-                            <%= reg.display_initials %>
-                          </div>
-                        <% end %>
-                        <span class="text-sm font-medium text-gray-900"><%= reg.display_name %></span>
-                      </div>
-                      <%= link_to unassign_registration_manage_production_sign_up_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
-                          method: :patch,
-                          data: { turbo_method: :patch, confirm: "Return #{reg.display_name} to queue?" },
-                          class: "text-xs text-gray-500 hover:text-red-600" do %>
-                        ✕
-                      <% end %>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-<% end %>
+  <% end %>
+</div>

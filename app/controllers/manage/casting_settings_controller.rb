@@ -18,8 +18,8 @@ module Manage
     def complete_setup
       # Process the setup form and mark setup as completed
       if @production.update(casting_settings_params.merge(casting_setup_completed: true))
-        redirect_to manage_production_casting_settings_path(@production),
-                    notice: "Casting settings configured successfully!"
+        redirect_to manage_production_casting_settings_path(@production, anchor: "tab-1"),
+                    notice: "Casting settings saved! Now let's set up your roles."
       else
         render :setup, status: :unprocessable_entity
       end

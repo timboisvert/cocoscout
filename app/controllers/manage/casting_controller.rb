@@ -245,6 +245,39 @@ module Manage
                   notice: "Email sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
     end
 
+    # Search people in the organization for manual/hybrid casting
+    # Returns JSON with matching people (and optionally groups)
+    def search_people
+      q = (params[:q] || params[:query]).to_s.strip
+
+      if q.length < 2
+        render json: { people: [], groups: [] }
+        return
+      end
+
+      # Search for people in the organization
+      people = Current.organization.people
+                      .where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+                      .order(:name)
+                      .limit(20)
+                      .includes(profile_headshots: { image_attachment: :blob })
+
+      # Also search groups if include_groups param is present
+      groups = []
+      if params[:include_groups] == "true"
+        groups = Current.organization.groups
+                        .where("name LIKE :q", q: "%#{q}%")
+                        .order(:name)
+                        .limit(10)
+                        .includes(profile_headshots: { image_attachment: :blob })
+      end
+
+      render json: {
+        people: people.map { |p| person_search_result(p) },
+        groups: groups.map { |g| group_search_result(g) }
+      }
+    end
+
     def assign_person_to_role
       # Get the assignable entity (person or group) and the role
       if params[:person_id].present?
@@ -296,7 +329,7 @@ module Manage
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress using quantity-based slot counting
       progress = @show.casting_progress
@@ -407,7 +440,7 @@ module Manage
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       progress = @show.casting_progress
       fully_cast = progress[:percentage] == 100
@@ -492,7 +525,7 @@ module Manage
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress using quantity-based slot counting
       progress = @show.casting_progress
@@ -587,7 +620,7 @@ module Manage
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
                                            locals: { show: @show,
                                                      availability: @availability })
-      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress - count roles with at least one assignment
       roles_with_assignments = @show.show_person_role_assignments.distinct.count(:role_id)
@@ -681,12 +714,14 @@ module Manage
         unnotified_assignments = show.unnotified_cast_members
         unnotified_assignments.each do |a|
           next unless a.role  # Skip orphaned assignments
+          next if a.guest?    # Skip guest assignments (no person to notify)
+          next unless a.assignable  # Skip if assignable was deleted
 
           # For groups, get all members; for people, just the person
           recipients = a.assignable.is_a?(Group) ? a.assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ a.assignable ]
 
           recipients.each do |person|
-            next unless person.email.present?
+            next unless person&.email.present?
             cast_notifications_by_person[person] ||= []
             cast_notifications_by_person[person] << { show: show, role: a.role, assignable: a.assignable }
           end
@@ -695,6 +730,7 @@ module Manage
         # Get removed cast members who need notification
         removed_members = show.removed_cast_members
         removed_members.each do |assignable|
+          next unless assignable  # Skip nil assignables
           prev_notification = show.show_cast_notifications
                                   .cast_notifications
                                   .where(assignable: assignable)
@@ -705,7 +741,7 @@ module Manage
           recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
 
           recipients.each do |person|
-            next unless person.email.present?
+            next unless person&.email.present?
             removed_notifications_by_person[person] ||= []
             removed_notifications_by_person[person] << { show: show, role: prev_notification.role, assignable: assignable }
           end
@@ -742,6 +778,7 @@ module Manage
         # Record notifications for current cast members
         show.unnotified_cast_members.each do |a|
           next unless a.role
+          next if a.guest? # Guests don't have assignable records
           show.show_cast_notifications.find_or_initialize_by(
             assignable: a.assignable,
             role: a.role
@@ -852,10 +889,36 @@ module Manage
 
     private
 
+    def person_search_result(person)
+      {
+        id: person.id,
+        type: "Person",
+        name: person.name,
+        email: person.email,
+        initials: person.initials,
+        headshot_url: person.safe_headshot_variant(:thumb)&.then { |v| Rails.application.routes.url_helpers.url_for(v) rescue nil }
+      }
+    end
+
+    def group_search_result(group)
+      {
+        id: group.id,
+        type: "Group",
+        name: group.name,
+        initials: group.initials,
+        headshot_url: group.safe_headshot_variant(:thumb)&.then { |v| Rails.application.routes.url_helpers.url_for(v) rescue nil }
+      }
+    end
+
     def check_casting_setup
       unless @production.casting_setup_completed?
         redirect_to setup_manage_production_casting_settings_path(@production)
       end
+    end
+
+    # Helper to determine if click-to-add should be enabled for roles
+    def click_to_add?
+      @production.casting_manual? || @production.casting_hybrid?
     end
 
     # Sync roles from source to target show
@@ -1112,7 +1175,7 @@ module Manage
 
     def default_cast_email_subject
       variables = build_casting_email_variables
-      EmailTemplateService.render_subject("cast_notification", variables)
+      EmailTemplateService.render_subject_without_prefix("cast_notification", variables)
     end
 
     def default_cast_email_body
@@ -1122,7 +1185,7 @@ module Manage
 
     def default_removed_email_subject
       variables = build_casting_email_variables
-      EmailTemplateService.render_subject("removed_from_cast_notification", variables)
+      EmailTemplateService.render_subject_without_prefix("removed_from_cast_notification", variables)
     end
 
     def default_removed_email_body

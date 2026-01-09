@@ -2,7 +2,7 @@
 
 module Manage
   class AuditionMailer < ApplicationMailer
-    def casting_notification(person, production, email_body, email_batch_id: nil)
+    def casting_notification(person, production, email_body, subject: nil, email_batch_id: nil)
       @person = person
       @production = production
       @email_body = email_body
@@ -10,9 +10,12 @@ module Manage
 
       headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
 
+      # Use provided subject or fall back to default
+      email_subject = subject.presence || "Audition Results for #{production.name}"
+
       mail(
         to: person.email,
-        subject: "Audition Results for #{production.name}"
+        subject: email_subject
       )
     end
 

@@ -11,11 +11,13 @@ module Manage
       create_question update_question destroy_question reorder_questions
       register cancel_registration move_registration
       preview toggle_active archive unarchive
+      assign assign_registration unassign_registration auto_assign_queue auto_assign_one
     ]
 
     def index
       @sign_up_forms = @production.sign_up_forms.not_archived.order(created_at: :desc)
       @archived_count = @production.sign_up_forms.archived.count
+      @wizard_state = Rails.cache.read("sign_up_wizard:#{Current.user.id}:#{@production.id}")
     end
 
     def archived
@@ -368,10 +370,10 @@ module Manage
       @question = @sign_up_form.questions.new(question_params.merge(position: next_position))
 
       if @question.save
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 3),
+        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Question added"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 3),
+        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
                     alert: @question.errors.full_messages.join(", ")
       end
     end
@@ -379,10 +381,10 @@ module Manage
     def update_question
       @question = @sign_up_form.questions.find(params[:question_id])
       if @question.update(question_params)
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 3),
+        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Question updated"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 3),
+        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
                     alert: @question.errors.full_messages.join(", ")
       end
     end
@@ -390,7 +392,7 @@ module Manage
     def destroy_question
       @question = @sign_up_form.questions.find(params[:question_id])
       @question.destroy
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 3),
+      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
                   notice: "Question deleted"
     end
 
@@ -507,7 +509,7 @@ module Manage
     def assign
       unless @sign_up_form.admin_assigns?
         redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
-                    alert: "Assignment is only available for forms with 'I'll assign people to slots' mode"
+                    alert: "Assignment is only available for forms with 'Production team assigns registrants to slots' mode"
         return
       end
 
@@ -552,6 +554,24 @@ module Manage
 
       redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
                   notice: "Auto-assigned #{assigned_count} people to slots"
+    end
+
+    def auto_assign_one
+      @instance = find_instance_for_assignment
+      return unless @instance
+
+      registration = SignUpRegistration.find(params[:registration_id])
+
+      # Find first available slot
+      slot = @instance.sign_up_slots.available.find { |s| !s.full? }
+      if slot
+        registration.assign_to_slot!(slot)
+        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+                    notice: "#{registration.display_name} assigned to #{slot.display_name}"
+      else
+        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+                    alert: "No available slots"
+      end
     end
 
     private

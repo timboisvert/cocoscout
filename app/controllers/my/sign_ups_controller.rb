@@ -176,10 +176,6 @@ module My
     end
 
     def form
-      unless @sign_up_form.status_service.accepting_registrations?
-        redirect_to my_sign_up_inactive_path(@code) and return
-      end
-
       # If login is required and user is not signed in, redirect to entry
       if @sign_up_form.require_login && !authenticated?
         redirect_to my_sign_up_entry_path(@code), status: :see_other
@@ -190,7 +186,6 @@ module My
       if @sign_up_form.repeated?
         @open_instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
-          .where(status: "open")
           .where("shows.date_and_time > ?", Time.current)
           .order("shows.date_and_time ASC")
           .includes(:show)
@@ -201,7 +196,7 @@ module My
         end
 
         # If no specific instance and multiple are open, user needs to pick
-        if @instance.nil? && @open_instances.count > 1
+        if @instance.nil? && @open_instances.where(status: "open").count > 1
           @show_event_picker = true
         else
           @instance ||= @open_instances.first
@@ -217,12 +212,17 @@ module My
       @my_registration = @my_registrations.first # For backward compatibility
       @registrations_remaining = registrations_remaining_for_user(@my_registrations)
       @can_register_more = @registrations_remaining > 0
+      @can_edit = @sign_up_form.allow_edit && @instance&.can_edit?
 
-      # If user has reached their max registrations, redirect to success page
-      if @my_registrations.present? && !@can_register_more
-        redirect_to my_sign_up_success_path(@code), status: :see_other
-        nil
+      # Allow users to view the form if:
+      # 1. Form is accepting registrations, OR
+      # 2. User has registrations they can view/edit
+      unless @sign_up_form.status_service.accepting_registrations? || @my_registrations.present?
+        redirect_to my_sign_up_inactive_path(@code) and return
       end
+
+      # User can always view the form, even if they can't register more
+      # The view will show their registration status and hide the form if they can't register more
     end
 
     def submit_form

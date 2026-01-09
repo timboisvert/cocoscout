@@ -363,7 +363,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Slot selection</label>
               <%= form.select :slot_selection_mode,
-                [["People choose their slot", "choose_slot"], ["Auto-assign to next available", "auto_assign"], ["I'll assign people to slots", "admin_assigns"]],
+                [["Registrant chooses their slot", "choose_slot"], ["Registrant automatically assigned to next available slot", "auto_assign"], ["Production team assigns registrants to slots", "admin_assigns"]],
                 {}, class: "block w-full rounded-lg border border-gray-300 px-3 py-2" %>
               <p class="text-xs text-gray-500 mt-1">
                 <% case @sign_up_form.slot_selection_mode %>
@@ -382,7 +382,7 @@
 
         <%# Queue Settings - only shown for admin_assigns mode %>
         <% if @sign_up_form.admin_assigns? %>
-        <div class="bg-blue-50 rounded-lg border border-blue-200 p-5">
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
           <h3 class="font-semibold text-gray-900 mb-4">Queue Settings</h3>
           <p class="text-sm text-gray-600 mb-4">Since you're assigning people to slots, registrations go into a queue first.</p>
 

@@ -57,11 +57,18 @@ class EmailTemplate < ApplicationRecord
     rendered = interpolate(subject, variables)
 
     # Prepend production name if flag is set and production_name variable provided
-    if prepend_production_name? && variables[:production_name].present?
-      rendered = "[#{variables[:production_name]}] #{rendered}"
+    # Check both symbol and string keys for compatibility
+    production_name = variables[:production_name] || variables["production_name"]
+    if prepend_production_name? && production_name.present?
+      rendered = "[#{production_name}] #{rendered}"
     end
 
     rendered
+  end
+
+  # Render the subject WITHOUT the production name prefix (for UI forms where prefix is shown separately)
+  def render_subject_without_prefix(variables = {})
+    interpolate(subject, variables)
   end
 
   # Render the body with variable substitution

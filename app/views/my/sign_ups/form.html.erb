@@ -1,11 +1,20 @@
 <% content_for :title, @sign_up_form.name %>
 
-<div class="min-h-screen bg-gray-50 py-8" data-controller="sign-up-confirmation" data-sign-up-confirmation-submit-url-value="<%= my_submit_sign_up_form_path(@code, instance_id: @instance&.id) %>" data-sign-up-confirmation-change-mode-value="<%= @my_registration.blank? %>">
+<div class="min-h-screen bg-gray-50 py-8" data-controller="sign-up-confirmation" data-sign-up-confirmation-submit-url-value="<%= my_submit_sign_up_form_path(@code, instance_id: @instance&.id) %>" data-sign-up-confirmation-change-slot-url-value="<%= my_change_sign_up_slot_path(@code) %>" data-sign-up-confirmation-change-mode-value="false">
   <div class="max-w-6xl mx-auto px-4">
 
     <!-- Full-Width Header -->
     <div class="mb-8 sm:mb-10">
       <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @sign_up_form.name %></h1>
+      <%# Registration Deadline - shown when closes_at is set %>
+      <% if !@show_event_picker && @instance&.closes_at.present? && @instance.closes_at > Time.current %>
+        <p class="text-sm text-slate-500"
+           data-controller="countdown"
+           data-countdown-until-value="<%= @instance.closes_at.iso8601 %>"
+           data-countdown-expired-action-value="refresh">
+          Registration closes <span class="font-medium tabular-nums" data-countdown-target="clock">--</span>
+        </p>
+      <% end %>
     </div>
 
     <%= render partial: "shared/notice", locals: { notice: notice, alert: flash[:alert] } %>
@@ -43,19 +52,19 @@
           <div class="flex-1">
             <% if queued_regs.any? %>
               <h3 class="font-semibold text-pink-900 mb-2">You're in the Queue</h3>
-              <p class="text-sm text-pink-800 mb-3">
+              <p class="text-sm text-pink-800">
                 <% queue_position = queued_regs.first.position %>
                 Your position: <span class="font-medium">#<%= queue_position %></span>
               </p>
-              <p class="text-sm text-pink-700 mb-3">The organizer will assign you to a slot.</p>
+              <p class="text-sm text-pink-700">The organizer will assign you to a slot.</p>
             <% elsif assigned_regs.count == 1 %>
               <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
-              <p class="text-sm text-pink-800 mb-3">
+              <p class="text-sm text-pink-800">
                 Your slot: <span class="font-medium"><%= assigned_regs.first.sign_up_slot.display_name %></span>
               </p>
             <% else %>
               <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
-              <div class="text-sm text-pink-800 mb-3">
+              <div class="text-sm text-pink-800">
                 <p class="mb-1">Your slots:</p>
                 <ul class="list-disc list-inside space-y-1">
                   <% assigned_regs.each do |reg| %>
@@ -65,43 +74,25 @@
               </div>
             <% end %>
             <% if @can_register_more %>
-              <p class="text-sm text-pink-700 mb-3">
+              <p class="text-sm text-pink-700 mt-2">
                 You can register for <%= @registrations_remaining %> more slot<%= @registrations_remaining == 1 ? '' : 's' %>.
               </p>
             <% end %>
-            <% if @sign_up_form.allow_cancel %>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  data-action="click->sign-up-confirmation#openCancelConfirmation"
-                  class="inline-flex items-center gap-1 px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Cancel Registration<%= @my_registrations.count > 1 ? 's' : '' %>
-                </button>
-              </div>
-            <% end %>
           </div>
-        </div>
-      </div>
-    <% end %>
-
-    <%# Registration Deadline Countdown - shown when closes_at is set %>
-    <% if !@show_event_picker && @instance&.closes_at.present? && @instance.closes_at > Time.current %>
-      <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3"
-           data-controller="countdown"
-           data-countdown-until-value="<%= @instance.closes_at.iso8601 %>"
-           data-countdown-expired-action-value="refresh">
-        <div class="flex-shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </div>
-        <div class="flex-1">
-          <span class="text-sm text-amber-800">Registration closes </span>
-          <span class="text-sm font-semibold text-amber-900 tabular-nums" data-countdown-target="clock">--</span>
+          <% if @sign_up_form.allow_cancel %>
+            <div class="flex-shrink-0">
+              <button
+                type="button"
+                data-action="click->sign-up-confirmation#openCancelConfirmation"
+                class="inline-flex items-center gap-1.5 px-3 py-2 text-gray-600 text-sm font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel My Registration<%= @my_registrations.count > 1 ? 's' : '' %>
+              </button>
+            </div>
+          <% end %>
         </div>
       </div>
     <% end %>
@@ -314,6 +305,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-3">
                 <% if @my_registrations.present? && @can_register_more %>
                   Add Another Slot
+                <% elsif @my_registrations.present? && @can_edit %>
+                  Change Your Slot
                 <% else %>
                   Select a Slot
                 <% end %>
@@ -365,8 +358,8 @@
                           <% end %>
                         </div>
                       </div>
-                    <% elsif @my_registrations.present? && !@can_register_more %>
-                      <%# User has reached limit - show slot as non-clickable %>
+                    <% elsif @my_registrations.present? && !@can_register_more && !@can_edit %>
+                      <%# User has reached limit and can't edit - show slot as non-clickable %>
                       <div class="py-3 px-4 bg-white border border-gray-200 rounded-lg opacity-60">
                         <div class="flex items-center gap-2">
                           <span class="text-sm text-gray-600"><%= slot.display_name %></span>
@@ -379,9 +372,15 @@
                         </div>
                       </div>
                     <% else %>
+                      <%# Available slot - clickable for new registration or editing %>
+                      <%
+                        # Determine if this is an edit action (changing slot) vs new registration
+                        is_change_slot = @my_registrations.present? && !@can_register_more && @can_edit
+                        action = is_change_slot ? "click->sign-up-confirmation#changeSlot" : "click->sign-up-confirmation#selectSlot"
+                      %>
                       <button
                         type="button"
-                        data-action="click->sign-up-confirmation#selectSlot"
+                        data-action="<%= action %>"
                         data-slot-id="<%= slot.id %>"
                         data-slot-name="<%= slot.display_name %>"
                         data-spots-remaining="<%= slot.spots_remaining %>"
@@ -420,10 +419,15 @@
           <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-5">
             <% @questions.each do |question| %>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  <%= question.text %>
-                  <% if question.required? %>
-                    <span class="text-gray-500 text-sm">(required)</span>
+                <label class="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                  <span>
+                    <%= question.text %>
+                    <% if question.required? %>
+                      <span class="text-gray-500 text-sm font-normal">(required)</span>
+                    <% end %>
+                  </span>
+                  <% if question.question_type == "ranking" %>
+                    <span class="hidden sm:inline text-xs text-gray-400 font-normal">Drag to reorder</span>
                   <% end %>
                 </label>
 
@@ -443,7 +447,7 @@
       <!-- Modal Header -->
       <div class="bg-pink-600 px-6 py-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-white">Confirm Sign-Up</h2>
+          <h2 class="text-xl font-semibold text-white" data-sign-up-confirmation-target="modalTitle">Confirm Sign-Up</h2>
           <button type="button" data-action="click->sign-up-confirmation#close" class="text-white/80 hover:text-white cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -520,10 +524,11 @@
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-        <%= form_with url: my_submit_sign_up_form_path(@code, instance_id: @instance&.id), method: :post, local: true, class: "flex gap-3 justify-end" do |form| %>
+        <%= form_with url: my_submit_sign_up_form_path(@code, instance_id: @instance&.id), method: :post, local: true, class: "flex gap-3 justify-end", data: { "sign-up-confirmation-target": "modalForm" } do |form| %>
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
           <input type="hidden" name="slot_id" value="" data-sign-up-confirmation-target="hiddenSlotId">
           <%= render "shared/button", text: "Cancel", type: :button, variant: "secondary", size: "large", data: { action: "click->sign-up-confirmation#close" } %>
-          <%= render "shared/button", text: "Confirm Sign-Up", variant: "primary", size: "large", data: { "sign-up-confirmation-target": "confirmButton", action: "click->sign-up-confirmation#confirm" } %>
+          <%= render "shared/button", text: "Confirm Sign-Up", variant: "primary", size: "large", id: "confirm-signup-button", data: { "sign-up-confirmation-target": "confirmButton", action: "click->sign-up-confirmation#confirm" } %>
         <% end %>
       </div>
     </div>

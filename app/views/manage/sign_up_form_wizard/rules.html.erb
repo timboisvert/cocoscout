@@ -45,12 +45,12 @@
 
           <div class="w-full sm:w-1/2 mt-5 sm:mt-0">
             <label class="block text-gray-700 font-medium">Slot selection</label>
-            <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full" data-controller="slot-selection-help" data-action="change->slot-selection-help#update">
-              <option value="choose_slot" <%= "selected" if slot_selection_mode == 'choose_slot' %>>People choose their slot</option>
-              <option value="auto_assign" <%= "selected" if slot_selection_mode == 'auto_assign' %>>Auto-assign to next available</option>
-              <option value="admin_assigns" <%= "selected" if slot_selection_mode == 'admin_assigns' %>>I'll assign people to slots</option>
+            <select name="slot_selection_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 mt-2 w-full" data-rules-form-target="slotSelectionMode" data-action="change->rules-form#toggleSlotSelectionMode">
+              <option value="choose_slot" <%= "selected" if slot_selection_mode == 'choose_slot' %>>Registrant chooses their slot</option>
+              <option value="auto_assign" <%= "selected" if slot_selection_mode == 'auto_assign' %>>Registrant automatically assigned to next available slot</option>
+              <option value="admin_assigns" <%= "selected" if slot_selection_mode == 'admin_assigns' %>>Production team assigns registrants to slots</option>
             </select>
-            <p class="text-sm text-gray-500 mt-1" data-slot-selection-help-target="description">
+            <p class="text-sm text-gray-500 mt-1" data-rules-form-target="slotSelectionDescription">
               <% case slot_selection_mode %>
               <% when 'auto_assign' %>
                 Good for waitlists or when slot choice doesn't matter.
@@ -60,17 +60,40 @@
                 People select their preferred slot when signing up.
               <% end %>
             </p>
-            <% if slot_selection_mode == 'admin_assigns' %>
-            <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p class="text-sm text-blue-800 font-medium">Great for:</p>
-              <ul class="text-sm text-blue-700 mt-1 list-disc list-inside space-y-0.5">
-                <li>Audition time slots where you want control over scheduling</li>
-                <li>Performance running order determined after sign-ups close</li>
-                <li>Workshop groups assigned based on skill level</li>
-              </ul>
-            </div>
-            <% end %>
           </div>
+        </div>
+      </div>
+
+      <!-- Queue Settings Section (only for admin_assigns mode) -->
+      <div data-rules-form-target="queueSettings" class="bg-gray-50 rounded-lg border border-gray-200 p-5 <%= slot_selection_mode == 'admin_assigns' ? '' : 'hidden' %>">
+        <h3 class="font-semibold text-gray-900 mb-4">Queue Settings</h3>
+        <p class="text-sm text-gray-600 mb-4">Since you're assigning people to slots, registrations go into a queue first.</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-medium">Queue limit</label>
+            <div class="flex items-center gap-2 mt-2">
+              <input type="number" name="queue_limit" value="<%= @wizard_state[:queue_limit] %>" min="1" placeholder="Unlimited"
+                     class="w-32 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
+              <span class="text-sm text-gray-500">Leave empty for unlimited</span>
+            </div>
+          </div>
+
+          <% if @wizard_state[:scope] == 'repeated' %>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-gray-900">Carry over unassigned to next event</p>
+              <p class="text-sm text-gray-500 mt-0.5">People not assigned for one event automatically join the queue for the next</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="hidden" name="queue_carryover" value="0">
+              <input type="checkbox" name="queue_carryover" value="1"
+                     <%= "checked" if @wizard_state[:queue_carryover] %>
+                     class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <% end %>
         </div>
       </div>
       <% end %>

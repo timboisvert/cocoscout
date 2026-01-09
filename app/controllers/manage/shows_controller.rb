@@ -493,7 +493,7 @@ module Manage
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
 
       # Create email content for single occurrence
-      @single_subject = EmailTemplateService.render_subject("show_canceled", {
+      @single_subject = EmailTemplateService.render_subject_without_prefix("show_canceled", {
         production_name: @production.name,
         event_type: @show.event_type.titleize,
         event_date: @show.date_and_time.strftime("%A, %B %-d, %Y")
@@ -512,7 +512,7 @@ module Manage
         shows = @show.recurrence_group.order(:date_and_time)
         dates_list = shows.map { |s| s.date_and_time.strftime("%A, %B %-d, %Y at %l:%M %p") }.join("<br>")
 
-        @all_subject = EmailTemplateService.render_subject("show_canceled", {
+        @all_subject = EmailTemplateService.render_subject_without_prefix("show_canceled", {
           production_name: @production.name,
           event_type: "#{@show.event_type.titleize} Series",
           event_date: "#{shows.count} occurrences"

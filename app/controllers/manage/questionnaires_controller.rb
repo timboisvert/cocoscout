@@ -317,7 +317,7 @@ module Manage
     end
 
     def default_questionnaire_email_subject
-      EmailTemplateService.render_subject("questionnaire_invitation", {
+      EmailTemplateService.render_subject_without_prefix("questionnaire_invitation", {
         production_name: @production.name,
         questionnaire_title: @questionnaire.title
       })
