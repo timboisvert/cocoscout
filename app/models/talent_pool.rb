@@ -15,7 +15,7 @@ class TalentPool < ApplicationRecord
 
   # All productions that use this pool (owner + shared)
   def all_productions
-    Production.where(id: [production_id] + shared_productions.pluck(:id))
+    Production.where(id: [ production_id ] + shared_productions.pluck(:id))
   end
 
   # Helper method to get all members (both people and groups)
