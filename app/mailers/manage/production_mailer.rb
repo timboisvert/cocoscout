@@ -11,9 +11,13 @@ module Manage
       # Track email batch if provided
       headers["X-Email-Batch-ID"] = email_batch_id if email_batch_id.present?
 
+      # recipient is a Person, sender is a User
+      recipient_email = recipient.respond_to?(:email) ? recipient.email : recipient.email_address
+      sender_email = sender.respond_to?(:email_address) ? sender.email_address : sender.email
+
       mail(
-        to: recipient.email,
-        from: sender.email,
+        to: recipient_email,
+        from: sender_email,
         subject: subject
       )
     end
