@@ -434,7 +434,7 @@ module Manage
       end
 
       begin
-        @registration = @instance.queue_person!(
+        @registration = @instance.register_to_queue!(
           person: person,
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]

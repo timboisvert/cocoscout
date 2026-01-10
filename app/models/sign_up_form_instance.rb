@@ -163,7 +163,7 @@ class SignUpFormInstance < ApplicationRecord
 
     queue_position = (queued_registrations.maximum(:position) || 0) + 1
 
-    SignUpRegistration.create!(
+    registration = SignUpRegistration.create!(
       sign_up_form_instance: self,
       sign_up_slot: nil,
       person: person,
@@ -173,6 +173,11 @@ class SignUpFormInstance < ApplicationRecord
       status: "queued",
       registered_at: Time.current
     )
+
+    # Notify the registrant
+    SignUpRegistrantNotificationJob.perform_later(registration.id, :queued)
+
+    registration
   end
 
   # Generate slots from template

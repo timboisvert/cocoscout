@@ -72,6 +72,9 @@ class SignUpSlot < ApplicationRecord
     # Notify production team if enabled
     SignUpRegistrationNotificationJob.perform_later(registration.id)
 
+    # Notify the registrant
+    SignUpRegistrantNotificationJob.perform_later(registration.id, :confirmation)
+
     registration
   end
 
