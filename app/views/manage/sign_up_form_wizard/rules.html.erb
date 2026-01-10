@@ -64,6 +64,35 @@
         </div>
       </div>
 
+      <!-- Temporary Slot Hold Section (only for choose_slot mode) -->
+      <div data-rules-form-target="slotHoldSettings" class="bg-gray-50 rounded-lg border border-gray-200 p-5 <%= slot_selection_mode == 'choose_slot' ? '' : 'hidden' %>" data-controller="toggle-section">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold text-gray-900">Temporary Slot Hold</h3>
+            <p class="text-sm text-gray-500 mt-1">Reserve a slot while the user completes their registration</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="slot_hold_enabled" value="0">
+            <input type="checkbox" name="slot_hold_enabled" value="1"
+                   <%= "checked" if @wizard_state[:slot_hold_enabled].nil? || @wizard_state[:slot_hold_enabled] %>
+                   data-action="change->toggle-section#toggle"
+                   data-toggle-section-target="toggle"
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+        <p class="text-sm text-gray-500 mt-3">When enabled, clicking a slot temporarily reserves it so no one else can select it while the user fills out the form. Helps prevent two people from registering for the same slot.</p>
+        <div data-toggle-section-target="content" class="<%= @wizard_state[:slot_hold_enabled].nil? || @wizard_state[:slot_hold_enabled] ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-700">Hold slot for</span>
+            <input type="number" name="slot_hold_seconds" value="<%= @wizard_state[:slot_hold_seconds] || 30 %>" min="10" max="300"
+                   class="w-20 rounded-lg border border-gray-300 px-3 py-2 text-center">
+            <span class="text-sm text-gray-600">seconds</span>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Recommended: 30-60 seconds. The hold automatically expires if the user doesn't complete registration.</p>
+        </div>
+      </div>
+
       <!-- Queue Settings Section (only for admin_assigns mode) -->
       <div data-rules-form-target="queueSettings" class="bg-gray-50 rounded-lg border border-gray-200 p-5 <%= slot_selection_mode == 'admin_assigns' ? '' : 'hidden' %>">
         <h3 class="font-semibold text-gray-900 mb-4">Queue Settings</h3>

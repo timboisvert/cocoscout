@@ -255,9 +255,9 @@ module Manage
         return
       end
 
-      # Search for people in the organization
+      # Search for people in the organization (case-insensitive)
       people = Current.organization.people
-                      .where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
+                      .where("LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)", q: "%#{q}%")
                       .order(:name)
                       .limit(20)
                       .includes(profile_headshots: { image_attachment: :blob })
@@ -266,7 +266,7 @@ module Manage
       groups = []
       if params[:include_groups] == "true"
         groups = Current.organization.groups
-                        .where("name LIKE :q", q: "%#{q}%")
+                        .where("LOWER(name) LIKE LOWER(:q)", q: "%#{q}%")
                         .order(:name)
                         .limit(10)
                         .includes(profile_headshots: { image_attachment: :blob })

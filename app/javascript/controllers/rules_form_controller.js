@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["allowEdit", "editSection", "editHasCutoff", "editCutoff", "editCutoffMode", "editCutoffHours",
         "allowCancel", "cancelSection", "cancelHasCutoff", "cancelCutoff", "cancelCutoffMode", "cancelCutoffHours",
-        "slotSelectionMode", "queueSettings", "slotSelectionDescription"]
+        "slotSelectionMode", "queueSettings", "slotSelectionDescription", "slotHoldSettings"]
 
     toggleSlotSelectionMode(event) {
         const mode = event.target.value
@@ -14,6 +14,15 @@ export default class extends Controller {
                 this.queueSettingsTarget.classList.remove("hidden")
             } else {
                 this.queueSettingsTarget.classList.add("hidden")
+            }
+        }
+
+        // Toggle slot hold settings visibility (only for choose_slot)
+        if (this.hasSlotHoldSettingsTarget) {
+            if (mode === "choose_slot") {
+                this.slotHoldSettingsTarget.classList.remove("hidden")
+            } else {
+                this.slotHoldSettingsTarget.classList.add("hidden")
             }
         }
 
