@@ -413,6 +413,7 @@ module Manage
 
     def contact
       @person = Current.organization.people.find(params[:id])
+      render partial: "contact_modal", layout: false
     end
 
     def send_contact_email
@@ -421,10 +422,12 @@ module Manage
       message = params[:message]
 
       if subject.present? && message.present?
-        Manage::PersonMailer.contact_email(@person, subject, message, Current.user).deliver_later
+        # Prepend production name to subject if in production context
+        full_subject = Current.production ? "[#{Current.production.name}] #{subject}" : subject
+        Manage::PersonMailer.contact_email(@person, full_subject, message, Current.user).deliver_later
         redirect_to manage_person_path(@person), notice: "Email sent to #{@person.name}"
       else
-        redirect_to contact_manage_person_path(@person), alert: "Subject and message are required"
+        redirect_to manage_person_path(@person), alert: "Subject and message are required"
       end
     end
 

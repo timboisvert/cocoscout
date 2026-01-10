@@ -38,8 +38,9 @@
       </div>
     </div>
     <% if @person.public_key.present? %>
-      <div class="flex-shrink-0">
-        <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@person.public_key), variant: "primary", target: "_blank" } %>
+      <div class="flex-shrink-0 flex items-center gap-2">
+        <%= render partial: "shared/button", locals: { text: "Contact", path: contact_manage_person_path(@person), variant: "outline", data: { turbo_frame: "contact_modal" } } %>
+        <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@person.public_key), variant: "outline", target: "_blank" } %>
       </div>
     <% end %>
   </div>

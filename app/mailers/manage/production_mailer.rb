@@ -4,9 +4,11 @@ module Manage
   class ProductionMailer < ApplicationMailer
     def send_message(recipient, subject, body_html, sender, email_batch_id: nil, production_id: nil)
       @recipient = recipient
+      @person = recipient  # For find_recipient_entity and find_organization
       @message = body_html
       @sender = sender
       @production_id = production_id
+      @production = Production.find_by(id: production_id) if production_id  # For find_organization
 
       # Track email batch if provided
       headers["X-Email-Batch-ID"] = email_batch_id if email_batch_id.present?

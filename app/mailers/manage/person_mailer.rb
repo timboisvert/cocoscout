@@ -25,6 +25,8 @@ module Manage
       @subject = subject
       @message = message
       @sender = sender
+      @organization = Current.organization  # For email logging
+      @production = Current.production      # For email logging
       mail(to: person.email, subject: subject)
     end
 
