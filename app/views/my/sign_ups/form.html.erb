@@ -2,8 +2,8 @@
 
 <%
   # Slot locking is only for choose_slot mode when enabled in form settings
-  use_slot_locking = @instance.present? && 
-                     @sign_up_form.slot_selection_mode == "choose_slot" && 
+  use_slot_locking = @instance.present? &&
+                     @sign_up_form.slot_selection_mode == "choose_slot" &&
                      @sign_up_form.slot_hold_enabled?
   slot_hold_seconds = @sign_up_form.slot_hold_seconds || 30
 %>
@@ -562,7 +562,7 @@
           <%= render "shared/button", text: "Confirm Sign-Up", variant: "primary", size: "large", id: "confirm-signup-button", data: { "sign-up-confirmation-target": "confirmButton", action: "click->sign-up-confirmation#confirm" } %>
         <% end %>
       </div>
-      
+
       <% if use_slot_locking %>
         <!-- Expired Overlay -->
         <div class="hidden absolute inset-0 bg-white rounded-xl flex flex-col" data-slot-lock-target="expiredOverlay">
@@ -577,7 +577,7 @@
             </div>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Your hold has expired</h3>
             <p class="text-gray-600 mb-6">The slot was held for <%= slot_hold_seconds %> seconds. Please select a slot again to continue.</p>
-            <button type="button" 
+            <button type="button"
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-pink-600 text-white font-medium rounded-lg hover:bg-pink-700 transition-colors cursor-pointer"
                     data-action="click->slot-lock#closeExpiredModal">
               Select a Slot

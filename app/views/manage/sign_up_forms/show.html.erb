@@ -249,7 +249,8 @@
             <%= render "manage/sign_up_forms/registration_list",
                 slots: slots,
                 sign_up_form: @sign_up_form,
-                production: @production %>
+                production: @production,
+                instance: @current_instance %>
           <% else %>
             <%# No Events Yet %>
             <div class="p-8 text-center">
@@ -457,7 +458,8 @@
             <%= render "manage/sign_up_forms/registration_list",
                 slots: @current_instance.sign_up_slots.order(:position),
                 sign_up_form: @sign_up_form,
-                production: @production %>
+                production: @production,
+                instance: @current_instance %>
           <% elsif form_status[:state] == :initializing %>
               <%# Form is being set up - show loading state %>
               <div class="px-5 py-12 text-center" data-controller="auto-refresh" data-auto-refresh-interval-value="30000">

@@ -162,9 +162,9 @@ export default class extends Controller {
                     data-person-id="${person.id}"
                     data-person-name="${this.escapeHtml(person.name)}">
                 ${person.headshot_url
-                    ? `<img src="${person.headshot_url}" class="w-8 h-8 rounded-lg object-cover" alt="">`
-                    : `<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">${person.initials}</div>`
-                }
+                ? `<img src="${person.headshot_url}" class="w-8 h-8 rounded-lg object-cover" alt="">`
+                : `<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-sm font-medium">${person.initials}</div>`
+            }
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(person.name)}</div>
                     ${person.email ? `<div class="text-xs text-gray-500 truncate">${this.escapeHtml(person.email)}</div>` : ''}

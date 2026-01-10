@@ -80,12 +80,18 @@ class SignUpRegistration < ApplicationRecord
 
   # Assign this registration to a slot (for admin_assigns mode)
   def assign_to_slot!(slot, position: nil)
+    was_queued = queued?
     new_position = position || (slot.sign_up_registrations.active.maximum(:position) || 0) + 1
     update!(
       sign_up_slot_id: slot.id,
       position: new_position,
       status: "confirmed"
     )
+
+    # Send slot assigned email if moved from queue
+    if was_queued
+      SignUpRegistrantNotificationJob.perform_later(id, :slot_assigned)
+    end
   end
 
   # Unassign from slot back to queue

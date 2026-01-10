@@ -4,7 +4,7 @@ import { Controller } from "@hotwired/stimulus"
 // Acquires a lock when user clicks a slot, shows countdown, auto-releases on expiry
 export default class extends Controller {
     static targets = ["slot", "countdown", "countdownTime", "lockedOverlay", "expiredOverlay", "modalFooter"]
-    
+
     static values = {
         lockUrl: String,
         unlockUrl: String,
@@ -18,10 +18,10 @@ export default class extends Controller {
         this.lockTimer = null
         this.countdownTimer = null
         this.expiresAt = null
-        
+
         // Poll for lock status updates from other users
         this.startPolling()
-        
+
         // Release lock when user leaves page
         window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this))
     }
@@ -30,7 +30,7 @@ export default class extends Controller {
         this.stopPolling()
         this.clearTimers()
         window.removeEventListener('beforeunload', this.handleBeforeUnload.bind(this))
-        
+
         // Release any held lock
         if (this.lockedSlotId) {
             this.releaseLock(this.lockedSlotId)
@@ -43,29 +43,29 @@ export default class extends Controller {
         // Always stop propagation - we'll manually trigger sign-up-confirmation if lock succeeds
         event.stopImmediatePropagation()
         event.preventDefault()
-        
+
         const slotElement = event.currentTarget
         const slotId = slotElement.dataset.slotId
-        
+
         // Hide expired overlay if visible (user is trying again)
         if (this.hasExpiredOverlayTarget) {
             this.expiredOverlayTarget.classList.add('hidden')
         }
-        
+
         // If we already have this slot locked, proceed to confirmation
         if (this.lockedSlotId === slotId) {
             this.dispatchToConfirmation(slotElement)
             return
         }
-        
+
         // Release any existing lock first
         if (this.lockedSlotId) {
             await this.releaseLock(this.lockedSlotId)
         }
-        
+
         // Try to acquire lock
         const result = await this.acquireLock(slotId)
-        
+
         if (result.success) {
             this.lockedSlotId = slotId
             this.startCountdown(result.expires_in)
@@ -77,23 +77,23 @@ export default class extends Controller {
             this.showLockError(slotElement, result.error, result.expires_in)
         }
     }
-    
+
     // Dispatch to sign-up-confirmation controller after lock acquired
     dispatchToConfirmation(slotElement) {
         // Find the sign-up-confirmation controller on the parent element
         const container = this.element
         const confirmationController = this.application.getControllerForElementAndIdentifier(container, 'sign-up-confirmation')
-        
+
         if (confirmationController) {
             // Create a fake event object with the methods the controller expects
             const fakeEvent = {
                 currentTarget: slotElement,
                 target: slotElement,
-                preventDefault: () => {},
-                stopPropagation: () => {},
-                stopImmediatePropagation: () => {}
+                preventDefault: () => { },
+                stopPropagation: () => { },
+                stopImmediatePropagation: () => { }
             }
-            
+
             // Check if this is a change slot or select slot action
             // by looking at the original action string
             const actionString = slotElement.dataset.action || ''
@@ -134,7 +134,7 @@ export default class extends Controller {
         } catch (error) {
             console.error('Failed to release lock:', error)
         }
-        
+
         this.clearTimers()
         this.lockedSlotId = null
         this.removeHighlight()
@@ -143,25 +143,25 @@ export default class extends Controller {
     startCountdown(seconds) {
         this.clearTimers()
         this.expiresAt = Date.now() + (seconds * 1000)
-        
+
         // Show the countdown container
         if (this.hasCountdownTarget) {
             this.countdownTarget.classList.remove('hidden')
         }
-        
+
         // Initial display
         this.updateCountdownDisplay(seconds)
-        
+
         // Update countdown display every second
         this.countdownTimer = setInterval(() => {
             const remaining = Math.max(0, Math.ceil((this.expiresAt - Date.now()) / 1000))
             this.updateCountdownDisplay(remaining)
-            
+
             if (remaining <= 0) {
                 this.handleLockExpired()
             }
         }, 1000)
-        
+
         // Also set a backup timer for exact expiry
         this.lockTimer = setTimeout(() => {
             this.handleLockExpired()
@@ -172,10 +172,10 @@ export default class extends Controller {
         if (this.hasCountdownTimeTarget) {
             const minutes = Math.floor(seconds / 60)
             const secs = seconds % 60
-            this.countdownTimeTarget.textContent = minutes > 0 
+            this.countdownTimeTarget.textContent = minutes > 0
                 ? `${minutes}:${secs.toString().padStart(2, '0')}`
                 : `${secs}s`
-            
+
             // Add urgency styling when low
             if (seconds <= 10) {
                 this.countdownTarget.classList.add('text-red-600', 'animate-pulse')
@@ -192,29 +192,29 @@ export default class extends Controller {
         this.lockedSlotId = null
         this.removeHighlight()
         this.hideCountdown()
-        
+
         // Show the expired overlay in the modal
         if (this.hasExpiredOverlayTarget) {
             this.expiredOverlayTarget.classList.remove('hidden')
         }
-        
+
         // Dispatch event for the form to handle
         this.dispatch('expired', { detail: { message: 'Your slot hold has expired. Please select again.' } })
     }
-    
+
     closeExpiredModal() {
         // Hide the expired overlay
         if (this.hasExpiredOverlayTarget) {
             this.expiredOverlayTarget.classList.add('hidden')
         }
-        
+
         // Close the main modal
         const confirmationController = this.application.getControllerForElementAndIdentifier(this.element, 'sign-up-confirmation')
         if (confirmationController) {
             confirmationController.close()
         }
     }
-    
+
     hideCountdown() {
         if (this.hasCountdownTarget) {
             this.countdownTarget.classList.add('hidden')
@@ -237,7 +237,7 @@ export default class extends Controller {
         this.slotTargets.forEach(slot => {
             slot.classList.remove('ring-2', 'ring-pink-500', 'bg-pink-50')
         })
-        
+
         // Add highlight to locked slot
         const lockedSlot = this.slotTargets.find(s => s.dataset.slotId === slotId.toString())
         if (lockedSlot) {
@@ -255,7 +255,7 @@ export default class extends Controller {
         // Show a temporary error message
         const existingError = slotElement.querySelector('.lock-error')
         if (existingError) existingError.remove()
-        
+
         const errorDiv = document.createElement('div')
         errorDiv.className = 'lock-error absolute inset-0 bg-gray-900/75 flex items-center justify-center rounded-lg'
         errorDiv.innerHTML = `
@@ -264,10 +264,10 @@ export default class extends Controller {
                 ${expiresIn ? `<p class="text-xs opacity-75">Available in ~${expiresIn}s</p>` : ''}
             </div>
         `
-        
+
         slotElement.style.position = 'relative'
         slotElement.appendChild(errorDiv)
-        
+
         // Remove after 3 seconds
         setTimeout(() => errorDiv.remove(), 3000)
     }
@@ -275,7 +275,7 @@ export default class extends Controller {
     // Poll for lock updates from other users
     startPolling() {
         if (!this.hasLocksUrlValue) return
-        
+
         this.pollTimer = setInterval(() => {
             this.fetchLockStatus()
         }, this.pollIntervalValue)
@@ -290,7 +290,7 @@ export default class extends Controller {
 
     async fetchLockStatus() {
         if (!this.hasLocksUrlValue) return
-        
+
         try {
             const response = await fetch(this.locksUrlValue)
             const data = await response.json()
@@ -304,7 +304,7 @@ export default class extends Controller {
         this.slotTargets.forEach(slot => {
             const slotId = slot.dataset.slotId
             const lockInfo = locks[slotId]
-            
+
             if (lockInfo?.locked && !lockInfo.locked_by_me) {
                 // Slot is locked by someone else - show indicator
                 slot.classList.add('opacity-50', 'pointer-events-none')

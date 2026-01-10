@@ -5,7 +5,8 @@
     render "manage/sign_up_forms/registration_list",
       slots: @slots,
       sign_up_form: @sign_up_form,
-      production: @production
+      production: @production,
+      instance: @current_instance
 
   Handles all slot_generation_modes consistently:
   - numbered: shows slot position on left
@@ -17,6 +18,10 @@
 <%
   # Determine if we should show slot labels based on generation mode
   show_slot_label = !%w[simple_capacity open_list].include?(sign_up_form.slot_generation_mode)
+
+  # Check if this instance is still open for adding registrations
+  # Only allow adding if the instance is currently open (not scheduled, not closed, not past)
+  can_add_registrations = instance.nil? || instance.open?
 
   # Get all active registrations grouped by slot
   all_registrations = slots.flat_map { |s| s.sign_up_registrations.active.includes(:person).to_a }
@@ -95,20 +100,22 @@
                 </div>
               </div>
             <% end %>
-            <% available_count.times do %>
-              <%# Available position - clickable to add someone %>
-              <div class="px-4 py-2">
-                <button type="button"
-                        class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
-                        data-action="click->add-sign-up-person#open"
-                        data-slot-id="<%= slot.id %>"
-                        data-slot-name="<%= slot.name.presence || slot.position %>">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  <span class="italic">Add someone</span>
-                </button>
-              </div>
+            <% if can_add_registrations %>
+              <% available_count.times do %>
+                <%# Available position - clickable to add someone %>
+                <div class="px-4 py-2">
+                  <button type="button"
+                          class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
+                          data-action="click->add-sign-up-person#open"
+                          data-slot-id="<%= slot.id %>"
+                          data-slot-name="<%= slot.name.presence || slot.position %>">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span class="italic">Add someone</span>
+                  </button>
+                </div>
+              <% end %>
             <% end %>
           </div>
         </div>
@@ -174,16 +181,18 @@
               <span class="text-sm font-medium text-gray-400"><%= slot.name.presence || slot.position %></span>
             </div>
             <div class="flex-1 px-4 py-2">
-              <button type="button"
-                      class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
-                      data-action="click->add-sign-up-person#open"
-                      data-slot-id="<%= slot.id %>"
-                      data-slot-name="<%= slot.name.presence || slot.position %>">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                <span class="italic">Add someone</span>
-              </button>
+              <% if can_add_registrations %>
+                <button type="button"
+                        class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
+                        data-action="click->add-sign-up-person#open"
+                        data-slot-id="<%= slot.id %>"
+                        data-slot-name="<%= slot.name.presence || slot.position %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span class="italic">Add someone</span>
+                </button>
+              <% end %>
             </div>
           </div>
         <% end %>

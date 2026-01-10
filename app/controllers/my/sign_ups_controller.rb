@@ -276,11 +276,15 @@ module My
 
       # New registration
       begin
-        slot.register!(
+        registration = slot.register!(
           person: Current.user&.person,
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
+
+        # Send confirmation email to registrant
+        SignUpRegistrantNotificationJob.perform_later(registration.id, :confirmation)
+
         redirect_to my_sign_up_success_path(@code)
       rescue => e
         flash[:alert] = e.message
@@ -322,6 +326,9 @@ module My
       old_slot = @my_registration.sign_up_slot
       @my_registration.update!(sign_up_slot: new_slot)
 
+      # Send slot changed email to registrant
+      SignUpRegistrantNotificationJob.perform_later(@my_registration.id, :slot_changed)
+
       flash[:notice] = "Your slot has been changed"
       redirect_to my_sign_up_success_path(@code)
     rescue => e
@@ -346,6 +353,8 @@ module My
       # Cancel all registrations for this user
       @my_registrations.each do |registration|
         registration.update!(status: "cancelled", cancelled_at: Time.current)
+        # Send cancellation email to registrant
+        SignUpRegistrantNotificationJob.perform_later(registration.id, :cancelled)
       end
 
       flash[:notice] = @my_registrations.count == 1 ? "Your registration has been cancelled" : "Your registrations have been cancelled"
@@ -481,11 +490,15 @@ module My
       end
 
       begin
-        @instance.register_to_queue!(
+        registration = @instance.register_to_queue!(
           person: Current.user&.person,
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
+
+        # Send queued email to registrant
+        SignUpRegistrantNotificationJob.perform_later(registration.id, :queued)
+
         redirect_to my_sign_up_success_path(@code)
       rescue => e
         flash[:alert] = e.message
