@@ -2,7 +2,7 @@
 
 module My
   class SignUpsController < ApplicationController
-    allow_unauthenticated_access only: %i[entry form submit_form success inactive]
+    allow_unauthenticated_access only: %i[entry form submit_form success inactive lock_slot unlock_slot slot_locks]
     before_action :set_sign_up_form, except: [ :index ]
 
     def index
@@ -186,6 +186,7 @@ module My
       if @sign_up_form.repeated?
         @open_instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
+          .where(status: "open")
           .where("shows.date_and_time > ?", Time.current)
           .order("shows.date_and_time ASC")
           .includes(:show)
@@ -196,7 +197,7 @@ module My
         end
 
         # If no specific instance and multiple are open, user needs to pick
-        if @instance.nil? && @open_instances.where(status: "open").count > 1
+        if @instance.nil? && @open_instances.count > 1
           @show_event_picker = true
         else
           @instance ||= @open_instances.first
@@ -357,7 +358,52 @@ module My
     def inactive
     end
 
+    # Lock a slot while user completes registration
+    def lock_slot
+      @instance = find_current_instance
+      slot = @instance.sign_up_slots.find(params[:slot_id])
+
+      # Check if slot is actually available
+      if slot.is_held || slot.full?
+        render json: { success: false, error: "Slot is not available" }, status: :unprocessable_entity
+        return
+      end
+
+      # Use the form's configured hold duration
+      duration = @sign_up_form.slot_hold_seconds || 30
+      result = SlotLockService.acquire(slot.id, session_identifier, duration: duration)
+
+      if result[:success]
+        render json: { success: true, expires_in: result[:expires_in], slot_id: slot.id }
+      else
+        render json: { success: false, error: result[:error], expires_in: result[:expires_in] }, status: :conflict
+      end
+    end
+
+    # Release a slot lock (user cancelled or navigated away)
+    def unlock_slot
+      @instance = find_current_instance
+      slot = @instance.sign_up_slots.find(params[:slot_id])
+
+      SlotLockService.release(slot.id, session_identifier)
+      render json: { success: true }
+    end
+
+    # Get lock status for all slots in an instance (for UI updates)
+    def slot_locks
+      @instance = find_current_instance
+      slot_ids = @instance.sign_up_slots.pluck(:id)
+
+      locks = SlotLockService.bulk_lock_info(slot_ids, session_identifier)
+      render json: { locks: locks }
+    end
+
     private
+
+    def session_identifier
+      # Use session ID for guests, user ID for logged-in users
+      Current.user&.id&.to_s || session.id.to_s
+    end
 
     def set_sign_up_form
       @code = params[:code]

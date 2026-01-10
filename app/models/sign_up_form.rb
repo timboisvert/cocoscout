@@ -54,6 +54,8 @@ class SignUpForm < ApplicationRecord
   attribute :opens_days_before, default: 7
   attribute :closes_hours_before, default: 2
   attribute :queue_carryover, default: false
+  attribute :slot_hold_enabled, default: true
+  attribute :slot_hold_seconds, default: 30
 
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }
@@ -172,13 +174,48 @@ class SignUpForm < ApplicationRecord
 
   # Calculate dates based on show time
   def calculate_opens_at(show)
+    # Immediate mode: opens_at is nil (open now)
+    return nil if schedule_mode == "immediate"
     return nil unless schedule_mode == "relative" && opens_days_before.present?
     show.date_and_time - opens_days_before.days
   end
 
   def calculate_closes_at(show)
-    return nil unless schedule_mode == "relative" && closes_hours_before.present?
-    show.date_and_time - closes_hours_before.hours
+    # Immediate mode defaults to event_start
+    if schedule_mode == "immediate"
+      return show.date_and_time
+    end
+    return nil unless schedule_mode == "relative"
+
+    case closes_mode
+    when "event_start"
+      # Close exactly when the event starts
+      show.date_and_time
+    when "custom"
+      # Calculate based on offset value, unit, and before/after
+      offset_seconds = case closes_offset_unit
+      when "minutes" then closes_offset_value.minutes
+      when "hours" then closes_offset_value.hours
+      when "days" then closes_offset_value.days
+      else closes_offset_value.hours
+      end
+      # Note: closes_before_after is stored but we use negative offset for "before"
+      # For backwards compatibility, if closes_hours_before is set, use that
+      if closes_offset_value.present? && closes_offset_value > 0
+        show.date_and_time - offset_seconds
+      elsif closes_hours_before.present?
+        show.date_and_time - closes_hours_before.hours
+      else
+        show.date_and_time
+      end
+    when "never"
+      # Never auto-close
+      nil
+    else
+      # Fallback to legacy behavior
+      return nil unless closes_hours_before.present?
+      show.date_and_time - closes_hours_before.hours
+    end
   end
 
   def calculate_edit_cutoff_at(show)

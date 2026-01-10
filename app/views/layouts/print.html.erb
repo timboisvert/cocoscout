@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "CocoScout" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+
+    <style>
+      @page {
+        size: auto;
+        margin: 0.5in;
+        /* Hide browser headers and footers */
+        @top-left { content: none; }
+        @top-center { content: none; }
+        @top-right { content: none; }
+        @bottom-left { content: none; }
+        @bottom-center { content: none; }
+        @bottom-right { content: none; }
+      }
+      @media print {
+        .no-print { display: none !important; }
+        body { 
+          background: white !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .print-container { padding: 0 !important; margin: 0 !important; }
+        /* Remove page title from browser */
+        title { display: none; }
+      }
+      @media screen {
+        body { background: #f3f4f6; }
+        .print-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .print-page { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      }
+    </style>
+  </head>
+
+  <body class="inter-regular text-slate-700">
+    <%= yield %>
+  </body>
+</html>

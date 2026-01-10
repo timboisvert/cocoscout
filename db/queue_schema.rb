@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_09_163313) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_10_204130) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -948,6 +948,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_09_163313) do
     t.integer "slot_capacity", default: 1
     t.integer "slot_count", default: 10
     t.string "slot_generation_mode", default: "numbered"
+    t.boolean "slot_hold_enabled", default: true
+    t.integer "slot_hold_seconds", default: 30
     t.integer "slot_interval_minutes"
     t.jsonb "slot_names", default: []
     t.string "slot_prefix", default: "Slot"

@@ -166,6 +166,70 @@
     <% end %>
   </div>
 
+  <%# Sign-up Registration Box %>
+  <% if @my_sign_up_registrations.present? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
+      <%= render "shared/card_header", title: "My Sign-up Registration" %>
+      <div class="p-4">
+        <div class="space-y-3">
+          <% @my_sign_up_registrations.each do |registration| %>
+            <% slot = registration.sign_up_slot %>
+            <% instance = slot&.sign_up_form_instance %>
+            <% form = instance&.sign_up_form || slot&.sign_up_form %>
+            <%
+              # Determine what actions are available
+              can_view_edit = form&.short_code.present? && form.allow_edit && instance&.can_edit?
+              can_cancel = form&.short_code.present? && form.allow_cancel && instance&.can_cancel?
+              form_url = form&.short_code.present? ? my_sign_up_form_path(form.short_code) : nil
+            %>
+            <div class="flex items-center gap-4">
+              <% person = registration.person %>
+              <% if person %>
+                <% headshot = person.safe_headshot_variant(:thumb) %>
+                <% if headshot %>
+                  <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                    <%= person.initials %>
+                  </div>
+                <% end %>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900">
+                  <% if slot&.name.present? %>
+                    <%= slot.name %>
+                  <% elsif slot %>
+                    Slot <%= slot.position %>
+                  <% elsif registration.queued? %>
+                    <span class="text-amber-600">In Queue</span>
+                  <% else %>
+                    <span class="text-gray-500">Pending Assignment</span>
+                  <% end %>
+                </div>
+                <% if form %>
+                  <div class="text-xs text-gray-500">
+                    <%= form.name %>
+                    <% if registration.queued? %>
+                      <span class="text-amber-600">— awaiting slot assignment by organizer</span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="flex-shrink-0 flex items-center gap-2">
+                <% if form_url %>
+                  <%= render "shared/button", text: "View Registration", path: form_url, variant: "secondary", size: "small" %>
+                <% end %>
+                <% if can_cancel && form_url %>
+                  <%= render "shared/button", text: "Cancel Registration", path: form_url, variant: "secondary", size: "small" %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <div class="space-y-4">
 
     <!-- Cast Section - 50/50 layout when both exist -->

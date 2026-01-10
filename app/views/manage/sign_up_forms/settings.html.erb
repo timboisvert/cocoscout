@@ -378,6 +378,32 @@
             </div>
           </div>
         </div>
+
+        <%# Slot Hold - only for choose_slot mode %>
+        <% if @sign_up_form.slot_selection_mode == "choose_slot" %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">Temporary Slot Hold</h3>
+              <p class="text-sm text-gray-500 mt-1">Reserve a slot while the user completes their registration</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <%= form.hidden_field :slot_hold_enabled, value: "0" %>
+              <%= form.check_box :slot_hold_enabled, class: "sr-only peer", value: "1", data: { action: "change->toggle-section#toggle", "toggle-section-target": "toggle" } %>
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </label>
+          </div>
+          <p class="text-sm text-gray-500 mt-3">When enabled, clicking a slot temporarily reserves it so no one else can select it while the user fills out the form. Helps prevent two people from registering for the same slot.</p>
+          <div data-toggle-section-target="content" class="<%= @sign_up_form.slot_hold_enabled ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-gray-700">Hold slot for</span>
+              <%= form.number_field :slot_hold_seconds, min: 10, max: 300, class: "w-20 rounded-lg border border-gray-300 px-3 py-2 text-center" %>
+              <span class="text-sm text-gray-600">seconds</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Recommended: 30-60 seconds. The hold automatically expires if the user doesn't complete registration.</p>
+          </div>
+        </div>
+        <% end %>
         <% end %>
 
         <%# Queue Settings - only shown for admin_assigns mode %>

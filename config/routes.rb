@@ -172,6 +172,11 @@ Rails.application.routes.draw do
       post "/change-slot", to: "sign_ups#change_slot", as: "change_sign_up_slot"
       post "/cancel", to: "sign_ups#cancel_registration", as: "cancel_sign_up_registration"
       get "/inactive", to: "sign_ups#inactive", as: "sign_up_inactive"
+      # Slot locking (60-second hold while user completes registration)
+      post "/lock/:slot_id", to: "sign_ups#lock_slot", as: "lock_sign_up_slot"
+      delete "/lock/:slot_id", to: "sign_ups#unlock_slot", as: "unlock_sign_up_slot"
+      post "/unlock/:slot_id", to: "sign_ups#unlock_slot", as: "beacon_unlock_sign_up_slot" # For sendBeacon on page unload
+      get "/locks", to: "sign_ups#slot_locks", as: "sign_up_slot_locks"
     end
 
     # Messages (inbox for talent)
@@ -535,6 +540,7 @@ Rails.application.routes.draw do
           delete "destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question"
           post   "reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions"
           post   "register",          to: "sign_up_forms#register",          as: "register"
+          post   "register_to_queue", to: "sign_up_forms#register_to_queue", as: "register_to_queue"
           delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
           patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
           get    "assign",            to: "sign_up_forms#assign",            as: "assign"
@@ -543,6 +549,7 @@ Rails.application.routes.draw do
           post   "auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue"
           post   "auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one"
           get    "preview",           to: "sign_up_forms#preview",           as: "preview"
+          get    "print_list",        to: "sign_up_forms#print_list",        as: "print_list"
           patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
           patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
           patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"

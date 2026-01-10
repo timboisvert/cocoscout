@@ -53,6 +53,9 @@
   # Click-to-add mode for Manual Entry or Hybrid casting
   click_to_add = local_assigns[:click_to_add] || false
 
+  # Manual mode flag for differentiating slot text
+  is_manual_mode = local_assigns[:is_manual_mode] || false
+
   # Linkage info for JS finalize logic
   is_linked = show.linked?
   sync_info = local_assigns[:sync_info]
@@ -437,7 +440,7 @@
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                           </svg>
-                          Drag or click to add someone
+                          <%= is_manual_mode ? "Click to add someone" : "Drag or click to add someone" %>
                         </button>
                       <% else %>
                         <%# Talent pool mode: Show drag zone on desktop %>

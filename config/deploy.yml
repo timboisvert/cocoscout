@@ -70,6 +70,7 @@ env:
     - AWS_SECRET_ACCESS_KEY
     - MAILGUN_API_KEY
     - SENTRY_DSN
+    - REDIS_URL
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false

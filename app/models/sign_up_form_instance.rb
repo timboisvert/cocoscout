@@ -88,10 +88,12 @@ class SignUpFormInstance < ApplicationRecord
   end
 
   def past_cancel_cutoff?
-    return false unless cancel_cutoff_at.present?
-    cancel_cutoff_at = closes_at - cancel_cutoff_hours.hours if closes_at.present?
-    return false unless cancel_cutoff_at.present?
-    Time.current >= cancel_cutoff_at
+    # Cancel cutoff is calculated from closes_at and the form's cancel_cutoff_hours
+    return false unless closes_at.present?
+    cutoff_hours = sign_up_form&.cancel_cutoff_hours || 0
+    return false if cutoff_hours <= 0
+    cutoff_at = closes_at - cutoff_hours.hours
+    Time.current >= cutoff_at
   end
 
   def can_edit?

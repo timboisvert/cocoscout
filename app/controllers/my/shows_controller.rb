@@ -46,6 +46,35 @@ module My
         all_talent_pool_show_ids.merge(tp_group_shows)
       end
 
+      # Step 1b: Get shows where user has sign-up registrations
+      sign_up_show_ids = Set.new
+      @sign_up_registrations_by_show = Hash.new { |h, k| h[k] = [] }
+
+      if selected_person_ids.any?
+        # Get active registrations for the selected people
+        registrations = SignUpRegistration
+          .where(person_id: selected_person_ids)
+          .where.not(status: "cancelled")
+          .includes(
+            :person,
+            sign_up_slot: { sign_up_form_instance: :show },
+            sign_up_form_instance: :show
+          )
+          .to_a
+
+        registrations.each do |reg|
+          # Get the show from either the slot's instance or the direct instance (queued)
+          show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
+          next unless show && show.date_and_time >= Time.current
+
+          sign_up_show_ids << show.id
+          @sign_up_registrations_by_show[show.id] << reg
+        end
+      end
+
+      # Merge sign-up shows into the main set
+      all_talent_pool_show_ids.merge(sign_up_show_ids)
+
       # Load all shows from talent pool with includes
       all_shows = Show.where(id: all_talent_pool_show_ids)
                       .includes(:production, :location, :event_linkage)
@@ -87,16 +116,25 @@ module My
       show_data_by_id = {}
 
       if @filter == "my_assignments"
-        # Only include shows where the user has an assignment
+        # Only include shows where the user has an assignment OR a sign-up registration
         all_shows.each do |show|
           show_assignments = assignments_by_show[show.id]
-          next if show_assignments.empty?
-          show_data_by_id[show.id] = { show: show, assignments: show_assignments }
+          show_sign_ups = @sign_up_registrations_by_show[show.id]
+          next if show_assignments.empty? && show_sign_ups.empty?
+          show_data_by_id[show.id] = {
+            show: show,
+            assignments: show_assignments,
+            sign_up_registrations: show_sign_ups
+          }
         end
       else
         # "all" or "by_production" - include all talent pool shows with their assignments (if any)
         all_shows.each do |show|
-          show_data_by_id[show.id] = { show: show, assignments: assignments_by_show[show.id] }
+          show_data_by_id[show.id] = {
+            show: show,
+            assignments: assignments_by_show[show.id],
+            sign_up_registrations: @sign_up_registrations_by_show[show.id]
+          }
         end
       end
 
@@ -201,6 +239,7 @@ module My
       # 3. Any of user's profiles has a direct role assignment
       # 4. Any of user's groups has a role assignment
       # 5. User has an open vacancy for this show (they can't make it but can reclaim)
+      # 6. User has a sign-up registration for this show
       @show = Show.where(id: params[:id])
                   .includes(event_linkage: :shows)
                   .where(
@@ -226,8 +265,19 @@ module My
                              WHERE role_vacancies.show_id = shows.id
                              AND role_vacancies.vacated_by_type = 'Person'
                              AND role_vacancies.vacated_by_id IN (?)
-                             AND role_vacancies.status NOT IN ('filled', 'cancelled'))",
-                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ], people_ids
+                             AND role_vacancies.status NOT IN ('filled', 'cancelled')) OR
+                     EXISTS (SELECT 1 FROM sign_up_form_instances
+                             INNER JOIN sign_up_slots ON sign_up_slots.sign_up_form_instance_id = sign_up_form_instances.id
+                             INNER JOIN sign_up_registrations ON sign_up_registrations.sign_up_slot_id = sign_up_slots.id
+                             WHERE sign_up_form_instances.show_id = shows.id
+                             AND sign_up_registrations.person_id IN (?)
+                             AND sign_up_registrations.status != 'cancelled') OR
+                     EXISTS (SELECT 1 FROM sign_up_form_instances
+                             INNER JOIN sign_up_registrations ON sign_up_registrations.sign_up_form_instance_id = sign_up_form_instances.id
+                             WHERE sign_up_form_instances.show_id = shows.id
+                             AND sign_up_registrations.person_id IN (?)
+                             AND sign_up_registrations.status != 'cancelled')",
+                    people_ids, group_ids.presence || [ 0 ], people_ids, group_ids.presence || [ 0 ], people_ids, people_ids, people_ids
                   )
                   .first!
       @production = @show.production
@@ -283,6 +333,17 @@ module My
         key = [ vacancy.vacated_by_type, vacancy.vacated_by_id ]
         @vacancies_by_entity[key] = vacancy
       end
+
+      # Load sign-up registrations for this show
+      @my_sign_up_registrations = SignUpRegistration
+        .where(person_id: people_ids)
+        .where.not(status: "cancelled")
+        .joins("LEFT JOIN sign_up_slots ON sign_up_registrations.sign_up_slot_id = sign_up_slots.id")
+        .joins("LEFT JOIN sign_up_form_instances AS slot_instances ON sign_up_slots.sign_up_form_instance_id = slot_instances.id")
+        .joins("LEFT JOIN sign_up_form_instances AS direct_instances ON sign_up_registrations.sign_up_form_instance_id = direct_instances.id")
+        .where("slot_instances.show_id = :show_id OR direct_instances.show_id = :show_id", show_id: @show.id)
+        .includes(:person, sign_up_slot: { sign_up_form_instance: :sign_up_form })
+        .to_a
     end
 
     def calendar
@@ -337,6 +398,30 @@ module My
           group_id = show.read_attribute(:source_group_id)
           shows_with_entities[show.id] ||= { show: show, entities: [] }
           shows_with_entities[show.id][:entities] << "group_#{group_id}"
+        end
+      end
+
+      # Add shows from sign-up registrations
+      @sign_up_registrations_by_show = Hash.new { |h, k| h[k] = [] }
+      if include_person
+        registrations = SignUpRegistration
+          .where(person_id: @person.id)
+          .where.not(status: "cancelled")
+          .includes(
+            :person,
+            sign_up_slot: { sign_up_form_instance: :show },
+            sign_up_form_instance: :show
+          )
+          .to_a
+
+        registrations.each do |reg|
+          show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
+          next unless show
+          next unless show.date_and_time >= start_date && show.date_and_time <= end_date
+
+          shows_with_entities[show.id] ||= { show: show, entities: [] }
+          shows_with_entities[show.id][:entities] << "sign_up"
+          @sign_up_registrations_by_show[show.id] << reg
         end
       end
 

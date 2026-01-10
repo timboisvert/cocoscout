@@ -96,9 +96,18 @@
               </div>
             <% end %>
             <% available_count.times do %>
-              <%# Available position %>
+              <%# Available position - clickable to add someone %>
               <div class="px-4 py-2">
-                <span class="text-sm text-gray-400 italic">Available</span>
+                <button type="button"
+                        class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
+                        data-action="click->add-sign-up-person#open"
+                        data-slot-id="<%= slot.id %>"
+                        data-slot-name="<%= slot.name.presence || slot.position %>">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span class="italic">Add someone</span>
+                </button>
               </div>
             <% end %>
           </div>
@@ -165,7 +174,16 @@
               <span class="text-sm font-medium text-gray-400"><%= slot.name.presence || slot.position %></span>
             </div>
             <div class="flex-1 px-4 py-2">
-              <span class="text-sm text-gray-400 italic">Available</span>
+              <button type="button"
+                      class="flex items-center gap-2 text-sm text-gray-400 hover:text-pink-600 transition-colors cursor-pointer group"
+                      data-action="click->add-sign-up-person#open"
+                      data-slot-id="<%= slot.id %>"
+                      data-slot-name="<%= slot.name.presence || slot.position %>">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:text-pink-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span class="italic">Add someone</span>
+              </button>
             </div>
           </div>
         <% end %>

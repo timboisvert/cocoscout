@@ -9,8 +9,8 @@ module Manage
       create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
       holdouts create_holdout destroy_holdout
       create_question update_question destroy_question reorder_questions
-      register cancel_registration move_registration
-      preview toggle_active archive unarchive
+      register register_to_queue cancel_registration move_registration
+      preview print_list toggle_active archive unarchive
       assign assign_registration unassign_registration auto_assign_queue auto_assign_one
     ]
 
@@ -425,6 +425,28 @@ module Manage
       end
     end
 
+    def register_to_queue
+      instance_id = params[:instance_id]
+      @instance = @sign_up_form.sign_up_form_instances.find(instance_id)
+
+      person = if params[:person_id].present?
+        Person.find(params[:person_id])
+      end
+
+      begin
+        @registration = @instance.queue_person!(
+          person: person,
+          guest_name: params[:guest_name],
+          guest_email: params[:guest_email]
+        )
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+                    notice: "Added to queue"
+      rescue StandardError => e
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+                    alert: e.message
+      end
+    end
+
     def cancel_registration
       @registration = SignUpRegistration.find(params[:registration_id])
       @registration.cancel!
@@ -484,6 +506,34 @@ module Manage
         @slots = @sign_up_form.sign_up_slots.order(:position)
       end
       @questions = @sign_up_form.questions.order(:position)
+    end
+
+    def print_list
+      # Load instance based on params or default to first open/upcoming
+      if @sign_up_form.repeated?
+        @instances = @sign_up_form.sign_up_form_instances
+          .joins(:show)
+          .includes(:show, sign_up_slots: { sign_up_registrations: :person })
+          .where.not(status: "cancelled")
+          .order("shows.date_and_time ASC")
+
+        if params[:instance_id].present?
+          @current_instance = @instances.find_by(id: params[:instance_id])
+        end
+        @current_instance ||= @instances.find(&:open?) || @instances.select { |i| i.show.date_and_time > Time.current }.first || @instances.last
+        @slots = @current_instance&.sign_up_slots&.order(:position) || []
+        @show = @current_instance&.show
+      elsif @sign_up_form.single_event?
+        @current_instance = @sign_up_form.sign_up_form_instances.includes(sign_up_slots: { sign_up_registrations: :person }).first
+        @slots = @current_instance&.sign_up_slots&.order(:position) || @sign_up_form.sign_up_slots.order(:position)
+        @show = @sign_up_form.show
+      else
+        @current_instance = @sign_up_form.sign_up_form_instances.includes(sign_up_slots: { sign_up_registrations: :person }).first
+        @slots = @current_instance&.sign_up_slots&.order(:position) || @sign_up_form.sign_up_slots.order(:position)
+        @show = nil
+      end
+
+      render layout: "print"
     end
 
     def toggle_active
@@ -582,7 +632,7 @@ module Manage
 
       @slots = @instance.sign_up_slots.order(:position).includes(:sign_up_registrations)
       @queue = @instance.queued_registrations.includes(:person)
-      @assigned = @instance.sign_up_registrations.assigned.includes(:person, :sign_up_slot)
+      @assigned = @instance.sign_up_registrations.active.assigned.includes(:person, :sign_up_slot)
     end
 
     def find_instance_for_assignment
@@ -628,6 +678,7 @@ module Manage
         :opens_at, :closes_at,
         :notify_on_registration,
         :queue_limit, :queue_carryover,
+        :slot_hold_enabled, :slot_hold_seconds,
         event_type_filter: []
       )
     end

@@ -43,9 +43,12 @@
         }
       end
 
+      # Check for sign-up registrations
+      sign_up_registrations = row[:sign_up_registrations] || []
+
       row_link_path = link_path_helper ? link_path_helper.call(show) : nil
 
-      # Only show "Can't make it" if the user has assignments for this show
+      # Only show "Can't make it" if the user has assignments for this show (not sign-ups)
       row_show_cant_make_it = show_cant_make_it && row[:assignments].any?
 
       # For the vacancy link, use the first Person assignment's entity, or fall back to cant_make_it_person
@@ -55,6 +58,15 @@
 
       # Get user's vacancies for this show (they've notified they can't make it)
       my_vacancies = my_vacancies_by_show[show.id] || []
+
+      # Determine right panel type based on what data we have
+      right_panel_type = if entity_assignments.any?
+        :cast_assignment
+      elsif sign_up_registrations.any?
+        :sign_up
+      else
+        nil
+      end
     %>
     <%= render partial: "shared/show_row", locals: {
       show: show,
@@ -64,8 +76,9 @@
       show_location: show_location,
       show_linked: true,
       entity_assignments: entity_assignments,
+      sign_up_registrations: sign_up_registrations,
       has_groups: has_groups,
-      right_panel: entity_assignments.any? ? :cast_assignment : nil,
+      right_panel: right_panel_type,
       show_cant_make_it: row_show_cant_make_it,
       cant_make_it_person: row_cant_make_it_person,
       my_vacancies: my_vacancies

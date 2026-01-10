@@ -244,6 +244,43 @@
       </div>
     </div>
 
+  <% elsif right_panel == :sign_up && local_assigns[:sign_up_registrations].present? %>
+    <%# Right Section: Sign-up Registrations %>
+    <div class="w-full md:w-1/2 flex flex-col border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 relative">
+      <% local_assigns[:sign_up_registrations].each do |registration| %>
+        <% person = registration.person %>
+        <div class="flex-1 md:border-l border-gray-200 md:pl-4 py-2 flex items-center gap-3">
+          <% if person %>
+            <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                <%= person.initials %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+              <%= registration.display_initials %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">Signed up</div>
+            <div class="text-sm text-gray-700">
+              <% slot = registration.sign_up_slot %>
+              <% if slot&.name.present? %>
+                <%= slot.name %>
+              <% elsif slot %>
+                Slot <%= slot.position %>
+              <% else %>
+                <span class="text-gray-400">Queued</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
   <% elsif right_panel == :availability_status %>
     <%# Right Section: Availability Status (read-only text display) %>
     <% availability_obj = local_assigns[:availability] %>

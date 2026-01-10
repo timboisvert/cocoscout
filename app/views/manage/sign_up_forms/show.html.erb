@@ -7,7 +7,10 @@
 %>
 
 <div class="w-full mb-10"
-     data-controller="move-registration-modal<%= ' welcome-modal' if params[:just_created] %><%= ' auto-refresh' if needs_refresh %>"
+     data-controller="move-registration-modal add-sign-up-person<%= ' welcome-modal' if params[:just_created] %><%= ' auto-refresh' if needs_refresh %>"
+     data-add-sign-up-person-search-url-value="<%= manage_production_casting_search_people_path(@production) %>"
+     data-add-sign-up-person-register-url-value="<%= register_manage_production_sign_up_form_path(@production, @sign_up_form) %>"
+     data-add-sign-up-person-register-queue-url-value="<%= register_to_queue_manage_production_sign_up_form_path(@production, @sign_up_form) %>"
      <% if params[:just_created] %>
        data-welcome-modal-auto-show-value="true"
      <% end %>
@@ -26,38 +29,49 @@
   <%# Status bar %>
   <% status_explanation = @sign_up_form.status_service.status_explanation %>
   <div class="bg-white border border-gray-200 rounded-lg mb-6" data-controller="disclosure">
-    <div class="px-5 py-4 flex items-center justify-between">
-      <button type="button" class="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" data-action="click->disclosure#toggle">
-        <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-<%= form_status[:color] %>-100 text-<%= form_status[:color] %>-800">
-          <% if form_status[:state] == :accepting %>
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-<%= form_status[:color] %>-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-<%= form_status[:color] %>-500"></span>
+    <div class="px-5 py-4">
+      <%# Top row: status badge and buttons (buttons hidden on mobile) %>
+      <div class="flex items-center justify-between">
+        <button type="button" class="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" data-action="click->disclosure#toggle">
+          <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium bg-<%= form_status[:color] %>-100 text-<%= form_status[:color] %>-800">
+            <% if form_status[:state] == :accepting %>
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-<%= form_status[:color] %>-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-<%= form_status[:color] %>-500"></span>
+              </span>
+            <% elsif form_status[:state] == :initializing %>
+              <svg class="w-3 h-3 text-<%= form_status[:color] %>-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            <% else %>
+              <span class="w-2 h-2 rounded-full bg-<%= form_status[:color] %>-500"></span>
+            <% end %>
+            <%= form_status[:label] %>
+          </span>
+          <% if @sign_up_form.repeated? && form_status[:open_count].to_i > 0 %>
+            <span class="text-sm text-gray-500 hidden sm:inline">
+              <%= pluralize(form_status[:open_count], 'event') %> accepting sign-ups
             </span>
-          <% elsif form_status[:state] == :initializing %>
-            <svg class="w-3 h-3 text-<%= form_status[:color] %>-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          <% else %>
-            <span class="w-2 h-2 rounded-full bg-<%= form_status[:color] %>-500"></span>
+          <% elsif @sign_up_form.repeated? && form_status[:next_event] %>
+            <span class="text-sm text-gray-500 hidden sm:inline">
+              Next event in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
+            </span>
           <% end %>
-          <%= form_status[:label] %>
-        </span>
-        <% if @sign_up_form.repeated? && form_status[:open_count].to_i > 0 %>
-          <span class="text-sm text-gray-500">
-            <%= pluralize(form_status[:open_count], 'event') %> accepting sign-ups
-          </span>
-        <% elsif @sign_up_form.repeated? && form_status[:next_event] %>
-          <span class="text-sm text-gray-500">
-            Next event in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
-          </span>
-        <% end %>
-        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" data-disclosure-target="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-        </svg>
-      </button>
-      <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" data-disclosure-target="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <%# Desktop buttons %>
+        <div class="hidden sm:flex items-center gap-2">
+          <%= render "shared/button", text: "Print List", path: print_list_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "print", target: "_blank" %>
+          <%= render "shared/button", text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
+          <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
+        </div>
+      </div>
+      <%# Mobile buttons - shown below status %>
+      <div class="flex sm:hidden items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+        <%= render "shared/button", text: "Print", path: print_list_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "print", target: "_blank" %>
         <%= render "shared/button", text: "Settings", path: settings_manage_production_sign_up_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
         <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: toggle_active_manage_production_sign_up_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
       </div>
@@ -108,13 +122,13 @@
               <p class="font-semibold text-gray-900"><%= queue_count %> <%= queue_count == 1 ? 'person' : 'people' %> in queue</p>
               <% if queue_count > 0 %>
                 <p class="text-sm text-gray-500">Waiting to be assigned to slots</p>
+              <% else %>
+                <p class="text-sm text-gray-500">Add people to assign them to slots</p>
               <% end %>
             </div>
           </div>
         </div>
-        <% if queue_count > 0 %>
-          <%= render "shared/button", text: "Assign Slots", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "users" %>
-        <% end %>
+        <%= render "shared/button", text: "Queue", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "queue-list" %>
       </div>
     </div>
   <% end %>
@@ -152,11 +166,29 @@
                   </span>
                 <% end %>
               </div>
-              <% if instance_capacity < 1000 %>
-                <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> <%= @sign_up_form.admin_assigns? ? 'slots filled' : 'spots filled' %></span>
-              <% else %>
-                <span class="text-sm text-gray-500"><%= instance_registrations %> <%= @sign_up_form.admin_assigns? ? 'assigned' : 'registered' %></span>
-              <% end %>
+              <div class="flex items-center gap-3">
+                <% if instance_capacity < 1000 %>
+                  <span class="text-sm text-gray-500"><%= instance_registrations %> of <%= instance_capacity %> <%= @sign_up_form.admin_assigns? ? 'slots filled' : 'spots filled' %></span>
+                <% else %>
+                  <span class="text-sm text-gray-500"><%= instance_registrations %> <%= @sign_up_form.admin_assigns? ? 'assigned' : 'registered' %></span>
+                <% end %>
+                <% is_waitlist_mode = %w[simple_capacity open_list].include?(@sign_up_form.slot_generation_mode) %>
+                <% if is_waitlist_mode %>
+                  <% first_available_slot = @current_instance.sign_up_slots.detect { |s| !s.is_held && s.spots_remaining > 0 } %>
+                  <% if first_available_slot %>
+                    <button type="button"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors cursor-pointer"
+                            data-action="click->add-sign-up-person#open"
+                            data-slot-id="<%= first_available_slot.id %>"
+                            data-slot-name="List">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Add
+                    </button>
+                  <% end %>
+                <% end %>
+              </div>
             </div>
 
             <%# Urgent countdown bar - only show if under 24 hours %>
@@ -249,9 +281,7 @@
                   <% end %>
                 </div>
               </div>
-              <% if instance_queue_count > 0 %>
-                <%= render "shared/button", text: "Assign", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "users" %>
-              <% end %>
+              <%= render "shared/button", text: "Queue", path: assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @current_instance.id), variant: "primary", size: "small", icon: "queue-list" %>
             </div>
           </div>
         <% end %>
@@ -388,27 +418,40 @@
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <% total_capacity = @current_instance&.sign_up_slots&.sum(:capacity) || 0 %>
           <% assigned_count = @current_instance&.sign_up_slots&.joins(:sign_up_registrations)&.where(sign_up_registrations: { status: [:confirmed, :pending] })&.count || 0 %>
-          <% if @sign_up_form.admin_assigns? %>
-            <%= render "shared/card_header", title: "Slot Assignments" do %>
+          <% first_available_slot = @current_instance&.sign_up_slots&.detect { |s| !s.is_held && s.spots_remaining > 0 } %>
+          <% is_waitlist_mode = %w[simple_capacity open_list].include?(@sign_up_form.slot_generation_mode) %>
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900"><%= @sign_up_form.admin_assigns? ? 'Slot Assignments' : 'Registrations' %></h3>
+            <div class="flex items-center gap-3">
               <span class="text-sm text-gray-500">
-                <% if total_capacity < 1000 %>
-                  <%= assigned_count %> of <%= total_capacity %> slots filled
+                <% if @sign_up_form.admin_assigns? %>
+                  <% if total_capacity < 1000 %>
+                    <%= assigned_count %> of <%= total_capacity %> slots filled
+                  <% else %>
+                    <%= assigned_count %> assigned
+                  <% end %>
                 <% else %>
-                  <%= assigned_count %> assigned
+                  <% if total_capacity < 1000 %>
+                    <%= @registrations.count %> of <%= total_capacity %> spots filled
+                  <% else %>
+                    <%= @registrations.count %> registered
+                  <% end %>
                 <% end %>
               </span>
-            <% end %>
-          <% else %>
-            <%= render "shared/card_header", title: "Registrations" do %>
-              <span class="text-sm text-gray-500">
-                <% if total_capacity < 1000 %>
-                  <%= @registrations.count %> of <%= total_capacity %> spots filled
-                <% else %>
-                  <%= @registrations.count %> registered
-                <% end %>
-              </span>
-            <% end %>
-          <% end %>
+              <% if is_waitlist_mode && first_available_slot %>
+                <button type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors cursor-pointer"
+                        data-action="click->add-sign-up-person#open"
+                        data-slot-id="<%= first_available_slot.id %>"
+                        data-slot-name="List">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add
+                </button>
+              <% end %>
+            </div>
+          </div>
 
           <% if @current_instance&.sign_up_slots&.any? %>
             <%= render "manage/sign_up_forms/registration_list",
@@ -538,4 +581,49 @@
         production: @production,
         slots: @sign_up_form.sign_up_slots.order(:position) %>
   <% end %>
+
+  <%# Add Person Modal %>
+  <div data-add-sign-up-person-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->add-sign-up-person#close">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->add-sign-up-person#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 data-add-sign-up-person-target="modalTitle" class="text-lg font-semibold text-gray-900">Add Person</h2>
+        <button type="button" data-action="click->add-sign-up-person#close" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <div class="relative">
+          <input type="text"
+                 data-add-sign-up-person-target="searchInput"
+                 data-action="input->add-sign-up-person#search"
+                 placeholder="Search by name or email..."
+                 class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <div data-add-sign-up-person-target="searchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+            <svg class="animate-spin h-4 w-4 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-2">Search for someone in your organization</p>
+
+        <%# Search results %>
+        <div data-add-sign-up-person-target="searchResults" class="mt-4 space-y-1 max-h-64 overflow-y-auto">
+          <p class="text-sm text-gray-400 text-center py-4">Type to search...</p>
+        </div>
+      </div>
+
+      <input type="hidden" data-add-sign-up-person-target="slotId">
+      <input type="hidden" data-add-sign-up-person-target="instanceId">
+      <%# Hidden element for slotName (used by JS) %>
+      <span data-add-sign-up-person-target="slotName" class="hidden"></span>
+    </div>
+  </div>
 </div>

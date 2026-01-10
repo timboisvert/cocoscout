@@ -145,7 +145,7 @@ module Manage
       end
       @wizard_state[:require_login] = true if @wizard_state[:require_login].nil?
       @wizard_state[:allow_edit] = true if @wizard_state[:allow_edit].nil?
-      @wizard_state[:allow_cancel] = true if @wizard_state[:allow_cancel].nil?
+      @wizard_state[:allow_cancel] = false if @wizard_state[:allow_cancel].nil?
       @wizard_state[:show_registrations] = true if @wizard_state[:show_registrations].nil?
       @wizard_state[:edit_cutoff_hours] ||= 24
       @wizard_state[:cancel_cutoff_hours] ||= 2
@@ -195,7 +195,7 @@ module Manage
     def schedule
       @wizard_state[:schedule_mode] ||= "relative"
       @wizard_state[:opens_days_before] ||= 7
-      @wizard_state[:closes_mode] ||= "custom"
+      @wizard_state[:closes_mode] ||= "event_start"
       @wizard_state[:closes_offset_value] ||= 2
       @wizard_state[:closes_offset_unit] ||= "hours"
       @wizard_state[:closes_before_after] ||= "after"
@@ -209,15 +209,26 @@ module Manage
     def save_schedule
       @wizard_state[:schedule_mode] = params[:schedule_mode]
 
-      if @wizard_state[:schedule_mode] == "relative"
+      if @wizard_state[:schedule_mode] == "immediate"
+        # Opens immediately
+        @wizard_state[:opens_at] = nil
+        # Save closes settings for immediate mode too
+        @wizard_state[:closes_mode] = params[:closes_mode] || "event_start"
+        @wizard_state[:closes_offset_value] = params[:closes_offset_value].to_i
+        @wizard_state[:closes_offset_unit] = params[:closes_offset_unit]
+        @wizard_state[:closes_before_after] = params[:closes_before_after]
+      elsif @wizard_state[:schedule_mode] == "relative"
         # Opens settings
         @wizard_state[:opens_value] = params[:opens_value].to_i
         @wizard_state[:opens_unit] = params[:opens_unit]
+        @wizard_state[:opens_minutes] = params[:opens_minutes].to_i
         # Convert to days_before for storage
         if params[:opens_unit] == "days"
           @wizard_state[:opens_days_before] = params[:opens_value].to_i
         else
-          @wizard_state[:opens_days_before] = (params[:opens_value].to_i / 24.0).ceil
+          # Hours + minutes, convert to fractional days
+          total_hours = params[:opens_value].to_i + (params[:opens_minutes].to_i / 60.0)
+          @wizard_state[:opens_days_before] = (total_hours / 24.0).ceil
         end
 
         # Closes settings - new modes
@@ -245,7 +256,7 @@ module Manage
 
     # Step 6: Notifications - Notify team when someone registers?
     def notifications
-      @wizard_state[:notify_on_registration] = true if @wizard_state[:notify_on_registration].nil?
+      @wizard_state[:notify_on_registration] = false if @wizard_state[:notify_on_registration].nil?
     end
 
     def save_notifications

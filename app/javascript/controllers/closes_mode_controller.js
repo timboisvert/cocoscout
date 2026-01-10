@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["neverRadio", "customRadio", "customFields", "modeField"]
+    static targets = ["neverRadio", "customRadio", "eventStartRadio", "customFields", "modeField"]
 
     selectNever(event) {
         this.neverRadioTarget.checked = true
+        if (this.hasEventStartRadioTarget) this.eventStartRadioTarget.checked = false
+        if (this.hasCustomRadioTarget) this.customRadioTarget.checked = false
         if (this.hasModeFieldTarget) {
             this.modeFieldTarget.value = "never"
         }
@@ -13,8 +15,20 @@ export default class extends Controller {
 
     selectCustom(event) {
         this.customRadioTarget.checked = true
+        if (this.hasEventStartRadioTarget) this.eventStartRadioTarget.checked = false
+        if (this.hasNeverRadioTarget) this.neverRadioTarget.checked = false
         if (this.hasModeFieldTarget) {
             this.modeFieldTarget.value = "custom"
+        }
+        this.updateStyles()
+    }
+
+    selectEventStart(event) {
+        if (this.hasEventStartRadioTarget) this.eventStartRadioTarget.checked = true
+        if (this.hasCustomRadioTarget) this.customRadioTarget.checked = false
+        if (this.hasNeverRadioTarget) this.neverRadioTarget.checked = false
+        if (this.hasModeFieldTarget) {
+            this.modeFieldTarget.value = "event_start"
         }
         this.updateStyles()
     }

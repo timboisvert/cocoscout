@@ -6,6 +6,7 @@
   # Get current values or defaults
   opens_value = @wizard_state[:opens_value] || 7
   opens_unit = @wizard_state[:opens_unit] || 'days'
+  opens_minutes = @wizard_state[:opens_minutes] || 0
   closes_mode = @wizard_state[:closes_mode] || 'event_start'
   closes_offset_value = @wizard_state[:closes_offset_value] || 2
   closes_offset_unit = @wizard_state[:closes_offset_unit] || 'hours'
@@ -103,6 +104,25 @@
         <!-- Schedule Mode Selection -->
         <div class="grid grid-cols-2 gap-3">
           <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'immediate' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="immediate"
+                 data-action="click->option-select#select">
+              <input type="radio" name="schedule_mode" value="immediate"
+                     <%= "checked" if schedule_mode == 'immediate' %>
+                     class="sr-only"
+                     data-option-select-target="input">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Opens Immediately</p>
+              <p class="text-xs text-gray-500 mt-1">Open as soon as you create</p>
+            </div>
+          </label>
+
+          <label class="block cursor-pointer">
             <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
                  data-option-select-target="option"
                  data-value="relative"
@@ -141,46 +161,47 @@
           </label>
         </div>
 
-        <!-- Relative Schedule Options -->
-        <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
-          <%# Open Registration Box %>
-          <div class="p-4 bg-gray-50 rounded-lg">
-            <label class="block text-gray-700 font-medium mb-2">Open registration</label>
-            <div class="flex items-center gap-2">
-              <input type="number" name="opens_value" value="<%= opens_value %>" min="0"
-                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-              <select name="opens_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-                <option value="days" <%= "selected" if opens_unit == 'days' %>>days</option>
-                <option value="hours" <%= "selected" if opens_unit == 'hours' %>>hours</option>
-              </select>
-              <span class="text-sm text-gray-600">before each event</span>
+        <!-- Immediate Schedule Options -->
+        <div data-option-select-target="conditionalImmediate" class="<%= schedule_mode == 'immediate' ? '' : 'hidden' %> space-y-4">
+          <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-800">
+                  Sign-ups will open immediately when you create this form.
+                </p>
+              </div>
             </div>
           </div>
 
-          <%# Close Registration Box %>
+          <%# Close Registration Box for Immediate mode %>
           <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
             <label class="block text-gray-700 font-medium mb-3">Close registration</label>
             <div class="space-y-2">
-              <%# Option 1: Don't close %>
+              <%# Option 1: Close when event starts (default) %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
-                          <%= closes_mode == 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
-                   data-action="click->closes-mode#selectNever">
+                          <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectEventStart">
                 <label class="flex items-center cursor-pointer">
-                  <input type="radio" name="closes_mode" value="never"
-                         <%= "checked" if closes_mode == 'never' %>
+                  <input type="radio" name="closes_mode" value="event_start"
+                         <%= "checked" if closes_mode == 'event_start' %>
                          class="sr-only"
-                         data-closes-mode-target="neverRadio">
-                  <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
+                         data-closes-mode-target="eventStartRadio">
+                  <span class="text-sm font-medium text-gray-900">Close when event starts</span>
                 </label>
               </div>
 
               <%# Option 2: Close relative to event %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
-                          <%= closes_mode != 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                          <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
                    data-action="click->closes-mode#selectCustom">
                 <label class="flex items-center cursor-pointer">
                   <input type="radio" name="closes_mode" value="custom"
-                         <%= "checked" if closes_mode != 'never' %>
+                         <%= "checked" if closes_mode == 'custom' %>
                          class="sr-only"
                          data-closes-mode-target="customRadio">
                   <span class="text-sm font-medium text-gray-900">Close registration</span>
@@ -202,6 +223,106 @@
                   </select>
                   <span class="text-sm text-gray-600">event start</span>
                 </div>
+              </div>
+
+              <%# Option 3: Don't close automatically %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectNever">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="never"
+                         <%= "checked" if closes_mode == 'never' %>
+                         class="sr-only"
+                         data-closes-mode-target="neverRadio">
+                  <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Relative Schedule Options -->
+        <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
+          <%# Open Registration Box %>
+          <div class="p-4 bg-gray-50 rounded-lg" data-controller="opens-unit">
+            <label class="block text-gray-700 font-medium mb-2">Open registration</label>
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="number" name="opens_value" value="<%= opens_value %>" min="0"
+                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+              <select name="opens_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2"
+                      data-opens-unit-target="unitSelect"
+                      data-action="change->opens-unit#updateMinutesVisibility">
+                <option value="days" <%= "selected" if opens_unit == 'days' %>>days</option>
+                <option value="hours" <%= "selected" if opens_unit == 'hours' %>>hours</option>
+              </select>
+              <div data-opens-unit-target="minutesField" class="<%= opens_unit == 'hours' ? 'flex' : 'hidden' %> items-center gap-2">
+                <span class="text-sm text-gray-600">and</span>
+                <input type="number" name="opens_minutes" value="<%= opens_minutes %>" min="0" max="59"
+                       class="w-16 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
+                <span class="text-sm text-gray-600">minutes</span>
+              </div>
+              <span class="text-sm text-gray-600">before each event</span>
+            </div>
+          </div>
+
+          <%# Close Registration Box %>
+          <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
+            <label class="block text-gray-700 font-medium mb-3">Close registration</label>
+            <div class="space-y-2">
+              <%# Option 1: Close when event starts (default) %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectEventStart">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="event_start"
+                         <%= "checked" if closes_mode == 'event_start' %>
+                         class="sr-only"
+                         data-closes-mode-target="eventStartRadio">
+                  <span class="text-sm font-medium text-gray-900">Close when event starts</span>
+                </label>
+              </div>
+
+              <%# Option 2: Close relative to event %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectCustom">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="custom"
+                         <%= "checked" if closes_mode == 'custom' %>
+                         class="sr-only"
+                         data-closes-mode-target="customRadio">
+                  <span class="text-sm font-medium text-gray-900">Close registration</span>
+                </label>
+                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
+                  <input type="number" name="closes_offset_value" value="<%= closes_offset_value %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                         onclick="event.stopPropagation()">
+                  <select name="closes_offset_unit" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                          onclick="event.stopPropagation()">
+                    <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
+                    <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
+                    <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
+                  </select>
+                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
+                          onclick="event.stopPropagation()">
+                    <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
+                    <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
+                  </select>
+                  <span class="text-sm text-gray-600">event start</span>
+                </div>
+              </div>
+
+              <%# Option 3: Don't close automatically %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                          <%= closes_mode == 'never' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->closes-mode#selectNever">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="closes_mode" value="never"
+                         <%= "checked" if closes_mode == 'never' %>
+                         class="sr-only"
+                         data-closes-mode-target="neverRadio">
+                  <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
+                </label>
               </div>
             </div>
           </div>

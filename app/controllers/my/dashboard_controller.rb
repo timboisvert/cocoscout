@@ -73,6 +73,28 @@ module My
         end
       end
 
+      # Sign-up registrations for all profiles
+      @sign_up_registrations_by_show = Hash.new { |h, k| h[k] = [] }
+      registrations = SignUpRegistration
+        .where(person_id: people_ids)
+        .where.not(status: "cancelled")
+        .includes(
+          :person,
+          sign_up_slot: { sign_up_form_instance: :show },
+          sign_up_form_instance: :show
+        )
+        .to_a
+
+      registrations.each do |reg|
+        show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
+        next unless show && show.date_and_time >= Time.current && show.date_and_time <= end_date
+
+        @sign_up_registrations_by_show[show.id] << reg
+        show_data_by_id[show.id] ||= { show: show, assignments: [], sign_up_registrations: [] }
+        show_data_by_id[show.id][:sign_up_registrations] ||= []
+        show_data_by_id[show.id][:sign_up_registrations] << reg
+      end
+
       @upcoming_show_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
 
       # Load vacancies created by the user (they said they can't make it)
