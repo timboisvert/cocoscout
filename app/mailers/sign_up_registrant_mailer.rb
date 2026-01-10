@@ -94,6 +94,8 @@ class SignUpRegistrantMailer < ApplicationMailer
     @form = @slot&.sign_up_form || @instance&.sign_up_form
     @show = @instance&.show
     @production = @form&.production
+    @person = @registration.person  # For email logging (find_recipient_entity)
+    @organization = @production&.organization  # For email logging (find_organization)
 
     @registrant_name = @registration.display_name || "Guest"
     @recipient_email = @registration.display_email
