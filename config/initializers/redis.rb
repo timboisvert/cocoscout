@@ -4,7 +4,19 @@
 # Uses ElastiCache Serverless (Valkey) in production, local Redis in development
 
 REDIS = if ENV["REDIS_URL"].present?
-  Redis.new(url: ENV["REDIS_URL"], ssl: ENV["REDIS_URL"].include?("amazonaws.com"))
+  redis_url = ENV["REDIS_URL"]
+
+  # Add scheme if missing (ElastiCache URLs sometimes don't include it)
+  unless redis_url.start_with?("redis://", "rediss://")
+    # Use TLS for AWS ElastiCache
+    scheme = redis_url.include?("amazonaws.com") ? "rediss://" : "redis://"
+    redis_url = "#{scheme}#{redis_url}"
+  end
+
+  # Use SSL for AWS ElastiCache connections
+  use_ssl = redis_url.include?("amazonaws.com") || redis_url.start_with?("rediss://")
+
+  Redis.new(url: redis_url, ssl: use_ssl)
 else
   # Development/test: connect to local Redis if available, otherwise use a null object
   begin
