@@ -1,0 +1,178 @@
+<%
+  # Get current values or defaults
+  rules = payout_scheme.rules.presence || {}
+  allocation = rules["allocation"] || []
+  distribution = rules["distribution"] || { "method" => "equal" }
+  dist_method = distribution["method"] || "equal"
+
+  # Find allocation values
+  house_percentage = allocation.find { |s| s["type"] == "percentage" }&.dig("value") || 50
+  has_expenses_first = allocation.any? { |s| s["type"] == "expenses_first" }
+
+  # Distribution values
+  per_ticket_rate = distribution["per_ticket_rate"] || 1.0
+  minimum = distribution["minimum"] || 25.0
+  flat_amount = distribution["flat_amount"] || 50.0
+  default_shares = distribution["default_shares"] || 1.0
+%>
+
+<%= form_with model: payout_scheme, url: payout_scheme.persisted? ? manage_production_money_payout_scheme_path(@production, payout_scheme) : manage_production_money_payout_schemes_path(@production), method: payout_scheme.persisted? ? :patch : :post, local: true, data: { controller: "payout-scheme-form" } do |form| %>
+
+  <% if payout_scheme.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+        </svg>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% payout_scheme.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="max-w-2xl space-y-6">
+
+    <!-- Basic Info -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-900 mb-4">Basic Info</h3>
+
+      <div class="space-y-4">
+        <div>
+          <%= form.label :name, "Scheme Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.text_field :name, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Standard Show Pay" %>
+        </div>
+
+        <div>
+          <%= form.label :description, "Description (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.text_area :description, rows: 2, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Brief description of how this scheme works..." %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Distribution Method -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-900 mb-4">How Performers Get Paid</h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Distribution Method</label>
+          <div class="space-y-2">
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="equal" <%= "checked" if dist_method == "equal" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Equal Split</div>
+                <div class="text-sm text-gray-500">Divide performer pool equally among all performers</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="shares" <%= "checked" if dist_method == "shares" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Share-Based</div>
+                <div class="text-sm text-gray-500">Divide by configurable shares per person (e.g., lead gets 2 shares, ensemble gets 1)</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="per_ticket" <%= "checked" if dist_method == "per_ticket" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Per-Ticket Rate</div>
+                <div class="text-sm text-gray-500">Pay each performer a fixed amount per ticket sold</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="per_ticket_guaranteed" <%= "checked" if dist_method == "per_ticket_guaranteed" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Per-Ticket with Minimum</div>
+                <div class="text-sm text-gray-500">Per-ticket rate with a guaranteed minimum payout</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="flat_fee" <%= "checked" if dist_method == "flat_fee" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Flat Fee</div>
+                <div class="text-sm text-gray-500">Fixed amount per performer regardless of ticket sales</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Method-specific options -->
+        <div data-payout-scheme-form-target="sharesOptions" class="<%= dist_method == 'shares' ? '' : 'hidden' %> p-4 bg-gray-50 rounded-lg">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Default shares per person</label>
+          <input type="number" name="rules[distribution][default_shares]" value="<%= default_shares %>" min="0.5" step="0.5" class="w-24 rounded-lg border border-gray-300 px-3 py-2">
+          <p class="text-xs text-gray-500 mt-1">You can override shares per person for specific shows</p>
+        </div>
+
+        <div data-payout-scheme-form-target="perTicketOptions" class="<%= ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) ? '' : 'hidden' %> p-4 bg-gray-50 rounded-lg space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount per ticket per performer</label>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" name="rules[distribution][per_ticket_rate]" value="<%= per_ticket_rate %>" min="0.01" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2">
+            </div>
+          </div>
+          <div data-payout-scheme-form-target="minimumOption" class="<%= dist_method == 'per_ticket_guaranteed' ? '' : 'hidden' %>">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Minimum guaranteed payout</label>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" name="rules[distribution][minimum]" value="<%= minimum %>" min="0" step="1" class="w-24 rounded-lg border border-gray-300 px-3 py-2">
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Each performer gets at least this amount</p>
+          </div>
+        </div>
+
+        <div data-payout-scheme-form-target="flatFeeOptions" class="<%= dist_method == 'flat_fee' ? '' : 'hidden' %> p-4 bg-gray-50 rounded-lg">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Flat amount per performer</label>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-500">$</span>
+            <input type="number" name="rules[distribution][flat_amount]" value="<%= flat_amount %>" min="0" step="1" class="w-24 rounded-lg border border-gray-300 px-3 py-2">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Allocation (only for split-based methods) -->
+    <div data-payout-scheme-form-target="allocationSection" class="<%= ['equal', 'shares'].include?(dist_method) ? '' : 'hidden' %> bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-900 mb-4">Revenue Allocation</h3>
+      <p class="text-sm text-gray-600 mb-4">How is revenue split between house and performers?</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">House percentage</label>
+          <div class="flex items-center gap-3">
+            <input type="number" name="house_percentage" value="<%= house_percentage %>" min="0" max="100" class="w-20 rounded-lg border border-gray-300 px-3 py-2" data-payout-scheme-form-target="housePercentage" data-action="input->payout-scheme-form#updatePercentages">
+            <span class="text-gray-500">%</span>
+            <span class="text-gray-400 mx-2">→</span>
+            <span class="text-sm text-gray-600">Performers get <span data-payout-scheme-form-target="performerPercentage" class="font-medium text-gray-900"><%= 100 - house_percentage %>%</span></span>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="expenses_first" value="1" <%= "checked" if has_expenses_first %> class="rounded border-gray-300 text-pink-500 focus:ring-pink-500">
+          <span class="text-sm text-gray-700">Deduct expenses before splitting</span>
+        </label>
+      </div>
+
+      <!-- Hidden fields to build allocation array -->
+      <input type="hidden" name="rules[allocation][]" value='{"type":"percentage","value":50,"to":"house"}' data-payout-scheme-form-target="allocationJson">
+    </div>
+
+    <!-- Form Actions -->
+    <div class="flex items-center justify-between pt-4">
+      <%= link_to manage_production_money_payout_schemes_path(@production), class: "text-gray-600 hover:text-gray-900" do %>
+        Cancel
+      <% end %>
+      <%= render "shared/button", text: payout_scheme.persisted? ? "Save Changes" : "Create Scheme", variant: "primary", size: "medium", type: :submit %>
+    </div>
+
+  </div>
+<% end %>

@@ -8,9 +8,7 @@ export default class extends Controller {
         "saveButtonText", "modalFooter", "customRolesCheckbox", "customRolesContent",
         "deleteConfirmModal", "deleteConfirmMessage", "inlineRolesList", "manageButton",
         "toggleConfirmModal", "toggleConfirmMessage", "toggleConfirmList",
-        "quantityInput", "categorySelect", "paymentTypeSelect",
-        "flatRateSection", "perTicketSection", "perTicketMinSection",
-        "paymentAmountInput", "paymentRateInput", "paymentRateMinInput", "paymentMinimumInput"
+        "quantityInput", "categorySelect"
     ]
 
     static values = {
@@ -260,16 +258,6 @@ export default class extends Controller {
 
         const categoryBadge = `<span class="text-xs font-medium text-gray-500 capitalize">${role.category || 'performing'}</span>`
 
-        // Payment text
-        let paymentText = "Non-paying"
-        if (role.payment_type === "flat_rate" && role.payment_amount) {
-            paymentText = `Flat rate: $${parseFloat(role.payment_amount).toFixed(2).replace(/\.00$/, '')}`
-        } else if (role.payment_type === "per_ticket" && role.payment_rate) {
-            paymentText = `$${parseFloat(role.payment_rate).toFixed(2).replace(/\.00$/, '')} per ticket`
-        } else if (role.payment_type === "per_ticket_with_minimum" && role.payment_rate) {
-            paymentText = `$${parseFloat(role.payment_rate).toFixed(2).replace(/\.00$/, '')} per ticket (min $${parseFloat(role.payment_minimum || 0).toFixed(2).replace(/\.00$/, '')})`
-        }
-
         const eligibleMembers = role.restricted && role.eligible_members.length > 0
             ? `<div class="flex items-center gap-1 mt-2">
                 <span class="text-gray-400 mr-1" title="Restricted role">
@@ -300,8 +288,6 @@ export default class extends Controller {
                         </div>
                         <div class="flex items-center gap-2 mt-1">
                             ${categoryBadge}
-                            <span class="text-gray-300">|</span>
-                            <span class="text-xs text-gray-500">${paymentText}</span>
                         </div>
                         ${eligibleMembers}
                     </div>
@@ -365,15 +351,9 @@ export default class extends Controller {
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
-        // Reset quantity, category, and payment fields
+        // Reset quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = "1"
         if (this.hasCategorySelectTarget) this.categorySelectTarget.value = "performing"
-        if (this.hasPaymentTypeSelectTarget) this.paymentTypeSelectTarget.value = "non_paying"
-        if (this.hasPaymentAmountInputTarget) this.paymentAmountInputTarget.value = ""
-        if (this.hasPaymentRateInputTarget) this.paymentRateInputTarget.value = ""
-        if (this.hasPaymentRateMinInputTarget) this.paymentRateMinInputTarget.value = ""
-        if (this.hasPaymentMinimumInputTarget) this.paymentMinimumInputTarget.value = ""
-        this.togglePaymentFields()
 
         this.showForm()
     }
@@ -394,15 +374,9 @@ export default class extends Controller {
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
-        // Populate quantity, category, and payment fields
+        // Populate quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = role.quantity || 1
         if (this.hasCategorySelectTarget) this.categorySelectTarget.value = role.category || "performing"
-        if (this.hasPaymentTypeSelectTarget) this.paymentTypeSelectTarget.value = role.payment_type || "non_paying"
-        if (this.hasPaymentAmountInputTarget) this.paymentAmountInputTarget.value = role.payment_amount || ""
-        if (this.hasPaymentRateInputTarget) this.paymentRateInputTarget.value = role.payment_rate || ""
-        if (this.hasPaymentRateMinInputTarget) this.paymentRateMinInputTarget.value = role.payment_rate || ""
-        if (this.hasPaymentMinimumInputTarget) this.paymentMinimumInputTarget.value = role.payment_minimum || ""
-        this.togglePaymentFields()
 
         this.showForm()
     }
@@ -436,27 +410,6 @@ export default class extends Controller {
             this.loadTalentPoolMembers()
         } else {
             this.eligibleMembersSectionTarget.classList.add("hidden")
-        }
-    }
-
-    // Toggle payment field visibility based on payment type
-    togglePaymentFields() {
-        if (!this.hasPaymentTypeSelectTarget) return
-
-        const paymentType = this.paymentTypeSelectTarget.value
-
-        // Hide all payment sections first
-        if (this.hasFlatRateSectionTarget) this.flatRateSectionTarget.classList.add("hidden")
-        if (this.hasPerTicketSectionTarget) this.perTicketSectionTarget.classList.add("hidden")
-        if (this.hasPerTicketMinSectionTarget) this.perTicketMinSectionTarget.classList.add("hidden")
-
-        // Show the appropriate section
-        if (paymentType === "flat_rate" && this.hasFlatRateSectionTarget) {
-            this.flatRateSectionTarget.classList.remove("hidden")
-        } else if (paymentType === "per_ticket" && this.hasPerTicketSectionTarget) {
-            this.perTicketSectionTarget.classList.remove("hidden")
-        } else if (paymentType === "per_ticket_with_minimum" && this.hasPerTicketMinSectionTarget) {
-            this.perTicketMinSectionTarget.classList.remove("hidden")
         }
     }
 
@@ -558,25 +511,6 @@ export default class extends Controller {
         }
         if (this.hasCategorySelectTarget) {
             roleData.category = this.categorySelectTarget.value
-        }
-
-        // Add payment fields based on payment type
-        if (this.hasPaymentTypeSelectTarget) {
-            const paymentType = this.paymentTypeSelectTarget.value
-            roleData.payment_type = paymentType
-
-            if (paymentType === "flat_rate" && this.hasPaymentAmountInputTarget) {
-                roleData.payment_amount = parseFloat(this.paymentAmountInputTarget.value) || null
-            } else if (paymentType === "per_ticket" && this.hasPaymentRateInputTarget) {
-                roleData.payment_rate = parseFloat(this.paymentRateInputTarget.value) || null
-            } else if (paymentType === "per_ticket_with_minimum") {
-                if (this.hasPaymentRateMinInputTarget) {
-                    roleData.payment_rate = parseFloat(this.paymentRateMinInputTarget.value) || null
-                }
-                if (this.hasPaymentMinimumInputTarget) {
-                    roleData.payment_minimum = parseFloat(this.paymentMinimumInputTarget.value) || null
-                }
-            }
         }
 
         const body = { show_role: roleData }

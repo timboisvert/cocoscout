@@ -62,11 +62,7 @@ namespace :roles do
             quantity: sorted_roles.size,
             category: first_role.category,
             position: sorted_roles.map(&:position).min,
-            restricted: sorted_roles.any?(&:restricted?),
-            payment_type: first_role.payment_type,
-            payment_amount: first_role.payment_amount,
-            payment_rate: first_role.payment_rate,
-            payment_minimum: first_role.payment_minimum
+            restricted: sorted_roles.any?(&:restricted?)
           )
 
           puts "  Created merged role: '#{merged_role.name}' (ID: #{merged_role.id}, quantity: #{merged_role.quantity})"

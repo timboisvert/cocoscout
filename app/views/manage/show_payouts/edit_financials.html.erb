@@ -1,0 +1,90 @@
+<% content_for :title, "Enter Financial Data - #{show_display_name(@show)}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "Money", path: manage_production_money_index_path(@production) },
+      { text: "Show Payouts", path: manage_production_money_show_payouts_path(@production) },
+      { text: show_display_name(@show), path: manage_production_money_show_payout_path(@production, @show) }
+    ],
+    text: "Financial Data",
+    links: []
+  } %>
+
+  <div class="max-w-xl">
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="font-semibold text-gray-900 mb-1"><%= show_display_name(@show, include_date: false) %></h2>
+      <p class="text-sm text-gray-500 mb-6"><%= @show.date_and_time.strftime("%A, %B %-d, %Y at %-I:%M %p") %></p>
+
+      <%= form_with model: @show_financials, url: manage_production_update_financials_money_show_payout_path(@production, @show), method: :patch, local: true do |form| %>
+
+        <% if @show_financials.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <ul class="text-sm text-red-700 list-disc list-inside">
+              <% @show_financials.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="space-y-5">
+
+          <!-- Ticket Sales -->
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <h3 class="font-medium text-gray-900 mb-3">Ticket Sales</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <%= form.label :ticket_count, "Tickets Sold", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.number_field :ticket_count, min: 0, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0" %>
+              </div>
+              <div>
+                <%= form.label :ticket_revenue, "Ticket Revenue", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <%= form.number_field :ticket_revenue, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Other Revenue -->
+          <div>
+            <%= form.label :other_revenue, "Other Revenue", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <%= form.number_field :other_revenue, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Merchandise, concessions, donations, etc.</p>
+          </div>
+
+          <!-- Expenses -->
+          <div>
+            <%= form.label :expenses, "Expenses", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <%= form.number_field :expenses, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Venue rental, supplies, etc. deducted before payout calculations.</p>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <%= form.label :notes, "Notes (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.text_area :notes, rows: 2, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Any notes about this show's finances..." %>
+          </div>
+
+        </div>
+
+        <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+          <%= link_to manage_production_money_show_payout_path(@production, @show), class: "text-gray-600 hover:text-gray-900" do %>
+            Cancel
+          <% end %>
+          <%= render "shared/button", text: "Save Financial Data", variant: "primary", size: "medium", type: :submit %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+</div>

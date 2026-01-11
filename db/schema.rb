@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_10_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -446,6 +446,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
     t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
   end
 
+  create_table "payout_schemes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "is_default", default: false
+    t.string "name", null: false
+    t.bigint "production_id", null: false
+    t.jsonb "rules", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "is_default"], name: "index_payout_schemes_on_production_id_and_is_default"
+    t.index ["production_id"], name: "index_payout_schemes_on_production_id"
+  end
+
   create_table "people", force: :cascade do |t|
     t.datetime "archived_at"
     t.text "bio"
@@ -756,10 +768,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
     t.string "category", default: "performing", null: false
     t.datetime "created_at", null: false
     t.string "name"
-    t.decimal "payment_amount", precision: 10, scale: 2
-    t.decimal "payment_minimum", precision: 10, scale: 2
-    t.decimal "payment_rate", precision: 10, scale: 2
-    t.string "payment_type", default: "non_paying", null: false
     t.integer "position"
     t.bigint "production_id", null: false
     t.integer "quantity", default: 1, null: false
@@ -823,6 +831,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
     t.index ["show_id"], name: "index_show_cast_notifications_on_show_id"
   end
 
+  create_table "show_financials", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "expenses", precision: 10, scale: 2, default: "0.0"
+    t.text "notes"
+    t.decimal "other_revenue", precision: 10, scale: 2, default: "0.0"
+    t.bigint "show_id", null: false
+    t.integer "ticket_count", default: 0
+    t.decimal "ticket_revenue", precision: 10, scale: 2, default: "0.0"
+    t.datetime "updated_at", null: false
+    t.index ["show_id"], name: "index_show_financials_on_show_id", unique: true
+  end
+
   create_table "show_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "show_id", null: false
@@ -830,6 +850,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
     t.datetime "updated_at", null: false
     t.string "url", null: false
     t.index ["show_id"], name: "index_show_links_on_show_id"
+  end
+
+  create_table "show_payout_line_items", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.jsonb "calculation_details", default: {}
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.bigint "payee_id", null: false
+    t.string "payee_type", null: false
+    t.decimal "shares", precision: 10, scale: 2
+    t.bigint "show_payout_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
+    t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
+    t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
+  end
+
+  create_table "show_payouts", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
+    t.datetime "calculated_at"
+    t.datetime "created_at", null: false
+    t.jsonb "override_rules"
+    t.bigint "payout_scheme_id"
+    t.bigint "show_id", null: false
+    t.string "status", default: "draft", null: false
+    t.decimal "total_payout", precision: 10, scale: 2
+    t.datetime "updated_at", null: false
+    t.index ["approved_by_id"], name: "index_show_payouts_on_approved_by_id"
+    t.index ["payout_scheme_id"], name: "index_show_payouts_on_payout_scheme_id"
+    t.index ["show_id"], name: "index_show_payouts_on_show_id", unique: true
+    t.index ["status"], name: "index_show_payouts_on_status"
   end
 
   create_table "show_person_role_assignments", force: :cascade do |t|
@@ -1269,6 +1321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "payout_schemes", "productions"
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
   add_foreign_key "person_invitations", "organizations"
@@ -1296,7 +1349,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_212537) do
   add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_cast_notifications", "roles"
   add_foreign_key "show_cast_notifications", "shows"
+  add_foreign_key "show_financials", "shows"
   add_foreign_key "show_links", "shows"
+  add_foreign_key "show_payout_line_items", "show_payouts"
+  add_foreign_key "show_payouts", "payout_schemes"
+  add_foreign_key "show_payouts", "shows"
+  add_foreign_key "show_payouts", "users", column: "approved_by_id"
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"

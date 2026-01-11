@@ -1,0 +1,102 @@
+<% content_for :title, "Show Payouts - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [{ text: "Money", path: manage_production_money_index_path(@production) }],
+    text: "Show Payouts",
+    links: []
+  } %>
+
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "Status",
+      filters: [
+        { text: "All Past Shows", path: manage_production_money_show_payouts_path(@production, filter: "all"), active: @filter == "all" },
+        { text: "Needs Data", path: manage_production_money_show_payouts_path(@production, filter: "needs_data"), active: @filter == "needs_data" },
+        { text: "Draft", path: manage_production_money_show_payouts_path(@production, filter: "draft"), active: @filter == "draft" },
+        { text: "Approved", path: manage_production_money_show_payouts_path(@production, filter: "approved"), active: @filter == "approved" },
+        { text: "Paid", path: manage_production_money_show_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
+      ]
+    }
+  ] %>
+
+  <% if @shows.any? %>
+    <div class="space-y-2">
+      <% @shows.each do |show| %>
+        <%
+          financials = show.show_financials
+          payout = show.show_payout
+          has_data = financials&.has_data?
+        %>
+        <%= link_to manage_production_money_show_payout_path(@production, show), class: "block bg-white rounded-lg border border-gray-200 px-3 py-2 hover:border-gray-400 transition-all" do %>
+          <div class="flex items-center gap-4">
+            <%# Date Box %>
+            <div class="flex-shrink-0 w-14 text-center">
+              <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
+              <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+              <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+            </div>
+
+            <%# Show Details %>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium text-gray-900">
+                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                </span>
+              </div>
+              <div class="text-sm text-gray-600">
+                <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                <% if has_data %>
+                  · <%= financials.ticket_count %> tickets · <%= number_to_currency(financials.ticket_revenue) %> revenue
+                  <% if financials.other_revenue.to_f > 0 %>
+                    + <%= number_to_currency(financials.other_revenue) %> other
+                  <% end %>
+                  <% if financials.expenses.to_f > 0 %>
+                    − <%= number_to_currency(financials.expenses) %> expenses
+                  <% end %>
+                <% else %>
+                  · <span class="text-gray-400">No financial data</span>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Status/Amount %>
+            <div class="flex items-center gap-3">
+              <% if payout %>
+                <div class="text-right">
+                  <% if payout.total_payout %>
+                    <div class="font-medium text-gray-900"><%= number_to_currency(payout.total_payout) %></div>
+                  <% end %>
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= payout.status_badge_class %>">
+                    <%= payout.status_label %>
+                  </span>
+                </div>
+              <% else %>
+                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+                  Not Started
+                </span>
+              <% end %>
+
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">
+        <% if @filter == "all" %>
+          No past shows to process payouts for.
+        <% elsif @filter == "needs_data" %>
+          All shows have financial data entered.
+        <% else %>
+          No shows with this status.
+        <% end %>
+      </p>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,50 @@
+<% content_for :title, "Payout Schemes - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [{ text: "Money", path: manage_production_money_index_path(@production) }],
+    text: "Payout Schemes",
+    links: [
+      { text: "Create from Preset", path: manage_production_presets_money_payout_schemes_path(@production) },
+      { text: "New Custom Scheme", path: manage_production_new_money_payout_scheme_path(@production) }
+    ]
+  } %>
+
+  <% if @payout_schemes.any? %>
+    <div class="space-y-2">
+      <% @payout_schemes.each do |scheme| %>
+        <%= link_to manage_production_money_payout_scheme_path(@production, scheme), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <h3 class="font-semibold text-gray-900"><%= scheme.name %></h3>
+                <% if scheme.is_default? %>
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Default</span>
+                <% end %>
+              </div>
+              <% if scheme.description.present? %>
+                <p class="text-sm text-gray-600 mt-1"><%= scheme.description %></p>
+              <% end %>
+              <p class="text-sm text-gray-500 mt-2"><%= scheme.rules_summary %></p>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No payout schemes yet</h3>
+      <p class="text-gray-600 mb-4">Create a scheme to define how performers get paid.</p>
+      <%= link_to manage_production_presets_money_payout_schemes_path(@production) do %>
+        <%= render "shared/button", text: "Choose a Preset", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

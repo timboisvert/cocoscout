@@ -118,8 +118,7 @@ module Manage
 
     # Only allow a list of trusted parameters through.
     def role_params
-      params.expect(role: [ :name, :restricted, :quantity, :category,
-                            :payment_type, :payment_amount, :payment_rate, :payment_minimum ])
+      params.expect(role: [ :name, :restricted, :quantity, :category ])
     end
   end
 end

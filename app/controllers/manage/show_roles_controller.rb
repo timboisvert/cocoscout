@@ -200,8 +200,7 @@ module Manage
     end
 
     def role_params
-      params.expect(show_role: [ :name, :restricted, :quantity, :category,
-                                 :payment_type, :payment_amount, :payment_rate, :payment_minimum ])
+      params.expect(show_role: [ :name, :restricted, :quantity, :category ])
     end
 
     def update_eligible_members(role)
@@ -239,10 +238,6 @@ module Manage
         restricted: role.restricted?,
         quantity: role.quantity,
         category: role.category,
-        payment_type: role.payment_type,
-        payment_amount: role.payment_amount,
-        payment_rate: role.payment_rate,
-        payment_minimum: role.payment_minimum,
         eligible_member_keys: role.role_eligibilities.map { |e| "#{e.member_type}_#{e.member_id}" },
         eligible_members: role.eligible_members.map { |m|
           {

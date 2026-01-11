@@ -1,0 +1,16 @@
+<% content_for :title, "Edit #{@payout_scheme.name} - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "Money", path: manage_production_money_index_path(@production) },
+      { text: "Payout Schemes", path: manage_production_money_payout_schemes_path(@production) },
+      { text: @payout_scheme.name, path: manage_production_money_payout_scheme_path(@production, @payout_scheme) }
+    ],
+    text: "Edit Scheme",
+    links: []
+  } %>
+
+  <%= render "form", payout_scheme: @payout_scheme %>
+</div>

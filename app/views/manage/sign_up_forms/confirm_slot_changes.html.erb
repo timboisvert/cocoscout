@@ -64,8 +64,8 @@
                           <%= registration.display_name.first.upcase %>
                         </div>
                       <% end %>
-                      <% if registration.person&.public_key.present? %>
-                        <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                      <% if registration.person.present? %>
+                        <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
                       <% else %>
                         <span class="text-sm text-gray-900"><%= registration.display_name %></span>
                       <% end %>
@@ -98,8 +98,8 @@
                               <%= slot_reg.display_name.first.upcase %>
                             </div>
                           <% end %>
-                          <% if slot_reg.person&.public_key.present? %>
-                            <%= link_to slot_reg.display_name, public_profile_path(slot_reg.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                          <% if slot_reg.person.present? %>
+                            <%= link_to slot_reg.display_name, manage_person_path(slot_reg.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
                           <% else %>
                             <span class="text-sm text-gray-900"><%= slot_reg.display_name %></span>
                           <% end %>
@@ -232,8 +232,8 @@
                       </div>
                     <% end %>
                     <div>
-                      <% if affected[:person]&.public_key.present? %>
-                        <%= link_to affected[:display_name], public_profile_path(affected[:person].public_key), class: "text-sm font-medium text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                      <% if affected[:person].present? %>
+                        <%= link_to affected[:display_name], manage_person_path(affected[:person]), class: "text-sm font-medium text-gray-900 hover:text-pink-600 hover:underline" %>
                       <% else %>
                         <span class="text-sm font-medium text-gray-900"><%= affected[:display_name] %></span>
                       <% end %>

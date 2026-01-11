@@ -49,6 +49,10 @@ class Show < ApplicationRecord
   has_many :sign_up_form_instances, dependent: :destroy
   has_many :sign_up_form_shows, dependent: :destroy
 
+  # Payouts
+  has_one :show_financials, dependent: :destroy
+  has_one :show_payout, dependent: :destroy
+
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
 
@@ -299,12 +303,7 @@ class Show < ApplicationRecord
         production: production,
         # Multi-person and category fields
         quantity: role.quantity,
-        category: role.category,
-        # Payment fields
-        payment_type: role.payment_type,
-        payment_amount: role.payment_amount,
-        payment_rate: role.payment_rate,
-        payment_minimum: role.payment_minimum
+        category: role.category
       )
 
       # Copy role eligibilities if restricted

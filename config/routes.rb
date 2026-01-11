@@ -564,6 +564,38 @@ Rails.application.routes.draw do
         end
       end
 
+      # Money / Payouts section
+      get "money", to: "payouts#index", as: "money_index"
+
+      # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
+      get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
+      post "money/schemes", to: "payout_schemes#create"
+      get "money/schemes/new", to: "payout_schemes#new", as: "new_money_payout_scheme"
+      get "money/schemes/presets", to: "payout_schemes#presets", as: "presets_money_payout_schemes"
+      post "money/schemes/create_from_preset", to: "payout_schemes#create_from_preset", as: "create_from_preset_money_payout_schemes"
+      get "money/schemes/:id", to: "payout_schemes#show", as: "money_payout_scheme"
+      get "money/schemes/:id/edit", to: "payout_schemes#edit", as: "edit_money_payout_scheme"
+      patch "money/schemes/:id", to: "payout_schemes#update"
+      put "money/schemes/:id", to: "payout_schemes#update"
+      delete "money/schemes/:id", to: "payout_schemes#destroy"
+      post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
+      get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
+
+      # Show payouts - explicitly named for manage_production_money_show_payout(s)_path pattern
+      get "money/payouts", to: "show_payouts#index", as: "money_show_payouts"
+      get "money/payouts/:id", to: "show_payouts#show", as: "money_show_payout"
+      patch "money/payouts/:id", to: "show_payouts#update"
+      put "money/payouts/:id", to: "show_payouts#update"
+      get "money/payouts/:id/edit_financials", to: "show_payouts#edit_financials", as: "edit_financials_money_show_payout"
+      patch "money/payouts/:id/update_financials", to: "show_payouts#update_financials", as: "update_financials_money_show_payout"
+      post "money/payouts/:id/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
+      post "money/payouts/:id/approve", to: "show_payouts#approve", as: "approve_money_show_payout"
+      post "money/payouts/:id/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
+      post "money/payouts/:id/revert_to_draft", to: "show_payouts#revert_to_draft", as: "revert_to_draft_money_show_payout"
+      get "money/payouts/:id/override", to: "show_payouts#override", as: "override_money_show_payout"
+      patch "money/payouts/:id/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
+      delete "money/payouts/:id/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
+
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)
       resources :audition_email_assignments, only: %i[create update destroy]

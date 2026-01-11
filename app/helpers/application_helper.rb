@@ -216,6 +216,17 @@ module ApplicationHelper
     EventTypes.labels[event_type.to_s] || event_type.to_s.titleize
   end
 
+  # Returns a display string for a show (for breadcrumbs, titles, etc.)
+  # Format: "Dec 15 - Performance" or just "Performance" if include_date is false
+  def show_display_name(show, include_date: true)
+    name = show.secondary_name.presence || show.event_type.titleize
+    if include_date
+      "#{show.date_and_time.strftime('%b %-d')} - #{name}"
+    else
+      name
+    end
+  end
+
   # Generate a vacancy link for a person/show combination
   def vacancy_link_for(person, show)
     token = VacancyController.generate_token(person)

@@ -4,9 +4,6 @@ class Role < ApplicationRecord
   # Role categories (performing = on stage, technical = backstage/crew)
   CATEGORIES = %w[performing technical].freeze
 
-  # Payment types for roles
-  PAYMENT_TYPES = %w[non_paying flat_rate per_ticket per_ticket_with_minimum].freeze
-
   belongs_to :production
   belongs_to :show, optional: true  # nil for production-level roles, set for show-specific roles
 
@@ -30,10 +27,6 @@ class Role < ApplicationRecord
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
   validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 20 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
-  validates :payment_type, presence: true, inclusion: { in: PAYMENT_TYPES }
-  validates :payment_amount, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :payment_rate, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :payment_minimum, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
   default_scope { order(position: :asc, created_at: :asc) }
 
@@ -128,23 +121,5 @@ class Role < ApplicationRecord
   # Check if this role has room for more assignments
   def has_open_slots?(show)
     slots_remaining(show) > 0
-  end
-
-  # Payment helper methods
-
-  def paying?
-    payment_type != "non_paying"
-  end
-
-  def flat_rate?
-    payment_type == "flat_rate"
-  end
-
-  def per_ticket?
-    payment_type == "per_ticket" || payment_type == "per_ticket_with_minimum"
-  end
-
-  def has_minimum?
-    payment_type == "per_ticket_with_minimum"
   end
 end

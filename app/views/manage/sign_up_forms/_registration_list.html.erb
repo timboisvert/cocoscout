@@ -73,8 +73,8 @@
                       <%= registration.display_name.first.upcase %>
                     </div>
                   <% end %>
-                  <% if registration.person&.public_key.present? %>
-                    <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                  <% if registration.person.present? %>
+                    <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
                   <% else %>
                     <span class="text-sm text-gray-900"><%= registration.display_name %></span>
                   <% end %>
@@ -142,8 +142,8 @@
                       <%= registration.display_name.first.upcase %>
                     </div>
                   <% end %>
-                  <% if registration.person&.public_key.present? %>
-                    <%= link_to registration.display_name, public_profile_path(registration.person.public_key), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline", target: "_blank" %>
+                  <% if registration.person.present? %>
+                    <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
                   <% else %>
                     <span class="text-sm text-gray-900"><%= registration.display_name %></span>
                   <% end %>

@@ -1,0 +1,151 @@
+<% content_for :title, "#{@payout_scheme.name} - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      { text: "Money", path: manage_production_money_index_path(@production) },
+      { text: "Payout Schemes", path: manage_production_money_payout_schemes_path(@production) }
+    ],
+    text: @payout_scheme.name,
+    links: [
+      { text: "Edit", path: manage_production_edit_money_payout_scheme_path(@production, @payout_scheme) }
+    ]
+  } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Description -->
+      <% if @payout_scheme.description.present? %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <p class="text-gray-600"><%= @payout_scheme.description %></p>
+        </div>
+      <% end %>
+
+      <!-- Rules Summary -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">How It Works</h3>
+
+        <div class="space-y-4">
+          <!-- Allocation Steps -->
+          <% if @payout_scheme.allocation_steps.any? %>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Revenue Allocation</h4>
+              <div class="space-y-2">
+                <% @payout_scheme.allocation_steps.each_with_index do |step, i| %>
+                  <div class="flex items-center gap-2 text-sm">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-medium"><%= i + 1 %></span>
+                    <span class="text-gray-600">
+                      <% case step["type"] %>
+                      <% when "flat" %>
+                        House gets <span class="font-medium text-gray-900"><%= number_to_currency(step["amount"]) %></span> flat
+                      <% when "percentage" %>
+                        House gets <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue
+                      <% when "expenses_first" %>
+                        Expenses are covered first
+                      <% when "remainder" %>
+                        Remainder goes to <span class="font-medium text-gray-900">performers</span>
+                      <% end %>
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Distribution Method -->
+          <div>
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Distribution to Performers</h4>
+            <div class="text-sm text-gray-600">
+              <% case @payout_scheme.distribution_method %>
+              <% when "equal" %>
+                Split <span class="font-medium text-gray-900">equally</span> among all performers
+              <% when "shares" %>
+                Split by <span class="font-medium text-gray-900">shares</span> (default: <%= @payout_scheme.distribution_config["default_shares"] || 1 %> share per person)
+              <% when "per_ticket" %>
+                <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["per_ticket_rate"]) %></span> per ticket per performer
+              <% when "per_ticket_guaranteed" %>
+                <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["per_ticket_rate"]) %></span> per ticket per performer, with a minimum of <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["minimum"]) %></span>
+              <% when "flat_fee" %>
+                <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["flat_amount"]) %></span> flat per performer
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Performer Overrides -->
+          <% if @payout_scheme.performer_overrides.present? && @payout_scheme.performer_overrides.any? %>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Per-Person Overrides</h4>
+              <div class="text-sm text-gray-500">
+                <%= @payout_scheme.performer_overrides.count %> custom override(s) configured
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Shows Using This Scheme -->
+      <% if @show_payouts.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Recent Shows Using This Scheme</h3>
+          <div class="space-y-2">
+            <% @show_payouts.each do |sp| %>
+              <%= link_to manage_production_money_show_payout_path(@production, sp.show), class: "block p-3 rounded hover:bg-gray-50 transition-colors" do %>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-900"><%= show_display_name(sp.show) %></span>
+                  <span class="text-sm <%= sp.status_badge_class %> px-2 py-0.5 rounded"><%= sp.status_label %></span>
+                </div>
+                <div class="text-sm text-gray-500 mt-1">
+                  <%= sp.show.date_and_time.strftime("%l:%M %p").strip %>
+                  <% if sp.total_payout %>
+                    · <%= number_to_currency(sp.total_payout) %>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-4">
+
+      <!-- Status Card -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <% if @payout_scheme.is_default? %>
+          <div class="flex items-center gap-2 text-pink-600 mb-3">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+            </svg>
+            <span class="font-medium">Default Scheme</span>
+          </div>
+          <p class="text-sm text-gray-600">This scheme is used automatically for new show payouts.</p>
+        <% else %>
+          <%= form_with url: manage_production_make_default_money_payout_scheme_path(@production, @payout_scheme), method: :post, local: true do %>
+            <%= render "shared/button", text: "Make Default", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <!-- Actions Card -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5 space-y-3">
+        <%= link_to manage_production_edit_money_payout_scheme_path(@production, @payout_scheme) do %>
+          <%= render "shared/button", text: "Edit Scheme", variant: "secondary", size: "small", classes: "w-full" %>
+        <% end %>
+
+        <% if @payout_scheme.show_payouts.not_draft.none? %>
+          <%= form_with url: manage_production_money_payout_scheme_path(@production, @payout_scheme), method: :delete, local: true, data: { turbo_confirm: "Are you sure you want to delete this payout scheme?" } do %>
+            <%= render "shared/button", text: "Delete Scheme", variant: "ghost", size: "small", classes: "w-full text-red-600", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+
+    </div>
+
+  </div>
+</div>
