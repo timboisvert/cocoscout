@@ -95,7 +95,7 @@ class PilotController < ApplicationController
       if @user.nil?
         @user = User.new(
           email_address: email,
-          password: SecureRandom.hex(16)
+          password: "#{SecureRandom.hex(8)}A!#{SecureRandom.hex(8)}"
         )
 
         unless @user.save
@@ -174,7 +174,7 @@ class PilotController < ApplicationController
       if @user.nil?
         @user = User.new(
           email_address: email,
-          password: SecureRandom.hex(16)
+          password: "#{SecureRandom.hex(8)}A!#{SecureRandom.hex(8)}"
         )
 
         unless @user.save
@@ -426,7 +426,7 @@ class PilotController < ApplicationController
       # Create additional producer user with random password
       @user = User.new(
         email_address: params[:email],
-        password: SecureRandom.hex(16)
+        password: "#{SecureRandom.hex(8)}A!#{SecureRandom.hex(8)}"
       )
 
       unless @user.save
