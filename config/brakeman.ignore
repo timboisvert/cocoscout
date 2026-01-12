@@ -1,6 +1,29 @@
 {
   "ignored_warnings": [
     {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "074c8326af800b2378adcfce2d0abf1f05c066b4b7cfe9272656d5394e3d4f9c",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/show_payouts_controller.rb",
+      "line": 198,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:override_rules).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::ShowPayoutsController",
+        "method": "override_rules_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 4,
       "fingerprint": "46be72496e6f4c97e9e7de74d1f646fa5313b1bdf5c60216e07b2f49ddfd41df",
@@ -15,7 +38,7 @@
           "type": "controller",
           "class": "My::ShowsController",
           "method": "show",
-          "line": 283,
+          "line": 339,
           "file": "app/controllers/my/shows_controller.rb",
           "rendered": {
             "name": "my/shows/show",
@@ -41,7 +64,7 @@
       "check_name": "SQL",
       "message": "Possible SQL injection",
       "file": "app/controllers/superadmin_controller.rb",
-      "line": 705,
+      "line": 718,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
       "code": "ActiveRecord::Base.connection.execute(\"SELECT COUNT(*) FROM #{table_name}\")",
       "render_path": null,

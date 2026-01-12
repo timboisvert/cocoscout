@@ -323,7 +323,13 @@ module Manage
       end
 
       # Make the assignment (position is auto-assigned by model callback)
-      assignment = @show.show_person_role_assignments.create!(assignable: assignable, role: role)
+      # Use find_or_create_by to handle race conditions with unique constraint
+      begin
+        assignment = @show.show_person_role_assignments.create!(assignable: assignable, role: role)
+      rescue ActiveRecord::RecordNotUnique
+        # Already assigned (race condition hit the unique constraint) - just return success
+        return render_assignment_success_response
+      end
 
       # Reload the show's assignments to ensure fresh data for rendering
       @show.show_person_role_assignments.reload
