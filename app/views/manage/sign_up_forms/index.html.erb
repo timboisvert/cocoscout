@@ -1,6 +1,6 @@
 <% content_for :title, "Sign-ups - #{@production.name}" %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-turbo-cache="false">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
@@ -48,7 +48,7 @@
         <%
           # Get current instance to check closes_at
           current_instance = if form.repeated?
-            form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC").first
+            form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC, sign_up_form_instances.id ASC").first
           else
             form.sign_up_form_instances.first
           end

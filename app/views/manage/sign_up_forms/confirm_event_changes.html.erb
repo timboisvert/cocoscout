@@ -1,0 +1,219 @@
+<% content_for :title, "Confirm Event Changes" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
+      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)],
+      ["Settings", settings_manage_production_sign_up_form_path(@production, @sign_up_form)]
+    ],
+    text: "Confirm Event Changes",
+    links: []
+  } %>
+
+  <div class="mb-8">
+    <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-pink-800">Event Associations Will Change</h3>
+          <p class="mt-1 text-sm text-pink-700">
+            Your event settings have changed. Review which events will be linked to this sign-up form.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <%# Current Events (Left Side) %>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">1</span>
+          Current Events
+          <span class="text-sm font-normal text-gray-500">(<%= @event_analysis[:current_instances].count %> events)</span>
+        </h3>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <% if @event_analysis[:current_instances].any? %>
+            <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+              <% @event_analysis[:current_instances].each do |instance| %>
+                <% show = instance.show %>
+                <% will_be_removed = @event_analysis[:instances_to_remove].include?(instance) %>
+                <div class="flex items-center gap-3 px-4 py-3 <%= will_be_removed ? 'bg-red-50' : '' %>">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate">
+                      <%= show.secondary_name.presence || show.event_type.titleize %>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      <%= show.date_and_time.strftime("%A, %b %-d at %-l:%M %p") %>
+                      <% if show.location.present? %>
+                        · <%= show.location.name %>
+                      <% end %>
+                    </p>
+                    <% registration_count = instance.sign_up_registrations.active.count %>
+                    <% if registration_count > 0 %>
+                      <p class="text-xs text-gray-500 mt-1">
+                        <%= registration_count %> registration<%= registration_count == 1 ? '' : 's' %>
+                      </p>
+                    <% end %>
+                  </div>
+                  <% if will_be_removed %>
+                    <span class="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-red-100 text-red-700">
+                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Removing
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-6 text-center text-gray-500">
+              <p class="text-sm">No events currently linked</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# New Events (Right Side) %>
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">2</span>
+          New Events
+          <span class="text-sm font-normal text-gray-500">(<%= @event_analysis[:new_matching_shows].count %> events)</span>
+        </h3>
+        <div class="bg-white border border-pink-200 rounded-lg overflow-hidden">
+          <% if @event_analysis[:new_matching_shows].any? %>
+            <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+              <% current_show_ids = @event_analysis[:current_instances].map { |i| i.show_id }.to_set %>
+              <% @event_analysis[:new_matching_shows].each do |show| %>
+                <% is_new = !current_show_ids.include?(show.id) %>
+                <div class="flex items-center gap-3 px-4 py-3 <%= is_new ? 'bg-green-50' : '' %>">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate">
+                      <%= show.secondary_name.presence || show.event_type.titleize %>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      <%= show.date_and_time.strftime("%A, %b %-d at %-l:%M %p") %>
+                      <% if show.location.present? %>
+                        · <%= show.location.name %>
+                      <% end %>
+                    </p>
+                  </div>
+                  <% if is_new %>
+                    <span class="inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-green-100 text-green-700">
+                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Adding
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-6 text-center text-gray-500">
+              <p class="text-sm">No events will be linked</p>
+              <p class="text-xs mt-1">Check your event matching settings if this is unexpected.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Summary of changes %>
+    <div class="mt-6 flex flex-wrap gap-4">
+      <% if @event_analysis[:shows_to_add_count] > 0 %>
+        <div class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+          <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="text-sm text-green-700">
+            <strong><%= @event_analysis[:shows_to_add_count] %></strong> event<%= @event_analysis[:shows_to_add_count] == 1 ? '' : 's' %> will be added
+          </span>
+        </div>
+      <% end %>
+      <% if @event_analysis[:instances_to_remove_count] > 0 %>
+        <div class="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+          <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span class="text-sm text-red-700">
+            <strong><%= @event_analysis[:instances_to_remove_count] %></strong> event<%= @event_analysis[:instances_to_remove_count] == 1 ? '' : 's' %> will be removed
+          </span>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Warning about affected registrations %>
+    <% if @event_analysis[:has_affected_registrations] %>
+      <div class="mt-6 bg-pink-50 border border-pink-200 rounded-lg p-5">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-semibold text-pink-900">Registrations Will Be Affected</h3>
+            <p class="mt-1 text-sm text-pink-800">
+              <%= @event_analysis[:total_affected_registration_count] %> registration<%= @event_analysis[:total_affected_registration_count] == 1 ? '' : 's' %>
+              will be cancelled because their event is being removed.
+            </p>
+
+            <div class="mt-4 space-y-3 max-h-64 overflow-y-auto">
+              <% @event_analysis[:affected_registrations].each do |affected| %>
+                <div class="flex items-center justify-between bg-white rounded-lg px-4 py-3 border border-pink-200">
+                  <div class="flex items-center gap-3">
+                    <% headshot = affected[:person]&.safe_headshot_variant(:thumb) %>
+                    <% if headshot %>
+                      <%= image_tag headshot, class: "w-8 h-8 rounded-lg object-cover" %>
+                    <% else %>
+                      <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                        <%= affected[:display_name].first.upcase %>
+                      </div>
+                    <% end %>
+                    <div>
+                      <% if affected[:person].present? %>
+                        <%= link_to affected[:display_name], manage_person_path(affected[:person]), class: "text-sm font-medium text-gray-900 hover:text-pink-600 hover:underline" %>
+                      <% else %>
+                        <span class="text-sm font-medium text-gray-900"><%= affected[:display_name] %></span>
+                      <% end %>
+                      <p class="text-xs text-gray-500">
+                        <%= affected[:show].date_and_time.strftime("%b %-d") %>
+                        · <%= affected[:slot].display_name rescue "Slot" %>
+                      </p>
+                    </div>
+                  </div>
+                  <span class="text-xs text-red-600">Will be cancelled</span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Action Buttons %>
+    <div class="mt-8 flex justify-between">
+      <%= link_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+                  class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Cancel & Go Back
+      <% end %>
+
+      <%= form_with url: apply_event_changes_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true, id: "apply_event_changes_form" do %>
+        <% if @event_analysis[:has_affected_registrations] %>
+          <input type="hidden" name="affected_action" value="cancel">
+        <% end %>
+        <%= render "shared/button", text: "Apply Changes", variant: "primary", size: "medium", type: :submit %>
+      <% end %>
+    </div>
+  </div>
+</div>

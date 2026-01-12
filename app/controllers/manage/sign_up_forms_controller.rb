@@ -6,12 +6,14 @@ module Manage
     before_action :set_sign_up_form, only: %i[
       show edit update destroy settings update_settings
       confirm_slot_changes apply_slot_changes
+      confirm_event_changes apply_event_changes
       create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
       holdouts create_holdout destroy_holdout
       create_question update_question destroy_question reorder_questions
       register register_to_queue cancel_registration move_registration
       preview print_list toggle_active archive unarchive
       assign assign_registration unassign_registration auto_assign_queue auto_assign_one
+      transfer
     ]
 
     def index
@@ -32,11 +34,12 @@ module Manage
       if @sign_up_form.repeated?
         # Get all instances that are navigable: open instances OR past closed instances
         # We want to show: past events (read-only) and currently open events
+        # Use secondary sort by instance id to ensure deterministic ordering when shows have same date/time
         @instances = @sign_up_form.sign_up_form_instances
           .joins(:show)
           .includes(:show, :sign_up_slots, sign_up_registrations: [ :sign_up_slot, :person ])
           .where.not(status: "cancelled")
-          .order("shows.date_and_time ASC")
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
 
         # For the right-side list, only show current and upcoming (not past closed)
         @upcoming_instances = @instances.select do |inst|
@@ -123,12 +126,15 @@ module Manage
       # Check if schedule settings are changing
       schedule_settings_changed = schedule_settings_will_change?
 
+      # Check if event associations will change (for repeated forms)
+      event_settings_changed = event_settings_will_change?
+
       success = false
 
       ActiveRecord::Base.transaction do
-        # Handle manual event selection - sync instances
+        # Handle manual event selection - sync SignUpFormShow records (not instances yet)
         if params[:selected_show_ids].present? && settings_params[:event_matching] == "manual"
-          sync_manual_event_instances(params[:selected_show_ids])
+          sync_manual_show_selections(params[:selected_show_ids])
         end
 
         # Handle holdback settings
@@ -154,7 +160,7 @@ module Manage
       end
 
       if success
-        # If slot settings changed and form has existing slots, show confirmation
+        # Store pending slot changes if needed
         has_existing_slots = case @sign_up_form.scope
         when "shared_pool"
           @sign_up_form.sign_up_slots.any?
@@ -163,7 +169,6 @@ module Manage
         end
 
         if slot_settings_changed && has_existing_slots
-          # Store pending changes in session for confirmation
           session[:pending_slot_changes] = {
             form_id: @sign_up_form.id,
             old_count: session[:old_slot_count],
@@ -171,6 +176,33 @@ module Manage
             old_capacity: session[:old_slot_capacity],
             new_capacity: @sign_up_form.slot_capacity
           }
+        end
+
+        # Check if event associations need confirmation (for repeated forms)
+        if @sign_up_form.repeated? && event_settings_changed
+          service = EventAssociationService.new(@sign_up_form)
+          event_analysis = service.analyze_event_changes
+
+          if event_analysis[:has_changes]
+            # If only adding events (no removals, no affected registrations), apply directly
+            if event_analysis[:instances_to_remove_count] == 0 && !event_analysis[:has_affected_registrations]
+              result = service.apply_event_changes!
+              if result[:success] && result[:created] > 0
+                flash[:notice] = "#{result[:created]} event#{'s' if result[:created] > 1} added to sign-up form"
+              end
+            else
+              # Need confirmation for removals
+              session[:pending_event_changes] = {
+                form_id: @sign_up_form.id
+              }
+              redirect_to confirm_event_changes_manage_production_sign_up_form_path(@production, @sign_up_form)
+              return
+            end
+          end
+        end
+
+        # If only slot changes (no event changes), go to slot confirmation
+        if session[:pending_slot_changes]&.dig("form_id") == @sign_up_form.id
           redirect_to confirm_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form)
         else
           redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
@@ -222,6 +254,53 @@ module Manage
                   notice: "Slot layout updated successfully"
     end
 
+    def confirm_event_changes
+      @pending_changes = session[:pending_event_changes]
+
+      unless @pending_changes && @pending_changes["form_id"] == @sign_up_form.id
+        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form)
+        return
+      end
+
+      # Use the service to analyze event changes
+      service = EventAssociationService.new(@sign_up_form)
+      @event_analysis = service.analyze_event_changes
+    end
+
+    def apply_event_changes
+      pending = session.delete(:pending_event_changes)
+
+      unless pending && pending["form_id"] == @sign_up_form.id
+        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "No pending changes to apply"
+        return
+      end
+
+      # Handle affected registrations based on user choice
+      affected_action = params[:affected_action]&.to_sym || :cancel
+
+      # Apply event changes using the service
+      service = EventAssociationService.new(@sign_up_form)
+      result = service.apply_event_changes!(affected_registration_action: affected_action)
+
+      if result[:success]
+        notice = "Event associations updated"
+        notice += " (#{result[:created]} added, #{result[:removed]} removed)" if result[:created] > 0 || result[:removed] > 0
+
+        # Check if there are also pending slot changes to process
+        if session[:pending_slot_changes]&.dig("form_id") == @sign_up_form.id
+          redirect_to confirm_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form),
+                      notice: notice
+        else
+          redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                      notice: notice
+        end
+      else
+        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: result[:errors]&.first || "Failed to update event associations"
+      end
+    end
+
     def handle_holdback_settings
       if params[:enable_holdbacks] == "1"
         # Create or update the every_n holdout
@@ -251,23 +330,6 @@ module Manage
       # Handle closes_before_after for custom mode - negative means "after"
       if params[:closes_before_after] == "after" && params[:sign_up_form][:closes_offset_value].present?
         params[:sign_up_form][:closes_offset_value] = -params[:sign_up_form][:closes_offset_value].to_i
-      end
-    end
-
-    def sync_manual_event_instances(show_ids)
-      show_ids = Array(show_ids).map(&:to_i)
-
-      # Remove instances for shows no longer selected
-      @sign_up_form.sign_up_form_instances.each do |instance|
-        instance.destroy unless show_ids.include?(instance.show_id)
-      end
-
-      # Add instances for newly selected shows
-      existing_show_ids = @sign_up_form.sign_up_form_instances.pluck(:show_id)
-      show_ids.each do |show_id|
-        unless existing_show_ids.include?(show_id)
-          @sign_up_form.sign_up_form_instances.create!(show_id: show_id)
-        end
       end
     end
 
@@ -493,7 +555,7 @@ module Manage
           .joins(:show)
           .where("shows.date_and_time > ?", Time.current)
           .where.not("shows.canceled = ?", true)
-          .order("shows.date_and_time ASC")
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
           .first
         @slots = @preview_instance&.sign_up_slots&.order(:position) || []
         @preview_show = @preview_instance&.show
@@ -515,7 +577,7 @@ module Manage
           .joins(:show)
           .includes(:show, sign_up_slots: { sign_up_registrations: :person })
           .where.not(status: "cancelled")
-          .order("shows.date_and_time ASC")
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
 
         if params[:instance_id].present?
           @current_instance = @instances.find_by(id: params[:instance_id])
@@ -553,6 +615,36 @@ module Manage
       @sign_up_form.unarchive!
       redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
                   notice: "Sign-up form restored"
+    end
+
+    def transfer
+      target_production_id = params[:target_production_id]
+      target_production = Current.user.accessible_productions.find_by(id: target_production_id)
+
+      unless target_production
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "Target production not found or you don't have access"
+        return
+      end
+
+      if target_production.id == @production.id
+        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                    alert: "Cannot move to the same production"
+        return
+      end
+
+      # Perform the transfer
+      SignUpFormTransferService.transfer(@sign_up_form, target_production)
+
+      # Switch to the target production in the session
+      session[:current_production_id_for_organization] ||= {}
+      session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = target_production.id
+
+      redirect_to manage_production_sign_up_form_path(target_production, @sign_up_form),
+                  notice: "Sign-up form moved to #{target_production.name}"
+    rescue StandardError => e
+      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+                  alert: "Failed to move sign-up form: #{e.message}"
     end
 
     # Queue assignment UI for admin_assigns mode
@@ -641,7 +733,7 @@ module Manage
       elsif @sign_up_form.repeated?
         @sign_up_form.sign_up_form_instances.joins(:show)
           .where("shows.date_and_time > ?", Time.current)
-          .order("shows.date_and_time ASC").first
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC").first
       else
         @sign_up_form.sign_up_form_instances.first
       end
@@ -772,6 +864,63 @@ module Manage
       return false unless holdout
 
       (position % holdout.holdout_value).zero?
+    end
+
+    def event_settings_will_change?
+      return false unless @sign_up_form.repeated?
+
+      # Store current state for comparison
+      current_show_ids = @sign_up_form.sign_up_form_instances.pluck(:show_id).to_set
+
+      new_event_matching = settings_params[:event_matching]
+      new_event_type_filter = settings_params[:event_type_filter]
+
+      # If event_matching is changing, events will likely change
+      if new_event_matching.present? && new_event_matching != @sign_up_form.event_matching
+        return true
+      end
+
+      # If event_type_filter is changing (and mode is event_types), events will change
+      if @sign_up_form.event_matching == "event_types" || new_event_matching == "event_types"
+        if new_event_type_filter.present?
+          current_filter = @sign_up_form.event_type_filter || []
+          new_filter = Array(new_event_type_filter).reject(&:blank?)
+          return true if current_filter.sort != new_filter.sort
+        end
+      end
+
+      # For manual mode, check if selected shows are different
+      if new_event_matching == "manual" && params[:selected_show_ids].present?
+        selected_ids = Array(params[:selected_show_ids]).map(&:to_i).to_set
+        current_selected_ids = @sign_up_form.sign_up_form_shows.pluck(:show_id).to_set
+        return true if selected_ids != current_selected_ids
+      end
+
+      # Check if there are no instances but there should be (needs sync)
+      if current_show_ids.empty?
+        # Calculate what would match
+        matching_count = @sign_up_form.matching_shows.count
+        return true if matching_count > 0
+      end
+
+      false
+    end
+
+    def sync_manual_show_selections(show_ids)
+      # Sync SignUpFormShow records (the selection), not instances
+      # Instances are created/removed during apply_event_changes
+      show_ids = Array(show_ids).map(&:to_i).reject(&:zero?)
+
+      # Remove selections no longer selected
+      @sign_up_form.sign_up_form_shows.where.not(show_id: show_ids).destroy_all
+
+      # Add newly selected shows
+      existing_show_ids = @sign_up_form.sign_up_form_shows.pluck(:show_id)
+      show_ids.each do |show_id|
+        unless existing_show_ids.include?(show_id)
+          @sign_up_form.sign_up_form_shows.create!(show_id: show_id)
+        end
+      end
     end
   end
 end

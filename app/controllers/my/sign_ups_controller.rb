@@ -193,7 +193,7 @@ module My
           .joins(:show)
           .where(status: "open")
           .where("shows.date_and_time > ?", Time.current)
-          .order("shows.date_and_time ASC")
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
           .includes(:show)
 
         # If an instance_id is specified, use that one
@@ -437,7 +437,7 @@ module My
           .joins(:show)
           .where(status: "open")
           .where("shows.date_and_time > ?", Time.current)
-          .order("shows.date_and_time ASC")
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
           .first
       when "shared_pool"
         # Shared pool has a single instance with no show

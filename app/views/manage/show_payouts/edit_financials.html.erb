@@ -99,7 +99,8 @@
 
         <!-- Other Revenue -->
         <%
-          has_other_revenue_details = @show_financials.other_revenue_details.present? && @show_financials.other_revenue_details.any?
+          other_revenue_items = @show_financials.other_revenue_details || []
+          has_other_revenue_details = other_revenue_items.any?
         %>
         <div class="bg-white rounded-lg border border-gray-200 p-5">
           <div class="flex items-center justify-between mb-4">
@@ -109,67 +110,68 @@
               </svg>
               Other Revenue
             </h3>
-            <button type="button"
-                    data-action="click->financials-form#toggleOtherRevenueMode"
-                    class="text-xs text-pink-600 hover:text-pink-700 font-medium">
-              <%= has_other_revenue_details ? "Use single amount" : "Add line items" %>
-            </button>
+            <%= render "shared/button",
+                text: "Add Item",
+                variant: "secondary",
+                size: "small",
+                icon: "plus",
+                data: { action: "click->financials-form#openOtherRevenueModal" } %>
           </div>
 
-          <!-- Simple Amount Mode -->
-          <div data-financials-form-target="otherRevenueSimple" class="<%= has_other_revenue_details ? 'hidden' : '' %>">
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <%= form.number_field :other_revenue, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">Merchandise, concessions, donations, tips, etc.</p>
-          </div>
-
-          <!-- Detailed Line Items Mode -->
-          <div data-financials-form-target="otherRevenueDetailed" class="<%= has_other_revenue_details ? '' : 'hidden' %>">
-            <div data-financials-form-target="otherRevenueItems" class="space-y-2">
-              <% if has_other_revenue_details %>
-                <% @show_financials.other_revenue_details.each_with_index do |item, index| %>
-                  <div data-line-item class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
-                    <input type="text"
-                           name="show_financials[other_revenue_details][<%= index %>][description]"
-                           value="<%= item["description"] %>"
-                           placeholder="Description"
-                           class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                    <div class="relative w-28">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                      <input type="number"
-                             name="show_financials[other_revenue_details][<%= index %>][amount]"
-                             value="<%= item["amount"] %>"
-                             min="0"
-                             step="0.01"
-                             placeholder="0.00"
-                             data-action="input->financials-form#updateOtherRevenueTotal"
-                             class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                    </div>
+          <% if has_other_revenue_details %>
+            <!-- Line Items List -->
+            <div data-financials-form-target="otherRevenueItems" class="space-y-2 mb-3">
+              <% other_revenue_items.each_with_index do |item, index| %>
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3" data-line-item data-index="<%= index %>">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate"><%= item["description"].presence || "Item #{index + 1}" %></p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm font-semibold text-gray-900"><%= number_to_currency(item["amount"]) %></span>
                     <button type="button"
-                            data-action="click->financials-form#removeLineItem"
-                            class="text-gray-400 hover:text-red-500 p-1">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            class="text-gray-400 hover:text-pink-600 p-1"
+                            data-action="click->financials-form#editOtherRevenueItem"
+                            data-index="<%= index %>"
+                            data-description="<%= item["description"] %>"
+                            data-amount="<%= item["amount"] %>">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                      </svg>
+                    </button>
+                    <button type="button"
+                            class="text-gray-400 hover:text-red-500 p-1"
+                            data-action="click->financials-form#removeOtherRevenueItem"
+                            data-index="<%= index %>">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                       </svg>
                     </button>
                   </div>
-                <% end %>
+                  <!-- Hidden fields for form submission -->
+                  <input type="hidden" name="show_financials[other_revenue_details][<%= index %>][description]" value="<%= item["description"] %>">
+                  <input type="hidden" name="show_financials[other_revenue_details][<%= index %>][amount]" value="<%= item["amount"] %>">
+                </div>
               <% end %>
             </div>
-
-            <button type="button"
-                    data-action="click->financials-form#addOtherRevenueItem"
-                    class="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-colors">
-              + Add revenue item
-            </button>
-
-            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+            <div class="flex items-center justify-between pt-3 border-t border-gray-200">
               <span class="text-sm font-medium text-gray-700">Total</span>
               <span data-financials-form-target="otherRevenueTotal" class="text-sm font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_other_revenue) %></span>
             </div>
-          </div>
+          <% else %>
+            <!-- Empty State with Simple Amount Option -->
+            <div data-financials-form-target="otherRevenueItems"></div>
+            <div data-financials-form-target="otherRevenueEmpty">
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <%= form.number_field :other_revenue, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Merchandise, concessions, donations, tips, etc. Or use "Add Item" for itemized tracking.</p>
+            </div>
+            <div data-financials-form-target="otherRevenueTotalRow" class="hidden flex items-center justify-between pt-3 border-t border-gray-200">
+              <span class="text-sm font-medium text-gray-700">Total</span>
+              <span data-financials-form-target="otherRevenueTotal" class="text-sm font-semibold text-gray-900">$0.00</span>
+            </div>
+          <% end %>
         </div>
       </div>
 
@@ -177,7 +179,8 @@
       <div class="space-y-6">
         <!-- Expenses -->
         <%
-          has_expense_details = @show_financials.expense_details.present? && @show_financials.expense_details.any?
+          expense_items = @show_financials.expense_details || []
+          has_expense_details = expense_items.any?
         %>
         <div class="bg-white rounded-lg border border-gray-200 p-5">
           <div class="flex items-center justify-between mb-4">
@@ -187,67 +190,68 @@
               </svg>
               Expenses
             </h3>
-            <button type="button"
-                    data-action="click->financials-form#toggleExpensesMode"
-                    class="text-xs text-pink-600 hover:text-pink-700 font-medium">
-              <%= has_expense_details ? "Use single amount" : "Add line items" %>
-            </button>
+            <%= render "shared/button",
+                text: "Add Item",
+                variant: "secondary",
+                size: "small",
+                icon: "plus",
+                data: { action: "click->financials-form#openExpenseModal" } %>
           </div>
 
-          <!-- Simple Amount Mode -->
-          <div data-financials-form-target="expensesSimple" class="<%= has_expense_details ? 'hidden' : '' %>">
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <%= form.number_field :expenses, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">Venue rental, supplies, etc. deducted before payout calculations.</p>
-          </div>
-
-          <!-- Detailed Line Items Mode -->
-          <div data-financials-form-target="expensesDetailed" class="<%= has_expense_details ? '' : 'hidden' %>">
-            <div data-financials-form-target="expensesItems" class="space-y-2">
-              <% if has_expense_details %>
-                <% @show_financials.expense_details.each_with_index do |item, index| %>
-                  <div data-line-item class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
-                    <input type="text"
-                           name="show_financials[expense_details][<%= index %>][description]"
-                           value="<%= item["description"] %>"
-                           placeholder="Description"
-                           class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                    <div class="relative w-28">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                      <input type="number"
-                             name="show_financials[expense_details][<%= index %>][amount]"
-                             value="<%= item["amount"] %>"
-                             min="0"
-                             step="0.01"
-                             placeholder="0.00"
-                             data-action="input->financials-form#updateExpensesTotal"
-                             class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
-                    </div>
+          <% if has_expense_details %>
+            <!-- Line Items List -->
+            <div data-financials-form-target="expenseItems" class="space-y-2 mb-3">
+              <% expense_items.each_with_index do |item, index| %>
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3" data-line-item data-index="<%= index %>">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate"><%= item["description"].presence || "Item #{index + 1}" %></p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm font-semibold text-gray-900"><%= number_to_currency(item["amount"]) %></span>
                     <button type="button"
-                            data-action="click->financials-form#removeLineItem"
-                            class="text-gray-400 hover:text-red-500 p-1">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            class="text-gray-400 hover:text-pink-600 p-1"
+                            data-action="click->financials-form#editExpenseItem"
+                            data-index="<%= index %>"
+                            data-description="<%= item["description"] %>"
+                            data-amount="<%= item["amount"] %>">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                      </svg>
+                    </button>
+                    <button type="button"
+                            class="text-gray-400 hover:text-red-500 p-1"
+                            data-action="click->financials-form#removeExpenseItem"
+                            data-index="<%= index %>">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                       </svg>
                     </button>
                   </div>
-                <% end %>
+                  <!-- Hidden fields for form submission -->
+                  <input type="hidden" name="show_financials[expense_details][<%= index %>][description]" value="<%= item["description"] %>">
+                  <input type="hidden" name="show_financials[expense_details][<%= index %>][amount]" value="<%= item["amount"] %>">
+                </div>
               <% end %>
             </div>
-
-            <button type="button"
-                    data-action="click->financials-form#addExpenseItem"
-                    class="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-colors">
-              + Add expense item
-            </button>
-
-            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+            <div class="flex items-center justify-between pt-3 border-t border-gray-200">
               <span class="text-sm font-medium text-gray-700">Total</span>
               <span data-financials-form-target="expensesTotal" class="text-sm font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_expenses) %></span>
             </div>
-          </div>
+          <% else %>
+            <!-- Empty State with Simple Amount Option -->
+            <div data-financials-form-target="expenseItems"></div>
+            <div data-financials-form-target="expensesEmpty">
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <%= form.number_field :expenses, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Venue rental, supplies, etc. Or use "Add Item" for itemized tracking.</p>
+            </div>
+            <div data-financials-form-target="expensesTotalRow" class="hidden flex items-center justify-between pt-3 border-t border-gray-200">
+              <span class="text-sm font-medium text-gray-700">Total</span>
+              <span data-financials-form-target="expensesTotal" class="text-sm font-semibold text-gray-900">$0.00</span>
+            </div>
+          <% end %>
         </div>
 
         <!-- Notes -->
@@ -312,4 +316,96 @@
     </div>
 
   <% end %>
+
+  <!-- Other Revenue Modal -->
+  <div data-financials-form-target="otherRevenueModal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-action="click->financials-form#closeOtherRevenueModal keydown.esc@window->financials-form#closeOtherRevenueModal">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->financials-form#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 data-financials-form-target="otherRevenueModalTitle" class="text-lg font-semibold text-gray-900">Add Revenue Item</h2>
+        <button type="button" data-action="click->financials-form#closeOtherRevenueModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <input type="text"
+                 data-financials-form-target="otherRevenueDescription"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+                 placeholder="e.g., Merchandise sales, Tips, Donations">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <input type="number"
+                   data-financials-form-target="otherRevenueAmount"
+                   min="0"
+                   step="0.01"
+                   class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+                   placeholder="0.00">
+          </div>
+        </div>
+        <input type="hidden" data-financials-form-target="otherRevenueEditIndex" value="">
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <button type="button"
+                data-action="click->financials-form#closeOtherRevenueModal"
+                class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+          Cancel
+        </button>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", data: { action: "click->financials-form#saveOtherRevenueItem", financials_form_target: "otherRevenueSaveButton" } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expense Modal -->
+  <div data-financials-form-target="expenseModal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-action="click->financials-form#closeExpenseModal keydown.esc@window->financials-form#closeExpenseModal">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->financials-form#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 data-financials-form-target="expenseModalTitle" class="text-lg font-semibold text-gray-900">Add Expense Item</h2>
+        <button type="button" data-action="click->financials-form#closeExpenseModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <input type="text"
+                 data-financials-form-target="expenseDescription"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+                 placeholder="e.g., Venue rental, Sound equipment, Props">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <input type="number"
+                   data-financials-form-target="expenseAmount"
+                   min="0"
+                   step="0.01"
+                   class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500"
+                   placeholder="0.00">
+          </div>
+        </div>
+        <input type="hidden" data-financials-form-target="expenseEditIndex" value="">
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <button type="button"
+                data-action="click->financials-form#closeExpenseModal"
+                class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+          Cancel
+        </button>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", data: { action: "click->financials-form#saveExpenseItem", financials_form_target: "expenseSaveButton" } %>
+      </div>
+    </div>
+  </div>
 </div>

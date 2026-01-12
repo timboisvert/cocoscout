@@ -192,7 +192,7 @@ class DashboardService
         form.sign_up_form_instances
             .joins(:show)
             .where("shows.date_and_time > ?", Time.current)
-            .order("shows.date_and_time ASC")
+            .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
             .first
       else
         form.sign_up_form_instances.first

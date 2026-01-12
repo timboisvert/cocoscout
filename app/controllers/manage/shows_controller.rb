@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer]
     before_action :ensure_user_is_manager, except: %i[index show]
 
     def index
@@ -746,6 +746,38 @@ module Manage
     def destroy
       # Legacy destroy action - redirects to new cancel page
       redirect_to cancel_manage_production_show_path(@production, @show)
+    end
+
+    def transfer
+      target_production_id = params[:target_production_id]
+      target_production = Current.user.accessible_productions.find_by(id: target_production_id)
+
+      unless target_production
+        redirect_to edit_manage_production_show_path(@production, @show),
+                    alert: "Target production not found or you don't have access"
+        return
+      end
+
+      if target_production.id == @production.id
+        redirect_to edit_manage_production_show_path(@production, @show),
+                    alert: "Cannot move to the same production"
+        return
+      end
+
+      # Perform the transfer
+      result = ShowTransferService.transfer(@show, target_production)
+
+      if result[:success]
+        # Switch to the target production in the session
+        session[:current_production_id_for_organization] ||= {}
+        session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = target_production.id
+
+        redirect_to edit_manage_production_show_path(target_production, @show),
+                    notice: "Successfully moved #{@show.event_type} to #{target_production.name}"
+      else
+        redirect_to edit_manage_production_show_path(@production, @show),
+                    alert: result[:error] || "Failed to move #{@show.event_type}"
+      end
     end
 
     private

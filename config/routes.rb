@@ -350,6 +350,7 @@ Rails.application.routes.draw do
           post :link_show
           delete :unlink_show
           delete :delete_linkage
+          patch :transfer
         end
 
         # Show-specific custom roles
@@ -539,6 +540,8 @@ Rails.application.routes.draw do
           patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
           get    "confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes"
           patch  "apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes"
+          get    "confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes"
+          patch  "apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes"
           post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
           patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
           delete "destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot",  as: "destroy_slot"
@@ -566,6 +569,7 @@ Rails.application.routes.draw do
           patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
           patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
           patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"
+          patch  "transfer",          to: "sign_up_forms#transfer",          as: "transfer"
         end
       end
 

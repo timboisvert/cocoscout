@@ -64,7 +64,7 @@ class SignUpFormStatusService
       .where("shows.date_and_time > ?", @now)
       .where.not(status: "cancelled")
       .where.not("shows.canceled = ?", true)
-      .order("shows.date_and_time ASC")
+      .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
       .map { |instance| build_instance_status(instance) }
   end
 

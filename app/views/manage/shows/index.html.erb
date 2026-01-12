@@ -1,6 +1,6 @@
 <% content_for :title, "Shows" %>
 
-<div class="w-full">
+<div class="w-full" data-turbo-cache="false">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],

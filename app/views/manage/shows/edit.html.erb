@@ -30,6 +30,7 @@
     <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
     <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Linked Events</button>
     <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+    <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
   </nav>
 
   <!-- Tab 1: Basic Information -->
@@ -533,12 +534,137 @@
     <% end %>
   </div>
 
+  <!-- Tab 7: Danger Zone -->
+  <div data-tabs-target="panel" class="hidden">
+    <div class="space-y-6">
+      <!-- Move to Another Production -->
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-yellow-800 mb-2">Move to Another Production</h3>
+            <p class="text-sm text-yellow-700 mb-4">
+              Move this <%= @show.event_type %> to a different production you have access to.
+              All assignments, vacancies, and associated data will be moved along with it.
+            </p>
+            <div class="mt-4">
+              <button type="button"
+                      onclick="window.dispatchEvent(new CustomEvent('show-actions:open-move-modal')); return false;"
+                      class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                </svg>
+                Move <%= @show.event_type.titleize %>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Event -->
+      <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-red-800 mb-2">Cancel or Delete this <%= @show.event_type.titleize %></h3>
+            <p class="text-sm text-red-700 mb-4">
+              Cancel to mark the event as canceled (preserves history), or delete to permanently remove it from the system.
+              <% if @show.recurring? %>
+                <strong>This is part of a recurring series of <%= @show.recurrence_group.count %> events.</strong>
+              <% end %>
+            </p>
+            <div class="mt-4">
+              <%= render "shared/button",
+                  text: "Cancel or Delete",
+                  variant: "danger",
+                  size: "medium",
+                  icon: "trash",
+                  path: cancel_manage_production_show_path(@production, @show) %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
   <div class="border-t border-gray-200 pt-5 mt-5">
     <%= render "shared/button", text: "Update #{sanitize(@show.event_type.titleize)}", variant: "primary", size: "medium", type: :submit, data: { show_edit_target: "submitButton", recurring_edit_target: "submitButton" } %>
     <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
   </div>
 
 <% end %>
+
+<!-- Move Modal (outside form to avoid nested form issues) -->
+<%
+  # Re-compute the values for the modal
+  modal_accessible_productions = Current.user.accessible_productions
+                                      .where.not(id: @production.id)
+                                      .order(:name)
+                                      .map { |prod| { id: prod.id, name: prod.name, show_count: prod.shows.count, logo_url: prod.logo.attached? ? url_for(prod.logo.variant(:small)) : nil } }
+
+  modal_move_warnings = []
+  modal_move_warnings << "#{@show.show_person_role_assignments.count} cast assignments will be moved with this event." if @show.show_person_role_assignments.any?
+  modal_move_warnings << "#{@show.role_vacancies.count} vacancy records will be moved with this event." if @show.role_vacancies.any?
+  modal_move_warning = modal_move_warnings.any? ? modal_move_warnings.join(" ") : nil
+%>
+<div id="show-move-modal"
+     data-controller="show-actions"
+     data-show-actions-productions-value="<%= modal_accessible_productions.to_json %>"
+     data-show-actions-warning-value="<%= modal_move_warning %>">
+  <div data-show-actions-target="moveModal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-action="click->show-actions#closeMoveModal keydown.esc@window->show-actions#closeMoveModal">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->show-actions#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Move <%= @show.event_type.titleize %> to Another Production</h2>
+        <button type="button" data-action="click->show-actions#closeMoveModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6">
+        <!-- Warning Box -->
+        <div data-show-actions-target="warningBox" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p data-show-actions-target="warningText" class="text-sm text-yellow-700"></p>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-4">Select the production to move this <%= @show.event_type %> to:</p>
+
+        <!-- Productions List -->
+        <div data-show-actions-target="productionsList" class="space-y-2 max-h-64 overflow-y-auto">
+          <div class="flex items-center justify-center py-8">
+            <svg class="animate-spin h-6 w-6 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="ml-2 text-sm text-gray-500">Loading productions...</span>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <button type="button"
+                data-action="click->show-actions#closeMoveModal"
+                class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+          Cancel
+        </button>
+        <%= form_with url: transfer_manage_production_show_path(@production, @show), method: :patch, data: { show_actions_target: "moveForm" } do |f| %>
+          <%= f.hidden_field :target_production_id, value: "", data: { show_actions_target: "targetProductionId" } %>
+          <%= render "shared/button", text: "Move #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, disabled: true, data: { show_actions_target: "moveButton" } %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Location Modal -->
 <div id="locationModal" data-location-modal-target="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

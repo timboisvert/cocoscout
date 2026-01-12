@@ -241,8 +241,8 @@ module Manage
       params.require(:show_financials).permit(
         :revenue_type, :ticket_count, :ticket_revenue, :flat_fee,
         :other_revenue, :expenses, :notes, :data_confirmed,
-        other_revenue_details: [:description, :amount],
-        expense_details: [:description, :amount]
+        other_revenue_details: [ :description, :amount ],
+        expense_details: [ :description, :amount ]
       )
     end
 
