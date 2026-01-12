@@ -71,7 +71,7 @@
             </span>
           <% elsif @sign_up_form.repeated? && form_status[:next_event] %>
             <span class="text-sm text-gray-500 hidden sm:inline">
-              Next event in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
+              Next event in <%= pluralize(form_status[:next_event][:days_until_show].floor, 'day') %>
             </span>
           <% end %>
           <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" data-disclosure-target="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">

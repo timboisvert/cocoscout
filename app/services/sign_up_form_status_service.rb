@@ -444,7 +444,7 @@ class SignUpFormStatusService
     elsif days < 2
       "Opens tomorrow"
     else
-      "Opens in #{days.ceil} days"
+      "Opens in #{days.floor} days"
     end
   end
 
@@ -626,7 +626,7 @@ class SignUpFormStatusService
 
     # Add next event timing
     if instance_status[:days_until_show]
-      days = instance_status[:days_until_show].round
+      days = instance_status[:days_until_show].floor
       if days == 0
         parts << "next event today"
       elsif days == 1

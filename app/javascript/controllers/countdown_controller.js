@@ -67,7 +67,7 @@ export default class extends Controller {
         }
 
         // Beyond tomorrow, show: "in X days"
-        const days = Math.ceil(diffSeconds / 86400)
+        const days = Math.floor(diffSeconds / 86400)
         return `in ${days} day${days === 1 ? '' : 's'}`
     }
 }

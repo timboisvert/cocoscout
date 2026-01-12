@@ -165,7 +165,7 @@
                     <% elsif form_status[:state] == :scheduled && form_status[:next_event] %>
                       <div class="text-xs text-gray-400 uppercase tracking-wide">Next event</div>
                       <div class="text-base text-gray-600">
-                        in <%= pluralize(form_status[:next_event][:days_until_show].ceil, 'day') %>
+                        in <%= pluralize(form_status[:next_event][:days_until_show].floor, 'day') %>
                       </div>
                     <% else %>
                       <div class="text-sm text-gray-500">&nbsp;</div>
