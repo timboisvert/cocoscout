@@ -598,8 +598,7 @@ Rails.application.routes.draw do
       post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
       get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
 
-      # Show payouts - explicitly named for manage_production_money_show_payout(s)_path pattern
-      get "money/payouts", to: "show_payouts#index", as: "money_show_payouts"
+      # Show payouts - explicitly named for manage_production_money_show_payout_path pattern
       get "money/payouts/:id", to: "show_payouts#show", as: "money_show_payout"
       patch "money/payouts/:id", to: "show_payouts#update"
       put "money/payouts/:id", to: "show_payouts#update"

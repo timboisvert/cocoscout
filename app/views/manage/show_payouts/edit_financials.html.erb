@@ -5,7 +5,6 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Money", manage_production_money_index_path(@production)],
-      ["Show Payouts", manage_production_money_show_payouts_path(@production)],
       [show_display_name(@show), manage_production_money_show_payout_path(@production, @show)]
     ],
     text: "Financial Data",

@@ -10,8 +10,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)],
-      ["Show Payouts", manage_production_money_show_payouts_path(@production)]
+      ["Money", manage_production_money_index_path(@production)]
     ],
     text: show_display_name(@show),
     links: []

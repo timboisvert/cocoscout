@@ -785,6 +785,7 @@ module Manage
     def set_production
       if Current.organization
         @production = Current.organization.productions.find(params[:production_id])
+        sync_current_production(@production)
       else
         redirect_to select_organization_path, alert: "Please select an organization first."
       end

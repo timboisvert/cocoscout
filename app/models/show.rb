@@ -78,6 +78,11 @@ class Show < ApplicationRecord
   # Event types are defined in config/event_types.yml
   enum :event_type, EventTypes.enum_hash
 
+  # Check if this event type typically generates revenue (shows, classes, workshops)
+  def revenue_event?
+    EventTypes.revenue_event_default(event_type)
+  end
+
   validates :event_type, presence: true
   validates :date_and_time, presence: true
   validate :poster_content_type

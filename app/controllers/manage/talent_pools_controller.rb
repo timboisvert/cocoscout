@@ -240,7 +240,12 @@ module Manage
     end
 
     def set_production
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return
+      end
       @production = Current.organization.productions.find(params.require(:production_id))
+      sync_current_production(@production)
     end
 
     def set_talent_pool

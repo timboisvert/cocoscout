@@ -81,6 +81,11 @@ module Manage
     end
 
     def set_production
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return
+      end
+
       production = Current.organization.productions.find(params[:id])
       unless Current.user.accessible_productions.include?(production)
         redirect_to select_production_path, alert: "You do not have access to this production."

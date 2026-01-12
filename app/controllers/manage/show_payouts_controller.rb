@@ -11,39 +11,6 @@ module Manage
       :mark_all_offline, :send_payment_reminders
     ]
 
-    def index
-      @filter = params[:filter] || "all"
-
-      base_scope = @production.shows
-                              .order(date_and_time: :desc)
-                              .includes(:show_financials, show_payout: :line_items)
-
-      # Include all shows (including canceled) in every filter
-      shows_scope = base_scope
-
-      case @filter
-      when "needs_data"
-        # Past shows without financials or with incomplete financials
-        @shows = shows_scope.left_joins(:show_financials)
-                            .where("show_financials.id IS NULL OR (show_financials.ticket_revenue IS NULL AND show_financials.flat_fee IS NULL)")
-                            .where("shows.date_and_time < ?", Time.current)
-      when "draft"
-        @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "draft" })
-      when "approved"
-        @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "approved" })
-      when "paid"
-        @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "paid" })
-      when "future"
-        # Future shows - for preparing payouts ahead of time (soonest first)
-        @shows = shows_scope.where("shows.date_and_time > ?", Time.current).reorder(date_and_time: :asc)
-      else
-        # All past shows
-        @shows = shows_scope.where("shows.date_and_time < ?", Time.current)
-      end
-
-      @shows = @shows.limit(50)
-    end
-
     def show
       @line_items = @show_payout.line_items.includes(:payee).by_amount
       @show_financials = @show.show_financials

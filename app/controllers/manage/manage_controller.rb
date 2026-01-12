@@ -221,5 +221,35 @@ module Manage
       max_user_updated = Current.organization.users.maximum(:updated_at)
       [ "team_members_v1", Current.organization.id, Current.user.id, max_role_updated, max_user_updated ]
     end
+
+    # Helper for child controllers to safely find production
+    # Returns true if production was found, false if redirected
+    # Also syncs Current.production and session when production is found from URL
+    def find_production_or_redirect(production_id)
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return false
+      end
+
+      @production = Current.organization.productions.find_by(id: production_id)
+      unless @production
+        redirect_to manage_productions_path, alert: "Production not found."
+        return false
+      end
+
+      # Sync Current.production and session with the URL-based production
+      sync_current_production(@production)
+      true
+    end
+
+    # Syncs Current.production and session to match the given production
+    # Call this after setting @production from URL params
+    def sync_current_production(production)
+      return unless production && Current.user && Current.organization
+
+      Current.production = production
+      session[:current_production_id_for_organization] ||= {}
+      session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = production.id
+    end
   end
 end

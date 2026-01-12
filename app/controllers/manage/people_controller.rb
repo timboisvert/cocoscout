@@ -328,51 +328,70 @@ module Manage
           existing_person.organizations << Current.organization
 
           if existing_person.user.nil?
-            user = User.create!(
-              email_address: existing_person.email,
-              password: User.generate_secure_password
-            )
-            existing_person.update!(user: user)
+            begin
+              user = User.create!(
+                email_address: existing_person.email,
+                password: User.generate_secure_password
+              )
+              existing_person.update!(user: user)
 
-            # Send invitation
-            person_invitation = PersonInvitation.create!(
-              email: existing_person.email,
-              organization: Current.organization
-            )
-            Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+              # Send invitation
+              person_invitation = PersonInvitation.create!(
+                email: existing_person.email,
+                organization: Current.organization
+              )
+              Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+              @invited << { email: email, name: existing_person.name, new_account: true }
+            rescue ActiveRecord::RecordInvalid => e
+              @errors << { email: email, reason: e.record.errors.full_messages.join(", ") }
+            end
+          else
+            @invited << { email: email, name: existing_person.name, new_account: false }
           end
-
-          @invited << { email: email, name: existing_person.name, new_account: existing_person.user.present? }
         else
           # Create new person and user
           name = email.split("@").first.gsub(/[._-]/, " ").titleize
           person = Person.new(name: name, email: email)
 
           if person.save
-            person.organizations << Current.organization
+            begin
+              person.organizations << Current.organization
 
-            user = User.create!(
-              email_address: person.email,
-              password: User.generate_secure_password
-            )
-            person.update!(user: user)
+              user = User.create!(
+                email_address: person.email,
+                password: User.generate_secure_password
+              )
+              person.update!(user: user)
 
-            person_invitation = PersonInvitation.create!(
-              email: person.email,
-              organization: Current.organization
-            )
-            Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
+              person_invitation = PersonInvitation.create!(
+                email: person.email,
+                organization: Current.organization
+              )
+              Manage::PersonMailer.person_invitation(person_invitation, invitation_subject, invitation_message).deliver_later
 
-            @invited << { email: email, name: person.name, new_account: true }
+              @invited << { email: email, name: person.name, new_account: true }
+            rescue ActiveRecord::RecordInvalid => e
+              @errors << { email: email, reason: e.record.errors.full_messages.join(", ") }
+            end
           else
             @errors << { email: email, reason: person.errors.full_messages.join(", ") }
           end
         end
       end
 
-      @batch_results = true
       @person = Person.new  # For the form
-      render :new
+
+      # If there are errors, only show the failed emails in the textarea
+      if @errors.any?
+        @batch_emails = @errors.map { |e| e[:email] }.join("\n")
+        render :new, status: :unprocessable_entity
+      elsif @invited.any? || @skipped.any? || @skipped_multiple_profiles.any?
+        # All processed successfully - show results
+        @batch_results = true
+        render :new
+      else
+        render :new
+      end
     end
 
     def add_to_cast

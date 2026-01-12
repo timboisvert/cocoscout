@@ -382,7 +382,12 @@ module Manage
     private
 
     def set_production
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return
+      end
       @production = Current.organization.productions.find(params[:production_id])
+      sync_current_production(@production)
     end
 
     def load_wizard_state

@@ -1,0 +1,64 @@
+<%#
+  Profitability Summary Box
+
+  Required:
+    - summary: Hash with financial metrics from FinancialSummaryService
+    - selected_period: Symbol (:this_week, :this_month, etc.)
+    - production: Production object
+%>
+
+<% period_labels = FinancialSummaryService::PERIOD_LABELS %>
+
+<div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+    <h2 class="text-lg font-semibold text-gray-900">Financial Overview</h2>
+
+    <%# Period Selector %>
+    <div class="flex flex-wrap gap-1">
+      <% period_labels.each do |key, label| %>
+        <%= link_to manage_production_money_index_path(production, period: key),
+            class: "px-3 py-1.5 rounded text-xs font-medium transition #{selected_period == key ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
+            data: { turbo_prefetch: false } do %>
+          <%= label %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if summary[:show_count] > 0 %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Revenue</div>
+        <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(summary[:total_revenue]) %></div>
+        <div class="text-xs text-gray-500">
+          <%= summary[:shows_with_data] %> of <%= summary[:show_count] %> shows
+        </div>
+      </div>
+
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Expenses</div>
+        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(summary[:total_expenses]) %></div>
+      </div>
+
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Net Profit</div>
+        <div class="text-2xl font-semibold <%= summary[:net_profit] >= 0 ? 'text-green-600' : 'text-red-600' %>">
+          <%= number_to_currency(summary[:net_profit]) %>
+        </div>
+        <div class="text-xs text-gray-500"><%= summary[:profit_margin] %>% margin</div>
+      </div>
+
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Retained</div>
+        <div class="text-2xl font-semibold <%= summary[:retained] >= 0 ? 'text-gray-900' : 'text-red-600' %>">
+          <%= number_to_currency(summary[:retained]) %>
+        </div>
+        <div class="text-xs text-gray-500">after payouts</div>
+      </div>
+    </div>
+  <% else %>
+    <div class="text-center py-4 text-gray-500">
+      No revenue events in this period.
+    </div>
+  <% end %>
+</div>

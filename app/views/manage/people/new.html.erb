@@ -12,7 +12,7 @@
     links: []
   } %>
 
-  <div class="w-full" data-controller="tabs invite-email-checker" data-tabs-initial-tab-value="<%= @batch_results ? 1 : 0 %>">
+  <div class="w-full" data-controller="tabs invite-email-checker" data-tabs-initial-tab-value="<%= @batch_results || @errors&.any? ? 1 : 0 %>">
 
     <%= render "shared/help_section",
       title: "Inviting People to CocoScout",
@@ -125,7 +125,7 @@
     <!-- Batch form -->
     <div data-tabs-target="panel">
       <% if @batch_results %>
-        <!-- Batch Results -->
+        <!-- Batch Results (shown when we have successful invites) -->
         <div class="space-y-4 mb-6">
           <% if @invited.any? %>
             <div class="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -205,7 +205,23 @@
             <div class="mt-1 text-sm text-gray-500 mb-2">
               Enter one email address per line. Names will be automatically generated from the email addresses.
             </div>
+
+            <% if @errors&.any? %>
+              <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                <p class="text-sm text-red-700">
+                  <% if @invited&.any? %>
+                    <strong class="text-green-700"><%= @invited.count %> invitation<%= @invited.count == 1 ? '' : 's' %> sent.</strong>
+                    The following <%= @errors.count == 1 ? 'email is' : 'emails are' %> invalid:<br>
+                  <% end %>
+                  <% @errors.each do |item| %>
+                    <%= item[:email] %> - <%= item[:reason] %><br>
+                  <% end %>
+                </p>
+              </div>
+            <% end %>
+
             <%= form.text_area :emails,
+                value: @batch_emails,
                 rows: 10,
                 placeholder: "john.smith@example.com\njane.doe@example.com\nalice@example.com",
                 class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full font-mono text-sm" %>

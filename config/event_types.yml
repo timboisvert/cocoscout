@@ -7,23 +7,28 @@ event_types:
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: true
+    revenue_event: true
   rehearsal:
     label: "Rehearsal"
     casting_enabled_default: false
     public_visible_default: false
     call_time_enabled_default: false
+    revenue_event: false
   meeting:
     label: "Meeting"
     casting_enabled_default: false
     public_visible_default: false
     call_time_enabled_default: false
+    revenue_event: false
   class:
     label: "Class"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: false
+    revenue_event: true
   workshop:
     label: "Workshop"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: false
+    revenue_event: true

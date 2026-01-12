@@ -101,4 +101,42 @@ class ShowPayout < ApplicationRecord
   def status_label
     status.capitalize
   end
+
+  # Returns a more context-aware status for display
+  # Instead of just "draft", this provides actionable context
+  def actionable_status
+    return "paid" if paid?
+    return "approved" if approved?
+
+    # For draft status, provide more meaningful context
+    if line_items.any?
+      "pending_approval"  # Has calculated payouts, awaiting approval
+    elsif show.show_financials&.complete?
+      "ready_to_calculate"  # Has financials, no payout calculated yet
+    else
+      "needs_financials"  # Missing financial data
+    end
+  end
+
+  def actionable_status_label
+    case actionable_status
+    when "needs_financials" then "Needs Financial Data"
+    when "ready_to_calculate" then "Ready to Calculate"
+    when "pending_approval" then "Pending Approval"
+    when "approved" then "Approved"
+    when "paid" then "Paid"
+    else status.capitalize
+    end
+  end
+
+  def actionable_status_badge_class
+    case actionable_status
+    when "needs_financials" then "bg-amber-100 text-amber-700"
+    when "ready_to_calculate" then "bg-blue-100 text-blue-700"
+    when "pending_approval" then "bg-yellow-100 text-yellow-700"
+    when "approved" then "bg-green-100 text-green-700"
+    when "paid" then "bg-pink-100 text-pink-700"
+    else "bg-gray-100 text-gray-700"
+    end
+  end
 end

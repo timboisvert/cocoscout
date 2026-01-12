@@ -222,10 +222,17 @@ module Manage
 
     # Use callbacks to share common setup or constraints between actions.
     def set_production
-      @production = Current.organization.productions.find_by(id: params[:id])
-      return if @production
+      unless Current.organization
+        redirect_to select_organization_path, alert: "Please select an organization first."
+        return
+      end
 
-      redirect_to manage_productions_path, alert: "Not authorized or not found" and return
+      @production = Current.organization.productions.find_by(id: params[:id])
+      unless @production
+        redirect_to manage_productions_path, alert: "Not authorized or not found" and return
+      end
+
+      sync_current_production(@production)
     end
 
     def set_production_in_session
