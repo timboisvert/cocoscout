@@ -62,6 +62,9 @@ Rails.application.configure do
     domain: "cocoscout.com"
   }
   config.action_mailer.default_url_options = { host: "cocoscout.com", protocol: "https" }
+  config.action_mailer.default_options = {
+    from: "CocoScout <info@cocoscout.com>"
+  }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
