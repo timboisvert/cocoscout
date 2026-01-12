@@ -120,15 +120,33 @@
               <% end %>
               <li>• <%= @wizard_state[:require_login] ? 'Login required' : 'Guest sign-ups allowed' %></li>
               <% if @wizard_state[:allow_edit] %>
-                <% if @wizard_state[:edit_has_cutoff] && @wizard_state[:scope] != 'shared_pool' %>
+                <% if @wizard_state[:edit_cutoff_mode].present? && @wizard_state[:scope] != 'shared_pool' %>
                   <li>• Edits allowed
                     <% case @wizard_state[:edit_cutoff_mode] %>
                     <% when 'at_event' %>
                       (until event starts)
                     <% when 'before_event' %>
-                      (until <%= @wizard_state[:edit_cutoff_hours] || 1 %>h before event)
+                      <%
+                        edit_days = @wizard_state[:edit_cutoff_days] || 0
+                        edit_hours = @wizard_state[:edit_cutoff_hours] || 0
+                        edit_mins = @wizard_state[:edit_cutoff_minutes] || 0
+                        edit_parts = []
+                        edit_parts << "#{edit_days}d" if edit_days > 0
+                        edit_parts << "#{edit_hours}h" if edit_hours > 0
+                        edit_parts << "#{edit_mins}m" if edit_mins > 0
+                      %>
+                      (until <%= edit_parts.any? ? edit_parts.join(' ') : '0m' %> before event)
                     <% when 'after_event' %>
-                      (until <%= @wizard_state[:edit_cutoff_hours] || 1 %>h after event starts)
+                      <%
+                        edit_days = @wizard_state[:edit_cutoff_days] || 0
+                        edit_hours = @wizard_state[:edit_cutoff_hours] || 0
+                        edit_mins = @wizard_state[:edit_cutoff_minutes] || 0
+                        edit_parts = []
+                        edit_parts << "#{edit_days}d" if edit_days > 0
+                        edit_parts << "#{edit_hours}h" if edit_hours > 0
+                        edit_parts << "#{edit_mins}m" if edit_mins > 0
+                      %>
+                      (until <%= edit_parts.any? ? edit_parts.join(' ') : '0m' %> after event starts)
                     <% end %>
                   </li>
                 <% else %>
@@ -138,15 +156,33 @@
                 <li>• Edits not allowed</li>
               <% end %>
               <% if @wizard_state[:allow_cancel] %>
-                <% if @wizard_state[:cancel_has_cutoff] && @wizard_state[:scope] != 'shared_pool' %>
+                <% if @wizard_state[:cancel_cutoff_mode].present? && @wizard_state[:scope] != 'shared_pool' %>
                   <li>• Cancellations allowed
                     <% case @wizard_state[:cancel_cutoff_mode] %>
                     <% when 'at_event' %>
                       (until event starts)
                     <% when 'before_event' %>
-                      (until <%= @wizard_state[:cancel_cutoff_hours] || 1 %>h before event)
+                      <%
+                        cancel_days = @wizard_state[:cancel_cutoff_days] || 0
+                        cancel_hours = @wizard_state[:cancel_cutoff_hours] || 0
+                        cancel_mins = @wizard_state[:cancel_cutoff_minutes] || 0
+                        cancel_parts = []
+                        cancel_parts << "#{cancel_days}d" if cancel_days > 0
+                        cancel_parts << "#{cancel_hours}h" if cancel_hours > 0
+                        cancel_parts << "#{cancel_mins}m" if cancel_mins > 0
+                      %>
+                      (until <%= cancel_parts.any? ? cancel_parts.join(' ') : '0m' %> before event)
                     <% when 'after_event' %>
-                      (until <%= @wizard_state[:cancel_cutoff_hours] || 1 %>h after event starts)
+                      <%
+                        cancel_days = @wizard_state[:cancel_cutoff_days] || 0
+                        cancel_hours = @wizard_state[:cancel_cutoff_hours] || 0
+                        cancel_mins = @wizard_state[:cancel_cutoff_minutes] || 0
+                        cancel_parts = []
+                        cancel_parts << "#{cancel_days}d" if cancel_days > 0
+                        cancel_parts << "#{cancel_hours}h" if cancel_hours > 0
+                        cancel_parts << "#{cancel_mins}m" if cancel_mins > 0
+                      %>
+                      (until <%= cancel_parts.any? ? cancel_parts.join(' ') : '0m' %> after event starts)
                     <% end %>
                   </li>
                 <% else %>
@@ -175,13 +211,36 @@
                 <% end %>
               <% elsif @wizard_state[:schedule_mode] == 'relative' %>
                 <%
-                  opens_value = @wizard_state[:opens_value] || 7
-                  opens_unit = @wizard_state[:opens_unit] || 'days'
-                  closes_value = @wizard_state[:closes_value] || 0
-                  closes_unit = @wizard_state[:closes_unit] || 'hours'
+                  opens_days = @wizard_state[:opens_days_before] || 7
+                  opens_hours = @wizard_state[:opens_hours_before] || 0
+                  opens_mins = @wizard_state[:opens_minutes_before] || 0
+                  closes_mode = @wizard_state[:closes_mode] || 'event_start'
+                  closes_days = @wizard_state[:closes_offset_days] || 0
+                  closes_hours = @wizard_state[:closes_offset_hours] || 0
+                  closes_mins = @wizard_state[:closes_minutes_offset] || 0
+                  closes_before_after = @wizard_state[:closes_before_after] || 'after'
                 %>
-                Opens <%= opens_value %> <%= opens_unit %> before each event,
-                closes <%= closes_value %> <%= closes_unit %> before
+                Opens
+                <% parts = [] %>
+                <% parts << "#{opens_days} day#{'s' if opens_days != 1}" if opens_days > 0 %>
+                <% parts << "#{opens_hours} hour#{'s' if opens_hours != 1}" if opens_hours > 0 %>
+                <% parts << "#{opens_mins} minute#{'s' if opens_mins != 1}" if opens_mins > 0 %>
+                <% if parts.empty? %>
+                  at event time
+                <% else %>
+                  <%= parts.join(', ') %> before each event
+                <% end %>,
+                <% if closes_mode == 'never' %>
+                  stays open until manually closed
+                <% elsif closes_mode == 'event_start' %>
+                  closes when event starts
+                <% else %>
+                  <% close_parts = [] %>
+                  <% close_parts << "#{closes_days} day#{'s' if closes_days != 1}" if closes_days > 0 %>
+                  <% close_parts << "#{closes_hours} hour#{'s' if closes_hours != 1}" if closes_hours > 0 %>
+                  <% close_parts << "#{closes_mins} minute#{'s' if closes_mins != 1}" if closes_mins > 0 %>
+                  closes <%= close_parts.any? ? close_parts.join(', ') : '0 hours' %> <%= closes_before_after %> event
+                <% end %>
               <% else %>
                 <% if @wizard_state[:opens_at].present? %>
                   Opens: <%= @wizard_state[:opens_at].is_a?(String) ? Time.parse(@wizard_state[:opens_at]).strftime('%b %-d, %Y at %-l:%M %p') : @wizard_state[:opens_at].strftime('%b %-d, %Y at %-l:%M %p') rescue @wizard_state[:opens_at] %>

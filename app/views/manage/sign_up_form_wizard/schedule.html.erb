@@ -104,25 +104,6 @@
         <!-- Schedule Mode Selection -->
         <div class="grid grid-cols-2 gap-3">
           <label class="block cursor-pointer">
-            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'immediate' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
-                 data-option-select-target="option"
-                 data-value="immediate"
-                 data-action="click->option-select#select">
-              <input type="radio" name="schedule_mode" value="immediate"
-                     <%= "checked" if schedule_mode == 'immediate' %>
-                     class="sr-only"
-                     data-option-select-target="input">
-              <div class="flex justify-center mb-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
-              </div>
-              <p class="font-medium text-gray-900 text-sm">Opens Immediately</p>
-              <p class="text-xs text-gray-500 mt-1">Open as soon as you create</p>
-            </div>
-          </label>
-
-          <label class="block cursor-pointer">
             <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'relative' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
                  data-option-select-target="option"
                  data-value="relative"
@@ -138,6 +119,25 @@
               </div>
               <p class="font-medium text-gray-900 text-sm">Relative to Event</p>
               <p class="text-xs text-gray-500 mt-1">Based on each event's date</p>
+            </div>
+          </label>
+
+          <label class="block cursor-pointer">
+            <div class="p-4 bg-gray-50 rounded-lg border-2 text-center <%= schedule_mode == 'immediate' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %> hover:border-pink-300 transition-colors"
+                 data-option-select-target="option"
+                 data-value="immediate"
+                 data-action="click->option-select#select">
+              <input type="radio" name="schedule_mode" value="immediate"
+                     <%= "checked" if schedule_mode == 'immediate' %>
+                     class="sr-only"
+                     data-option-select-target="input">
+              <div class="flex justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7 text-gray-600">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-900 text-sm">Opens Immediately</p>
+              <p class="text-xs text-gray-500 mt-1">Open as soon as you create</p>
             </div>
           </label>
 
@@ -179,6 +179,12 @@
           </div>
 
           <%# Close Registration Box for Immediate mode %>
+          <%
+            imm_closes_days = @wizard_state[:closes_offset_days] || 0
+            imm_closes_hours = @wizard_state[:closes_offset_hours] || 2
+            imm_closes_mins = @wizard_state[:closes_minutes_offset] || 0
+            imm_closes_before_after = @wizard_state[:closes_before_after] || 'after'
+          %>
           <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
             <label class="block text-gray-700 font-medium mb-3">Close registration</label>
             <div class="space-y-2">
@@ -195,7 +201,7 @@
                 </label>
               </div>
 
-              <%# Option 2: Close relative to event %>
+              <%# Option 2: Close relative to event (days/hours/minutes) %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
                           <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
                    data-action="click->closes-mode#selectCustom">
@@ -206,20 +212,19 @@
                          data-closes-mode-target="customRadio">
                   <span class="text-sm font-medium text-gray-900">Close registration</span>
                 </label>
-                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
-                  <input type="number" name="closes_offset_value" value="<%= closes_offset_value %>" min="0"
-                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                         onclick="event.stopPropagation()">
-                  <select name="closes_offset_unit" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                          onclick="event.stopPropagation()">
-                    <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
-                    <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
-                    <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
-                  </select>
-                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                          onclick="event.stopPropagation()">
-                    <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
-                    <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
+                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields" onclick="event.stopPropagation()">
+                  <input type="number" name="closes_offset_days" value="<%= imm_closes_days %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="closes_offset_hours" value="<%= imm_closes_hours %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="closes_minutes_offset" value="<%= imm_closes_mins %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes</span>
+                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                    <option value="after" <%= "selected" if imm_closes_before_after == 'after' %>>after</option>
+                    <option value="before" <%= "selected" if imm_closes_before_after == 'before' %>>before</option>
                   </select>
                   <span class="text-sm text-gray-600">event start</span>
                 </div>
@@ -243,25 +248,24 @@
 
         <!-- Relative Schedule Options -->
         <div data-option-select-target="conditionalRelative" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
-          <%# Open Registration Box %>
-          <div class="p-4 bg-gray-50 rounded-lg" data-controller="opens-unit">
+          <%# Open Registration Box - x days, y hours, z minutes before (default: 7 days, 0 hours, 0 minutes) %>
+          <%
+            opens_days = @wizard_state[:opens_days_before] || 7
+            opens_hours = @wizard_state[:opens_hours_before] || 0
+            opens_mins = @wizard_state[:opens_minutes_before] || 0
+          %>
+          <div class="p-4 bg-gray-50 rounded-lg">
             <label class="block text-gray-700 font-medium mb-2">Open registration</label>
             <div class="flex flex-wrap items-center gap-2">
-              <input type="number" name="opens_value" value="<%= opens_value %>" min="0"
-                     class="w-20 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-              <select name="opens_unit" class="shadow-sm rounded-lg border border-gray-400 px-3 py-2"
-                      data-opens-unit-target="unitSelect"
-                      data-action="change->opens-unit#updateMinutesVisibility">
-                <option value="days" <%= "selected" if opens_unit == 'days' %>>days</option>
-                <option value="hours" <%= "selected" if opens_unit == 'hours' %>>hours</option>
-              </select>
-              <div data-opens-unit-target="minutesField" class="<%= opens_unit == 'hours' ? 'flex' : 'hidden' %> items-center gap-2">
-                <span class="text-sm text-gray-600">and</span>
-                <input type="number" name="opens_minutes" value="<%= opens_minutes %>" min="0" max="59"
-                       class="w-16 shadow-sm rounded-lg border border-gray-400 px-3 py-2">
-                <span class="text-sm text-gray-600">minutes</span>
-              </div>
-              <span class="text-sm text-gray-600">before each event</span>
+              <input type="number" name="opens_days_before" value="<%= opens_days %>" min="0"
+                     class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+              <span class="text-sm text-gray-600">days</span>
+              <input type="number" name="opens_hours_before" value="<%= opens_hours %>" min="0" max="23"
+                     class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+              <span class="text-sm text-gray-600">hours</span>
+              <input type="number" name="opens_minutes_before" value="<%= opens_mins %>" min="0" max="59"
+                     class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+              <span class="text-sm text-gray-600">minutes before each event</span>
             </div>
           </div>
 
@@ -282,7 +286,13 @@
                 </label>
               </div>
 
-              <%# Option 2: Close relative to event %>
+              <%# Option 2: Close relative to event (default: 0 days, 2 hours, 0 minutes after) %>
+              <%
+                closes_days = @wizard_state[:closes_offset_days] || 0
+                closes_hours = @wizard_state[:closes_offset_hours] || 2
+                closes_mins = @wizard_state[:closes_minutes_offset] || 0
+                closes_before_after = @wizard_state[:closes_before_after] || 'after'
+              %>
               <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
                           <%= closes_mode == 'custom' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
                    data-action="click->closes-mode#selectCustom">
@@ -293,19 +303,18 @@
                          data-closes-mode-target="customRadio">
                   <span class="text-sm font-medium text-gray-900">Close registration</span>
                 </label>
-                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
-                  <input type="number" name="closes_offset_value" value="<%= closes_offset_value %>" min="0"
-                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                         onclick="event.stopPropagation()">
-                  <select name="closes_offset_unit" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                          onclick="event.stopPropagation()">
-                    <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
-                    <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
-                    <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
-                  </select>
-                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm"
-                          onclick="event.stopPropagation()">
-                    <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
+                <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields" onclick="event.stopPropagation()">
+                  <input type="number" name="closes_offset_days" value="<%= closes_days %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="closes_offset_hours" value="<%= closes_hours %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="closes_minutes_offset" value="<%= closes_mins %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes</span>
+                  <select name="closes_before_after" class="shadow-sm rounded-lg border border-gray-400 px-2 py-1.5 text-sm">
+                    <option value="after" <%= "selected" if closes_before_after == 'after' %>>after</option>
                     <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
                   </select>
                   <span class="text-sm text-gray-600">event start</span>
@@ -337,7 +346,7 @@
               <div class="ml-3">
                 <p class="text-sm text-blue-800">
                   <strong>Example:</strong> For an event on Saturday at 8 PM, sign-ups would open
-                  <%= opens_value %> <%= opens_unit %> before showtime.
+                  <%= @wizard_state[:opens_days_before] || 7 %> days before showtime.
                 </p>
               </div>
             </div>

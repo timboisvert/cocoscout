@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_12_063410) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_12_225950) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -433,9 +433,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_063410) do
 
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "invite_token"
     t.string "name"
     t.bigint "owner_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
   end
 
@@ -993,15 +995,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_063410) do
     t.boolean "allow_cancel", default: true
     t.boolean "allow_edit", default: true
     t.datetime "archived_at"
+    t.integer "cancel_cutoff_days", default: 0
     t.integer "cancel_cutoff_hours", default: 2
+    t.integer "cancel_cutoff_minutes", default: 0
+    t.string "cancel_cutoff_mode"
     t.datetime "closes_at"
     t.integer "closes_hours_before", default: 2
+    t.integer "closes_minutes_offset", default: 0
     t.string "closes_mode", default: "event_start", null: false
     t.string "closes_offset_unit", default: "hours"
     t.integer "closes_offset_value", default: 0
     t.datetime "created_at", null: false
     t.text "description"
+    t.integer "edit_cutoff_days", default: 0
     t.integer "edit_cutoff_hours", default: 24
+    t.integer "edit_cutoff_minutes", default: 0
+    t.string "edit_cutoff_mode"
     t.string "event_matching", default: "all"
     t.jsonb "event_type_filter", default: []
     t.boolean "holdback_visible", default: true, null: false
@@ -1010,6 +1019,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_063410) do
     t.boolean "notify_on_registration", default: false, null: false
     t.datetime "opens_at"
     t.integer "opens_days_before", default: 7
+    t.integer "opens_hours_before", default: 0
+    t.integer "opens_minutes_before", default: 0
     t.bigint "production_id", null: false
     t.boolean "queue_carryover", default: false, null: false
     t.integer "queue_limit"

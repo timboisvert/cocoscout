@@ -525,7 +525,15 @@
 
         <%# Allow Editing (not for open_list - nothing to edit) %>
         <% unless is_open_list %>
-        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+        <%
+          # Edit cutoff defaults - toggle off by default (edit_cutoff_mode is nil when off)
+          edit_has_cutoff = @sign_up_form.edit_cutoff_mode.present?
+          edit_cutoff_mode = @sign_up_form.edit_cutoff_mode || 'at_event'
+          edit_cutoff_days = @sign_up_form.edit_cutoff_days || 0
+          edit_cutoff_hours = @sign_up_form.edit_cutoff_hours || 0
+          edit_cutoff_minutes = @sign_up_form.edit_cutoff_minutes || 0
+        %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="cutoff-timing">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-semibold text-gray-900">Allow Editing</h3>
@@ -533,26 +541,77 @@
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
               <%= form.hidden_field :allow_edit, value: "0" %>
-              <%= form.check_box :allow_edit, class: "sr-only peer", value: "1", data: { action: "change->toggle-section#toggle", "toggle-section-target": "toggle" } %>
+              <%= form.check_box :allow_edit, class: "sr-only peer", value: "1", data: { action: "change->cutoff-timing#toggleEditSection", "cutoff-timing-target": "allowEdit" } %>
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
           <% unless is_waitlist %>
-          <div data-toggle-section-target="content" class="<%= @sign_up_form.allow_edit ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200">
-            <div class="flex items-center gap-3" data-controller="toggle-section">
+          <div data-cutoff-timing-target="editSection" class="<%= @sign_up_form.allow_edit ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200 space-y-3">
+            <div class="flex items-center gap-3">
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="edit_has_cutoff" value="0">
                 <input type="checkbox" name="edit_has_cutoff" value="1"
-                       <%= "checked" if @sign_up_form.edit_cutoff_hours && @sign_up_form.edit_cutoff_hours > 0 %>
-                       data-action="change->toggle-section#toggle"
-                       data-toggle-section-target="toggle"
+                       <%= "checked" if edit_has_cutoff %>
+                       data-action="change->cutoff-timing#toggleEditCutoff"
+                       data-cutoff-timing-target="editHasCutoff"
                        class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
               </label>
               <span class="text-sm text-gray-700">Set a cutoff for edits</span>
-              <div data-toggle-section-target="content" class="<%= @sign_up_form.edit_cutoff_hours && @sign_up_form.edit_cutoff_hours > 0 ? '' : 'hidden' %> ml-4 flex items-center gap-2">
-                <%= form.number_field :edit_cutoff_hours, min: 1, value: [@sign_up_form.edit_cutoff_hours || 1, 1].max, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-                <span class="text-sm text-gray-600">hours before event</span>
+            </div>
+
+            <div data-cutoff-timing-target="editCutoff" class="<%= edit_has_cutoff ? '' : 'hidden' %> space-y-3 ml-4 p-4 bg-white rounded-lg border border-gray-200">
+              <%# Option 1: At time of event %>
+              <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'at_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                     data-action="click->cutoff-timing#selectEditMode" data-value="at_event">
+                <input type="radio" name="sign_up_form[edit_cutoff_mode]" value="at_event"
+                       <%= "checked" if edit_cutoff_mode == 'at_event' %>
+                       class="sr-only"
+                       data-cutoff-timing-target="editModeAtEvent">
+                <span class="text-sm font-medium text-gray-900">At the time of the event</span>
+              </label>
+
+              <%# Option 2: Before the event %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'before_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectEditMode" data-value="before_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="sign_up_form[edit_cutoff_mode]" value="before_event"
+                         <%= "checked" if edit_cutoff_mode == 'before_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="editModeBefore">
+                  <span class="text-sm font-medium text-gray-900">Before the event</span>
+                </label>
+                <div data-cutoff-timing-target="editBeforeFields" class="<%= edit_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= form.number_field :edit_cutoff_days, min: 0, value: edit_cutoff_days, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">days</span>
+                  <%= form.number_field :edit_cutoff_hours, min: 0, max: 23, value: edit_cutoff_hours, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">hours</span>
+                  <%= form.number_field :edit_cutoff_minutes, min: 0, max: 59, value: edit_cutoff_minutes, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">minutes before</span>
+                </div>
+              </div>
+
+              <%# Option 3: After the event starts %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'after_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectEditMode" data-value="after_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="sign_up_form[edit_cutoff_mode]" value="after_event"
+                         <%= "checked" if edit_cutoff_mode == 'after_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="editModeAfter">
+                  <span class="text-sm font-medium text-gray-900">After the event starts</span>
+                </label>
+                <div data-cutoff-timing-target="editAfterFields" class="<%= edit_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="edit_cutoff_after_days" value="<%= @sign_up_form.edit_cutoff_days || 0 %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="edit_cutoff_after_hours" value="<%= @sign_up_form.edit_cutoff_hours || 0 %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="edit_cutoff_after_minutes" value="<%= @sign_up_form.edit_cutoff_minutes || 0 %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes after</span>
+                </div>
               </div>
             </div>
           </div>
@@ -561,7 +620,15 @@
         <% end %>
 
         <%# Allow Cancellation %>
-        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="toggle-section">
+        <%
+          # Cancel cutoff defaults - toggle off by default (cancel_cutoff_mode is nil when off)
+          cancel_has_cutoff = @sign_up_form.cancel_cutoff_mode.present?
+          cancel_cutoff_mode = @sign_up_form.cancel_cutoff_mode || 'at_event'
+          cancel_cutoff_days = @sign_up_form.cancel_cutoff_days || 0
+          cancel_cutoff_hours = @sign_up_form.cancel_cutoff_hours || 0
+          cancel_cutoff_minutes = @sign_up_form.cancel_cutoff_minutes || 0
+        %>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="cutoff-timing">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="font-semibold text-gray-900">Allow Cancellation</h3>
@@ -569,26 +636,77 @@
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
               <%= form.hidden_field :allow_cancel, value: "0" %>
-              <%= form.check_box :allow_cancel, class: "sr-only peer", value: "1", data: { action: "change->toggle-section#toggle", "toggle-section-target": "toggle" } %>
+              <%= form.check_box :allow_cancel, class: "sr-only peer", value: "1", data: { action: "change->cutoff-timing#toggleCancelSection", "cutoff-timing-target": "allowCancel" } %>
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
           <% unless is_waitlist %>
-          <div data-toggle-section-target="content" class="<%= @sign_up_form.allow_cancel ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200">
-            <div class="flex items-center gap-3" data-controller="toggle-section">
+          <div data-cutoff-timing-target="cancelSection" class="<%= @sign_up_form.allow_cancel ? '' : 'hidden' %> mt-4 pt-4 border-t border-gray-200 space-y-3">
+            <div class="flex items-center gap-3">
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="cancel_has_cutoff" value="0">
                 <input type="checkbox" name="cancel_has_cutoff" value="1"
-                       <%= "checked" if @sign_up_form.cancel_cutoff_hours && @sign_up_form.cancel_cutoff_hours > 0 %>
-                       data-action="change->toggle-section#toggle"
-                       data-toggle-section-target="toggle"
+                       <%= "checked" if cancel_has_cutoff %>
+                       data-action="change->cutoff-timing#toggleCancelCutoff"
+                       data-cutoff-timing-target="cancelHasCutoff"
                        class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
               </label>
               <span class="text-sm text-gray-700">Set a cutoff for cancellations</span>
-              <div data-toggle-section-target="content" class="<%= @sign_up_form.cancel_cutoff_hours && @sign_up_form.cancel_cutoff_hours > 0 ? '' : 'hidden' %> ml-4 flex items-center gap-2">
-                <%= form.number_field :cancel_cutoff_hours, min: 1, value: [@sign_up_form.cancel_cutoff_hours || 1, 1].max, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-                <span class="text-sm text-gray-600">hours before event</span>
+            </div>
+
+            <div data-cutoff-timing-target="cancelCutoff" class="<%= cancel_has_cutoff ? '' : 'hidden' %> space-y-3 ml-4 p-4 bg-white rounded-lg border border-gray-200">
+              <%# Option 1: At time of event %>
+              <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'at_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                     data-action="click->cutoff-timing#selectCancelMode" data-value="at_event">
+                <input type="radio" name="sign_up_form[cancel_cutoff_mode]" value="at_event"
+                       <%= "checked" if cancel_cutoff_mode == 'at_event' %>
+                       class="sr-only"
+                       data-cutoff-timing-target="cancelModeAtEvent">
+                <span class="text-sm font-medium text-gray-900">At the time of the event</span>
+              </label>
+
+              <%# Option 2: Before the event %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'before_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectCancelMode" data-value="before_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="sign_up_form[cancel_cutoff_mode]" value="before_event"
+                         <%= "checked" if cancel_cutoff_mode == 'before_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="cancelModeBefore">
+                  <span class="text-sm font-medium text-gray-900">Before the event</span>
+                </label>
+                <div data-cutoff-timing-target="cancelBeforeFields" class="<%= cancel_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= form.number_field :cancel_cutoff_days, min: 0, value: cancel_cutoff_days, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">days</span>
+                  <%= form.number_field :cancel_cutoff_hours, min: 0, max: 23, value: cancel_cutoff_hours, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">hours</span>
+                  <%= form.number_field :cancel_cutoff_minutes, min: 0, max: 59, value: cancel_cutoff_minutes, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">minutes before</span>
+                </div>
+              </div>
+
+              <%# Option 3: After the event starts %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'after_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectCancelMode" data-value="after_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="sign_up_form[cancel_cutoff_mode]" value="after_event"
+                         <%= "checked" if cancel_cutoff_mode == 'after_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="cancelModeAfter">
+                  <span class="text-sm font-medium text-gray-900">After the event starts</span>
+                </label>
+                <div data-cutoff-timing-target="cancelAfterFields" class="<%= cancel_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="cancel_cutoff_after_days" value="<%= @sign_up_form.cancel_cutoff_days || 0 %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="cancel_cutoff_after_hours" value="<%= @sign_up_form.cancel_cutoff_hours || 0 %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="cancel_cutoff_after_minutes" value="<%= @sign_up_form.cancel_cutoff_minutes || 0 %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes after</span>
+                </div>
               </div>
             </div>
           </div>
@@ -670,18 +788,37 @@
             </div>
 
             <%# Relative Schedule Options %>
-            <% closes_mode = @sign_up_form.closes_mode || "event_start" %>
-            <% closes_offset_value = @sign_up_form.closes_offset_value&.abs || 0 %>
-            <% closes_offset_unit = @sign_up_form.closes_offset_unit || "hours" %>
-            <% closes_before_after = (@sign_up_form.closes_offset_value || 0) < 0 ? "after" : "before" %>
-            <% is_never_close = closes_mode == "never" %>
+            <%
+              closes_mode = @sign_up_form.closes_mode || "event_start"
+              is_never_close = closes_mode == "never"
+              is_custom_close = closes_mode == "custom"
+              # Open registration timing (default: 7 days, 0 hours, 0 minutes)
+              opens_days = @sign_up_form.opens_days_before || 7
+              opens_hours = @sign_up_form.opens_hours_before || 0
+              opens_mins = @sign_up_form.opens_minutes_before || 0
+              # Close registration timing (default: 0 days, 2 hours, 0 minutes after)
+              closes_days = @sign_up_form.closes_offset_value&.abs || 0
+              closes_hours = @sign_up_form.closes_hours_before || 2
+              closes_mins = @sign_up_form.closes_minutes_offset || 0
+              closes_before_after = (@sign_up_form.closes_offset_value || 0) < 0 ? "after" : "before"
+              # For new fields, default to after
+              if closes_mode == "custom" && @sign_up_form.closes_before_after.present?
+                closes_before_after = @sign_up_form.closes_before_after
+              elsif closes_mode != "custom"
+                closes_before_after = "after"
+              end
+            %>
             <div data-settings-form-target="relativeScheduleSection" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
-              <%# Open Registration Box %>
+              <%# Open Registration Box (x days, y hours, z minutes before) %>
               <div class="p-4 bg-gray-50 rounded-lg">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Open registration</label>
-                <div class="flex items-center gap-2">
-                  <%= form.number_field :opens_days_before, min: 0, class: "w-20 rounded-lg border border-gray-300 px-3 py-2" %>
-                  <span class="text-sm text-gray-600">days before each event</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <%= form.number_field :opens_days_before, min: 0, value: opens_days, class: "w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">days</span>
+                  <%= form.number_field :opens_hours_before, min: 0, max: 23, value: opens_hours, class: "w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">hours</span>
+                  <%= form.number_field :opens_minutes_before, min: 0, max: 59, value: opens_mins, class: "w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                  <span class="text-sm text-gray-600">minutes before each event</span>
                 </div>
               </div>
 
@@ -689,7 +826,46 @@
               <div class="p-4 bg-gray-50 rounded-lg" data-controller="closes-mode">
                 <label class="block text-sm font-medium text-gray-700 mb-3">Close registration</label>
                 <div class="space-y-2">
-                  <%# Option 1: Don't close %>
+                  <%# Option 1: Close when event starts (default) %>
+                  <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors
+                                <%= closes_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                         data-action="click->closes-mode#selectEventStart">
+                    <input type="radio" name="sign_up_form[closes_mode]" value="event_start"
+                           <%= "checked" if closes_mode == 'event_start' %>
+                           class="sr-only"
+                           data-closes-mode-target="eventStartRadio">
+                    <span class="text-sm font-medium text-gray-900">Close when event starts</span>
+                  </label>
+
+                  <%# Option 2: Close relative to event (days/hours/minutes) %>
+                  <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors
+                              <%= is_custom_close ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
+                       data-action="click->closes-mode#selectCustom">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                      <input type="radio" name="sign_up_form[closes_mode]" value="custom"
+                             <%= "checked" if is_custom_close %>
+                             class="sr-only"
+                             data-closes-mode-target="customRadio">
+                      <span class="text-sm font-medium text-gray-900">Close registration</span>
+                    </label>
+                    <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields" onclick="event.stopPropagation()">
+                      <input type="number" name="closes_offset_days" value="<%= closes_days %>" min="0"
+                             class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                      <span class="text-sm text-gray-600">days</span>
+                      <input type="number" name="closes_offset_hours" value="<%= closes_hours %>" min="0" max="23"
+                             class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                      <span class="text-sm text-gray-600">hours</span>
+                      <%= form.number_field :closes_minutes_offset, min: 0, max: 59, value: closes_mins, class: "w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" %>
+                      <span class="text-sm text-gray-600">minutes</span>
+                      <select name="closes_before_after" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                        <option value="after" <%= "selected" if closes_before_after == 'after' %>>after</option>
+                        <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
+                      </select>
+                      <span class="text-sm text-gray-600">event start</span>
+                    </div>
+                  </div>
+
+                  <%# Option 3: Don't close automatically %>
                   <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors
                                 <%= is_never_close ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
                          data-action="click->closes-mode#selectNever">
@@ -699,39 +875,6 @@
                            data-closes-mode-target="neverRadio">
                     <span class="text-sm font-medium text-gray-900">Don't close automatically</span>
                   </label>
-
-                  <%# Option 2: Close relative to event %>
-                  <label class="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors
-                                <%= !is_never_close ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>"
-                         data-action="click->closes-mode#selectCustom">
-                    <input type="radio" name="closes_mode_toggle" value="custom"
-                           <%= "checked" unless is_never_close %>
-                           class="sr-only"
-                           data-closes-mode-target="customRadio">
-                    <div>
-                      <span class="text-sm font-medium text-gray-900">Close registration</span>
-                      <div class="flex flex-wrap items-center gap-2 mt-2" data-closes-mode-target="customFields">
-                        <input type="number" name="sign_up_form[closes_offset_value]" value="<%= closes_offset_value == 0 && !is_never_close && closes_mode == 'event_start' ? 0 : closes_offset_value %>" min="0"
-                               class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                               onclick="event.stopPropagation()">
-                        <select name="sign_up_form[closes_offset_unit]" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                                onclick="event.stopPropagation()">
-                          <option value="minutes" <%= "selected" if closes_offset_unit == 'minutes' %>>minutes</option>
-                          <option value="hours" <%= "selected" if closes_offset_unit == 'hours' %>>hours</option>
-                          <option value="days" <%= "selected" if closes_offset_unit == 'days' %>>days</option>
-                        </select>
-                        <select name="closes_before_after" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                                onclick="event.stopPropagation()">
-                          <option value="after" <%= "selected" if closes_before_after != 'before' %>>after</option>
-                          <option value="before" <%= "selected" if closes_before_after == 'before' %>>before</option>
-                        </select>
-                        <span class="text-sm text-gray-600">event start</span>
-                      </div>
-                    </div>
-                  </label>
-                  <%# Hidden field for actual closes_mode when custom is selected %>
-                  <input type="hidden" name="sign_up_form[closes_mode]" value="<%= is_never_close ? 'never' : 'custom' %>"
-                         data-closes-mode-target="modeField">
                 </div>
               </div>
             </div>

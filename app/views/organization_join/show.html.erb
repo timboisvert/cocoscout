@@ -1,0 +1,234 @@
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4">
+    <%= render "shared/cocoscout_logo", size: :medium %>
+    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+
+      <!-- Left Column: Invitation Info -->
+      <div class="order-2 lg:order-1">
+        <div class="lg:sticky lg:top-8">
+          <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
+            <!-- Organization Logo/Avatar -->
+            <div class="flex justify-center mb-6">
+              <% if @organization.logo.attached? %>
+                <%= image_tag @organization.logo, class: "w-24 h-24 rounded-xl object-cover border-2 border-pink-200 shadow-sm" %>
+              <% else %>
+                <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl shadow-sm">
+                  <%= @organization.name.first.upcase %>
+                </div>
+              <% end %>
+            </div>
+
+            <h2 class="text-2xl font-bold text-slate-900 text-center mb-2"><%= @organization.name %></h2>
+            <p class="text-slate-600 text-center mb-6">has invited you to join them on CocoScout</p>
+
+            <div class="border-t border-pink-200 pt-6 mb-6">
+              <!-- What You'll Get -->
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Track your schedule</h3>
+                    <p class="text-sm text-slate-600">View all your upcoming auditions, rehearsals, and performances</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Manage auditions</h3>
+                    <p class="text-sm text-slate-600">Submit audition materials and track your submissions</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Stay connected</h3>
+                    <p class="text-sm text-slate-600">Communicate with cast members and production teams</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p class="text-sm text-amber-800">
+                By accepting, you'll join <strong><%= @organization.name %></strong> on CocoScout. They'll be able to add you to their productions and events.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Form -->
+      <div class="order-1 lg:order-2">
+        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
+          <% if @already_member %>
+            <!-- Already a member -->
+            <h2 class="text-xl font-bold text-slate-900 mb-2">You're already a member!</h2>
+            <p class="text-sm text-slate-600 mb-6">You're already part of <%= @organization.name %>.</p>
+
+            <div class="flex flex-col gap-3">
+              <%= button_to "Continue to CocoScout", my_dashboard_path, method: :get, class: "w-full inline-flex items-center justify-center px-6 py-4 text-lg font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition cursor-pointer" %>
+            </div>
+
+          <% elsif @existing_user %>
+            <!-- Existing user - just show accept/decline -->
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Accept invitation?</h2>
+            <p class="text-sm text-slate-600 mb-6">You're signed in as <strong><%= Current.user.email_address %></strong></p>
+
+            <div class="flex flex-col gap-3">
+              <%= button_to "Accept & Join #{@organization.name}", do_join_organization_path(params[:token]), method: :post, class: "w-full inline-flex items-center justify-center px-6 py-4 text-lg font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition cursor-pointer" %>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-slate-200">
+              <p class="text-sm text-slate-600 text-center">
+                Not you?
+                <%= link_to "Sign out", signout_path, class: "font-semibold text-pink-500 hover:text-pink-600 transition" %>
+                and use a different account.
+              </p>
+            </div>
+          <% else %>
+            <!-- New user or not signed in - show email and password form -->
+            <% if @existing_user_wrong_password %>
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+                <h3 class="text-base font-semibold text-slate-900 mb-1">Account already exists</h3>
+                <p class="text-sm text-slate-600 mb-3">
+                  An account with this email already exists, but the password you entered is incorrect.
+                </p>
+                <%= link_to signin_path(email_address: @email, redirect_to: join_organization_path(params[:token])),
+                    class: "inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition" do %>
+                  Sign in to your account →
+                <% end %>
+              </div>
+            <% end %>
+
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Join CocoScout</h2>
+            <p class="text-sm text-slate-600 mb-6">Enter your details to join <%= @organization.name %></p>
+
+            <%= form_with url: do_join_organization_path(params[:token]), method: :post, data: { turbo: false } do |form| %>
+              <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                  Email address
+                </label>
+                <%= form.email_field :email,
+                      required: true,
+                      autocomplete: "email",
+                      placeholder: "your@email.com",
+                      value: @email,
+                      class: "block w-full rounded-lg border #{ @user&.errors&.[](:email_address)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition" %>
+                <% if @user&.errors&.[](:email_address)&.any? %>
+                  <p class="mt-1 text-sm text-pink-600"><%= @user.errors[:email_address].first %></p>
+                <% end %>
+              </div>
+
+              <div class="mb-6" data-controller="password-visibility password-strength">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                  Password
+                </label>
+                <div class="relative">
+                  <%= form.password_field :password,
+                        required: true,
+                        minlength: 8,
+                        autocomplete: "new-password",
+                        placeholder: "Create a password (at least 8 characters)",
+                        maxlength: 72,
+                        class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
+                        data: {
+                          password_visibility_target: "input",
+                          password_strength_target: "input",
+                          action: "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength"
+                        }
+                  %>
+                  <button type="button"
+                          data-action="password-visibility#toggle"
+                          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition">
+                    <span data-password-visibility-target="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+                <% if @user&.errors&.[](:password)&.any? %>
+                  <p class="mt-1 text-sm text-pink-600"><%= @user.errors[:password].first %></p>
+                <% end %>
+                <div class="mt-2 bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
+                  <p class="text-xs font-medium text-slate-700 mb-1.5">Password requirements:</p>
+                  <div class="space-y-1">
+                    <div class="flex items-start gap-2" data-password-strength-target="lengthCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">At least 8 characters</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="uppercaseCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One uppercase letter (A-Z)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="lowercaseCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One lowercase letter (a-z)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="numberCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One number (0-9)</span>
+                    </div>
+                    <div class="flex items-start gap-2" data-password-strength-target="specialCheck">
+                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
+                      </svg>
+                      <span class="text-xs text-slate-600 transition-colors">One special character (!@#$%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-3 mt-6">
+                  <%= render "shared/button",
+                      text: "Accept & Join #{@organization.name}",
+                      variant: "primary",
+                      size: "jumbo",
+                      type: :submit,
+                      disabled: true,
+                      classes: "!opacity-50 !cursor-not-allowed",
+                      data: { password_strength_target: "submit" } %>
+                </div>
+              </div>
+            <% end %>
+
+            <div class="mt-6 pt-6 border-t border-slate-200">
+              <p class="text-sm text-slate-600 text-center">
+                Already have an account?
+                <%= link_to "Sign in", signin_path(redirect_to: join_organization_path(params[:token])), class: "font-semibold text-pink-500 hover:text-pink-600 transition" %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

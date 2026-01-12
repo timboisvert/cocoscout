@@ -234,7 +234,7 @@
       </div>
 
       <!-- Changes & Cancellations Section -->
-      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5" data-controller="cutoff-timing">
         <h3 class="font-semibold text-gray-900 mb-4">Changes & Cancellations</h3>
 
         <!-- Allow Editing (not for open_list - nothing to edit) -->
@@ -249,40 +249,91 @@
               <input type="hidden" name="allow_edit" value="0">
               <input type="checkbox" name="allow_edit" value="1"
                      <%= "checked" if @wizard_state[:allow_edit].nil? || @wizard_state[:allow_edit] %>
-                     data-action="change->rules-form#toggleEditSection"
-                     data-rules-form-target="allowEdit"
+                     data-action="change->cutoff-timing#toggleEditSection"
+                     data-cutoff-timing-target="allowEdit"
                      class="sr-only peer">
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
 
           <% unless is_waitlist %>
-          <div data-rules-form-target="editSection" class="<%= @wizard_state[:allow_edit] == false ? 'hidden' : '' %> ml-4 space-y-3">
+          <%
+            # Edit cutoff defaults - toggle off by default (edit_cutoff_mode is nil when off)
+            edit_has_cutoff = @wizard_state[:edit_cutoff_mode].present?
+            edit_cutoff_mode = @wizard_state[:edit_cutoff_mode] || 'at_event'
+            edit_cutoff_days = @wizard_state[:edit_cutoff_days] || 0
+            edit_cutoff_hours = @wizard_state[:edit_cutoff_hours] || 0
+            edit_cutoff_minutes = @wizard_state[:edit_cutoff_minutes] || 0
+          %>
+          <div data-cutoff-timing-target="editSection" class="<%= @wizard_state[:allow_edit] == false ? 'hidden' : '' %> ml-4 space-y-3">
             <div class="flex items-center gap-3">
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="edit_has_cutoff" value="0">
                 <input type="checkbox" name="edit_has_cutoff" value="1"
-                       <%= "checked" if @wizard_state[:edit_has_cutoff] %>
-                       data-action="change->rules-form#toggleEditCutoff"
-                       data-rules-form-target="editHasCutoff"
+                       <%= "checked" if edit_has_cutoff %>
+                       data-action="change->cutoff-timing#toggleEditCutoff"
+                       data-cutoff-timing-target="editHasCutoff"
                        class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
               </label>
               <span class="text-sm text-gray-700">Set a cutoff for edits</span>
             </div>
 
-            <div data-rules-form-target="editCutoff" class="<%= @wizard_state[:edit_has_cutoff] ? '' : 'hidden' %> space-y-2">
-              <select name="edit_cutoff_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 w-full sm:w-auto"
-                      data-action="change->rules-form#toggleEditCutoffHours"
-                      data-rules-form-target="editCutoffMode">
-                <option value="at_event" <%= "selected" if edit_cutoff_mode == 'at_event' %>>At time of event</option>
-                <option value="before_event" <%= "selected" if edit_cutoff_mode == 'before_event' %>>Before the event</option>
-                <option value="after_event" <%= "selected" if edit_cutoff_mode == 'after_event' %>>After the event starts</option>
-              </select>
-              <div data-rules-form-target="editCutoffHours" class="<%= edit_cutoff_mode == 'at_event' ? 'hidden' : '' %> flex items-center gap-2 mt-2">
-                <input type="number" name="edit_cutoff_hours" value="<%= @wizard_state[:edit_cutoff_hours] || 1 %>" min="0"
-                       class="w-20 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
-                <span class="text-sm text-gray-600">hours <%= edit_cutoff_mode == 'after_event' ? 'after' : 'before' %> event</span>
+            <div data-cutoff-timing-target="editCutoff" class="<%= edit_has_cutoff ? '' : 'hidden' %> space-y-3 ml-4 p-4 bg-white rounded-lg border border-gray-200">
+              <%# Option 1: At time of event %>
+              <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'at_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                     data-action="click->cutoff-timing#selectEditMode" data-value="at_event">
+                <input type="radio" name="edit_cutoff_mode" value="at_event"
+                       <%= "checked" if edit_cutoff_mode == 'at_event' %>
+                       class="sr-only"
+                       data-cutoff-timing-target="editModeAtEvent">
+                <span class="text-sm font-medium text-gray-900">At the time of the event</span>
+              </label>
+
+              <%# Option 2: Before the event %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'before_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectEditMode" data-value="before_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="edit_cutoff_mode" value="before_event"
+                         <%= "checked" if edit_cutoff_mode == 'before_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="editModeBefore">
+                  <span class="text-sm font-medium text-gray-900">Before the event</span>
+                </label>
+                <div data-cutoff-timing-target="editBeforeFields" class="<%= edit_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="edit_cutoff_days" value="<%= edit_cutoff_days %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="edit_cutoff_hours" value="<%= edit_cutoff_hours %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="edit_cutoff_minutes" value="<%= edit_cutoff_minutes %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes before</span>
+                </div>
+              </div>
+
+              <%# Option 3: After the event starts %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= edit_cutoff_mode == 'after_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectEditMode" data-value="after_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="edit_cutoff_mode" value="after_event"
+                         <%= "checked" if edit_cutoff_mode == 'after_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="editModeAfter">
+                  <span class="text-sm font-medium text-gray-900">After the event starts</span>
+                </label>
+                <div data-cutoff-timing-target="editAfterFields" class="<%= edit_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="edit_cutoff_after_days" value="<%= @wizard_state[:edit_cutoff_after_days] || 0 %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="edit_cutoff_after_hours" value="<%= @wizard_state[:edit_cutoff_after_hours] || 0 %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="edit_cutoff_after_minutes" value="<%= @wizard_state[:edit_cutoff_after_minutes] || 0 %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes after</span>
+                </div>
               </div>
             </div>
           </div>
@@ -303,40 +354,91 @@
               <input type="hidden" name="allow_cancel" value="0">
               <input type="checkbox" name="allow_cancel" value="1"
                      <%= "checked" if @wizard_state[:allow_cancel].nil? || @wizard_state[:allow_cancel] %>
-                     data-action="change->rules-form#toggleCancelSection"
-                     data-rules-form-target="allowCancel"
+                     data-action="change->cutoff-timing#toggleCancelSection"
+                     data-cutoff-timing-target="allowCancel"
                      class="sr-only peer">
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
             </label>
           </div>
 
           <% unless is_waitlist %>
-          <div data-rules-form-target="cancelSection" class="<%= @wizard_state[:allow_cancel] == false ? 'hidden' : '' %> ml-4 space-y-3">
+          <%
+            # Cancel cutoff defaults - toggle off by default (cancel_cutoff_mode is nil when off)
+            cancel_has_cutoff = @wizard_state[:cancel_cutoff_mode].present?
+            cancel_cutoff_mode = @wizard_state[:cancel_cutoff_mode] || 'at_event'
+            cancel_cutoff_days = @wizard_state[:cancel_cutoff_days] || 0
+            cancel_cutoff_hours = @wizard_state[:cancel_cutoff_hours] || 0
+            cancel_cutoff_minutes = @wizard_state[:cancel_cutoff_minutes] || 0
+          %>
+          <div data-cutoff-timing-target="cancelSection" class="<%= @wizard_state[:allow_cancel] == false ? 'hidden' : '' %> ml-4 space-y-3">
             <div class="flex items-center gap-3">
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="hidden" name="cancel_has_cutoff" value="0">
                 <input type="checkbox" name="cancel_has_cutoff" value="1"
-                       <%= "checked" if @wizard_state[:cancel_has_cutoff] %>
-                       data-action="change->rules-form#toggleCancelCutoff"
-                       data-rules-form-target="cancelHasCutoff"
+                       <%= "checked" if cancel_has_cutoff %>
+                       data-action="change->cutoff-timing#toggleCancelCutoff"
+                       data-cutoff-timing-target="cancelHasCutoff"
                        class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
               </label>
               <span class="text-sm text-gray-700">Set a cutoff for cancellations</span>
             </div>
 
-            <div data-rules-form-target="cancelCutoff" class="<%= @wizard_state[:cancel_has_cutoff] ? '' : 'hidden' %> space-y-2">
-              <select name="cancel_cutoff_mode" class="block shadow-sm rounded-lg border border-gray-300 px-3 py-2 w-full sm:w-auto"
-                      data-action="change->rules-form#toggleCancelCutoffHours"
-                      data-rules-form-target="cancelCutoffMode">
-                <option value="at_event" <%= "selected" if cancel_cutoff_mode == 'at_event' %>>At time of event</option>
-                <option value="before_event" <%= "selected" if cancel_cutoff_mode == 'before_event' %>>Before the event</option>
-                <option value="after_event" <%= "selected" if cancel_cutoff_mode == 'after_event' %>>After the event starts</option>
-              </select>
-              <div data-rules-form-target="cancelCutoffHours" class="<%= cancel_cutoff_mode == 'at_event' ? 'hidden' : '' %> flex items-center gap-2 mt-2">
-                <input type="number" name="cancel_cutoff_hours" value="<%= @wizard_state[:cancel_cutoff_hours] || 1 %>" min="0"
-                       class="w-20 shadow-sm rounded-lg border border-gray-300 px-3 py-2">
-                <span class="text-sm text-gray-600">hours <%= cancel_cutoff_mode == 'after_event' ? 'after' : 'before' %> event</span>
+            <div data-cutoff-timing-target="cancelCutoff" class="<%= cancel_has_cutoff ? '' : 'hidden' %> space-y-3 ml-4 p-4 bg-white rounded-lg border border-gray-200">
+              <%# Option 1: At time of event %>
+              <label class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'at_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                     data-action="click->cutoff-timing#selectCancelMode" data-value="at_event">
+                <input type="radio" name="cancel_cutoff_mode" value="at_event"
+                       <%= "checked" if cancel_cutoff_mode == 'at_event' %>
+                       class="sr-only"
+                       data-cutoff-timing-target="cancelModeAtEvent">
+                <span class="text-sm font-medium text-gray-900">At the time of the event</span>
+              </label>
+
+              <%# Option 2: Before the event %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'before_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectCancelMode" data-value="before_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="cancel_cutoff_mode" value="before_event"
+                         <%= "checked" if cancel_cutoff_mode == 'before_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="cancelModeBefore">
+                  <span class="text-sm font-medium text-gray-900">Before the event</span>
+                </label>
+                <div data-cutoff-timing-target="cancelBeforeFields" class="<%= cancel_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="cancel_cutoff_days" value="<%= cancel_cutoff_days %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="cancel_cutoff_hours" value="<%= cancel_cutoff_hours %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="cancel_cutoff_minutes" value="<%= cancel_cutoff_minutes %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes before</span>
+                </div>
+              </div>
+
+              <%# Option 3: After the event starts %>
+              <div class="p-3 rounded-lg border-2 cursor-pointer transition-colors <%= cancel_cutoff_mode == 'after_event' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300' %>"
+                   data-action="click->cutoff-timing#selectCancelMode" data-value="after_event">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="cancel_cutoff_mode" value="after_event"
+                         <%= "checked" if cancel_cutoff_mode == 'after_event' %>
+                         class="sr-only"
+                         data-cutoff-timing-target="cancelModeAfter">
+                  <span class="text-sm font-medium text-gray-900">After the event starts</span>
+                </label>
+                <div data-cutoff-timing-target="cancelAfterFields" class="<%= cancel_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
+                  <input type="number" name="cancel_cutoff_after_days" value="<%= @wizard_state[:cancel_cutoff_after_days] || 0 %>" min="0"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">days</span>
+                  <input type="number" name="cancel_cutoff_after_hours" value="<%= @wizard_state[:cancel_cutoff_after_hours] || 0 %>" min="0" max="23"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">hours</span>
+                  <input type="number" name="cancel_cutoff_after_minutes" value="<%= @wizard_state[:cancel_cutoff_after_minutes] || 0 %>" min="0" max="59"
+                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+                  <span class="text-sm text-gray-600">minutes after</span>
+                </div>
               </div>
             </div>
           </div>

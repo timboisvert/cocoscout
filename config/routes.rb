@@ -31,6 +31,10 @@ Rails.application.routes.draw do
   get   "/set_password/:token",  to: "auth#set_password",        as: "set_password"
   post  "/set_password/:token",  to: "auth#handle_set_password", as: "handle_set_password"
 
+  # Public organization invite link - anyone can join via this link
+  get  "/join/:token", to: "organization_join#show", as: "join_organization"
+  post "/join/:token", to: "organization_join#join", as: "do_join_organization"
+
   # Account
   get   "/account",                       to: "account#show",                as: "account"
   patch "/account",                       to: "account#update"

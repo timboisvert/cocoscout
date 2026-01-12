@@ -452,12 +452,12 @@
               <!-- Restricted role: radio options for eligible-only vs all talent pool -->
               <div class="mb-4" data-controller="restricted-invite">
                 <label class="block font-semibold mb-3 text-sm">Select Recipients:</label>
-                
+
                 <%
                   # Separate eligible vs non-eligible members
                   eligible_members_list = @all_potential_members.select { |m| @role_eligible_member_keys.include?("#{m.class.name}_#{m.id}") }
                   other_members_list = @all_potential_members.reject { |m| @role_eligible_member_keys.include?("#{m.class.name}_#{m.id}") }
-                  
+
                   # Count available (not unavailable) in each group
                   eligible_available_count = eligible_members_list.count do |m|
                     is_vacated = m.class.name == @vacated_by_type && m.id == @vacated_by_id
@@ -466,7 +466,7 @@
                     !(is_vacated || is_already_cast || is_already_invited)
                   end
                 %>
-                
+
                 <div class="space-y-3">
                   <!-- Option 1: Only eligible members -->
                   <div>
@@ -484,7 +484,7 @@
                         <p class="text-xs text-gray-500 mt-0.5">Members marked as eligible for "<%= @vacancy.role.name %>"</p>
                       </div>
                     </label>
-                    
+
                     <!-- Eligible members checkbox list -->
                     <div class="ml-6 mt-2" data-restricted-invite-target="eligibleSection" data-controller="select-all">
                       <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">
@@ -545,7 +545,7 @@
                         <p class="text-xs text-gray-500 mt-0.5">Include members not marked as eligible for this role</p>
                       </div>
                     </label>
-                    
+
                     <!-- All members checkbox list (hidden by default) -->
                     <div class="ml-6 mt-2 hidden" data-restricted-invite-target="allSection" data-controller="select-all">
                       <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50">

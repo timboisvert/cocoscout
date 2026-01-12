@@ -147,8 +147,12 @@ module Manage
       @wizard_state[:allow_edit] = true if @wizard_state[:allow_edit].nil?
       @wizard_state[:allow_cancel] = false if @wizard_state[:allow_cancel].nil?
       @wizard_state[:show_registrations] = true if @wizard_state[:show_registrations].nil?
-      @wizard_state[:edit_cutoff_hours] ||= 24
-      @wizard_state[:cancel_cutoff_hours] ||= 2
+      @wizard_state[:edit_cutoff_days] ||= 0
+      @wizard_state[:edit_cutoff_hours] ||= 0
+      @wizard_state[:edit_cutoff_minutes] ||= 0
+      @wizard_state[:cancel_cutoff_days] ||= 0
+      @wizard_state[:cancel_cutoff_hours] ||= 0
+      @wizard_state[:cancel_cutoff_minutes] ||= 0
       @wizard_state[:holdback_visible] = true if @wizard_state[:holdback_visible].nil?
     end
 
@@ -159,8 +163,6 @@ module Manage
       @wizard_state[:allow_edit] = params[:allow_edit] == "1"
       @wizard_state[:allow_cancel] = params[:allow_cancel] == "1"
       @wizard_state[:show_registrations] = params[:show_registrations] == "1"
-      @wizard_state[:edit_cutoff_hours] = params[:edit_cutoff_hours].to_i if params[:allow_edit] == "1"
-      @wizard_state[:cancel_cutoff_hours] = params[:cancel_cutoff_hours].to_i if params[:allow_cancel] == "1"
 
       # Queue settings (for admin_assigns mode)
       if params[:slot_selection_mode] == "admin_assigns"
@@ -176,11 +178,39 @@ module Manage
         @wizard_state[:holdback_visible] = params[:holdback_visible] == "1"
       end
 
-      # Edit/cancel cutoff settings
+      # Edit cutoff settings (toggle OFF by default)
       @wizard_state[:edit_has_cutoff] = params[:edit_has_cutoff] == "1"
-      @wizard_state[:edit_cutoff_mode] = params[:edit_cutoff_mode]
+      if @wizard_state[:edit_has_cutoff]
+        @wizard_state[:edit_cutoff_mode] = params[:edit_cutoff_mode]
+        @wizard_state[:edit_cutoff_days] = params[:edit_cutoff_days].to_i
+        @wizard_state[:edit_cutoff_hours] = params[:edit_cutoff_hours].to_i
+        @wizard_state[:edit_cutoff_minutes] = params[:edit_cutoff_minutes].to_i
+        # Handle "after" mode - store in separate fields for clarity
+        if params[:edit_cutoff_mode] == "after_event"
+          @wizard_state[:edit_cutoff_after_days] = params[:edit_cutoff_after_days].to_i
+          @wizard_state[:edit_cutoff_after_hours] = params[:edit_cutoff_after_hours].to_i
+          @wizard_state[:edit_cutoff_after_minutes] = params[:edit_cutoff_after_minutes].to_i
+        end
+      else
+        @wizard_state[:edit_cutoff_mode] = nil
+      end
+
+      # Cancel cutoff settings (toggle OFF by default)
       @wizard_state[:cancel_has_cutoff] = params[:cancel_has_cutoff] == "1"
-      @wizard_state[:cancel_cutoff_mode] = params[:cancel_cutoff_mode]
+      if @wizard_state[:cancel_has_cutoff]
+        @wizard_state[:cancel_cutoff_mode] = params[:cancel_cutoff_mode]
+        @wizard_state[:cancel_cutoff_days] = params[:cancel_cutoff_days].to_i
+        @wizard_state[:cancel_cutoff_hours] = params[:cancel_cutoff_hours].to_i
+        @wizard_state[:cancel_cutoff_minutes] = params[:cancel_cutoff_minutes].to_i
+        # Handle "after" mode
+        if params[:cancel_cutoff_mode] == "after_event"
+          @wizard_state[:cancel_cutoff_after_days] = params[:cancel_cutoff_after_days].to_i
+          @wizard_state[:cancel_cutoff_after_hours] = params[:cancel_cutoff_after_hours].to_i
+          @wizard_state[:cancel_cutoff_after_minutes] = params[:cancel_cutoff_after_minutes].to_i
+        end
+      else
+        @wizard_state[:cancel_cutoff_mode] = nil
+      end
 
       if @wizard_state[:registrations_per_person] <= 0
         flash.now[:alert] = "Registrations per person must be at least 1"
@@ -212,29 +242,23 @@ module Manage
       if @wizard_state[:schedule_mode] == "immediate"
         # Opens immediately
         @wizard_state[:opens_at] = nil
-        # Save closes settings for immediate mode too
+        # Save closes settings for immediate mode too (days/hours/minutes)
         @wizard_state[:closes_mode] = params[:closes_mode] || "event_start"
-        @wizard_state[:closes_offset_value] = params[:closes_offset_value].to_i
-        @wizard_state[:closes_offset_unit] = params[:closes_offset_unit]
+        @wizard_state[:closes_offset_days] = params[:closes_offset_days].to_i
+        @wizard_state[:closes_offset_hours] = params[:closes_offset_hours].to_i
+        @wizard_state[:closes_minutes_offset] = params[:closes_minutes_offset].to_i
         @wizard_state[:closes_before_after] = params[:closes_before_after]
       elsif @wizard_state[:schedule_mode] == "relative"
-        # Opens settings
-        @wizard_state[:opens_value] = params[:opens_value].to_i
-        @wizard_state[:opens_unit] = params[:opens_unit]
-        @wizard_state[:opens_minutes] = params[:opens_minutes].to_i
-        # Convert to days_before for storage
-        if params[:opens_unit] == "days"
-          @wizard_state[:opens_days_before] = params[:opens_value].to_i
-        else
-          # Hours + minutes, convert to fractional days
-          total_hours = params[:opens_value].to_i + (params[:opens_minutes].to_i / 60.0)
-          @wizard_state[:opens_days_before] = (total_hours / 24.0).ceil
-        end
+        # Opens settings (days/hours/minutes before)
+        @wizard_state[:opens_days_before] = params[:opens_days_before].to_i
+        @wizard_state[:opens_hours_before] = params[:opens_hours_before].to_i
+        @wizard_state[:opens_minutes_before] = params[:opens_minutes_before].to_i
 
-        # Closes settings - new modes
+        # Closes settings (days/hours/minutes before/after)
         @wizard_state[:closes_mode] = params[:closes_mode]
-        @wizard_state[:closes_offset_value] = params[:closes_offset_value].to_i
-        @wizard_state[:closes_offset_unit] = params[:closes_offset_unit]
+        @wizard_state[:closes_offset_days] = params[:closes_offset_days].to_i
+        @wizard_state[:closes_offset_hours] = params[:closes_offset_hours].to_i
+        @wizard_state[:closes_minutes_offset] = params[:closes_minutes_offset].to_i
         @wizard_state[:closes_before_after] = params[:closes_before_after]
       else
         @wizard_state[:opens_at] = params[:opens_at]
@@ -310,13 +334,25 @@ module Manage
           allow_edit: @wizard_state[:allow_edit],
           allow_cancel: @wizard_state[:allow_cancel],
           show_registrations: @wizard_state[:show_registrations],
-          edit_cutoff_hours: @wizard_state[:edit_cutoff_hours],
-          cancel_cutoff_hours: @wizard_state[:cancel_cutoff_hours],
+          # Edit cutoff fields
+          edit_cutoff_mode: @wizard_state[:edit_cutoff_mode],
+          edit_cutoff_days: @wizard_state[:edit_cutoff_days] || 0,
+          edit_cutoff_hours: @wizard_state[:edit_cutoff_hours] || 0,
+          edit_cutoff_minutes: @wizard_state[:edit_cutoff_minutes] || 0,
+          # Cancel cutoff fields
+          cancel_cutoff_mode: @wizard_state[:cancel_cutoff_mode],
+          cancel_cutoff_days: @wizard_state[:cancel_cutoff_days] || 0,
+          cancel_cutoff_hours: @wizard_state[:cancel_cutoff_hours] || 0,
+          cancel_cutoff_minutes: @wizard_state[:cancel_cutoff_minutes] || 0,
+          # Schedule fields
           schedule_mode: @wizard_state[:schedule_mode],
-          opens_days_before: @wizard_state[:opens_days_before],
+          opens_days_before: @wizard_state[:opens_days_before] || 7,
+          opens_hours_before: @wizard_state[:opens_hours_before] || 0,
+          opens_minutes_before: @wizard_state[:opens_minutes_before] || 0,
           closes_mode: @wizard_state[:closes_mode] || "event_start",
           closes_offset_value: calculate_closes_offset_value,
           closes_offset_unit: @wizard_state[:closes_offset_unit] || "hours",
+          closes_minutes_offset: @wizard_state[:closes_minutes_offset] || 0,
           holdback_visible: @wizard_state.fetch(:holdback_visible, true),
           notify_on_registration: @wizard_state.fetch(:notify_on_registration, false)
         )
@@ -554,12 +590,18 @@ module Manage
     end
 
     def calculate_closes_offset_value
-      value = @wizard_state[:closes_offset_value].to_i
+      # Calculate total offset value using the new days/hours fields
+      # Store as total hours for backward compatibility with closes_offset_value
+      days = @wizard_state[:closes_offset_days].to_i
+      hours = @wizard_state[:closes_offset_hours].to_i
+      # Minutes are stored separately in closes_minutes_offset
+      total_hours = (days * 24) + hours
+
       # If "after" the event, store as negative value
       if @wizard_state[:closes_before_after] == "after"
-        -value
+        -total_hours
       else
-        value
+        total_hours
       end
     end
   end

@@ -14,6 +14,17 @@ class Organization < ApplicationRecord
 
   validates :name, presence: true
 
+  before_create :generate_invite_token
+
+  # Generate or ensure invite token exists
+  def ensure_invite_token!
+    if invite_token.blank?
+      generate_invite_token
+      save!
+    end
+    invite_token
+  end
+
   # Check if a user is the owner
   def owned_by?(user)
     owner_id == user&.id
@@ -55,5 +66,11 @@ class Organization < ApplicationRecord
         groups: groups.count
       }
     end
+  end
+
+  private
+
+  def generate_invite_token
+    self.invite_token = SecureRandom.urlsafe_base64(16)
   end
 end

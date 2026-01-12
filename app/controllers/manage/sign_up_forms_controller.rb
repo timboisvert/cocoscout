@@ -317,19 +317,34 @@ module Manage
     end
 
     def adjust_cutoff_settings
-      # If edit cutoff toggle is off, ensure hours are 0
-      if params[:edit_has_cutoff] == "0" && params[:sign_up_form]
+      return unless params[:sign_up_form]
+
+      # If edit cutoff toggle is off, clear the cutoff mode
+      if params[:edit_has_cutoff] == "0"
+        params[:sign_up_form][:edit_cutoff_mode] = nil
+        params[:sign_up_form][:edit_cutoff_days] = 0
         params[:sign_up_form][:edit_cutoff_hours] = 0
+        params[:sign_up_form][:edit_cutoff_minutes] = 0
       end
 
-      # If cancel cutoff toggle is off, ensure hours are 0
-      if params[:cancel_has_cutoff] == "0" && params[:sign_up_form]
+      # If cancel cutoff toggle is off, clear the cutoff mode
+      if params[:cancel_has_cutoff] == "0"
+        params[:sign_up_form][:cancel_cutoff_mode] = nil
+        params[:sign_up_form][:cancel_cutoff_days] = 0
         params[:sign_up_form][:cancel_cutoff_hours] = 0
+        params[:sign_up_form][:cancel_cutoff_minutes] = 0
       end
 
-      # Handle closes_before_after for custom mode - negative means "after"
-      if params[:closes_before_after] == "after" && params[:sign_up_form][:closes_offset_value].present?
-        params[:sign_up_form][:closes_offset_value] = -params[:sign_up_form][:closes_offset_value].to_i
+      # Handle closes offset calculation from days/hours fields
+      if params[:closes_offset_days].present? || params[:closes_offset_hours].present?
+        total_hours = (params[:closes_offset_days].to_i * 24) + params[:closes_offset_hours].to_i
+        # If "after" the event, store as negative value
+        if params[:closes_before_after] == "after"
+          params[:sign_up_form][:closes_offset_value] = -total_hours
+        else
+          params[:sign_up_form][:closes_offset_value] = total_hours
+        end
+        params[:sign_up_form][:closes_offset_unit] = "hours"
       end
     end
 
@@ -769,8 +784,11 @@ module Manage
         :registrations_per_person, :slot_selection_mode,
         :require_login, :show_registrations, :allow_edit, :allow_cancel,
         :edit_cutoff_hours, :cancel_cutoff_hours,
+        :edit_cutoff_mode, :edit_cutoff_days, :edit_cutoff_minutes,
+        :cancel_cutoff_mode, :cancel_cutoff_days, :cancel_cutoff_minutes,
         :enable_holdbacks, :holdback_interval, :holdback_label, :holdback_visible,
-        :schedule_mode, :opens_days_before, :closes_hours_before,
+        :schedule_mode, :opens_days_before, :opens_hours_before, :opens_minutes_before,
+        :closes_hours_before, :closes_minutes_offset,
         :closes_mode, :closes_offset_value, :closes_offset_unit,
         :opens_at, :closes_at,
         :notify_on_registration,

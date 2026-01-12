@@ -12,25 +12,85 @@
     links: []
   } %>
 
-  <div class="w-full" data-controller="tabs invite-email-checker" data-tabs-initial-tab-value="<%= @batch_results || @errors&.any? ? 1 : 0 %>">
+  <div class="w-full" data-controller="tabs invite-email-checker" data-tabs-initial-tab-value="<%= @batch_results || @errors&.any? ? 2 : 0 %>">
 
     <%= render "shared/help_section",
       title: "Inviting People to CocoScout",
       initial_state: "open",
       storage_key: "invite_people_help_collapsed",
       steps: [
-        { text: "Use this page to invite people (talent, performers, cast members) to join " + Current.organization.name + " on CocoScout." },
-        { text: "They will receive an email with a link to create a password and set up their profile." },
-        { text: "If someone already has a CocoScout account, they'll just need to sign in and will be automatically added to your organization." },
+        { text: "Get Invite Link: Copy a shareable link to send through your own email, Slack, or messaging apps." },
+        { text: "Invite Directly: Have CocoScout send an invitation email on your behalf." },
+        { text: "Batch Invite: Invite many people at once by pasting a list of email addresses." },
         { text: "Once they accept the invitation, you can add them to your production casts in the Directory." }
       ] %>
 
     <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Invite One Person</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Batch Invite</button>
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Get Invite Link</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Invite Directly</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Batch Invite</button>
     </nav>
 
-    <!-- Single person form -->
+    <!-- Get Invite Link tab -->
+    <div data-tabs-target="panel">
+      <div class="bg-gradient-to-r from-pink-50 to-white border border-pink-100 rounded-lg p-6 mb-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-pink-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Share your invite link</h3>
+            <p class="text-gray-600 text-sm">
+              Copy this link and send it through your own email, Slack, or any messaging app.
+              Anyone who clicks it will be able to join <%= Current.organization.name %> on CocoScout.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <% invite_url = join_organization_url(Current.organization.ensure_invite_token!) %>
+      <%= render "shared/copy_url",
+          url: invite_url,
+          label: "Your organization's invite link",
+          help_text: "This link never expires and can be used by anyone. Share it with your cast, crew, or team members." %>
+
+      <div class="mt-8 border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Sample Email Template" %>
+        <div class="p-4 bg-gray-50">
+          <p class="text-sm text-gray-600 mb-3">Here's a template you can copy and paste into your email:</p>
+          <div class="bg-white border border-gray-200 rounded-lg p-4 text-sm text-gray-700 font-mono whitespace-pre-wrap" id="email-template">Subject: Join <%= Current.organization.name %> on CocoScout
+
+Hi there,
+
+I'm inviting you to join <%= Current.organization.name %> on CocoScout, the platform we use to manage our productions, auditions, and casting.
+
+Click this link to get started:
+<%= invite_url %>
+
+If you already have a CocoScout account, just sign in and you'll be added automatically.
+
+Looking forward to working with you!
+          </div>
+          <div class="mt-3 flex justify-end" data-controller="copy-url">
+            <div data-copy-url-target="button" data-url="Subject: Join <%= Current.organization.name %> on CocoScout&#10;&#10;Hi there,&#10;&#10;I'm inviting you to join <%= Current.organization.name %> on CocoScout, the platform we use to manage our productions, auditions, and casting.&#10;&#10;Click this link to get started:&#10;<%= invite_url %>&#10;&#10;If you already have a CocoScout account, just sign in and you'll be added automatically.&#10;&#10;Looking forward to working with you!">
+              <%= render "shared/button",
+                text: "Copy Template",
+                variant: "outline-pink",
+                size: "small",
+                type: :button,
+                icon: "clipboard",
+                data: { action: "click->copy-url#copy" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single person form (Invite Directly) -->
     <div data-tabs-target="panel">
       <%= form_with(model: [:manage, @person], class: "contents", data: { invite_email_checker_target: "form" }) do |person_form| %>
 
