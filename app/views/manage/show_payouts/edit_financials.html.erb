@@ -1,6 +1,6 @@
 <% content_for :title, "Enter Financial Data - #{show_display_name(@show)}" %>
 
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="financials-form">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -12,28 +12,65 @@
     links: []
   } %>
 
-  <div class="max-w-xl">
-    <div class="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 class="font-semibold text-gray-900 mb-1"><%= show_display_name(@show, include_date: false) %></h2>
-      <p class="text-sm text-gray-500 mb-6"><%= @show.date_and_time.strftime("%A, %B %-d, %Y at %-I:%M %p") %></p>
+  <!-- Show Info Header -->
+  <div class="mb-6">
+    <h2 class="font-semibold text-gray-900 text-lg coustard-regular"><%= show_display_name(@show, include_date: false) %></h2>
+    <p class="text-sm text-gray-500"><%= @show.date_and_time.strftime("%A, %B %-d, %Y at %-I:%M %p") %></p>
+    <% if @show.canceled? %>
+      <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 mt-1">Canceled</span>
+    <% end %>
+  </div>
 
-      <%= form_with model: @show_financials, url: manage_production_update_financials_money_show_payout_path(@production, @show), method: :patch, local: true do |form| %>
+  <%= form_with model: @show_financials, url: manage_production_update_financials_money_show_payout_path(@production, @show), method: :patch, local: true, data: { financials_form_target: "form" } do |form| %>
 
-        <% if @show_financials.errors.any? %>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <ul class="text-sm text-red-700 list-disc list-inside">
-              <% @show_financials.errors.full_messages.each do |message| %>
-                <li><%= message %></li>
-              <% end %>
-            </ul>
+    <% if @show_financials.errors.any? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <ul class="text-sm text-red-700 list-disc list-inside">
+          <% @show_financials.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+      <!-- Left Column: Revenue -->
+      <div class="space-y-6">
+        <!-- Revenue Type Selector -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Primary Revenue
+          </h3>
+
+          <!-- Revenue Type Toggle -->
+          <div class="flex gap-2 mb-4">
+            <label class="flex-1">
+              <input type="radio" name="show_financials[revenue_type]" value="ticket_sales"
+                     <%= @show_financials.ticket_sales? ? "checked" : "" %>
+                     data-action="change->financials-form#toggleRevenueType"
+                     class="sr-only peer">
+              <div class="cursor-pointer rounded-lg border-2 border-gray-200 p-3 text-center transition-all peer-checked:border-pink-500 peer-checked:bg-pink-50">
+                <div class="font-medium text-gray-900">Ticket Sales</div>
+                <div class="text-xs text-gray-500">Revenue from selling tickets</div>
+              </div>
+            </label>
+            <label class="flex-1">
+              <input type="radio" name="show_financials[revenue_type]" value="flat_fee"
+                     <%= @show_financials.flat_fee? ? "checked" : "" %>
+                     data-action="change->financials-form#toggleRevenueType"
+                     class="sr-only peer">
+              <div class="cursor-pointer rounded-lg border-2 border-gray-200 p-3 text-center transition-all peer-checked:border-pink-500 peer-checked:bg-pink-50">
+                <div class="font-medium text-gray-900">Flat Fee</div>
+                <div class="text-xs text-gray-500">Paid a set amount for the show</div>
+              </div>
+            </label>
           </div>
-        <% end %>
 
-        <div class="space-y-5">
-
-          <!-- Ticket Sales -->
-          <div class="p-4 bg-gray-50 rounded-lg">
-            <h3 class="font-medium text-gray-900 mb-3">Ticket Sales</h3>
+          <!-- Ticket Sales Fields -->
+          <div data-financials-form-target="ticketSalesFields" class="<%= @show_financials.flat_fee? ? 'hidden' : '' %>">
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <%= form.label :ticket_count, "Tickets Sold", class: "block text-sm font-medium text-gray-700 mb-1" %>
@@ -49,19 +86,116 @@
             </div>
           </div>
 
-          <!-- Other Revenue -->
-          <div>
-            <%= form.label :other_revenue, "Other Revenue", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <!-- Flat Fee Field -->
+          <div data-financials-form-target="flatFeeFields" class="<%= @show_financials.ticket_sales? ? 'hidden' : '' %>">
+            <%= form.label :flat_fee, "Flat Fee Amount", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <%= form.number_field :flat_fee, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">The guaranteed amount you were paid for this performance</p>
+          </div>
+        </div>
+
+        <!-- Other Revenue -->
+        <%
+          has_other_revenue_details = @show_financials.other_revenue_details.present? && @show_financials.other_revenue_details.any?
+        %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+              </svg>
+              Other Revenue
+            </h3>
+            <button type="button"
+                    data-action="click->financials-form#toggleOtherRevenueMode"
+                    class="text-xs text-pink-600 hover:text-pink-700 font-medium">
+              <%= has_other_revenue_details ? "Use single amount" : "Add line items" %>
+            </button>
+          </div>
+
+          <!-- Simple Amount Mode -->
+          <div data-financials-form-target="otherRevenueSimple" class="<%= has_other_revenue_details ? 'hidden' : '' %>">
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <%= form.number_field :other_revenue, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Merchandise, concessions, donations, etc.</p>
+            <p class="text-xs text-gray-500 mt-1">Merchandise, concessions, donations, tips, etc.</p>
           </div>
 
-          <!-- Expenses -->
-          <div>
-            <%= form.label :expenses, "Expenses", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <!-- Detailed Line Items Mode -->
+          <div data-financials-form-target="otherRevenueDetailed" class="<%= has_other_revenue_details ? '' : 'hidden' %>">
+            <div data-financials-form-target="otherRevenueItems" class="space-y-2">
+              <% if has_other_revenue_details %>
+                <% @show_financials.other_revenue_details.each_with_index do |item, index| %>
+                  <div data-line-item class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+                    <input type="text"
+                           name="show_financials[other_revenue_details][<%= index %>][description]"
+                           value="<%= item["description"] %>"
+                           placeholder="Description"
+                           class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                    <div class="relative w-28">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input type="number"
+                             name="show_financials[other_revenue_details][<%= index %>][amount]"
+                             value="<%= item["amount"] %>"
+                             min="0"
+                             step="0.01"
+                             placeholder="0.00"
+                             data-action="input->financials-form#updateOtherRevenueTotal"
+                             class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                    </div>
+                    <button type="button"
+                            data-action="click->financials-form#removeLineItem"
+                            class="text-gray-400 hover:text-red-500 p-1">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+
+            <button type="button"
+                    data-action="click->financials-form#addOtherRevenueItem"
+                    class="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-colors">
+              + Add revenue item
+            </button>
+
+            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+              <span class="text-sm font-medium text-gray-700">Total</span>
+              <span data-financials-form-target="otherRevenueTotal" class="text-sm font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_other_revenue) %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Expenses & Notes -->
+      <div class="space-y-6">
+        <!-- Expenses -->
+        <%
+          has_expense_details = @show_financials.expense_details.present? && @show_financials.expense_details.any?
+        %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+              </svg>
+              Expenses
+            </h3>
+            <button type="button"
+                    data-action="click->financials-form#toggleExpensesMode"
+                    class="text-xs text-pink-600 hover:text-pink-700 font-medium">
+              <%= has_expense_details ? "Use single amount" : "Add line items" %>
+            </button>
+          </div>
+
+          <!-- Simple Amount Mode -->
+          <div data-financials-form-target="expensesSimple" class="<%= has_expense_details ? 'hidden' : '' %>">
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <%= form.number_field :expenses, min: 0, step: 0.01, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
@@ -69,22 +203,113 @@
             <p class="text-xs text-gray-500 mt-1">Venue rental, supplies, etc. deducted before payout calculations.</p>
           </div>
 
-          <!-- Notes -->
-          <div>
-            <%= form.label :notes, "Notes (optional)", class: "block text-sm font-medium text-gray-700 mb-1" %>
-            <%= form.text_area :notes, rows: 2, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Any notes about this show's finances..." %>
+          <!-- Detailed Line Items Mode -->
+          <div data-financials-form-target="expensesDetailed" class="<%= has_expense_details ? '' : 'hidden' %>">
+            <div data-financials-form-target="expensesItems" class="space-y-2">
+              <% if has_expense_details %>
+                <% @show_financials.expense_details.each_with_index do |item, index| %>
+                  <div data-line-item class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+                    <input type="text"
+                           name="show_financials[expense_details][<%= index %>][description]"
+                           value="<%= item["description"] %>"
+                           placeholder="Description"
+                           class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                    <div class="relative w-28">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input type="number"
+                             name="show_financials[expense_details][<%= index %>][amount]"
+                             value="<%= item["amount"] %>"
+                             min="0"
+                             step="0.01"
+                             placeholder="0.00"
+                             data-action="input->financials-form#updateExpensesTotal"
+                             class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                    </div>
+                    <button type="button"
+                            data-action="click->financials-form#removeLineItem"
+                            class="text-gray-400 hover:text-red-500 p-1">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+
+            <button type="button"
+                    data-action="click->financials-form#addExpenseItem"
+                    class="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-colors">
+              + Add expense item
+            </button>
+
+            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+              <span class="text-sm font-medium text-gray-700">Total</span>
+              <span data-financials-form-target="expensesTotal" class="text-sm font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_expenses) %></span>
+            </div>
           </div>
-
         </div>
 
-        <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-          <%= link_to manage_production_money_show_payout_path(@production, @show), class: "text-gray-600 hover:text-gray-900" do %>
-            Cancel
-          <% end %>
-          <%= render "shared/button", text: "Save Financial Data", variant: "primary", size: "medium", type: :submit %>
+        <!-- Notes -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            Notes
+          </h3>
+          <%= form.text_area :notes, rows: 3, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Any notes about this show's finances..." %>
         </div>
 
-      <% end %>
+        <!-- Summary Preview -->
+        <% if @show_financials.has_data? %>
+          <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+            <h3 class="font-semibold text-gray-900 mb-3">Summary</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Primary Revenue</span>
+                <span class="font-medium text-gray-900"><%= number_to_currency(@show_financials.primary_revenue) %></span>
+              </div>
+              <% if @show_financials.calculated_other_revenue > 0 %>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Other Revenue</span>
+                  <span class="font-medium text-gray-900"><%= number_to_currency(@show_financials.calculated_other_revenue) %></span>
+                </div>
+              <% end %>
+              <% if @show_financials.calculated_expenses > 0 %>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Expenses</span>
+                  <span class="font-medium text-red-600">-<%= number_to_currency(@show_financials.calculated_expenses) %></span>
+                </div>
+              <% end %>
+              <div class="flex justify-between pt-2 border-t border-gray-300">
+                <span class="font-medium text-gray-900">Net Revenue</span>
+                <span class="font-semibold text-gray-900"><%= number_to_currency(@show_financials.net_revenue) %></span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
     </div>
-  </div>
+
+    <!-- Confirm Data Complete (for $0 revenue scenarios) -->
+    <div class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-5">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <%= form.check_box :data_confirmed, class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+        <div>
+          <span class="font-medium text-gray-900">Confirm data is complete</span>
+          <p class="text-sm text-gray-500 mt-0.5">Check this box if the data above is correct, even if revenue is $0. This is useful for free shows, canceled shows, or shows where no money changed hands.</p>
+        </div>
+      </label>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+      <%= link_to manage_production_money_show_payout_path(@production, @show), class: "text-gray-600 hover:text-gray-900" do %>
+        Cancel
+      <% end %>
+      <%= render "shared/button", text: "Save Financial Data", variant: "primary", size: "medium", type: :submit %>
+    </div>
+
+  <% end %>
 </div>

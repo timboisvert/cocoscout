@@ -176,6 +176,11 @@ module My
     end
 
     def form
+      # Prevent browser from caching this page (back button issue)
+      response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+      response.headers["Pragma"] = "no-cache"
+      response.headers["Expires"] = "0"
+
       # If login is required and user is not signed in, redirect to entry
       if @sign_up_form.require_login && !authenticated?
         redirect_to my_sign_up_entry_path(@code), status: :see_other

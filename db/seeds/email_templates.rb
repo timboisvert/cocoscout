@@ -700,6 +700,40 @@ module EmailTemplateSeeds
             { name: "show_date", description: "Date and time of the show" },
             { name: "production_name", description: "Name of the production" }
           ]
+        },
+
+        # ============================================
+        # SHOW CANCELED NOTIFICATION
+        # Source: shows_controller.rb#cancel
+        # ============================================
+        {
+          key: "show_canceled",
+          name: "Show Canceled Notification",
+          category: "notification",
+          subject: "{{event_type}} Canceled: {{event_date}}",
+          description: "Sent to cast members when a show or event is canceled.",
+          template_type: "structured",
+          mailer_class: "Manage::ShowMailer",
+          mailer_action: "canceled_notification",
+          prepend_production_name: true,
+          body: <<~HTML,
+            <p>Hello {{recipient_name}},</p>
+            <p>We're writing to let you know that the following event has been <strong>canceled</strong>:</p>
+            <p>
+              <strong>{{event_type}}</strong><br>
+              {{production_name}}<br>
+              {{event_date}}<br>
+              {{#location}}{{location}}{{/location}}
+            </p>
+            <p>If you have any questions, please reach out to the production team.</p>
+          HTML
+          available_variables: [
+            { name: "recipient_name", description: "The recipient's name" },
+            { name: "production_name", description: "The name of the production" },
+            { name: "event_type", description: "Type of event (Show, Rehearsal, etc.)" },
+            { name: "event_date", description: "Date and time of the event" },
+            { name: "location", description: "Location of the event (if applicable)" }
+          ]
         }
       ]
 

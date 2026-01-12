@@ -7,4 +7,9 @@ class HomeController < ApplicationController
   layout "home"
 
   def index; end
+
+  # New homepage preview
+  def new_home; end
+  def new_performers; end
+  def new_producers; end
 end

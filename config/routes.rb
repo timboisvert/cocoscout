@@ -9,6 +9,11 @@ Rails.application.routes.draw do
   # Landing page
   get "home/index"
 
+  # New homepage (preview)
+  get "/new", to: "home#new_home", as: "new_home"
+  get "/new/for-performers", to: "home#new_performers", as: "new_performers"
+  get "/new/for-producers", to: "home#new_producers", as: "new_producers"
+
   # Legal pages
   get "/terms", to: "legal#terms", as: "terms"
   get "/privacy", to: "legal#privacy", as: "privacy"
@@ -178,6 +183,13 @@ Rails.application.routes.draw do
       post "/unlock/:slot_id", to: "sign_ups#unlock_slot", as: "beacon_unlock_sign_up_slot" # For sendBeacon on page unload
       get "/locks", to: "sign_ups#slot_locks", as: "sign_up_slot_locks"
     end
+
+    # Payments (for talent to manage payment settings and view history)
+    get   "/payments",                          to: "payments#index",                     as: "payments"
+    get   "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
+    post  "/payments/connect_stripe",           to: "payments#connect_stripe",            as: "payments_connect_stripe"
+    get   "/payments/stripe_dashboard",         to: "payments#stripe_dashboard",          as: "payments_stripe_dashboard"
+    post  "/payments/refresh_status",           to: "payments#refresh_status",            as: "payments_refresh_status"
 
     # Messages (inbox for talent)
     get   "/messages",                          to: "messages#index",                     as: "messages"
@@ -598,6 +610,8 @@ Rails.application.routes.draw do
       delete "money/payouts/:id/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
       post "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
       delete "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
+      post "money/payouts/:id/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
+      post "money/payouts/:id/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

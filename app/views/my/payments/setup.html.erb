@@ -1,0 +1,141 @@
+<% content_for :title, "Payment Settings" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Payments", my_payments_path]
+    ],
+    text: "Payment Settings",
+    links: []
+  } %>
+
+  <div class="max-w-2xl">
+    <!-- Stripe Connect Section -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-6 h-6 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="font-semibold text-gray-900 text-lg">Stripe Connect</h3>
+          <p class="text-sm text-gray-500 mt-1">Connect your bank account to receive payments directly from productions.</p>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <% if @person.stripe_connected? %>
+          <!-- Connected State -->
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-medium text-green-700">Connected</div>
+              <div class="text-sm text-gray-500">Your account is ready to receive payments</div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <%= form_with url: my_payments_stripe_dashboard_path, method: :get, local: true do %>
+              <%= render "shared/button", text: "Open Stripe Dashboard", variant: "primary", size: "medium", type: :submit %>
+            <% end %>
+            <%= form_with url: my_payments_refresh_status_path, method: :post, local: true do %>
+              <%= render "shared/button", text: "Refresh Status", variant: "secondary", size: "medium", type: :submit %>
+            <% end %>
+          </div>
+
+        <% elsif @person.stripe_account_status == "onboarding_started" || @person.stripe_account_status == "pending_verification" %>
+          <!-- Pending State -->
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-medium text-yellow-700"><%= @person.stripe_status_label %></div>
+              <div class="text-sm text-gray-500">
+                <% if @person.stripe_account_status == "pending_verification" %>
+                  Stripe is verifying your information. This usually takes 1-2 business days.
+                <% else %>
+                  Please complete the setup process to start receiving payments.
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <%= form_with url: my_payments_connect_stripe_path, method: :post, local: true do %>
+              <%= render "shared/button", text: "Continue Setup", variant: "primary", size: "medium", type: :submit %>
+            <% end %>
+            <%= form_with url: my_payments_refresh_status_path, method: :post, local: true do %>
+              <%= render "shared/button", text: "Refresh Status", variant: "secondary", size: "medium", type: :submit %>
+            <% end %>
+          </div>
+
+        <% else %>
+          <!-- Not Connected State -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-4">
+            <h4 class="font-medium text-gray-900 mb-2">What you'll need:</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Your legal name and date of birth
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Your Social Security Number (last 4 digits)
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Bank account or debit card for deposits
+              </li>
+            </ul>
+          </div>
+
+          <%= form_with url: my_payments_connect_stripe_path, method: :post, local: true do %>
+            <%= render "shared/button", text: "Connect with Stripe", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Information Section -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+      <h4 class="font-medium text-blue-900 mb-2 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        How it works
+      </h4>
+      <ul class="text-sm text-blue-800 space-y-2">
+        <li><strong>1. Connect your account</strong> - Link your bank account through Stripe's secure platform</li>
+        <li><strong>2. Get paid automatically</strong> - When a production processes payouts, funds are deposited directly</li>
+        <li><strong>3. Track your earnings</strong> - View all your payment history in one place</li>
+      </ul>
+      <p class="text-xs text-blue-700 mt-3">
+        Stripe handles all payment processing securely. CocoScout never sees your bank details.
+      </p>
+    </div>
+
+    <!-- Alternative Payment Methods -->
+    <div class="mt-6 text-center">
+      <p class="text-sm text-gray-500">
+        Don't want to connect Stripe? No problem! Productions can still pay you via cash, Venmo, Zelle, or other methods.
+        Those payments will be tracked here once the production marks them as paid.
+      </p>
+    </div>
+  </div>
+</div>

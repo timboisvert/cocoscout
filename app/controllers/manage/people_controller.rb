@@ -120,7 +120,7 @@ module Manage
         if person.user.nil?
           user = User.create!(
             email_address: person.email,
-            password: SecureRandom.hex(16)
+            password: User.generate_secure_password
           )
           person.update!(user: user)
         end
@@ -152,7 +152,7 @@ module Manage
       if person.user.nil?
         user = User.create!(
           email_address: person.email,
-          password: SecureRandom.hex(16)
+          password: User.generate_secure_password
         )
         person.update!(user: user)
       end
@@ -176,7 +176,7 @@ module Manage
 
         user = User.create!(
           email_address: @person.email,
-          password: SecureRandom.hex(16)
+          password: User.generate_secure_password
         )
         @person.update!(user: user)
 
@@ -330,7 +330,7 @@ module Manage
           if existing_person.user.nil?
             user = User.create!(
               email_address: existing_person.email,
-              password: SecureRandom.hex(16)
+              password: User.generate_secure_password
             )
             existing_person.update!(user: user)
 
@@ -353,7 +353,7 @@ module Manage
 
             user = User.create!(
               email_address: person.email,
-              password: SecureRandom.hex(16)
+              password: User.generate_secure_password
             )
             person.update!(user: user)
 

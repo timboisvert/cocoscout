@@ -33,6 +33,12 @@ class User < ApplicationRecord
 
   SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
+  # Generate a secure random password that meets complexity requirements
+  # (uppercase, lowercase, number, special character)
+  def self.generate_secure_password
+    "#{SecureRandom.hex(8)}A!1a"
+  end
+
   # Returns the user's primary person profile
   # Priority: default_person if set, otherwise the first active profile by creation date
   def primary_person

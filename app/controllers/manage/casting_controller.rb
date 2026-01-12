@@ -326,9 +326,12 @@ module Manage
       # Use find_or_create_by to handle race conditions with unique constraint
       begin
         assignment = @show.show_person_role_assignments.create!(assignable: assignable, role: role)
-      rescue ActiveRecord::RecordNotUnique
-        # Already assigned (race condition hit the unique constraint) - just return success
-        return render_assignment_success_response
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+        # Already assigned (race condition or validation) - just return success if it's the uniqueness error
+        if e.is_a?(ActiveRecord::RecordNotUnique) || e.message.include?("already assigned")
+          return render_assignment_success_response
+        end
+        raise e
       end
 
       # Reload the show's assignments to ensure fresh data for rendering

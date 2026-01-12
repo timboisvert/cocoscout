@@ -15,11 +15,11 @@
       label: "Status",
       filters: [
         { text: "All Past Shows", path: manage_production_money_show_payouts_path(@production, filter: "all"), active: @filter == "all" },
+        { text: "Future Shows", path: manage_production_money_show_payouts_path(@production, filter: "future"), active: @filter == "future" },
         { text: "Needs Data", path: manage_production_money_show_payouts_path(@production, filter: "needs_data"), active: @filter == "needs_data" },
         { text: "Draft", path: manage_production_money_show_payouts_path(@production, filter: "draft"), active: @filter == "draft" },
         { text: "Approved", path: manage_production_money_show_payouts_path(@production, filter: "approved"), active: @filter == "approved" },
-        { text: "Paid", path: manage_production_money_show_payouts_path(@production, filter: "paid"), active: @filter == "paid" },
-        { text: "Canceled", path: manage_production_money_show_payouts_path(@production, filter: "canceled"), active: @filter == "canceled" }
+        { text: "Paid", path: manage_production_money_show_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
       ]
     }
   ] %>
@@ -99,8 +99,8 @@
           No past shows to process payouts for.
         <% elsif @filter == "needs_data" %>
           All shows have financial data entered.
-        <% elsif @filter == "canceled" %>
-          No canceled shows.
+        <% elsif @filter == "future" %>
+          No upcoming shows scheduled.
         <% else %>
           No shows with this status.
         <% end %>

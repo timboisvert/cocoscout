@@ -52,6 +52,20 @@ For form submit buttons:
 <%= render "shared/button", text: "Submit", variant: "primary", size: "medium", type: :submit %>
 ```
 
+### Checkboxes
+All checkboxes must be styled with pink accent color:
+
+```erb
+<%= form.check_box :field_name, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+```
+
+Key classes:
+- `text-pink-600` - Pink checkmark color
+- `accent-pink-600` - Pink accent for native browser styling
+- `focus:ring-pink-500` - Pink focus ring
+- `border-gray-300` - Standard border color
+- `rounded` - Rounded corners
+
 ### Top Menu Breadcrumbs
 Breadcrumbs must be passed as arrays of `[name, path]` pairs, not hashes:
 

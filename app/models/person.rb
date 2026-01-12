@@ -313,6 +313,41 @@ class Person < ApplicationRecord
     self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
+  # Stripe Connect methods
+  STRIPE_ACCOUNT_STATUSES = %w[not_connected onboarding_started pending_verification connected restricted].freeze
+
+  def stripe_ready_for_payouts?
+    stripe_payouts_enabled? && stripe_account_id.present?
+  end
+
+  def stripe_connected?
+    stripe_account_id.present? && stripe_account_status == "connected"
+  end
+
+  def needs_stripe_setup?
+    !stripe_ready_for_payouts?
+  end
+
+  def stripe_status_label
+    case stripe_account_status
+    when "not_connected" then "Not Connected"
+    when "onboarding_started" then "Setup In Progress"
+    when "pending_verification" then "Pending Verification"
+    when "connected" then "Connected"
+    when "restricted" then "Restricted"
+    else "Unknown"
+    end
+  end
+
+  def stripe_status_color
+    case stripe_account_status
+    when "connected" then "green"
+    when "pending_verification", "onboarding_started" then "yellow"
+    when "restricted" then "red"
+    else "gray"
+    end
+  end
+
   private
 
   def generate_public_key

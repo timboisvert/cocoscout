@@ -47,11 +47,13 @@ class PayoutCalculator
     inputs = {
       ticket_count: financials.ticket_count.to_i,
       ticket_revenue: financials.ticket_revenue.to_f,
-      other_revenue: financials.other_revenue.to_f,
-      expenses: financials.expenses.to_f,
+      primary_revenue: financials.primary_revenue,
+      other_revenue: financials.calculated_other_revenue,
+      expenses: financials.calculated_expenses,
       total_revenue: financials.total_revenue,
       net_revenue: financials.net_revenue,
-      performer_count: performers.count
+      performer_count: performers.count,
+      revenue_type: financials.revenue_type
     }
 
     # Calculate performer pool and individual amounts

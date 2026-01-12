@@ -1,0 +1,235 @@
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-slate-50">
+  <!-- Header -->
+  <header class="w-full bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <%= link_to new_home_path, class: "flex items-center gap-3" do %>
+            <%= image_tag "/icon.png", alt: "CocoScout logomark", class: "h-10 w-10" %>
+            <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-3">
+          <%= render "shared/button", text: "Sign In", path: signin_path, variant: "ghost", size: "small" %>
+          <%= render "shared/button", text: "Sign Up Free", path: signup_path, variant: "primary", size: "small" %>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex flex-col min-w-full">
+    <!-- Hero Section -->
+    <section class="w-full px-6 py-16 sm:py-20">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center max-w-4xl mx-auto">
+          <div class="inline-flex items-center gap-2 bg-pink-100 text-pink-600 px-4 py-2 rounded-full text-sm font-medium mb-8">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Free for performers
+          </div>
+
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 coustard-regular leading-tight">
+            Your talent deserves<br>to be seen.
+          </h1>
+
+          <p class="text-lg sm:text-xl text-slate-600 mb-10 leading-relaxed">
+            Build a beautiful profile, discover auditions, and manage your performing life—all in one place.
+            Productions are already here looking for you.
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <%= render "shared/button", text: "Create Your Free Profile", path: signup_path, variant: "primary", size: "large" %>
+            <%= render "shared/button", text: "See Features", path: "#features", variant: "secondary", size: "large" %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="w-full bg-white border-t border-b border-slate-100 px-6 py-20">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Everything a performer needs</h2>
+          <p class="text-lg text-slate-600 max-w-2xl mx-auto">From auditions to opening night, CocoScout keeps your performance life organized.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Feature 1: Profile -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Profile page -->
+              <span class="text-slate-400 text-sm">Screenshot: Your Profile</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Your Professional Profile</h3>
+            <p class="text-slate-600">Showcase your headshots, resume, vocal range, dance styles, and special skills. Add media clips to stand out.</p>
+          </div>
+
+          <!-- Feature 2: Auditions -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Audition submission -->
+              <span class="text-slate-400 text-sm">Screenshot: Submit to Auditions</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Submit to Auditions</h3>
+            <p class="text-slate-600">Discover open calls, submit with one click, and track every audition from submission to callback.</p>
+          </div>
+
+          <!-- Feature 3: Calendar Sync -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Calendar view -->
+              <span class="text-slate-400 text-sm">Screenshot: Calendar Integration</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Calendar Sync</h3>
+            <p class="text-slate-600">All your rehearsals, callbacks, and performances sync directly to Google Calendar or iCal.</p>
+          </div>
+
+          <!-- Feature 4: Groups -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Groups page -->
+              <span class="text-slate-400 text-sm">Screenshot: Your Groups</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Stay Connected</h3>
+            <p class="text-slate-600">See all your productions in one place. Get updates, view cast lists, and never miss an announcement.</p>
+          </div>
+
+          <!-- Feature 5: Shoutouts -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Shoutouts -->
+              <span class="text-slate-400 text-sm">Screenshot: Shoutouts</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Celebrate Together</h3>
+            <p class="text-slate-600">Send shoutouts to fellow performers, celebrate milestones, and build lasting connections in your theatre community.</p>
+          </div>
+
+          <!-- Feature 6: Availability -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Availability grid -->
+              <span class="text-slate-400 text-sm">Screenshot: Availability</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Share Your Availability</h3>
+            <p class="text-slate-600">Submit your conflicts once. Production teams see instantly who can rehearse when—no endless emails.</p>
+          </div>
+
+          <!-- Feature 7: Vacancies -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Vacancies board -->
+              <span class="text-slate-400 text-sm">Screenshot: Open Vacancies</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Find Open Roles</h3>
+            <p class="text-slate-600">Browse vacancies posted by production teams. Crew positions, understudy roles, last-minute replacements—all in one place.</p>
+          </div>
+
+          <!-- Feature 8: Multi-Profile -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Profile switcher -->
+              <span class="text-slate-400 text-sm">Screenshot: Multiple Profiles</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Multiple Profiles</h3>
+            <p class="text-slate-600">Actor by night, musician by weekend? Create separate profiles for each performing identity under one account.</p>
+          </div>
+
+          <!-- Feature 9: Dashboard -->
+          <div class="bg-slate-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-slate-200 rounded-xl mb-6 flex items-center justify-center overflow-hidden">
+              <!-- Screenshot placeholder: Dashboard -->
+              <span class="text-slate-400 text-sm">Screenshot: Your Dashboard</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2 coustard-regular">Your Dashboard</h3>
+            <p class="text-slate-600">Everything at a glance—upcoming events, recent messages, pending auditions, and what's next on your schedule.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="w-full px-6 py-20">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 coustard-regular">Get started in minutes</h2>
+          <p class="text-lg text-slate-600">Your next audition is just a few clicks away.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="text-center">
+            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
+              <span class="text-2xl font-bold text-pink-500 coustard-regular">1</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Create Your Profile</h3>
+            <p class="text-slate-600">Add your headshots, resume, and skills. Your profile is your calling card—make it shine.</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
+              <span class="text-2xl font-bold text-pink-500 coustard-regular">2</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Submit to Auditions</h3>
+            <p class="text-slate-600">Browse open calls, submit with one click, and track every opportunity in one place.</p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-6">
+              <span class="text-2xl font-bold text-pink-500 coustard-regular">3</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-3 coustard-regular">Get Cast & Perform</h3>
+            <p class="text-slate-600">When you're cast, everything syncs—schedule, communications, and your cast mates—right to your dashboard.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonial / Social Proof -->
+    <section class="w-full bg-pink-50 px-6 py-16">
+      <div class="max-w-4xl mx-auto text-center">
+        <svg class="w-12 h-12 text-pink-300 mx-auto mb-6" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+        </svg>
+        <blockquote class="text-2xl sm:text-3xl font-medium text-slate-800 mb-6 italic leading-relaxed">
+          "Finally, one place for everything. I can see my auditions, my schedule, and my connections all together."
+        </blockquote>
+        <p class="text-slate-600">— Performer on CocoScout</p>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="w-full px-6 py-20">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-6 coustard-regular">Ready to be discovered?</h2>
+        <p class="text-lg text-slate-600 mb-10">Join thousands of performers already using CocoScout. It's completely free.</p>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <%= render "shared/button", text: "Create Your Free Profile", path: signup_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Running a production instead? →", path: new_producers_path, variant: "ghost", size: "medium" %>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full border-t border-slate-200 bg-white">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-500">
+        <p>
+          A <a href="https://cocorunseverything.com" target="_blank" rel="noopener" class="underline caprasimo-regular hover:text-pink-500 transition">Coco Runs Everything</a> Production
+        </p>
+        <div class="flex items-center gap-4">
+          <%= link_to "Terms", terms_path, class: "hover:text-pink-500 transition" %>
+          <%= link_to "Privacy", privacy_path, class: "hover:text-pink-500 transition" %>
+          <a href="https://instagram.com/cocoscout" target="_blank" rel="noopener" aria-label="CocoScout on Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-pink-500 hover:border-pink-500 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="5" ry="5" />
+              <path d="M16.5 7.5h.01" />
+              <path d="M7 12a5 5 0 1 0 10 0a5 5 0 0 0-10 0" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>

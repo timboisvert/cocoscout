@@ -80,21 +80,28 @@
 
         <% if @show_financials&.has_data? %>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Tickets Sold</div>
-              <div class="text-xl font-semibold text-gray-900"><%= @show_financials.ticket_count %></div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Ticket Revenue</div>
-              <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.ticket_revenue) %></div>
-            </div>
+            <% if @show_financials.flat_fee? %>
+              <div class="col-span-2">
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Flat Fee</div>
+                <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.flat_fee || 0) %></div>
+              </div>
+            <% else %>
+              <div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Tickets Sold</div>
+                <div class="text-xl font-semibold text-gray-900"><%= @show_financials.ticket_count %></div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Ticket Revenue</div>
+                <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.ticket_revenue) %></div>
+              </div>
+            <% end %>
             <div>
               <div class="text-xs text-gray-500 uppercase tracking-wide">Other Revenue</div>
-              <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.other_revenue || 0) %></div>
+              <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_other_revenue) %></div>
             </div>
             <div>
               <div class="text-xs text-gray-500 uppercase tracking-wide">Expenses</div>
-              <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.expenses || 0) %></div>
+              <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.calculated_expenses) %></div>
             </div>
           </div>
 
@@ -103,7 +110,7 @@
               <span class="text-sm text-gray-600">Net Revenue:</span>
               <span class="text-lg font-semibold text-gray-900 ml-2"><%= number_to_currency(@show_financials.net_revenue) %></span>
             </div>
-            <% if @show_financials.ticket_count.to_i > 0 %>
+            <% if @show_financials.ticket_sales? && @show_financials.ticket_count.to_i > 0 %>
               <span class="text-sm text-gray-500">
                 Avg ticket price: <%= number_to_currency(@show_financials.average_ticket_price) %>
               </span>
@@ -120,7 +127,7 @@
       </div>
 
       <!-- Payout Breakdown -->
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="bg-white rounded-lg border border-gray-200 p-5" data-controller="payment-actions">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-gray-900">Payout Breakdown</h3>
           <% if @show_payout.total_payout %>
@@ -129,6 +136,46 @@
         </div>
 
         <% if has_line_items %>
+          <%
+            unpaid_count = @line_items.count { |li| !li.manually_paid? }
+            paid_count = @line_items.count { |li| li.manually_paid? }
+            stripe_ready_count = @line_items.count { |li| li.payee_stripe_ready? }
+            needs_setup_count = @line_items.count { |li| !li.payee_stripe_ready? && !li.manually_paid? }
+          %>
+
+          <!-- Payment Summary Bar -->
+          <% if @show_payout.approved? && unpaid_count > 0 %>
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-4 text-sm">
+                  <span class="text-gray-600">
+                    <span class="font-semibold text-gray-900"><%= paid_count %></span> paid
+                  </span>
+                  <span class="text-gray-600">
+                    <span class="font-semibold text-amber-600"><%= unpaid_count %></span> pending
+                  </span>
+                  <% if needs_setup_count > 0 %>
+                    <span class="text-gray-600">
+                      <span class="font-semibold text-red-600"><%= needs_setup_count %></span> need payment setup
+                    </span>
+                  <% end %>
+                </div>
+                <div class="flex items-center gap-2">
+                  <% if needs_setup_count > 0 %>
+                    <%= form_with url: manage_production_send_payment_reminders_money_show_payout_path(@production, @show), method: :post, local: true, class: "inline" do %>
+                      <%= render "shared/button", text: "Send Reminders", variant: "secondary", size: "small", type: :submit %>
+                    <% end %>
+                  <% end %>
+                  <button type="button"
+                          data-action="click->payment-actions#showBulkModal"
+                          class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Mark All Offline
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
@@ -136,7 +183,9 @@
                   <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide py-2">Payee</th>
                   <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide py-2">Amount</th>
                   <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide py-2 pl-4">Calculation</th>
-                  <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide py-2">Status</th>
+                  <% if @show_payout.approved? || @show_payout.paid? %>
+                    <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide py-2">Status</th>
+                  <% end %>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -144,16 +193,26 @@
                   <tr class="<%= item.manually_paid? ? 'bg-green-50' : '' %>">
                     <td class="py-3">
                       <div class="flex items-center gap-2">
-                        <% if item.payee.respond_to?(:profile_headshots) && item.payee.profile_headshots.any? %>
-                          <%= image_tag item.payee.profile_headshots.first.image.variant(:small), class: "w-8 h-8 rounded-full object-cover" %>
+                        <% headshot_variant = item.payee.respond_to?(:safe_headshot_variant) ? item.payee.safe_headshot_variant(:thumb) : nil %>
+                        <% if headshot_variant %>
+                          <%= image_tag headshot_variant, alt: item.payee_name, class: "w-8 h-8 rounded-lg object-cover" %>
                         <% else %>
-                          <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-medium text-sm">
+                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-medium text-sm">
                             <%= item.payee_name[0].upcase %>
                           </div>
                         <% end %>
                         <div>
                           <div class="font-medium text-gray-900"><%= item.payee_name %></div>
-                          <div class="text-xs text-gray-500"><%= item.payee_type_label %></div>
+                          <div class="text-xs text-gray-500 flex items-center gap-1">
+                            <%= item.payee_type_label %>
+                            <% if item.payee_stripe_ready? %>
+                              <span class="inline-flex items-center" title="Stripe connected">
+                                <svg class="w-3 h-3 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                                </svg>
+                              </span>
+                            <% end %>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -163,35 +222,93 @@
                     <td class="py-3 pl-4">
                       <span class="text-sm text-gray-500"><%= item.calculation_explanation %></span>
                     </td>
-                    <td class="py-3 text-right">
-                      <% if item.manually_paid? %>
-                        <div class="flex items-center justify-end gap-2">
-                          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
-                            Already Paid
-                          </span>
-                          <%= button_to unmark_line_item_paid_money_show_payout_path(@production, @show, line_item_id: item.id),
-                              method: :delete,
-                              class: "text-gray-400 hover:text-gray-600",
-                              title: "Unmark as already paid",
-                              data: { turbo_confirm: "Unmark #{item.payee_name} as already paid?" } do %>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                          <% end %>
-                        </div>
-                      <% else %>
-                        <%= button_to mark_line_item_paid_money_show_payout_path(@production, @show, line_item_id: item.id),
-                            method: :post,
-                            class: "text-xs text-gray-500 hover:text-gray-700 underline",
-                            data: { turbo_confirm: "Mark #{item.payee_name} as already paid outside the system?" } do %>
-                          Mark as paid
+                    <% if @show_payout.approved? || @show_payout.paid? %>
+                      <td class="py-3 text-right">
+                        <% if item.manually_paid? %>
+                          <div class="flex items-center justify-end gap-2">
+                            <div class="text-right">
+                              <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                                <%= item.payment_method_label || "Paid" %>
+                              </span>
+                              <% if item.paid_at %>
+                                <div class="text-xs text-gray-400 mt-0.5"><%= item.paid_at.strftime("%b %-d") %></div>
+                              <% end %>
+                            </div>
+                            <% unless @show_payout.paid? %>
+                              <%= button_to manage_production_unmark_line_item_paid_money_show_payout_path(@production, @show, item),
+                                  method: :delete,
+                                  class: "text-gray-400 hover:text-gray-600",
+                                  title: "Unmark as paid",
+                                  data: { turbo_confirm: "Unmark #{item.payee_name} as paid?" } do %>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                              <% end %>
+                            <% end %>
+                          </div>
+                        <% else %>
+                          <div class="relative inline-block" data-controller="dropdown">
+                            <button type="button"
+                                    data-action="click->dropdown#toggle"
+                                    class="text-xs text-gray-500 hover:text-gray-700 underline cursor-pointer">
+                              Mark as paid
+                            </button>
+                            <div data-dropdown-target="menu"
+                                 class="hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                              <div class="py-1">
+                                <% ShowPayoutLineItem::PAYMENT_METHODS.reject { |m| m == "stripe" }.each do |method| %>
+                                  <%= button_to manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: method),
+                                      method: :post,
+                                      class: "block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
+                                      data: { turbo_confirm: "Mark #{item.payee_name} as paid via #{method.titleize}?" } do %>
+                                    <%= method.titleize %>
+                                  <% end %>
+                                <% end %>
+                              </div>
+                            </div>
+                          </div>
                         <% end %>
-                      <% end %>
-                    </td>
+                      </td>
+                    <% end %>
                   </tr>
                 <% end %>
               </tbody>
             </table>
+          </div>
+
+          <!-- Bulk Mark Offline Modal -->
+          <div data-payment-actions-target="bulkModal"
+               class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4">Mark All as Paid Offline</h3>
+              <p class="text-sm text-gray-600 mb-4">This will mark all unpaid performers as paid via the selected method. Use this for historical records or when payments were made outside of CocoScout.</p>
+              <%= form_with url: manage_production_mark_all_offline_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <select name="payment_method" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                    <option value="historical">Historical (pre-CocoScout)</option>
+                    <option value="cash">Cash</option>
+                    <option value="venmo">Venmo</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="check">Check</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                  <input type="text" name="payment_notes" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" placeholder="e.g., Paid at venue after show">
+                </div>
+                <div class="flex items-center justify-end gap-3">
+                  <button type="button"
+                          data-action="click->payment-actions#hideBulkModal"
+                          class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                    Cancel
+                  </button>
+                  <%= render "shared/button", text: "Mark All Paid", variant: "primary", size: "medium", type: :submit %>
+                </div>
+              <% end %>
+            </div>
           </div>
         <% elsif has_financials %>
           <div class="text-center py-6">

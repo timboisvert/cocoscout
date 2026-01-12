@@ -1,0 +1,153 @@
+<div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-slate-50">
+  <!-- Header -->
+  <header class="w-full bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <%= image_tag "/icon.png", alt: "CocoScout logomark", class: "h-10 w-10" %>
+          <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <%= render "shared/button", text: "Sign In", path: signin_path, variant: "ghost", size: "small" %>
+          <%= render "shared/button", text: "Sign Up", path: signup_path, variant: "primary", size: "small" %>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex flex-col min-w-full">
+    <!-- Hero Section -->
+    <section class="w-full px-6 py-16 sm:py-24">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center">
+          <div class="mb-8 flex justify-center">
+            <%= image_tag "/icon.png", alt: "CocoScout logo", class: "h-24 w-24 sm:h-32 sm:w-32 drop-shadow-lg" %>
+          </div>
+
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 coustard-regular leading-tight">
+            Where performers and<br>productions connect.
+          </h1>
+
+          <p class="text-lg sm:text-xl max-w-3xl mx-auto text-slate-600 mb-12 leading-relaxed">
+            One platform for auditions, casting, scheduling, and communication—from the first callback to the final bow.
+          </p>
+
+          <!-- Audience Selector Cards -->
+          <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <!-- Performer Card -->
+            <%= link_to new_performers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
+              <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
+                  <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I'm a Performer</h2>
+              </div>
+              <p class="text-slate-600 mb-4">Build your profile, submit to auditions, track your schedule, and get discovered by production teams.</p>
+              <div class="flex items-center gap-2 text-pink-500 font-semibold">
+                <span>Free for performers</span>
+                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            <% end %>
+
+            <!-- Producer Card -->
+            <%= link_to new_producers_path, class: "group bg-white border-2 border-pink-200 rounded-2xl p-8 shadow-md hover:shadow-xl hover:border-pink-400 hover:scale-[1.02] transition-all text-left" do %>
+              <div class="flex items-center gap-4 mb-4">
+                <div class="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
+                  <svg class="w-7 h-7 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 coustard-regular group-hover:text-pink-600 transition">I Run Productions</h2>
+              </div>
+              <p class="text-slate-600 mb-4">Manage auditions, cast your shows, coordinate schedules, and keep your entire team on the same page.</p>
+              <div class="flex items-center gap-2 text-pink-500 font-semibold">
+                <span>Learn more</span>
+                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Features Overview -->
+    <section class="w-full bg-white border-t border-slate-100">
+      <div class="max-w-6xl mx-auto px-6 py-16">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-slate-900 mb-3 coustard-regular">Everything you need</h2>
+          <p class="text-lg text-slate-600">From auditions to final bow, CocoScout keeps your production organized and your team connected.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="text-center p-6">
+            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Auditions</h3>
+            <p class="text-sm text-slate-600">Submit and review with ease</p>
+          </div>
+
+          <div class="text-center p-6">
+            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Casting</h3>
+            <p class="text-sm text-slate-600">Drag, drop, done</p>
+          </div>
+
+          <div class="text-center p-6">
+            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Scheduling</h3>
+            <p class="text-sm text-slate-600">One calendar, every event</p>
+          </div>
+
+          <div class="text-center p-6">
+            <div class="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center mx-auto mb-4">
+              <svg class="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-slate-900 mb-1 coustard-regular">Communication</h3>
+            <p class="text-sm text-slate-600">Keep everyone in the loop</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full border-t border-slate-200 bg-white">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-500">
+        <p>
+          A <a href="https://cocorunseverything.com" target="_blank" rel="noopener" class="underline caprasimo-regular hover:text-pink-500 transition">Coco Runs Everything</a> Production
+        </p>
+        <div class="flex items-center gap-4">
+          <%= link_to "Terms", terms_path, class: "hover:text-pink-500 transition" %>
+          <%= link_to "Privacy", privacy_path, class: "hover:text-pink-500 transition" %>
+          <a href="https://instagram.com/cocoscout" target="_blank" rel="noopener" aria-label="CocoScout on Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:bg-pink-500 hover:border-pink-500 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="5" ry="5" />
+              <path d="M16.5 7.5h.01" />
+              <path d="M7 12a5 5 0 1 0 10 0a5 5 0 0 0-10 0" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>

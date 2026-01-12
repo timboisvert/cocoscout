@@ -158,7 +158,7 @@ module My
         # Create user with random password
         user = User.create!(
           email_address: invite_email,
-          password: SecureRandom.hex(16)
+          password: User.generate_secure_password
         )
 
         # Create person

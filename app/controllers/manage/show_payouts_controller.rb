@@ -7,7 +7,8 @@ module Manage
       :show, :update, :edit_financials, :update_financials,
       :calculate, :approve, :mark_paid, :revert_to_draft,
       :override, :save_override, :clear_override,
-      :mark_line_item_paid, :unmark_line_item_paid
+      :mark_line_item_paid, :unmark_line_item_paid,
+      :mark_all_offline, :send_payment_reminders
     ]
 
     def index
@@ -17,14 +18,14 @@ module Manage
                               .order(date_and_time: :desc)
                               .includes(:show_financials, show_payout: :line_items)
 
-      # Default: non-canceled shows only (except for canceled filter)
-      shows_scope = @filter == "canceled" ? base_scope.where(canceled: true) : base_scope.where(canceled: false)
+      # Include all shows (including canceled) in every filter
+      shows_scope = base_scope
 
       case @filter
       when "needs_data"
-        # Shows without financials or with incomplete financials
+        # Past shows without financials or with incomplete financials
         @shows = shows_scope.left_joins(:show_financials)
-                            .where("show_financials.id IS NULL OR show_financials.ticket_count IS NULL OR show_financials.ticket_count = 0")
+                            .where("show_financials.id IS NULL OR (show_financials.ticket_revenue IS NULL AND show_financials.flat_fee IS NULL)")
                             .where("shows.date_and_time < ?", Time.current)
       when "draft"
         @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "draft" })
@@ -32,11 +33,11 @@ module Manage
         @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "approved" })
       when "paid"
         @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "paid" })
-      when "canceled"
-        # All canceled shows (already filtered above)
-        @shows = shows_scope
+      when "future"
+        # Future shows - for preparing payouts ahead of time (soonest first)
+        @shows = shows_scope.where("shows.date_and_time > ?", Time.current).reorder(date_and_time: :asc)
       else
-        # All past non-canceled shows
+        # All past shows
         @shows = shows_scope.where("shows.date_and_time < ?", Time.current)
       end
 
@@ -62,8 +63,14 @@ module Manage
     end
 
     def update_financials
-      @show_financials = @show.show_financials || @show.build_show_financials
-      if @show_financials.update(show_financials_params)
+      @show_financials = @show.show_financials || @show.create_show_financials
+      attrs = show_financials_params.to_h
+
+      # Convert indexed line items to arrays
+      attrs = convert_line_items_to_arrays(attrs)
+
+      @show_financials.assign_attributes(attrs)
+      if @show_financials.save
         redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Financial data saved."
       else
@@ -159,16 +166,56 @@ module Manage
 
     def mark_line_item_paid
       line_item = @show_payout.line_items.find(params[:line_item_id])
-      line_item.mark_as_already_paid!(Current.user)
+      method = params[:payment_method].presence
+      notes = params[:payment_notes].presence
+      line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
       redirect_to manage_production_money_show_payout_path(@production, @show),
-                  notice: "#{line_item.payee_name} marked as already paid."
+                  notice: "#{line_item.payee_name} marked as paid#{method ? " via #{line_item.payment_method_label}" : ""}."
     end
 
     def unmark_line_item_paid
       line_item = @show_payout.line_items.find(params[:line_item_id])
       line_item.unmark_as_already_paid!
       redirect_to manage_production_money_show_payout_path(@production, @show),
-                  notice: "#{line_item.payee_name} no longer marked as already paid."
+                  notice: "#{line_item.payee_name} no longer marked as paid."
+    end
+
+    def mark_all_offline
+      method = params[:payment_method].presence || "historical"
+      notes = params[:payment_notes].presence
+
+      count = 0
+      @show_payout.line_items.not_already_paid.each do |line_item|
+        line_item.mark_as_offline_paid!(Current.user, method: method, notes: notes)
+        count += 1
+      end
+
+      if count > 0
+        @show_payout.mark_paid! if @show_payout.approved?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    notice: "#{count} payment#{"s" if count != 1} marked as #{ShowPayoutLineItem::PAYMENT_METHODS.include?(method) ? method : "paid"}."
+      else
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    alert: "No unpaid line items to mark."
+      end
+    end
+
+    def send_payment_reminders
+      # Find performers without Stripe set up who have unpaid line items
+      line_items_needing_setup = @show_payout.line_items.not_already_paid.select do |li|
+        li.payee.respond_to?(:needs_stripe_setup?) && li.payee.needs_stripe_setup?
+      end
+
+      if line_items_needing_setup.empty?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    notice: "All performers have payment accounts set up!"
+        return
+      end
+
+      # TODO: Implement actual email sending when mailer is set up
+      count = line_items_needing_setup.size
+      redirect_to manage_production_money_show_payout_path(@production, @show),
+                  notice: "Payment setup reminders will be sent to #{count} performer#{"s" if count != 1}. (Coming soon!)"
     end
 
     private
@@ -191,7 +238,12 @@ module Manage
     end
 
     def show_financials_params
-      params.require(:show_financials).permit(:ticket_count, :ticket_revenue, :other_revenue, :expenses, :notes)
+      params.require(:show_financials).permit(
+        :revenue_type, :ticket_count, :ticket_revenue, :flat_fee,
+        :other_revenue, :expenses, :notes, :data_confirmed,
+        other_revenue_details: [:description, :amount],
+        expense_details: [:description, :amount]
+      )
     end
 
     def override_rules_params
@@ -236,6 +288,25 @@ module Manage
         "distribution" => distribution,
         "performer_overrides" => performer_overrides
       }
+    end
+
+    # Convert indexed hash params (from dynamic form) to arrays of hashes
+    # e.g., { "0" => { "description" => "X", "amount" => "10" }, "1" => ... }
+    # becomes [{ "description" => "X", "amount" => 10.0 }, ...]
+    def convert_line_items_to_arrays(attrs)
+      %w[other_revenue_details expense_details].each do |field|
+        if attrs[field].is_a?(Hash) || attrs[field].is_a?(ActionController::Parameters)
+          items = attrs[field].values.map do |item|
+            next if item["description"].blank? && item["amount"].blank?
+            { "description" => item["description"].to_s, "amount" => item["amount"].to_f }
+          end.compact
+          attrs[field] = items.presence
+        elsif attrs[field].blank?
+          # Keep nil/empty as is - don't overwrite with empty array
+          attrs.delete(field)
+        end
+      end
+      attrs
     end
   end
 end

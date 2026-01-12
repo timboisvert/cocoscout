@@ -1,0 +1,136 @@
+<% content_for :title, "My Payments" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "My Payments",
+    links: [
+      { text: "Payment Settings", path: my_payments_setup_path }
+    ]
+  } %>
+
+  <!-- Payment Account Status -->
+  <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-lg bg-<%= @person.stripe_status_color %>-100 flex items-center justify-center">
+          <% if @person.stripe_connected? %>
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          <% else %>
+            <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+          <% end %>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Payment Account</h3>
+          <p class="text-sm text-<%= @person.stripe_status_color %>-600"><%= @person.stripe_status_label %></p>
+        </div>
+      </div>
+      <%= link_to my_payments_setup_path do %>
+        <%= render "shared/button", text: @person.stripe_connected? ? "Manage" : "Set Up Payments", variant: @person.stripe_connected? ? "secondary" : "primary", size: "small" %>
+      <% end %>
+    </div>
+    <% unless @person.stripe_connected? %>
+      <p class="text-sm text-gray-500 mt-3">Set up your payment account to receive payments directly from productions via Stripe.</p>
+    <% end %>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Received</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@total_received) %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Via Stripe</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@stripe_total) %></div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Offline/Other</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@offline_total) %></div>
+    </div>
+  </div>
+
+  <!-- Pending Payouts -->
+  <% if @pending_payouts.any? %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-6">
+      <h3 class="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Pending Payouts
+      </h3>
+      <div class="space-y-2">
+        <% @pending_payouts.each do |line_item| %>
+          <div class="flex items-center justify-between bg-white rounded px-3 py-2">
+            <div>
+              <span class="text-sm font-medium text-gray-900"><%= line_item.show_payout.show.production.name %></span>
+              <span class="text-sm text-gray-500">- <%= line_item.show_payout.show.date_and_time.strftime("%b %-d, %Y") %></span>
+            </div>
+            <span class="font-semibold text-amber-700"><%= number_to_currency(line_item.amount) %></span>
+          </div>
+        <% end %>
+      </div>
+      <p class="text-xs text-amber-700 mt-3">These payouts have been approved and are awaiting payment.</p>
+    </div>
+  <% end %>
+
+  <!-- Payment History -->
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-200">
+      <h3 class="font-semibold text-gray-900">Payment History</h3>
+    </div>
+
+    <% if @payment_history.any? %>
+      <div class="divide-y divide-gray-100">
+        <% @payment_history.each do |line_item| %>
+          <div class="px-5 py-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900"><%= line_item.show_payout.show.production.name %></div>
+                  <div class="text-sm text-gray-500">
+                    <%= line_item.show_payout.show.date_and_time.strftime("%B %-d, %Y") %>
+                    <% if line_item.payment_method_label %>
+                      <span class="text-gray-400 mx-1">·</span>
+                      <span class="text-gray-500"><%= line_item.payment_method_label %></span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-semibold text-green-600"><%= number_to_currency(line_item.amount) %></div>
+                <% if line_item.paid_at %>
+                  <div class="text-xs text-gray-500"><%= line_item.paid_at.strftime("%b %-d, %Y") %></div>
+                <% end %>
+              </div>
+            </div>
+            <% if line_item.payment_notes.present? %>
+              <div class="mt-2 text-sm text-gray-500 bg-gray-50 rounded px-3 py-2">
+                <%= line_item.payment_notes %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-12 text-gray-500">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p>No payments yet.</p>
+        <p class="text-sm mt-1">Payments from shows will appear here once they're processed.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
