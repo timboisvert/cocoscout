@@ -4,9 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      { text: "Money", path: manage_production_money_index_path(@production) },
-      { text: "Show Payouts", path: manage_production_money_show_payouts_path(@production) },
-      { text: show_display_name(@show), path: manage_production_money_show_payout_path(@production, @show) }
+      ["Money", manage_production_money_index_path(@production)],
+      ["Show Payouts", manage_production_money_show_payouts_path(@production)],
+      [show_display_name(@show), manage_production_money_show_payout_path(@production, @show)]
     ],
     text: "Financial Data",
     links: []

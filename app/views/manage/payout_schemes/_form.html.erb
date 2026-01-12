@@ -4,6 +4,7 @@
   allocation = rules["allocation"] || []
   distribution = rules["distribution"] || { "method" => "equal" }
   dist_method = distribution["method"] || "equal"
+  performer_overrides = rules["performer_overrides"] || {}
 
   # Find allocation values
   house_percentage = allocation.find { |s| s["type"] == "percentage" }&.dig("value") || 50
@@ -14,6 +15,10 @@
   minimum = distribution["minimum"] || 25.0
   flat_amount = distribution["flat_amount"] || 50.0
   default_shares = distribution["default_shares"] || 1.0
+
+  # Get available people from talent pool
+  talent_pool = @production.talent_pools.first
+  available_people = talent_pool&.people&.order(:name) || []
 %>
 
 <%= form_with model: payout_scheme, url: payout_scheme.persisted? ? manage_production_money_payout_scheme_path(@production, payout_scheme) : manage_production_money_payout_schemes_path(@production), method: payout_scheme.persisted? ? :patch : :post, local: true, data: { controller: "payout-scheme-form" } do |form| %>
@@ -165,6 +170,107 @@
       <!-- Hidden fields to build allocation array -->
       <input type="hidden" name="rules[allocation][]" value='{"type":"percentage","value":50,"to":"house"}' data-payout-scheme-form-target="allocationJson">
     </div>
+
+    <!-- Per-Performer Overrides -->
+    <% if available_people.any? %>
+      <div data-payout-scheme-form-target="overridesSection" class="<%= dist_method == 'equal' ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-semibold text-gray-900">Per-Performer Exceptions</h3>
+            <p class="text-sm text-gray-500">Override the default rate for specific people</p>
+          </div>
+        </div>
+
+        <div data-payout-scheme-form-target="overridesList" class="space-y-3">
+          <% performer_overrides.each do |person_id, override| %>
+            <% person = available_people.find { |p| p.id.to_s == person_id.to_s } %>
+            <% next unless person %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" data-payout-scheme-form-target="overrideRow">
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= person.name %></div>
+                <input type="hidden" name="rules[performer_overrides][<%= person.id %>][person_id]" value="<%= person.id %>">
+              </div>
+
+              <!-- Per-ticket overrides -->
+              <div data-payout-scheme-form-target="overridePerTicket" class="<%= ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) ? 'flex items-center gap-2' : 'hidden' %>">
+                <span class="text-sm text-gray-500">$</span>
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][per_ticket_rate]" value="<%= override['per_ticket_rate'] %>" min="0.01" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+                <span class="text-sm text-gray-500">/ticket</span>
+              </div>
+
+              <!-- Minimum override (per_ticket_guaranteed only) -->
+              <div data-payout-scheme-form-target="overrideMinimum" class="<%= dist_method == 'per_ticket_guaranteed' ? 'flex items-center gap-2' : 'hidden' %>">
+                <span class="text-sm text-gray-500">min $</span>
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][minimum]" value="<%= override['minimum'] %>" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="min">
+              </div>
+
+              <!-- Shares override -->
+              <div data-payout-scheme-form-target="overrideShares" class="<%= dist_method == 'shares' ? 'flex items-center gap-2' : 'hidden' %>">
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][shares]" value="<%= override['shares'] %>" min="0.5" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
+                <span class="text-sm text-gray-500">shares</span>
+              </div>
+
+              <!-- Flat amount override -->
+              <div data-payout-scheme-form-target="overrideFlatAmount" class="<%= dist_method == 'flat_fee' ? 'flex items-center gap-2' : 'hidden' %>">
+                <span class="text-sm text-gray-500">$</span>
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][flat_amount]" value="<%= override['flat_amount'] %>" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="amount">
+              </div>
+
+              <button type="button" data-action="click->payout-scheme-form#removeOverride" class="text-gray-400 hover:text-red-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Add new override -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <div class="flex items-end gap-3">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Add exception for</label>
+              <select data-payout-scheme-form-target="personSelect" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Select a person...</option>
+                <% available_people.each do |person| %>
+                  <% next if performer_overrides.key?(person.id.to_s) %>
+                  <option value="<%= person.id %>" data-name="<%= person.name %>"><%= person.name %></option>
+                <% end %>
+              </select>
+            </div>
+
+            <!-- Per-ticket inputs for new override -->
+            <div data-payout-scheme-form-target="newOverridePerTicket" class="<%= ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) ? 'flex items-center gap-2' : 'hidden' %>">
+              <span class="text-sm text-gray-500">$</span>
+              <input type="number" data-payout-scheme-form-target="newPerTicketRate" min="0.01" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+              <span class="text-sm text-gray-500">/ticket</span>
+            </div>
+
+            <!-- Minimum input for new override -->
+            <div data-payout-scheme-form-target="newOverrideMinimum" class="<%= dist_method == 'per_ticket_guaranteed' ? 'flex items-center gap-2' : 'hidden' %>">
+              <span class="text-sm text-gray-500">min $</span>
+              <input type="number" data-payout-scheme-form-target="newMinimum" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="min">
+            </div>
+
+            <!-- Shares input for new override -->
+            <div data-payout-scheme-form-target="newOverrideShares" class="<%= dist_method == 'shares' ? 'flex items-center gap-2' : 'hidden' %>">
+              <input type="number" data-payout-scheme-form-target="newShares" min="0.5" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
+              <span class="text-sm text-gray-500">shares</span>
+            </div>
+
+            <!-- Flat amount input for new override -->
+            <div data-payout-scheme-form-target="newOverrideFlatAmount" class="<%= dist_method == 'flat_fee' ? 'flex items-center gap-2' : 'hidden' %>">
+              <span class="text-sm text-gray-500">$</span>
+              <input type="number" data-payout-scheme-form-target="newFlatAmount" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="amount">
+            </div>
+
+            <button type="button" data-action="click->payout-scheme-form#addOverride" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
 
     <!-- Form Actions -->
     <div class="flex items-center justify-between pt-4">

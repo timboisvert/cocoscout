@@ -4,8 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      { text: "Money", path: manage_production_money_index_path(@production) },
-      { text: "Payout Schemes", path: manage_production_money_payout_schemes_path(@production) }
+      ["Money", manage_production_money_index_path(@production)],
+      ["Payout Schemes", manage_production_money_payout_schemes_path(@production)]
     ],
     text: @payout_scheme.name,
     links: [

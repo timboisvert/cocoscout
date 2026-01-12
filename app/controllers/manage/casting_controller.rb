@@ -6,7 +6,7 @@ module Manage
     before_action :check_production_access
     before_action :check_casting_setup, only: :index
     before_action :set_show,
-                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
+                  only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
     def index
       @upcoming_shows = @production.shows
@@ -74,6 +74,16 @@ module Manage
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
       @roles_count = @roles.sum { |r| r.quantity || 1 }  # Total slots, not role count
+
+      # Get restricted roles for the filter dropdown
+      @restricted_roles = @roles.select(&:restricted?)
+
+      # Build eligible member data for restricted role filtering
+      @eligible_by_role_id = {}
+      @restricted_roles.each do |role|
+        eligible_members = role.eligible_members.to_a
+        @eligible_by_role_id[role.id] = eligible_members.map { |m| "#{m.class.name}_#{m.id}" }
+      end
 
       # Preload all assignments for this show with their roles
       @assignments = @show.show_person_role_assignments.includes(:role).to_a
@@ -292,17 +302,18 @@ module Manage
       # Find the role - all roles are now unified in the Role model
       role = Role.find(params[:role_id])
 
-      # Validate eligibility for restricted roles
-      if role.restricted? && !role.eligible?(assignable)
+      # Validate eligibility for restricted roles (unless force is true - user confirmed in modal)
+      if role.restricted? && !role.eligible?(assignable) && !params[:force]
         render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_entity
         return
       end
 
-      # Check if this assignable is already assigned to this role
+      # Check if this assignable is already assigned to this role - silently ignore (no-op)
       existing_assignment = @show.show_person_role_assignments.find_by(assignable: assignable, role: role)
       if existing_assignment
-        render json: { error: "This cast member is already assigned to this role" }, status: :unprocessable_entity
-        return
+        # Already assigned - just return success with current state (no-op)
+        # This handles the case where user drags someone who's already in a multi-person role
+        return render_assignment_success_response
       end
 
       # Check if role has available slots
@@ -313,6 +324,9 @@ module Manage
 
       # Make the assignment (position is auto-assigned by model callback)
       assignment = @show.show_person_role_assignments.create!(assignable: assignable, role: role)
+
+      # Reload the show's assignments to ensure fresh data for rendering
+      @show.show_person_role_assignments.reload
 
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
@@ -385,8 +399,8 @@ module Manage
       # Find the role
       role = Role.find(params[:role_id])
 
-      # Check if role is restricted - guests cannot be assigned to restricted roles
-      if role.restricted?
+      # Check if role is restricted - guests cannot be assigned unless force is true
+      if role.restricted? && !params[:force]
         render json: { error: "Guests cannot be assigned to restricted roles" }, status: :unprocessable_entity
         return
       end
@@ -425,6 +439,9 @@ module Manage
           guest_email: nil
         )
       end
+
+      # Reload the show's assignments to ensure fresh data for rendering
+      @show.show_person_role_assignments.reload
 
       # Generate the HTML to return
       @availability = build_availability_hash(@show)
@@ -510,6 +527,9 @@ module Manage
         end
       end
 
+      # Reload the show's assignments to ensure fresh data for rendering
+      @show.show_person_role_assignments.reload
+
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
 
@@ -563,6 +583,113 @@ module Manage
         assignable_type: removed_assignable_type,
         assignable_id: removed_assignable_id,
         person_id: removed_assignable_id, # Backward compatibility
+        progress: {
+          assignment_count: progress[:filled],
+          role_count: progress[:total],
+          percentage: progress[:percentage]
+        }
+      }
+    end
+
+    # Replace an existing assignment with a new person/group
+    # This removes the old assignment and creates a new one in a single transaction
+    def replace_assignment
+      assignment = @show.show_person_role_assignments.find(params[:assignment_id])
+      role = assignment.role
+      position = assignment.position
+
+      # Get the new assignable
+      if params[:new_person_id].present?
+        new_assignable = Current.organization.people.find(params[:new_person_id])
+      elsif params[:new_group_id].present?
+        new_assignable = Current.organization.groups.find(params[:new_group_id])
+      else
+        render json: { error: "Must provide new_person_id or new_group_id" }, status: :unprocessable_entity
+        return
+      end
+
+      # Check if the new assignable is already assigned to this role
+      existing = @show.show_person_role_assignments.find_by(assignable: new_assignable, role: role)
+      if existing && existing.id != assignment.id
+        render json: { error: "#{new_assignable.name} is already assigned to this role" }, status: :unprocessable_entity
+        return
+      end
+
+      # If moving from another role (source_role_id), also remove from there
+      if params[:source_role_id].present? && params[:source_role_id].to_s != role.id.to_s
+        source_assignment = @show.show_person_role_assignments.find_by(
+          role_id: params[:source_role_id],
+          assignable: new_assignable
+        )
+        source_assignment&.destroy!
+      end
+
+      # Do the replacement in a transaction
+      ActiveRecord::Base.transaction do
+        # Destroy old assignment
+        assignment.destroy!
+
+        # Create new assignment with the same position
+        @show.show_person_role_assignments.create!(
+          assignable: new_assignable,
+          role: role,
+          position: position
+        )
+      end
+
+      # Reload the show's assignments to ensure fresh data for rendering
+      @show.show_person_role_assignments.reload
+
+      # Generate the HTML to return - pass availability data
+      @availability = build_availability_hash(@show)
+
+      # Build linkage sync info for linked shows
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
+      cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
+                                           locals: { show: @show,
+                                                     availability: @availability })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
+
+      # Calculate progress using quantity-based slot counting
+      progress = @show.casting_progress
+      fully_cast = progress[:percentage] == 100
+
+      # Render linkage sync section if this is a linked show
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
+      # Render finalize section if fully cast AND (not linked OR in sync)
+      finalize_section_html = nil
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
+      end
+
+      render json: {
+        cast_members_html: cast_members_html,
+        roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
+        finalize_section_html: finalize_section_html,
         progress: {
           assignment_count: progress[:filled],
           role_count: progress[:total],
@@ -888,6 +1015,62 @@ module Manage
     end
 
     private
+
+    # Render a success response for assignment operations (used for both new assignments and no-ops)
+    def render_assignment_success_response
+      @availability = build_availability_hash(@show)
+
+      # Build linkage sync info for linked shows
+      sync_info = nil
+      linked_shows = []
+      is_linked = @show.linked?
+      if is_linked
+        linked_shows = @show.linked_shows.to_a
+        sync_info = build_linkage_sync_info(@show, linked_shows)
+      end
+
+      cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
+                                           locals: { show: @show,
+                                                     availability: @availability })
+      roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
+
+      progress = @show.casting_progress
+      fully_cast = progress[:percentage] == 100
+
+      linkage_sync_html = nil
+      if is_linked && sync_info.present?
+        linkage_sync_html = render_to_string(
+          partial: "manage/casting/linkage_sync_section",
+          locals: {
+            show: @show,
+            linked_shows: linked_shows,
+            sync_info: sync_info,
+            production: @production,
+            fully_cast: fully_cast
+          }
+        )
+      end
+
+      finalize_section_html = nil
+      all_in_sync = sync_info.present? ? sync_info[:all_in_sync] : true
+      can_finalize = fully_cast && (!is_linked || all_in_sync)
+
+      if can_finalize
+        finalize_section_html = render_finalize_section_html(linked_shows)
+      end
+
+      render json: {
+        cast_members_html: cast_members_html,
+        roles_html: roles_html,
+        linkage_sync_html: linkage_sync_html,
+        finalize_section_html: finalize_section_html,
+        progress: {
+          assignment_count: progress[:filled],
+          role_count: progress[:total],
+          percentage: progress[:percentage]
+        }
+      }
+    end
 
     def person_search_result(person)
       {

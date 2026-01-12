@@ -102,7 +102,7 @@ module Manage
         # Make default if it's the first scheme
         @payout_scheme.make_default! if @production.payout_schemes.count == 1
 
-        redirect_to edit_manage_production_money_payout_scheme_path(@production, @payout_scheme),
+        redirect_to manage_production_edit_money_payout_scheme_path(@production, @payout_scheme),
                     notice: "Created #{@payout_scheme.name}. Customize it below."
       else
         redirect_to manage_production_money_payout_schemes_path(@production),
@@ -159,10 +159,25 @@ module Manage
         distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
       end
 
+      # Build performer overrides
+      performer_overrides = {}
+      overrides_params = rules_params[:performer_overrides] || {}
+      overrides_params.each do |person_id, override_data|
+        next if person_id.blank?
+
+        override = {}
+        override["per_ticket_rate"] = override_data[:per_ticket_rate].to_f if override_data[:per_ticket_rate].present?
+        override["minimum"] = override_data[:minimum].to_f if override_data[:minimum].present?
+        override["shares"] = override_data[:shares].to_f if override_data[:shares].present?
+        override["flat_amount"] = override_data[:flat_amount].to_f if override_data[:flat_amount].present?
+
+        performer_overrides[person_id.to_s] = override if override.any?
+      end
+
       {
         "allocation" => allocation,
         "distribution" => distribution,
-        "performer_overrides" => {}
+        "performer_overrides" => performer_overrides
       }
     end
   end

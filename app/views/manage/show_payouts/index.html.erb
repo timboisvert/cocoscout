@@ -3,7 +3,9 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [{ text: "Money", path: manage_production_money_index_path(@production) }],
+    breadcrumbs: [
+      ["Money", manage_production_money_index_path(@production)]
+    ],
     text: "Show Payouts",
     links: []
   } %>
@@ -16,7 +18,8 @@
         { text: "Needs Data", path: manage_production_money_show_payouts_path(@production, filter: "needs_data"), active: @filter == "needs_data" },
         { text: "Draft", path: manage_production_money_show_payouts_path(@production, filter: "draft"), active: @filter == "draft" },
         { text: "Approved", path: manage_production_money_show_payouts_path(@production, filter: "approved"), active: @filter == "approved" },
-        { text: "Paid", path: manage_production_money_show_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
+        { text: "Paid", path: manage_production_money_show_payouts_path(@production, filter: "paid"), active: @filter == "paid" },
+        { text: "Canceled", path: manage_production_money_show_payouts_path(@production, filter: "canceled"), active: @filter == "canceled" }
       ]
     }
   ] %>
@@ -44,6 +47,9 @@
                 <span class="font-medium text-gray-900">
                   <%= show.secondary_name.presence || show.event_type.titleize %>
                 </span>
+                <% if show.canceled? %>
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">Canceled</span>
+                <% end %>
               </div>
               <div class="text-sm text-gray-600">
                 <%= show.date_and_time.strftime("%l:%M %p").strip %>
@@ -93,6 +99,8 @@
           No past shows to process payouts for.
         <% elsif @filter == "needs_data" %>
           All shows have financial data entered.
+        <% elsif @filter == "canceled" %>
+          No canceled shows.
         <% else %>
           No shows with this status.
         <% end %>

@@ -3,6 +3,7 @@
 class ShowPayoutLineItem < ApplicationRecord
   belongs_to :show_payout
   belongs_to :payee, polymorphic: true  # Person or Group
+  belongs_to :manually_paid_by, class_name: "User", optional: true
 
   has_one :show, through: :show_payout
   has_one :production, through: :show_payout
@@ -12,6 +13,16 @@ class ShowPayoutLineItem < ApplicationRecord
 
   scope :by_amount, -> { order(amount: :desc) }
   scope :by_name, -> { includes(:payee).sort_by { |li| li.payee.name } }
+  scope :already_paid, -> { where(manually_paid: true) }
+  scope :not_already_paid, -> { where(manually_paid: false) }
+
+  def mark_as_already_paid!(by_user)
+    update!(manually_paid: true, manually_paid_at: Time.current, manually_paid_by: by_user)
+  end
+
+  def unmark_as_already_paid!
+    update!(manually_paid: false, manually_paid_at: nil, manually_paid_by: nil)
+  end
 
   # Calculation details accessors
   def calculation_breakdown

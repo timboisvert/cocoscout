@@ -24,7 +24,7 @@ module Manage
 
     def index
       # Check if user needs to see welcome page (but not when impersonating)
-      if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank?
+      if Current.user.welcomed_production_at.nil? && session[:user_doing_the_impersonating].blank? && cookies.signed[:impersonator_user_id].blank?
         @show_manage_sidebar = false
         @has_organization = Current.user.organizations.any?
         @has_production = @has_organization && Current.organization&.productions&.any?
@@ -62,7 +62,7 @@ module Manage
 
     def dismiss_production_welcome
       # Prevent dismissing welcome screen when impersonating
-      if session[:user_doing_the_impersonating].present?
+      if session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
         redirect_to manage_path, alert: "Cannot dismiss welcome screen while impersonating"
         return
       end

@@ -4,7 +4,7 @@ module My
   class DashboardController < ApplicationController
     def index
       # Check if user needs to see welcome page (but not when impersonating)
-      if Current.user.welcomed_at.nil? && session[:user_doing_the_impersonating].blank?
+      if Current.user.welcomed_at.nil? && session[:user_doing_the_impersonating].blank? && cookies.signed[:impersonator_user_id].blank?
         @show_my_sidebar = false
         render "welcome" and return
       end
@@ -318,7 +318,7 @@ module My
 
     def dismiss_welcome
       # Prevent dismissing welcome screen when impersonating
-      if session[:user_doing_the_impersonating].present?
+      if session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
         redirect_to my_dashboard_path, alert: "Cannot dismiss welcome screen while impersonating"
         return
       end

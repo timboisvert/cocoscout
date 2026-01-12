@@ -6,6 +6,8 @@ class ShowPersonRoleAssignment < ApplicationRecord
   belongs_to :role
 
   validates :role, presence: true
+  # Prevent duplicate assignments: same person can't be assigned to same role on same show
+  validates :assignable_id, uniqueness: { scope: [ :show_id, :role_id, :assignable_type ], message: "is already assigned to this role" }, if: -> { assignable_id.present? }
   # Must have either an assignable (Person/Group) OR guest_name (for guest assignments)
   validate :has_assignable_or_guest
 
@@ -69,7 +71,8 @@ class ShowPersonRoleAssignment < ApplicationRecord
       end
     end
 
-    # Fallback: if all slots taken, use next available (shouldn't happen if fully_filled? is checked)
-    self.position = (taken_positions.max || 0) + 1
+    # All slots are taken - this shouldn't happen if fully_filled? is checked before assignment
+    # Set position to 1 as a fallback (will trigger uniqueness validation if truly full)
+    self.position = 1
   end
 end

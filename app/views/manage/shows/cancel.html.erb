@@ -97,7 +97,7 @@
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-6">Mark as canceled but keep it visible in the calendar. You can uncancel it later if needed.</p>
 
-        <%= form_with url: cancel_show_manage_production_show_path(@production, @show), method: :patch, data: { turbo: false, "cancel-show-target": "cancelForm" } do |f| %>
+        <%= form_with url: cancel_show_manage_production_show_path(@production, @show), method: :patch, data: { "cancel-show-target": "cancelForm" } do |f| %>
           <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
           <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
           <input type="hidden" name="email_subject" value="" data-cancel-show-target="emailSubjectField">

@@ -155,8 +155,12 @@ class SuperadminController < ApplicationController
   end
 
   def impersonate
-    # Store the current user
-    session[:user_doing_the_impersonating] = Current.user.id
+    # Store the current user ID in a signed cookie (survives session termination)
+    cookies.signed[:impersonator_user_id] = {
+      value: Current.user.id,
+      httponly: true,
+      same_site: :lax
+    }
 
     # Get the user being impersonated
     user = User.find_by(email_address: params[:email].to_s.strip.downcase)
@@ -184,9 +188,12 @@ class SuperadminController < ApplicationController
       # End any current session and impersonation
       terminate_session
 
-      # Set the impersonating id and start a new session
-      session[:impersonate_user_id] = user.id
+      # Start a new session for the impersonated user
       start_new_session_for user
+
+      # Copy from cookie to session (now that we have a fresh session)
+      session[:user_doing_the_impersonating] = cookies.signed[:impersonator_user_id]
+      session[:impersonate_user_id] = user.id
     end
 
     # Redirect
@@ -194,17 +201,22 @@ class SuperadminController < ApplicationController
   end
 
   def stop_impersonating
+    # Get the original user from cookie (session may not have it)
+    impersonator_id = cookies.signed[:impersonator_user_id] || session[:user_doing_the_impersonating]
+
     # Kill the impersonation session
     terminate_session
     session.delete(:impersonate_user_id)
 
     # Restore the original user
-    if session[:user_doing_the_impersonating]
-      original_user = User.find_by(id: session[:user_doing_the_impersonating])
+    if impersonator_id
+      original_user = User.find_by(id: impersonator_id)
       start_new_session_for original_user if original_user
     end
 
+    # Clean up
     session.delete(:user_doing_the_impersonating)
+    cookies.delete(:impersonator_user_id)
     redirect_to my_dashboard_path
   end
 

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["list"]
+    static targets = ["list", "roleFilter"]
     static values = {
         isLinked: Boolean,
         linkedCount: Number
@@ -11,6 +11,17 @@ export default class extends Controller {
         // Default filter depends on whether this is a linked show
         this.availabilityFilter = this.isLinkedValue ? "fully-available" : "available"
         this.castFilter = ""
+        this.roleFilter = ""
+        this.eligibleByRole = {}
+
+        // Load eligible member data if role filter exists
+        if (this.hasRoleFilterTarget) {
+            const eligibleData = this.roleFilterTarget.dataset.eligibleByRole
+            if (eligibleData) {
+                this.eligibleByRole = JSON.parse(eligibleData)
+            }
+        }
+
         this.updateActiveButton()
         this.applyFilters()
     }
@@ -25,6 +36,11 @@ export default class extends Controller {
 
     filterByCast(event) {
         this.castFilter = event.target.value
+        this.applyFilters()
+    }
+
+    filterByRole(event) {
+        this.roleFilter = event.target.value
         this.applyFilters()
     }
 
@@ -77,6 +93,16 @@ export default class extends Controller {
                 shouldShow = memberCastId === this.castFilter
             }
 
+            // Check role eligibility filter
+            if (this.roleFilter && shouldShow) {
+                const eligibleMembers = this.eligibleByRole[this.roleFilter] || []
+                // Build the member key in format "Person_123" or "Group_456"
+                const isGroup = member.dataset.dragCastMemberTarget === 'group'
+                const memberId = isGroup ? member.dataset.groupId : member.dataset.personId
+                const memberKey = `${isGroup ? 'Group' : 'Person'}_${memberId}`
+                shouldShow = eligibleMembers.includes(memberKey)
+            }
+
             member.style.display = shouldShow ? '' : 'none'
 
             // Show/hide availability text based on filter
@@ -105,12 +131,18 @@ export default class extends Controller {
         const emptyState = document.getElementById('cast-members-empty-state')
         const messageElement = document.getElementById('empty-state-message')
 
-        if (visibleMembers.length === 0 && this.availabilityFilter !== "all") {
+        if (visibleMembers.length === 0 && (this.availabilityFilter !== "all" || this.roleFilter)) {
             // Show empty state
             if (emptyState && messageElement) {
                 // Determine the message based on filter type
                 let message = ""
-                if (this.availabilityFilter === "fully-available") {
+                if (this.roleFilter) {
+                    // Get the role name from the selected option
+                    const selectedOption = this.hasRoleFilterTarget ?
+                        this.roleFilterTarget.options[this.roleFilterTarget.selectedIndex] : null
+                    const roleName = selectedOption ? selectedOption.text : "this role"
+                    message = `No one in the talent pool is approved for ${roleName}.`
+                } else if (this.availabilityFilter === "fully-available") {
                     message = "No one in the talent pool is available for all linked events."
                 } else if (this.availabilityFilter === "partially-available") {
                     message = "No one in the talent pool is available for any linked events."

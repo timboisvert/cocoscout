@@ -394,6 +394,7 @@ Rails.application.routes.draw do
       post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
       post "casting/shows/:show_id/assign_guest_to_role", to: "casting#assign_guest_to_role"
       post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
+      post "casting/shows/:show_id/replace_assignment", to: "casting#replace_assignment"
       post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
       post "casting/shows/:show_id/finalize", to: "casting#finalize_casting", as: "finalize_casting"
       patch "casting/shows/:show_id/reopen", to: "casting#reopen_casting", as: "reopen_casting"
@@ -595,6 +596,8 @@ Rails.application.routes.draw do
       get "money/payouts/:id/override", to: "show_payouts#override", as: "override_money_show_payout"
       patch "money/payouts/:id/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
       delete "money/payouts/:id/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
+      post "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
+      delete "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

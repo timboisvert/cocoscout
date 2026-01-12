@@ -2,7 +2,7 @@
 
 module ApplicationHelper
   def impersonating?
-    session[:user_doing_the_impersonating].present?
+    session[:user_doing_the_impersonating].present? || cookies.signed[:impersonator_user_id].present?
   end
 
   def current_user_can_manage?(production = nil)

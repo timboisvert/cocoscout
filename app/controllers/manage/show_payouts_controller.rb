@@ -6,16 +6,19 @@ module Manage
     before_action :set_show_payout, only: [
       :show, :update, :edit_financials, :update_financials,
       :calculate, :approve, :mark_paid, :revert_to_draft,
-      :override, :save_override, :clear_override
+      :override, :save_override, :clear_override,
+      :mark_line_item_paid, :unmark_line_item_paid
     ]
 
     def index
       @filter = params[:filter] || "all"
 
-      shows_scope = @production.shows
-                               .where(canceled: false)
-                               .order(date_and_time: :desc)
-                               .includes(:show_financials, show_payout: :line_items)
+      base_scope = @production.shows
+                              .order(date_and_time: :desc)
+                              .includes(:show_financials, show_payout: :line_items)
+
+      # Default: non-canceled shows only (except for canceled filter)
+      shows_scope = @filter == "canceled" ? base_scope.where(canceled: true) : base_scope.where(canceled: false)
 
       case @filter
       when "needs_data"
@@ -29,8 +32,11 @@ module Manage
         @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "approved" })
       when "paid"
         @shows = shows_scope.joins(:show_payout).where(show_payouts: { status: "paid" })
+      when "canceled"
+        # All canceled shows (already filtered above)
+        @shows = shows_scope
       else
-        # All past shows
+        # All past non-canceled shows
         @shows = shows_scope.where("shows.date_and_time < ?", Time.current)
       end
 
@@ -44,7 +50,7 @@ module Manage
 
     def update
       if @show_payout.update(show_payout_params)
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payout updated."
       else
         render :show, status: :unprocessable_entity
@@ -58,7 +64,7 @@ module Manage
     def update_financials
       @show_financials = @show.show_financials || @show.build_show_financials
       if @show_financials.update(show_financials_params)
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Financial data saved."
       else
         render :edit_financials, status: :unprocessable_entity
@@ -68,7 +74,7 @@ module Manage
     def calculate
       # Ensure we have financials
       unless @show.show_financials&.complete?
-        redirect_to edit_financials_manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_edit_financials_money_show_payout_path(@production, @show),
                     alert: "Please enter financial data before calculating payouts."
         return
       end
@@ -95,40 +101,40 @@ module Manage
           total_payout: result[:total]
         )
 
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payouts calculated: #{helpers.number_to_currency(result[:total])} total."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     alert: "Could not calculate payouts: #{result[:error]}"
       end
     end
 
     def approve
       if @show_payout.approve!(Current.user)
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payout approved and locked."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     alert: "Could not approve payout."
       end
     end
 
     def mark_paid
       if @show_payout.mark_paid!
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payout marked as paid."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     alert: "Could not mark as paid."
       end
     end
 
     def revert_to_draft
       if @show_payout.revert_to_draft!
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payout reverted to draft for editing."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+        redirect_to manage_production_money_show_payout_path(@production, @show),
                     alert: "Could not revert payout."
       end
     end
@@ -139,15 +145,30 @@ module Manage
     end
 
     def save_override
-      @show_payout.update!(override_rules: override_rules_params)
-      redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+      rules = build_override_rules
+      @show_payout.update!(override_rules: rules)
+      redirect_to manage_production_money_show_payout_path(@production, @show),
                   notice: "Custom rules saved for this show."
     end
 
     def clear_override
       @show_payout.update!(override_rules: nil)
-      redirect_to manage_production_money_show_payout_path(@production, @show_payout),
+      redirect_to manage_production_money_show_payout_path(@production, @show),
                   notice: "Custom rules cleared. Using default scheme."
+    end
+
+    def mark_line_item_paid
+      line_item = @show_payout.line_items.find(params[:line_item_id])
+      line_item.mark_as_already_paid!(Current.user)
+      redirect_to manage_production_money_show_payout_path(@production, @show),
+                  notice: "#{line_item.payee_name} marked as already paid."
+    end
+
+    def unmark_line_item_paid
+      line_item = @show_payout.line_items.find(params[:line_item_id])
+      line_item.unmark_as_already_paid!
+      redirect_to manage_production_money_show_payout_path(@production, @show),
+                  notice: "#{line_item.payee_name} no longer marked as already paid."
     end
 
     private
@@ -166,7 +187,7 @@ module Manage
     end
 
     def show_payout_params
-      params.require(:show_payout).permit(:notes)
+      params.require(:show_payout).permit(:notes, :payout_scheme_id)
     end
 
     def show_financials_params
@@ -175,6 +196,46 @@ module Manage
 
     def override_rules_params
       params.require(:override_rules).permit!
+    end
+
+    def build_override_rules
+      rules_params = params[:override_rules] || {}
+      distribution_params = rules_params[:distribution] || {}
+      method = distribution_params[:method] || "per_ticket_guaranteed"
+
+      # Build distribution
+      distribution = { "method" => method }
+
+      case method
+      when "per_ticket_guaranteed"
+        distribution["per_ticket_rate"] = distribution_params[:per_ticket_rate]&.to_f || 1.0
+        distribution["minimum"] = distribution_params[:minimum]&.to_f || 0
+      when "flat_fee"
+        distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
+      when "custom"
+        # Custom per-person: use flat_fee method with all amounts in performer_overrides
+        distribution = { "method" => "flat_fee", "flat_amount" => 0 }
+      end
+
+      # Build performer overrides
+      performer_overrides = {}
+      overrides_params = rules_params[:performer_overrides] || {}
+      overrides_params.each do |person_id, override_data|
+        next if person_id.blank?
+
+        override = {}
+        override["per_ticket_rate"] = override_data[:per_ticket_rate].to_f if override_data[:per_ticket_rate].present?
+        override["minimum"] = override_data[:minimum].to_f if override_data[:minimum].present?
+        override["flat_amount"] = override_data[:flat_amount].to_f if override_data[:flat_amount].present?
+
+        performer_overrides[person_id.to_s] = override if override.any?
+      end
+
+      {
+        "allocation" => [],
+        "distribution" => distribution,
+        "performer_overrides" => performer_overrides
+      }
     end
   end
 end

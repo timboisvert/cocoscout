@@ -7,7 +7,16 @@ export default class extends Controller {
         "addPersonModal", "addPersonRoleName", "addPersonRoleId", "addPersonSlotPosition",
         "addPersonSearchTab", "addPersonGuestTab",
         "personSearchInput", "personSearchSpinner", "personSearchResults",
-        "addPersonGuestName", "addPersonGuestEmail"
+        "addPersonGuestName", "addPersonGuestEmail",
+        // Restricted role warning modal targets
+        "restrictedWarningModal", "restrictedWarningPersonName", "restrictedWarningRoleName",
+        "restrictedWarningEligibleList", "restrictedWarningRoleId", "restrictedWarningAssignableType",
+        "restrictedWarningAssignableId", "restrictedWarningSourceRoleId",
+        "restrictedWarningGuestName", "restrictedWarningGuestEmail",
+        // Replace assignment modal targets
+        "replaceModal", "replaceModalTitle", "replaceNewPersonHeadshot", "replaceNewPersonName",
+        "replaceNewPersonNameWarning", "replaceRoleName", "replaceEligibilityWarning", "replaceOptionsList",
+        "replaceRoleId", "replaceAssignableType", "replaceAssignableId", "replaceSourceRoleId", "replaceIsEligible"
     ];
     static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean };
 
@@ -17,6 +26,8 @@ export default class extends Controller {
             if (event.key === 'Escape') {
                 this.closeAssignModal();
                 this.closeAddPersonModal();
+                this.closeRestrictedWarningModal();
+                this.closeReplaceModal();
             }
         };
         document.addEventListener('keydown', this.handleEscape);
@@ -27,6 +38,21 @@ export default class extends Controller {
 
     disconnect() {
         document.removeEventListener('keydown', this.handleEscape);
+    }
+
+    // Helper to handle server errors - suppress expected ones, alert others
+    handleServerError(error) {
+        const suppressedErrors = [
+            'already fully cast',
+            'already assigned to this role',
+            'not eligible for this restricted role'
+        ];
+        const shouldSuppress = suppressedErrors.some(msg => error.includes(msg));
+        if (shouldSuppress) {
+            console.warn('Suppressed error from server:', error);
+        } else {
+            alert(error);
+        }
     }
 
     // Helper to get showId - from value or from rolesContainer
@@ -166,6 +192,143 @@ export default class extends Controller {
 
         this.addPersonModalTarget.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
+    }
+
+    // Restricted role warning modal methods
+    showRestrictedWarningModal(roleElement, assignableType, assignableId, sourceRoleId = null, guestName = null, guestEmail = null) {
+        if (!this.hasRestrictedWarningModalTarget) {
+            // If modal not available, just proceed with assignment anyway
+            console.warn("Restricted warning modal not found, proceeding with assignment");
+            return;
+        }
+
+        const roleName = roleElement.dataset.roleName || "this role";
+        const eligibleNames = JSON.parse(roleElement.dataset.eligibleMemberNames || "[]");
+        const roleId = roleElement.dataset.roleId;
+
+        // Get the person's name - either from guest info or by querying the DOM
+        let personName;
+        if (assignableType === "Guest" && guestName) {
+            personName = guestName;
+        } else {
+            // Get from dragged element by querying the DOM directly
+            // (elements use drag-cast-member controller, not drop-role)
+            const draggedPerson = document.querySelector(
+                `[data-person-id="${assignableId}"], [data-group-id="${assignableId}"]`
+            );
+            personName = draggedPerson?.dataset.personName || "Unknown";
+        }
+
+        // Fill in the modal content
+        this.restrictedWarningPersonNameTarget.textContent = personName;
+        this.restrictedWarningRoleNameTarget.textContent = roleName;
+
+        // Show eligible members list
+        if (eligibleNames.length > 0) {
+            this.restrictedWarningEligibleListTarget.textContent = eligibleNames.join(", ");
+        } else {
+            this.restrictedWarningEligibleListTarget.textContent = "No one is currently approved";
+        }
+
+        // Store assignment data for confirmation
+        this.restrictedWarningRoleIdTarget.value = roleId;
+        this.restrictedWarningAssignableTypeTarget.value = assignableType;
+        this.restrictedWarningAssignableIdTarget.value = assignableId || "";
+        this.restrictedWarningSourceRoleIdTarget.value = sourceRoleId || "";
+
+        // Store guest info if provided
+        if (this.hasRestrictedWarningGuestNameTarget) {
+            this.restrictedWarningGuestNameTarget.value = guestName || "";
+        }
+        if (this.hasRestrictedWarningGuestEmailTarget) {
+            this.restrictedWarningGuestEmailTarget.value = guestEmail || "";
+        }
+
+        // Show the modal
+        this.restrictedWarningModalTarget.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    closeRestrictedWarningModal() {
+        if (!this.hasRestrictedWarningModalTarget) return;
+
+        this.restrictedWarningModalTarget.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    confirmRestrictedAssignment() {
+        const roleId = this.restrictedWarningRoleIdTarget.value;
+        const assignableType = this.restrictedWarningAssignableTypeTarget.value;
+        const assignableId = this.restrictedWarningAssignableIdTarget.value;
+        const sourceRoleId = this.restrictedWarningSourceRoleIdTarget.value;
+        const guestName = this.hasRestrictedWarningGuestNameTarget ? this.restrictedWarningGuestNameTarget.value : "";
+        const guestEmail = this.hasRestrictedWarningGuestEmailTarget ? this.restrictedWarningGuestEmailTarget.value : "";
+
+        this.closeRestrictedWarningModal();
+
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        // If dragging from an assignment (role-to-role), sourceRoleId will be set
+        if (sourceRoleId && sourceRoleId !== roleId) {
+            this.moveAssignment(productionId, showId, assignableId, sourceRoleId, roleId, assignableType);
+        } else if (assignableType === "Guest") {
+            // Handle guest assignment to restricted role
+            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                },
+                body: JSON.stringify({
+                    role_id: roleId,
+                    guest_name: guestName,
+                    guest_email: guestEmail,
+                    force: true
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        this.handleServerError(data.error);
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to assign guest:', err);
+                    alert('Failed to assign guest. Please try again.');
+                });
+        } else {
+            // Assign directly (bypassing eligibility check since user confirmed)
+            const requestBody = { role_id: roleId, force: true };
+            if (assignableType === "Person") {
+                requestBody.person_id = assignableId;
+            } else if (assignableType === "Group") {
+                requestBody.group_id = assignableId;
+            }
+
+            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+                },
+                body: JSON.stringify(requestBody)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        this.handleServerError(data.error);
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to assign:', err);
+                    alert('Failed to assign. Please try again.');
+                });
+        }
     }
 
     // Switch between search and guest tabs
@@ -364,10 +527,31 @@ export default class extends Controller {
 
         if (!roleId) return;
 
+        // Find the role element to check eligibility
+        const roleElement = document.querySelector(`[data-role-id="${roleId}"]`);
+        const isRestricted = roleElement?.dataset.roleRestricted === "true";
+        const assignableId = personType === 'Person' ? personId : groupId;
+
+        // Check eligibility for restricted roles
+        if (isRestricted && roleElement) {
+            const isEligible = this.isEligibleForRole(roleElement, personType, assignableId);
+            if (!isEligible) {
+                // Close the add person modal and show the restricted warning modal
+                this.closeAddPersonModal();
+                this.showRestrictedWarningModal(roleElement, personType, assignableId, null);
+                return;
+            }
+        }
+
         // Close modal
         this.closeAddPersonModal();
 
         // Assign the person/group
+        this.performAssignmentFromModal(roleId, personType, personId, groupId);
+    }
+
+    // Perform assignment from modal (after eligibility check passed or user confirmed)
+    performAssignmentFromModal(roleId, personType, personId, groupId) {
         const showId = this.showId;
         const productionId = this.productionId;
 
@@ -392,7 +576,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    this.handleServerError(data.error);
                     return;
                 }
 
@@ -403,7 +587,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -443,6 +627,17 @@ export default class extends Controller {
             return;
         }
 
+        // Check if role is restricted - show warning modal if so
+        const roleElement = document.querySelector(`[data-role-id="${roleId}"]`);
+        const isRestricted = roleElement?.dataset.roleRestricted === "true";
+        if (isRestricted) {
+            // Close the add person modal first
+            this.closeAddPersonModal();
+            // Show the restricted warning modal for guests
+            this.showRestrictedWarningModal(roleElement, "Guest", null, null, guestName, guestEmail);
+            return;
+        }
+
         // Close modal
         this.closeAddPersonModal();
 
@@ -464,7 +659,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    this.handleServerError(data.error);
                     return;
                 }
 
@@ -475,7 +670,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -540,7 +735,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    this.handleServerError(data.error);
                     return;
                 }
 
@@ -551,7 +746,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -611,7 +806,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -715,13 +910,60 @@ export default class extends Controller {
             assignableId = personId;
         }
 
-        // Check eligibility for restricted roles
-        if (!this.isEligibleForRole(roleElement, assignableType, assignableId)) {
-            // Show a brief visual indicator that the drop was rejected
-            roleElement.classList.add('ring-2', 'ring-red-400', 'bg-red-50');
-            setTimeout(() => {
-                roleElement.classList.remove('ring-2', 'ring-red-400', 'bg-red-50');
-            }, 500);
+        // Get role info
+        const roleQuantity = parseInt(roleElement.dataset.roleQuantity || "1", 10);
+        const roleFilled = parseInt(roleElement.dataset.roleFilled || "0", 10);
+        const isRestricted = roleElement.dataset.roleRestricted === "true";
+        const isEligible = this.isEligibleForRole(roleElement, assignableType, assignableId);
+        const currentAssignments = JSON.parse(roleElement.dataset.currentAssignments || "[]");
+
+        // Check if this person/group is already assigned to this role - if so, do nothing (no-op)
+        const alreadyAssigned = currentAssignments.some(a =>
+            a.type === assignableType && String(a.assignableId) === String(assignableId)
+        );
+        if (alreadyAssigned) {
+            // Silently ignore - person is already in this role
+            console.log('Person already assigned to this role, ignoring');
+            return;
+        }
+
+        // Check if the role is fully filled
+        const isRoleFull = roleFilled >= roleQuantity;
+
+        // If role is full, we need to handle replacement logic
+        if (isRoleFull) {
+            // Get person's info for the modal by querying the DOM directly
+            // (elements use drag-cast-member controller, not drop-role)
+            const draggedPerson = document.querySelector(
+                `[data-person-id="${assignableId}"], [data-group-id="${assignableId}"]`
+            );
+            const personName = draggedPerson?.dataset.personName || "Unknown";
+            const personInitials = draggedPerson?.dataset.personInitials || this.getInitials(personName);
+            const personHeadshotUrl = draggedPerson?.dataset.personHeadshotUrl || "";
+
+            if (roleQuantity === 1) {
+                // Single-person role: Auto-replace
+                const existingAssignment = currentAssignments[0];
+                if (existingAssignment) {
+                    // If restricted and not eligible, show warning first
+                    if (isRestricted && !isEligible) {
+                        this.showReplaceModal(roleElement, assignableType, assignableId, sourceRoleId, personName, personInitials, personHeadshotUrl, isEligible, currentAssignments);
+                        return;
+                    }
+                    // Do the replacement directly
+                    this.replaceAssignment(existingAssignment.id, assignableType, assignableId, roleId, sourceRoleId);
+                }
+            } else {
+                // Multi-person role: Show modal with options
+                this.showReplaceModal(roleElement, assignableType, assignableId, sourceRoleId, personName, personInitials, personHeadshotUrl, isEligible, currentAssignments);
+            }
+            return;
+        }
+
+        // Role has space - check eligibility for restricted roles
+        if (isRestricted && !isEligible) {
+            // Show warning modal instead of rejecting
+            this.showRestrictedWarningModal(roleElement, assignableType, assignableId, sourceRoleId);
             return;
         }
 
@@ -734,63 +976,226 @@ export default class extends Controller {
             this.moveAssignment(productionId, showId, assignableId, sourceRoleId, roleId, assignableType);
         } else {
             // Dragging from cast members list - assign directly
-            // For multi-slot roles, the backend checks if there's space
-            const requestBody = { role_id: roleId };
-            if (assignableType === "Person") {
-                requestBody.person_id = assignableId;
-            } else if (assignableType === "Group") {
-                requestBody.group_id = assignableId;
-            }
-
-            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
-                },
-                body: JSON.stringify(requestBody)
-            })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) {
-                        // Show error feedback (e.g., role is fully cast or already assigned)
-                        roleElement.classList.add('ring-2', 'ring-red-400', 'bg-red-50');
-                        setTimeout(() => {
-                            roleElement.classList.remove('ring-2', 'ring-red-400', 'bg-red-50');
-                        }, 500);
-                        return;
-                    }
-
-                    // Find the entity element and add opacity-50
-                    const targetType = assignableType === "Person" ? "person" : "group";
-                    const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
-                    if (entityElement) {
-                        entityElement.classList.add('opacity-50');
-                    }
-
-                    // Update roles list
-                    if (data.roles_html) {
-                        document.getElementById("show-roles").outerHTML = data.roles_html;
-                    }
-
-                    // Update cast members list
-                    if (data.cast_members_html) {
-                        const castMembersList = document.getElementById("cast-members-list");
-                        if (castMembersList) {
-                            castMembersList.outerHTML = data.cast_members_html;
-                        }
-                    }
-
-                    // Update linkage sync section if present
-                    if (data.linkage_sync_html) {
-                        this.updateLinkageSyncSection(data.linkage_sync_html);
-                    }
-
-                    // Update progress bar and finalize section
-                    this.updateProgressBar(data.progress);
-                    this.updateFinalizeSection(data.finalize_section_html);
-                });
+            this.performAssignment(roleId, assignableType, assignableId);
         }
+    }
+
+    // Perform the actual assignment API call
+    performAssignment(roleId, assignableType, assignableId, force = false) {
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        const requestBody = { role_id: roleId, force: force };
+        if (assignableType === "Person") {
+            requestBody.person_id = assignableId;
+        } else if (assignableType === "Group") {
+            requestBody.group_id = assignableId;
+        }
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    this.handleServerError(data.error);
+                    return;
+                }
+
+                // Update UI
+                this.updateUIAfterAssignment(data, assignableType, assignableId);
+            });
+    }
+
+    // Update UI after a successful assignment
+    updateUIAfterAssignment(data, assignableType, assignableId) {
+        // Find the entity element and add opacity-50
+        const targetType = assignableType === "Person" ? "person" : "group";
+        const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
+        if (entityElement) {
+            entityElement.classList.add('opacity-50');
+        }
+
+        // Update roles list
+        if (data.roles_html) {
+            document.getElementById("show-roles").outerHTML = data.roles_html;
+        }
+
+        // Update cast members list
+        if (data.cast_members_html) {
+            const castMembersList = document.getElementById("show-cast-members");
+            if (castMembersList) {
+                castMembersList.outerHTML = data.cast_members_html;
+            }
+        }
+
+        // Update linkage sync section if present
+        if (data.linkage_sync_html) {
+            this.updateLinkageSyncSection(data.linkage_sync_html);
+        }
+
+        // Update progress bar and finalize section
+        this.updateProgressBar(data.progress);
+        this.updateFinalizeSection(data.finalize_section_html);
+    }
+
+    // Show the replace modal for full roles
+    showReplaceModal(roleElement, assignableType, assignableId, sourceRoleId, personName, personInitials, personHeadshotUrl, isEligible, currentAssignments) {
+        if (!this.hasReplaceModalTarget) {
+            console.warn("Replace modal not found");
+            return;
+        }
+
+        const roleName = roleElement.dataset.roleName || "this role";
+        const roleId = roleElement.dataset.roleId;
+        const roleQuantity = parseInt(roleElement.dataset.roleQuantity || "1", 10);
+
+        // Fill in new person's info with headshot
+        this.replaceNewPersonNameTarget.textContent = personName;
+        if (this.hasReplaceNewPersonNameWarningTarget) {
+            this.replaceNewPersonNameWarningTarget.textContent = personName;
+        }
+        this.replaceRoleNameTarget.textContent = roleName;
+
+        // Set headshot or initials for the new person
+        if (personHeadshotUrl) {
+            this.replaceNewPersonHeadshotTarget.innerHTML = `<img src="${personHeadshotUrl}" alt="${personName}" class="w-12 h-12 object-cover rounded-lg">`;
+        } else {
+            this.replaceNewPersonHeadshotTarget.innerHTML = `<span>${personInitials}</span>`;
+        }
+
+        // Show/hide eligibility warning
+        if (!isEligible) {
+            this.replaceEligibilityWarningTarget.classList.remove('hidden');
+        } else {
+            this.replaceEligibilityWarningTarget.classList.add('hidden');
+        }
+
+        // Store data in hidden fields
+        this.replaceRoleIdTarget.value = roleId;
+        this.replaceAssignableTypeTarget.value = assignableType;
+        this.replaceAssignableIdTarget.value = assignableId;
+        this.replaceSourceRoleIdTarget.value = sourceRoleId || "";
+        this.replaceIsEligibleTarget.value = isEligible ? "true" : "false";
+
+        // Build options list
+        let optionsHtml = '';
+
+        // Option to replace each current assignment
+        currentAssignments.forEach((assignment, index) => {
+            const assignmentInitials = assignment.initials || this.getInitials(assignment.name);
+            const headshotHtml = assignment.headshotUrl
+                ? `<img src="${assignment.headshotUrl}" alt="${assignment.name}" class="w-10 h-10 object-cover rounded-full">`
+                : `<span>${assignmentInitials}</span>`;
+
+            optionsHtml += `
+                <button type="button"
+                        class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all cursor-pointer group"
+                        data-action="click->drop-role#executeReplace"
+                        data-replace-assignment-id="${assignment.id}"
+                        data-replace-type="replace">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0 overflow-hidden">
+                            ${headshotHtml}
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-sm font-medium text-gray-900 group-hover:text-pink-700">Replace ${assignment.name}</span>
+                            <p class="text-xs text-gray-500">${assignment.name} will be removed from this role</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 group-hover:text-pink-500">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                    </div>
+                </button>
+            `;
+        });
+
+        this.replaceOptionsListTarget.innerHTML = optionsHtml;
+
+        // Update title based on situation
+        if (roleQuantity === 1) {
+            this.replaceModalTitleTarget.textContent = "Replace Assignment";
+        } else {
+            this.replaceModalTitleTarget.textContent = "Role is Full";
+        }
+
+        // Show modal
+        this.replaceModalTarget.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    // Close replace modal
+    closeReplaceModal() {
+        if (!this.hasReplaceModalTarget) return;
+        this.replaceModalTarget.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    // Execute the replace action
+    executeReplace(event) {
+        const button = event.currentTarget;
+        const replaceAssignmentId = button.dataset.replaceAssignmentId;
+
+        const roleId = this.replaceRoleIdTarget.value;
+        const assignableType = this.replaceAssignableTypeTarget.value;
+        const assignableId = this.replaceAssignableIdTarget.value;
+        const sourceRoleId = this.replaceSourceRoleIdTarget.value;
+
+        this.closeReplaceModal();
+
+        this.replaceAssignment(replaceAssignmentId, assignableType, assignableId, roleId, sourceRoleId);
+    }
+
+    // Replace an existing assignment with a new one
+    replaceAssignment(existingAssignmentId, newAssignableType, newAssignableId, roleId, sourceRoleId) {
+        const showId = this.showId;
+        const productionId = this.productionId;
+
+        const requestBody = {
+            assignment_id: existingAssignmentId,
+            role_id: roleId,
+            force: true // Allow non-eligible for restricted roles (user confirmed)
+        };
+        if (newAssignableType === "Person") {
+            requestBody.new_person_id = newAssignableId;
+        } else if (newAssignableType === "Group") {
+            requestBody.new_group_id = newAssignableId;
+        }
+
+        // If we're moving from another role, include source info
+        if (sourceRoleId && sourceRoleId !== roleId) {
+            requestBody.source_role_id = sourceRoleId;
+        }
+
+        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/replace_assignment`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify(requestBody)
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    this.handleServerError(data.error);
+                    return;
+                }
+
+                // Update UI
+                this.updateUIAfterAssignment(data, newAssignableType, newAssignableId);
+            });
+    }
+
+    // Get initials from a name
+    getInitials(name) {
+        if (!name) return "?";
+        return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
     }
 
     // Handle click-to-assign for restricted roles
@@ -827,7 +1232,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -900,7 +1305,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -942,7 +1347,7 @@ export default class extends Controller {
 
                 // Update cast members list (this properly reflects who is/isn't assigned)
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }
@@ -1042,7 +1447,7 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    this.handleServerError(data.error);
                     return;
                 }
 
@@ -1053,7 +1458,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("cast-members-list");
+                    const castMembersList = document.getElementById("show-cast-members");
                     if (castMembersList) {
                         castMembersList.outerHTML = data.cast_members_html;
                     }

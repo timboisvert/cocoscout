@@ -34,7 +34,9 @@
 %>
 
 <% if path.present? %>
-  <%= link_to text, path, class: classes %>
+  <%= link_to path, class: classes do %>
+    <%= text %><% if local_assigns[:badge].present? %><span class="ml-1 text-xs text-pink-500 font-bold"><%= local_assigns[:badge] %></span><% end %>
+  <% end %>
 <% elsif href.present? %>
   <a href="<%= href %>"
      class="<%= classes %>"

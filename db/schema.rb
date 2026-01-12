@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_10_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_11_235208) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -856,12 +856,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_220000) do
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.jsonb "calculation_details", default: {}
     t.datetime "created_at", null: false
+    t.boolean "manually_paid", default: false, null: false
+    t.datetime "manually_paid_at"
+    t.bigint "manually_paid_by_id"
     t.text "notes"
     t.bigint "payee_id", null: false
     t.string "payee_type", null: false
     t.decimal "shares", precision: 10, scale: 2
     t.bigint "show_payout_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
@@ -898,6 +902,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_220000) do
     t.index ["assignable_type", "assignable_id"], name: "index_show_role_assignments_on_assignable"
     t.index ["person_id"], name: "index_show_person_role_assignments_on_person_id"
     t.index ["role_id"], name: "index_show_person_role_assignments_on_role_id"
+    t.index ["show_id", "role_id", "assignable_type", "assignable_id"], name: "idx_unique_show_role_assignable", unique: true, where: "(assignable_id IS NOT NULL)"
     t.index ["show_id", "role_id", "position"], name: "idx_assignments_show_role_position"
     t.index ["show_id"], name: "index_show_person_role_assignments_on_show_id"
   end
@@ -1352,6 +1357,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_10_220000) do
   add_foreign_key "show_financials", "shows"
   add_foreign_key "show_links", "shows"
   add_foreign_key "show_payout_line_items", "show_payouts"
+  add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"
   add_foreign_key "show_payouts", "shows"
   add_foreign_key "show_payouts", "users", column: "approved_by_id"

@@ -60,16 +60,20 @@
               active: controller_name == "communications"
             },
             {
-              label: "Money",
-              path: manage_production_money_index_path(Current.production),
-              active: controller_name == "payouts" || controller_name == "payout_schemes" || controller_name == "show_payouts"
-            },
-            {
               label: "Directory",
               path: manage_directory_path,
               active: ["directory", "people", "groups"].include?(controller_name)
             }
           ]
+
+          if Current.user.superadmin?
+            links.insert(-2, {
+              label: "Money",
+              path: manage_production_money_index_path(Current.production),
+              active: controller_name == "payouts" || controller_name == "payout_schemes" || controller_name == "show_payouts",
+              badge: "β"
+            })
+          end
         else
           # Limited navigation for reviewer-only users
           links = [
@@ -83,7 +87,7 @@
         %>
 
         <% links.each do |item| %>
-          <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active] %>
+          <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active], badge: item[:badge] %>
         <% end %>
 
       <% end %>

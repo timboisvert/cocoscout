@@ -212,6 +212,22 @@
                 }
               ] %>
             <% end %>
+
+            <% if @restricted_roles.any? %>
+              <!-- Restricted Role Filter -->
+              <div class="mt-2 flex items-center gap-2">
+                <label class="text-xs text-gray-500 whitespace-nowrap">Eligible for:</label>
+                <select data-action="change->cast-filter#filterByRole"
+                        data-cast-filter-target="roleFilter"
+                        data-eligible-by-role='<%= @eligible_by_role_id.to_json %>'
+                        class="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-pink-500 focus:ring-pink-500">
+                  <option value="">All Roles</option>
+                  <% @restricted_roles.each do |role| %>
+                    <option value="<%= role.id %>"><%= role.name %></option>
+                  <% end %>
+                </select>
+              </div>
+            <% end %>
           </div>
           <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto" data-cast-filter-target="list">
             <%= render partial: "manage/casting/cast_members_list", locals: {
@@ -231,7 +247,7 @@
 
     <%# Mobile Assign Modal %>
     <div data-drop-role-target="assignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drop-role#closeAssignModal">
-      <div class="bg-white w-full rounded-t-2xl max-h-[60vh] flex flex-col" data-action="click->drop-role#stopPropagation">
+      <div class="bg-white w-full rounded-t-2xl max-h-[60vh] flex flex-col" data-action="click->drop-role#stopPropagation" data-controller="mobile-cast-filter">
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <h2 data-modal-title class="text-lg font-semibold text-gray-900">Assign Role</h2>
           <button type="button" data-action="click->drop-role#closeAssignModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
@@ -241,8 +257,41 @@
           </button>
         </div>
         <div class="p-4 flex-1 overflow-hidden flex flex-col">
-          <p class="text-xs text-gray-500 mb-3 flex-shrink-0">Available members appear first</p>
-          <div class="space-y-1 overflow-y-auto flex-1">
+          <%# Mobile filter buttons %>
+          <div class="flex gap-2 mb-3 flex-shrink-0">
+            <% if @show.linked? && (@linked_shows || []).any? %>
+              <button type="button"
+                      class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-pink-500 text-white border-pink-500"
+                      data-action="click->mobile-cast-filter#filter"
+                      data-mobile-cast-filter-target="filterButton"
+                      data-filter="fully-available">
+                Fully Available
+              </button>
+              <button type="button"
+                      class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-white text-gray-700 border-gray-200"
+                      data-action="click->mobile-cast-filter#filter"
+                      data-mobile-cast-filter-target="filterButton"
+                      data-filter="partially-available">
+                Partial
+              </button>
+            <% else %>
+              <button type="button"
+                      class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-pink-500 text-white border-pink-500"
+                      data-action="click->mobile-cast-filter#filter"
+                      data-mobile-cast-filter-target="filterButton"
+                      data-filter="available">
+                Available
+              </button>
+            <% end %>
+            <button type="button"
+                    class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-all cursor-pointer bg-white text-gray-700 border-gray-200"
+                    data-action="click->mobile-cast-filter#filter"
+                    data-mobile-cast-filter-target="filterButton"
+                    data-filter="all">
+              All
+            </button>
+          </div>
+          <div class="space-y-1 overflow-y-auto flex-1" data-mobile-cast-filter-target="list">
             <%
               # Sort pool members: fully available first, then partially, then unavailable
               is_linked = @show.linked?
@@ -280,6 +329,10 @@
                 data-action="click->drop-role#assignFromModal"
                 data-assignable-type="<%= is_person ? 'Person' : 'Group' %>"
                 data-assignable-id="<%= member.id %>"
+                data-mobile-cast-filter-target="member"
+                data-is-available="<%= is_available ? 'true' : 'false' %>"
+                data-is-fully-available="<%= is_fully_available ? 'true' : 'false' %>"
+                data-is-partially-available="<%= is_partially_available ? 'true' : 'false' %>"
                 <%= 'disabled' if is_assigned %>>
                 <% headshot_variant = member.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>
@@ -412,6 +465,129 @@
       </div>
     </div>
     <% end %>
+
+    <%# Restricted Role Warning Modal %>
+    <div id="restricted-warning-modal" data-drop-role-target="restrictedWarningModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->drop-role#closeRestrictedWarningModal">
+      <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->drop-role#stopPropagation">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            Not Approved for This Role
+          </h2>
+          <button type="button" data-action="click->drop-role#closeRestrictedWarningModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6">
+          <p class="text-sm text-gray-600 mb-4">
+            <span data-drop-role-target="restrictedWarningPersonName" class="font-medium text-gray-900"></span>
+            is not approved for the role
+            <span data-drop-role-target="restrictedWarningRoleName" class="font-medium text-gray-900"></span>.
+          </p>
+
+          <div class="bg-gray-50 rounded-lg p-3 mb-4">
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Approved for this role:</p>
+            <div data-drop-role-target="restrictedWarningEligibleList" class="text-sm text-gray-700">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+
+          <p class="text-sm text-gray-600 mb-4">
+            Do you want to assign them anyway?
+          </p>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button type="button" data-action="click->drop-role#closeRestrictedWarningModal"
+                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md cursor-pointer">
+            Cancel
+          </button>
+          <button type="button" data-action="click->drop-role#confirmRestrictedAssignment"
+                  class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-md cursor-pointer">
+            Assign Anyway
+          </button>
+        </div>
+
+        <input type="hidden" data-drop-role-target="restrictedWarningRoleId">
+        <input type="hidden" data-drop-role-target="restrictedWarningAssignableType">
+        <input type="hidden" data-drop-role-target="restrictedWarningAssignableId">
+        <input type="hidden" data-drop-role-target="restrictedWarningSourceRoleId">
+        <input type="hidden" data-drop-role-target="restrictedWarningGuestName">
+        <input type="hidden" data-drop-role-target="restrictedWarningGuestEmail">
+      </div>
+    </div>
+
+    <%# Replace Assignment Modal - shown when dropping on a full role %>
+    <div id="replace-assignment-modal" data-drop-role-target="replaceModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->drop-role#closeReplaceModal">
+      <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->drop-role#stopPropagation">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">
+            <span data-drop-role-target="replaceModalTitle">Replace or Add?</span>
+          </h2>
+          <button type="button" data-action="click->drop-role#closeReplaceModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6">
+          <%# New person being added - with headshot %>
+          <div class="flex items-center gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg mb-4">
+            <div data-drop-role-target="replaceNewPersonHeadshot" class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0 overflow-hidden">
+              <!-- Filled by JS with image or initials -->
+            </div>
+            <div class="flex-1">
+              <p class="text-xs text-pink-600 font-medium uppercase tracking-wide">Adding</p>
+              <p class="font-semibold text-gray-900" data-drop-role-target="replaceNewPersonName">Someone</p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-gray-500">to</p>
+              <p class="font-medium text-gray-900" data-drop-role-target="replaceRoleName">Role</p>
+            </div>
+          </div>
+
+          <%# Eligibility warning - shown when person isn't eligible for restricted role %>
+          <div data-drop-role-target="replaceEligibilityWarning" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-amber-800">Not eligible for this restricted role</p>
+                <p class="text-xs text-amber-600 mt-0.5"><span data-drop-role-target="replaceNewPersonNameWarning">This person</span> isn't on the approved list.</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-sm font-medium text-gray-700 mb-3">Who should they replace?</p>
+
+          <%# Options list %>
+          <div data-drop-role-target="replaceOptionsList" class="space-y-2">
+            <!-- Options will be populated by JavaScript -->
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button type="button" data-action="click->drop-role#closeReplaceModal"
+                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md cursor-pointer">
+            Cancel
+          </button>
+        </div>
+
+        <input type="hidden" data-drop-role-target="replaceRoleId">
+        <input type="hidden" data-drop-role-target="replaceAssignableType">
+        <input type="hidden" data-drop-role-target="replaceAssignableId">
+        <input type="hidden" data-drop-role-target="replaceSourceRoleId">
+        <input type="hidden" data-drop-role-target="replaceIsEligible">
+      </div>
+    </div>
+
     </div><%# End drop-role controller wrapper %>
   <% end %>
 

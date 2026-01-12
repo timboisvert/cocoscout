@@ -123,51 +123,6 @@
             </div>
           </div>
 
-          <!-- Payment Section -->
-          <div class="border-t border-gray-200 pt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Payment</label>
-            <select data-show-roles-modal-target="paymentTypeSelect"
-                    data-action="change->show-roles-modal#togglePaymentFields"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <option value="non_paying">Non-paying</option>
-              <option value="flat_rate">Flat rate</option>
-              <option value="per_ticket">Per ticket</option>
-              <option value="per_ticket_with_minimum">Per ticket with minimum</option>
-            </select>
-
-            <!-- Flat Rate Amount -->
-            <div data-show-roles-modal-target="flatRateSection" class="hidden mt-3">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Payment Amount ($)</label>
-              <input type="number" data-show-roles-modal-target="paymentAmountInput"
-                     min="0" step="0.01" placeholder="0.00"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <!-- Per Ticket Rate -->
-            <div data-show-roles-modal-target="perTicketSection" class="hidden mt-3">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Rate per Ticket ($)</label>
-              <input type="number" data-show-roles-modal-target="paymentRateInput"
-                     min="0" step="0.01" placeholder="0.00"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <!-- Per Ticket with Minimum -->
-            <div data-show-roles-modal-target="perTicketMinSection" class="hidden mt-3 space-y-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Rate per Ticket ($)</label>
-                <input type="number" data-show-roles-modal-target="paymentRateMinInput"
-                       min="0" step="0.01" placeholder="0.00"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Payment ($)</label>
-                <input type="number" data-show-roles-modal-target="paymentMinimumInput"
-                       min="0" step="0.01" placeholder="0.00"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              </div>
-            </div>
-          </div>
-
           <!-- Form Actions -->
           <div class="flex justify-end gap-2 pt-4 border-t border-gray-200">
             <%= render "shared/button",

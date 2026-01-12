@@ -41,9 +41,16 @@
             # Count how many events they're available for (current + linked)
             events_available_for = (is_available ? 1 : 0) + linked_available_count
           %>
+          <%
+            headshot_variant = member.safe_headshot_variant(:thumb)
+            headshot_url = headshot_variant ? url_for(headshot_variant) : nil
+          %>
           <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
               data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
               data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
+              data-person-name="<%= member.name %>"
+              data-person-initials="<%= member.initials %>"
+              data-person-headshot-url="<%= headshot_url %>"
               data-talent-pool-id="<%= talent_pool.id %>"
               data-availability-status="<%= member_availability&.status || 'unset' %>"
               data-is-available="<%= is_available ? 'true' : 'false' %>"
@@ -55,11 +62,10 @@
               data-total-events="<%= total_events %>"
               draggable="true">
 
-              <% headshot_variant = member.safe_headshot_variant(:thumb) %>
               <% if headshot_variant %>
-                  <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}", draggable: false %>
+                  <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0", draggable: false %>
               <% else %>
-                  <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0 #{'opacity-50' if has_show_person_role_assignment}">
+                  <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
                       <%= member.initials %>
                   </div>
               <% end %>
