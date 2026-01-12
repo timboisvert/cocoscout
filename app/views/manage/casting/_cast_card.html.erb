@@ -131,7 +131,7 @@
             <%
               role_quantity = role.quantity || 1
               role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id }.sort_by { |a| a.position || 0 }
-              role_open_vacancies = open_vacancies_by_role[role.id] || []
+              role_open_vacancies = (open_vacancies_by_role[role.id] || []).dup  # dup so we can shift
             %>
             <% (1..role_quantity).each do |slot_position| %>
               <% assignment = role_assignments.find { |a| a.position == slot_position } %>
@@ -181,8 +181,8 @@
                 </div>
               <% else %>
                 <%
-                  # Check for open vacancy on this slot (non-linked shows)
-                  slot_vacancy = role_open_vacancies.find { |v| v.slot_position == slot_position }
+                  # Check for open vacancy on this slot - take the first available vacancy for this role
+                  slot_vacancy = role_open_vacancies.shift
                   has_open_vacancy = slot_vacancy.present?
                   vacated_by = slot_vacancy&.vacated_by
                   tooltip_text = if has_open_vacancy && vacated_by

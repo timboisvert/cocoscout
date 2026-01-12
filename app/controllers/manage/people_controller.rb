@@ -146,14 +146,24 @@ module Manage
       invitation_subject = params[:person][:invitation_subject] || default_invitation_subject
       invitation_message = params[:person][:invitation_message] || default_invitation_message
 
+      # Validate email before proceeding
+      unless person.email.present? && person.email.match?(URI::MailTo::EMAIL_REGEXP)
+        redirect_to [ :manage, person ], alert: "Cannot send invitation: #{person.email.presence || 'No email'} is not a valid email address"
+        return
+      end
+
       # Note: We don't add the person to the organization here.
       # They will be added when they accept the invitation.
 
       if person.user.nil?
-        user = User.create!(
+        user = User.new(
           email_address: person.email,
           password: User.generate_secure_password
         )
+        unless user.save
+          redirect_to [ :manage, person ], alert: "Cannot create user account: #{user.errors.full_messages.join(', ')}"
+          return
+        end
         person.update!(user: user)
       end
 

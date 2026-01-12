@@ -12,15 +12,18 @@ module Manage
       # Get eligible members (people and groups) to invite
       @talent_pool = @production.talent_pool
 
-      # Get all potential members (people and groups) based on role restrictions
+      # Always get all talent pool members - even for restricted roles,
+      # users should be able to choose anyone (restrictions are advisory)
+      people = @talent_pool.people.includes(profile_headshots: { image_attachment: :blob })
+      groups = @talent_pool.groups.includes(profile_headshots: { image_attachment: :blob })
+      all_members = (people.to_a + groups.to_a)
+
+      # Track which members are "role-eligible" for restricted roles (for UI indication)
+      @role_eligible_member_keys = Set.new
       if @vacancy.restricted?
-        # For restricted roles, use eligible_members which includes both people and groups
-        all_members = @vacancy.eligible_members
-      else
-        # For unrestricted roles, get all talent pool members (people and groups)
-        people = @talent_pool.people.includes(profile_headshots: { image_attachment: :blob })
-        groups = @talent_pool.groups.includes(profile_headshots: { image_attachment: :blob })
-        all_members = (people.to_a + groups.to_a)
+        @vacancy.eligible_members.each do |member|
+          @role_eligible_member_keys << "#{member.class.name}_#{member.id}"
+        end
       end
 
       # Track the member who vacated the role (to show grayed out)
@@ -39,13 +42,17 @@ module Manage
                                              .where(assignable_type: "Group")
                                              .pluck(:assignable_id)
 
-      # Sort so unavailable members appear at the bottom
+      # Sort: role-eligible first (for restricted roles), unavailable at bottom, then by name
       @all_potential_members = all_members.sort_by do |member|
         is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id
         is_already_cast = member.is_a?(Person) ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id)
         is_already_invited = member.is_a?(Person) && @already_invited_person_ids.include?(member.id)
         is_unavailable = is_vacated || is_already_cast || is_already_invited
-        [ is_unavailable ? 1 : 0, member.name.downcase ]
+        is_role_eligible = @role_eligible_member_keys.include?("#{member.class.name}_#{member.id}")
+        [
+          is_unavailable ? 2 : (is_role_eligible ? 0 : 1),  # eligible first, then others, unavailable last
+          member.name.downcase
+        ]
       end
 
       # Members who can actually be invited (excludes already cast, already invited, and vacated)
