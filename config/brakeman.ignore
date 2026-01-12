@@ -7,7 +7,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/manage/show_payouts_controller.rb",
-      "line": 198,
+      "line": 250,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.require(:override_rules).permit!",
       "render_path": null,
@@ -100,6 +100,40 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "dc552bc43367d0a5ef5f7cf69801858e20c2eca9e42773e5fd7510666eb4bb5d",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/shows/edit.html.erb",
+      "line": 662,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Move #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :disabled => true, :data => ({ :show_actions_target => \"moveButton\" }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowsController",
+          "method": "edit",
+          "line": 178,
+          "file": "app/controllers/manage/shows_controller.rb",
+          "rendered": {
+            "name": "manage/shows/edit",
+            "file": "app/views/manage/shows/edit.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/shows/edit"
+      },
+      "user_input": "Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
       ],
       "note": ""
     },
