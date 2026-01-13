@@ -7,7 +7,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/manage/show_payouts_controller.rb",
-      "line": 250,
+      "line": 217,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.require(:override_rules).permit!",
       "render_path": null,
@@ -100,6 +100,40 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "919b14a3d8834bbc5947ba889f9db8638d2cc3e58dadb896aa8a1940e00730af",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/organization_join/show.html.erb",
+      "line": 211,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Accept & Join #{Organization.find_by(:invite_token => params[:token]).name}\", { :variant => \"primary\", :size => \"jumbo\", :type => :submit, :disabled => true, :classes => \"!opacity-50 !cursor-not-allowed\", :data => ({ :password_strength_target => \"submit\" }) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "OrganizationJoinController",
+          "method": "join",
+          "line": 66,
+          "file": "app/controllers/organization_join_controller.rb",
+          "rendered": {
+            "name": "organization_join/show",
+            "file": "app/views/organization_join/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "organization_join/show"
+      },
+      "user_input": "Organization.find_by(:invite_token => params[:token]).name",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
       ],
       "note": ""
     },
