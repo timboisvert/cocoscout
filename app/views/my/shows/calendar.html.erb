@@ -49,9 +49,11 @@
 
   <% if @shows.any? %>
     <% # Desktop: Show selected month only; Mobile: Show all months %>
-    <% current_month_param = params[:month] ? Date.parse(params[:month]).to_time.beginning_of_month : nil %>
+    <% # Use in_time_zone to ensure consistent timezone handling with hash keys %>
+    <% current_month_param = params[:month] ? Date.parse(params[:month]).in_time_zone.beginning_of_month : nil %>
     <% desktop_month = current_month_param || Time.current.beginning_of_month %>
-    <% desktop_shows = @shows_by_month[desktop_month] || [] %>
+    <% # Try direct hash lookup first, fall back to filtering by month/year if needed %>
+    <% desktop_shows = @shows_by_month[desktop_month] || @shows.select { |s| s.date_and_time.month == desktop_month.month && s.date_and_time.year == desktop_month.year } %>
 
     <% # Calculate valid month range - allow navigation up to 12 months ahead %>
     <% first_month = @shows_by_month.keys.sort.first || Time.current.beginning_of_month %>

@@ -493,8 +493,8 @@ module My
       # Order shows
       @shows = @shows.sort_by(&:date_and_time)
 
-      # Group shows by month
-      @shows_by_month = @shows.group_by { |show| show.date_and_time.beginning_of_month }
+      # Group shows by month - normalize to Time.zone to ensure consistent hash keys
+      @shows_by_month = @shows.group_by { |show| show.date_and_time.in_time_zone.beginning_of_month }
 
       # Get assignments for these shows - use group_ids instead of pluck
       show_ids = @shows.map(&:id)
