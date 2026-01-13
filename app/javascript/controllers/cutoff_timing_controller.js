@@ -68,12 +68,16 @@ export default class extends Controller {
         // Update styling on parent containers
         this.updateEditModeStyles(value)
 
-        // Show/hide fields based on selection
+        // Show/hide fields and enable/disable inputs based on selection
         if (this.hasEditBeforeFieldsTarget) {
-            this.editBeforeFieldsTarget.classList.toggle("hidden", value !== "before_event")
+            const isHidden = value !== "before_event"
+            this.editBeforeFieldsTarget.classList.toggle("hidden", isHidden)
+            this.editBeforeFieldsTarget.querySelectorAll("input").forEach(input => input.disabled = isHidden)
         }
         if (this.hasEditAfterFieldsTarget) {
-            this.editAfterFieldsTarget.classList.toggle("hidden", value !== "after_event")
+            const isHidden = value !== "after_event"
+            this.editAfterFieldsTarget.classList.toggle("hidden", isHidden)
+            this.editAfterFieldsTarget.querySelectorAll("input").forEach(input => input.disabled = isHidden)
         }
     }
 
@@ -89,12 +93,16 @@ export default class extends Controller {
         // Update styling on parent containers
         this.updateCancelModeStyles(value)
 
-        // Show/hide fields based on selection
+        // Show/hide fields and enable/disable inputs based on selection
         if (this.hasCancelBeforeFieldsTarget) {
-            this.cancelBeforeFieldsTarget.classList.toggle("hidden", value !== "before_event")
+            const isHidden = value !== "before_event"
+            this.cancelBeforeFieldsTarget.classList.toggle("hidden", isHidden)
+            this.cancelBeforeFieldsTarget.querySelectorAll("input").forEach(input => input.disabled = isHidden)
         }
         if (this.hasCancelAfterFieldsTarget) {
-            this.cancelAfterFieldsTarget.classList.toggle("hidden", value !== "after_event")
+            const isHidden = value !== "after_event"
+            this.cancelAfterFieldsTarget.classList.toggle("hidden", isHidden)
+            this.cancelAfterFieldsTarget.querySelectorAll("input").forEach(input => input.disabled = isHidden)
         }
     }
 
