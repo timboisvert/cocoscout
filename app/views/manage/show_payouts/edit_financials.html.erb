@@ -20,7 +20,7 @@
     <% end %>
   </div>
 
-  <%= form_with model: @show_financials, url: manage_production_update_financials_money_show_payout_path(@production, @show), method: :patch, local: true, data: { financials_form_target: "form" } do |form| %>
+  <%= form_with model: @show_financials, url: manage_production_update_financials_money_show_payout_path(@production, @show), method: :patch, data: { turbo: false, financials_form_target: "form" } do |form| %>
 
     <% if @show_financials.errors.any? %>
       <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -102,7 +102,7 @@
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
             Other Revenue
@@ -293,7 +293,7 @@
         <label class="flex items-start gap-3 cursor-pointer">
           <%= form.check_box :data_confirmed, class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
           <div>
-            <span class="font-medium text-gray-900">Confirm data is complete</span>
+            <span class="font-medium text-gray-900">Confirm data is complete and accurate</span>
             <p class="text-sm text-gray-500 mt-0.5">Check this box if the data above is correct, even if revenue is $0. This is useful for free shows, canceled shows, or shows where no money changed hands.</p>
           </div>
         </label>
@@ -305,9 +305,27 @@
       <%= link_to manage_production_money_show_payout_path(@production, @show), class: "text-gray-600 hover:text-gray-900" do %>
         Cancel
       <% end %>
-      <%= render "shared/button", text: "Save Financial Data", variant: "primary", size: "medium", type: :submit %>
+      <%= form.submit "Save Financial Data", class: "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap px-4 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white" %>
     </div>
 
+  <% end %>
+
+  <!-- Mark as Non-Revenue Option (outside the form to avoid nested form issue) -->
+  <% if EventTypes.revenue_event_default(@show.event_type) %>
+    <div class="max-w-xl mt-6">
+      <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-medium text-gray-900">This event didn't generate revenue</h4>
+            <p class="text-sm text-gray-500 mt-0.5">Mark this as a non-revenue event to exclude it from payout calculations.</p>
+          </div>
+          <%= button_to "Mark as Non-Revenue", manage_production_mark_non_revenue_money_show_payout_path(@production, @show),
+              method: :post,
+              class: "inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2",
+              data: { turbo_confirm: "Are you sure? This will mark this event as non-revenue and exclude it from payouts." } %>
+        </div>
+      </div>
+    </div>
   <% end %>
 
   <!-- Other Revenue Modal -->

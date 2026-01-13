@@ -292,16 +292,29 @@ class Person < ApplicationRecord
     read_attribute(:bio_visible)
   end
 
-  # Check if person is in the talent pool for a specific production
+  # Check if person is in the effective talent pool for a specific production
+  # This checks both own talent pools and shared pools
   def in_talent_pool_for?(production)
     return false unless production
 
-    talent_pools.where(production: production).exists?
+    effective_pool = production.effective_talent_pool
+    return false unless effective_pool
+
+    talent_pools.where(id: effective_pool.id).exists?
   end
 
-  # Returns all productions where this person is in the talent pool
+  # Returns all productions where this person is in the effective talent pool
+  # This includes productions that share another production's talent pool
   def talent_pool_productions
-    Production.joins(:talent_pools).where(talent_pools: { id: talent_pools.select(:id) })
+    # Get productions via own talent pools
+    own_pool_ids = Production.joins(:talent_pools).where(talent_pools: { id: talent_pools.select(:id) }).pluck(:id)
+
+    # Get productions that use shared pools where this person is a member
+    shared_pool_ids = Production.joins(talent_pool_shares: :talent_pool)
+                                .where(talent_pools: { id: talent_pools.select(:id) })
+                                .pluck(:id)
+
+    Production.where(id: (own_pool_ids + shared_pool_ids).uniq)
   end
 
   # Virtual attribute for inverted contact info visibility logic
@@ -357,6 +370,58 @@ class Person < ApplicationRecord
     end
   end
 
+  # Zelle payout methods
+  ZELLE_IDENTIFIER_TYPES = %w[PHONE EMAIL].freeze
+  PREFERRED_PAYMENT_METHODS = %w[venmo zelle].freeze
+
+  validates :zelle_identifier_type, inclusion: { in: ZELLE_IDENTIFIER_TYPES }, allow_nil: true
+  validates :preferred_payment_method, inclusion: { in: PREFERRED_PAYMENT_METHODS }, allow_nil: true
+  validate :zelle_identifier_format, if: -> { zelle_identifier.present? && zelle_identifier_type.present? }
+
+  def zelle_configured?
+    zelle_identifier.present? && zelle_identifier_type.present?
+  end
+
+  def zelle_ready_for_payouts?
+    zelle_configured?
+  end
+
+  def formatted_zelle_identifier
+    return nil unless zelle_identifier.present?
+
+    case zelle_identifier_type
+    when "PHONE"
+      digits = zelle_identifier.gsub(/\D/, "")
+      return zelle_identifier unless digits.length == 10
+
+      "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
+    when "EMAIL"
+      zelle_identifier
+    else
+      zelle_identifier
+    end
+  end
+
+  def any_payment_method_configured?
+    venmo_configured? || zelle_configured?
+  end
+
+  def preferred_payment_info
+    case preferred_payment_method
+    when "venmo"
+      { method: "venmo", identifier: formatted_venmo_identifier } if venmo_configured?
+    when "zelle"
+      { method: "zelle", identifier: formatted_zelle_identifier } if zelle_configured?
+    else
+      # Return whichever is configured, preferring venmo
+      if venmo_configured?
+        { method: "venmo", identifier: formatted_venmo_identifier }
+      elsif zelle_configured?
+        { method: "zelle", identifier: formatted_zelle_identifier }
+      end
+    end
+  end
+
   private
 
   def venmo_identifier_format
@@ -369,6 +434,16 @@ class Person < ApplicationRecord
     when "USER_HANDLE"
       handle = venmo_identifier.delete("@")
       errors.add(:venmo_identifier, "must be a valid Venmo username (5-30 characters)") unless handle.match?(/\A[a-zA-Z0-9-]{5,30}\z/)
+    end
+  end
+
+  def zelle_identifier_format
+    case zelle_identifier_type
+    when "PHONE"
+      digits = zelle_identifier.gsub(/\D/, "")
+      errors.add(:zelle_identifier, "must be a valid 10-digit US phone number") unless digits.length == 10
+    when "EMAIL"
+      errors.add(:zelle_identifier, "must be a valid email address") unless zelle_identifier.match?(URI::MailTo::EMAIL_REGEXP)
     end
   end
 

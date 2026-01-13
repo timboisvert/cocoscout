@@ -1,40 +1,56 @@
 <%#
-  Money Show Row - Four Panel Layout
+  Money Show Row - Four Panel Layout for Revenue Events, Simplified for Non-Revenue
 
   Required:
     - show: Show object
     - production: Production object
 
-  Panels:
+  Optional:
+    - hide_non_revenue: Boolean, whether this row is in a filterable list
+
+  Panels (revenue events):
     1-2. Date/Time box + Show info (left half) -> links to show detail
     3. Financials summary with indicator -> links to edit financials
     4. Payout status and progress -> links to payout detail
+
+  Panels (non-revenue events):
+    1-2. Date/Time box + Show info (left half) -> links to show detail
+    3. Single panel to mark as revenue event -> links to edit financials
 %>
 
 <%
   financials = show.show_financials
   payout = show.show_payout
   has_data = financials&.has_data?
+  data_confirmed = financials&.data_confirmed?
   is_revenue_event = show.revenue_event?
+  # Check if this is a type that defaults to revenue but was marked as non-revenue
+  is_overridden_non_revenue = financials&.non_revenue_override? && EventTypes.revenue_event_default(show.event_type)
 
-  # Determine actionable status
-  if payout
-    status = payout.actionable_status
-    status_label = payout.actionable_status_label
-    status_class = payout.actionable_status_badge_class
+  # Determine payout status with new terminology
+  if payout&.paid?
+    payout_status = :paid
+    payout_label = "Paid"
+    payout_class = "text-pink-600"
+  elsif payout&.calculated_at.present?
+    payout_status = :awaiting_payout
+    payout_label = "Awaiting Payout"
+    payout_class = "text-pink-600"
   elsif has_data
-    status = "ready_to_calculate"
-    status_label = "Ready to Calculate"
-    status_class = "bg-blue-100 text-blue-700"
+    payout_status = :ready
+    payout_label = "Ready to Calculate"
+    payout_class = "text-gray-600"
   else
-    status = "needs_financials"
-    status_label = "Needs Financial Data"
-    status_class = "bg-amber-100 text-amber-700"
+    payout_status = :awaiting_calculation
+    payout_label = "Awaiting Calculation"
+    payout_class = "text-pink-600"
   end
 %>
 
-<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= is_revenue_event ? '' : 'opacity-60' %>">
-  <div class="flex flex-col lg:flex-row">
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= is_revenue_event ? '' : 'opacity-60' %>"
+     data-money-filter-target="showRow"
+     data-non-revenue="<%= !is_revenue_event %>">
+  <div class="flex flex-col lg:flex-row lg:items-stretch">
 
     <%# Panel 1 & 2: Show Info (left half) %>
     <%= link_to manage_production_show_path(production, show), class: "flex-1 flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none" do %>
@@ -68,44 +84,67 @@
       </div>
     <% end %>
 
-    <%# Panel 3: Financials %>
-    <%= link_to manage_production_edit_financials_money_show_payout_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors" do %>
-      <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Financials</div>
-      <% if has_data && is_revenue_event %>
-        <div class="text-sm font-medium text-gray-900">
-          <%= number_to_currency(financials.total_revenue) %> revenue
-        </div>
-        <% if financials.calculated_expenses > 0 %>
-          <div class="text-xs text-gray-500">
-            <%= number_to_currency(financials.calculated_expenses) %> expenses
-          </div>
-        <% end %>
-      <% elsif is_revenue_event %>
-        <div class="flex items-center gap-1 text-amber-600">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-          </svg>
-          <span class="text-xs font-medium">Enter data</span>
-        </div>
-      <% else %>
-        <div class="text-xs text-gray-400">N/A</div>
-      <% end %>
-    <% end %>
-
-    <%# Panel 4: Payout Status %>
-    <%= link_to manage_production_money_show_payout_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none" do %>
-      <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payout</div>
-      <% if is_revenue_event %>
-        <div class="flex items-center justify-between gap-2">
-          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_class %>">
-            <%= status_label %>
-          </span>
-          <% if payout&.total_payout && payout.total_payout > 0 %>
-            <span class="text-sm font-semibold text-gray-900"><%= number_to_currency(payout.total_payout) %></span>
+    <% if is_revenue_event %>
+      <%# Panel 3: Financials (revenue events) %>
+      <%= link_to manage_production_money_show_financials_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors flex flex-col justify-center" do %>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+          Financials
+          <% if data_confirmed %>
+            <svg class="w-3.5 h-3.5 text-pink-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+            </svg>
           <% end %>
         </div>
+        <% if has_data %>
+          <div class="text-sm font-medium text-gray-900"><%= number_to_currency(financials.total_revenue) %> revenue</div>
+          <div class="text-xs text-gray-500"><%= number_to_currency(financials.calculated_expenses) %> expenses</div>
+        <% else %>
+          <div class="text-sm font-medium text-pink-600">Awaiting Financials</div>
+        <% end %>
+      <% end %>
+
+      <%# Panel 4: Payout Status (revenue events) %>
+      <%= link_to manage_production_money_show_payout_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payout</div>
+        <div class="flex items-center gap-2">
+          <% if payout_status == :paid %>
+            <svg class="w-4 h-4 text-pink-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+            </svg>
+          <% end %>
+          <span class="text-sm font-medium <%= payout_class %>"><%= payout_label %></span>
+        </div>
+        <% if payout&.total_payout && payout.total_payout > 0 %>
+          <div class="text-xs text-gray-500"><%= number_to_currency(payout.total_payout) %> total</div>
+        <% end %>
+      <% end %>
+    <% else %>
+      <%# Single panel for non-revenue events %>
+      <% if is_overridden_non_revenue %>
+        <%# Was marked as non-revenue - can be undone %>
+        <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(production, show),
+            method: :post,
+            class: "w-full lg:w-1/2 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center text-left cursor-pointer",
+            form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-gray-500">Marked as non-revenue</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-0.5">Click to undo and enter financial data</div>
+        <% end %>
       <% else %>
-        <div class="text-xs text-gray-400">N/A</div>
+        <%# Naturally non-revenue event type - can add financial data if needed %>
+        <%= link_to manage_production_money_show_financials_path(production, show), class: "w-full lg:w-1/2 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-gray-500">No payout for this event type</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-0.5">Click if this event generated revenue or requires payout</div>
+        <% end %>
       <% end %>
     <% end %>
 

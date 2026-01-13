@@ -1,0 +1,38 @@
+<% show_production = local_assigns.fetch(:show_production, false) %>
+<div class="bg-white px-6 py-4" id="post-<%= post.id %>">
+  <div class="flex gap-3">
+    <%# Author Avatar %>
+    <% headshot_variant = post.author_headshot_variant(:thumb) %>
+    <% if headshot_variant %>
+      <%= image_tag headshot_variant, alt: post.author_name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+        <span class="text-sm font-bold text-gray-600"><%= post.author_initials %></span>
+      </div>
+    <% end %>
+
+    <div class="flex-1 min-w-0">
+      <%# Author Name and Timestamp %>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="font-medium text-gray-900"><%= post.author_name %></span>
+        <span class="text-xs text-gray-500"><%= time_ago_in_words(post.created_at) %> ago</span>
+        <% if show_production %>
+          <span class="text-xs text-gray-400">in</span>
+          <span class="text-xs font-medium text-pink-600"><%= post.production.name %></span>
+        <% end %>
+      </div>
+
+      <%# Post Body %>
+      <div class="text-gray-700 text-sm whitespace-pre-wrap"><%= post.body %></div>
+
+      <%# Replies Count %>
+      <% if post.replies_count > 0 %>
+        <div class="mt-2">
+          <button type="button" class="text-xs text-pink-500 hover:text-pink-600">
+            <%= pluralize(post.replies_count, "reply") %>
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

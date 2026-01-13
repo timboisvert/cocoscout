@@ -384,6 +384,14 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
+  closeWorksheet(event) {
+    if (event) event.preventDefault()
+    const worksheet = document.getElementById('financialWorksheet')
+    if (worksheet) {
+      worksheet.classList.add('hidden')
+    }
+  }
+
   formatCurrency(amount) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
   }

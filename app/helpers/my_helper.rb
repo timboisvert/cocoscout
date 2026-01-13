@@ -135,4 +135,11 @@ module MyHelper
       "Unfortunately, you have not been offered a cast spot for this production"
     end
   end
+
+  # Check if current user can moderate (delete) posts for a given post
+  def can_moderate_post?(post)
+    production = post.production
+    ProductionPermission.exists?(production: production, user: Current.user) ||
+      OrganizationPermission.exists?(organization: production.organization, user: Current.user)
+  end
 end

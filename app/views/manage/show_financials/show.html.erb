@@ -1,0 +1,392 @@
+<% content_for :title, "Financial Data - #{show_display_name(@show)}" %>
+
+<%
+  has_data = @show_financials.has_data?
+  is_revenue_event = @show.revenue_event?
+  payout_status = @show_payout&.status || "none"
+  payout_calculated = @show_payout&.calculated_at.present?
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_production_money_index_path(@production)]
+    ],
+    text: show_display_name(@show),
+    links: [
+      { text: "Payouts", path: manage_production_money_show_payout_path(@production, @show), icon: "currency-dollar" }
+    ]
+  } %>
+
+  <!-- Show Summary Row -->
+  <div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+    <div class="flex items-center gap-4">
+      <div class="flex-shrink-0 w-14 text-center">
+        <div class="text-xs font-semibold text-pink-600 uppercase"><%= @show.date_and_time.strftime("%b") %></div>
+        <div class="text-2xl font-bold text-gray-900"><%= @show.date_and_time.strftime("%-d") %></div>
+        <div class="text-xs text-gray-500"><%= @show.date_and_time.strftime("%a") %></div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-semibold text-gray-900 text-lg"><%= @show.secondary_name.presence || @show.event_type.titleize %></span>
+          <% if @show.canceled? %>
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">Canceled</span>
+          <% end %>
+          <% unless is_revenue_event %>
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">Non-revenue</span>
+          <% end %>
+        </div>
+        <div class="text-sm text-gray-600">
+          <%= @show.date_and_time.strftime("%l:%M %p").strip %>
+          <% if @show.location.present? %>
+            &middot; <%= @show.location.name %>
+          <% elsif @show.is_online %>
+            &middot; Online
+          <% end %>
+        </div>
+      </div>
+      <%= link_to manage_production_show_path(@production, @show), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+        View Show &rarr;
+      <% end %>
+    </div>
+  </div>
+
+  <% if is_revenue_event %>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Financial Summary -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Revenue & Profit Summary -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900">Financial Summary</h3>
+            <button type="button"
+                    onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              <%= has_data ? "Edit Data" : "Enter Data" %>
+            </button>
+          </div>
+
+          <% if has_data %>
+            <!-- Financial metrics grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Revenue</div>
+                <div class="text-xl font-semibold text-gray-900"><%= number_to_currency(@show_financials.total_revenue) %></div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Expenses</div>
+                <div class="text-xl font-semibold text-red-600"><%= number_to_currency(@show_financials.calculated_expenses) %></div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Net Profit</div>
+                <div class="text-xl font-semibold <%= @show_financials.net_revenue >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                  <%= number_to_currency(@show_financials.net_revenue) %>
+                </div>
+              </div>
+              <% if @show_financials.ticket_sales? && @show_financials.ticket_count.to_i > 0 %>
+                <div class="bg-gray-50 rounded-lg p-3">
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tickets Sold</div>
+                  <div class="text-xl font-semibold text-gray-900"><%= @show_financials.ticket_count %></div>
+                </div>
+              <% else %>
+                <div class="bg-gray-50 rounded-lg p-3">
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Revenue Type</div>
+                  <div class="text-xl font-semibold text-gray-900"><%= @show_financials.flat_fee? ? "Flat Fee" : "Ticket Sales" %></div>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Revenue Breakdown -->
+            <div class="border-t border-gray-200 pt-4">
+              <h4 class="text-sm font-medium text-gray-700 mb-3">Revenue Breakdown</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600"><%= @show_financials.flat_fee? ? "Flat Fee" : "Ticket Revenue" %></span>
+                  <span class="font-medium text-gray-900"><%= number_to_currency(@show_financials.primary_revenue) %></span>
+                </div>
+                <% if @show_financials.calculated_other_revenue > 0 %>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Other Revenue</span>
+                    <span class="font-medium text-gray-900"><%= number_to_currency(@show_financials.calculated_other_revenue) %></span>
+                  </div>
+                  <% if @show_financials.other_revenue_details.present? %>
+                    <% @show_financials.other_revenue_details.each do |item| %>
+                      <div class="flex justify-between text-sm pl-4">
+                        <span class="text-gray-500"><%= item["description"] %></span>
+                        <span class="text-gray-600"><%= number_to_currency(item["amount"]) %></span>
+                      </div>
+                    <% end %>
+                  <% end %>
+                <% end %>
+                <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
+                  <span class="font-medium text-gray-700">Total Revenue</span>
+                  <span class="font-semibold text-gray-900"><%= number_to_currency(@show_financials.total_revenue) %></span>
+                </div>
+              </div>
+            </div>
+
+            <% if @show_financials.calculated_expenses > 0 %>
+              <!-- Expense Breakdown -->
+              <div class="border-t border-gray-200 pt-4 mt-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Expense Breakdown</h4>
+                <div class="space-y-2">
+                  <% if @show_financials.expense_details.present? %>
+                    <% @show_financials.expense_details.each do |item| %>
+                      <div class="flex justify-between text-sm">
+                        <span class="text-gray-600"><%= item["description"] %></span>
+                        <span class="text-red-600"><%= number_to_currency(item["amount"]) %></span>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600">Expenses</span>
+                      <span class="text-red-600"><%= number_to_currency(@show_financials.expenses) %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
+                    <span class="font-medium text-gray-700">Total Expenses</span>
+                    <span class="font-semibold text-red-600"><%= number_to_currency(@show_financials.calculated_expenses) %></span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+          <% else %>
+            <!-- No data yet -->
+            <div class="text-center py-8">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p class="text-gray-500 mb-4">No financial data entered yet</p>
+              <button type="button"
+                      onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
+                      class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Enter Financial Data
+              </button>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Performance Comparison -->
+        <% if @comparison_data && @comparison_data[:count] > 0 && has_data %>
+          <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <h3 class="font-semibold text-gray-900 mb-4">Performance vs. Similar Shows</h3>
+            <p class="text-sm text-gray-500 mb-4">Compared to <%= @comparison_data[:count] %> other <%= @show.event_type.titleize.downcase.pluralize %></p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Revenue</div>
+                <div class="text-lg font-semibold text-gray-900"><%= number_to_currency(@show_financials.total_revenue) %></div>
+                <div class="text-xs text-gray-500 mt-1">Avg: <%= number_to_currency(@comparison_data[:avg_revenue]) %></div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Profit</div>
+                <div class="text-lg font-semibold <%= @show_financials.net_revenue >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                  <%= number_to_currency(@show_financials.net_revenue) %>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">Avg: <%= number_to_currency(@comparison_data[:avg_profit]) %></div>
+              </div>
+              <% if @comparison_data[:performance_vs_avg] %>
+                <div class="bg-gray-50 rounded-lg p-3">
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">vs. Average</div>
+                  <div class="text-lg font-semibold <%= @comparison_data[:performance_vs_avg] >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                    <%= @comparison_data[:performance_vs_avg] >= 0 ? '+' : '' %><%= @comparison_data[:performance_vs_avg] %>%
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    <%= @comparison_data[:performance_vs_avg] >= 0 ? 'Above' : 'Below' %> average profit
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Recent Similar Shows -->
+        <% if @recent_shows.any? %>
+          <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <h3 class="font-semibold text-gray-900 mb-4">Recent <%= @show.event_type.titleize.pluralize %></h3>
+            <div class="space-y-3">
+              <% @recent_shows.each do |show| %>
+                <div class="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0">
+                  <div>
+                    <span class="font-medium text-gray-900"><%= show.date_and_time.strftime("%b %-d, %Y") %></span>
+                    <% if show.secondary_name.present? %>
+                      <span class="text-gray-500">- <%= show.secondary_name %></span>
+                    <% end %>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-medium <%= show.show_financials.net_revenue >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                      <%= number_to_currency(show.show_financials.net_revenue) %>
+                    </span>
+                    <span class="text-gray-400 text-xs ml-2">net</span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Actions</h3>
+          <div class="space-y-3">
+            <%= link_to manage_production_money_show_payout_path(@production, @show), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Manage Payouts</div>
+                <div class="text-xs text-gray-500">
+                  <% if @show_payout&.paid? %>
+                    All payouts complete
+                  <% elsif payout_calculated %>
+                    Ready for payout
+                  <% elsif has_data %>
+                    Calculate payouts
+                  <% else %>
+                    Enter financials first
+                  <% end %>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            <% end %>
+
+            <button type="button"
+                    onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900"><%= has_data ? "Edit Financial Data" : "Enter Financial Data" %></div>
+                <div class="text-xs text-gray-500">Ticket sales, expenses, other revenue</div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Payout Status -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Payout Status</h3>
+          <% if @show_payout&.paid? %>
+            <div class="flex items-center gap-2 text-green-600 mb-2">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+              </svg>
+              <span class="font-medium">All Paid</span>
+            </div>
+            <p class="text-sm text-gray-500">Total: <%= number_to_currency(@show_payout.total_payout) %></p>
+          <% elsif payout_calculated %>
+            <div class="flex items-center gap-2 text-pink-600 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span class="font-medium">Awaiting Payout</span>
+            </div>
+            <p class="text-sm text-gray-500">Total: <%= number_to_currency(@show_payout.total_payout) %></p>
+          <% elsif has_data %>
+            <div class="flex items-center gap-2 text-gray-600 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+              <span class="font-medium">Ready to Calculate</span>
+            </div>
+            <p class="text-sm text-gray-500">Financial data is complete</p>
+          <% else %>
+            <div class="flex items-center gap-2 text-gray-400 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span class="font-medium">Awaiting Data</span>
+            </div>
+            <p class="text-sm text-gray-500">Enter financial data to enable payouts</p>
+          <% end %>
+        </div>
+
+        <!-- Notes -->
+        <% if @show_financials.notes.present? %>
+          <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <h3 class="font-semibold text-gray-900 mb-3">Notes</h3>
+            <p class="text-sm text-gray-600 whitespace-pre-wrap"><%= @show_financials.notes %></p>
+          </div>
+        <% end %>
+
+        <!-- Mark as Non-Revenue -->
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+          <% if @show_financials.non_revenue_override? %>
+            <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(@production, @show),
+                method: :post,
+                class: "w-full text-left",
+                form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
+              <div class="text-sm font-medium text-gray-700">Marked as Non-Revenue</div>
+              <div class="text-xs text-gray-500 mt-1">Click to restore as revenue event</div>
+            <% end %>
+          <% else %>
+            <%= button_to manage_production_mark_non_revenue_money_show_financials_path(@production, @show),
+                method: :post,
+                class: "w-full text-left",
+                form: { data: { turbo_confirm: "Mark this as a non-revenue event? This will remove any payout calculations." } } do %>
+              <div class="text-sm font-medium text-gray-700">Mark as Non-Revenue</div>
+              <div class="text-xs text-gray-500 mt-1">If this event didn't generate revenue</div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <!-- Non-revenue event view -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-center py-8">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <h3 class="font-medium text-gray-900 mb-2">Non-Revenue Event</h3>
+        <p class="text-gray-500 mb-4">This <%= @show.event_type.titleize.downcase %> is not tracked for revenue.</p>
+
+        <% if @show_financials.non_revenue_override? %>
+          <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(@production, @show),
+              method: :post,
+              class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors",
+              form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Restore as Revenue Event
+          <% end %>
+        <% else %>
+          <button type="button"
+                  onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Add Financial Data (Make Revenue Event)
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Financial Worksheet Modal -->
+<%= render "manage/show_financials/worksheet_modal" %>

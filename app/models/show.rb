@@ -79,7 +79,11 @@ class Show < ApplicationRecord
   enum :event_type, EventTypes.enum_hash
 
   # Check if this event type typically generates revenue (shows, classes, workshops)
+  # This can be overridden by the non_revenue_override flag on ShowFinancials
   def revenue_event?
+    # If marked as non-revenue override, it's not a revenue event
+    return false if show_financials&.non_revenue_override?
+
     EventTypes.revenue_event_default(event_type)
   end
 
@@ -518,8 +522,8 @@ class Show < ApplicationRecord
       person_ids << id
     end
 
-    # People in the production's talent pool (they might have "talent_pool" sync scope)
-    talent_pool = production.talent_pool
+    # People in the production's effective talent pool (they might have "talent_pool" sync scope)
+    talent_pool = production.effective_talent_pool
     if talent_pool
       TalentPoolMembership.where(talent_pool_id: talent_pool.id, member_type: "Person").pluck(:member_id).each do |id|
         person_ids << id

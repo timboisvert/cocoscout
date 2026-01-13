@@ -106,7 +106,7 @@ module Manage
 
     # GET /manage/productions/:production_id/shows/:show_id/show_roles/talent_pool_members
     def talent_pool_members
-      talent_pool = @production.talent_pool
+      talent_pool = @production.effective_talent_pool
 
       people = talent_pool.people.includes(profile_headshots: { image_attachment: :blob })
 

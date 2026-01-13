@@ -1,6 +1,6 @@
 <% content_for :title, @organization.name %>
 
-<div class="w-full" data-controller="tabs org-team-modals org-locations-settings">
+<div class="w-full" data-controller="tabs org-team-modals org-locations-settings org-messages">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {
@@ -16,8 +16,9 @@
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Organization Team Members</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
+    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Messages</button>
     <% if @is_owner %>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     <% end %>
   </nav>
 
@@ -329,7 +330,84 @@
     <% end %>
   </div>
 
-  <!-- Tab 4: Danger Zone (Owner only) -->
+  <!-- Tab 4: Messages -->
+  <div data-tabs-target="panel" class="hidden">
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Message Board Settings" %>
+      <div class="p-6 bg-white space-y-6">
+        <p class="text-sm text-gray-600">
+          Configure how message boards work for your organization's productions.
+        </p>
+
+        <%= form_with model: [:manage, @organization], method: :patch, data: { turbo: false } do |f| %>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Forum Mode</label>
+              <div class="space-y-2">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <%= f.radio_button :forum_mode, "per_production", class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600" %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">One forum per production</span>
+                    <p class="text-xs text-gray-500">Each production has its own separate message board.</p>
+                  </div>
+                </label>
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <%= f.radio_button :forum_mode, "shared", class: "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600" %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900">Shared forum</span>
+                    <p class="text-xs text-gray-500">All productions share one organization-wide message board.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="pt-4">
+              <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @organization.forum_per_production? && @productions.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mt-6">
+        <%= render "shared/card_header", title: "Production Forum Settings" %>
+        <div class="p-6 bg-white">
+          <p class="text-sm text-gray-600 mb-4">
+            Enable or disable the message board for individual productions.
+          </p>
+
+          <div class="space-y-2">
+            <% @productions.each do |production| %>
+              <div class="flex items-center justify-between py-2 px-3 border border-gray-200 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <% if production.logo.attached? %>
+                    <%= image_tag production.safe_logo_variant(:small), alt: production.name, class: "w-8 h-8 object-contain rounded" %>
+                  <% else %>
+                    <div class="w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
+                      <span class="text-xs font-bold text-pink-600"><%= production.initials %></span>
+                    </div>
+                  <% end %>
+                  <span class="text-sm font-medium text-gray-900"><%= production.name %></span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox"
+                         class="sr-only peer"
+                         <%= "checked" if production.forum_enabled? %>
+                         data-action="change->org-messages#toggleProduction"
+                         data-production-id="<%= production.id %>"
+                         data-url="<%= toggle_production_forum_manage_organization_path(@organization, production_id: production.id) %>">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Tab 5: Danger Zone (Owner only) -->
   <% if @is_owner %>
     <div data-tabs-target="panel" class="hidden">
       <!-- Transfer Ownership Section -->

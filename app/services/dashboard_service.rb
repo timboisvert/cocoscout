@@ -62,10 +62,10 @@ class DashboardService
   end
 
   def upcoming_shows
-    # Get all people in the production's talent pools in a single query
+    # Get all people in the production's effective talent pool (may be shared) in a single query
     all_cast_person_ids = Person
                           .joins(:talent_pool_memberships)
-                          .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
+                          .where(talent_pool_memberships: { talent_pool_id: @production.effective_talent_pool_ids })
                           .distinct
                           .pluck(:id)
 
@@ -126,11 +126,11 @@ class DashboardService
                                 .includes(:show_availabilities)
                                 .order(date_and_time: :asc)
 
-    # Get all people in the production's talent pools in a single query
+    # Get all people in the production's effective talent pool (may be shared) in a single query
     # Use joins instead of flat_map to avoid N+1
     all_cast_person_ids = Person
                           .joins(:talent_pool_memberships)
-                          .where(talent_pool_memberships: { talent_pool_id: @production.talent_pool_ids })
+                          .where(talent_pool_memberships: { talent_pool_id: @production.effective_talent_pool_ids })
                           .distinct
                           .pluck(:id)
 

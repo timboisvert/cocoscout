@@ -15,29 +15,44 @@
     production: @production
   } %>
 
-  <%# Quick Stats Cards %>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Pending Review</div>
-      <div class="text-2xl font-semibold text-yellow-600"><%= @pending_count %></div>
-      <div class="text-xs text-gray-500">awaiting approval</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Approved</div>
-      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@total_approved) %></div>
-      <div class="text-xs text-gray-500">ready to pay</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Paid Out</div>
-      <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_paid) %></div>
-      <div class="text-xs text-gray-500">total distributed</div>
+  <%# Payout Stats Cards %>
+  <div class="mb-8 pt-6 border-t border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Payouts</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Awaiting Calculation</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= @needs_calculation_count %> shows</div>
+        <div class="text-xs text-gray-500">need financial data or calculation</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_awaiting_payout) %></div>
+        <div class="text-xs text-gray-500"><%= @awaiting_payout_count %> shows · <%= @awaiting_payout_people_count %> people</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Paid Out</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_paid) %></div>
+        <div class="text-xs text-gray-500"><%= @paid_shows_count %> shows · <%= @paid_people_count %> people</div>
+      </div>
     </div>
   </div>
 
-  <%# Shows List with Filters %>
-  <div class="mb-8">
+  <%# Shows & Events List with Filters %>
+  <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-gray-900">Shows</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Shows & Events</h2>
+      <%# Toggle for hiding non-revenue events %>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <span class="text-sm text-gray-600">Hide non-revenue events</span>
+        <button type="button"
+                data-money-filter-target="toggle"
+                data-action="click->money-filter#toggle"
+                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-600 focus:ring-offset-2 bg-pink-600"
+                role="switch"
+                aria-checked="true">
+          <span data-toggle-dot class="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+        </button>
+      </label>
     </div>
 
     <%# Filter Bar %>
@@ -46,9 +61,9 @@
         label: "Status",
         filters: [
           { text: "All", path: manage_production_money_index_path(@production, filter: "all", period: @selected_period), active: @filter == "all" },
-          { text: "Needs Data", path: manage_production_money_index_path(@production, filter: "needs_data", period: @selected_period), active: @filter == "needs_data" },
-          { text: "Pending", path: manage_production_money_index_path(@production, filter: "pending", period: @selected_period), active: @filter == "pending" },
-          { text: "Approved", path: manage_production_money_index_path(@production, filter: "approved", period: @selected_period), active: @filter == "approved" },
+          { text: "Awaiting Financials", path: manage_production_money_index_path(@production, filter: "awaiting_financials", period: @selected_period), active: @filter == "awaiting_financials" },
+          { text: "Awaiting Calculation", path: manage_production_money_index_path(@production, filter: "awaiting_calculation", period: @selected_period), active: @filter == "awaiting_calculation" },
+          { text: "Awaiting Payout", path: manage_production_money_index_path(@production, filter: "awaiting_payout", period: @selected_period), active: @filter == "awaiting_payout" },
           { text: "Paid", path: manage_production_money_index_path(@production, filter: "paid", period: @selected_period), active: @filter == "paid" }
         ]
       }
@@ -57,61 +72,26 @@
     <% if @shows.any? %>
       <div class="space-y-2">
         <% @shows.each do |show| %>
-          <%= render partial: "manage/payouts/money_show_row", locals: { show: show, production: @production } %>
+          <%= render partial: "manage/payouts/money_show_row", locals: { show: show, production: @production, hide_non_revenue: true } %>
         <% end %>
       </div>
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
         <p class="text-gray-600">
           <% if @filter == "all" %>
-            No past shows yet. Shows will appear here after they occur.
-          <% elsif @filter == "needs_data" %>
+            No past shows yet. Shows & events will appear here after they occur.
+          <% elsif @filter == "awaiting_financials" %>
             All revenue events have financial data entered.
+          <% elsif @filter == "awaiting_calculation" %>
+            No shows awaiting calculation.
+          <% elsif @filter == "awaiting_payout" %>
+            No shows awaiting payout.
+          <% elsif @filter == "paid" %>
+            No paid shows yet.
           <% else %>
             No shows with this status.
           <% end %>
         </p>
-      </div>
-    <% end %>
-  </div>
-
-  <%# Payout Schemes Section %>
-  <div class="border-t border-gray-200 pt-6">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900">Payout Schemes</h2>
-        <p class="text-sm text-gray-500">Define how performers get paid for each show</p>
-      </div>
-      <% if @payout_schemes.any? %>
-        <%= link_to manage_production_money_payout_schemes_path(@production) do %>
-          <%= render "shared/button", text: "Manage Schemes", variant: "secondary", size: "small" %>
-        <% end %>
-      <% end %>
-    </div>
-
-    <% if @payout_schemes.any? %>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <% @payout_schemes.each do |scheme| %>
-          <%= link_to manage_production_money_payout_scheme_path(@production, scheme), class: "block bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors" do %>
-            <div class="flex items-center justify-between mb-1">
-              <span class="font-medium text-gray-900"><%= scheme.name %></span>
-              <% if scheme.is_default? %>
-                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Default</span>
-              <% end %>
-            </div>
-            <p class="text-sm text-gray-500"><%= scheme.rules_summary %></p>
-          <% end %>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
-        <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p class="text-gray-600 mb-3">No payout schemes yet. Create one to start calculating performer payouts.</p>
-        <%= link_to manage_production_presets_money_payout_schemes_path(@production) do %>
-          <%= render "shared/button", text: "Create Your First Scheme", variant: "primary", size: "small" %>
-        <% end %>
       </div>
     <% end %>
   </div>

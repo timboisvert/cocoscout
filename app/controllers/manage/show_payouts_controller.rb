@@ -6,9 +6,10 @@ module Manage
     before_action :set_show_payout, only: [
       :show, :update, :edit_financials, :update_financials,
       :calculate, :approve, :mark_paid, :revert_to_draft,
+      :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
       :mark_line_item_paid, :unmark_line_item_paid,
-      :mark_all_offline, :send_payment_reminders, :execute_venmo_payouts
+      :mark_all_offline, :send_payment_reminders
     ]
 
     def show
@@ -113,6 +114,24 @@ module Manage
       end
     end
 
+    def mark_non_revenue
+      financials = @show.show_financials || @show.create_show_financials!
+      financials.update!(non_revenue_override: true)
+      redirect_to manage_production_money_index_path(@production),
+                  notice: "#{helpers.show_display_name(@show)} marked as non-revenue event."
+    end
+
+    def unmark_non_revenue
+      if @show.show_financials&.non_revenue_override?
+        @show.show_financials.update!(non_revenue_override: false)
+        redirect_to manage_production_edit_financials_money_show_payout_path(@production, @show),
+                    notice: "Event restored as revenue event. Enter financial data below."
+      else
+        redirect_to manage_production_money_index_path(@production),
+                    alert: "This event was not marked as non-revenue."
+      end
+    end
+
     def override
       @default_scheme = @production.payout_schemes.find_by(is_default: true)
       @current_rules = @show_payout.override_rules.presence || @default_scheme&.rules || {}
@@ -183,49 +202,6 @@ module Manage
       count = line_items_needing_setup.size
       redirect_to manage_production_money_show_payout_path(@production, @show),
                   notice: "Payment setup reminders will be sent to #{count} performer#{"s" if count != 1}. (Coming soon!)"
-    end
-
-    def execute_venmo_payouts
-      # Only allow from approved status
-      unless @show_payout.approved?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    alert: "Payout must be approved before executing payments."
-        return
-      end
-
-      # Get unpaid line items that don't already have a payout in progress
-      unpaid_items = @show_payout.line_items.not_already_paid
-
-      if unpaid_items.empty?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    notice: "No unpaid line items to process."
-        return
-      end
-
-      # Check if PayPal is configured
-      begin
-        service = PaypalPayoutsService.new
-      rescue PaypalPayoutsService::ConfigurationError => e
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    alert: "PayPal is not configured. Please set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET environment variables."
-        return
-      end
-
-      # Execute payout via service
-      result = service.create_batch_payout(line_items: unpaid_items)
-
-      if result[:success]
-        # Schedule status check job
-        VenmoPayoutStatusCheckJob.set(wait: 2.minutes).perform_later(result[:batch_id])
-
-        notice = "Venmo payouts initiated! #{result[:items_processed]} payment#{"s" if result[:items_processed] != 1} sent."
-        notice += " (#{result[:items_skipped]} skipped - no Venmo configured)" if result[:items_skipped].to_i > 0
-
-        redirect_to manage_production_money_show_payout_path(@production, @show), notice: notice
-      else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    alert: "Failed to process Venmo payouts: #{result[:error]}"
-      end
     end
 
     private

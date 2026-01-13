@@ -13,13 +13,14 @@ module Manage
                           .order(:date_and_time)
                           .to_a
 
-      # Get talent pool IDs in a single query
-      talent_pool_ids = @production.talent_pool_ids
+      # Get effective talent pool ID (shared or own)
+      effective_pool = @production.effective_talent_pool
+      talent_pool_id = effective_pool&.id
 
       # Get all cast members with headshots eager loaded in a single query
       @people = Person
                 .joins(:talent_pool_memberships)
-                .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+                .where(talent_pool_memberships: { talent_pool_id: talent_pool_id })
                 .includes(profile_headshots: { image_attachment: :blob })
                 .distinct
                 .order(:name)
@@ -27,7 +28,7 @@ module Manage
 
       @groups = Group
                 .joins(:talent_pool_memberships)
-                .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+                .where(talent_pool_memberships: { talent_pool_id: talent_pool_id })
                 .includes(profile_headshots: { image_attachment: :blob })
                 .distinct
                 .order(:name)
@@ -64,13 +65,14 @@ module Manage
                          )
                          .find(params[:id])
 
-      # Get talent pool IDs in a single query
-      talent_pool_ids = @production.talent_pool_ids
+      # Get effective talent pool ID (shared or own)
+      effective_pool = @production.effective_talent_pool
+      talent_pool_id = effective_pool&.id
 
       # Get all cast members with headshots eager loaded in a single query
       @people = Person
                 .joins(:talent_pool_memberships)
-                .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+                .where(talent_pool_memberships: { talent_pool_id: talent_pool_id })
                 .includes(profile_headshots: { image_attachment: :blob })
                 .distinct
                 .order(:name)
@@ -78,7 +80,7 @@ module Manage
 
       @groups = Group
                 .joins(:talent_pool_memberships)
-                .where(talent_pool_memberships: { talent_pool_id: talent_pool_ids })
+                .where(talent_pool_memberships: { talent_pool_id: talent_pool_id })
                 .includes(profile_headshots: { image_attachment: :blob })
                 .distinct
                 .order(:name)

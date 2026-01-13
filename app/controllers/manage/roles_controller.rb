@@ -23,6 +23,9 @@ module Manage
       max_position = @production.roles.maximum(:position) || -1
       @role.position = max_position + 1
 
+      # Set pending eligible members for validation
+      @role.pending_eligible_member_ids = params.dig(:role, :eligible_member_ids)
+
       if @role.save
         update_eligible_members(@role)
         redirect_to manage_production_roles_path(@production), notice: "Role was successfully created"
@@ -33,6 +36,9 @@ module Manage
     end
 
     def update
+      # Set pending eligible members for validation
+      @role.pending_eligible_member_ids = params.dig(:role, :eligible_member_ids)
+
       if @role.update(role_params)
         update_eligible_members(@role)
         redirect_to manage_production_roles_path(@production), notice: "Role was successfully updated",
@@ -73,7 +79,7 @@ module Manage
     end
 
     def load_talent_pool_members
-      talent_pool = @production.talent_pool
+      talent_pool = @production.effective_talent_pool
 
       if talent_pool
         people = Person.joins(:talent_pool_memberships)

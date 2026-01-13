@@ -21,6 +21,7 @@ class User < ApplicationRecord
   has_many :email_logs, dependent: :destroy
   has_many :audition_request_votes, dependent: :destroy
   has_many :audition_votes, dependent: :destroy
+  has_many :post_views, dependent: :delete_all
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false },

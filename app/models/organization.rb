@@ -12,6 +12,14 @@ class Organization < ApplicationRecord
 
   has_one_attached :logo
 
+  # Forum mode determines how message boards are organized
+  # per_production: Each production has its own separate forum
+  # shared: All productions in this org share one forum
+  enum :forum_mode, {
+    per_production: "per_production",
+    shared: "shared"
+  }, default: :per_production, prefix: :forum
+
   validates :name, presence: true
 
   before_create :generate_invite_token

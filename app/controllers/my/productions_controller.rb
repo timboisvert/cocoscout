@@ -40,11 +40,11 @@ module My
                                .order(:name)
                                .to_a
 
-      # Build lookup of which entities are in each production's talent pool
+      # Build lookup of which entities are in each production's effective talent pool
       @production_entities = {}
       @productions.each do |production|
         entities = []
-        talent_pool = production.talent_pool
+        talent_pool = production.effective_talent_pool
 
         @people.each do |person|
           if TalentPoolMembership.exists?(talent_pool: talent_pool, member: person)
@@ -76,9 +76,9 @@ module My
       group_ids = @groups.map(&:id)
 
       @production = Production.find(params[:id])
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
 
-      # Check if user is in this production's talent pool
+      # Check if user is in this production's effective talent pool
       @person_memberships = TalentPoolMembership.where(talent_pool: @talent_pool, member_type: "Person", member_id: people_ids).includes(:member)
       @group_memberships = TalentPoolMembership.where(talent_pool: @talent_pool, member_type: "Group", member_id: group_ids).includes(:member)
 
@@ -130,7 +130,7 @@ module My
 
     def leave
       @production = Production.find(params[:id])
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
 
       @people = Current.user.people.active.to_a
       people_ids = @people.map(&:id)

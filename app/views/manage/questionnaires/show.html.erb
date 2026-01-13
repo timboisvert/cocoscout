@@ -186,7 +186,7 @@
           </div>
         <% end %>
 
-        <% talent_pool = @production.talent_pool %>
+        <% talent_pool = @production.effective_talent_pool %>
         <% all_people = talent_pool&.people&.to_a&.sort_by(&:name) || [] %>
         <% all_groups = talent_pool&.groups&.to_a&.sort_by(&:name) || [] %>
         <% invited_person_ids = @questionnaire.questionnaire_invitations.where(invitee_type: 'Person').pluck(:invitee_id) %>

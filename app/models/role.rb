@@ -27,8 +27,12 @@ class Role < ApplicationRecord
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
   validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 20 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
+  validate :restricted_role_has_eligible_members
 
   default_scope { order(position: :asc, created_at: :asc) }
+
+  # Attribute to temporarily store eligible member IDs for validation
+  attr_accessor :pending_eligible_member_ids
 
   # Check if this is a show-specific role
   def show_role?
@@ -121,5 +125,24 @@ class Role < ApplicationRecord
   # Check if this role has room for more assignments
   def has_open_slots?(show)
     slots_remaining(show) > 0
+  end
+
+  private
+
+  def restricted_role_has_eligible_members
+    return unless restricted?
+
+    # Check pending_eligible_member_ids if set (for new roles or updates)
+    if pending_eligible_member_ids.present?
+      if pending_eligible_member_ids.reject(&:blank?).empty?
+        errors.add(:base, "Restricted roles must have at least one eligible person or group")
+      end
+    elsif persisted? && role_eligibilities.empty?
+      # For existing roles without pending updates, check existing eligibilities
+      errors.add(:base, "Restricted roles must have at least one eligible person or group")
+    elsif new_record?
+      # New restricted role without pending members
+      errors.add(:base, "Restricted roles must have at least one eligible person or group")
+    end
   end
 end

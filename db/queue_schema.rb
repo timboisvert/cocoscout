@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_13_202632) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -436,6 +436,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
 
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "forum_mode", default: "per_production", null: false
     t.string "invite_token"
     t.string "name"
     t.bigint "owner_id", null: false
@@ -479,6 +480,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.text "old_keys"
     t.boolean "performance_credits_visible", default: true, null: false
     t.string "phone"
+    t.string "preferred_payment_method"
     t.boolean "profile_skills_visible", default: true, null: false
     t.text "profile_visibility_settings", default: "{}"
     t.datetime "profile_welcomed_at"
@@ -495,6 +497,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.string "venmo_identifier_type"
     t.datetime "venmo_verified_at"
     t.boolean "videos_visible", default: true, null: false
+    t.string "zelle_identifier"
+    t.string "zelle_identifier_type"
+    t.datetime "zelle_verified_at"
     t.index ["archived_at"], name: "index_people_on_archived_at"
     t.index ["created_at"], name: "index_people_on_created_at"
     t.index ["email"], name: "index_people_on_email"
@@ -547,6 +552,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
+  create_table "post_views", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "post_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.datetime "viewed_at", null: false
+    t.index ["post_id"], name: "index_post_views_on_post_id"
+    t.index ["user_id", "post_id"], name: "index_post_views_on_user_id_and_post_id", unique: true
+    t.index ["user_id"], name: "index_post_views_on_user_id"
+  end
+
   create_table "posters", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_primary", default: false, null: false
@@ -555,6 +571,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.datetime "updated_at", null: false
     t.index ["production_id", "is_primary"], name: "index_posters_on_production_id_primary", unique: true, where: "(is_primary = true)"
     t.index ["production_id"], name: "index_posters_on_production_id"
+  end
+
+  create_table "posts", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.string "author_type", null: false
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.bigint "parent_id"
+    t.bigint "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_type", "author_id"], name: "index_posts_on_author"
+    t.index ["parent_id", "created_at"], name: "index_posts_on_parent_id_and_created_at"
+    t.index ["parent_id"], name: "index_posts_on_parent_id"
+    t.index ["production_id", "created_at"], name: "index_posts_on_production_id_and_created_at"
+    t.index ["production_id"], name: "index_posts_on_production_id"
   end
 
   create_table "production_permissions", force: :cascade do |t|
@@ -579,6 +610,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.datetime "created_at", null: false
     t.text "description"
     t.text "event_visibility_overrides"
+    t.boolean "forum_enabled", default: true, null: false
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -845,6 +877,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
     t.jsonb "expense_details", default: []
     t.decimal "expenses", precision: 10, scale: 2, default: "0.0"
     t.decimal "flat_fee", precision: 10, scale: 2
+    t.boolean "non_revenue_override", default: false, null: false
     t.text "notes"
     t.decimal "other_revenue", precision: 10, scale: 2, default: "0.0"
     t.jsonb "other_revenue_details", default: []
@@ -1363,7 +1396,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
   add_foreign_key "person_invitations", "organizations"
+  add_foreign_key "post_views", "posts"
+  add_foreign_key "post_views", "users"
   add_foreign_key "posters", "productions"
+  add_foreign_key "posts", "posts", column: "parent_id"
+  add_foreign_key "posts", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
   add_foreign_key "productions", "organizations"

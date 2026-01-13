@@ -37,7 +37,7 @@
             </div>
           </div>
         <% end %>
-        <% staged_casts = pending_stages_local.any? ? [@production.talent_pool] : [] %>
+        <% staged_casts = pending_stages_local.any? ? [@production.effective_talent_pool] : [] %>
         <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
       <% elsif has_sent_notifications %>
         <%# After notifications sent and no new changes - show finalized message with toggle %>
@@ -67,7 +67,7 @@
           </div>
 
           <div data-show-toggle-target="content" class="hidden">
-            <% staged_casts = pending_stages_local.any? ? [@production.talent_pool] : [] %>
+            <% staged_casts = pending_stages_local.any? ? [@production.effective_talent_pool] : [] %>
             <%= render "finalize_notify_form", audition_cycle: audition_cycle, pending_stages: pending_stages_local, staged_casts: staged_casts, unassigned_people: unassigned_people %>
           </div>
         </div>

@@ -25,10 +25,30 @@ module Manage
       @filter = params[:filter].presence || "all"
       @shows = apply_filter(@shows, @filter)
 
-      # Summary stats
-      @total_approved = @production.show_payouts.approved.sum(:total_payout) || 0
-      @total_paid = @production.show_payouts.paid.sum(:total_payout) || 0
-      @pending_count = @production.show_payouts.drafts.count
+      # Summary stats - new terminology
+      # Awaiting calculation: shows that need data or haven't been calculated
+      revenue_types = EventTypes.revenue_event_types
+      revenue_shows = @production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
+      @needs_calculation_count = revenue_shows.left_joins(:show_payout)
+                                              .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+                                              .count
+
+      # Awaiting payout: calculated but not fully paid
+      awaiting_payouts = @production.show_payouts.where(status: %w[draft approved])
+                                                  .where.not(calculated_at: nil)
+      @awaiting_payout_count = awaiting_payouts.count
+      @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
+      @awaiting_payout_people_count = ShowPayoutLineItem.where(show_payout: awaiting_payouts)
+                                                         .not_already_paid
+                                                         .count
+
+      # Paid out
+      paid_payouts = @production.show_payouts.paid
+      @paid_shows_count = paid_payouts.count
+      @total_paid = paid_payouts.sum(:total_payout) || 0
+      @paid_people_count = ShowPayoutLineItem.where(show_payout: paid_payouts)
+                                              .already_paid
+                                              .count
     end
 
     private
@@ -39,18 +59,24 @@ module Manage
 
     def apply_filter(scope, filter)
       case filter
-      when "needs_data"
+      when "awaiting_financials"
         # Revenue events without complete financial data
         revenue_types = EventTypes.revenue_event_types
         scope.where(event_type: revenue_types)
              .left_joins(:show_financials)
              .where("show_financials.id IS NULL OR (show_financials.data_confirmed = FALSE AND (show_financials.ticket_revenue IS NULL OR show_financials.ticket_revenue = 0) AND (show_financials.flat_fee IS NULL OR show_financials.flat_fee = 0))")
-      when "pending"
+      when "awaiting_calculation"
+        # Revenue events with financial data but not yet calculated
+        revenue_types = EventTypes.revenue_event_types
+        scope.where(event_type: revenue_types)
+             .joins(:show_financials)
+             .left_joins(:show_payout)
+             .where("show_financials.data_confirmed = TRUE OR show_financials.ticket_revenue > 0 OR show_financials.flat_fee > 0")
+             .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+      when "awaiting_payout"
         scope.joins(:show_payout)
-             .where(show_payouts: { status: "draft" })
+             .where(show_payouts: { status: %w[draft approved] })
              .where.not(show_payouts: { calculated_at: nil })
-      when "approved"
-        scope.joins(:show_payout).where(show_payouts: { status: "approved" })
       when "paid"
         scope.joins(:show_payout).where(show_payouts: { status: "paid" })
       else

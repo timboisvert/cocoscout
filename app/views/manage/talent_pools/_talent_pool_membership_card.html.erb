@@ -1,12 +1,15 @@
 <div data-controller="cast-membership-card">
     <div class="" data-cast-membership-card-target="card">
 
-        <% talent_pool = production.talent_pool %>
+        <% talent_pool = production.effective_talent_pool %>
         <% is_member = talent_pool && person.talent_pool_memberships.exists?(talent_pool: talent_pool) %>
         <% if is_member %>
             <div class="grid grid-cols-4 gap-1 w-full">
                 <div class="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all relative group">
                     <span class="font-bold text-lg text-center"><%= talent_pool.name %></span>
+                    <% if production.uses_shared_pool? %>
+                      <span class="text-xs text-gray-500">(shared pool)</span>
+                    <% end %>
 
                     <% if current_user_can_manage?(production) %>
                         <div class="flex justify-center space-x-2 mt-4">

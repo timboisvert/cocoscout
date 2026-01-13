@@ -54,11 +54,14 @@ class DirectoryQueryService
     when "current_production"
       return [ Person.none, Group.none ] unless production
 
+      # Get the effective talent pool (either the production's own or a shared pool)
+      effective_pool = production.effective_talent_pool
+
       people = people.joins(:talent_pools)
-                     .where(talent_pools: { production_id: production.id })
+                     .where(talent_pools: { id: effective_pool.id })
                      .distinct
       groups = groups.joins(:talent_pools)
-                     .where(talent_pools: { production_id: production.id })
+                     .where(talent_pools: { id: effective_pool.id })
                      .distinct
     when "org_talent_pools"
       people = people.joins(:talent_pools).distinct

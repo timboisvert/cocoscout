@@ -77,7 +77,7 @@ module Manage
     def casting
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
 
       if @audition_cycle.video_only?
         # For video-only auditions, use audition requests instead of auditions
@@ -99,7 +99,7 @@ module Manage
     def casting_select
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
 
-      @talent_pool = @production.talent_pool
+      @talent_pool = @production.effective_talent_pool
       @auditionee_vote_counts = {}
 
       if @audition_cycle.video_only?
@@ -368,7 +368,7 @@ module Manage
 
     # POST /auditions/add_to_cast_assignment
     def add_to_cast_assignment
-      talent_pool = @production.talent_pool
+      talent_pool = @production.effective_talent_pool
       auditionee_type = params[:auditionee_type]
       auditionee_id = params[:auditionee_id]
 
@@ -384,7 +384,7 @@ module Manage
 
     # POST /auditions/remove_from_cast_assignment
     def remove_from_cast_assignment
-      talent_pool = @production.talent_pool
+      talent_pool = @production.effective_talent_pool
       CastAssignmentStage.where(
         audition_cycle_id: @audition_cycle.id,
         talent_pool_id: talent_pool.id,
@@ -446,8 +446,8 @@ module Manage
           (assignable.is_a?(Person) && assignable.casting_notification_sent_at.present? && assignable.notified_for_audition_cycle_id == audition_cycle.id)
       end
 
-      # Get the talent pool for this production
-      talent_pool = @production.talent_pool
+      # Get the effective talent pool for this production (may be shared)
+      talent_pool = @production.effective_talent_pool
       talent_pools_by_id = talent_pool ? { talent_pool.id => talent_pool } : {}
 
       # Count total recipients for batch creation

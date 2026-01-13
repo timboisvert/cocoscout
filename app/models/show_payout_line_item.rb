@@ -93,6 +93,10 @@ class ShowPayoutLineItem < ApplicationRecord
     payment_method == "venmo" && payout_reference_id.present? && payout_status == "success"
   end
 
+  def paid_via_zelle?
+    payment_method == "zelle" && (payout_reference_id.present? || manually_paid?) && payout_status == "success"
+  end
+
   def payout_pending?
     payout_status == "pending"
   end
@@ -123,6 +127,23 @@ class ShowPayoutLineItem < ApplicationRecord
   def payee_venmo_ready?
     return false unless payee.respond_to?(:venmo_ready_for_payouts?)
     payee.venmo_ready_for_payouts?
+  end
+
+  # Check if payee can receive Zelle payments
+  def payee_zelle_ready?
+    return false unless payee.respond_to?(:zelle_ready_for_payouts?)
+    payee.zelle_ready_for_payouts?
+  end
+
+  # Check if payee has any payment method configured
+  def payee_has_payment_method?
+    payee_venmo_ready? || payee_zelle_ready?
+  end
+
+  # Get payee's preferred payment info (returns hash with :method and :identifier)
+  def payee_preferred_payment
+    return nil unless payee.respond_to?(:preferred_payment_info)
+    payee.preferred_payment_info
   end
 
   # Calculation details accessors

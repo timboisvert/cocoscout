@@ -16,8 +16,8 @@
   flat_amount = distribution["flat_amount"] || 50.0
   default_shares = distribution["default_shares"] || 1.0
 
-  # Get available people from talent pool
-  talent_pool = @production.talent_pools.first
+  # Get available people from effective talent pool (may be shared)
+  talent_pool = @production.effective_talent_pool
   available_people = talent_pool&.people&.order(:name) || []
 %>
 

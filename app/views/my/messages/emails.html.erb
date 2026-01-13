@@ -1,0 +1,234 @@
+<% content_for :title, "Production Team Emails" %>
+
+<div class="w-full" data-controller="my-messages">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Messages", my_messages_path]
+    ],
+    text: "Production Team Emails",
+    links: @my_productions.any? ? [
+      { text: "Contact Production Team", path: "#", data_action: "click->my-messages#openModal" }
+    ] : []
+  } %>
+
+  <%# Search form %>
+  <div class="mb-4 mt-4" data-controller="search-bar">
+    <%= form_with url: my_messages_emails_path, method: :get, data: { turbo: false, search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+      <div class="relative flex-1">
+        <input
+          type="text"
+          name="search"
+          value="<%= @search_query %>"
+          placeholder="Search emails by subject..."
+          class="w-full h-12 px-4 pl-10 pr-10 rounded border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          autocomplete="off"
+          data-action="input->search-bar#toggleClear"
+          data-search-bar-target="input"
+        />
+        <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <% if @search_query.present? %>
+          <button
+            type="button"
+            data-action="click->search-bar#clear"
+            data-search-bar-target="clearBtn"
+            class="absolute right-2 top-2.5 p-1 rounded-full hover:bg-gray-100 transition cursor-pointer"
+            title="Clear search"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 hover:text-gray-600">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        <% end %>
+      </div>
+
+      <%= render "shared/button",
+          text: "Search",
+          variant: "primary",
+          size: "large",
+          icon: "search",
+          type: :submit %>
+    <% end %>
+  </div>
+
+  <%# Results count %>
+  <div class="mb-3 text-sm text-gray-600">
+    <% if @search_query.present? %>
+      <%= pluralize(@email_logs_pagy.count, "email") %> matching "<%= @search_query %>"
+    <% else %>
+      <%= pluralize(@email_logs_pagy.count, "email") %>
+    <% end %>
+  </div>
+
+  <% if @email_logs.empty? %>
+    <div class="text-center py-12 text-gray-500 bg-white border border-gray-200 rounded-lg">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-12 mx-auto mb-3 text-gray-300">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 0 1-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 0 0 1.183 1.981l6.478 3.488m8.839 2.51-4.66-2.51m0 0-1.023-.55a2.25 2.25 0 0 0-2.134 0l-1.022.55m0 0-4.661 2.51m16.5 1.615a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V8.844a2.25 2.25 0 0 1 1.183-1.981l7.5-4.039a2.25 2.25 0 0 1 2.134 0l7.5 4.039a2.25 2.25 0 0 1 1.183 1.98V19.5Z" />
+      </svg>
+      <% if @search_query.present? %>
+        <p>No emails found matching "<%= @search_query %>"</p>
+      <% else %>
+        <p>No emails yet.</p>
+        <p class="text-sm mt-2">Emails sent to you from productions will appear here.</p>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="divide-y divide-gray-200">
+        <% @email_logs.each do |log| %>
+          <%= link_to my_email_log_path(log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-900 font-medium truncate group-hover:text-pink-600">
+                  <%= log.subject || "(no subject)" %>
+                </div>
+                <div class="text-xs text-gray-500 mt-0.5 truncate">
+                  <% if log.production %>
+                    From: <%= log.production.name %>
+                  <% else %>
+                    From: CocoScout
+                  <% end %>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="text-xs text-gray-500 whitespace-nowrap">
+                  <%= log.sent_at&.strftime("%b %-d, %Y") %>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-gray-400 group-hover:text-pink-500">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <%# Pagination %>
+      <% if @email_logs_pagy.pages > 1 %>
+        <div class="border-t border-gray-200 px-4 py-3 bg-gray-50 flex items-center justify-between rounded-b-lg">
+          <div class="text-sm text-gray-500">
+            Page <%= @email_logs_pagy.page %> of <%= @email_logs_pagy.pages %>
+          </div>
+          <div class="flex gap-2">
+            <% if @email_logs_pagy.previous %>
+              <%= link_to my_messages_emails_path(page: @email_logs_pagy.previous, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } do %>
+                Previous
+              <% end %>
+            <% else %>
+              <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Previous</span>
+            <% end %>
+            <% if @email_logs_pagy.next %>
+              <%= link_to my_messages_emails_path(page: @email_logs_pagy.next, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } do %>
+                Next
+              <% end %>
+            <% else %>
+              <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Next</span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Contact Production Team Modal (only if user has productions) %>
+  <% if @my_productions.any? %>
+    <div id="send-message-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+         data-my-messages-target="modal"
+         data-action="click->my-messages#closeModalOnBackdrop">
+      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+           data-my-messages-target="modalContent"
+           data-action="click->my-messages#stopPropagation">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">Contact Production Team</h2>
+          <button type="button"
+                  data-action="click->my-messages#closeModal"
+                  class="text-gray-400 hover:text-gray-600 transition cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6">
+          <%= form_with model: @email_draft, url: my_send_message_messages_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+            <%# Production Selection - Custom styled selector %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
+              <div class="relative" data-controller="dropdown">
+                <input type="hidden" name="production_id" value="" data-my-messages-target="productionInput" required>
+                <button type="button"
+                        data-action="click->dropdown#toggle click@window->dropdown#hide"
+                        class="w-full flex items-center justify-between gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition cursor-pointer"
+                        data-my-messages-target="productionButton">
+                  <div class="flex items-center gap-3" data-my-messages-target="productionDisplay">
+                    <div class="text-gray-500">Select a production...</div>
+                  </div>
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <div data-dropdown-target="menu" class="hidden absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                  <% @my_productions.each do |production| %>
+                    <% logo_variant = production.safe_logo_variant(:small) %>
+                    <% logo_url = logo_variant ? url_for(logo_variant) : nil %>
+                    <button type="button"
+                            data-action="click->my-messages#selectProductionForEmail"
+                            data-production-id="<%= production.id %>"
+                            data-production-name="<%= production.name %>"
+                            data-production-initials="<%= production.initials %>"
+                            data-production-logo-url="<%= logo_url %>"
+                            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition cursor-pointer text-left">
+                      <% if logo_variant %>
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-gray-100">
+                          <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-10 h-10 object-cover rounded" %>
+                        </div>
+                      <% else %>
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-pink-100 text-pink-600 font-bold text-sm">
+                          <%= production.initials %>
+                        </div>
+                      <% end %>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900"><%= production.name %></div>
+                        <div class="text-xs text-gray-500"><%= production.organization.name %></div>
+                      </div>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <%# Subject with production prefix preview - hidden until production selected %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+              <div class="flex items-stretch">
+                <span class="hidden items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap"
+                      data-my-messages-target="productionPrefix"></span>
+                <%= form.text_field :title,
+                  class: "block w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
+                  placeholder: "Subject",
+                  required: true,
+                  data: { my_messages_target: "subjectInput" } %>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+              <%= form.rich_text_area :body,
+                class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->my-messages#closeModal" } %>
+              <%= render "shared/button", text: "Send Message", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

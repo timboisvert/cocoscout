@@ -21,6 +21,7 @@ class Production < ApplicationRecord
   has_many :sign_up_forms, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
+  has_many :posts, dependent: :destroy
   belongs_to :organization
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
@@ -74,6 +75,12 @@ class Production < ApplicationRecord
   # Returns true if this production uses a shared talent pool from another production
   def uses_shared_pool?
     TalentPoolShare.exists?(production_id: id)
+  end
+
+  # Returns IDs for the effective talent pool (shared or own)
+  # Useful for queries that need talent_pool_id IN (...)
+  def effective_talent_pool_ids
+    [ effective_talent_pool.id ]
   end
 
   # Returns true if this production's talent pool is shared with other productions

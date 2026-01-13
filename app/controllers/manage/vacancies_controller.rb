@@ -9,8 +9,8 @@ module Manage
     def show
       @invitations = @vacancy.invitations.includes(:person).order(created_at: :desc)
 
-      # Get eligible members (people and groups) to invite
-      @talent_pool = @production.talent_pool
+      # Get eligible members (people and groups) to invite from effective talent pool
+      @talent_pool = @production.effective_talent_pool
 
       # Always get all talent pool members - even for restricted roles,
       # users should be able to choose anyone (restrictions are advisory)

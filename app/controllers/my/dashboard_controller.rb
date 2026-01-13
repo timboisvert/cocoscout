@@ -21,7 +21,12 @@ module My
       group_ids = @groups.map(&:id)
       groups_by_id = @groups.index_by(&:id)
 
-      @productions = Production.joins(talent_pools: :people).where(people: { id: people_ids }).distinct
+      # Get productions where user is in the talent pool (own or shared)
+      # Productions via own talent pool
+      own_pool_production_ids = Production.joins(talent_pools: :people).where(people: { id: people_ids }).pluck(:id)
+      # Productions via shared talent pool
+      shared_pool_production_ids = Production.joins(talent_pool_shares: { talent_pool: :people }).where(people: { id: people_ids }).pluck(:id)
+      @productions = Production.where(id: (own_pool_production_ids + shared_pool_production_ids).uniq)
 
       # Get upcoming shows where any profile or their groups have a role assignment (next 45 days)
       # Consolidate by show - one row per show with all entity assignments

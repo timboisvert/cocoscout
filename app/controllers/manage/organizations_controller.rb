@@ -2,10 +2,10 @@
 
 module Manage
   class OrganizationsController < Manage::ManageController
-    before_action :set_organization, only: %i[show edit update destroy transfer_ownership remove_logo confirm_delete]
+    before_action :set_organization, only: %i[show edit update destroy transfer_ownership remove_logo confirm_delete toggle_production_forum]
     skip_before_action :show_manage_sidebar, only: %i[new create index edit]
     before_action :ensure_user_is_owner, only: %i[destroy transfer_ownership confirm_delete]
-    before_action :ensure_user_can_manage, only: %i[show edit update remove_logo]
+    before_action :ensure_user_can_manage, only: %i[show edit update remove_logo toggle_production_forum]
 
     def index
       # Management screen - list all organizations with management options
@@ -25,6 +25,7 @@ module Manage
       @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
       @locations = @organization.locations.order(:created_at)
       @team_invitation = TeamInvitation.new
+      @productions = @organization.productions.order(:name)
     end
 
     def new
@@ -130,6 +131,16 @@ module Manage
                   notice: "Ownership transferred to #{new_owner.person&.name || new_owner.email_address}"
     end
 
+    def toggle_production_forum
+      production = @organization.productions.find(params[:production_id])
+      production.update!(forum_enabled: params[:forum_enabled] == "true")
+
+      respond_to do |format|
+        format.html { redirect_to manage_organization_path(@organization), notice: "Forum setting updated" }
+        format.turbo_stream { head :ok }
+      end
+    end
+
     def setup_guide; end
 
     private
@@ -139,7 +150,7 @@ module Manage
     end
 
     def organization_params
-      params.expect(organization: %i[name logo])
+      params.expect(organization: %i[name logo forum_mode])
     end
 
     def ensure_user_is_owner

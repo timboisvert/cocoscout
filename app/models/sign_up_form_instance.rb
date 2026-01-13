@@ -7,11 +7,16 @@ class SignUpFormInstance < ApplicationRecord
   has_many :sign_up_slots, dependent: :destroy
   has_many :sign_up_registrations, through: :sign_up_slots
 
-  # Queued registrations (for admin_assigns mode) - registrations not yet assigned to a slot
-  has_many :queued_registrations, -> { queued.order(:position) },
+  # Direct registrations that reference this instance (for cascade delete)
+  has_many :direct_registrations,
            class_name: "SignUpRegistration",
            foreign_key: :sign_up_form_instance_id,
            dependent: :destroy
+
+  # Queued registrations (for admin_assigns mode) - registrations not yet assigned to a slot
+  has_many :queued_registrations, -> { queued.order(:position) },
+           class_name: "SignUpRegistration",
+           foreign_key: :sign_up_form_instance_id
 
   validates :status, presence: true, inclusion: { in: %w[initializing updating scheduled open closed cancelled] }
   validates :show_id, uniqueness: { scope: :sign_up_form_id, message: "already has an instance for this form", allow_nil: true }

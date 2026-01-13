@@ -381,6 +381,11 @@ module Manage
       online_location_info = params[:show][:online_location_info] || @show.online_location_info
       casting_enabled = params[:show][:casting_enabled].nil? ? @show.casting_enabled : params[:show][:casting_enabled]
       casting_source = params[:show][:casting_source] || @show.casting_source
+      # Preserve call time settings
+      call_time = params[:show][:call_time].presence || @show.call_time
+      call_time_enabled = params[:show][:call_time_enabled].nil? ? @show.call_time_enabled : params[:show][:call_time_enabled]
+      public_profile_visible = params[:show][:public_profile_visible].nil? ? @show.public_profile_visible : params[:show][:public_profile_visible]
+      use_custom_roles = params[:show][:use_custom_roles].nil? ? @show.use_custom_roles : params[:show][:use_custom_roles]
 
       # Delete all existing events in the series
       @show.recurrence_group.destroy_all
@@ -451,6 +456,10 @@ module Manage
           online_location_info: online_location_info,
           casting_enabled: casting_enabled,
           casting_source: casting_source,
+          call_time: call_time,
+          call_time_enabled: call_time_enabled,
+          public_profile_visible: public_profile_visible,
+          use_custom_roles: use_custom_roles,
           date_and_time: datetime,
           production: @production,
           recurrence_group_id: recurrence_group_id

@@ -162,8 +162,8 @@ class AuditionCycle < ApplicationRecord
       production_user_ids = production.production_permissions.where(role: %w[manager viewer]).pluck(:user_id)
       (global_user_ids + production_user_ids).uniq.count
     when "all"
-      # Count all talent pool members (talent pool belongs to production, not organization)
-      production.talent_pool&.people&.count || 0
+      # Count all effective talent pool members (may include shared pool)
+      production.effective_talent_pool&.people&.count || 0
     when "specific"
       # Count specifically assigned reviewers
       audition_reviewers.count

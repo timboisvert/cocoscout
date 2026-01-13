@@ -211,8 +211,8 @@ module Manage
       already_invited_group_ids = @questionnaire.questionnaire_invitations
                                                 .where(invitee_type: "Group").pluck(:invitee_id)
 
-      # Get all people and groups in the production
-      talent_pool = @production.talent_pool
+      # Get all people and groups in the production's effective talent pool
+      talent_pool = @production.effective_talent_pool
       all_people = talent_pool&.people&.to_a || []
       all_groups = talent_pool&.groups&.to_a || []
 

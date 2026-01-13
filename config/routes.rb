@@ -188,14 +188,20 @@ Rails.application.routes.draw do
       get "/locks", to: "sign_ups#slot_locks", as: "sign_up_slot_locks"
     end
 
-    # Payments (for talent to manage Venmo settings and view history)
+    # Payments (for talent to manage Venmo/Zelle settings and view history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
     patch  "/payments/venmo",                    to: "payments#update_venmo",              as: "payments_update_venmo"
     delete "/payments/venmo",                    to: "payments#remove_venmo",              as: "payments_remove_venmo"
+    patch  "/payments/zelle",                    to: "payments#update_zelle",              as: "payments_update_zelle"
+    delete "/payments/zelle",                    to: "payments#remove_zelle",              as: "payments_remove_zelle"
+    patch  "/payments/preferred",                to: "payments#update_preferred",          as: "payments_update_preferred"
 
     # Messages (inbox for talent)
     get   "/messages",                          to: "messages#index",                     as: "messages"
+    post  "/messages",                          to: "messages#create",                    as: "create_message"
+    get   "/messages/posts",                    to: "messages#posts",                     as: "messages_posts"
+    get   "/messages/emails",                   to: "messages#emails",                    as: "messages_emails"
     post  "/messages/send",                     to: "messages#send_message",              as: "send_message_messages"
     get   "/messages/:id",                      to: "messages#show",                      as: "email_log"
 
@@ -239,6 +245,7 @@ Rails.application.routes.draw do
         get :confirm_delete
         post :transfer_ownership
         delete :remove_logo
+        patch :toggle_production_forum
       end
     end
 
@@ -587,6 +594,13 @@ Rails.application.routes.draw do
       # Money / Payouts section
       get "money", to: "payouts#index", as: "money_index"
 
+      # Show financials - the main financial data view for a show
+      get "money/shows/:id", to: "show_financials#show", as: "money_show_financials"
+      get "money/shows/:id/edit", to: "show_financials#edit", as: "edit_money_show_financials"
+      patch "money/shows/:id", to: "show_financials#update", as: "update_money_show_financials"
+      post "money/shows/:id/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
+      post "money/shows/:id/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
+
       # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
       get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
       post "money/schemes", to: "payout_schemes#create"
@@ -605,8 +619,6 @@ Rails.application.routes.draw do
       get "money/payouts/:id", to: "show_payouts#show", as: "money_show_payout"
       patch "money/payouts/:id", to: "show_payouts#update"
       put "money/payouts/:id", to: "show_payouts#update"
-      get "money/payouts/:id/edit_financials", to: "show_payouts#edit_financials", as: "edit_financials_money_show_payout"
-      patch "money/payouts/:id/update_financials", to: "show_payouts#update_financials", as: "update_financials_money_show_payout"
       post "money/payouts/:id/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
       post "money/payouts/:id/approve", to: "show_payouts#approve", as: "approve_money_show_payout"
       post "money/payouts/:id/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
@@ -618,7 +630,6 @@ Rails.application.routes.draw do
       delete "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
       post "money/payouts/:id/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
       post "money/payouts/:id/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
-      post "money/payouts/:id/execute_venmo", to: "show_payouts#execute_venmo_payouts", as: "execute_venmo_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

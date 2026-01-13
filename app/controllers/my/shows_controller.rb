@@ -28,22 +28,39 @@ module My
       selected_group_ids = @groups.select { |g| @entity_filter.include?("group_#{g.id}") }.map(&:id)
 
       # Step 1: Get ALL shows from talent pool membership (base set for All Shows / By Production)
+      # Must check both own pools AND shared pools via talent_pool_shares
       all_talent_pool_show_ids = Set.new
 
       if selected_person_ids.any?
+        # Shows where person is in production's own talent pool
         tp_person_shows = Show.joins(production: { talent_pools: :people })
                               .where(people: { id: selected_person_ids })
                               .where("date_and_time >= ?", Time.current)
                               .pluck(:id)
         all_talent_pool_show_ids.merge(tp_person_shows)
+
+        # Shows where person is in a shared talent pool (via talent_pool_shares)
+        shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
+                                  .where(people: { id: selected_person_ids })
+                                  .where("date_and_time >= ?", Time.current)
+                                  .pluck(:id)
+        all_talent_pool_show_ids.merge(shared_person_shows)
       end
 
       if selected_group_ids.any?
+        # Shows where group is in production's own talent pool
         tp_group_shows = Show.joins(production: { talent_pools: :groups })
                              .where(groups: { id: selected_group_ids })
                              .where("date_and_time >= ?", Time.current)
                              .pluck(:id)
         all_talent_pool_show_ids.merge(tp_group_shows)
+
+        # Shows where group is in a shared talent pool (via talent_pool_shares)
+        shared_group_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
+                                 .where(groups: { id: selected_group_ids })
+                                 .where("date_and_time >= ?", Time.current)
+                                 .pluck(:id)
+        all_talent_pool_show_ids.merge(shared_group_shows)
       end
 
       # Step 1b: Get shows where user has sign-up registrations
@@ -234,23 +251,33 @@ module My
       group_ids = @groups.map(&:id)
 
       # Find the show if user has access via:
-      # 1. Any of user's profiles is in the production's talent pool
-      # 2. Any of user's groups is in the production's talent pool
+      # 1. Any of user's profiles is in the production's talent pool (own or shared)
+      # 2. Any of user's groups is in the production's talent pool (own or shared)
       # 3. Any of user's profiles has a direct role assignment
       # 4. Any of user's groups has a role assignment
       # 5. User has an open vacancy for this show (they can't make it but can reclaim)
       # 6. User has a sign-up registration for this show
+      #
+      # For shared pools, we need to check both:
+      # - talent_pools.production_id = shows.production_id (own pool)
+      # - talent_pool_shares.production_id = shows.production_id (shared pool)
       @show = Show.where(id: params[:id])
                   .includes(event_linkage: :shows)
                   .where(
                     "EXISTS (SELECT 1 FROM talent_pools
                              INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
-                             WHERE talent_pools.production_id = shows.production_id
+                             WHERE (talent_pools.production_id = shows.production_id
+                                    OR EXISTS (SELECT 1 FROM talent_pool_shares
+                                               WHERE talent_pool_shares.talent_pool_id = talent_pools.id
+                                               AND talent_pool_shares.production_id = shows.production_id))
                              AND talent_pool_memberships.member_type = 'Person'
                              AND talent_pool_memberships.member_id IN (?)) OR
                      EXISTS (SELECT 1 FROM talent_pools
                              INNER JOIN talent_pool_memberships ON talent_pools.id = talent_pool_memberships.talent_pool_id
-                             WHERE talent_pools.production_id = shows.production_id
+                             WHERE (talent_pools.production_id = shows.production_id
+                                    OR EXISTS (SELECT 1 FROM talent_pool_shares
+                                               WHERE talent_pool_shares.talent_pool_id = talent_pools.id
+                                               AND talent_pool_shares.production_id = shows.production_id))
                              AND talent_pool_memberships.member_type = 'Group'
                              AND talent_pool_memberships.member_id IN (?)) OR
                      EXISTS (SELECT 1 FROM show_person_role_assignments

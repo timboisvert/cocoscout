@@ -1,13 +1,13 @@
 <div id="show-cast-members" data-controller="drag-cast-member" class="space-y-1">
     <%
       # Use preloaded data if available, otherwise fall back to queries
-      pool_members = local_assigns[:pool_members] || @pool_members || show.production.talent_pool.members.to_a
+      pool_members = local_assigns[:pool_members] || @pool_members || show.production.effective_talent_pool.members.to_a
       assigned_member_keys = local_assigns[:assigned_member_keys] || @assigned_member_keys || Set.new
       availability ||= {}
       linked_availability = local_assigns[:linked_availability] || {}
       linked_shows = local_assigns[:linked_shows] || []
       has_visible_people = false
-      talent_pool = show.production.talent_pool
+      talent_pool = show.production.effective_talent_pool
       is_linked = linked_shows.any?
       total_linked_shows = linked_shows.count
     %>
