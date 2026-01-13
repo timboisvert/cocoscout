@@ -53,9 +53,9 @@
     <% desktop_month = current_month_param || Time.current.beginning_of_month %>
     <% desktop_shows = @shows_by_month[desktop_month] || [] %>
 
-    <% # Calculate valid month range %>
-    <% first_month = @shows_by_month.keys.sort.first %>
-    <% last_month = @shows_by_month.keys.sort.last %>
+    <% # Calculate valid month range - allow navigation up to 12 months ahead %>
+    <% first_month = @shows_by_month.keys.sort.first || Time.current.beginning_of_month %>
+    <% last_month = 12.months.from_now.beginning_of_month %>
     <% prev_month = desktop_month - 1.month %>
     <% next_month = desktop_month + 1.month %>
     <% can_go_prev = prev_month >= Time.current.beginning_of_month %>
@@ -170,7 +170,7 @@
                   <% end %>
                   <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
                   <div class="text-[10px] mb-1"><%= show.production.name %></div>
-                  <% if show.secondary_name.present? %>
+                  <% if show.secondary_name.present? && show.secondary_name != show.production.name %>
                     <div class="truncate text-[10px]"><%= show.secondary_name %></div>
                   <% end %>
                   <% if @entity_type == "group" %>
@@ -275,7 +275,7 @@
                             </span>
                           </div>
                           <div class="text-xs text-gray-700 mb-1"><%= show.production.name %></div>
-                          <% if show.secondary_name.present? %>
+                          <% if show.secondary_name.present? && show.secondary_name != show.production.name %>
                             <div class="text-xs text-gray-600"><%= show.secondary_name %></div>
                           <% end %>
                           <% if @entity_type == "group" %>

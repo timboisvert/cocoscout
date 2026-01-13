@@ -17,22 +17,39 @@ module My
       group_ids = @groups.map(&:id)
 
       # Get all productions where user (via any profile or group) is in the talent pool
+      # This includes both direct talent pools AND shared talent pools
       production_ids = Set.new
 
-      # Productions via person memberships
+      # Productions via person's direct talent pool memberships
       person_production_ids = TalentPoolMembership
         .where(member_type: "Person", member_id: people_ids)
         .joins(:talent_pool)
         .pluck("talent_pools.production_id")
       production_ids.merge(person_production_ids)
 
-      # Productions via group memberships
+      # Productions via shared talent pools (person is in a talent pool that's shared with other productions)
+      if people_ids.any?
+        shared_person_production_ids = Production
+          .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
+          .where(talent_pool_memberships: { member_type: "Person", member_id: people_ids })
+          .pluck(:id)
+        production_ids.merge(shared_person_production_ids)
+      end
+
+      # Productions via group's direct talent pool memberships
       if group_ids.any?
         group_production_ids = TalentPoolMembership
           .where(member_type: "Group", member_id: group_ids)
           .joins(:talent_pool)
           .pluck("talent_pools.production_id")
         production_ids.merge(group_production_ids)
+
+        # Productions via shared talent pools (group is in a talent pool that's shared with other productions)
+        shared_group_production_ids = Production
+          .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
+          .where(talent_pool_memberships: { member_type: "Group", member_id: group_ids })
+          .pluck(:id)
+        production_ids.merge(shared_group_production_ids)
       end
 
       @productions = Production.where(id: production_ids)

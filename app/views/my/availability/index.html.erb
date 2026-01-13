@@ -18,17 +18,23 @@
 
   <% if @has_any_productions %>
 
+  <%
+    # Only show "By Cast Member" filter if user has multiple profiles or groups
+    has_multiple_entities = @people.size > 1 || @groups.any?
+    view_filters = [
+      { text: "Awaiting My Response", path: my_availability_path(filter: 'no_response', entity: @entity_filter.join(',')), active: @filter == 'no_response' },
+      { text: "All Shows", path: my_availability_path(filter: 'all', entity: @entity_filter.join(',')), active: @filter == 'all' },
+      { text: "By Production", path: my_availability_path(filter: 'by_production', entity: @entity_filter.join(',')), active: @filter == 'by_production' }
+    ]
+    view_filters << { text: "By Cast Member", path: my_availability_path(filter: 'by_entity', entity: @entity_filter.join(',')), active: @filter == 'by_entity' } if has_multiple_entities
+  %>
+
   <%= render "shared/filters/filter_bar",
       toggle_label: "Filters & View Options",
       filter_groups: [
         {
           label: "View",
-          filters: [
-            { text: "Awaiting My Response", path: my_availability_path(filter: 'no_response', entity: @entity_filter.join(',')), active: @filter == 'no_response' },
-            { text: "All Shows", path: my_availability_path(filter: 'all', entity: @entity_filter.join(',')), active: @filter == 'all' },
-            { text: "By Production", path: my_availability_path(filter: 'by_production', entity: @entity_filter.join(',')), active: @filter == 'by_production' },
-            { text: "By Cast Member", path: my_availability_path(filter: 'by_entity', entity: @entity_filter.join(',')), active: @filter == 'by_entity' }
-          ]
+          filters: view_filters
         },
         { separator: true },
         {

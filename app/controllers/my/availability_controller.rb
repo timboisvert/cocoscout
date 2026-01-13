@@ -48,9 +48,11 @@ module My
       end
 
       # Single query for all shows with entity tracking
+      # Must check both own pools AND shared pools via talent_pool_shares
       all_shows_with_source = []
 
       if selected_person_ids.any?
+        # Person shows from direct talent pools
         person_shows = Show.joins(production: { talent_pools: :people })
                            .select("shows.*, people.id as source_person_id")
                            .where(people: { id: selected_person_ids })
@@ -64,10 +66,28 @@ module My
           person = people_by_id[person_id]
           all_shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person } if person
         end
+
+        # Person shows from shared talent pools
+        shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
+                                  .select("shows.*, people.id as source_person_id")
+                                  .where(people: { id: selected_person_ids })
+                                  .where.not(canceled: true)
+                                  .where("date_and_time > ?", Time.current)
+                                  .includes(:production, :location, :event_linkage)
+                                  .distinct
+                                  .to_a
+        shared_person_shows.each do |s|
+          person_id = s.read_attribute(:source_person_id)
+          person = people_by_id[person_id]
+          # Only add if not already present
+          unless all_shows_with_source.any? { |item| item[:show].id == s.id && item[:entity_key] == "person_#{person_id}" }
+            all_shows_with_source << { show: s, entity_key: "person_#{person_id}", entity: person } if person
+          end
+        end
       end
 
       if selected_group_ids.any?
-        # Single batch query for all group shows with group_id tracking
+        # Group shows from direct talent pools
         group_shows_with_group = Show
                                  .select("shows.*, groups.id as source_group_id")
                                  .joins(production: { talent_pools: :groups })
@@ -82,6 +102,26 @@ module My
           group_id = show.read_attribute(:source_group_id)
           group = groups_by_id[group_id]
           all_shows_with_source << { show: show, entity_key: "group_#{group_id}", entity: group }
+        end
+
+        # Group shows from shared talent pools
+        shared_group_shows = Show
+                             .select("shows.*, groups.id as source_group_id")
+                             .joins(production: { talent_pool_shares: { talent_pool: :groups } })
+                             .where(groups: { id: selected_group_ids })
+                             .where.not(canceled: true)
+                             .where("date_and_time > ?", Time.current)
+                             .includes(:production, :location, :event_linkage)
+                             .distinct
+                             .to_a
+
+        shared_group_shows.each do |show|
+          group_id = show.read_attribute(:source_group_id)
+          group = groups_by_id[group_id]
+          # Only add if not already present
+          unless all_shows_with_source.any? { |item| item[:show].id == show.id && item[:entity_key] == "group_#{group_id}" }
+            all_shows_with_source << { show: show, entity_key: "group_#{group_id}", entity: group }
+          end
         end
       end
 

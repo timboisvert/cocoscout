@@ -59,17 +59,7 @@
 
         <!-- Revenue & Profit Summary -->
         <div class="bg-white rounded-lg border border-gray-200 p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-900">Financial Summary</h3>
-            <button type="button"
-                    onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-              <%= has_data ? "Edit Data" : "Enter Data" %>
-            </button>
-          </div>
+          <h3 class="font-semibold text-gray-900 mb-4">Financial Summary</h3>
 
           <% if has_data %>
             <!-- Financial metrics grid -->
@@ -163,13 +153,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <p class="text-gray-500 mb-4">No financial data entered yet</p>
-              <button type="button"
-                      onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
-                      class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Enter Financial Data
+              <button type="button" onclick="document.getElementById('financialWorksheet').classList.remove('hidden')">
+                <%= render "shared/button", text: "Enter Financial Data", variant: "primary", size: "medium", icon: "plus" %>
               </button>
             </div>
           <% end %>
@@ -268,7 +253,7 @@
 
             <button type="button"
                     onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
-                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left">
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
               <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -336,19 +321,17 @@
           <% if @show_financials.non_revenue_override? %>
             <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(@production, @show),
                 method: :post,
-                class: "w-full text-left",
                 form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
-              <div class="text-sm font-medium text-gray-700">Marked as Non-Revenue</div>
-              <div class="text-xs text-gray-500 mt-1">Click to restore as revenue event</div>
+              <%= render "shared/button", text: "Restore as Revenue Event", variant: "secondary", size: "small", classes: "w-full" %>
             <% end %>
+            <div class="text-xs text-gray-500 mt-2 text-center">This event is marked as non-revenue</div>
           <% else %>
             <%= button_to manage_production_mark_non_revenue_money_show_financials_path(@production, @show),
                 method: :post,
-                class: "w-full text-left",
                 form: { data: { turbo_confirm: "Mark this as a non-revenue event? This will remove any payout calculations." } } do %>
-              <div class="text-sm font-medium text-gray-700">Mark as Non-Revenue</div>
-              <div class="text-xs text-gray-500 mt-1">If this event didn't generate revenue</div>
+              <%= render "shared/button", text: "Mark as Non-Revenue", variant: "ghost", size: "small", classes: "w-full" %>
             <% end %>
+            <div class="text-xs text-gray-500 mt-2 text-center">If this event didn't generate revenue</div>
           <% end %>
         </div>
       </div>
@@ -366,21 +349,12 @@
         <% if @show_financials.non_revenue_override? %>
           <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(@production, @show),
               method: :post,
-              class: "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors",
               form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            Restore as Revenue Event
+            <%= render "shared/button", text: "Restore as Revenue Event", variant: "outline-pink", size: "medium" %>
           <% end %>
         <% else %>
-          <button type="button"
-                  onclick="document.getElementById('financialWorksheet').classList.remove('hidden')"
-                  class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            Add Financial Data (Make Revenue Event)
+          <button type="button" onclick="document.getElementById('financialWorksheet').classList.remove('hidden')">
+            <%= render "shared/button", text: "Add Financial Data (Make Revenue Event)", variant: "outline-pink", size: "medium" %>
           </button>
         <% end %>
       </div>

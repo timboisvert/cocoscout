@@ -393,10 +393,12 @@ module My
       end_date = 12.months.from_now.end_of_month
 
       # Get all shows from selected entities with entity tracking
+      # Must check both own pools AND shared pools via talent_pool_shares
       shows_with_entities = {}
 
-      # Add person shows if selected
+      # Add person shows if selected (both direct and shared talent pools)
       if include_person
+        # Person's shows from direct talent pools
         person_shows = Show.joins(production: { talent_pools: :people })
                            .where(people: { id: @person.id })
                            .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
@@ -409,10 +411,25 @@ module My
           shows_with_entities[show.id] ||= { show: show, entities: [] }
           shows_with_entities[show.id][:entities] << "person"
         end
+
+        # Person's shows from shared talent pools
+        shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
+                                  .where(people: { id: @person.id })
+                                  .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                                  .where(canceled: false)
+                                  .includes(:production, :location)
+                                  .select("shows.*")
+                                  .distinct
+                                  .to_a
+        shared_person_shows.each do |show|
+          shows_with_entities[show.id] ||= { show: show, entities: [] }
+          shows_with_entities[show.id][:entities] << "person" unless shows_with_entities[show.id][:entities].include?("person")
+        end
       end
 
-      # Add group shows in batch if selected
+      # Add group shows in batch if selected (both direct and shared talent pools)
       if selected_group_ids.any?
+        # Group shows from direct talent pools
         group_shows = Show.select("shows.*, groups.id as source_group_id")
                           .joins(production: { talent_pools: :groups })
                           .where(groups: { id: selected_group_ids })
@@ -425,6 +442,22 @@ module My
           group_id = show.read_attribute(:source_group_id)
           shows_with_entities[show.id] ||= { show: show, entities: [] }
           shows_with_entities[show.id][:entities] << "group_#{group_id}"
+        end
+
+        # Group shows from shared talent pools
+        shared_group_shows = Show.select("shows.*, groups.id as source_group_id")
+                                 .joins(production: { talent_pool_shares: { talent_pool: :groups } })
+                                 .where(groups: { id: selected_group_ids })
+                                 .where("date_and_time >= ? AND date_and_time <= ?", start_date, end_date)
+                                 .where(canceled: false)
+                                 .includes(:production, :location)
+                                 .distinct
+                                 .to_a
+        shared_group_shows.each do |show|
+          group_id = show.read_attribute(:source_group_id)
+          shows_with_entities[show.id] ||= { show: show, entities: [] }
+          entity_key = "group_#{group_id}"
+          shows_with_entities[show.id][:entities] << entity_key unless shows_with_entities[show.id][:entities].include?(entity_key)
         end
       end
 
