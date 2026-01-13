@@ -175,10 +175,11 @@
 
         <% if has_line_items %>
           <%
-            unpaid_count = @line_items.count { |li| !li.manually_paid? }
-            paid_count = @line_items.count { |li| li.manually_paid? }
-            stripe_ready_count = @line_items.count { |li| li.payee_stripe_ready? }
-            needs_setup_count = @line_items.count { |li| !li.payee_stripe_ready? && !li.manually_paid? }
+            unpaid_count = @line_items.count { |li| !li.paid? }
+            paid_count = @line_items.count { |li| li.paid? }
+            venmo_ready_count = @line_items.count { |li| li.payee_venmo_ready? && !li.paid? }
+            needs_setup_count = @line_items.count { |li| !li.payee_venmo_ready? && !li.paid? }
+            pending_payout_count = @line_items.count { |li| li.payout_pending? }
           %>
 
           <!-- Payment Summary Bar -->
@@ -192,13 +193,23 @@
                   <span class="text-gray-600">
                     <span class="font-semibold text-amber-600"><%= unpaid_count %></span> pending
                   </span>
+                  <% if pending_payout_count > 0 %>
+                    <span class="text-gray-600">
+                      <span class="font-semibold text-blue-600"><%= pending_payout_count %></span> processing
+                    </span>
+                  <% end %>
                   <% if needs_setup_count > 0 %>
                     <span class="text-gray-600">
-                      <span class="font-semibold text-red-600"><%= needs_setup_count %></span> need payment setup
+                      <span class="font-semibold text-red-600"><%= needs_setup_count %></span> need Venmo setup
                     </span>
                   <% end %>
                 </div>
                 <div class="flex items-center gap-2">
+                  <% if venmo_ready_count > 0 %>
+                    <%= form_with url: manage_production_execute_venmo_money_show_payout_path(@production, @show), method: :post, local: true, class: "inline" do %>
+                      <%= render "shared/button", text: "Pay #{venmo_ready_count} via Venmo", variant: "primary", size: "small", type: :submit %>
+                    <% end %>
+                  <% end %>
                   <% if needs_setup_count > 0 %>
                     <%= form_with url: manage_production_send_payment_reminders_money_show_payout_path(@production, @show), method: :post, local: true, class: "inline" do %>
                       <%= render "shared/button", text: "Send Reminders", variant: "secondary", size: "small", type: :submit %>
@@ -243,10 +254,10 @@
                           <div class="font-medium text-gray-900"><%= item.payee_name %></div>
                           <div class="text-xs text-gray-500 flex items-center gap-1">
                             <%= item.payee_type_label %>
-                            <% if item.payee_stripe_ready? %>
-                              <span class="inline-flex items-center" title="Stripe connected">
-                                <svg class="w-3 h-3 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                            <% if item.payee_venmo_ready? %>
+                              <span class="inline-flex items-center" title="Venmo configured">
+                                <svg class="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
                                 </svg>
                               </span>
                             <% end %>
@@ -262,7 +273,7 @@
                     </td>
                     <% if @show_payout.approved? || @show_payout.paid? %>
                       <td class="py-3 text-right">
-                        <% if item.manually_paid? %>
+                        <% if item.paid? %>
                           <div class="flex items-center justify-end gap-2">
                             <div class="text-right">
                               <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
@@ -284,6 +295,22 @@
                               <% end %>
                             <% end %>
                           </div>
+                        <% elsif item.payout_pending? %>
+                          <div class="text-right">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+                              Processing
+                            </span>
+                            <div class="text-xs text-gray-400 mt-0.5">via Venmo</div>
+                          </div>
+                        <% elsif item.payout_failed? %>
+                          <div class="text-right">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">
+                              Failed
+                            </span>
+                            <% if item.payout_error.present? %>
+                              <div class="text-xs text-red-500 mt-0.5" title="<%= item.payout_error %>">Error</div>
+                            <% end %>
+                          </div>
                         <% else %>
                           <div class="relative inline-block" data-controller="dropdown">
                             <button type="button"
@@ -294,7 +321,7 @@
                             <div data-dropdown-target="menu"
                                  class="hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                               <div class="py-1">
-                                <% ShowPayoutLineItem::PAYMENT_METHODS.reject { |m| m == "stripe" }.each do |method| %>
+                                <% ShowPayoutLineItem::PAYMENT_METHODS.each do |method| %>
                                   <%= button_to manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: method),
                                       method: :post,
                                       class: "block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
