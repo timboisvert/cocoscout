@@ -797,15 +797,15 @@
               opens_hours = @sign_up_form.opens_hours_before || 0
               opens_mins = @sign_up_form.opens_minutes_before || 0
               # Close registration timing (default: 0 days, 2 hours, 0 minutes after)
-              closes_days = @sign_up_form.closes_offset_value&.abs || 0
+              closes_days = 0  # Days field for closes - we'll derive from offset_value if unit is days
               closes_hours = @sign_up_form.closes_hours_before || 2
               closes_mins = @sign_up_form.closes_minutes_offset || 0
-              closes_before_after = (@sign_up_form.closes_offset_value || 0) < 0 ? "after" : "before"
-              # For new fields, default to after
-              if closes_mode == "custom" && @sign_up_form.closes_before_after.present?
-                closes_before_after = @sign_up_form.closes_before_after
-              elsif closes_mode != "custom"
-                closes_before_after = "after"
+              # Determine before/after based on closes_offset_value sign (negative = after, positive = before)
+              closes_offset = @sign_up_form.closes_offset_value || 0
+              closes_before_after = closes_offset < 0 ? "after" : "before"
+              # If unit is days, use that value for closes_days
+              if @sign_up_form.closes_offset_unit == "days"
+                closes_days = closes_offset.abs
               end
             %>
             <div data-settings-form-target="relativeScheduleSection" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
