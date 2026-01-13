@@ -8,19 +8,25 @@ class ShowPayoutLineItem < ApplicationRecord
   has_one :show, through: :show_payout
   has_one :production, through: :show_payout
 
-  # Payment methods for offline payments
-  PAYMENT_METHODS = %w[stripe cash venmo zelle check paypal other historical].freeze
+  # Payment methods for tracking how payments were made
+  PAYMENT_METHODS = %w[venmo cash zelle check paypal other historical].freeze
+
+  # Payout statuses for automated Venmo payouts via PayPal API
+  PAYOUT_STATUSES = %w[pending success failed unclaimed returned blocked].freeze
 
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
+  validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
 
   scope :by_amount, -> { order(amount: :desc) }
   scope :by_name, -> { includes(:payee).sort_by { |li| li.payee.name } }
   scope :already_paid, -> { where(manually_paid: true) }
-  scope :not_already_paid, -> { where(manually_paid: false) }
-  scope :paid_via_stripe, -> { where(payment_method: "stripe") }
-  scope :paid_offline, -> { where.not(payment_method: [ nil, "stripe" ]) }
+  scope :not_already_paid, -> { where(manually_paid: false, payout_reference_id: nil) }
+  scope :paid_via_venmo, -> { where(payment_method: "venmo").where.not(payout_reference_id: nil) }
+  scope :paid_offline, -> { where(manually_paid: true) }
+  scope :payout_pending, -> { where(payout_status: "pending") }
+  scope :payout_failed, -> { where(payout_status: "failed") }
 
   def mark_as_already_paid!(by_user, method: nil, notes: nil)
     update!(
@@ -52,28 +58,58 @@ class ShowPayoutLineItem < ApplicationRecord
       payment_method: nil,
       payment_notes: nil,
       paid_at: nil,
-      stripe_transfer_id: nil
+      payout_reference_id: nil,
+      paypal_batch_id: nil,
+      payout_status: nil,
+      payout_error: nil
     )
   end
 
-  def paid?
-    manually_paid? || stripe_transfer_id.present?
+  # Mark as paid via automated Venmo payout
+  def mark_venmo_payout!(batch_id:, item_id:, status: "pending")
+    update!(
+      payment_method: "venmo",
+      paypal_batch_id: batch_id,
+      payout_reference_id: item_id,
+      payout_status: status
+    )
   end
 
-  def paid_via_stripe?
-    payment_method == "stripe" && stripe_transfer_id.present?
+  # Update payout status from PayPal webhook/polling
+  def update_payout_status!(status:, error: nil)
+    attrs = {
+      payout_status: status,
+      payout_error: error
+    }
+    attrs[:paid_at] = Time.current if status == "success"
+    update!(attrs)
+  end
+
+  def paid?
+    manually_paid? || (payout_reference_id.present? && payout_status == "success")
+  end
+
+  def paid_via_venmo?
+    payment_method == "venmo" && payout_reference_id.present? && payout_status == "success"
+  end
+
+  def payout_pending?
+    payout_status == "pending"
+  end
+
+  def payout_failed?
+    payout_status == "failed"
   end
 
   def paid_offline?
-    manually_paid? && payment_method.present? && payment_method != "stripe"
+    manually_paid? && payment_method.present?
   end
 
   def payment_method_label
     return nil unless payment_method
     case payment_method
-    when "stripe" then "Stripe"
-    when "cash" then "Cash"
     when "venmo" then "Venmo"
+    when "cash" then "Cash"
     when "zelle" then "Zelle"
     when "check" then "Check"
     when "paypal" then "PayPal"
@@ -83,10 +119,10 @@ class ShowPayoutLineItem < ApplicationRecord
     end
   end
 
-  # Check if payee can receive Stripe payments
-  def payee_stripe_ready?
-    return false unless payee.respond_to?(:stripe_ready_for_payouts?)
-    payee.stripe_ready_for_payouts?
+  # Check if payee can receive Venmo payments
+  def payee_venmo_ready?
+    return false unless payee.respond_to?(:venmo_ready_for_payouts?)
+    payee.venmo_ready_for_payouts?
   end
 
   # Calculation details accessors

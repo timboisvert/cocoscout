@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_12_225950) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_13_044715) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -388,6 +388,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_225950) do
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
     t.datetime "updated_at", null: false
+    t.string "venmo_identifier"
+    t.string "venmo_identifier_type"
+    t.datetime "venmo_verified_at"
     t.boolean "videos_visible", default: true, null: false
     t.string "website"
     t.index ["archived_at"], name: "index_groups_on_archived_at"
@@ -485,22 +488,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_225950) do
     t.boolean "public_profile_enabled", default: true, null: false
     t.boolean "resumes_visible", default: true, null: false
     t.boolean "social_media_visible", default: true, null: false
-    t.string "stripe_account_id"
-    t.string "stripe_account_status", default: "not_connected"
-    t.boolean "stripe_details_submitted", default: false
-    t.datetime "stripe_onboarding_completed_at"
-    t.boolean "stripe_payouts_enabled", default: false
     t.boolean "training_credits_visible", default: true, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.string "venmo_identifier"
+    t.string "venmo_identifier_type"
+    t.datetime "venmo_verified_at"
     t.boolean "videos_visible", default: true, null: false
     t.index ["archived_at"], name: "index_people_on_archived_at"
     t.index ["created_at"], name: "index_people_on_created_at"
     t.index ["email"], name: "index_people_on_email"
     t.index ["name"], name: "index_people_on_name"
     t.index ["public_key"], name: "index_people_on_public_key", unique: true
-    t.index ["stripe_account_id"], name: "index_people_on_stripe_account_id", unique: true, where: "(stripe_account_id IS NOT NULL)"
-    t.index ["stripe_account_status"], name: "index_people_on_stripe_account_status"
     t.index ["user_id"], name: "index_people_on_user_id"
   end
 
@@ -879,16 +878,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_12_225950) do
     t.string "payee_type", null: false
     t.string "payment_method"
     t.text "payment_notes"
+    t.text "payout_error"
+    t.string "payout_reference_id"
+    t.string "payout_status"
+    t.string "paypal_batch_id"
     t.decimal "shares", precision: 10, scale: 2
     t.bigint "show_payout_id", null: false
-    t.string "stripe_transfer_id"
     t.datetime "updated_at", null: false
     t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
+    t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
+    t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
+    t.index ["paypal_batch_id"], name: "index_show_payout_line_items_on_paypal_batch_id"
     t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
-    t.index ["stripe_transfer_id"], name: "index_show_payout_line_items_on_stripe_transfer_id", unique: true, where: "(stripe_transfer_id IS NOT NULL)"
   end
 
   create_table "show_payouts", force: :cascade do |t|

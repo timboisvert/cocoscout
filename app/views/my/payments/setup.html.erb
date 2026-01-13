@@ -12,22 +12,23 @@
   } %>
 
   <div class="max-w-2xl">
-    <!-- Stripe Connect Section -->
+    <!-- Venmo Section -->
     <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
       <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-          <svg class="w-6 h-6 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+        <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <!-- Venmo Logo -->
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="#3D95CE">
+            <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
           </svg>
         </div>
         <div class="flex-1">
-          <h3 class="font-semibold text-gray-900 text-lg">Stripe Connect</h3>
-          <p class="text-sm text-gray-500 mt-1">Connect your bank account to receive payments directly from productions.</p>
+          <h3 class="font-semibold text-gray-900 text-lg">Venmo</h3>
+          <p class="text-sm text-gray-500 mt-1">Set up your Venmo account to receive payments directly from productions.</p>
         </div>
       </div>
 
       <div class="mt-6 pt-6 border-t border-gray-200">
-        <% if @person.stripe_connected? %>
+        <% if @person.venmo_configured? %>
           <!-- Connected State -->
           <div class="flex items-center gap-3 mb-4">
             <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
@@ -37,76 +38,97 @@
             </div>
             <div>
               <div class="font-medium text-green-700">Connected</div>
-              <div class="text-sm text-gray-500">Your account is ready to receive payments</div>
+              <div class="text-sm text-gray-500"><%= @person.formatted_venmo_identifier %></div>
             </div>
           </div>
 
-          <div class="flex gap-3">
-            <%= form_with url: my_payments_stripe_dashboard_path, method: :get, local: true do %>
-              <%= render "shared/button", text: "Open Stripe Dashboard", variant: "primary", size: "medium", type: :submit %>
-            <% end %>
-            <%= form_with url: my_payments_refresh_status_path, method: :post, local: true do %>
-              <%= render "shared/button", text: "Refresh Status", variant: "secondary", size: "medium", type: :submit %>
-            <% end %>
-          </div>
+          <!-- Edit Form (collapsed by default) -->
+          <details class="mb-4">
+            <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-900">Change Venmo info</summary>
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+              <%= form_with model: @person, url: my_payments_update_venmo_path, method: :patch, local: true, class: "space-y-4" do |f| %>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">How would you like to receive Venmo payments?</label>
+                  <div class="space-y-2">
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-white bg-white">
+                      <%= f.radio_button :venmo_identifier_type, "PHONE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.venmo_identifier_type == "PHONE" %>
+                      <span class="text-sm font-medium text-gray-700">Phone Number</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-white bg-white">
+                      <%= f.radio_button :venmo_identifier_type, "EMAIL", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.venmo_identifier_type == "EMAIL" %>
+                      <span class="text-sm font-medium text-gray-700">Email Address</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-white bg-white">
+                      <%= f.radio_button :venmo_identifier_type, "USER_HANDLE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600", checked: @person.venmo_identifier_type == "USER_HANDLE" %>
+                      <span class="text-sm font-medium text-gray-700">Venmo Username (@handle)</span>
+                    </label>
+                  </div>
+                </div>
 
-        <% elsif @person.stripe_account_status == "onboarding_started" || @person.stripe_account_status == "pending_verification" %>
-          <!-- Pending State -->
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <div>
-              <div class="font-medium text-yellow-700"><%= @person.stripe_status_label %></div>
-              <div class="text-sm text-gray-500">
-                <% if @person.stripe_account_status == "pending_verification" %>
-                  Stripe is verifying your information. This usually takes 1-2 business days.
-                <% else %>
-                  Please complete the setup process to start receiving payments.
-                <% end %>
-              </div>
-            </div>
-          </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Your Venmo Identifier</label>
+                  <%= f.text_field :venmo_identifier,
+                      value: @person.venmo_identifier,
+                      class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
+                      placeholder: "Enter your phone, email, or @username" %>
+                  <% if @person.errors[:venmo_identifier].any? %>
+                    <p class="text-sm text-red-600 mt-1"><%= @person.errors[:venmo_identifier].first %></p>
+                  <% end %>
+                </div>
 
-          <div class="flex gap-3">
-            <%= form_with url: my_payments_connect_stripe_path, method: :post, local: true do %>
-              <%= render "shared/button", text: "Continue Setup", variant: "primary", size: "medium", type: :submit %>
-            <% end %>
-            <%= form_with url: my_payments_refresh_status_path, method: :post, local: true do %>
-              <%= render "shared/button", text: "Refresh Status", variant: "secondary", size: "medium", type: :submit %>
-            <% end %>
-          </div>
+                <%= render "shared/button", text: "Update Venmo Settings", variant: "primary", size: "medium", type: :submit %>
+              <% end %>
+            </div>
+          </details>
+
+          <%= button_to my_payments_remove_venmo_path, method: :delete, data: { turbo_confirm: "Remove your Venmo information? You won't be able to receive automated payments until you add it again." }, class: "inline-block" do %>
+            <%= render "shared/button", text: "Remove Venmo", variant: "ghost", size: "small" %>
+          <% end %>
 
         <% else %>
-          <!-- Not Connected State -->
-          <div class="bg-gray-50 rounded-lg p-4 mb-4">
-            <h4 class="font-medium text-gray-900 mb-2">What you'll need:</h4>
-            <ul class="text-sm text-gray-600 space-y-1">
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Your legal name and date of birth
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Your Social Security Number (last 4 digits)
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Bank account or debit card for deposits
-              </li>
-            </ul>
-          </div>
+          <!-- Setup Form -->
+          <%= form_with model: @person, url: my_payments_update_venmo_path, method: :patch, local: true, class: "space-y-4" do |f| %>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">How would you like to receive Venmo payments?</label>
 
-          <%= form_with url: my_payments_connect_stripe_path, method: :post, local: true do %>
-            <%= render "shared/button", text: "Connect with Stripe", variant: "primary", size: "medium", type: :submit %>
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <%= f.radio_button :venmo_identifier_type, "PHONE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600" %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-700">Phone Number</span>
+                    <p class="text-xs text-gray-500">The phone number linked to your Venmo account</p>
+                  </div>
+                </label>
+
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <%= f.radio_button :venmo_identifier_type, "EMAIL", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600" %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-700">Email Address</span>
+                    <p class="text-xs text-gray-500">The email address linked to your Venmo account</p>
+                  </div>
+                </label>
+
+                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <%= f.radio_button :venmo_identifier_type, "USER_HANDLE", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-600" %>
+                  <div>
+                    <span class="text-sm font-medium text-gray-700">Venmo Username</span>
+                    <p class="text-xs text-gray-500">Your @username (e.g., @jane-doe-5)</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Your Venmo Identifier</label>
+              <%= f.text_field :venmo_identifier,
+                  class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500",
+                  placeholder: "Enter your phone, email, or @username" %>
+              <% if @person.errors[:venmo_identifier].any? %>
+                <p class="text-sm text-red-600 mt-1"><%= @person.errors[:venmo_identifier].first %></p>
+              <% end %>
+            </div>
+
+            <%= render "shared/button", text: "Save Venmo Settings", variant: "primary", size: "medium", type: :submit %>
           <% end %>
         <% end %>
       </div>
@@ -118,22 +140,22 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        How it works
+        How Venmo Payouts Work
       </h4>
       <ul class="text-sm text-blue-800 space-y-2">
-        <li><strong>1. Connect your account</strong> - Link your bank account through Stripe's secure platform</li>
-        <li><strong>2. Get paid automatically</strong> - When a production processes payouts, funds are deposited directly</li>
+        <li><strong>1. Add your Venmo info</strong> - Enter your phone, email, or Venmo username above</li>
+        <li><strong>2. Get paid automatically</strong> - When a production processes payouts, you receive money via Venmo</li>
         <li><strong>3. Track your earnings</strong> - View all your payment history in one place</li>
       </ul>
       <p class="text-xs text-blue-700 mt-3">
-        Stripe handles all payment processing securely. CocoScout never sees your bank details.
+        Venmo payments are processed through PayPal's secure payment system. US only, USD only.
       </p>
     </div>
 
     <!-- Alternative Payment Methods -->
     <div class="mt-6 text-center">
       <p class="text-sm text-gray-500">
-        Don't want to connect Stripe? No problem! Productions can still pay you via cash, Venmo, Zelle, or other methods.
+        Productions can also pay you via cash, Zelle, check, or other methods.
         Those payments will be tracked here once the production marks them as paid.
       </p>
     </div>

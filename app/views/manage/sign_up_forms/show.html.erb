@@ -387,7 +387,7 @@
             <%# Public Sign-up Link (short link) %>
             <% if @sign_up_form.short_code.present? %>
               <% public_signup_url = "#{request.base_url}#{@sign_up_form.short_url_path}" %>
-              <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link" %>
+              <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link", show_qr: true %>
             <% end %>
 
             <%# Edit and Preview buttons %>
@@ -539,7 +539,7 @@
             <%# Public Sign-up Link (short link) %>
             <% if @sign_up_form.short_code.present? %>
               <% public_signup_url = "#{request.base_url}#{@sign_up_form.short_url_path}" %>
-              <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link" %>
+              <%= render "shared/copy_url", url: public_signup_url, label: "Public Sign-up Link", show_qr: true %>
             <% end %>
 
             <%# Edit and Preview buttons %>

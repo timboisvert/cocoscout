@@ -313,42 +313,65 @@ class Person < ApplicationRecord
     self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  # Stripe Connect methods
-  STRIPE_ACCOUNT_STATUSES = %w[not_connected onboarding_started pending_verification connected restricted].freeze
+  # Venmo payout methods
+  VENMO_IDENTIFIER_TYPES = %w[PHONE EMAIL USER_HANDLE].freeze
 
-  def stripe_ready_for_payouts?
-    stripe_payouts_enabled? && stripe_account_id.present?
+  validates :venmo_identifier_type, inclusion: { in: VENMO_IDENTIFIER_TYPES }, allow_nil: true
+  validate :venmo_identifier_format, if: -> { venmo_identifier.present? && venmo_identifier_type.present? }
+
+  def venmo_configured?
+    venmo_identifier.present? && venmo_identifier_type.present?
   end
 
-  def stripe_connected?
-    stripe_account_id.present? && stripe_account_status == "connected"
+  def venmo_ready_for_payouts?
+    venmo_configured?
   end
 
-  def needs_stripe_setup?
-    !stripe_ready_for_payouts?
+  def needs_venmo_setup?
+    !venmo_configured?
   end
 
-  def stripe_status_label
-    case stripe_account_status
-    when "not_connected" then "Not Connected"
-    when "onboarding_started" then "Setup In Progress"
-    when "pending_verification" then "Pending Verification"
-    when "connected" then "Connected"
-    when "restricted" then "Restricted"
-    else "Unknown"
-    end
+  def venmo_status_label
+    venmo_configured? ? "Connected" : "Not Set Up"
   end
 
-  def stripe_status_color
-    case stripe_account_status
-    when "connected" then "green"
-    when "pending_verification", "onboarding_started" then "yellow"
-    when "restricted" then "red"
-    else "gray"
+  def venmo_status_color
+    venmo_configured? ? "green" : "gray"
+  end
+
+  def formatted_venmo_identifier
+    return nil unless venmo_identifier.present?
+
+    case venmo_identifier_type
+    when "PHONE"
+      digits = venmo_identifier.gsub(/\D/, "")
+      return venmo_identifier unless digits.length == 10
+
+      "(#{digits[0..2]}) #{digits[3..5]}-#{digits[6..9]}"
+    when "EMAIL"
+      venmo_identifier
+    when "USER_HANDLE"
+      "@#{venmo_identifier.delete('@')}"
+    else
+      venmo_identifier
     end
   end
 
   private
+
+  def venmo_identifier_format
+    case venmo_identifier_type
+    when "PHONE"
+      digits = venmo_identifier.gsub(/\D/, "")
+      errors.add(:venmo_identifier, "must be a valid 10-digit US phone number") unless digits.length == 10
+    when "EMAIL"
+      errors.add(:venmo_identifier, "must be a valid email address") unless venmo_identifier.match?(URI::MailTo::EMAIL_REGEXP)
+    when "USER_HANDLE"
+      handle = venmo_identifier.delete("@")
+      errors.add(:venmo_identifier, "must be a valid Venmo username (5-30 characters)") unless handle.match?(/\A[a-zA-Z0-9-]{5,30}\z/)
+    end
+  end
+
 
   def generate_public_key
     return if public_key.present?

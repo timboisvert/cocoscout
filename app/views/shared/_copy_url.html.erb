@@ -6,15 +6,21 @@
   # - label: Label text above the URL (default: nil)
   # - help_text: Help text below the URL box (default: nil)
   # - copy_button_text: Text for the copy button (default: "Copy")
+  # - show_qr: Show QR code button (default: false)
 %>
 
 <%
   label ||= nil
   help_text ||= nil
   copy_button_text ||= "Copy"
+  show_qr ||= false
 %>
 
-<div data-controller="copy-url">
+<div data-controller="copy-url<%= ' qr-code' if show_qr %>"
+     <% if show_qr %>
+     data-qr-code-url-value="<%= url %>"
+     data-qr-code-logo-url-value="<%= asset_path('cocoscout.png') %>"
+     <% end %>>
   <% if label %>
     <label class="block text-sm font-medium text-gray-700 mb-2"><%= label %></label>
   <% end %>
@@ -43,10 +49,58 @@
           icon: "clipboard",
           data: { action: "click->copy-url#copy" } %>
       </div>
+      <% if show_qr %>
+        <%= render "shared/button",
+          text: "QR",
+          variant: "outline-pink",
+          size: "small",
+          type: :button,
+          icon: "qr-code",
+          data: { action: "click->qr-code#open" } %>
+      <% end %>
     </div>
   </div>
 
   <% if help_text %>
     <p class="mt-2 text-xs text-gray-600"><%= help_text %></p>
+  <% end %>
+
+  <% if show_qr %>
+    <!-- QR Code Modal -->
+    <div data-qr-code-target="modal"
+         data-action="click->qr-code#closeOnBackdrop keydown.escape@window->qr-code#closeOnEscape"
+         class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 relative">
+        <!-- Close button -->
+        <button type="button"
+                data-action="click->qr-code#close"
+                class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Scan to Sign Up</h3>
+
+        <!-- QR Code Canvas -->
+        <div class="flex justify-center mb-4">
+          <canvas data-qr-code-target="canvas" class="rounded-lg"></canvas>
+        </div>
+
+        <!-- URL display -->
+        <p class="text-xs text-gray-500 text-center break-all mb-4"><%= url %></p>
+
+        <!-- Download button -->
+        <div class="flex justify-center">
+          <%= render "shared/button",
+            text: "Download QR Code",
+            variant: "primary",
+            size: "small",
+            type: :button,
+            icon: "download",
+            data: { action: "click->qr-code#download" } %>
+        </div>
+      </div>
+    </div>
   <% end %>
 </div>

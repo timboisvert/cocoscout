@@ -188,12 +188,11 @@ Rails.application.routes.draw do
       get "/locks", to: "sign_ups#slot_locks", as: "sign_up_slot_locks"
     end
 
-    # Payments (for talent to manage payment settings and view history)
-    get   "/payments",                          to: "payments#index",                     as: "payments"
-    get   "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
-    post  "/payments/connect_stripe",           to: "payments#connect_stripe",            as: "payments_connect_stripe"
-    get   "/payments/stripe_dashboard",         to: "payments#stripe_dashboard",          as: "payments_stripe_dashboard"
-    post  "/payments/refresh_status",           to: "payments#refresh_status",            as: "payments_refresh_status"
+    # Payments (for talent to manage Venmo settings and view history)
+    get    "/payments",                          to: "payments#index",                     as: "payments"
+    get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"
+    patch  "/payments/venmo",                    to: "payments#update_venmo",              as: "payments_update_venmo"
+    delete "/payments/venmo",                    to: "payments#remove_venmo",              as: "payments_remove_venmo"
 
     # Messages (inbox for talent)
     get   "/messages",                          to: "messages#index",                     as: "messages"
@@ -619,6 +618,7 @@ Rails.application.routes.draw do
       delete "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
       post "money/payouts/:id/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
       post "money/payouts/:id/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
+      post "money/payouts/:id/execute_venmo", to: "show_payouts#execute_venmo_payouts", as: "execute_venmo_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

@@ -19,7 +19,7 @@
     <div class="p-6">
       <% if @sign_up_form.active? && @sign_up_form.short_code.present? %>
         <% public_url = "#{request.base_url}/s/#{@sign_up_form.short_code}" %>
-        <%= render "shared/copy_url", url: public_url, help_text: "Share this link with people who want to sign up" %>
+        <%= render "shared/copy_url", url: public_url, help_text: "Share this link with people who want to sign up", show_qr: true %>
       <% elsif !@sign_up_form.active? %>
         <p class="text-sm text-gray-500">Activate this form to enable public sign-ups.</p>
       <% else %>
