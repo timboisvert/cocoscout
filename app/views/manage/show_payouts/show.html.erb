@@ -2,7 +2,7 @@
 
 <%
   has_financials = @show_financials&.complete?
-  has_line_items = @line_items.any?
+  has_line_items = @line_items&.any? || false
   is_calculated = @show_payout.calculated_at.present?
 
   # Determine payout status with new terminology
