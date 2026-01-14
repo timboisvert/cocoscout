@@ -112,14 +112,7 @@
                 </svg>
                 Other Revenue
               </h3>
-              <button type="button"
-                      class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors"
-                      data-action="click->financials-form#openOtherRevenueModal">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Add Item
-              </button>
+              <%= render "shared/button", text: "Add Item", variant: "ghost", size: "small", icon: "plus", type: :button, data: { action: "click->financials-form#openOtherRevenueModal" } %>
             </div>
 
             <% if has_other_revenue_details %>
@@ -170,14 +163,7 @@
                 </svg>
                 Expenses
               </h3>
-              <button type="button"
-                      class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors"
-                      data-action="click->financials-form#openExpenseModal">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Add Item
-              </button>
+              <%= render "shared/button", text: "Add Item", variant: "ghost", size: "small", icon: "plus", type: :button, data: { action: "click->financials-form#openExpenseModal" } %>
             </div>
 
             <% if has_expense_details %>
@@ -244,10 +230,8 @@
 
         <!-- Footer -->
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between rounded-b-lg sticky bottom-0">
-          <button type="button" data-action="click->financials-form#closeWorksheet" class="text-gray-600 hover:text-gray-900 text-sm font-medium">
-            Cancel
-          </button>
-          <%= form.submit "Save Financial Data", class: "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap px-4 py-2 text-sm bg-pink-500 hover:bg-pink-600 text-white" %>
+          <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeWorksheet" } %>
+          <%= render "shared/button", text: "Save Financial Data", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
 
@@ -287,8 +271,8 @@
         <input type="hidden" data-financials-form-target="otherRevenueEditIndex" value="">
       </div>
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-        <button type="button" data-action="click->financials-form#closeOtherRevenueModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-        <button type="button" data-action="click->financials-form#saveOtherRevenueItem" class="px-4 py-2 text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 rounded-lg">Save</button>
+        <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeOtherRevenueModal" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :button, data: { action: "click->financials-form#saveOtherRevenueItem" } %>
       </div>
     </div>
   </div>
@@ -325,8 +309,8 @@
         <input type="hidden" data-financials-form-target="expenseEditIndex" value="">
       </div>
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-        <button type="button" data-action="click->financials-form#closeExpenseModal" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-        <button type="button" data-action="click->financials-form#saveExpenseItem" class="px-4 py-2 text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 rounded-lg">Save</button>
+        <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeExpenseModal" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :button, data: { action: "click->financials-form#saveExpenseItem" } %>
       </div>
     </div>
   </div>
