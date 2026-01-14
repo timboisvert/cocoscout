@@ -3,7 +3,6 @@
 module My
   class MessagesController < ApplicationController
     before_action :require_authentication
-    before_action :require_superadmin_for_beta
     before_action :load_forum_data
 
     def index
@@ -114,7 +113,7 @@ module My
           format.turbo_stream {
             render turbo_stream: [
               turbo_stream.prepend("posts-list", partial: "my/messages/post", locals: { post: @post }),
-              turbo_stream.replace("new-post-form", partial: "my/messages/new_post_form", locals: { production: production })
+              turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production })
             ]
           }
           format.html { redirect_to redirect_path }
@@ -122,7 +121,7 @@ module My
       else
         respond_to do |format|
           format.turbo_stream {
-            render turbo_stream: turbo_stream.replace("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })
+            render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })
           }
           format.html { redirect_to my_messages_path, alert: "Failed to create post." }
         end
@@ -224,12 +223,6 @@ module My
     end
 
     private
-
-    def require_superadmin_for_beta
-      return if Current.user.superadmin?
-
-      redirect_to my_dashboard_path, alert: "This feature is currently in beta."
-    end
 
     def load_forum_data
       return redirect_to my_dashboard_path, alert: "No profile found." unless Current.user.person

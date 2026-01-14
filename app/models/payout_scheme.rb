@@ -2,7 +2,7 @@
 
 class PayoutScheme < ApplicationRecord
   # Distribution methods
-  DISTRIBUTION_METHODS = %w[equal shares per_ticket per_ticket_guaranteed flat_fee].freeze
+  DISTRIBUTION_METHODS = %w[equal shares per_ticket per_ticket_guaranteed flat_fee no_pay].freeze
 
   belongs_to :production
 
@@ -16,6 +16,24 @@ class PayoutScheme < ApplicationRecord
 
   # Preset templates for quick setup
   PRESETS = {
+    no_pay: {
+      name: "No Pay",
+      description: "Non-revenue events with no performer payouts (rehearsals, workshops, etc.)",
+      rules: {
+        allocation: [],
+        distribution: { method: "no_pay" },
+        performer_overrides: {}
+      }
+    },
+    no_pay: {
+      name: "No Pay",
+      description: "For shows that don't pay performers (non-revenue events, rehearsals, etc.).",
+      rules: {
+        allocation: [],
+        distribution: { method: "no_pay" },
+        performer_overrides: {}
+      }
+    },
     even_split: {
       name: "Even Split (50/50)",
       description: "Split revenue evenly between house and performers, then divide equally among performers.",

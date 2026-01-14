@@ -3,7 +3,6 @@
 module My
   class PaymentsController < ApplicationController
     before_action :require_user
-    before_action :require_superadmin_for_beta
     before_action :set_person
 
     def index
@@ -108,11 +107,6 @@ module My
 
     def zelle_params
       params.require(:person).permit(:zelle_identifier, :zelle_identifier_type)
-    end
-
-    def require_superadmin_for_beta
-      return if Current.user.superadmin?
-      redirect_to my_dashboard_path, alert: "This feature is currently in beta."
     end
   end
 end

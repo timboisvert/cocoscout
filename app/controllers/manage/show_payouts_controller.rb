@@ -10,7 +10,8 @@ module Manage
       :override, :save_override, :clear_override,
       :change_scheme, :apply_scheme_change,
       :mark_line_item_paid, :unmark_line_item_paid,
-      :mark_all_offline, :send_payment_reminders
+      :mark_all_offline, :send_payment_reminders,
+      :close_as_non_paying
     ]
 
     def show
@@ -80,8 +81,15 @@ module Manage
         redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "Payouts calculated: #{helpers.number_to_currency(result[:total])} total."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    alert: "Could not calculate payouts: #{result[:error]}"
+        # Provide more helpful error messages
+        error_message = result[:error]
+        if error_message&.include?("No performers")
+          redirect_to manage_production_money_show_payout_path(@production, @show),
+                      alert: "No performers are assigned to this show. Add cast members first, or use 'Close as Non-Paying' to close this show without payouts."
+        else
+          redirect_to manage_production_money_show_payout_path(@production, @show),
+                      alert: "Could not calculate payouts: #{error_message}"
+        end
       end
     end
 
@@ -243,6 +251,22 @@ module Manage
       count = line_items_needing_setup.size
       redirect_to manage_production_money_show_payout_path(@production, @show),
                   notice: "Payment setup reminders will be sent to #{count} performer#{"s" if count != 1}. (Coming soon!)"
+    end
+
+    def close_as_non_paying
+      # Clear any existing line items
+      @show_payout.line_items.destroy_all
+
+      # Mark as calculated with $0 total and paid
+      @show_payout.update!(
+        calculated_at: Time.current,
+        total_payout: 0,
+        status: "paid",
+        override_rules: { "distribution" => { "method" => "no_pay" }, "closed_as_non_paying" => true }
+      )
+
+      redirect_to manage_production_money_index_path(@production),
+                  notice: "#{helpers.show_display_name(@show)} closed as non-paying."
     end
 
     private

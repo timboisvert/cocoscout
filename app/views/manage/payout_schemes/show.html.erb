@@ -96,7 +96,7 @@
               <%= link_to manage_production_money_show_payout_path(@production, sp.show), class: "block p-3 rounded hover:bg-gray-50 transition-colors" do %>
                 <div class="flex items-center justify-between">
                   <span class="text-gray-900"><%= show_display_name(sp.show) %></span>
-                  <span class="text-sm <%= sp.status_badge_class %> px-2 py-0.5 rounded"><%= sp.status_label %></span>
+                  <span class="text-sm <%= sp.display_status_class %> px-2 py-0.5 rounded"><%= sp.display_status_label %></span>
                 </div>
                 <div class="text-sm text-gray-500 mt-1">
                   <%= sp.show.date_and_time.strftime("%l:%M %p").strip %>

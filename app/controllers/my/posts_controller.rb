@@ -2,7 +2,6 @@
 
 module My
   class PostsController < ApplicationController
-    before_action :require_superadmin_for_beta
     before_action :set_production, only: [ :index, :create ]
     before_action :set_post, only: [ :destroy, :create_reply ]
     before_action :authorize_production_access, only: [ :index, :create ]
@@ -144,13 +143,6 @@ module My
     # Moderators can delete any post
     def can_moderate?
       production_team_access?(@production) || organization_access?(@production)
-    end
-
-    # Beta feature - restrict to superadmins only
-    def require_superadmin_for_beta
-      return if Current.user.superadmin?
-
-      redirect_to my_dashboard_path, alert: "This feature is currently in beta."
     end
   end
 end

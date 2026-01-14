@@ -146,6 +146,8 @@ class PayoutCalculator
       distribute_per_ticket_guaranteed(inputs, performers, distribution, overrides, breakdown)
     when "flat_fee"
       distribute_flat_fee(performers, distribution, overrides, breakdown)
+    when "no_pay"
+      distribute_no_pay(performers, breakdown)
     else
       return { error: "Unknown distribution method: #{method}" }
     end
@@ -318,6 +320,23 @@ class PayoutCalculator
           formula: "Flat fee",
           inputs: { flat_amount: amount },
           breakdown: [ "Fixed: #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  def distribute_no_pay(performers, breakdown)
+    breakdown << "No pay: Non-revenue event"
+
+    performers.map do |performer|
+      {
+        payee: performer,
+        amount: 0,
+        shares: nil,
+        calculation_details: {
+          formula: "No pay",
+          inputs: {},
+          breakdown: [ "Non-paying event" ]
         }
       }
     end

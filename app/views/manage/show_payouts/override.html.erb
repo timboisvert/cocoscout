@@ -51,7 +51,7 @@
           <label class="block text-sm font-medium text-gray-700">How should performers be paid?</label>
           <div class="space-y-2">
             <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <input type="radio" name="override_rules[distribution][method]" value="per_ticket_guaranteed" <%= "checked" if dist_method == "per_ticket_guaranteed" %> class="mt-0.5">
+              <input type="radio" name="override_rules[distribution][method]" value="per_ticket_guaranteed" <%= "checked" if dist_method == "per_ticket_guaranteed" %> class="mt-0.5 accent-pink-600">
               <div>
                 <div class="font-medium text-gray-900">Per-Ticket with Minimum</div>
                 <div class="text-sm text-gray-500">Per-ticket rate with a guaranteed minimum payout</div>
@@ -59,7 +59,7 @@
             </label>
 
             <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <input type="radio" name="override_rules[distribution][method]" value="flat_fee" <%= "checked" if dist_method == "flat_fee" %> class="mt-0.5">
+              <input type="radio" name="override_rules[distribution][method]" value="flat_fee" <%= "checked" if dist_method == "flat_fee" %> class="mt-0.5 accent-pink-600">
               <div>
                 <div class="font-medium text-gray-900">Flat Fee</div>
                 <div class="text-sm text-gray-500">Fixed amount per performer</div>
@@ -67,7 +67,7 @@
             </label>
 
             <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <input type="radio" name="override_rules[distribution][method]" value="custom" <%= "checked" if dist_method == "custom" %> class="mt-0.5">
+              <input type="radio" name="override_rules[distribution][method]" value="custom" <%= "checked" if dist_method == "custom" %> class="mt-0.5 accent-pink-600">
               <div>
                 <div class="font-medium text-gray-900">Custom Per-Person</div>
                 <div class="text-sm text-gray-500">Enter specific amounts for each performer</div>

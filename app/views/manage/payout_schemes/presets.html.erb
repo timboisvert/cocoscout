@@ -21,6 +21,11 @@
 
         <div class="text-xs text-gray-500 mb-4 p-3 bg-gray-50 rounded">
           <% case key %>
+          <% when :no_pay %>
+            <div class="space-y-1">
+              <div>$0 for all performers</div>
+              <div class="text-gray-400">Non-revenue events, rehearsals, etc.</div>
+            </div>
           <% when :even_split %>
             <div class="space-y-1">
               <div>50% → House</div>

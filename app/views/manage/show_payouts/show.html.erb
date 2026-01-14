@@ -73,6 +73,9 @@
               <p class="text-sm text-red-800 font-medium">This show was canceled</p>
               <p class="text-sm text-red-700 mt-1">You can still process payouts for this show. Choose how you'd like to handle compensation:</p>
               <div class="mt-3 flex flex-wrap gap-2">
+                <%= form_with url: manage_production_close_as_non_paying_money_show_payout_path(@production, @show), method: :post, local: true do %>
+                  <%= render "shared/button", text: "Close as Non-Paying", variant: "secondary", size: "small", type: :submit %>
+                <% end %>
                 <% if @show_payout.payout_scheme || @show_payout.has_overrides? %>
                   <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true do %>
                     <%= render "shared/button", text: "Pay as Originally Planned", variant: "secondary", size: "small", type: :submit %>
@@ -572,10 +575,37 @@
             </div>
           <% end %>
         <% elsif has_financials %>
+          <%
+            # Check if show has any performers assigned
+            assignments = @show.show_person_role_assignments.includes(:assignable)
+            show_performers = assignments.map(&:assignable).compact.uniq.select { |p| p.is_a?(Person) }
+            has_cast = show_performers.any?
+          %>
           <div class="text-center py-6">
-            <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
-            <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true do %>
-              <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
+            <% if has_cast %>
+              <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
+              <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true do %>
+                <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
+              <% end %>
+            <% else %>
+              <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left mb-4">
+                <div class="flex gap-3">
+                  <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                  </svg>
+                  <div>
+                    <p class="text-sm text-amber-800 font-medium">No performers assigned</p>
+                    <p class="text-sm text-amber-700 mt-1">This show has no cast members to pay. You can either:</p>
+                    <ul class="text-sm text-amber-700 mt-2 ml-4 list-disc space-y-1">
+                      <li><%= link_to "Add cast members", manage_production_show_path(@production, @show), class: "underline hover:text-amber-900" %> to this show</li>
+                      <li>Close this show as non-paying (no payouts needed)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <%= form_with url: manage_production_close_as_non_paying_money_show_payout_path(@production, @show), method: :post, local: true do %>
+                <%= render "shared/button", text: "Close as Non-Paying", variant: "secondary", size: "medium", type: :submit %>
+              <% end %>
             <% end %>
           </div>
         <% else %>
