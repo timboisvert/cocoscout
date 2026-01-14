@@ -9,7 +9,7 @@ module Manage
       @default_scheme = @payout_schemes.find(&:is_default)
 
       # Financial summary for selected period
-      @selected_period = (params[:period].presence || "last_30_days").to_sym
+      @selected_period = (params[:period].presence || "all_time").to_sym
       @financial_summary = FinancialSummaryService.new(@production)
                                                    .summary_for_period(@selected_period)
 

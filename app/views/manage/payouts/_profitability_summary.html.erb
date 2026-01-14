@@ -9,53 +9,68 @@
 
 <% period_labels = FinancialSummaryService::PERIOD_LABELS %>
 
-<h2 class="text-lg font-semibold text-gray-900 mb-4">Financial Overview</h2>
-<div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
-  <%# Period Selector %>
-  <div class="flex flex-wrap gap-1 mb-6">
-    <% period_labels.each do |key, label| %>
-      <%= link_to manage_production_money_index_path(production, period: key),
-          class: "px-3 py-1.5 rounded text-xs font-medium transition #{selected_period == key ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
-          data: { turbo_prefetch: false } do %>
-        <%= label %>
-      <% end %>
-    <% end %>
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-lg font-semibold text-gray-900">Financial Overview</h2>
+
+  <div class="flex items-center gap-2">
+    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</span>
+    <div class="relative">
+      <select
+        name="period"
+        onchange="window.location.href = '<%= manage_production_money_index_path(production) %>?period=' + this.value"
+        class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600"
+      >
+        <% period_labels.each do |key, label| %>
+          <option value="<%= key %>" <%= 'selected' if selected_period.to_s == key.to_s %>><%= label %></option>
+        <% end %>
+      </select>
+      <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
   </div>
+</div>
 
-  <% if summary[:show_count] > 0 %>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div>
-        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Revenue</div>
-        <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(summary[:total_revenue]) %></div>
-        <div class="text-xs text-gray-500">
-          <%= summary[:shows_with_data] %> of <%= summary[:show_count] %> shows
-        </div>
-      </div>
+<% if summary[:show_count] > 0 %>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Gross Revenue</div>
+      <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(summary[:gross_revenue]) %></div>
+      <div class="text-xs text-gray-500"><%= summary[:shows_with_data] %> shows</div>
+    </div>
 
-      <div>
-        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Expenses</div>
-        <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(summary[:total_expenses]) %></div>
-      </div>
-
-      <div>
-        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Net Profit</div>
-        <div class="text-2xl font-semibold <%= summary[:net_profit] >= 0 ? 'text-green-600' : 'text-red-600' %>">
-          <%= number_to_currency(summary[:net_profit]) %>
-        </div>
-        <div class="text-xs text-gray-500"><%= summary[:profit_margin] %>% margin</div>
-      </div>
-
-      <div>
-        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Retained</div>
-        <div class="text-2xl font-semibold <%= summary[:retained] >= 0 ? 'text-gray-900' : 'text-red-600' %>">
-          <%= number_to_currency(summary[:retained]) %>
-        </div>
-        <div class="text-xs text-gray-500">after payouts</div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Direct Costs</div>
+      <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(summary[:cost_of_shows]) %></div>
+      <div class="text-xs text-gray-500">
+        <% if summary[:total_payouts] > 0 && summary[:show_expenses] > 0 %>
+          payouts + expenses
+        <% elsif summary[:total_payouts] > 0 %>
+          payouts
+        <% else %>
+          expenses
+        <% end %>
       </div>
     </div>
-  <% else %>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Gross Profit</div>
+      <div class="text-2xl font-semibold <%= summary[:gross_profit] >= 0 ? 'text-green-600' : 'text-red-600' %>">
+        <%= number_to_currency(summary[:gross_profit]) %>
+      </div>
+      <div class="text-xs text-gray-500"><%= summary[:gross_margin] %>% margin</div>
+    </div>
+
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+      <div class="text-sm text-gray-500 mb-1">Avg per Show</div>
+      <div class="text-2xl font-semibold text-gray-700"><%= number_to_currency(summary[:average_revenue_per_show]) %></div>
+      <div class="text-xs text-gray-500">revenue</div>
+    </div>
+  </div>
+<% else %>
+  <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
     <div class="text-center py-4 text-gray-500">
       No revenue events in this period.
     </div>
-  <% end %>
-</div>
+  </div>
+<% end %>

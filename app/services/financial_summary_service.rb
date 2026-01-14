@@ -2,23 +2,42 @@
 
 class FinancialSummaryService
   PERIODS = {
+    all_time: -> { nil },
     this_week: -> { Time.current.beginning_of_week..Time.current.end_of_week },
+    last_week: -> { 1.week.ago.beginning_of_week..1.week.ago.end_of_week },
     this_month: -> { Time.current.beginning_of_month..Time.current.end_of_month },
+    last_month: -> { 1.month.ago.beginning_of_month..1.month.ago.end_of_month },
     last_30_days: -> { 30.days.ago.beginning_of_day..Time.current.end_of_day },
+    last_90_days: -> { 90.days.ago.beginning_of_day..Time.current.end_of_day },
+    this_quarter: -> { Time.current.beginning_of_quarter..Time.current.end_of_quarter },
+    last_quarter: -> { 3.months.ago.beginning_of_quarter..3.months.ago.end_of_quarter },
     this_year: -> { Time.current.beginning_of_year..Time.current.end_of_year },
-    all_time: -> { nil }
+    last_year: -> { 1.year.ago.beginning_of_year..1.year.ago.end_of_year }
   }.freeze
 
   PERIOD_LABELS = {
+    all_time: "All Time",
     this_week: "This Week",
+    last_week: "Last Week",
     this_month: "This Month",
+    last_month: "Last Month",
     last_30_days: "Last 30 Days",
+    last_90_days: "Last 90 Days",
+    this_quarter: "This Quarter",
+    last_quarter: "Last Quarter",
     this_year: "This Year",
-    all_time: "All Time"
+    last_year: "Last Year"
   }.freeze
+
+  # Quick access periods (shown as pills)
+  QUICK_PERIODS = %i[this_month last_30_days this_year all_time].freeze
 
   def initialize(production)
     @production = production
+  end
+
+  def self.quick_period_labels
+    PERIOD_LABELS.slice(*QUICK_PERIODS)
   end
 
   def summary_for_period(period_key)
@@ -55,36 +74,50 @@ class FinancialSummaryService
     shows_with_financials = scope.includes(:show_financials, :show_payout)
 
     # Calculate totals
-    total_revenue = 0.0
-    total_expenses = 0.0
+    gross_revenue = 0.0
+    show_expenses = 0.0
     shows_with_data = 0
 
     shows_with_financials.each do |show|
       next unless show.show_financials&.has_data?
 
       shows_with_data += 1
-      total_revenue += show.show_financials.total_revenue
-      total_expenses += show.show_financials.calculated_expenses
+      gross_revenue += show.show_financials.total_revenue
+      show_expenses += show.show_financials.calculated_expenses
     end
 
-    net_profit = total_revenue - total_expenses
-    profit_margin = total_revenue > 0 ? (net_profit / total_revenue * 100).round(1) : 0
-
-    # Get payout totals
+    # Get payout totals (performer payouts are part of Cost of Shows)
     show_ids = scope.pluck(:id)
     total_payouts = ShowPayout.where(show_id: show_ids).sum(:total_payout) || 0
-    retained = net_profit - total_payouts
+
+    # Cost of Shows = Show Expenses + Performer Payouts (direct costs)
+    cost_of_shows = show_expenses + total_payouts
+
+    # Gross Profit = Revenue - Cost of Shows
+    gross_profit = gross_revenue - cost_of_shows
+    gross_margin = gross_revenue > 0 ? (gross_profit / gross_revenue * 100).round(1) : 0
+
+    # For now, we don't track operating expenses separately, so Net Income = Gross Profit
+    # In future, operating_expenses would be subtracted here
+    net_income = gross_profit
 
     {
       show_count: scope.count,
       shows_with_data: shows_with_data,
-      total_revenue: total_revenue,
-      total_expenses: total_expenses,
-      net_profit: net_profit,
-      profit_margin: profit_margin,
+      gross_revenue: gross_revenue,
+      show_expenses: show_expenses,
       total_payouts: total_payouts,
-      retained: retained,
-      average_revenue_per_show: shows_with_data > 0 ? (total_revenue / shows_with_data).round(2) : 0
+      cost_of_shows: cost_of_shows,
+      gross_profit: gross_profit,
+      gross_margin: gross_margin,
+      net_income: net_income,
+      average_revenue_per_show: shows_with_data > 0 ? (gross_revenue / shows_with_data).round(2) : 0,
+      # Legacy keys for backward compatibility during transition
+      total_revenue: gross_revenue,
+      total_expenses: show_expenses,
+      net_profit: gross_profit,
+      profit_margin: gross_margin,
+      retained: net_income
     }
   end
 end
