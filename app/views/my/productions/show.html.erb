@@ -346,7 +346,7 @@
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="divide-y divide-gray-200">
             <% @email_logs.each do |log| %>
-              <%= link_to my_email_log_path(log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
+              <%= link_to my_production_email_path(@production, log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
                 <div class="flex items-center justify-between gap-4">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm text-gray-900 font-medium truncate group-hover:text-pink-600">
@@ -419,79 +419,79 @@
       </div>
     </div>
 
-  </div>
+    <%# Contact Production Team Modal %>
+    <% if @production.contact_email.present? %>
+      <div id="send-message-modal"
+           class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+           data-my-messages-target="modal"
+           data-action="click->my-messages#closeModalOnBackdrop">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+             data-my-messages-target="modalContent"
+             data-action="click->my-messages#stopPropagation">
+          <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">Contact <%= @production.name %></h2>
+            <button type="button"
+                    data-action="click->my-messages#closeModal"
+                    class="text-gray-400 hover:text-gray-600 transition cursor-pointer">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-  <%# Contact Production Team Modal %>
-  <% if @production.contact_email.present? %>
-    <div id="send-message-modal"
-         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-         data-my-messages-target="modal"
-         data-action="click->my-messages#closeModalOnBackdrop">
-      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-           data-my-messages-target="modalContent"
-           data-action="click->my-messages#stopPropagation">
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900">Contact <%= @production.name %></h2>
-          <button type="button"
-                  data-action="click->my-messages#closeModal"
-                  class="text-gray-400 hover:text-gray-600 transition cursor-pointer">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+          <div class="p-6">
+            <%= form_with model: @email_draft, url: my_send_message_messages_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+              <input type="hidden" name="production_id" value="<%= @production.id %>">
 
-        <div class="p-6">
-          <%= form_with model: @email_draft, url: my_send_message_messages_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
-            <input type="hidden" name="production_id" value="<%= @production.id %>">
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">To</label>
-              <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <% logo_variant = @production.safe_logo_variant(:small) %>
-                <% if logo_variant %>
-                  <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-gray-100">
-                    <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-10 h-10 object-cover rounded" %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">To</label>
+                <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <% logo_variant = @production.safe_logo_variant(:small) %>
+                  <% if logo_variant %>
+                    <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-gray-100">
+                      <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-10 h-10 object-cover rounded" %>
+                    </div>
+                  <% else %>
+                    <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-pink-100 text-pink-600 font-bold text-sm">
+                      <%= @production.initials %>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900"><%= @production.name %></div>
+                    <div class="text-xs text-gray-500"><%= @production.organization.name %></div>
                   </div>
-                <% else %>
-                  <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded bg-pink-100 text-pink-600 font-bold text-sm">
-                    <%= @production.initials %>
-                  </div>
-                <% end %>
-                <div>
-                  <div class="text-sm font-medium text-gray-900"><%= @production.name %></div>
-                  <div class="text-xs text-gray-500"><%= @production.organization.name %></div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-              <div class="flex items-stretch">
-                <span class="flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap">
-                  [<%= @production.name %>]
-                </span>
-                <%= form.text_field :title,
-                  class: "block w-full min-w-0 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
-                  placeholder: "Subject",
-                  required: true %>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <div class="flex items-stretch">
+                  <span class="flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap">
+                    [<%= @production.name %>]
+                  </span>
+                  <%= form.text_field :title,
+                    class: "block w-full min-w-0 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500",
+                    placeholder: "Subject",
+                    required: true %>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-              <%= form.rich_text_area :body,
-                class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
-            </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                <%= form.rich_text_area :body,
+                  class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
+              </div>
 
-            <div class="flex items-center justify-end gap-3 pt-2">
-              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->my-messages#closeModal" } %>
-              <%= render "shared/button", text: "Send Message", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->my-messages#closeModal" } %>
+                <%= render "shared/button", text: "Send Message", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </div>
         </div>
       </div>
-    </div>
-  <% end %>
+    <% end %>
+
+  </div>
 
 </div>

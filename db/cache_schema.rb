@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_14_171229) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_14_175205) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -86,7 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_14_171229) do
     t.text "header_text"
     t.boolean "include_audition_availability_section", default: false
     t.boolean "include_availability_section", default: false
-    t.boolean "notify_on_submission", default: false, null: false
+    t.boolean "notify_on_submission", default: true, null: false
     t.datetime "opens_at"
     t.integer "production_id", null: false
     t.boolean "require_all_audition_availability", default: false

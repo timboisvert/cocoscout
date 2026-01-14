@@ -1,0 +1,59 @@
+<% content_for :title, "Email Details" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["My Productions", my_productions_path],
+      [@production.name, my_production_path(@production, tab: 2)]
+    ],
+    text: @email_log.subject || "(no subject)",
+    links: []
+  } %>
+
+  <div class="mt-4">
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <h1 class="text-lg font-semibold text-gray-900">
+              <%= @email_log.subject || "(no subject)" %>
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+              <%= @email_log.sent_at&.strftime("%B %-d, %Y at %-I:%M %p") %>
+            </p>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
+            <% logo_variant = @production.safe_logo_variant(:small) %>
+            <% if logo_variant %>
+              <%= image_tag logo_variant, alt: "#{@production.name} logo", class: "w-8 h-8 object-contain rounded" %>
+            <% else %>
+              <div class="w-8 h-8 rounded bg-pink-100 flex items-center justify-center">
+                <span class="text-pink-600 font-bold text-xs"><%= @production.initials %></span>
+              </div>
+            <% end %>
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-gray-900 truncate max-w-[150px]"><%= @production.name %></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-0">
+        <% body = @email_log.body_content %>
+        <% if body.present? %>
+          <iframe
+            class="w-full min-h-[600px] border-0"
+            sandbox="allow-same-origin"
+            srcdoc="<%= ERB::Util.html_escape(body) %>"
+          ></iframe>
+        <% else %>
+          <div class="text-center py-8 text-gray-500">
+            No message body available
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

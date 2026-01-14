@@ -6,7 +6,7 @@
         class: "block w-full rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
   </div>
   <% if post_object.errors.any? %>
-    <div class="text-red-600 text-sm">
+    <div class="text-pink-600 text-sm">
       <% post_object.errors.full_messages.each do |message| %>
         <p><%= message %></p>
       <% end %>

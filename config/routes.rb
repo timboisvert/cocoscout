@@ -143,6 +143,7 @@ Rails.application.routes.draw do
     # Productions
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
+    get    "/productions/:production_id/emails/:id", to: "productions#email", as: "production_email"
     delete "/productions/:id/leave",        to: "productions#leave",        as: "leave_production"
 
     get   "/shows",                         to: "shows#index",              as: "shows"

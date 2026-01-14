@@ -53,19 +53,8 @@
         </div>
 
         <%# Reply Form (hidden by default) %>
-        <div class="mt-3 hidden" data-post-replies-target="replyForm">
-          <%= form_with model: Post.new, url: my_create_message_path(production_id: post.production_id, parent_id: post.id), method: :post, local: false, class: "space-y-2" do |f| %>
-            <input type="hidden" name="parent_id" value="<%= post.id %>">
-            <div>
-              <%= f.rich_text_area :body,
-                  placeholder: "Write a reply...",
-                  class: "block w-full rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm" %>
-            </div>
-            <div class="flex justify-end gap-2">
-              <button type="button" data-action="click->post-replies#toggleReplyForm" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
-              <%= render "shared/button", text: "Reply", variant: "primary", size: "small", type: :submit %>
-            </div>
-          <% end %>
+        <div class="mt-3 hidden" data-post-replies-target="replyForm" id="reply-form-<%= post.id %>">
+          <%= render "my/messages/reply_form", production: post.production, post: Post.new, parent_id: post.id %>
         </div>
 
         <%# Replies Section (hidden by default) %>

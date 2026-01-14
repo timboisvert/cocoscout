@@ -183,6 +183,27 @@ module My
       redirect_to my_productions_path, notice: "You've been removed from #{@production.name}'s talent pool."
     end
 
+    def email
+      @person = Current.user.person
+      return redirect_to my_dashboard_path, alert: "No profile found." unless @person
+
+      @production = Production.find(params[:production_id])
+
+      # Verify user is in talent pool
+      unless @person.in_talent_pool_for?(@production)
+        redirect_to my_productions_path, alert: "You're not in the talent pool for this production."
+        return
+      end
+
+      @email_log = EmailLog.for_recipient_entity(@person)
+                           .where(production_id: @production.id)
+                           .find_by(id: params[:id])
+
+      unless @email_log
+        redirect_to my_production_path(@production, tab: 2), alert: "Email not found."
+      end
+    end
+
     private
 
     def notify_producers_of_departure(groups_removed)

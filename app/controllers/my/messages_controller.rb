@@ -135,7 +135,13 @@ module My
       else
         respond_to do |format|
           format.turbo_stream {
-            render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })
+            if @post.parent_id.present?
+              # For reply errors, show error in the reply form
+              render turbo_stream: turbo_stream.update("reply-form-#{@post.parent_id}", partial: "my/messages/reply_form", locals: { production: production, post: @post, parent_id: @post.parent_id })
+            else
+              # For top-level post errors, show error in the main form
+              render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })
+            end
           }
           format.html { redirect_to my_messages_path, alert: "Failed to create post." }
         end

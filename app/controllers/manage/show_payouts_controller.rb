@@ -269,7 +269,7 @@ module Manage
       )
 
       redirect_to manage_production_money_index_path(@production),
-                  notice: "#{view_context.show_display_name(@show)} closed as non-paying."
+                  notice: "#{helpers.show_display_name(@show)} closed as non-paying."
     end
 
     private
