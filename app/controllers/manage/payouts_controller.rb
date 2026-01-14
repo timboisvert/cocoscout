@@ -13,9 +13,8 @@ module Manage
       @financial_summary = FinancialSummaryService.new(@production)
                                                    .summary_for_period(@selected_period)
 
-      # Get shows with payout status - include all past events
+      # Get shows with payout status - include all past events (including canceled)
       @shows = @production.shows
-                          .where(canceled: false)
                           .where("date_and_time <= ?", 1.day.from_now)
                           .order(date_and_time: :desc)
                           .includes(:show_financials, :show_payout, :location)
