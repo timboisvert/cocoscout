@@ -145,12 +145,12 @@
     <span><%= text %></span>
   <% end %>
 <% elsif type == :submit %>
-  <button type="submit" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %> <%= "disabled" if disabled %>>
+  <button type="submit" class="<%= all_classes %>" <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
     <span><%= text %></span>
   </button>
 <% else %>
-  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"" if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"" if onclick %> <%= "disabled" if disabled %>>
+  <button type="<%= type %>" class="<%= all_classes %>" <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
     <span><%= text %></span>
   </button>

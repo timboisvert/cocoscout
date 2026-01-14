@@ -1,0 +1,72 @@
+<%= turbo_frame_tag "change_scheme_modal" do %>
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+       data-controller="payout-scheme-modal"
+       data-action="click->payout-scheme-modal#closeOnBackdrop keydown.esc@window->payout-scheme-modal#close">
+    <div class="relative w-full max-w-lg bg-white rounded-lg shadow-lg" data-action="click->payout-scheme-modal#stopPropagation">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Change Payout Scheme</h3>
+        <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="click->payout-scheme-modal#close">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <p class="text-sm text-gray-600 mb-4">
+          <strong>Current scheme:</strong> <%= @current_scheme&.name || "None" %>
+        </p>
+
+        <%= form_with url: manage_production_apply_scheme_change_money_show_payout_path(@production, @show), method: :patch, local: true do |f| %>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select new scheme</label>
+            <select name="payout_scheme_id" required
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              <option value="">Choose a scheme...</option>
+              <% @available_schemes.each do |scheme| %>
+                <option value="<%= scheme.id %>" <%= "disabled" if scheme.id == @current_scheme&.id %>>
+                  <%= scheme.name %><%= " (current)" if scheme.id == @current_scheme&.id %>
+                </option>
+              <% end %>
+            </select>
+          </div>
+
+          <% if @future_shows_count > 0 %>
+            <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div class="flex gap-3">
+                <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                  <p class="text-sm text-amber-800 font-medium">Apply to future shows?</p>
+                  <p class="text-sm text-amber-700 mt-1">
+                    There <%= @future_shows_count == 1 ? "is" : "are" %>
+                    <strong><%= @future_shows_count %></strong> future
+                    show<%= "s" if @future_shows_count != 1 %> using the current scheme.
+                  </p>
+                </div>
+              </div>
+              <div class="mt-3 ml-8 space-y-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="apply_to_future" value="0" checked class="text-pink-600 focus:ring-pink-500">
+                  <span class="text-sm text-gray-700">Just this show</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="apply_to_future" value="1" class="text-pink-600 focus:ring-pink-500">
+                  <span class="text-sm text-gray-700">This show and all <%= @future_shows_count %> future show<%= "s" if @future_shows_count != 1 %></span>
+                </label>
+              </div>
+            </div>
+          <% else %>
+            <input type="hidden" name="apply_to_future" value="0">
+          <% end %>
+
+          <div class="flex justify-end gap-2 pt-4 border-t border-gray-200">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->payout-scheme-modal#close" } %>
+            <%= render "shared/button", text: "Change Scheme", variant: "primary", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

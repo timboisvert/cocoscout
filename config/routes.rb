@@ -595,11 +595,11 @@ Rails.application.routes.draw do
       get "money", to: "payouts#index", as: "money_index"
 
       # Show financials - the main financial data view for a show
-      get "money/shows/:id", to: "show_financials#show", as: "money_show_financials"
-      get "money/shows/:id/edit", to: "show_financials#edit", as: "edit_money_show_financials"
-      patch "money/shows/:id", to: "show_financials#update", as: "update_money_show_financials"
-      post "money/shows/:id/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
-      post "money/shows/:id/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
+      get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
+      get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
+      patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
+      post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
+      post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
 
       # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
       get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
@@ -615,21 +615,23 @@ Rails.application.routes.draw do
       post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
       get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
 
-      # Show payouts - explicitly named for manage_production_money_show_payout_path pattern
-      get "money/payouts/:id", to: "show_payouts#show", as: "money_show_payout"
-      patch "money/payouts/:id", to: "show_payouts#update"
-      put "money/payouts/:id", to: "show_payouts#update"
-      post "money/payouts/:id/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
-      post "money/payouts/:id/approve", to: "show_payouts#approve", as: "approve_money_show_payout"
-      post "money/payouts/:id/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
-      post "money/payouts/:id/revert_to_draft", to: "show_payouts#revert_to_draft", as: "revert_to_draft_money_show_payout"
-      get "money/payouts/:id/override", to: "show_payouts#override", as: "override_money_show_payout"
-      patch "money/payouts/:id/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
-      delete "money/payouts/:id/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
-      post "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
-      delete "money/payouts/:id/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
-      post "money/payouts/:id/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
-      post "money/payouts/:id/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
+      # Show payouts - now under /money/shows/:id/payouts
+      get "money/shows/:id/payouts", to: "show_payouts#show", as: "money_show_payout"
+      patch "money/shows/:id/payouts", to: "show_payouts#update"
+      put "money/shows/:id/payouts", to: "show_payouts#update"
+      post "money/shows/:id/payouts/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
+      post "money/shows/:id/payouts/approve", to: "show_payouts#approve", as: "approve_money_show_payout"
+      post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
+      post "money/shows/:id/payouts/revert_to_draft", to: "show_payouts#revert_to_draft", as: "revert_to_draft_money_show_payout"
+      get "money/shows/:id/payouts/override", to: "show_payouts#override", as: "override_money_show_payout"
+      patch "money/shows/:id/payouts/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
+      delete "money/shows/:id/payouts/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
+      get "money/shows/:id/payouts/change_scheme", to: "show_payouts#change_scheme", as: "change_scheme_money_show_payout"
+      patch "money/shows/:id/payouts/apply_scheme_change", to: "show_payouts#apply_scheme_change", as: "apply_scheme_change_money_show_payout"
+      post "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
+      delete "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
+      post "money/shows/:id/payouts/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
+      post "money/shows/:id/payouts/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

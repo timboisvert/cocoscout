@@ -8,6 +8,7 @@ module Manage
       :calculate, :approve, :mark_paid, :revert_to_draft,
       :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
+      :change_scheme, :apply_scheme_change,
       :mark_line_item_paid, :unmark_line_item_paid,
       :mark_all_offline, :send_payment_reminders
     ]
@@ -49,7 +50,7 @@ module Manage
     def calculate
       # Ensure we have financials
       unless @show.show_financials&.complete?
-        redirect_to manage_production_edit_financials_money_show_payout_path(@production, @show),
+        redirect_to manage_production_edit_money_show_financials_path(@production, @show),
                     alert: "Please enter financial data before calculating payouts."
         return
       end
@@ -124,7 +125,7 @@ module Manage
     def unmark_non_revenue
       if @show.show_financials&.non_revenue_override?
         @show.show_financials.update!(non_revenue_override: false)
-        redirect_to manage_production_edit_financials_money_show_payout_path(@production, @show),
+        redirect_to manage_production_edit_money_show_financials_path(@production, @show),
                     notice: "Event restored as revenue event. Enter financial data below."
       else
         redirect_to manage_production_money_index_path(@production),
@@ -135,6 +136,10 @@ module Manage
     def override
       @default_scheme = @production.payout_schemes.find_by(is_default: true)
       @current_rules = @show_payout.override_rules.presence || @default_scheme&.rules || {}
+
+      if turbo_frame_request?
+        render partial: "manage/show_payouts/override_modal"
+      end
     end
 
     def save_override
@@ -148,6 +153,43 @@ module Manage
       @show_payout.update!(override_rules: nil)
       redirect_to manage_production_money_show_payout_path(@production, @show),
                   notice: "Custom rules cleared. Using default scheme."
+    end
+
+    def change_scheme
+      @available_schemes = @production.payout_schemes.order(:name)
+      @current_scheme = @show_payout.payout_scheme
+      @future_shows_count = @production.shows
+        .where("date_and_time > ?", @show.date_and_time)
+        .where(id: ShowPayout.where(payout_scheme: @current_scheme).select(:show_id))
+        .count
+    end
+
+    def apply_scheme_change
+      new_scheme = @production.payout_schemes.find(params[:payout_scheme_id])
+      apply_to_future = params[:apply_to_future] == "1"
+
+      if apply_to_future
+        # Find all shows on or after this one that currently use the same scheme
+        current_scheme = @show_payout.payout_scheme
+        shows_to_update = @production.shows
+          .where("date_and_time >= ?", @show.date_and_time)
+          .includes(:show_payout)
+          .select { |s| s.show_payout&.payout_scheme_id == current_scheme&.id }
+
+        updated_count = 0
+        shows_to_update.each do |show|
+          show.show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
+          updated_count += 1
+        end
+
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    notice: "Payout scheme changed to \"#{new_scheme.name}\" for #{updated_count} show#{"s" if updated_count != 1}."
+      else
+        # Clear any custom overrides when changing scheme
+        @show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    notice: "Payout scheme changed to \"#{new_scheme.name}\" for this show."
+      end
     end
 
     def mark_line_item_paid
