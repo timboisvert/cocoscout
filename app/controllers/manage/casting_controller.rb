@@ -9,11 +9,21 @@ module Manage
                   only: %i[show_cast contact_cast send_cast_email assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting reopen_casting copy_cast_to_linked]
 
     def index
-      @upcoming_shows = @production.shows
-                                   .where("date_and_time >= ?", Time.current)
-                                   .where(casting_enabled: true)
-                                   .includes(:location, :custom_roles, show_person_role_assignments: :role)
-                                   .order(:date_and_time)
+      # Store the shows filter (default to upcoming)
+      @filter = params[:filter] || session[:casting_filter] || "upcoming"
+      session[:casting_filter] = @filter
+
+      base_shows = @production.shows
+                              .where(casting_enabled: true)
+                              .includes(:location, :custom_roles, show_person_role_assignments: :role)
+
+      case @filter
+      when "past"
+        @shows = base_shows.where("date_and_time < ?", Time.current).order(date_and_time: :desc)
+      else
+        @filter = "upcoming"
+        @shows = base_shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
+      end
 
       # Eager load roles for the production (used in cast_card partial)
       @roles = @production.roles.order(:position).to_a
@@ -21,7 +31,7 @@ module Manage
       @roles_max_updated_at = @roles.map(&:updated_at).compact.max
 
       # Precompute max assignment updated_at per show to avoid N+1 in cache key
-      show_ids = @upcoming_shows.map(&:id)
+      show_ids = @shows.map(&:id)
       @assignments_max_updated_at_by_show = ShowPersonRoleAssignment
         .where(show_id: show_ids)
         .group(:show_id)
@@ -29,7 +39,7 @@ module Manage
 
       # Precompute max role updated_at per show for custom roles
       @roles_max_updated_at_by_show = {}
-      @upcoming_shows.each do |show|
+      @shows.each do |show|
         if show.use_custom_roles?
           @roles_max_updated_at_by_show[show.id] = show.custom_roles.map(&:updated_at).compact.max
         else
@@ -38,7 +48,7 @@ module Manage
       end
 
       # Preload assignables (people and groups) with their headshots
-      all_assignments = @upcoming_shows.flat_map(&:show_person_role_assignments)
+      all_assignments = @shows.flat_map(&:show_person_role_assignments)
 
       person_ids = all_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
       group_ids = all_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
@@ -55,13 +65,13 @@ module Manage
 
       # Load cancelled vacancies (can't make it but still cast) for all shows
       @cancelled_vacancies_by_show = {}
-      @upcoming_shows.each do |show|
+      @shows.each do |show|
         @cancelled_vacancies_by_show[show.id] = show.cancelled_vacancies_by_assignment
       end
 
       # Load open vacancies for non-linked shows (person removed, role needs filling)
       @open_vacancies_by_show = {}
-      @upcoming_shows.each do |show|
+      @shows.each do |show|
         next if show.linked? # Linked shows keep person cast with "can't make it" indicator
         open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
         @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)

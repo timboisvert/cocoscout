@@ -870,6 +870,10 @@ module Manage
     # Send cancellation notification emails to cast members
     # role_categories: optional array of category strings to filter by (e.g., ["performing", "technical"])
     def send_cancellation_notifications(shows, email_subject, email_body, role_categories = nil)
+      # Filter out past shows - no need to notify about cancellation of past events
+      shows = shows.select { |show| show.date_and_time >= Time.current }
+      return if shows.empty?
+
       # Collect all unique people from all shows
       all_person_ids = Set.new
 

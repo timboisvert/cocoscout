@@ -482,6 +482,9 @@ class Show < ApplicationRecord
   end
 
   def trigger_calendar_sync
+    # Don't sync calendar for past shows
+    return if date_and_time < Time.current
+
     # Find all people who might have this show in their calendar sync
     # This includes:
     # 1. People assigned to this show

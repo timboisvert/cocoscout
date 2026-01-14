@@ -10,16 +10,26 @@
     ]
   } %>
 
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "View",
+      filters: [
+        { text: "Upcoming", path: manage_production_casting_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
+        { text: "Past", path: manage_production_casting_path(@production, filter: "past"), active: @filter == "past" }
+      ]
+    }
+  ] %>
+
   <!-- Show Cast Assignments Section -->
   <div>
-    <% if @upcoming_shows.any? %>
+    <% if @shows.any? %>
       <div class="space-y-1">
-        <% @upcoming_shows.each do |show| %>
+        <% @shows.each do |show| %>
           <%= render "manage/casting/cast_card", show: show, production: @production, title: nil, roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
         <% end %>
       </div>
     <% else %>
-      <p class="text-gray-500 text-sm">No upcoming shows scheduled.</p>
+      <p class="text-gray-500 text-sm"><%= @filter == "past" ? "No past shows found." : "No upcoming shows scheduled." %></p>
     <% end %>
   </div>
 </div>

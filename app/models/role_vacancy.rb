@@ -159,6 +159,9 @@ class RoleVacancy < ApplicationRecord
   end
 
   def notify_team_of_creation
+    # Don't notify for vacancies on past shows
+    return if show&.date_and_time && show.date_and_time < Time.current
+
     VacancyNotificationJob.perform_later(id, "created")
   end
 end
