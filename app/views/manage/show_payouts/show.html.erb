@@ -42,7 +42,8 @@
 
   <%
     # Prepare payee data for the walkthrough (available to both main content and sidebar)
-    unpaid_line_items = @line_items.reject(&:paid?)
+    line_items = @line_items || []
+    unpaid_line_items = line_items.reject(&:paid?)
     payees_for_js = unpaid_line_items.map.with_index do |item, idx|
       {
         id: item.id,
@@ -178,18 +179,18 @@
 
         <% if has_line_items %>
           <%
-            unpaid_count = @line_items.count { |li| !li.paid? }
-            paid_count = @line_items.count { |li| li.paid? }
-            payment_ready_count = @line_items.count { |li| li.payee_has_payment_method? && !li.paid? }
-            needs_setup_count = @line_items.count { |li| !li.payee_has_payment_method? && !li.paid? }
-            pending_payout_count = @line_items.count { |li| li.payout_pending? }
+            unpaid_count = line_items.count { |li| !li.paid? }
+            paid_count = line_items.count { |li| li.paid? }
+            payment_ready_count = line_items.count { |li| li.payee_has_payment_method? && !li.paid? }
+            needs_setup_count = line_items.count { |li| !li.payee_has_payment_method? && !li.paid? }
+            pending_payout_count = line_items.count { |li| li.payout_pending? }
           %>
 
           <!-- Payment Summary Bar -->
           <% if is_calculated && unpaid_count > 0 %>
             <%
               # Get unpaid items for the walkthrough
-              unpaid_items = @line_items.reject(&:paid?)
+              unpaid_items = line_items.reject(&:paid?)
               unpaid_total = unpaid_items.sum(&:amount)
             %>
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
@@ -224,7 +225,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <% @line_items.each do |item| %>
+                <% line_items.each do |item| %>
                   <tr>
                     <td class="py-3">
                       <div class="flex items-center gap-2">
@@ -612,7 +613,7 @@
             </div>
           <% elsif is_calculated %>
             <%# Awaiting Payout - has been calculated %>
-            <% unpaid_items = @line_items.reject(&:paid?) %>
+            <% unpaid_items = line_items.reject(&:paid?) %>
             <% unpaid_total = unpaid_items.sum(&:amount) %>
             <% unpaid_count = unpaid_items.size %>
             <% if unpaid_count > 0 %>
@@ -625,7 +626,7 @@
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <div class="font-medium text-gray-900"><%= unpaid_count == @line_items.size ? "Pay Everyone" : "Pay Remaining (#{unpaid_count})" %></div>
+                  <div class="font-medium text-gray-900"><%= unpaid_count == line_items.size ? "Pay Everyone" : "Pay Remaining (#{unpaid_count})" %></div>
                   <div class="text-xs text-gray-500"><%= number_to_currency(unpaid_total) %> total</div>
                 </div>
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
