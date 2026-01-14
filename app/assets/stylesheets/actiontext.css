@@ -1,14 +1,41 @@
 /*
- * Default Trix editor styles. See Action Text overwrites below.
+ * Trix editor styles - customized for CocoScout
+ * Pink-themed rich text editor with clean modern styling
 */
 
+/* Editor wrapper - adds the pink gradient border effect */
 trix-editor {
-  border: 1px solid #bbb;
-  border-radius: 3px;
+  border: 2px solid #f9a8d4;
+  /* pink-300 */
+  border-radius: 0.75rem;
   margin: 0;
-  padding: 0.4em 0.6em;
-  min-height: 5em;
+  padding: 0.875rem 1rem;
+  min-height: 6em;
   outline: none;
+  background: linear-gradient(to bottom, #fff 0%, #fdf2f8 100%);
+  /* white to pink-50 */
+  color: #374151;
+  /* gray-700 */
+  font-size: 0.875rem;
+  line-height: 1.625;
+  transition: all 0.2s ease;
+}
+
+trix-editor:focus {
+  border-color: #ec4899;
+  /* pink-500 */
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15), 0 4px 6px -1px rgba(236, 72, 153, 0.1);
+  background: white;
+}
+
+trix-editor.trix-active {
+  border-color: #ec4899;
+}
+
+trix-editor::placeholder,
+trix-editor:empty::before {
+  color: #9ca3af;
+  /* gray-400 */
 }
 
 /* Add spacing between paragraphs */
@@ -46,17 +73,42 @@ trix-editor li {
 }
 
 trix-editor blockquote {
-  border-left: 3px solid #ccc;
+  border-left: 3px solid #f9a8d4;
+  /* pink-300 */
   margin: 0.5em 0;
   padding-left: 0.75em;
-  color: #666;
+  color: #6b7280;
+  /* gray-500 */
+  background: #fdf2f8;
+  /* pink-50 */
+  padding: 0.5em 0.75em;
+  border-radius: 0 0.25rem 0.25rem 0;
 }
 
 trix-editor pre {
-  background-color: #f4f4f4;
-  padding: 0.5em;
-  border-radius: 3px;
+  background-color: #f3f4f6;
+  /* gray-100 */
+  padding: 0.75em;
+  border-radius: 0.375rem;
   overflow-x: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875em;
+}
+
+/* Toolbar styling */
+trix-toolbar {
+  padding: 0.5rem;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+  /* pink-50 to pink-100 */
+  border: 2px solid #f9a8d4;
+  /* pink-300 */
+  border-bottom: none;
+  border-radius: 0.75rem 0.75rem 0 0;
+  margin-bottom: -2px;
+}
+
+trix-toolbar+trix-editor {
+  border-radius: 0 0 0.75rem 0.75rem;
 }
 
 trix-toolbar * {
@@ -66,26 +118,29 @@ trix-toolbar * {
 trix-toolbar .trix-button-row {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   overflow-x: auto;
+  gap: 0.25rem;
 }
 
 trix-toolbar .trix-button-group {
   display: flex;
-  margin-bottom: 10px;
-  border: 1px solid #bbb;
-  border-top-color: #ccc;
-  border-bottom-color: #888;
-  border-radius: 3px;
+  margin-bottom: 0;
+  border: 1px solid #fbcfe8;
+  /* pink-200 */
+  border-radius: 0.5rem;
+  background: white;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 trix-toolbar .trix-button-group:not(:first-child) {
-  margin-left: 1.5vw;
+  margin-left: 0.5rem;
 }
 
 @media (max-width: 768px) {
   trix-toolbar .trix-button-group:not(:first-child) {
-    margin-left: 0;
+    margin-left: 0.25rem;
   }
 }
 
@@ -102,26 +157,37 @@ trix-toolbar .trix-button-group-spacer {
 trix-toolbar .trix-button {
   position: relative;
   float: left;
-  color: rgba(0, 0, 0, 0.6);
-  font-size: 0.75em;
+  color: #be185d;
+  /* pink-700 */
+  font-size: 0.8em;
   font-weight: 600;
   white-space: nowrap;
-  padding: 0 0.5em;
+  padding: 0.375em 0.625em;
   margin: 0;
   outline: none;
   border: none;
-  border-bottom: 1px solid #ddd;
+  transition: all 0.15s ease;
+  border-bottom: none;
   border-radius: 0;
   background: transparent;
 }
 
+trix-toolbar .trix-button:hover:not(:disabled) {
+  background: #fce7f3;
+  /* pink-100 */
+  color: #9d174d;
+  /* pink-800 */
+}
+
 trix-toolbar .trix-button:not(:first-child) {
-  border-left: 1px solid #ccc;
+  border-left: 1px solid #fbcfe8;
+  /* pink-200 */
 }
 
 trix-toolbar .trix-button.trix-active {
-  background: #cbeefa;
-  color: black;
+  background: #ec4899;
+  /* pink-500 */
+  color: white;
 }
 
 trix-toolbar .trix-button:not(:disabled) {
@@ -250,22 +316,24 @@ trix-toolbar .trix-dialog {
   top: 0;
   left: 0;
   right: 0;
-  font-size: 0.75em;
-  padding: 15px 10px;
+  font-size: 0.875rem;
+  padding: 1rem;
   background: #fff;
-  box-shadow: 0 0.3em 1em #ccc;
-  border-top: 2px solid #888;
-  border-radius: 5px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  /* gray-200 */
+  border-radius: 0.5rem;
   z-index: 5;
 }
 
 trix-toolbar .trix-input--dialog {
   font-size: inherit;
   font-weight: normal;
-  padding: 0.5em 0.8em;
+  padding: 0.5em 0.75em;
   margin: 0 10px 0 0;
-  border-radius: 3px;
-  border: 1px solid #bbb;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  /* gray-300 */
   background-color: #fff;
   box-shadow: none;
   outline: none;
@@ -273,14 +341,31 @@ trix-toolbar .trix-input--dialog {
   -moz-appearance: none;
 }
 
+trix-toolbar .trix-input--dialog:focus {
+  border-color: #ec4899;
+  /* pink-500 */
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.2);
+}
+
 trix-toolbar .trix-input--dialog.validate:invalid {
-  box-shadow: #F00 0px 0px 1.5px 1px;
+  box-shadow: #ef4444 0px 0px 1.5px 1px;
+  /* red-500 */
 }
 
 trix-toolbar .trix-button--dialog {
   font-size: inherit;
-  padding: 0.5em;
+  padding: 0.5em 1em;
   border-bottom: none;
+  background: #ec4899;
+  /* pink-500 */
+  color: white;
+  border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+trix-toolbar .trix-button--dialog:hover {
+  background: #db2777;
+  /* pink-600 */
 }
 
 trix-toolbar .trix-dialog--link {

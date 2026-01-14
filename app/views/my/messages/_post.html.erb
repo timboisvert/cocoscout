@@ -1,7 +1,7 @@
 <% show_production = local_assigns.fetch(:show_production, false) %>
 <% is_reply = local_assigns.fetch(:is_reply, false) %>
 <% indent_class = is_reply ? "ml-12 border-l-2 border-gray-200" : "" %>
-<div class="bg-white px-6 py-4 <%= indent_class %>" id="post-<%= post.id %>" data-controller="post-replies">
+<div class="bg-white px-6 py-4 <%= indent_class %>" id="post-<%= post.id %>" data-controller="post-replies" data-post-replies-post-id-value="<%= post.id %>">
   <div class="flex gap-3">
     <%# Author Avatar %>
     <% headshot_variant = post.author_headshot_variant(:thumb) %>
@@ -52,9 +52,10 @@
           <% end %>
         </div>
 
-        <%# Reply Form (hidden by default) %>
-        <div class="mt-3 hidden" data-post-replies-target="replyForm" id="reply-form-<%= post.id %>">
-          <%= render "my/messages/reply_form", production: post.production, post: Post.new, parent_id: post.id %>
+        <%# Reply Form - using Turbo Frame for proper Trix initialization %>
+        <div class="mt-3 hidden" data-post-replies-target="replyForm">
+          <turbo-frame id="reply-form-<%= post.id %>" src="" loading="lazy">
+          </turbo-frame>
         </div>
 
         <%# Replies Section (hidden by default) %>

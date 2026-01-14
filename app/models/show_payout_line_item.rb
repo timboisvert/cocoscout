@@ -97,11 +97,15 @@ class ShowPayoutLineItem < ApplicationRecord
   end
 
   def paid_via_venmo?
-    payment_method == "venmo" && payout_reference_id.present? && payout_status == "success"
+    return false unless payment_method == "venmo"
+    # Paid via automated Venmo payout OR manually marked as paid via Venmo
+    (payout_reference_id.present? && payout_status == "success") || manually_paid?
   end
 
   def paid_via_zelle?
-    payment_method == "zelle" && (payout_reference_id.present? || manually_paid?) && payout_status == "success"
+    return false unless payment_method == "zelle"
+    # Manually marked as paid via Zelle (no automated Zelle, so just check manually_paid)
+    manually_paid?
   end
 
   def payout_pending?

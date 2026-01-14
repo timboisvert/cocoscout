@@ -1,0 +1,3 @@
+<% replies.each do |reply| %>
+  <%= render "my/messages/post", post: reply, is_reply: true %>
+<% end %>

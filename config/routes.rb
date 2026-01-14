@@ -201,6 +201,7 @@ Rails.application.routes.draw do
     # Messages (inbox for talent)
     get   "/messages",                          to: "messages#index",                     as: "messages"
     post  "/messages",                          to: "messages#create",                    as: "create_message"
+    get   "/messages/reply_form",               to: "messages#reply_form",                as: "messages_reply_form"
     get   "/messages/posts",                    to: "messages#posts",                     as: "messages_posts"
     get   "/messages/emails",                   to: "messages#emails",                    as: "messages_emails"
     post  "/messages/send",                     to: "messages#send_message",              as: "send_message_messages"

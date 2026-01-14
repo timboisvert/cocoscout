@@ -12,12 +12,14 @@
     - show_production: Show production name (default: false)
     - show_location: Show location (default: true)
     - has_groups: Whether user has groups (default: false)
+    - manage_context: Whether in manage context for URL generation (default: false)
 %>
 
 <%
   show_production = local_assigns.fetch(:show_production, false)
   show_location = local_assigns.fetch(:show_location, true)
   has_groups = local_assigns.fetch(:has_groups, false)
+  manage_context = local_assigns.fetch(:manage_context, false)
 %>
 
 <div class="space-y-1" data-controller="linked-highlight">
@@ -32,6 +34,7 @@
       entity_key: entity_key,
       entity: entity,
       has_groups: has_groups,
+      manage_context: manage_context,
       right_panel: :availability
     } %>
   <% end %>

@@ -84,6 +84,19 @@ module My
       end
     end
 
+    def reply_form
+      parent_post = Post.find(params[:parent_id])
+      @production = parent_post.production
+      
+      unless @all_productions.include?(@production)
+        head :not_found
+        return
+      end
+
+      @parent_id = parent_post.id
+      render layout: false
+    end
+
     def create
       @show_my_sidebar = true
 
@@ -120,8 +133,15 @@ module My
         respond_to do |format|
           format.turbo_stream {
             if @post.reply?
-              # For replies, append to the replies section of the parent post
-              render turbo_stream: turbo_stream.append("replies-for-#{@post.parent_id}", partial: "my/messages/post", locals: { post: @post, is_reply: true })
+              # For replies: append the new reply and clear the form
+              parent_id = @post.parent_id
+              parent = Post.find(parent_id)
+              render turbo_stream: [
+                turbo_stream.replace("replies-for-#{parent_id}",
+                  partial: "my/messages/replies_section",
+                  locals: { parent: parent }),
+                turbo_stream.update("reply-form-#{parent_id}", "")
+              ]
             else
               # For top-level posts, prepend to the posts list
               render turbo_stream: [
@@ -133,11 +153,17 @@ module My
           format.html { redirect_to redirect_path }
         end
       else
+        # Use params[:parent_id] to determine if this was a reply, since @post.parent_id
+        # may not be set if parent validation failed
+        parent_id = params[:parent_id]
         respond_to do |format|
           format.turbo_stream {
-            if @post.parent_id.present?
-              # For reply errors, show error in the reply form
-              render turbo_stream: turbo_stream.update("reply-form-#{@post.parent_id}", partial: "my/messages/reply_form", locals: { production: production, post: @post, parent_id: @post.parent_id })
+            if parent_id.present?
+              # For reply errors, re-render the form with errors inside the turbo-frame
+              frame_content = render_to_string(partial: "my/messages/reply_form", 
+                formats: [:html],
+                locals: { production: production, post: @post, parent_id: parent_id })
+              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}", frame_content)
             else
               # For top-level post errors, show error in the main form
               render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })

@@ -72,10 +72,17 @@
     data_attrs["availability-entity-key"] = local_assigns[:entity_key]
 
     # For manage context, use the manage endpoint
-    if local_assigns[:manage_context] && local_assigns[:entity].is_a?(Person)
-      data_attrs["availability-person-id-value"] = local_assigns[:entity].id
-      data_attrs["availability-entity-type-value"] = local_assigns[:entity].class.name
-      data_attrs["availability-update-url-value"] = update_availability_manage_person_path(local_assigns[:entity])
+    if local_assigns[:manage_context]
+      entity = local_assigns[:entity]
+      if entity.is_a?(Person)
+        data_attrs["availability-person-id-value"] = entity.id
+        data_attrs["availability-entity-type-value"] = entity.class.name
+        data_attrs["availability-update-url-value"] = update_availability_manage_person_path(entity)
+      elsif entity.is_a?(Group)
+        data_attrs["availability-group-id-value"] = entity.id
+        data_attrs["availability-entity-type-value"] = entity.class.name
+        data_attrs["availability-update-url-value"] = update_availability_manage_group_path(entity)
+      end
     else
       # For user's own availability, still need entity type
       data_attrs["availability-entity-type-value"] = local_assigns[:entity]&.class&.name || "Person"

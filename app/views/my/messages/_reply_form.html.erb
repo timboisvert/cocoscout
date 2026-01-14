@@ -1,4 +1,5 @@
-<%= form_with model: post, url: my_create_message_path(production_id: production.id, parent_id: parent_id), method: :post, local: false, class: "space-y-2" do |f| %>
+<div data-controller="trix-sync">
+<%= form_with model: post, url: my_create_message_path(production_id: production.id, parent_id: parent_id), method: :post, local: false, class: "space-y-2", data: { trix_sync_target: "form" } do |f| %>
   <input type="hidden" name="parent_id" value="<%= parent_id %>">
   <div>
     <%= f.rich_text_area :body,
@@ -13,7 +14,8 @@
     </div>
   <% end %>
   <div class="flex justify-end gap-2">
-    <button type="button" data-action="click->post-replies#toggleReplyForm" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
+    <button type="button" data-action="click->post-replies#hideReplyForm" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
     <%= render "shared/button", text: "Reply", variant: "primary", size: "small", type: :submit %>
   </div>
 <% end %>
+</div>

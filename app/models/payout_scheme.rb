@@ -51,7 +51,6 @@ class PayoutScheme < ApplicationRecord
       description: "Pay each performer a fixed amount per ticket sold.",
       rules: {
         allocation: [
-          { type: "expenses_first" },
           { type: "remainder", to: "available" }
         ],
         distribution: { method: "per_ticket", per_ticket_rate: 1.0 },
@@ -63,7 +62,6 @@ class PayoutScheme < ApplicationRecord
       description: "Pay per ticket with a guaranteed minimum payout per performer.",
       rules: {
         allocation: [
-          { type: "expenses_first" },
           { type: "remainder", to: "available" }
         ],
         distribution: { method: "per_ticket_guaranteed", per_ticket_rate: 1.0, minimum: 25.0 },
