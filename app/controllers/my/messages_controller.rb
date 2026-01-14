@@ -8,46 +8,58 @@ module My
 
     def index
       @show_my_sidebar = true
+      @filter = params[:filter] || "all"
 
-      # Determine which posts to show
-      if params[:organization_id].present?
-        # Shared forum mode - show posts for an organization
+      # Auto-select if only one forum
+      if @sidebar_items.length == 1
+        item = @sidebar_items.first
+        if item[:type] == :organization
+          @selected_organization = item[:object]
+        else
+          @selected_production = item[:object]
+        end
+      elsif params[:organization_id].present?
         @selected_organization = @my_organizations.find { |o| o.id == params[:organization_id].to_i }
-        if @selected_organization
-          org_productions = @all_productions.select { |p| p.organization_id == @selected_organization.id }
-          @posts = Post.where(production: org_productions)
-                       .top_level
-                       .includes(:author, :replies, :production)
-                       .recent_first
-                       .limit(50)
-          @posts.each { |post| post.mark_viewed_by(Current.user) }
-          # Use the first production for new posts
-          @posting_production = org_productions.first
-        else
-          @posts = Post.none
-        end
       elsif params[:production_id].present?
-        # Per-production forum mode - show posts for a specific production
         @selected_production = @sidebar_productions.find { |p| p.id == params[:production_id].to_i }
-        if @selected_production
-          @posts = Post.where(production: @selected_production)
-                       .top_level
-                       .includes(:author, :replies)
-                       .recent_first
-                       .limit(50)
-          @posts.each { |post| post.mark_viewed_by(Current.user) }
-          @posting_production = @selected_production
+      elsif @sidebar_items.any?
+        # Default to first item
+        item = @sidebar_items.first
+        if item[:type] == :organization
+          @selected_organization = item[:object]
         else
-          @posts = Post.none
+          @selected_production = item[:object]
         end
+      end
+
+      # Load posts based on selection
+      if @selected_organization
+        org_productions = @all_productions.select { |p| p.organization_id == @selected_organization.id }
+        posts_query = Post.where(production: org_productions)
+                          .top_level
+                          .includes(:author, :replies, :production, :rich_text_body)
+                          .recent_first
+        @posting_production = org_productions.first
+      elsif @selected_production
+        posts_query = Post.where(production: @selected_production)
+                          .top_level
+                          .includes(:author, :replies, :rich_text_body)
+                          .recent_first
+        @posting_production = @selected_production
       else
-        # Show unviewed posts across all accessible productions (default view)
-        @posts = Post.where(production: @all_productions)
-                     .top_level
-                     .unviewed_by(Current.user)
-                     .includes(:author, :replies, :production)
-                     .recent_first
-                     .limit(50)
+        posts_query = Post.none
+      end
+
+      # Apply filter
+      if @filter == "unread" && posts_query.present?
+        posts_query = posts_query.unviewed_by(Current.user)
+      end
+
+      @posts = posts_query.limit(50)
+
+      # Mark posts as viewed when viewing "all"
+      if @filter == "all" && @posts.any?
+        @posts.each { |post| post.mark_viewed_by(Current.user) }
       end
 
       # Count unviewed posts for badge display
@@ -56,6 +68,16 @@ module My
                              .unviewed_by(Current.user)
                              .group(:production_id)
                              .count
+
+      # Calculate total unread for current selection
+      if @selected_organization
+        org_production_ids = @all_productions.select { |p| p.organization_id == @selected_organization.id }.map(&:id)
+        @current_unread_count = org_production_ids.sum { |id| @unviewed_counts[id] || 0 }
+      elsif @selected_production
+        @current_unread_count = @unviewed_counts[@selected_production.id] || 0
+      else
+        @current_unread_count = 0
+      end
 
       respond_to do |format|
         format.html
@@ -221,6 +243,7 @@ module My
       # Group by organization and determine what to show in sidebar
       @sidebar_productions = []
       @my_organizations = []
+      @sidebar_items = []
 
       productions_by_org = @all_productions.group_by(&:organization)
 
@@ -228,13 +251,18 @@ module My
         if org.forum_shared?
           # Shared mode: show organization in sidebar (not individual productions)
           @my_organizations << org
+          @sidebar_items << { type: :organization, object: org, name: org.name }
         else
           # Per-production mode: show individual productions
-          @sidebar_productions.concat(productions)
+          productions.each do |production|
+            @sidebar_productions << production
+            @sidebar_items << { type: :production, object: production, name: production.name }
+          end
         end
       end
 
       @my_organizations.uniq!
+      @sidebar_items.sort_by! { |item| item[:name].downcase }
     end
 
     def post_params

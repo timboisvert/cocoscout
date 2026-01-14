@@ -1,144 +1,154 @@
 <% content_for :title, "Messages" %>
 
+<% show_sidebar = @sidebar_items.length > 1 %>
+
 <div class="w-full h-full" data-controller="my-messages">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <div class="flex h-[calc(100vh-120px)]">
-    <%# Left Sidebar %>
-    <div class="w-1/3 border-r border-gray-200 bg-white overflow-y-auto flex flex-col">
-      <div class="divide-y divide-gray-100 flex-1">
-        <%# Unread Messages Link %>
-        <% total_unread = @unviewed_counts.values.sum %>
-        <button type="button"
-                data-action="click->my-messages#selectProduction"
-                data-production-id=""
-                class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_production.nil? && @selected_organization.nil? %>">
-          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661Z" />
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="font-medium text-gray-900">Unread</div>
-          </div>
-          <% if total_unread > 0 %>
-            <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
-              <%= total_unread %>
-            </span>
+    <% if show_sidebar %>
+      <%# Left Sidebar - only show if multiple forums %>
+      <div class="w-1/3 border-r border-gray-200 bg-white overflow-y-auto flex flex-col">
+        <div class="divide-y divide-gray-100 flex-1">
+          <%# Organizations with Shared Forums %>
+          <% @my_organizations.each do |org| %>
+            <% org_production_ids = @all_productions.select { |p| p.organization_id == org.id }.map(&:id) %>
+            <% unread_count = org_production_ids.sum { |id| @unviewed_counts[id] || 0 } %>
+            <button type="button"
+                    data-action="click->my-messages#selectOrganization"
+                    data-organization-id="<%= org.id %>"
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_organization&.id == org.id %>">
+              <% if org.logo.attached? %>
+                <%= image_tag org.logo.variant(resize_to_fill: [40, 40]), alt: org.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-bold text-pink-600"><%= org.name[0..1].upcase %></span>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900 truncate"><%= org.name %></div>
+              </div>
+              <% if unread_count > 0 %>
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
+                  <%= unread_count %>
+                </span>
+              <% end %>
+            </button>
           <% end %>
-        </button>
 
-        <%# Organizations with Shared Forums %>
-        <% @my_organizations.each do |org| %>
-          <% org_production_ids = @all_productions.select { |p| p.organization_id == org.id }.map(&:id) %>
-          <% unread_count = org_production_ids.sum { |id| @unviewed_counts[id] || 0 } %>
-          <button type="button"
-                  data-action="click->my-messages#selectOrganization"
-                  data-organization-id="<%= org.id %>"
-                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_organization&.id == org.id %>">
-            <% if org.logo.attached? %>
-              <%= image_tag org.logo.variant(resize_to_fill: [40, 40]), alt: org.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
-            <% else %>
-              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-bold text-pink-600"><%= org.name[0..1].upcase %></span>
+          <%# Productions with Per-Production Forums %>
+          <% @sidebar_productions.each do |production| %>
+            <% unread_count = @unviewed_counts[production.id] || 0 %>
+            <button type="button"
+                    data-action="click->my-messages#selectProduction"
+                    data-production-id="<%= production.id %>"
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_production&.id == production.id %>">
+              <% logo_variant = production.safe_logo_variant(:small) %>
+              <% if logo_variant %>
+                <%= image_tag logo_variant, alt: production.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
+              <% else %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
+                <div class="text-xs text-gray-500 truncate"><%= production.organization.name %></div>
               </div>
-            <% end %>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 truncate"><%= org.name %></div>
+              <% if unread_count > 0 %>
+                <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
+                  <%= unread_count %>
+                </span>
+              <% end %>
+            </button>
+          <% end %>
+
+          <% if @sidebar_items.empty? %>
+            <div class="p-4 text-center text-gray-500 text-sm">
+              <p>No message boards available.</p>
             </div>
-            <% if unread_count > 0 %>
-              <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
-                <%= unread_count %>
-              </span>
-            <% end %>
-          </button>
-        <% end %>
+          <% end %>
+        </div>
 
-        <%# Productions with Per-Production Forums %>
-        <% @sidebar_productions.each do |production| %>
-          <% unread_count = @unviewed_counts[production.id] || 0 %>
-          <button type="button"
-                  data-action="click->my-messages#selectProduction"
-                  data-production-id="<%= production.id %>"
-                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-pink-50 transition text-left cursor-pointer <%= 'bg-pink-50 border-l-4 border-pink-500' if @selected_production&.id == production.id %>">
-            <% logo_variant = production.safe_logo_variant(:small) %>
-            <% if logo_variant %>
-              <%= image_tag logo_variant, alt: production.name, class: "w-10 h-10 object-contain rounded-lg flex-shrink-0" %>
-            <% else %>
-              <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-              </div>
-            <% end %>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 truncate"><%= production.name %></div>
-              <div class="text-xs text-gray-500 truncate"><%= production.organization.name %></div>
-            </div>
-            <% if unread_count > 0 %>
-              <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-pink-500 text-white text-xs font-medium">
-                <%= unread_count %>
-              </span>
-            <% end %>
-          </button>
-        <% end %>
-
-        <% if @my_organizations.empty? && @sidebar_productions.empty? %>
-          <div class="p-4 text-center text-gray-500 text-sm">
-            <p>No message boards available.</p>
-          </div>
-        <% end %>
+        <%# Emails Link at Bottom %>
+        <div class="border-t border-gray-200">
+          <%= link_to my_messages_emails_path, class: "flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 transition cursor-pointer" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+            <span class="text-sm">Production Team Emails</span>
+          <% end %>
+        </div>
       </div>
-
-      <%# Emails Link at Bottom %>
-      <div class="border-t border-gray-200">
-        <%= link_to my_messages_emails_path, class: "flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 transition cursor-pointer" do %>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-          </svg>
-          <span class="text-sm">Production Team Emails</span>
-        <% end %>
-      </div>
-    </div>
+    <% end %>
 
     <%# Right Content - Posts %>
-    <div class="flex-1 bg-gray-50 overflow-y-auto">
-      <turbo-frame id="posts-content" class="block h-full">
-        <% if @posting_production %>
-          <%# New Post Form %>
-          <div id="new-post-form" class="bg-white border-b border-gray-200 px-6 py-4">
-            <%= render "my/messages/new_post_form", production: @posting_production %>
-          </div>
-
-          <%# Posts List %>
-          <div id="posts-list" class="divide-y divide-gray-200">
-            <% if @posts.any? %>
-              <% @posts.each do |post| %>
-                <%= render "my/messages/post", post: post %>
+    <div class="flex-1 bg-gray-50 overflow-y-auto flex flex-col">
+      <% if @posting_production %>
+        <%# Filter Bar %>
+        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <%
+              # Build base URL for filter links
+              if @selected_organization
+                base_params = { organization_id: @selected_organization.id }
+              elsif @selected_production
+                base_params = { production_id: @selected_production.id }
+              else
+                base_params = {}
+              end
+            %>
+            <%= link_to my_messages_path(base_params.merge(filter: "all")),
+                class: "px-3 py-1.5 text-sm font-medium rounded-lg transition #{@filter == 'all' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'}" do %>
+              All
+            <% end %>
+            <%= link_to my_messages_path(base_params.merge(filter: "unread")),
+                class: "px-3 py-1.5 text-sm font-medium rounded-lg transition #{@filter == 'unread' ? 'bg-pink-100 text-pink-700' : 'text-gray-600 hover:bg-gray-100'}" do %>
+              Unread
+              <% if @current_unread_count > 0 %>
+                <span class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-pink-500 text-white text-xs font-medium">
+                  <%= @current_unread_count %>
+                </span>
               <% end %>
-            <% else %>
-              <div class="text-center py-12 text-gray-500">
-                <p>No posts yet. Be the first to share something!</p>
-              </div>
             <% end %>
           </div>
-        <% else %>
-          <%# Unread Messages View (no form, just posts) %>
-          <div id="posts-list" class="divide-y divide-gray-200">
-            <% if @posts.any? %>
-              <% @posts.each do |post| %>
-                <%= render "my/messages/post", post: post, show_production: true %>
-              <% end %>
-            <% else %>
-              <div class="text-center py-12 text-gray-500">
+
+          <% unless show_sidebar %>
+            <%= link_to my_messages_emails_path, class: "text-sm text-gray-500 hover:text-gray-700 transition" do %>
+              Production Team Emails
+            <% end %>
+          <% end %>
+        </div>
+
+        <%# New Post Form %>
+        <div id="new-post-form" class="bg-white border-b border-gray-200 px-6 py-4">
+          <%= render "my/messages/new_post_form", production: @posting_production %>
+        </div>
+
+        <%# Posts List %>
+        <div id="posts-list" class="divide-y divide-gray-200 flex-1">
+          <% if @posts.any? %>
+            <% @posts.each do |post| %>
+              <%= render "my/messages/post", post: post %>
+            <% end %>
+          <% else %>
+            <div class="text-center py-12 text-gray-500">
+              <% if @filter == "unread" %>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 text-gray-300">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
                 <p>You're all caught up!</p>
-                <p class="text-sm mt-1">No unread messages.</p>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-      </turbo-frame>
+              <% else %>
+                <p>No posts yet. Be the first to share something!</p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-12 text-gray-500">
+          <p>No message boards available.</p>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
