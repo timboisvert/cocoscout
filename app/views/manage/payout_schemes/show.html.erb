@@ -138,7 +138,7 @@
           <%= render "shared/button", text: "Edit Scheme", variant: "secondary", size: "small", classes: "w-full" %>
         <% end %>
 
-        <% if @payout_scheme.show_payouts.not_draft.none? %>
+        <% if @payout_scheme.show_payouts.paid.none? %>
           <%= form_with url: manage_production_money_payout_scheme_path(@production, @payout_scheme), method: :delete, local: true, data: { turbo_confirm: "Are you sure you want to delete this payout scheme?" } do %>
             <%= render "shared/button", text: "Delete Scheme", variant: "ghost", size: "small", classes: "w-full text-red-600", type: :submit %>
           <% end %>

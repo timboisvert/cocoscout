@@ -89,7 +89,35 @@ export default class extends Controller {
   }
 
   nextPayee(event) {
-    if (event) event.preventDefault()
+    // If this is a form submission, submit it via fetch first
+    if (event && event.type === "submit") {
+      event.preventDefault()
+      const form = event.target
+      
+      // Submit the form via fetch
+      fetch(form.action, {
+        method: form.method,
+        body: new FormData(form),
+        headers: {
+          "Accept": "text/html, application/xhtml+xml",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        credentials: "same-origin"
+      }).then(() => {
+        this.advanceToNextPayee()
+      }).catch((error) => {
+        console.error("Error marking as paid:", error)
+        // Still advance even on error to not get stuck
+        this.advanceToNextPayee()
+      })
+    } else {
+      // Skip button - just advance without submitting
+      if (event) event.preventDefault()
+      this.advanceToNextPayee()
+    }
+  }
+
+  advanceToNextPayee() {
     if (this.currentIndexValue < this.payeesValue.length - 1) {
       this.currentIndexValue++
       this.updatePayeeDisplay()

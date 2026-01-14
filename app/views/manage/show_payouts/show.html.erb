@@ -225,7 +225,7 @@
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <% @line_items.each do |item| %>
-                  <tr class="<%= item.manually_paid? ? 'bg-green-50' : '' %>">
+                  <tr>
                     <td class="py-3">
                       <div class="flex items-center gap-2">
                         <% headshot_variant = item.payee.respond_to?(:safe_headshot_variant) ? item.payee.safe_headshot_variant(:thumb) : nil %>
@@ -270,7 +270,7 @@
                     <td class="py-3 pl-4">
                       <span class="text-sm text-gray-500"><%= item.calculation_explanation %></span>
                     </td>
-                    <% if @show_payout.approved? || @show_payout.paid? %>
+                    <% if is_calculated || @show_payout.paid? %>
                       <td class="py-3 text-right">
                         <% if item.paid? %>
                           <div class="flex items-center justify-end gap-2">
@@ -439,7 +439,29 @@
 
                       <!-- Payment Info or Setup Needed -->
                       <% payment_info = item.payee_preferred_payment %>
-                      <% if payment_info %>
+                      <% if item.amount == 0 %>
+                        <!-- Zero amount - just mark as complete -->
+                        <div class="mb-6">
+                          <div class="bg-gray-100 border border-gray-200 rounded-xl p-4 text-center">
+                            <svg class="w-10 h-10 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p class="text-gray-600 font-medium">No payment needed</p>
+                            <p class="text-sm text-gray-500 mt-1">This performer's payout is $0.</p>
+                          </div>
+                        </div>
+
+                        <div class="space-y-3">
+                          <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: "n/a"), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                            <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                              </svg>
+                              Mark as Complete
+                            </button>
+                          <% end %>
+                        </div>
+                      <% elsif payment_info %>
                         <div class="mb-6">
                           <div class="text-sm text-gray-500 mb-2 text-center">Pay with <%= payment_info[:method].titleize %></div>
                           <% if payment_info[:method] == "venmo" %>
@@ -586,15 +608,14 @@
               </div>
               <div class="flex-1">
                 <div class="font-medium text-pink-600">All Paid</div>
-                <% if @show_payout.paid_at %>
-                  <div class="text-xs text-gray-500">Paid <%= time_ago_in_words(@show_payout.paid_at) %> ago</div>
-                <% end %>
               </div>
             </div>
           <% elsif is_calculated %>
             <%# Awaiting Payout - has been calculated %>
-            <% unpaid_total = @line_items.reject(&:paid?).sum(&:amount) %>
-            <% if unpaid_total > 0 %>
+            <% unpaid_items = @line_items.reject(&:paid?) %>
+            <% unpaid_total = unpaid_items.sum(&:amount) %>
+            <% unpaid_count = unpaid_items.size %>
+            <% if unpaid_count > 0 %>
               <button type="button"
                       data-action="click->payment-actions#showPayEveryoneModal"
                       class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
@@ -604,7 +625,7 @@
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <div class="font-medium text-gray-900">Pay Everyone</div>
+                  <div class="font-medium text-gray-900"><%= unpaid_count == @line_items.size ? "Pay Everyone" : "Pay Remaining (#{unpaid_count})" %></div>
                   <div class="text-xs text-gray-500"><%= number_to_currency(unpaid_total) %> total</div>
                 </div>
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -9,7 +9,7 @@ class ShowPayoutLineItem < ApplicationRecord
   has_one :production, through: :show_payout
 
   # Payment methods for tracking how payments were made
-  PAYMENT_METHODS = %w[venmo cash zelle check paypal other historical].freeze
+  PAYMENT_METHODS = %w[venmo cash zelle check paypal other historical n/a].freeze
 
   # Payout statuses for automated Venmo payouts via PayPal API
   PAYOUT_STATUSES = %w[pending success failed unclaimed returned blocked].freeze
@@ -18,6 +18,8 @@ class ShowPayoutLineItem < ApplicationRecord
   validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
   validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
+
+  after_save :check_all_paid, if: :saved_change_to_manually_paid?
 
   scope :by_amount, -> { order(amount: :desc) }
   scope :by_name, -> { includes(:payee).sort_by { |li| li.payee.name } }
@@ -51,6 +53,11 @@ class ShowPayoutLineItem < ApplicationRecord
   end
 
   def unmark_as_already_paid!
+    # If payout was marked as paid, revert it to awaiting_payout
+    if show_payout.paid?
+      show_payout.revert_to_awaiting_payout!
+    end
+
     update!(
       manually_paid: false,
       manually_paid_at: nil,
@@ -118,6 +125,7 @@ class ShowPayoutLineItem < ApplicationRecord
     when "check" then "Check"
     when "paypal" then "PayPal"
     when "historical" then "Historical"
+    when "n/a" then "N/A"
     when "other" then "Other"
     else payment_method.titleize
     end
@@ -184,6 +192,23 @@ class ShowPayoutLineItem < ApplicationRecord
     when "Person" then "Individual"
     when "Group" then "Group"
     else payee_type
+    end
+  end
+
+  private
+
+  # Check if all line items are paid and auto-mark the show payout as paid
+  def check_all_paid
+    return unless manually_paid? # Only check when marking as paid, not when unmarking
+
+    # Reload show_payout to get fresh line_items count
+    payout = show_payout.reload
+    return if payout.paid? # Already paid
+
+    # Check if all line items are now paid
+    if payout.line_items.all?(&:paid?)
+      # Directly update to paid status (skip the approval requirement for manual payments)
+      payout.update!(status: "paid")
     end
   end
 end

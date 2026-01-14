@@ -22,11 +22,11 @@ module My
       @zelle_total = @payment_history.select(&:paid_via_zelle?).sum(&:amount)
       @offline_total = @payment_history.reject { |p| p.paid_via_venmo? || p.paid_via_zelle? }.sum(&:amount)
 
-      # Pending payouts (approved but not yet paid)
+      # Pending payouts (awaiting payout but not yet paid)
       @pending_payouts = ShowPayoutLineItem
         .where(payee: @person)
         .joins(show_payout: :show)
-        .where(show_payouts: { status: "approved" })
+        .where(show_payouts: { status: "awaiting_payout" })
         .where(manually_paid: false)
         .where(payout_reference_id: nil)
         .includes(show_payout: { show: :production })

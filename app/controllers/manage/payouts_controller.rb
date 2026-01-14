@@ -34,7 +34,7 @@ module Manage
                                               .count
 
       # Awaiting payout: calculated but not fully paid
-      awaiting_payouts = @production.show_payouts.where(status: %w[draft approved])
+      awaiting_payouts = @production.show_payouts.where(status: "awaiting_payout")
                                                   .where.not(calculated_at: nil)
       @awaiting_payout_count = awaiting_payouts.count
       @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
@@ -75,7 +75,7 @@ module Manage
              .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
       when "awaiting_payout"
         scope.joins(:show_payout)
-             .where(show_payouts: { status: %w[draft approved] })
+             .where(show_payouts: { status: "awaiting_payout" })
              .where.not(show_payouts: { calculated_at: nil })
       when "paid"
         scope.joins(:show_payout).where(show_payouts: { status: "paid" })

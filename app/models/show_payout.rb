@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 class ShowPayout < ApplicationRecord
-  STATUSES = %w[draft approved paid].freeze
+  # Only two actual statuses: awaiting_payout (calculated, not all paid) and paid (all paid)
+  STATUSES = %w[awaiting_payout paid].freeze
 
   belongs_to :show
   belongs_to :payout_scheme, optional: true
-  belongs_to :approved_by, class_name: "User", optional: true
 
   has_one :production, through: :show
   has_one :show_financials, through: :show
@@ -13,12 +13,11 @@ class ShowPayout < ApplicationRecord
   has_many :line_items, class_name: "ShowPayoutLineItem", dependent: :destroy
 
   validates :show_id, uniqueness: true
-  validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :status, inclusion: { in: STATUSES }, allow_nil: true
 
-  scope :drafts, -> { where(status: "draft") }
-  scope :approved, -> { where(status: "approved") }
+  scope :awaiting_payout, -> { where(status: "awaiting_payout") }
   scope :paid, -> { where(status: "paid") }
-  scope :not_draft, -> { where.not(status: "draft") }
+  scope :not_paid, -> { where.not(status: "paid") }
 
   # Get effective rules (override or scheme)
   def effective_rules
@@ -31,57 +30,45 @@ class ShowPayout < ApplicationRecord
   end
 
   # Status helpers
-  def draft?
-    status == "draft"
-  end
-
-  def approved?
-    status == "approved"
+  def awaiting_payout?
+    status == "awaiting_payout"
   end
 
   def paid?
     status == "paid"
   end
 
+  # Derived statuses based on show financials state
+  def awaiting_financials?
+    !show.show_financials&.complete?
+  end
+
+  def awaiting_calculation?
+    show.show_financials&.complete? && !calculated_at.present?
+  end
+
   def can_edit?
-    draft?
+    !paid?
   end
 
-  def can_approve?
-    draft? && line_items.any?
+  def can_recalculate?
+    !paid? && show.show_financials&.complete?
   end
 
-  def can_mark_paid?
-    approved?
-  end
-
-  # Approve the payout (locks it)
-  def approve!(user)
-    return false unless can_approve?
-
-    update!(
-      status: "approved",
-      approved_at: Time.current,
-      approved_by: user
-    )
-  end
-
-  # Mark as paid
+  # Mark as paid (when all line items are paid)
   def mark_paid!
-    return false unless can_mark_paid?
-
     update!(status: "paid")
   end
 
-  # Revert to draft (for corrections)
-  def revert_to_draft!
-    return false if paid?
+  # Mark as awaiting payout (when calculated)
+  def mark_awaiting_payout!
+    update!(status: "awaiting_payout")
+  end
 
-    update!(
-      status: "draft",
-      approved_at: nil,
-      approved_by: nil
-    )
+  # Revert from paid to awaiting_payout (when unmarking a line item)
+  def revert_to_awaiting_payout!
+    return false unless paid?
+    update!(status: "awaiting_payout")
   end
 
   # Calculate total from line items
@@ -89,54 +76,29 @@ class ShowPayout < ApplicationRecord
     update!(total_payout: line_items.sum(:amount))
   end
 
-  # Summary for display
-  def status_badge_class
-    case status
-    when "draft" then "bg-gray-100 text-gray-700"
-    when "approved" then "bg-green-100 text-green-700"
-    when "paid" then "bg-pink-100 text-pink-700"
+  # Display status - combines stored status with derived states
+  def display_status
+    return :paid if paid?
+    return :awaiting_payout if awaiting_payout? || calculated_at.present?
+    return :awaiting_calculation if awaiting_calculation?
+    :awaiting_financials
+  end
+
+  def display_status_label
+    case display_status
+    when :awaiting_financials then "Awaiting Financials"
+    when :awaiting_calculation then "Awaiting Calculation"
+    when :awaiting_payout then "Awaiting Payout"
+    when :paid then "Paid"
     end
   end
 
-  def status_label
-    status.capitalize
-  end
-
-  # Returns a more context-aware status for display
-  # Instead of just "draft", this provides actionable context
-  def actionable_status
-    return "paid" if paid?
-    return "approved" if approved?
-
-    # For draft status, provide more meaningful context
-    if line_items.any?
-      "pending_approval"  # Has calculated payouts, awaiting approval
-    elsif show.show_financials&.complete?
-      "ready_to_calculate"  # Has financials, no payout calculated yet
-    else
-      "needs_financials"  # Missing financial data
-    end
-  end
-
-  def actionable_status_label
-    case actionable_status
-    when "needs_financials" then "Needs Financial Data"
-    when "ready_to_calculate" then "Ready to Calculate"
-    when "pending_approval" then "Pending Approval"
-    when "approved" then "Approved"
-    when "paid" then "Paid"
-    else status.capitalize
-    end
-  end
-
-  def actionable_status_badge_class
-    case actionable_status
-    when "needs_financials" then "bg-amber-100 text-amber-700"
-    when "ready_to_calculate" then "bg-blue-100 text-blue-700"
-    when "pending_approval" then "bg-yellow-100 text-yellow-700"
-    when "approved" then "bg-green-100 text-green-700"
-    when "paid" then "bg-pink-100 text-pink-700"
-    else "bg-gray-100 text-gray-700"
+  def display_status_class
+    case display_status
+    when :awaiting_financials then "text-pink-600"
+    when :awaiting_calculation then "text-gray-600"
+    when :awaiting_payout then "text-pink-600"
+    when :paid then "text-pink-600"
     end
   end
 end

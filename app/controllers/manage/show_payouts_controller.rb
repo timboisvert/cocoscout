@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :set_show_payout, only: [
       :show, :update, :edit_financials, :update_financials,
-      :calculate, :approve, :mark_paid, :revert_to_draft,
+      :calculate, :mark_paid,
       :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
       :change_scheme, :apply_scheme_change,
@@ -105,16 +105,6 @@ module Manage
       end
     end
 
-    def revert_to_draft
-      if @show_payout.revert_to_draft!
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    notice: "Payout reverted to draft for editing."
-      else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
-                    alert: "Could not revert payout."
-      end
-    end
-
     def mark_non_revenue
       financials = @show.show_financials || @show.create_show_financials!
       financials.update!(non_revenue_override: true)
@@ -197,8 +187,14 @@ module Manage
       method = params[:payment_method].presence
       notes = params[:payment_notes].presence
       line_item.mark_as_already_paid!(Current.user, method: method, notes: notes)
-      redirect_to manage_production_money_show_payout_path(@production, @show),
-                  notice: "#{line_item.payee_name} marked as paid#{method ? " via #{line_item.payment_method_label}" : ""}."
+
+      respond_to do |format|
+        format.html do
+          redirect_to manage_production_money_show_payout_path(@production, @show),
+                      notice: "#{line_item.payee_name} marked as paid#{method ? " via #{line_item.payment_method_label}" : ""}."
+        end
+        format.any { head :ok }
+      end
     end
 
     def unmark_line_item_paid
@@ -219,7 +215,10 @@ module Manage
       end
 
       if count > 0
-        @show_payout.mark_paid! if @show_payout.approved?
+        # Auto-mark payout as paid if all line items are now paid
+        if @show_payout.line_items.all?(&:paid?)
+          @show_payout.mark_paid!
+        end
         redirect_to manage_production_money_show_payout_path(@production, @show),
                     notice: "#{count} payment#{"s" if count != 1} marked as #{ShowPayoutLineItem::PAYMENT_METHODS.include?(method) ? method : "paid"}."
       else

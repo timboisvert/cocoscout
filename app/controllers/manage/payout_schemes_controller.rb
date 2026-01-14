@@ -44,9 +44,9 @@ module Manage
     end
 
     def destroy
-      if @payout_scheme.show_payouts.not_draft.any?
+      if @payout_scheme.show_payouts.paid.any?
         redirect_to manage_production_money_payout_schemes_path(@production),
-                    alert: "Cannot delete a scheme that has been used for approved payouts."
+                    alert: "Cannot delete a scheme that has been used for paid payouts."
         return
       end
 
