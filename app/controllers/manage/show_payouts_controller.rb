@@ -256,7 +256,7 @@ module Manage
       @show = @production.shows.find(params[:id])
       @show_payout = @show.show_payout || @show.create_show_payout!(
         payout_scheme: @production.payout_schemes.find_by(is_default: true),
-        status: "draft"
+        status: "awaiting_payout"
       )
     end
 
