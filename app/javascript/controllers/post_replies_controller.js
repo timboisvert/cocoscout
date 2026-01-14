@@ -9,7 +9,7 @@ export default class extends Controller {
         if (!this.hasReplyFormTarget) return
 
         const isHidden = this.replyFormTarget.classList.contains("hidden")
-        
+
         if (isHidden) {
             this.replyFormTarget.classList.remove("hidden")
         } else {

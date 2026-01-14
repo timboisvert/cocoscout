@@ -44,8 +44,18 @@ class ShowFinancials < ApplicationRecord
 
   # Calculate expenses from details if present, otherwise use stored amount
   def calculated_expenses
-    if expense_details.present? && expense_details.any?
-      expense_details.sum { |item| item["amount"].to_f }
+    if expense_details.is_a?(Array) && expense_details.any?
+      expense_details.sum do |item|
+        if item.is_a?(Hash)
+          item["amount"].to_f
+        elsif item.is_a?(String)
+          # Handle case where item is a JSON string
+          parsed = JSON.parse(item) rescue nil
+          parsed.is_a?(Hash) ? parsed["amount"].to_f : 0
+        else
+          0
+        end
+      end
     else
       expenses || 0
     end

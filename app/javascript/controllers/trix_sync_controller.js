@@ -10,7 +10,7 @@ export default class extends Controller {
             // Use capture phase to run before Turbo's submit handler
             this.boundSyncTrixContent = this.syncTrixContent.bind(this)
             this.formTarget.addEventListener("submit", this.boundSyncTrixContent, true)
-            
+
             // Also listen for turbo:submit-start
             this.formTarget.addEventListener("turbo:submit-start", this.boundSyncTrixContent)
         }
@@ -26,7 +26,7 @@ export default class extends Controller {
     syncTrixContent(event) {
         // Find all Trix editors in this form
         const trixEditors = this.formTarget.querySelectorAll("trix-editor")
-        
+
         trixEditors.forEach(editor => {
             // Get the associated input element via the input attribute
             const inputId = editor.getAttribute("input")

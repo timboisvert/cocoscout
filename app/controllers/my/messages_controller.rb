@@ -87,7 +87,7 @@ module My
     def reply_form
       parent_post = Post.find(params[:parent_id])
       @production = parent_post.production
-      
+
       unless @all_productions.include?(@production)
         head :not_found
         return
@@ -160,9 +160,9 @@ module My
           format.turbo_stream {
             if parent_id.present?
               # For reply errors, re-render the form with errors
-              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}", 
-                partial: "my/messages/reply_form", 
-                formats: [:html],
+              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}",
+                partial: "my/messages/reply_form",
+                formats: [ :html ],
                 locals: { production: production, post: @post, parent_id: parent_id })
             else
               # For top-level post errors, show error in the main form
