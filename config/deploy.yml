@@ -19,16 +19,16 @@ servers:
         DB_POOL: 5
   job:
     hosts:
-      - ec2-18-221-254-112.us-east-2.compute.amazonaws.com # CocoScout Jobs
+      - ec2-3-140-1-189.us-east-2.compute.amazonaws.com # CocoScout Jobs
     cmd: bin/jobs
     proxy: false
     options:
       health-cmd: "true"
-      memory: 1500m  # Limit to leave headroom on 2GB instance
+      memory: 1200m  # Limit to leave headroom on 2GB instance
     env:
       clear:
-        JOB_CONCURRENCY: 3  # Solid Queue workers
-        DB_POOL: 10  # Jobs need more connections
+        JOB_CONCURRENCY: 2  # Solid Queue workers
+        DB_POOL: 8  # Jobs need more connections
 
 ssh:
   user: ec2-user
