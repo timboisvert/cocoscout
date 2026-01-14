@@ -93,7 +93,7 @@ export default class extends Controller {
     if (event && event.type === "submit") {
       event.preventDefault()
       const form = event.target
-      
+
       // Submit the form via fetch
       fetch(form.action, {
         method: form.method,

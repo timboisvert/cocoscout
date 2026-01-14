@@ -15,6 +15,9 @@ class ShowPayout < ApplicationRecord
   validates :show_id, uniqueness: true
   validates :status, inclusion: { in: STATUSES }, allow_nil: true
 
+  # Migrate legacy statuses (draft, approved, etc.) to awaiting_payout
+  before_validation :normalize_status
+
   scope :awaiting_payout, -> { where(status: "awaiting_payout") }
   scope :paid, -> { where(status: "paid") }
   scope :not_paid, -> { where.not(status: "paid") }
@@ -100,5 +103,15 @@ class ShowPayout < ApplicationRecord
     when :awaiting_payout then "text-pink-600"
     when :paid then "text-pink-600"
     end
+  end
+
+  private
+
+  # Normalize legacy statuses (draft, approved, etc.) to valid statuses
+  def normalize_status
+    return if status.nil? || STATUSES.include?(status)
+
+    # Any non-paid legacy status becomes awaiting_payout
+    self.status = "awaiting_payout"
   end
 end
