@@ -322,13 +322,16 @@
                             <% end %>
                           </div>
                         <% else %>
-                          <button type="button"
-                                  data-action="click->payment-actions#showMarkPaidModal"
-                                  data-item-id="<%= item.id %>"
-                                  data-item-name="<%= item.payee_name %>"
-                                  class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
-                            Mark as paid
-                          </button>
+                          <%= render "shared/button",
+                              text: "Mark as paid",
+                              variant: "secondary",
+                              size: "small",
+                              type: :button,
+                              data: {
+                                action: "click->payment-actions#showMarkPaidModal",
+                                item_id: item.id,
+                                item_name: item.payee_name
+                              } %>
                         <% end %>
                       </td>
                     <% end %>
@@ -464,12 +467,7 @@
 
                         <div class="space-y-3">
                           <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: "n/a"), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
-                            <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors">
-                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                              </svg>
-                              Mark as Complete
-                            </button>
+                            <%= render "shared/button", text: "Mark as Complete", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
                           <% end %>
                         </div>
                       <% elsif payment_info %>
@@ -514,26 +512,22 @@
                         <!-- Action Buttons -->
                         <div class="space-y-3">
                           <% if payment_info[:method] == "venmo" && item.payee.respond_to?(:venmo_identifier) %>
-                            <button type="button"
-                                    data-action="click->payment-actions#openVenmo"
-                                    data-venmo-handle="<%= item.payee.venmo_identifier %>"
-                                    data-venmo-amount="<%= item.amount %>"
-                                    data-venmo-note="<%= @production.name %> - <%= @show.date_and_time.strftime('%b %-d') %>"
-                                    class="w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white bg-blue-500 rounded-xl hover:bg-blue-600 transition-colors">
-                              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19.5 3c.9 1.5 1.3 3.1 1.3 5.1 0 5.6-4.8 12.9-8.7 18H4.8L2.2 3.8l6.3-.6 1.5 12c1.4-2.3 3.1-5.9 3.1-8.4 0-1.9-.3-3.2-.9-4.3L19.5 3z"/>
-                              </svg>
-                              Open Venmo
-                            </button>
+                            <%= render "shared/button",
+                                text: "Open Venmo",
+                                variant: "primary",
+                                size: "large",
+                                type: :button,
+                                classes: "w-full bg-blue-500 hover:bg-blue-600",
+                                data: {
+                                  action: "click->payment-actions#openVenmo",
+                                  venmo_handle: item.payee.venmo_identifier,
+                                  venmo_amount: item.amount,
+                                  venmo_note: "#{@production.name} - #{@show.date_and_time.strftime('%b %-d')}"
+                                } %>
                           <% end %>
 
                           <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: payment_info[:method]), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
-                            <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors">
-                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                              </svg>
-                              I Paid via <%= payment_info[:method].titleize %>
-                            </button>
+                            <%= render "shared/button", text: "I Paid via #{payment_info[:method].titleize}", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
                           <% end %>
                         </div>
                       <% else %>
@@ -554,9 +548,7 @@
                           <div class="grid grid-cols-2 gap-2">
                             <% %w[venmo zelle cash check].each do |method| %>
                               <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: method), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
-                                <button type="submit" class="w-full px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                  <%= method.titleize %>
-                                </button>
+                                <%= render "shared/button", text: method.titleize, variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
                               <% end %>
                             <% end %>
                           </div>
@@ -567,20 +559,12 @@
                     <!-- Footer Navigation -->
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
                       <% if index > 0 %>
-                        <button type="button"
-                                data-action="click->payment-actions#previousPayee"
-                                class="text-sm text-gray-600 hover:text-gray-900">
-                          &larr; Previous
-                        </button>
+                        <%= render "shared/button", text: "← Previous", variant: "ghost", size: "small", type: :button, data: { action: "click->payment-actions#previousPayee" } %>
                       <% else %>
                         <div></div>
                       <% end %>
 
-                      <button type="button"
-                              data-action="click->payment-actions#nextPayee"
-                              class="text-sm text-gray-600 hover:text-gray-900">
-                        Skip for now &rarr;
-                      </button>
+                      <%= render "shared/button", text: "Skip for now →", variant: "ghost", size: "small", type: :button, data: { action: "click->payment-actions#nextPayee" } %>
                     </div>
                   </div>
                 <% end %>
