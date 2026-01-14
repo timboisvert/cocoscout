@@ -100,6 +100,14 @@ module My
       @post.production = production
       @post.author = Current.user.person
 
+      # Handle replies
+      if params[:parent_id].present?
+        parent_post = Post.find_by(id: params[:parent_id])
+        if parent_post && parent_post.production_id == production.id
+          @post.parent = parent_post
+        end
+      end
+
       if @post.save
         # Determine where to redirect based on forum mode
         org = production.organization
@@ -111,10 +119,16 @@ module My
 
         respond_to do |format|
           format.turbo_stream {
-            render turbo_stream: [
-              turbo_stream.prepend("posts-list", partial: "my/messages/post", locals: { post: @post }),
-              turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production })
-            ]
+            if @post.reply?
+              # For replies, append to the replies section of the parent post
+              render turbo_stream: turbo_stream.append("replies-for-#{@post.parent_id}", partial: "my/messages/post", locals: { post: @post, is_reply: true })
+            else
+              # For top-level posts, prepend to the posts list
+              render turbo_stream: [
+                turbo_stream.prepend("posts-list", partial: "my/messages/post", locals: { post: @post }),
+                turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production })
+              ]
+            end
           }
           format.html { redirect_to redirect_path }
         end
@@ -187,25 +201,25 @@ module My
       rendered_body = EmailTemplateService.render_body("talent_pool_message", template_vars)
 
       if production_id.blank?
-        redirect_to my_messages_emails_path, alert: "Please select a production to contact."
+        redirect_back fallback_location: my_messages_emails_path, alert: "Please select a production to contact."
         return
       end
 
       unless production
-        redirect_to my_messages_emails_path, alert: "Production not found."
+        redirect_back fallback_location: my_messages_emails_path, alert: "Production not found."
         return
       end
 
       # Verify the user is in the talent pool of this production
       unless Current.user.person.in_talent_pool_for?(production)
-        redirect_to my_messages_emails_path, alert: "You are not a member of this production's talent pool."
+        redirect_back fallback_location: my_messages_emails_path, alert: "You are not a member of this production's talent pool."
         return
       end
 
       # Send to production email address
       production_email = production.contact_email
       if production_email.blank?
-        redirect_to my_messages_emails_path, alert: "This production does not have a contact email address configured."
+        redirect_back fallback_location: my_messages_emails_path, alert: "This production does not have a contact email address configured."
         return
       end
 
@@ -218,8 +232,8 @@ module My
         body_html: rendered_body
       ).deliver_later
 
-      redirect_to my_messages_emails_path,
-                  notice: "Message sent to #{production.name} team."
+      redirect_back fallback_location: my_production_path(production, tab: 2),
+                    notice: "Message sent to #{production.name} team."
     end
 
     private

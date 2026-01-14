@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_14_052429) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_14_171229) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -86,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_14_052429) do
     t.text "header_text"
     t.boolean "include_audition_availability_section", default: false
     t.boolean "include_availability_section", default: false
+    t.boolean "notify_on_submission", default: false, null: false
     t.datetime "opens_at"
     t.integer "production_id", null: false
     t.boolean "require_all_audition_availability", default: false
@@ -440,6 +441,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_14_052429) do
     t.string "invite_token"
     t.string "name"
     t.bigint "owner_id", null: false
+    t.string "shared_forum_name"
     t.datetime "updated_at", null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["owner_id"], name: "index_organizations_on_owner_id"

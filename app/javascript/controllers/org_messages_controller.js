@@ -21,4 +21,12 @@ export default class extends Controller {
                 checkbox.checked = !enabled
             })
     }
+
+    toggleForumName(event) {
+        const forumNameField = document.getElementById('shared-forum-name-field')
+        if (!forumNameField) return
+
+        const isShared = event.target.value === 'shared'
+        forumNameField.classList.toggle('hidden', !isShared)
+    }
 }

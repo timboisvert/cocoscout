@@ -81,7 +81,7 @@
                     <%= render "shared/button", text: "Pay as Originally Planned", variant: "secondary", size: "small", type: :submit %>
                   <% end %>
                 <% end %>
-                <%= link_to manage_production_override_money_show_payout_path(@production, @show) do %>
+                <%= link_to manage_production_override_money_show_payout_path(@production, @show), data: { turbo_frame: "customize_modal" } do %>
                   <%= render "shared/button", text: "Set Custom Amounts", variant: "secondary", size: "small" %>
                 <% end %>
               </div>

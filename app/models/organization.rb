@@ -24,6 +24,11 @@ class Organization < ApplicationRecord
 
   before_create :generate_invite_token
 
+  # Get the display name for the shared forum
+  def forum_display_name
+    shared_forum_name.presence || name
+  end
+
   # Generate or ensure invite token exists
   def ensure_invite_token!
     if invite_token.blank?

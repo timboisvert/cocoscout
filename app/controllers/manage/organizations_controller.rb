@@ -150,7 +150,7 @@ module Manage
     end
 
     def organization_params
-      params.expect(organization: %i[name logo forum_mode])
+      params.expect(organization: %i[name logo forum_mode shared_forum_name])
     end
 
     def ensure_user_is_owner

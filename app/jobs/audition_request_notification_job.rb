@@ -12,6 +12,9 @@ class AuditionRequestNotificationJob < ApplicationJob
     audition_cycle = audition_request.audition_cycle
     return unless audition_cycle
 
+    # Check if notifications are enabled for this audition cycle
+    return unless audition_cycle.notify_on_submission?
+
     production = audition_cycle.production
     return unless production
 

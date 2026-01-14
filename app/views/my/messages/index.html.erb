@@ -85,6 +85,32 @@
     <%# Right Content - Posts %>
     <div class="flex-1 bg-gray-50 overflow-y-auto flex flex-col">
       <% if @posting_production %>
+        <%# Pinned Forum Name Header (only when no sidebar) %>
+        <% unless show_sidebar %>
+          <div class="bg-pink-600 text-white px-6 py-3 flex items-center gap-3">
+            <% if @selected_organization %>
+              <% if @selected_organization.logo.attached? %>
+                <%= image_tag @selected_organization.logo.variant(resize_to_fill: [32, 32]), alt: @selected_organization.name, class: "w-8 h-8 object-contain rounded-lg flex-shrink-0" %>
+              <% else %>
+                <div class="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-bold text-white"><%= @selected_organization.name[0..1].upcase %></span>
+                </div>
+              <% end %>
+              <span class="font-semibold text-lg"><%= @selected_organization.forum_display_name %></span>
+            <% elsif @selected_production %>
+              <% logo_variant = @selected_production.safe_logo_variant(:small) %>
+              <% if logo_variant %>
+                <%= image_tag logo_variant, alt: @selected_production.name, class: "w-8 h-8 object-contain rounded-lg flex-shrink-0" %>
+              <% else %>
+                <div class="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+                  <span class="text-sm font-bold text-white"><%= @selected_production.initials %></span>
+                </div>
+              <% end %>
+              <span class="font-semibold text-lg"><%= @selected_production.name %></span>
+            <% end %>
+          </div>
+        <% end %>
+
         <%# Filter Bar %>
         <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
           <div class="flex items-center gap-2">

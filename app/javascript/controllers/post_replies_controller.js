@@ -1,0 +1,45 @@
+import { Controller } from "@hotwired/stimulus"
+
+// Handles reply toggles and form visibility for forum posts
+export default class extends Controller {
+    static targets = ["replyForm", "replies", "toggleButton", "chevron", "count"]
+
+    toggleReplyForm() {
+        if (this.hasReplyFormTarget) {
+            this.replyFormTarget.classList.toggle("hidden")
+        }
+    }
+
+    toggleReplies() {
+        if (this.hasRepliesTarget) {
+            const isHidden = this.repliesTarget.classList.toggle("hidden")
+
+            // Rotate chevron icon
+            if (this.hasChevronTarget) {
+                if (isHidden) {
+                    this.chevronTarget.classList.remove("rotate-180")
+                } else {
+                    this.chevronTarget.classList.add("rotate-180")
+                }
+            }
+        }
+    }
+
+    // Called when a new reply is added via Turbo Stream
+    replyAdded() {
+        // Show replies section
+        if (this.hasRepliesTarget) {
+            this.repliesTarget.classList.remove("hidden")
+        }
+
+        // Hide reply form
+        if (this.hasReplyFormTarget) {
+            this.replyFormTarget.classList.add("hidden")
+        }
+
+        // Rotate chevron to show expanded state
+        if (this.hasChevronTarget) {
+            this.chevronTarget.classList.add("rotate-180")
+        }
+    }
+}

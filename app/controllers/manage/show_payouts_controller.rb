@@ -137,6 +137,9 @@ module Manage
 
       if turbo_frame_request?
         render partial: "manage/show_payouts/override_modal"
+      else
+        # Redirect back to show page - modal-only feature
+        redirect_to manage_production_money_show_payout_path(@production, @show)
       end
     end
 
@@ -266,7 +269,7 @@ module Manage
       )
 
       redirect_to manage_production_money_index_path(@production),
-                  notice: "#{helpers.show_display_name(@show)} closed as non-paying."
+                  notice: "#{view_context.show_display_name(@show)} closed as non-paying."
     end
 
     private

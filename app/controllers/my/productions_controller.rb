@@ -143,6 +143,15 @@ module My
 
       # Group shows by month for the calendar view
       @calendar_shows_by_month = @calendar_shows.group_by { |show| show.date_and_time.beginning_of_month }
+
+      # Load emails for this production sent to this person
+      email_logs_query = EmailLog.for_recipient_entity(@person)
+                                 .where(production_id: @production.id)
+                                 .recent
+      @email_logs = email_logs_query.limit(20).to_a
+
+      # For the send message modal
+      @email_draft = EmailDraft.new
     end
 
     def leave
