@@ -1,10 +1,10 @@
-<div data-controller="trix-sync">
-<%= form_with model: post, url: my_create_message_path(production_id: production.id, parent_id: parent_id), method: :post, local: false, class: "space-y-2", data: { trix_sync_target: "form" } do |f| %>
+<%= form_with model: post, url: my_create_message_path(production_id: production.id, parent_id: parent_id), method: :post, local: false, class: "space-y-2" do |f| %>
   <input type="hidden" name="parent_id" value="<%= parent_id %>">
   <div>
-    <%= f.rich_text_area :body,
+    <%= f.text_area :body,
         placeholder: "Write a reply...",
-        class: "block w-full rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm" %>
+        rows: 3,
+        class: "block w-full rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm p-3" %>
   </div>
   <% if post.errors.any? %>
     <div class="text-pink-600 text-sm">
@@ -18,4 +18,3 @@
     <%= render "shared/button", text: "Reply", variant: "primary", size: "small", type: :submit %>
   </div>
 <% end %>
-</div>

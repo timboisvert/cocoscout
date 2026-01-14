@@ -61,8 +61,8 @@ class FinancialSummaryService
     # Only include revenue events (shows, classes, workshops) - not rehearsals/meetings
     revenue_event_types = EventTypes.revenue_event_types
 
+    # Include all shows (including canceled) - canceled shows may still have revenue/payouts
     scope = @production.shows
-                       .where(canceled: false)
                        .where(event_type: revenue_event_types)
                        .where("date_and_time < ?", Time.current) # Only past shows
 

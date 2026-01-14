@@ -159,11 +159,11 @@ module My
         respond_to do |format|
           format.turbo_stream {
             if parent_id.present?
-              # For reply errors, re-render the form with errors inside the turbo-frame
-              frame_content = render_to_string(partial: "my/messages/reply_form", 
+              # For reply errors, re-render the form with errors
+              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}", 
+                partial: "my/messages/reply_form", 
                 formats: [:html],
                 locals: { production: production, post: @post, parent_id: parent_id })
-              render turbo_stream: turbo_stream.update("reply-form-#{parent_id}", frame_content)
             else
               # For top-level post errors, show error in the main form
               render turbo_stream: turbo_stream.update("new-post-form", partial: "my/messages/new_post_form", locals: { production: production, post: @post })

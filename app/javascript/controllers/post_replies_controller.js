@@ -11,12 +11,7 @@ export default class extends Controller {
         const isHidden = this.replyFormTarget.classList.contains("hidden")
         
         if (isHidden) {
-            // Show the form and load it via Turbo Frame if not already loaded
             this.replyFormTarget.classList.remove("hidden")
-            const frame = this.replyFormTarget.querySelector("turbo-frame")
-            if (frame && !frame.src) {
-                frame.src = `/my/messages/reply_form?parent_id=${this.postIdValue}`
-            }
         } else {
             this.replyFormTarget.classList.add("hidden")
         }
