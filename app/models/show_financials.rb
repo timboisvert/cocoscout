@@ -35,8 +35,18 @@ class ShowFinancials < ApplicationRecord
 
   # Calculate other revenue from details if present, otherwise use stored amount
   def calculated_other_revenue
-    if other_revenue_details.present? && other_revenue_details.any?
-      other_revenue_details.sum { |item| item["amount"].to_f }
+    details = other_revenue_details
+    # Handle case where data is stored as hash (from form params) instead of array
+    details = details.values if details.is_a?(Hash)
+
+    if details.is_a?(Array) && details.any?
+      details.sum do |item|
+        if item.is_a?(Hash)
+          item["amount"].to_f
+        else
+          0
+        end
+      end
     else
       other_revenue || 0
     end
@@ -44,8 +54,12 @@ class ShowFinancials < ApplicationRecord
 
   # Calculate expenses from details if present, otherwise use stored amount
   def calculated_expenses
-    if expense_details.is_a?(Array) && expense_details.any?
-      expense_details.sum do |item|
+    details = expense_details
+    # Handle case where data is stored as hash (from form params) instead of array
+    details = details.values if details.is_a?(Hash)
+
+    if details.is_a?(Array) && details.any?
+      details.sum do |item|
         if item.is_a?(Hash)
           item["amount"].to_f
         elsif item.is_a?(String)
