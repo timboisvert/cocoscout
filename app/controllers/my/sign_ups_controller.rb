@@ -370,6 +370,11 @@ module My
     end
 
     def inactive
+      # If the form is active and accepting registrations, redirect to the form
+      form_status = @sign_up_form.current_status
+      if form_status[:accepting_registrations]
+        redirect_to my_sign_up_form_path(@code) and return
+      end
     end
 
     # Lock a slot while user completes registration
