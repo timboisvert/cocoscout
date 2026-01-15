@@ -1,12 +1,10 @@
 <%# Financial Worksheet Modal - for entering/editing financial data %>
 <%
-  # Normalize details to arrays - handle case where data might be stored as hash
-  raw_other_revenue = @show_financials.other_revenue_details || []
-  other_revenue_items = raw_other_revenue.is_a?(Hash) ? raw_other_revenue.values : raw_other_revenue
+  # Use normalized methods that always return arrays
+  other_revenue_items = @show_financials.normalized_other_revenue_details
   has_other_revenue_details = other_revenue_items.any?
 
-  raw_expense = @show_financials.expense_details || []
-  expense_items = raw_expense.is_a?(Hash) ? raw_expense.values : raw_expense
+  expense_items = @show_financials.normalized_expense_details
   has_expense_details = expense_items.any?
 %>
 

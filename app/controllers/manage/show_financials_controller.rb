@@ -81,12 +81,17 @@ module Manage
       )
 
       # Convert hash-style params to arrays for details fields
-      # Rails sends {0 => {desc: x}, 1 => {desc: y}} but we need [{desc: x}, {desc: y}]
-      if permitted[:expense_details].is_a?(Hash)
-        permitted[:expense_details] = permitted[:expense_details].values.map(&:to_h)
+      # Rails sends {"0" => {desc: x}, "1" => {desc: y}} but we need [{desc: x}, {desc: y}]
+      # Note: permitted params are ActionController::Parameters objects, need deep conversion
+      if permitted[:expense_details].present?
+        permitted[:expense_details] = permitted[:expense_details].to_unsafe_h.values.map do |v|
+          v.is_a?(ActionController::Parameters) ? v.to_unsafe_h : v
+        end
       end
-      if permitted[:other_revenue_details].is_a?(Hash)
-        permitted[:other_revenue_details] = permitted[:other_revenue_details].values.map(&:to_h)
+      if permitted[:other_revenue_details].present?
+        permitted[:other_revenue_details] = permitted[:other_revenue_details].to_unsafe_h.values.map do |v|
+          v.is_a?(ActionController::Parameters) ? v.to_unsafe_h : v
+        end
       end
 
       permitted

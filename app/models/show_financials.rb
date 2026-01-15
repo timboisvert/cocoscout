@@ -24,6 +24,16 @@ class ShowFinancials < ApplicationRecord
     revenue_type == "flat_fee"
   end
 
+  # Normalized expense details - always returns an array
+  def normalized_expense_details
+    normalize_details(expense_details)
+  end
+
+  # Normalized other revenue details - always returns an array
+  def normalized_other_revenue_details
+    normalize_details(other_revenue_details)
+  end
+
   # Primary revenue based on type
   def primary_revenue
     if flat_fee?
@@ -124,5 +134,15 @@ class ShowFinancials < ApplicationRecord
   def add_expense_item(description:, amount:)
     self.expense_details ||= []
     self.expense_details << { "description" => description, "amount" => amount.to_f }
+  end
+
+  private
+
+  # Normalize details data - converts hash to array if needed
+  def normalize_details(details)
+    return [] if details.blank?
+    return details.values if details.is_a?(Hash)
+    return details if details.is_a?(Array)
+    []
   end
 end
