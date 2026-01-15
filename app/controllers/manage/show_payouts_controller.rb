@@ -117,7 +117,7 @@ module Manage
       financials = @show.show_financials || @show.create_show_financials!
       financials.update!(non_revenue_override: true)
       redirect_to manage_production_money_index_path(@production),
-                  notice: "#{helpers.show_display_name(@show)} marked as non-revenue event."
+                  notice: "#{view_context.show_display_name(@show)} marked as non-revenue event."
     end
 
     def unmark_non_revenue
@@ -269,7 +269,7 @@ module Manage
       )
 
       redirect_to manage_production_money_index_path(@production),
-                  notice: "#{helpers.show_display_name(@show)} closed as non-paying."
+                  notice: "#{view_context.show_display_name(@show)} closed as non-paying."
     end
 
     private
