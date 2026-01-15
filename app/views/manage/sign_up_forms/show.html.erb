@@ -63,7 +63,14 @@
             <% else %>
               <span class="w-2 h-2 rounded-full bg-<%= form_status[:color] %>-500"></span>
             <% end %>
-            <%= form_status[:label] %>
+            <% if form_status[:state] == :scheduled && form_status[:next_opening] && form_status[:next_opening][:opens_at] %>
+              <span data-controller="opens-countdown"
+                    data-opens-countdown-opens-at-value="<%= form_status[:next_opening][:opens_at].iso8601 %>">
+                <%= form_status[:label] %>
+              </span>
+            <% else %>
+              <%= form_status[:label] %>
+            <% end %>
           </span>
           <% if @sign_up_form.repeated? && form_status[:open_count].to_i > 0 %>
             <span class="text-sm text-gray-500 hidden sm:inline">
@@ -312,7 +319,8 @@
 
         <%# Upcoming Events List (clickable, scrollable) %>
         <%
-          is_auto_sync = @sign_up_form.event_matching == 'all'
+          # Auto-sync applies to both 'all' and 'event_types' matching modes
+          is_auto_sync = @sign_up_form.event_matching.in?(['all', 'event_types'])
           event_types_label = if @sign_up_form.event_matching == 'event_types' && @sign_up_form.event_type_filter.present?
             @sign_up_form.event_type_filter.map(&:titleize).to_sentence
           end
@@ -320,12 +328,10 @@
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <span class="text-sm font-medium text-gray-700">
-              <% if is_auto_sync %>
-                All upcoming events
-              <% elsif event_types_label %>
+              <% if event_types_label %>
                 Upcoming <%= event_types_label %> events
               <% else %>
-                Upcoming events
+                All upcoming events
               <% end %>
             </span>
             <% if is_auto_sync %>

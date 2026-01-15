@@ -439,8 +439,15 @@ class SignUpFormStatusService
     if days < 0
       "Open now"
     elsif days < 1
-      hours = (days * 24).ceil
-      hours <= 1 ? "Opens in 1 hour" : "Opens in #{hours} hours"
+      total_minutes = (days * 24 * 60).ceil
+      if total_minutes <= 1
+        "Opens in 1 minute"
+      elsif total_minutes < 60
+        "Opens in #{total_minutes} minutes"
+      else
+        hours = (total_minutes / 60.0).ceil
+        hours <= 1 ? "Opens in 1 hour" : "Opens in #{hours} hours"
+      end
     elsif days < 2
       "Opens tomorrow"
     else

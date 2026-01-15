@@ -1,31 +1,162 @@
-<% content_for :title, "Sign-up Not Available" %>
+<% content_for :title, @sign_up_form.name %>
+
+<%
+  form_status = @sign_up_form.current_status
+  opens_at = form_status[:next_opening]&.dig(:opens_at)
+  seconds_until_open = opens_at ? (opens_at - Time.current).to_i : nil
+  show_countdown = opens_at && seconds_until_open && seconds_until_open > 0 && seconds_until_open < 3600
+%>
 
 <div class="min-h-screen bg-gray-50 py-8">
   <div class="max-w-2xl mx-auto px-4">
-    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
-      <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
-        <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+
+    <!-- Header matching the regular form -->
+    <div class="mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 coustard-regular"><%= @sign_up_form.name %></h1>
+    </div>
+
+    <!-- Main Status Card -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+
+      <!-- Status Header -->
+      <div class="px-6 py-5 border-b border-gray-100">
+        <div class="flex items-center gap-3">
+          <% if form_status[:state] == :scheduled && opens_at %>
+            <span class="flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-pink-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+            </span>
+          <% else %>
+            <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+          <% end %>
+
+          <% if form_status[:state] == :scheduled && opens_at %>
+            <% if show_countdown %>
+              <span class="text-lg font-semibold text-pink-800"
+                    data-controller="opens-countdown"
+                    data-opens-countdown-opens-at-value="<%= opens_at.iso8601 %>">
+                Opens in <%= (seconds_until_open / 60) %>:<%= "%02d" % (seconds_until_open % 60) %>
+              </span>
+            <% else %>
+              <span class="text-lg font-semibold text-gray-800">
+                <%= form_status[:label] %>
+              </span>
+            <% end %>
+          <% elsif form_status[:state] == :full %>
+            <span class="text-lg font-semibold text-gray-800">All Spots Filled</span>
+          <% elsif form_status[:state] == :closed %>
+            <span class="text-lg font-semibold text-gray-800">Registration Closed</span>
+          <% else %>
+            <span class="text-lg font-semibold text-gray-800">Sign-up Not Available</span>
+          <% end %>
+        </div>
       </div>
 
-      <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-4">Sign-up Not Available</h1>
+      <!-- Content -->
+      <div class="px-6 py-8">
+        <% if form_status[:state] == :scheduled && opens_at %>
+          <!-- Scheduled to open -->
+          <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-pink-100 mb-6">
+              <svg class="h-8 w-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
 
-      <p class="text-gray-600 mb-6">
-        This sign-up form is not currently accepting registrations.
-        <% form_status = @sign_up_form.current_status %>
-        <% if form_status[:state] == :scheduled && form_status[:next_opening] %>
-          It will open <%= form_status[:label].downcase %>.
+            <p class="text-gray-600 mb-2">
+              Registration opens
+            </p>
+            <p class="text-xl font-semibold text-gray-900 mb-6">
+              <%= opens_at.strftime("%A, %B %-d at %-I:%M %p") %>
+            </p>
+
+            <% if show_countdown %>
+              <p class="text-sm text-gray-500 mb-6">
+                This page will automatically refresh when sign-ups open.
+              </p>
+            <% end %>
+
+            <% if @sign_up_form.require_login && !authenticated? %>
+              <!-- Login prompt for forms that require authentication -->
+              <div class="mt-8 p-5 bg-pink-50 border border-pink-200 rounded-lg">
+                <div class="flex items-start gap-4">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1 text-left">
+                    <h3 class="font-semibold text-pink-900 mb-1">Sign in to be ready</h3>
+                    <p class="text-sm text-pink-800 mb-4">
+                      This form requires you to be signed in. Log in now so you're ready to register as soon as sign-ups open!
+                    </p>
+                    <%= render "shared/button", text: "Sign In Now", path: signin_path(redirect_to: request.fullpath), variant: "primary", icon: "arrow-right-on-rectangle" %>
+                  </div>
+                </div>
+              </div>
+            <% elsif authenticated? %>
+              <p class="text-sm text-pink-700 bg-pink-50 border border-pink-200 rounded-lg px-4 py-3 inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                You're signed in and ready to go!
+              </p>
+            <% end %>
+          </div>
+
         <% elsif form_status[:state] == :full %>
-          All spots have been filled.
-        <% elsif form_status[:state] == :closed %>
-          Registration has closed.
-        <% end %>
-      </p>
+          <!-- Full -->
+          <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
+              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+            </div>
+            <p class="text-gray-600">
+              All spots for this event have been filled. Check back later in case spots open up.
+            </p>
+          </div>
 
+        <% elsif form_status[:state] == :closed %>
+          <!-- Closed -->
+          <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
+              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <p class="text-gray-600">
+              Registration for this event has closed.
+            </p>
+          </div>
+
+        <% else %>
+          <!-- Not available (paused, inactive, etc.) -->
+          <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-6">
+              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <p class="text-gray-600">
+              This sign-up form is not currently accepting registrations.
+            </p>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Footer -->
       <% if authenticated? %>
-        <%= link_to "Back to Dashboard", my_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <%= link_to my_dashboard_path, class: "text-sm text-gray-600 hover:text-gray-900 inline-flex items-center gap-1" do %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Dashboard
+          <% end %>
+        </div>
       <% end %>
     </div>
+
   </div>
 </div>

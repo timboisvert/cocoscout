@@ -138,7 +138,14 @@
                 <% elsif form_status[:state] == :scheduled && form_status[:next_event] %>
                   <div class="text-xs text-gray-400 uppercase tracking-wide">Next event</div>
                   <div class="text-base text-gray-600">
-                    in <%= pluralize(form_status[:next_event][:days_until_show].floor, 'day') %>
+                    <% days = form_status[:next_event][:days_until_show].floor %>
+                    <% if days == 0 %>
+                      today
+                    <% elsif days == 1 %>
+                      tomorrow
+                    <% else %>
+                      in <%= pluralize(days, 'day') %>
+                    <% end %>
                   </div>
                 <% else %>
                   <div class="text-sm text-gray-500">&nbsp;</div>
