@@ -171,10 +171,26 @@
             <% if has_expense_details %>
               <div data-financials-form-target="expenseItems" class="space-y-2 mb-3">
                 <% expense_items.each_with_index do |item, index| %>
+                  <%
+                    category = item["category"].presence || "other"
+                    category_label = ExpenseCategories.label_for(category)
+                    description = item["description"].presence
+                    display_text = description.present? ? "#{category_label}: #{description}" : category_label
+                  %>
                   <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="<%= index %>">
-                    <span class="text-sm text-gray-900"><%= item["description"].presence || "Item #{index + 1}" %></span>
+                    <span class="text-sm text-gray-900"><%= display_text %></span>
                     <div class="flex items-center gap-2">
                       <span class="text-sm font-medium text-red-600"><%= number_to_currency(item["amount"]) %></span>
+                      <button type="button" class="text-gray-400 hover:text-pink-600 p-1"
+                              data-action="click->financials-form#editExpenseItem"
+                              data-index="<%= index %>"
+                              data-category="<%= category %>"
+                              data-description="<%= item["description"] %>"
+                              data-amount="<%= item["amount"] %>">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                      </button>
                       <button type="button" class="text-gray-400 hover:text-red-500 p-1"
                               data-action="click->financials-form#removeExpenseItem" data-index="<%= index %>">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,6 +198,7 @@
                         </svg>
                       </button>
                     </div>
+                    <input type="hidden" name="show_financials[expense_details][<%= index %>][category]" value="<%= category %>">
                     <input type="hidden" name="show_financials[expense_details][<%= index %>][description]" value="<%= item["description"] %>">
                     <input type="hidden" name="show_financials[expense_details][<%= index %>][amount]" value="<%= item["amount"] %>">
                   </div>
@@ -294,7 +311,16 @@
       </div>
       <div class="p-6 space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <select data-financials-form-target="expenseCategory"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            <% ExpenseCategories.options_for_select.each do |label, key| %>
+              <option value="<%= key %>"><%= label %></option>
+            <% end %>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-gray-400 font-normal">(optional)</span></label>
           <input type="text" data-financials-form-target="expenseDescription"
                  class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500"
                  placeholder="e.g., Venue rental, Equipment">

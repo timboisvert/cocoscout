@@ -143,10 +143,28 @@
                 <h4 class="text-sm font-medium text-gray-700 mb-3">Show Expenses</h4>
                 <div class="space-y-2">
                   <% if @show_financials.normalized_expense_details.any? %>
-                    <% @show_financials.normalized_expense_details.each do |item| %>
+                    <%
+                      # Group expenses by category
+                      grouped_expenses = @show_financials.normalized_expense_details.group_by { |item| item["category"].presence || "other" }
+                      category_order = ExpenseCategories.keys
+                      sorted_categories = grouped_expenses.keys.sort_by { |cat| category_order.index(cat) || 999 }
+                    %>
+                    <% sorted_categories.each do |category| %>
+                      <%
+                        items = grouped_expenses[category]
+                        category_total = items.sum { |i| i["amount"].to_f }
+                        category_label = ExpenseCategories.label_for(category)
+                      %>
                       <div class="flex justify-between text-sm">
-                        <span class="text-gray-600"><%= item["description"] %></span>
-                        <span class="text-red-600"><%= number_to_currency(item["amount"]) %></span>
+                        <span class="text-gray-600">
+                          <%= category_label %>
+                          <% if items.size > 1 %>
+                            <span class="text-gray-400">(<%= items.size %> items)</span>
+                          <% elsif items.first["description"].present? %>
+                            <span class="text-gray-400">– <%= items.first["description"] %></span>
+                          <% end %>
+                        </span>
+                        <span class="text-red-600"><%= number_to_currency(category_total) %></span>
                       </div>
                     <% end %>
                   <% else %>

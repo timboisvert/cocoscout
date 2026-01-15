@@ -18,6 +18,7 @@ export default class extends Controller {
     // Expense targets
     "expenseModal",
     "expenseModalTitle",
+    "expenseCategory",
     "expenseDescription",
     "expenseAmount",
     "expenseEditIndex",
@@ -216,12 +217,15 @@ export default class extends Controller {
   openExpenseModal(event) {
     if (event) event.preventDefault()
     this.expenseEditIndexTarget.value = ""
+    if (this.hasExpenseCategoryTarget) {
+      this.expenseCategoryTarget.value = "other"
+    }
     this.expenseDescriptionTarget.value = ""
     this.expenseAmountTarget.value = ""
     this.expenseModalTitleTarget.textContent = "Add Expense Item"
     this.expenseModalTarget.classList.remove("hidden")
     document.body.classList.add("overflow-hidden")
-    this.expenseDescriptionTarget.focus()
+    this.expenseCategoryTarget?.focus()
   }
 
   closeExpenseModal(event) {
@@ -234,34 +238,39 @@ export default class extends Controller {
     event.preventDefault()
     const button = event.currentTarget
     const index = button.dataset.index
+    const category = button.dataset.category || "other"
     const description = button.dataset.description
     const amount = button.dataset.amount
 
     this.expenseEditIndexTarget.value = index
+    if (this.hasExpenseCategoryTarget) {
+      this.expenseCategoryTarget.value = category
+    }
     this.expenseDescriptionTarget.value = description
     this.expenseAmountTarget.value = amount
     this.expenseModalTitleTarget.textContent = "Edit Expense Item"
     this.expenseModalTarget.classList.remove("hidden")
     document.body.classList.add("overflow-hidden")
-    this.expenseDescriptionTarget.focus()
+    this.expenseCategoryTarget?.focus()
   }
 
   saveExpenseItem(event) {
     event.preventDefault()
+    const category = this.hasExpenseCategoryTarget ? this.expenseCategoryTarget.value : "other"
     const description = this.expenseDescriptionTarget.value.trim()
     const amount = parseFloat(this.expenseAmountTarget.value) || 0
     const editIndex = this.expenseEditIndexTarget.value
 
-    if (!description || amount <= 0) {
-      return // Don't save empty items
+    if (amount <= 0) {
+      return // Don't save items with no amount
     }
 
     if (editIndex !== "") {
       // Update existing item
-      this.updateExpenseItemInList(parseInt(editIndex), description, amount)
+      this.updateExpenseItemInList(parseInt(editIndex), category, description, amount)
     } else {
       // Add new item
-      this.addExpenseItemToList(description, amount)
+      this.addExpenseItemToList(category, description, amount)
     }
 
     this.closeExpenseModal()
@@ -269,9 +278,9 @@ export default class extends Controller {
     this.showExpensesTotalRow()
   }
 
-  addExpenseItemToList(description, amount) {
+  addExpenseItemToList(category, description, amount) {
     const index = this.expenseItemCount++
-    const html = this.buildExpenseItemHtml(index, description, amount)
+    const html = this.buildExpenseItemHtml(index, category, description, amount)
 
     // Hide the simple amount input if visible
     if (this.hasExpensesEmptyTarget) {
@@ -281,21 +290,27 @@ export default class extends Controller {
     this.expenseItemsTarget.insertAdjacentHTML('beforeend', html)
   }
 
-  updateExpenseItemInList(index, description, amount) {
+  updateExpenseItemInList(index, category, description, amount) {
     const item = this.expenseItemsTarget.querySelector(`[data-line-item][data-index="${index}"]`)
     if (!item) return
 
+    // Build display text
+    const categoryLabel = this.getCategoryLabel(category)
+    const displayText = description ? `${categoryLabel}: ${description}` : categoryLabel
+
     // Update display
-    item.querySelector('p').textContent = description
-    item.querySelector('.font-semibold').textContent = this.formatCurrency(amount)
+    item.querySelector('span.text-gray-900').textContent = displayText
+    item.querySelector('.font-medium.text-red-600').textContent = this.formatCurrency(amount)
 
     // Update hidden fields
+    item.querySelector(`input[name*="[category]"]`).value = category
     item.querySelector(`input[name*="[description]"]`).value = description
     item.querySelector(`input[name*="[amount]"]`).value = amount
 
     // Update data attributes on edit button
     const editButton = item.querySelector('[data-action*="editExpenseItem"]')
     if (editButton) {
+      editButton.dataset.category = category
       editButton.dataset.description = description
       editButton.dataset.amount = amount
     }
@@ -321,18 +336,20 @@ export default class extends Controller {
     }
   }
 
-  buildExpenseItemHtml(index, description, amount) {
+  buildExpenseItemHtml(index, category, description, amount) {
+    const categoryLabel = this.getCategoryLabel(category)
+    const displayText = description ? `${categoryLabel}: ${this.escapeHtml(description)}` : categoryLabel
+
     return `
-      <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3" data-line-item data-index="${index}">
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(description)}</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-sm font-semibold text-gray-900">${this.formatCurrency(amount)}</span>
+      <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="${index}">
+        <span class="text-sm text-gray-900">${displayText}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-red-600">${this.formatCurrency(amount)}</span>
           <button type="button"
                   class="text-gray-400 hover:text-pink-600 p-1"
                   data-action="click->financials-form#editExpenseItem"
                   data-index="${index}"
+                  data-category="${category}"
                   data-description="${this.escapeHtml(description)}"
                   data-amount="${amount}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,10 +361,11 @@ export default class extends Controller {
                   data-action="click->financials-form#removeExpenseItem"
                   data-index="${index}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
+        <input type="hidden" name="show_financials[expense_details][${index}][category]" value="${category}">
         <input type="hidden" name="show_financials[expense_details][${index}][description]" value="${this.escapeHtml(description)}">
         <input type="hidden" name="show_financials[expense_details][${index}][amount]" value="${amount}">
       </div>
@@ -398,7 +416,22 @@ export default class extends Controller {
 
   escapeHtml(text) {
     const div = document.createElement('div')
-    div.textContent = text
+    div.textContent = text || ''
     return div.innerHTML
+  }
+
+  getCategoryLabel(category) {
+    const labels = {
+      venue: "Venue Rental",
+      tech: "Tech/Equipment",
+      marketing: "Marketing",
+      supplies: "Supplies",
+      travel: "Travel",
+      food: "Food & Beverage",
+      staff: "Staff/Crew",
+      licensing: "Licensing/Rights",
+      other: "Other"
+    }
+    return labels[category] || "Other"
   }
 }

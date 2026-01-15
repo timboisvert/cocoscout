@@ -85,14 +85,22 @@ class SlotLockService
     end
 
     # Get lock info for multiple slots at once (efficient batch check)
+    # Uses pipelining for Redis Cluster compatibility (mget fails with CROSSSLOT error)
     def bulk_lock_info(slot_ids, session_id = nil)
       return slot_ids.index_with { { locked: false, redis_available: false } } unless redis_available?
       return {} if slot_ids.empty?
 
-      keys = slot_ids.map { |id| lock_key(id) }
-      values = redis.mget(*keys)
+      # Use pipelining instead of mget to avoid CROSSSLOT errors in Redis Cluster
+      # Each key is fetched individually but in a single round trip
+      holders = {}
+      redis.pipelined do |pipeline|
+        slot_ids.each do |slot_id|
+          holders[slot_id] = pipeline.get(lock_key(slot_id))
+        end
+      end
 
-      slot_ids.zip(values).to_h do |slot_id, holder|
+      slot_ids.to_h do |slot_id|
+        holder = holders[slot_id].value rescue nil
         info = if holder.nil?
           { locked: false }
         else

@@ -77,13 +77,36 @@ class FinancialSummaryService
     gross_revenue = 0.0
     show_expenses = 0.0
     shows_with_data = 0
+    expense_by_category = Hash.new(0.0)
+    ticket_revenue = 0.0
+    flat_fee_revenue = 0.0
+    other_revenue = 0.0
 
     shows_with_financials.each do |show|
       next unless show.show_financials&.has_data?
 
       shows_with_data += 1
-      gross_revenue += show.show_financials.total_revenue
-      show_expenses += show.show_financials.calculated_expenses
+      financials = show.show_financials
+      gross_revenue += financials.total_revenue
+      show_expenses += financials.calculated_expenses
+
+      # Track revenue by type
+      if financials.ticket_sales?
+        ticket_revenue += financials.ticket_revenue
+      else
+        flat_fee_revenue += financials.flat_fee.to_f
+      end
+      other_revenue += financials.calculated_other_revenue
+
+      # Track expenses by category
+      financials.normalized_expense_details.each do |item|
+        category = item["category"].presence || "other"
+        expense_by_category[category] += item["amount"].to_f
+      end
+      # If no detailed expenses but has a raw expense amount
+      if financials.normalized_expense_details.empty? && financials.expenses.to_f > 0
+        expense_by_category["other"] += financials.expenses.to_f
+      end
     end
 
     # Get payout totals (performer payouts are part of Cost of Shows)
@@ -112,6 +135,11 @@ class FinancialSummaryService
       gross_margin: gross_margin,
       net_income: net_income,
       average_revenue_per_show: shows_with_data > 0 ? (gross_revenue / shows_with_data).round(2) : 0,
+      # Breakdowns
+      ticket_revenue: ticket_revenue,
+      flat_fee_revenue: flat_fee_revenue,
+      other_revenue: other_revenue,
+      expense_by_category: expense_by_category,
       # Legacy keys for backward compatibility during transition
       total_revenue: gross_revenue,
       total_expenses: show_expenses,

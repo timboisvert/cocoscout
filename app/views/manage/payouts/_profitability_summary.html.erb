@@ -67,6 +67,127 @@
       <div class="text-xs text-gray-500">revenue</div>
     </div>
   </div>
+
+  <!-- Financial Breakdown Accordion -->
+  <details class="bg-white rounded-lg border border-gray-200 mb-6 group">
+    <summary class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 select-none">
+      <span class="font-medium text-gray-900">Financial Breakdown</span>
+      <svg class="w-5 h-5 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </summary>
+    <div class="p-5 border-t border-gray-100 space-y-0">
+
+      <!-- Revenue -->
+      <div class="pb-4">
+        <h4 class="text-sm font-medium text-gray-700 mb-3">Revenue</h4>
+        <div class="space-y-2">
+          <% if summary[:ticket_revenue].to_f > 0 %>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Ticket Revenue</span>
+              <span class="font-medium text-gray-900"><%= number_to_currency(summary[:ticket_revenue]) %></span>
+            </div>
+          <% end %>
+          <% if summary[:flat_fee_revenue].to_f > 0 %>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Flat Fees</span>
+              <span class="font-medium text-gray-900"><%= number_to_currency(summary[:flat_fee_revenue]) %></span>
+            </div>
+          <% end %>
+          <% if summary[:other_revenue].to_f > 0 %>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Other Revenue</span>
+              <span class="font-medium text-gray-900"><%= number_to_currency(summary[:other_revenue]) %></span>
+            </div>
+          <% end %>
+          <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
+            <span class="font-medium text-gray-700">Gross Revenue</span>
+            <span class="font-semibold text-gray-900"><%= number_to_currency(summary[:gross_revenue]) %></span>
+          </div>
+        </div>
+      </div>
+
+      <% if summary[:show_expenses].to_f > 0 %>
+        <!-- Show Expenses -->
+        <div class="border-t border-gray-200 pt-4 pb-4">
+          <h4 class="text-sm font-medium text-gray-700 mb-3">Show Expenses</h4>
+          <div class="space-y-2">
+            <% if summary[:expense_by_category].present? && summary[:expense_by_category].any? %>
+              <%
+                category_order = ExpenseCategories.keys
+                sorted_categories = summary[:expense_by_category].keys.sort_by { |cat| category_order.index(cat) || 999 }
+              %>
+              <% sorted_categories.each do |category| %>
+                <% amount = summary[:expense_by_category][category] %>
+                <% next if amount.to_f <= 0 %>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600"><%= ExpenseCategories.label_for(category) %></span>
+                  <span class="text-red-600"><%= number_to_currency(amount) %></span>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-600">Expenses</span>
+                <span class="text-red-600"><%= number_to_currency(summary[:show_expenses]) %></span>
+              </div>
+            <% end %>
+            <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
+              <span class="font-medium text-gray-700">Total Show Expenses</span>
+              <span class="font-semibold text-red-600"><%= number_to_currency(summary[:show_expenses]) %></span>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <% if summary[:total_payouts].to_f > 0 %>
+        <!-- Talent Payouts -->
+        <div class="border-t border-gray-200 pt-4 pb-4">
+          <h4 class="text-sm font-medium text-gray-700 mb-3">Talent Payouts</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Performer Payouts</span>
+              <span class="text-pink-600 font-medium"><%= number_to_currency(summary[:total_payouts]) %></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit & Loss Summary -->
+        <div class="border-t-2 border-gray-300 pt-4 bg-gray-50 -mx-5 px-5 pb-5 rounded-b-lg">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Profit & Loss</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Gross Revenue</span>
+              <span class="font-medium text-gray-900"><%= number_to_currency(summary[:gross_revenue]) %></span>
+            </div>
+            <% if summary[:show_expenses].to_f > 0 %>
+              <div class="flex justify-between text-sm text-gray-500">
+                <span class="pl-2">Less: Show Expenses</span>
+                <span class="text-red-600">(<%= number_to_currency(summary[:show_expenses]) %>)</span>
+              </div>
+            <% end %>
+            <div class="flex justify-between text-sm text-gray-500">
+              <span class="pl-2">Less: Performer Payouts</span>
+              <span class="text-pink-600">(<%= number_to_currency(summary[:total_payouts]) %>)</span>
+            </div>
+            <div class="flex justify-between text-sm pt-2 border-t border-gray-200">
+              <span class="font-medium text-gray-700">Cost of Shows</span>
+              <span class="font-medium text-red-600"><%= number_to_currency(summary[:cost_of_shows]) %></span>
+            </div>
+            <div class="flex justify-between text-base pt-3 border-t-2 border-gray-300">
+              <span class="font-bold text-gray-900">Gross Profit</span>
+              <span class="font-bold text-lg <%= summary[:gross_profit] >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                <%= number_to_currency(summary[:gross_profit]) %>
+              </span>
+            </div>
+            <div class="text-xs text-gray-500 text-right">
+              <%= summary[:gross_margin] %>% gross margin
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+    </div>
+  </details>
 <% else %>
   <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
     <div class="text-center py-4 text-gray-500">

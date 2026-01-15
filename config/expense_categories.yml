@@ -1,0 +1,40 @@
+# Expense Categories Configuration
+# This file defines the available expense categories for show financials
+
+expense_categories:
+  venue:
+    label: "Venue Rental"
+    description: "Space rental, theater fees"
+    icon: "building-office"
+  tech:
+    label: "Tech/Equipment"
+    description: "Sound, lighting, AV equipment"
+    icon: "speaker-wave"
+  marketing:
+    label: "Marketing"
+    description: "Ads, flyers, promotion"
+    icon: "megaphone"
+  supplies:
+    label: "Supplies"
+    description: "Props, costumes, consumables"
+    icon: "shopping-bag"
+  travel:
+    label: "Travel"
+    description: "Transportation, parking"
+    icon: "truck"
+  food:
+    label: "Food & Beverage"
+    description: "Catering, refreshments, green room"
+    icon: "cake"
+  staff:
+    label: "Staff/Crew"
+    description: "Non-performer labor costs"
+    icon: "users"
+  licensing:
+    label: "Licensing/Rights"
+    description: "Music, script, or performance rights"
+    icon: "document-text"
+  other:
+    label: "Other"
+    description: "Miscellaneous expenses"
+    icon: "ellipsis-horizontal-circle"

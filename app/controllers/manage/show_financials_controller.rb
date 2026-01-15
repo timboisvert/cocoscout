@@ -77,7 +77,7 @@ module Manage
         :notes,
         :data_confirmed,
         other_revenue_details: [ :description, :amount ],
-        expense_details: [ :description, :amount ]
+        expense_details: [ :category, :description, :amount ]
       )
 
       # Convert hash-style params to arrays for details fields
