@@ -40,6 +40,16 @@ export default class extends Controller {
         document.removeEventListener('keydown', this.handleEscape);
     }
 
+    // Helper to update cast members list and dispatch event for filters to re-apply
+    updateCastMembersList(html) {
+        const castMembersList = document.getElementById("show-cast-members");
+        if (castMembersList) {
+            castMembersList.outerHTML = html;
+            // Dispatch event so cast-filter controller re-applies current filters
+            document.dispatchEvent(new CustomEvent('cast-members:updated'));
+        }
+    }
+
     // Helper to handle server errors - suppress expected ones, alert others
     handleServerError(error) {
         const suppressedErrors = [
@@ -587,10 +597,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -670,10 +677,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -746,10 +750,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -806,10 +807,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -1028,10 +1026,7 @@ export default class extends Controller {
 
         // Update cast members list
         if (data.cast_members_html) {
-            const castMembersList = document.getElementById("show-cast-members");
-            if (castMembersList) {
-                castMembersList.outerHTML = data.cast_members_html;
-            }
+            this.updateCastMembersList(data.cast_members_html);
         }
 
         // Update linkage sync section if present
@@ -1232,10 +1227,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -1305,10 +1297,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -1347,10 +1336,7 @@ export default class extends Controller {
 
                 // Update cast members list (this properly reflects who is/isn't assigned)
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present
@@ -1458,10 +1444,7 @@ export default class extends Controller {
 
                 // Update cast members list
                 if (data.cast_members_html) {
-                    const castMembersList = document.getElementById("show-cast-members");
-                    if (castMembersList) {
-                        castMembersList.outerHTML = data.cast_members_html;
-                    }
+                    this.updateCastMembersList(data.cast_members_html);
                 }
 
                 // Update linkage sync section if present

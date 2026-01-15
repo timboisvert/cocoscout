@@ -11,7 +11,7 @@ class ExpenseCategories
     end
 
     def options_for_select
-      all.map { |key, data| [data["label"], key] }
+      all.map { |key, data| [ data["label"], key ] }
     end
 
     def label_for(key)

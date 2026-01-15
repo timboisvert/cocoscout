@@ -22,8 +22,16 @@ export default class extends Controller {
             }
         }
 
+        // Listen for cast members list updates to re-apply filters
+        this.handleCastMembersUpdated = () => this.applyFilters()
+        document.addEventListener('cast-members:updated', this.handleCastMembersUpdated)
+
         this.updateActiveButton()
         this.applyFilters()
+    }
+
+    disconnect() {
+        document.removeEventListener('cast-members:updated', this.handleCastMembersUpdated)
     }
 
     filterByAvailability(event) {

@@ -344,9 +344,6 @@ module Manage
         raise e
       end
 
-      # Reload the show's assignments to ensure fresh data for rendering
-      @show.show_person_role_assignments.reload
-
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
 
@@ -359,9 +356,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress using quantity-based slot counting
@@ -459,9 +456,6 @@ module Manage
         )
       end
 
-      # Reload the show's assignments to ensure fresh data for rendering
-      @show.show_person_role_assignments.reload
-
       # Generate the HTML to return
       @availability = build_availability_hash(@show)
 
@@ -473,9 +467,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       progress = @show.casting_progress
@@ -546,9 +540,6 @@ module Manage
         end
       end
 
-      # Reload the show's assignments to ensure fresh data for rendering
-      @show.show_person_role_assignments.reload
-
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
 
@@ -561,9 +552,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress using quantity-based slot counting
@@ -656,9 +647,6 @@ module Manage
         )
       end
 
-      # Reload the show's assignments to ensure fresh data for rendering
-      @show.show_person_role_assignments.reload
-
       # Generate the HTML to return - pass availability data
       @availability = build_availability_hash(@show)
 
@@ -671,9 +659,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress using quantity-based slot counting
@@ -763,9 +751,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       # Calculate progress - count roles with at least one assignment
@@ -1048,9 +1036,9 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
       end
 
+      cast_members_locals = build_cast_members_list_locals(@show, @availability)
       cast_members_html = render_to_string(partial: "manage/casting/cast_members_list",
-                                           locals: { show: @show,
-                                                     availability: @availability })
+                                           locals: cast_members_locals)
       roles_html = render_to_string(partial: "manage/casting/roles_list", locals: { show: @show, sync_info: sync_info, click_to_add: click_to_add? })
 
       progress = @show.casting_progress
@@ -1212,6 +1200,43 @@ module Manage
         end
       end
       availability
+    end
+
+    # Build the locals hash for rendering cast_members_list partial
+    # This ensures consistent data is passed across all assignment responses
+    def build_cast_members_list_locals(show, availability)
+      # Reload assignments to get fresh data
+      assignments = show.show_person_role_assignments.reload
+
+      # Build assigned member keys set
+      assigned_member_keys = Set.new(assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
+
+      # Build linked show data
+      linked_shows = []
+      linked_availability = {}
+      if show.linked?
+        linked_shows = show.linked_shows.to_a
+        linked_availability = build_linked_availability_hash(linked_shows)
+      end
+
+      # Get pool members with headshots
+      talent_pool = show.production.effective_talent_pool
+      pool_people = talent_pool.people
+                               .includes(profile_headshots: { image_attachment: :blob })
+                               .to_a
+      pool_groups = talent_pool.groups
+                               .includes(profile_headshots: { image_attachment: :blob })
+                               .to_a
+      pool_members = pool_people + pool_groups
+
+      {
+        show: show,
+        availability: availability,
+        pool_members: pool_members,
+        assigned_member_keys: assigned_member_keys,
+        linked_availability: linked_availability,
+        linked_shows: linked_shows
+      }
     end
 
     # Build a hash of availability across all linked shows
