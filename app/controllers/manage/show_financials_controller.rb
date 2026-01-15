@@ -67,7 +67,7 @@ module Manage
     end
 
     def show_financials_params
-      params.require(:show_financials).permit(
+      permitted = params.require(:show_financials).permit(
         :revenue_type,
         :ticket_count,
         :ticket_revenue,
@@ -79,6 +79,17 @@ module Manage
         other_revenue_details: [ :description, :amount ],
         expense_details: [ :description, :amount ]
       )
+
+      # Convert hash-style params to arrays for details fields
+      # Rails sends {0 => {desc: x}, 1 => {desc: y}} but we need [{desc: x}, {desc: y}]
+      if permitted[:expense_details].is_a?(Hash)
+        permitted[:expense_details] = permitted[:expense_details].values.map(&:to_h)
+      end
+      if permitted[:other_revenue_details].is_a?(Hash)
+        permitted[:other_revenue_details] = permitted[:other_revenue_details].values.map(&:to_h)
+      end
+
+      permitted
     end
 
     def calculate_comparison_data
