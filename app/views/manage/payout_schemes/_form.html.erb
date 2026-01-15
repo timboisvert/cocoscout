@@ -145,8 +145,8 @@
       </div>
     </div>
 
-    <!-- Revenue Allocation (only for split-based methods) -->
-    <div data-payout-scheme-form-target="allocationSection" class="<%= ['equal', 'shares'].include?(dist_method) ? '' : 'hidden' %> bg-white rounded-lg border border-gray-200 p-5">
+    <!-- Revenue Allocation (for all methods except flat_fee) -->
+    <div data-payout-scheme-form-target="allocationSection" class="<%= dist_method == 'flat_fee' ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-900 mb-4">Revenue Allocation</h3>
       <p class="text-sm text-gray-600 mb-4">How is revenue split between house and performers?</p>
 
@@ -159,6 +159,13 @@
             <span class="text-gray-400 mx-2">→</span>
             <span class="text-sm text-gray-600">Performers get <span data-payout-scheme-form-target="performerPercentage" class="font-medium text-gray-900"><%= 100 - house_percentage %>%</span></span>
           </div>
+          <p class="text-xs text-gray-500 mt-1" data-payout-scheme-form-target="allocationHint">
+            <% if ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) %>
+              Set to 0% if performers should be paid from total revenue
+            <% else %>
+              Remaining revenue after house take goes to performer pool
+            <% end %>
+          </p>
         </div>
 
         <label class="flex items-center gap-2">
@@ -194,7 +201,7 @@
               <!-- Per-ticket overrides -->
               <div data-payout-scheme-form-target="overridePerTicket" class="<%= ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) ? 'flex items-center gap-2' : 'hidden' %>">
                 <span class="text-sm text-gray-500">$</span>
-                <input type="number" name="rules[performer_overrides][<%= person.id %>][per_ticket_rate]" value="<%= override['per_ticket_rate'] %>" min="0.01" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][per_ticket_rate]" value="<%= override['per_ticket_rate'] %>" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
                 <span class="text-sm text-gray-500">/ticket</span>
               </div>
 
@@ -206,7 +213,7 @@
 
               <!-- Shares override -->
               <div data-payout-scheme-form-target="overrideShares" class="<%= dist_method == 'shares' ? 'flex items-center gap-2' : 'hidden' %>">
-                <input type="number" name="rules[performer_overrides][<%= person.id %>][shares]" value="<%= override['shares'] %>" min="0.5" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][shares]" value="<%= override['shares'] %>" min="0" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
                 <span class="text-sm text-gray-500">shares</span>
               </div>
 
@@ -242,7 +249,7 @@
             <!-- Per-ticket inputs for new override -->
             <div data-payout-scheme-form-target="newOverridePerTicket" class="<%= ['per_ticket', 'per_ticket_guaranteed'].include?(dist_method) ? 'flex items-center gap-2' : 'hidden' %>">
               <span class="text-sm text-gray-500">$</span>
-              <input type="number" data-payout-scheme-form-target="newPerTicketRate" min="0.01" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+              <input type="number" data-payout-scheme-form-target="newPerTicketRate" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
               <span class="text-sm text-gray-500">/ticket</span>
             </div>
 
@@ -254,7 +261,7 @@
 
             <!-- Shares input for new override -->
             <div data-payout-scheme-form-target="newOverrideShares" class="<%= dist_method == 'shares' ? 'flex items-center gap-2' : 'hidden' %>">
-              <input type="number" data-payout-scheme-form-target="newShares" min="0.5" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
+              <input type="number" data-payout-scheme-form-target="newShares" min="0" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
               <span class="text-sm text-gray-500">shares</span>
             </div>
 

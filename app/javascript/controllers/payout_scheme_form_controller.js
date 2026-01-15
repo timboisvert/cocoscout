@@ -64,11 +64,11 @@ export default class extends Controller {
             this.flatFeeOptionsTarget.classList.add("hidden")
         }
         if (this.hasAllocationSectionTarget) {
-            // Only show allocation section for pool-based methods
-            if (["equal", "shares"].includes(method)) {
-                this.allocationSectionTarget.classList.remove("hidden")
-            } else {
+            // Show allocation section for all methods except flat_fee
+            if (method === "flat_fee") {
                 this.allocationSectionTarget.classList.add("hidden")
+            } else {
+                this.allocationSectionTarget.classList.remove("hidden")
             }
         }
 
@@ -206,7 +206,7 @@ export default class extends Controller {
         fieldsHtml += `
             <div data-payout-scheme-form-target="overridePerTicket" class="${showPerTicket ? 'flex items-center gap-2' : 'hidden'}">
                 <span class="text-sm text-gray-500">$</span>
-                <input type="number" name="rules[performer_overrides][${personId}][per_ticket_rate]" value="${perTicketRate}" min="0.01" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+                <input type="number" name="rules[performer_overrides][${personId}][per_ticket_rate]" value="${perTicketRate}" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
                 <span class="text-sm text-gray-500">/ticket</span>
             </div>
         `
@@ -226,7 +226,7 @@ export default class extends Controller {
         const showShares = method === "shares"
         fieldsHtml += `
             <div data-payout-scheme-form-target="overrideShares" class="${showShares ? 'flex items-center gap-2' : 'hidden'}">
-                <input type="number" name="rules[performer_overrides][${personId}][shares]" value="${shares}" min="0.5" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
+                <input type="number" name="rules[performer_overrides][${personId}][shares]" value="${shares}" min="0" step="0.5" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="shares">
                 <span class="text-sm text-gray-500">shares</span>
             </div>
         `
