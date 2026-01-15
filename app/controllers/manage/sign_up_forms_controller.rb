@@ -336,7 +336,8 @@ module Manage
       end
 
       # Handle closes offset calculation from days/hours fields
-      if params[:closes_offset_days].present? || params[:closes_offset_hours].present?
+      # Use key? instead of present? because 0.present? returns false
+      if params.key?(:closes_offset_days) || params.key?(:closes_offset_hours)
         total_hours = (params[:closes_offset_days].to_i * 24) + params[:closes_offset_hours].to_i
         # If "after" the event, store as negative value
         if params[:closes_before_after] == "after"
@@ -345,6 +346,8 @@ module Manage
           params[:sign_up_form][:closes_offset_value] = total_hours
         end
         params[:sign_up_form][:closes_offset_unit] = "hours"
+        # Also save closes_hours_before for backward compatibility
+        params[:sign_up_form][:closes_hours_before] = total_hours.abs
       end
     end
 

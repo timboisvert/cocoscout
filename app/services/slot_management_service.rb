@@ -575,6 +575,8 @@ class SlotManagementService
   end
 
   def calculate_closes_at(show)
+    minutes_offset = (sign_up_form.closes_minutes_offset || 0).minutes
+
     case sign_up_form.closes_mode
     when "event_start"
       show.date_and_time
@@ -586,14 +588,14 @@ class SlotManagementService
       unit = sign_up_form.closes_offset_unit == "days" ? :days : :hours
 
       if offset >= 0
-        show.date_and_time - offset.send(unit)
+        show.date_and_time - offset.send(unit) - minutes_offset
       else
-        show.date_and_time + offset.abs.send(unit)
+        show.date_and_time + offset.abs.send(unit) + minutes_offset
       end
     else
       # Legacy: use closes_hours_before
       return nil unless sign_up_form.closes_hours_before.present?
-      show.date_and_time - sign_up_form.closes_hours_before.hours
+      show.date_and_time - sign_up_form.closes_hours_before.hours - minutes_offset
     end
   end
 
