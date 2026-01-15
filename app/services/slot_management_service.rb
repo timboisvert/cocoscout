@@ -563,9 +563,15 @@ class SlotManagementService
 
   def calculate_opens_at(show)
     return nil unless sign_up_form.schedule_mode == "relative"
-    return nil unless sign_up_form.opens_days_before.present?
 
-    show.date_and_time - sign_up_form.opens_days_before.days
+    days = sign_up_form.opens_days_before || 0
+    hours = sign_up_form.opens_hours_before || 0
+    minutes = sign_up_form.opens_minutes_before || 0
+
+    # If all are zero, no specific opens_at needed (opens immediately when created)
+    return nil if days == 0 && hours == 0 && minutes == 0
+
+    show.date_and_time - days.days - hours.hours - minutes.minutes
   end
 
   def calculate_closes_at(show)
