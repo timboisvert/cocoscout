@@ -2,36 +2,52 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection"]
-    static values = { initialTab: { type: Number, default: 0 } }
+    static values = { initialTab: { type: Number, default: 0 }, selectKey: String }
 
     connect() {
         let initialTab = this.initialTabValue;
 
-        // First check if there's a tab in the URL query params
-        const urlParams = new URLSearchParams(window.location.search);
-        const tabParam = urlParams.get('tab');
-
-        if (tabParam) {
-            const tabIndex = parseInt(tabParam, 10);
-            if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
-                initialTab = tabIndex;
+        // First check if there's a selectKey value - find tab with matching data-key
+        // Skip if selectKey is empty, "0", or not set
+        const selectKey = this.hasSelectKeyValue ? String(this.selectKeyValue) : "";
+        if (selectKey && selectKey !== "0") {
+            const matchingTab = this.tabTargets.find(tab => String(tab.dataset.key) === selectKey);
+            if (matchingTab) {
+                const matchingIndex = parseInt(matchingTab.dataset.index, 10);
+                if (!isNaN(matchingIndex)) {
+                    initialTab = matchingIndex;
+                }
             }
         }
-        // Fallback to URL hash
+        // Then check if there's a tab in the URL query params
         else {
-            const hash = window.location.hash;
-            if (hash && hash.startsWith('#tab-')) {
-                const tabIndex = parseInt(hash.replace('#tab-', ''), 10);
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+
+            if (tabParam) {
+                const tabIndex = parseInt(tabParam, 10);
                 if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
                     initialTab = tabIndex;
+                }
+            }
+            // Fallback to URL hash
+            else {
+                const hash = window.location.hash;
+                if (hash && hash.startsWith('#tab-')) {
+                    const tabIndex = parseInt(hash.replace('#tab-', ''), 10);
+                    if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
+                        initialTab = tabIndex;
+                    }
                 }
             }
         }
 
         this.show(initialTab);
 
-        // Update the URL hash to match the initial tab
-        history.replaceState(null, '', `#tab-${initialTab}`);
+        // Update the URL hash to match the initial tab (but not for modals)
+        if (!selectKey) {
+            history.replaceState(null, '', `#tab-${initialTab}`);
+        }
     }
 
     select(e) {

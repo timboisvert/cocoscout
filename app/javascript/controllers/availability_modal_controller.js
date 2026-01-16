@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["modal", "content", "memberModal", "memberContent"]
+    static values = { productionId: Number }
 
     connect() {
         // Bind escape key handler
@@ -70,6 +71,11 @@ export default class extends Controller {
             modalUrl = `/manage/groups/${memberId}/availability_modal`
         }
 
+        // Add production_id if available to select the right tab
+        if (this.hasProductionIdValue && this.productionIdValue) {
+            modalUrl += `?production_id=${this.productionIdValue}`
+        }
+
         // Show modal with loading state
         this.memberModalTarget.classList.remove('hidden')
         document.body.classList.add('overflow-hidden')
@@ -113,6 +119,8 @@ export default class extends Controller {
                     <p class="text-sm text-gray-500 mt-2">Loading...</p>
                 </div>
             `
+            // Dispatch event to refresh the grid
+            document.dispatchEvent(new CustomEvent('availability-grid:refresh'))
         }
     }
 
@@ -127,6 +135,8 @@ export default class extends Controller {
                     <p class="text-sm text-gray-500 mt-2">Loading...</p>
                 </div>
             `
+            // Dispatch event to refresh the grid
+            document.dispatchEvent(new CustomEvent('availability-grid:refresh'))
         }
     }
 

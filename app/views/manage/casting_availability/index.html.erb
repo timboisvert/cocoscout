@@ -6,7 +6,7 @@
   }
 </style>
 
-<div class="w-full" data-controller="availability-modal">
+<div class="w-full" data-controller="availability-modal" data-availability-modal-production-id-value="<%= @production.id %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%= render partial: "shared/top_menu", locals: {

@@ -5,7 +5,8 @@
 <%
   # Group shows by production for tabs
   shows_by_production = shows.group_by(&:production)
-  productions = shows_by_production.keys
+  # Sort productions by name for consistent ordering
+  productions = shows_by_production.keys.sort_by(&:name)
 %>
 <div>
   <%# Modal Header - compact pink %>
@@ -46,46 +47,15 @@
           </svg>
           <p class="text-gray-500 text-sm">No upcoming shows found.</p>
         </div>
-      <% elsif productions.count == 1 %>
-        <%# Single production - no tabs needed %>
-        <% production = productions.first %>
-        <% production_shows = shows_by_production[production] %>
-        <div class="space-y-2 max-h-[400px] overflow-y-auto">
-          <% production_shows.each do |show| %>
-            <%
-              availability = availabilities[show.id]
-              current_status = availability&.status || 'unset'
-
-              data_attrs = {
-                "controller" => "availability",
-                "availability-show-id-value" => show.id,
-                "availability-status-value" => current_status,
-                "availability-group-id-value" => member.id,
-                "availability-update-url-value" => update_availability_manage_group_path(member)
-              }
-            %>
-            <div <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
-              <%= render "shared/show_row",
-                show: show,
-                show_location: true,
-                show_production: false,
-                right_panel: :availability,
-                entity: member,
-                availability: availability,
-                entity_key: "group_#{member.id}",
-                manage_context: true
-              %>
-            </div>
-          <% end %>
-        </div>
       <% else %>
-        <%# Multiple productions - use tabs %>
-        <div data-controller="tabs">
+        <%# Show productions in tabs %>
+        <div data-controller="tabs" data-tabs-select-key-value="<%= current_production_id %>">
           <nav class="flex space-x-1 border-b border-gray-200 mb-4 overflow-x-auto scrollbar-hide">
             <% productions.each_with_index do |production, index| %>
               <button type="button"
                       data-tabs-target="tab"
                       data-index="<%= index %>"
+                      data-key="<%= production.id %>"
                       data-action="tabs#select"
                       class="px-3 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap flex-shrink-0 <%= index == 0 ? 'bg-white text-pink-600 border-pink-600' : 'bg-gray-50 text-gray-500 border-transparent hover:text-gray-700' %>">
                 <%= production.name %>

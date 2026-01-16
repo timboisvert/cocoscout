@@ -411,8 +411,13 @@ module My
     # Get lock status for all slots in an instance (for UI updates)
     def slot_locks
       @instance = find_current_instance
-      slot_ids = @instance.sign_up_slots.pluck(:id)
 
+      unless @instance
+        render json: { locks: {} }
+        return
+      end
+
+      slot_ids = @instance.sign_up_slots.pluck(:id)
       locks = SlotLockService.bulk_lock_info(slot_ids, session_identifier)
       render json: { locks: locks }
     end

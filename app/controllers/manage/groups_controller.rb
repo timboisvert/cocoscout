@@ -77,10 +77,18 @@ module Manage
 
     # Returns HTML for member availability modal
     def availability_modal
-      # Get all future shows for productions this group is a cast member of
-      production_ids = TalentPool.joins(:talent_pool_memberships)
-                                 .where(talent_pool_memberships: { member: @group })
-                                 .pluck(:production_id).uniq
+      # Get all future shows for productions this group is a member of
+      # via direct talent pools or shared talent pools
+      direct_production_ids = TalentPool.joins(:talent_pool_memberships)
+                                        .where(talent_pool_memberships: { member: @group })
+                                        .pluck(:production_id)
+
+      # Also get productions that share a talent pool this group is in
+      shared_production_ids = TalentPoolShare.joins(talent_pool: :talent_pool_memberships)
+                                             .where(talent_pool_memberships: { member: @group })
+                                             .pluck(:production_id)
+
+      production_ids = (direct_production_ids + shared_production_ids).uniq
 
       @shows = Show.where(production_id: production_ids, canceled: false)
                    .where("date_and_time >= ?", Time.current)
@@ -96,7 +104,8 @@ module Manage
       render partial: "manage/groups/availability_modal", locals: {
         member: @group,
         shows: @shows,
-        availabilities: @availabilities
+        availabilities: @availabilities,
+        current_production_id: params[:production_id].to_s
       }
     end
 

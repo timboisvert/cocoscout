@@ -16,18 +16,42 @@ class SuperadminController < ApplicationController
   def index
     @users = User.order(:email_address)
 
-    # Organization stats for overview
     # People stats for overview
     @people_total = Person.count
+    @people_new_today = Person.where("created_at > ?", Time.current.beginning_of_day).count
     @people_new_this_week = Person.where("created_at > ?", 1.week.ago).count
     @people_new_this_month = Person.where("created_at > ?", 1.month.ago).count
-    @recent_people = Person.order(created_at: :desc).limit(5)
+    @people_new_last_month = Person.where("created_at > ? AND created_at <= ?", 2.months.ago, 1.month.ago).count
+
+    # Calculate growth rate (this month vs last month)
+    @people_growth_rate = if @people_new_last_month > 0
+      (((@people_new_this_month - @people_new_last_month).to_f / @people_new_last_month) * 100).round(1)
+    else
+      @people_new_this_month > 0 ? 100.0 : 0.0
+    end
+
+    # People chart data - last 30 days by day
+    @people_daily_data = build_daily_chart_data(Person, 30)
+
+    # People chart data - last 12 weeks by week
+    @people_weekly_data = build_weekly_chart_data(Person, 12)
+
+    # People chart data - last 12 months by month
+    @people_monthly_data = build_monthly_chart_data(Person, 12)
 
     # Organization stats for overview
     @organizations_total = Organization.count
     @organizations_new_this_week = Organization.where("created_at > ?", 1.week.ago).count
     @organizations_new_this_month = Organization.where("created_at > ?", 1.month.ago).count
-    @recent_organizations = Organization.order(created_at: :desc).limit(5)
+
+    # Additional organization stats
+    @organizations_with_productions = Organization.joins(:productions).distinct.count
+    @organizations_active_30d = Organization.joins(productions: :shows)
+                                            .where("shows.date_and_time > ? AND shows.date_and_time < ?", 30.days.ago, 30.days.from_now)
+                                            .distinct.count
+    @total_productions = Production.count
+    @total_shows = Show.count
+    @upcoming_shows = Show.where("date_and_time > ?", Time.current).where(canceled: false).count
 
     if cookies.encrypted[:recent_impersonations].present?
       begin
@@ -1397,5 +1421,64 @@ class SuperadminController < ApplicationController
 
   def job_description(class_name)
     JOB_DESCRIPTIONS[class_name] || "No description available."
+  end
+
+  # Chart data helpers for dashboard
+  def build_daily_chart_data(model, days)
+    start_date = days.days.ago.to_date
+    end_date = Date.current
+
+    # Get actual counts from database
+    raw_data = model.where("created_at >= ?", start_date.beginning_of_day)
+                    .group("DATE(created_at)")
+                    .count
+
+    # Build complete series with zeros for missing days
+    (start_date..end_date).each_with_object({}) do |date, hash|
+      key = date.to_s
+      hash[key] = raw_data[date] || raw_data[key] || 0
+    end
+  end
+
+  def build_weekly_chart_data(model, weeks)
+    start_date = weeks.weeks.ago.beginning_of_week.to_date
+    end_date = Date.current.beginning_of_week.to_date
+
+    # Get raw counts grouped by week start (Monday)
+    # Use DATE_TRUNC for PostgreSQL, falls back to Ruby grouping for SQLite
+    raw_data = model.where("created_at >= ?", start_date.beginning_of_day)
+                    .group_by { |r| r.created_at.to_date.beginning_of_week }
+                    .transform_values(&:count)
+
+    # Build complete series
+    result = {}
+    current = start_date
+    while current <= end_date
+      key = current.to_s
+      result[key] = raw_data[current] || 0
+      current += 7.days
+    end
+    result
+  end
+
+  def build_monthly_chart_data(model, months)
+    start_date = months.months.ago.beginning_of_month.to_date
+    end_date = Date.current.beginning_of_month.to_date
+
+    # Get raw counts grouped by month
+    # Use Ruby-based grouping for database compatibility
+    raw_data = model.where("created_at >= ?", start_date.beginning_of_day)
+                    .group_by { |r| r.created_at.to_date.beginning_of_month }
+                    .transform_values(&:count)
+
+    # Build complete series
+    result = {}
+    current = start_date
+    while current <= end_date
+      key = current.strftime("%Y-%m-01")
+      result[key] = raw_data[current] || 0
+      current = current.next_month
+    end
+    result
   end
 end
