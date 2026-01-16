@@ -110,7 +110,8 @@ GEM
     brakeman (7.1.2)
       racc
     builder (3.3.0)
-    byebug (12.0.0)
+    byebug (13.0.0)
+      reline (>= 0.6.0)
     cairo (1.18.4)
       native-package-installer (>= 1.0.3)
       pkg-config (>= 1.2.2)
