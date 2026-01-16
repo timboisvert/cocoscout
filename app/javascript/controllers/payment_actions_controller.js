@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["bulkModal", "payEveryoneModal", "payeeCard", "progressText", "progressBar", "markPaidModal", "markPaidName", "markPaidForm"]
+  static targets = ["bulkModal", "payEveryoneModal", "payeeCard", "progressText", "progressBar", "markPaidModal", "markPaidName", "markPaidForm", "addPersonModal", "addMissingCastModal"]
   static values = {
     payees: Array,
     currentIndex: { type: Number, default: 0 },
@@ -18,6 +18,40 @@ export default class extends Controller {
     if (event) event.preventDefault()
     this.bulkModalTarget.classList.add("hidden")
     document.body.classList.remove("overflow-hidden")
+  }
+
+  // Add Person Modal
+  showAddPersonModal(event) {
+    event.preventDefault()
+    if (this.hasAddPersonModalTarget) {
+      this.addPersonModalTarget.classList.remove("hidden")
+      document.body.classList.add("overflow-hidden")
+    }
+  }
+
+  hideAddPersonModal(event) {
+    if (event) event.preventDefault()
+    if (this.hasAddPersonModalTarget) {
+      this.addPersonModalTarget.classList.add("hidden")
+      document.body.classList.remove("overflow-hidden")
+    }
+  }
+
+  // Add Missing Cast Modal
+  showAddMissingCastModal(event) {
+    event.preventDefault()
+    if (this.hasAddMissingCastModalTarget) {
+      this.addMissingCastModalTarget.classList.remove("hidden")
+      document.body.classList.add("overflow-hidden")
+    }
+  }
+
+  hideAddMissingCastModal(event) {
+    if (event) event.preventDefault()
+    if (this.hasAddMissingCastModalTarget) {
+      this.addMissingCastModalTarget.classList.add("hidden")
+      document.body.classList.remove("overflow-hidden")
+    }
   }
 
   // Mark individual as paid modal
@@ -182,6 +216,12 @@ export default class extends Controller {
       if (this.hasMarkPaidModalTarget && !this.markPaidModalTarget.classList.contains("hidden")) {
         this.hideMarkPaidModal()
       }
+      if (this.hasAddPersonModalTarget && !this.addPersonModalTarget.classList.contains("hidden")) {
+        this.hideAddPersonModal()
+      }
+      if (this.hasAddMissingCastModalTarget && !this.addMissingCastModalTarget.classList.contains("hidden")) {
+        this.hideAddMissingCastModal()
+      }
     }
   }
 
@@ -195,6 +235,12 @@ export default class extends Controller {
     }
     if (this.hasMarkPaidModalTarget && event.target === this.markPaidModalTarget) {
       this.hideMarkPaidModal()
+    }
+    if (this.hasAddPersonModalTarget && event.target === this.addPersonModalTarget) {
+      this.hideAddPersonModal()
+    }
+    if (this.hasAddMissingCastModalTarget && event.target === this.addMissingCastModalTarget) {
+      this.hideAddMissingCastModal()
     }
   }
 }

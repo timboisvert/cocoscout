@@ -1,19 +1,18 @@
 /*
  * Trix editor styles - customized for CocoScout
- * Pink-themed rich text editor with clean modern styling
+ * Clean modern styling for rich text editor
 */
 
-/* Editor wrapper - adds the pink gradient border effect */
+/* Editor wrapper */
 trix-editor {
-  border: 2px solid #f9a8d4;
-  /* pink-300 */
-  border-radius: 0.75rem;
+  border: 1px solid #d1d5db;
+  /* gray-300 */
+  border-radius: 0.5rem;
   margin: 0;
   padding: 0.875rem 1rem;
   min-height: 6em;
   outline: none;
-  background: linear-gradient(to bottom, #fff 0%, #fdf2f8 100%);
-  /* white to pink-50 */
+  background: white;
   color: #374151;
   /* gray-700 */
   font-size: 0.875rem;
@@ -24,7 +23,7 @@ trix-editor {
 trix-editor:focus {
   border-color: #ec4899;
   /* pink-500 */
-  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15), 0 4px 6px -1px rgba(236, 72, 153, 0.1);
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.15);
   background: white;
 }
 
@@ -98,17 +97,17 @@ trix-editor pre {
 /* Toolbar styling */
 trix-toolbar {
   padding: 0.5rem;
-  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
-  /* pink-50 to pink-100 */
-  border: 2px solid #f9a8d4;
-  /* pink-300 */
+  background: #f9fafb;
+  /* gray-50 */
+  border: 1px solid #d1d5db;
+  /* gray-300 */
   border-bottom: none;
-  border-radius: 0.75rem 0.75rem 0 0;
-  margin-bottom: -2px;
+  border-radius: 0.5rem 0.5rem 0 0;
+  margin-bottom: -1px;
 }
 
 trix-toolbar+trix-editor {
-  border-radius: 0 0 0.75rem 0.75rem;
+  border-radius: 0 0 0.5rem 0.5rem;
 }
 
 trix-toolbar * {
@@ -126,9 +125,9 @@ trix-toolbar .trix-button-row {
 trix-toolbar .trix-button-group {
   display: flex;
   margin-bottom: 0;
-  border: 1px solid #fbcfe8;
-  /* pink-200 */
-  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  /* gray-200 */
+  border-radius: 0.375rem;
   background: white;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);

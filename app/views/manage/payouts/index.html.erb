@@ -1,62 +1,36 @@
 <% content_for :title, "Money - #{@production.name}" %>
 
-<div class="w-full mb-10">
+<%
+  money_description = <<~HTML
+    <p>
+      This is your production's financial hub — the central place to track revenue, manage payouts,
+      and understand your show economics.
+    </p>
+    <p>
+      Use <strong>Financials</strong> to enter and track revenue data for each show.
+      Use <strong>Payouts</strong> to calculate and distribute payments to your cast and crew.
+    </p>
+  HTML
+
+  money_actions = [
+    { icon: "chart-bar", text: "Financials", description: "Track revenue and costs for each show", path: manage_production_money_financials_path(@production) },
+    { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_production_money_payouts_path(@production) }
+  ]
+%>
+
+<div class="w-full mb-10" data-controller="money-filter">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Money",
-    links: []
-  } %>
 
-  <%# Profitability Summary %>
-  <%= render partial: "manage/payouts/profitability_summary", locals: {
-    summary: @financial_summary,
-    selected_period: @selected_period,
-    production: @production
-  } %>
-
-  <%# Payout Stats Cards %>
-  <div class="mb-8 pt-6 border-t border-gray-200">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4">Payouts</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Awaiting Calculation</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= @needs_calculation_count %> shows</div>
-        <div class="text-xs text-gray-500">need financial data or calculation</div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_awaiting_payout) %></div>
-        <div class="text-xs text-gray-500"><%= @awaiting_payout_count %> shows · <%= @awaiting_payout_people_count %> people</div>
-      </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="text-sm text-gray-500 mb-1">Paid Out</div>
-        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_paid) %></div>
-        <div class="text-xs text-gray-500"><%= @paid_shows_count %> shows · <%= @paid_people_count %> people</div>
-      </div>
-    </div>
-  </div>
+  <%= render "shared/module_header",
+    title: "Money",
+    description: money_description,
+    actions: money_actions
+  %>
 
   <%# Shows & Events List with Filters %>
-  <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-gray-900">Shows & Events</h2>
-      <%# Toggle for hiding non-revenue events %>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <span class="text-sm text-gray-600">Hide non-revenue events</span>
-        <button type="button"
-                data-money-filter-target="toggle"
-                data-action="click->money-filter#toggle"
-                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-600 focus:ring-offset-2 bg-pink-600"
-                role="switch"
-                aria-checked="true">
-          <span data-toggle-dot class="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
-        </button>
-      </label>
-    </div>
-
-    <%# Filter Bar %>
-    <%= render "shared/filters/filter_bar", filter_groups: [
+  <div class="border-t border-gray-200 pt-4 mt-2" data-controller="money-filter">
+    <%# Filter Bar with toggle %>
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
       {
         label: "Status",
         filters: [
@@ -66,13 +40,22 @@
           { text: "Awaiting Payout", path: manage_production_money_index_path(@production, filter: "awaiting_payout", period: @selected_period), active: @filter == "awaiting_payout" },
           { text: "Paid", path: manage_production_money_index_path(@production, filter: "paid", period: @selected_period), active: @filter == "paid" }
         ]
+      },
+      { separator: true },
+      {
+        partial: "shared/filters/toggle_filter",
+        locals: {
+          label: "Hide Non-revenue Events",
+          active: @hide_non_revenue,
+          toggle_action: "click->money-filter#toggle"
+        }
       }
     ] %>
 
     <% if @shows.any? %>
       <div class="space-y-2">
         <% @shows.each do |show| %>
-          <%= render partial: "manage/payouts/money_show_row", locals: { show: show, production: @production, hide_non_revenue: true } %>
+          <%= render partial: "manage/payouts/money_show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
         <% end %>
       </div>
     <% else %>

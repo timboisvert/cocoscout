@@ -58,7 +58,7 @@ else
 end
 
 # Container classes based on bare parameter
-container_classes = bare ? "" : "bg-white rounded border border-gray-200 p-3 mb-3"
+container_classes = bare ? "bg-white rounded border border-gray-200 p-3 mb-4" : "bg-white rounded border border-gray-200 p-3 mb-3"
 %>
 
 <div <%= "data-controller=\"#{data_controller_value}\"".html_safe if data_controller_value %> class="<%= bare ? '' : 'mb-4' %>">

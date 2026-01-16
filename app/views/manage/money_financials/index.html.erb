@@ -1,0 +1,67 @@
+<% content_for :title, "Financials - #{@production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_production_money_index_path(@production)]
+    ],
+    text: "Financials",
+    links: []
+  } %>
+
+  <%# Profitability Summary %>
+  <%= render partial: "manage/payouts/profitability_summary", locals: {
+    summary: @financial_summary,
+    selected_period: @selected_period,
+    production: @production,
+    period_path: manage_production_money_financials_path(@production)
+  } %>
+
+  <%# Shows List %>
+  <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
+    <%# Filter Bar with toggle %>
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      {
+        label: "Status",
+        filters: [
+          { text: "All", path: manage_production_money_financials_path(@production, filter: "all", period: @selected_period), active: @filter == "all" },
+          { text: "Complete", path: manage_production_money_financials_path(@production, filter: "complete", period: @selected_period), active: @filter == "complete" },
+          { text: "Pending", path: manage_production_money_financials_path(@production, filter: "pending", period: @selected_period), active: @filter == "pending" }
+        ]
+      },
+      { separator: true },
+      {
+        partial: "shared/filters/toggle_filter",
+        locals: {
+          label: "Hide Non-revenue Events",
+          active: @hide_non_revenue,
+          toggle_action: "click->money-filter#toggle"
+        }
+      }
+    ] %>
+
+    <% if @shows.any? %>
+      <div class="space-y-2">
+        <% @shows.each do |show| %>
+          <%= render partial: "manage/money_financials/show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">
+          <% if @filter == "all" %>
+            No past shows yet. Shows will appear here after they occur.
+          <% elsif @filter == "complete" %>
+            No shows with complete financial data.
+          <% elsif @filter == "pending" %>
+            All revenue events have financial data entered.
+          <% else %>
+            No shows with this status.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>

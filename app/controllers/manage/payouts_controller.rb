@@ -8,10 +8,13 @@ module Manage
       @payout_schemes = @production.payout_schemes.default_first
       @default_scheme = @payout_schemes.find(&:is_default)
 
-      # Financial summary for selected period
-      @selected_period = (params[:period].presence || "all_time").to_sym
-      @financial_summary = FinancialSummaryService.new(@production)
-                                                   .summary_for_period(@selected_period)
+      # Handle hide_non_revenue toggle with cookie persistence
+      if params[:hide_non_revenue].present?
+        @hide_non_revenue = params[:hide_non_revenue] == "true"
+        cookies[:money_hide_non_revenue] = { value: @hide_non_revenue.to_s, expires: 1.year.from_now }
+      else
+        @hide_non_revenue = cookies[:money_hide_non_revenue] != "false"
+      end
 
       # Get shows with payout status - include all past events (including canceled)
       @shows = @production.shows
@@ -20,34 +23,15 @@ module Manage
                           .includes(:show_financials, :show_payout, :location)
                           .limit(50)
 
+      # Filter out non-revenue events if toggle is on
+      if @hide_non_revenue
+        @shows = @shows.where(event_type: EventTypes.revenue_event_types)
+      end
+
       # Apply filter if provided
       @filter = params[:filter].presence || "all"
+      @selected_period = (params[:period].presence || "all_time").to_sym
       @shows = apply_filter(@shows, @filter)
-
-      # Summary stats - new terminology
-      # Awaiting calculation: shows that need data or haven't been calculated
-      revenue_types = EventTypes.revenue_event_types
-      revenue_shows = @production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
-      @needs_calculation_count = revenue_shows.left_joins(:show_payout)
-                                              .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
-                                              .count
-
-      # Awaiting payout: calculated but not fully paid
-      awaiting_payouts = @production.show_payouts.where(status: "awaiting_payout")
-                                                  .where.not(calculated_at: nil)
-      @awaiting_payout_count = awaiting_payouts.count
-      @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
-      @awaiting_payout_people_count = ShowPayoutLineItem.where(show_payout: awaiting_payouts)
-                                                         .not_already_paid
-                                                         .count
-
-      # Paid out
-      paid_payouts = @production.show_payouts.paid
-      @paid_shows_count = paid_payouts.count
-      @total_paid = paid_payouts.sum(:total_payout) || 0
-      @paid_people_count = ShowPayoutLineItem.where(show_payout: paid_payouts)
-                                              .already_paid
-                                              .count
     end
 
     private

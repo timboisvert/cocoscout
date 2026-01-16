@@ -84,8 +84,25 @@
               </div>
             <% end %>
           </div>
+        <% elsif actions.length == 2 %>
+          <%# 2 buttons: side by side %>
+          <div class="grid grid-cols-2 gap-2">
+            <% actions.each do |action| %>
+              <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200" do %>
+                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                  <%= render "shared/module_header_icon", icon: action[:icon] %>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900"><%= action[:text] %></div>
+                  <% if action[:description].present? %>
+                    <div class="text-xs text-gray-500"><%= action[:description] %></div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
         <% else %>
-          <%# 1-2 buttons or 5+ buttons: vertical stack %>
+          <%# 1 button or 5+ buttons: vertical stack %>
           <div class="space-y-2">
             <% actions.each do |action| %>
               <%= link_to action[:path], class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200" do %>

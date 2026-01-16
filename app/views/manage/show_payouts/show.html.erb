@@ -23,15 +23,28 @@
     payout_label = "Awaiting Calculation"
     payout_class = "bg-pink-100 text-pink-700"
   end
+
+  # Check for missing cast (people in show who aren't in payout)
+  current_cast_ids = @show.show_person_role_assignments.pluck(:assignable_id)
+  payout_payee_ids = @show_payout.line_items.where(payee_type: "Person").pluck(:payee_id)
+  missing_cast_count = (current_cast_ids - payout_payee_ids).size
+  has_missing_cast = is_calculated && missing_cast_count > 0
+
+  # Get list of people in production for add person dropdown
+  production_people = @production.effective_talent_pool&.people&.order(:name) || []
+
+  # Page title: secondary_name if present, otherwise "[event type]: [full date] at [time]"
+  page_title = @show.secondary_name.presence || "#{@show.event_type.titleize}: #{@show.date_and_time.strftime('%B %-d, %Y')} at #{@show.date_and_time.strftime('%-I:%M %p')}"
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)]
+      ["Money", manage_production_money_index_path(@production)],
+      ["Payouts", manage_production_money_payouts_path(@production)]
     ],
-    text: "Payouts",
+    text: page_title,
     links: []
   } %>
 
@@ -61,6 +74,35 @@
 
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
+
+      <% if has_missing_cast %>
+        <!-- Missing Cast Alert -->
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm text-amber-800 font-medium">
+                <%= missing_cast_count %> cast member<%= missing_cast_count == 1 ? " is" : "s are" %> not in this payout
+              </p>
+              <p class="text-sm text-amber-700 mt-1">
+                The show's cast has changed since this payout was calculated. You can add the missing people now.
+              </p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button"
+                        data-action="click->payment-actions#showAddMissingCastModal"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                  </svg>
+                  Add Missing Cast
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
 
       <% if @show.canceled? && !@show_payout.paid? %>
         <!-- Canceled Show Notice -->
@@ -378,7 +420,6 @@
                     <option value="venmo">Venmo</option>
                     <option value="cash">Cash</option>
                     <option value="zelle">Zelle</option>
-                    <option value="paypal">PayPal</option>
                     <option value="check">Check</option>
                     <option value="historical">Historical (pre-CocoScout)</option>
                     <option value="other">Other</option>
@@ -635,6 +676,43 @@
                 <div class="font-medium text-pink-600">All Paid</div>
               </div>
             </div>
+
+            <%# Reopen and Add Person options for paid payouts %>
+            <%= form_with url: manage_production_reopen_money_show_payout_path(@production, @show), method: :post, local: true, class: "block" do %>
+              <button type="submit"
+                      data-turbo-confirm="Reopen this payout? You'll be able to add more people or make changes."
+                      class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="font-medium text-gray-900">Reopen Payout</div>
+                  <div class="text-xs text-gray-500">Add more people or make changes</div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            <% end %>
+
+            <button type="button"
+                    data-action="click->payment-actions#showAddPersonModal"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Add Person</div>
+                <div class="text-xs text-gray-500">Add someone who was missed</div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
           <% elsif is_calculated %>
             <%# Awaiting Payout - has been calculated %>
             <% unpaid_items = line_items.reject(&:paid?) %>
@@ -693,6 +771,23 @@
                 </svg>
               </button>
             <% end %>
+
+            <button type="button"
+                    data-action="click->payment-actions#showAddPersonModal"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900">Add Person</div>
+                <div class="text-xs text-gray-500">Add someone not in the calculation</div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
           <% elsif has_financials %>
             <%# Ready to calculate %>
             <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true, class: "block" do %>
@@ -733,6 +828,73 @@
       </div>
 
     </div>
+
+    <!-- Add Person Modal (always available) -->
+    <div data-payment-actions-target="addPersonModal"
+         class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+         data-action="click->payment-actions#closeOnBackdrop">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Person to Payout</h3>
+        <p class="text-sm text-gray-600 mb-4">Add someone who was missed from the original calculation. This will <%= @show_payout.paid? ? "reopen the payout" : "add them to the payout" %>.</p>
+        <%= form_with url: manage_production_add_line_item_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Person</label>
+            <select name="payee_id" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              <option value="">Select a person...</option>
+              <% production_people.each do |person| %>
+                <% unless payout_payee_ids.include?(person.id) %>
+                  <option value="<%= person.id %>"><%= person.name %></option>
+                <% end %>
+              <% end %>
+            </select>
+            <input type="hidden" name="payee_type" value="Person">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input type="number" name="amount" step="0.01" min="0" value="0" required
+                     class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Enter the payout amount for this person</p>
+          </div>
+          <div class="flex items-center justify-end gap-3">
+            <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->payment-actions#hideAddPersonModal" } %>
+            <%= render "shared/button", text: "Add to Payout", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Add Missing Cast Modal (always available) -->
+    <% if missing_cast_count > 0 %>
+      <div data-payment-actions-target="addMissingCastModal"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+           data-action="click->payment-actions#closeOnBackdrop">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Missing Cast</h3>
+          <p class="text-sm text-gray-600 mb-4">
+            <%= missing_cast_count %> cast member<%= missing_cast_count == 1 ? " is" : "s are" %> in this show's cast but not in the payout.
+            <% if @show_payout.paid? %>This will reopen the payout.<% end %>
+          </p>
+          <%= form_with url: manage_production_add_missing_cast_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Amount per person</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input type="number" name="amount" step="0.01" min="0" value="0" required
+                       class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Enter the payout amount for each missing person</p>
+            </div>
+            <div class="flex items-center justify-end gap-3">
+              <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->payment-actions#hideAddMissingCastModal" } %>
+              <%= render "shared/button", text: "Add #{missing_cast_count} #{missing_cast_count == 1 ? 'Person' : 'People'}", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
   </div>
 </div>

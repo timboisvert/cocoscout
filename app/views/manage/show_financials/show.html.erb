@@ -1,4 +1,4 @@
-<% content_for :title, "Financial Data - #{show_display_name(@show)}" %>
+<% content_for :title, "#{@show.secondary_name.presence || @show.event_type.titleize} - #{show_display_name(@show)}" %>
 
 <%
   has_data = @show_financials.has_data?
@@ -24,15 +24,19 @@
 
   # Net Income (same as Gross Profit until we add operating expenses)
   net_income = gross_profit
+
+  # Page title: secondary_name if present, otherwise "[event type]: [full date] at [time]"
+  page_title = @show.secondary_name.presence || "#{@show.event_type.titleize}: #{@show.date_and_time.strftime('%B %-d, %Y')} at #{@show.date_and_time.strftime('%-I:%M %p')}"
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)]
+      ["Money", manage_production_money_index_path(@production)],
+      ["Financials", manage_production_money_financials_path(@production)]
     ],
-    text: "Financials",
+    text: page_title,
     links: []
   } %>
 

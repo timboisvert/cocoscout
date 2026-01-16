@@ -9,10 +9,10 @@ class ShowPayoutLineItem < ApplicationRecord
   has_one :production, through: :show_payout
 
   # Payment methods for tracking how payments were made
-  PAYMENT_METHODS = %w[venmo cash zelle check paypal other historical n/a].freeze
+  PAYMENT_METHODS = %w[venmo cash zelle check other historical n/a].freeze
 
-  # Payout statuses for automated Venmo payouts via PayPal API
-  PAYOUT_STATUSES = %w[pending success failed unclaimed returned blocked].freeze
+  # Payout statuses for tracking payment state
+  PAYOUT_STATUSES = %w[pending success failed].freeze
 
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }
@@ -66,30 +66,9 @@ class ShowPayoutLineItem < ApplicationRecord
       payment_notes: nil,
       paid_at: nil,
       payout_reference_id: nil,
-      paypal_batch_id: nil,
       payout_status: nil,
       payout_error: nil
     )
-  end
-
-  # Mark as paid via automated Venmo payout
-  def mark_venmo_payout!(batch_id:, item_id:, status: "pending")
-    update!(
-      payment_method: "venmo",
-      paypal_batch_id: batch_id,
-      payout_reference_id: item_id,
-      payout_status: status
-    )
-  end
-
-  # Update payout status from PayPal webhook/polling
-  def update_payout_status!(status:, error: nil)
-    attrs = {
-      payout_status: status,
-      payout_error: error
-    }
-    attrs[:paid_at] = Time.current if status == "success"
-    update!(attrs)
   end
 
   def paid?
@@ -127,7 +106,6 @@ class ShowPayoutLineItem < ApplicationRecord
     when "cash" then "Cash"
     when "zelle" then "Zelle"
     when "check" then "Check"
-    when "paypal" then "PayPal"
     when "historical" then "Historical"
     when "n/a" then "N/A"
     when "other" then "Other"

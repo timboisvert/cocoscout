@@ -611,6 +611,9 @@ Rails.application.routes.draw do
 
       # Money / Payouts section
       get "money", to: "payouts#index", as: "money_index"
+      get "money/financials", to: "money_financials#index", as: "money_financials"
+      get "money/payouts", to: "money_payouts#index", as: "money_payouts"
+      post "money/payouts/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"
 
       # Show financials - the main financial data view for a show
       get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
@@ -649,6 +652,10 @@ Rails.application.routes.draw do
       post "money/shows/:id/payouts/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
       post "money/shows/:id/payouts/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
       post "money/shows/:id/payouts/close_as_non_paying", to: "show_payouts#close_as_non_paying", as: "close_as_non_paying_money_show_payout"
+      post "money/shows/:id/payouts/reopen", to: "show_payouts#reopen", as: "reopen_money_show_payout"
+      post "money/shows/:id/payouts/add_line_item", to: "show_payouts#add_line_item", as: "add_line_item_money_show_payout"
+      delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
+      post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
 
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)

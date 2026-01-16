@@ -5,13 +5,14 @@ module Manage
     before_action :set_production
     before_action :set_show_payout, only: [
       :show, :update, :edit_financials, :update_financials,
-      :calculate, :mark_paid,
+      :calculate, :mark_paid, :reopen,
       :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
       :change_scheme, :apply_scheme_change,
       :mark_line_item_paid, :unmark_line_item_paid,
       :mark_all_offline, :send_payment_reminders,
-      :close_as_non_paying
+      :close_as_non_paying,
+      :add_line_item, :remove_line_item, :add_missing_cast
     ]
 
     def show
@@ -270,6 +271,129 @@ module Manage
 
       redirect_to manage_production_money_index_path(@production),
                   notice: "#{view_context.show_display_name(@show)} closed as non-paying."
+    end
+
+    # Reopen a paid payout to add more people or make changes
+    def reopen
+      unless @show_payout.paid?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    alert: "This payout is not marked as paid."
+        return
+      end
+
+      @show_payout.update!(status: "awaiting_payout")
+      redirect_to manage_production_money_show_payout_path(@production, @show),
+                  notice: "Payout reopened. You can now add people or make changes."
+    end
+
+    # Add a line item for a specific person (manual addition)
+    def add_line_item
+      payee_type = params[:payee_type] || "Person"
+      payee_id = params[:payee_id]
+      amount = params[:amount].to_f
+
+      unless payee_id.present?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    alert: "Please select a person to add."
+        return
+      end
+
+      payee = payee_type == "Group" ? Group.find(payee_id) : Person.find(payee_id)
+
+      # Check if already in payout
+      if @show_payout.line_items.exists?(payee: payee)
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    alert: "#{payee.name} is already in this payout."
+        return
+      end
+
+      # If payout was paid, reopen it
+      was_paid = @show_payout.paid?
+      @show_payout.update!(status: "awaiting_payout") if was_paid
+
+      # Create the line item
+      @show_payout.line_items.create!(
+        payee: payee,
+        amount: amount,
+        calculation_details: {
+          formula: "Manual addition",
+          inputs: { manual: true },
+          breakdown: [ "Manually added: #{helpers.number_to_currency(amount)}" ]
+        }
+      )
+
+      @show_payout.recalculate_total!
+
+      notice = "Added #{payee.name} with payout of #{helpers.number_to_currency(amount)}."
+      notice += " Payout reopened." if was_paid
+
+      redirect_to manage_production_money_show_payout_path(@production, @show), notice: notice
+    end
+
+    # Remove a line item
+    def remove_line_item
+      line_item = @show_payout.line_items.find(params[:line_item_id])
+      name = line_item.payee_name
+
+      if line_item.paid?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    alert: "Cannot remove #{name} - they have already been paid. Unmark as paid first."
+        return
+      end
+
+      line_item.destroy!
+      @show_payout.recalculate_total!
+
+      redirect_to manage_production_money_show_payout_path(@production, @show),
+                  notice: "Removed #{name} from payout."
+    end
+
+    # Add any cast members who are in the show but not yet in the payout
+    def add_missing_cast
+      # Get current cast from assignments
+      assignments = @show.show_person_role_assignments.includes(:assignable)
+      current_cast = assignments.map(&:assignable).compact.uniq.select { |p| p.is_a?(Person) }
+
+      # Get people already in payout
+      existing_payees = @show_payout.line_items.where(payee_type: "Person").pluck(:payee_id)
+
+      # Find missing people
+      missing = current_cast.reject { |p| existing_payees.include?(p.id) }
+
+      if missing.empty?
+        redirect_to manage_production_money_show_payout_path(@production, @show),
+                    notice: "All cast members are already in the payout."
+        return
+      end
+
+      # Determine amount to pay - use the rules if available, otherwise $0
+      scheme = @show_payout.payout_scheme || @production.payout_schemes.find_by(is_default: true)
+      rules = @show_payout.override_rules.presence || scheme&.rules
+      amount = params[:amount]&.to_f || 0
+
+      # If payout was paid, reopen it
+      was_paid = @show_payout.paid?
+      @show_payout.update!(status: "awaiting_payout") if was_paid
+
+      # Add line items for missing cast
+      missing.each do |person|
+        @show_payout.line_items.create!(
+          payee: person,
+          amount: amount,
+          calculation_details: {
+            formula: "Added missing cast",
+            inputs: { manual: true, added_after_calculation: true },
+            breakdown: [ "Added as missing cast: #{helpers.number_to_currency(amount)}" ]
+          }
+        )
+      end
+
+      @show_payout.recalculate_total!
+
+      notice = "Added #{missing.count} missing cast member#{'s' if missing.count != 1}."
+      notice += " Payout reopened." if was_paid
+
+      redirect_to manage_production_money_show_payout_path(@production, @show), notice: notice
     end
 
     private

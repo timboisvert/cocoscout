@@ -47,6 +47,10 @@ export default class extends Controller {
         }
     }
 
+    stopPropagation(event) {
+        event.stopPropagation()
+    }
+
     generateQRCode() {
         const canvas = this.canvasTarget
         const url = this.urlValue

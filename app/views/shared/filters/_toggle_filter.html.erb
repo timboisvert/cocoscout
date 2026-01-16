@@ -1,0 +1,24 @@
+<%#
+  Toggle Filter Component
+  A compact toggle switch that matches the filter bar styling.
+
+  Parameters:
+    label: String - Label text for the toggle
+    active: Boolean - Whether the toggle is currently on
+    toggle_action: String - Stimulus action for the toggle (e.g., "click->money-filter#toggle")
+%>
+<div class="flex items-center gap-2 sm:ml-auto">
+  <button type="button"
+          data-money-filter-target="toggle"
+          data-action="<%= toggle_action %>"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer <%= active ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' %>"
+          role="switch"
+          aria-checked="<%= active %>">
+    <% if active %>
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    <% end %>
+    <%= label %>
+  </button>
+</div>

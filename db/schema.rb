@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_14_175205) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -916,7 +916,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_14_175205) do
     t.text "payout_error"
     t.string "payout_reference_id"
     t.string "payout_status"
-    t.string "paypal_batch_id"
     t.decimal "shares", precision: 10, scale: 2
     t.bigint "show_payout_id", null: false
     t.datetime "updated_at", null: false
@@ -925,7 +924,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_14_175205) do
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", unique: true, where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
-    t.index ["paypal_batch_id"], name: "index_show_payout_line_items_on_paypal_batch_id"
     t.index ["show_payout_id", "payee_type", "payee_id"], name: "idx_payout_line_items_unique_payee", unique: true
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
