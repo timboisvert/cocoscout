@@ -66,8 +66,8 @@ class User < ApplicationRecord
     if email_address.match?(/[\x00-\x1f\x7f<>"'`\\;|&$(){}\[\]]/)
       errors.add(:email_address, "contains invalid characters")
     end
-    # Reject emails that look like command injection attempts
-    return unless email_address.match?(/(bin|cat|etc|passwd|wget|curl|bash|sh|exec|eval)/i)
+    # Reject emails that look like command injection attempts (whole words only)
+    return unless email_address.match?(/\b(bin|cat|etc|passwd|wget|curl|bash|exec|eval)\b/i)
 
     errors.add(:email_address, "is not valid")
   end
