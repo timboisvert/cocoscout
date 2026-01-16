@@ -16,22 +16,29 @@ export default class extends Controller {
     }
 
     async refresh() {
-        // Use Turbo to refresh the page
+        // Save scroll positions before refresh
+        const scrollX = window.scrollX
+        const scrollY = window.scrollY
+        const gridScrollLeft = this.element.scrollLeft
+        const gridScrollTop = this.element.scrollTop
+
+        // Use Turbo to refresh the page, preserving scroll
         const currentUrl = window.location.href
-        try {
-            const response = await fetch(currentUrl, {
-                headers: {
-                    'Accept': 'text/html',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            if (response.ok) {
-                // Use Turbo to handle the response
-                Turbo.visit(currentUrl, { action: 'replace' })
+
+        // Listen for Turbo render to restore scroll position
+        const restoreScroll = () => {
+            window.scrollTo(scrollX, scrollY)
+            // Find the grid element again and restore its scroll
+            const grid = document.querySelector('[data-controller="availability-grid"]')
+            if (grid) {
+                grid.scrollLeft = gridScrollLeft
+                grid.scrollTop = gridScrollTop
             }
-        } catch (error) {
-            console.error('Failed to refresh grid:', error)
+            document.removeEventListener('turbo:render', restoreScroll)
         }
+        document.addEventListener('turbo:render', restoreScroll)
+
+        Turbo.visit(currentUrl, { action: 'replace' })
     }
 
     highlightColumn(event) {
