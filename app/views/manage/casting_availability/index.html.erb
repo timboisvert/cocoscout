@@ -1,0 +1,180 @@
+<% content_for :title, "Availability - #{@production.name}" %>
+
+<style>
+  .column-hover {
+    background-color: rgb(243 244 246) !important; /* bg-gray-100 */
+  }
+</style>
+
+<div class="w-full" data-controller="availability-modal">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_production_casting_path(@production)]
+    ],
+    text: "Availability",
+    links: [
+      { text: "Request Availability", path: manage_production_questionnaires_path(@production), icon: "clipboard" }
+    ]
+  } %>
+
+  <% if @cast_members.empty? %>
+    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
+      <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+      </svg>
+      <p class="text-gray-500 text-sm">No cast members found. Add people to your talent pool to see their availability.</p>
+      <%= link_to "Manage Talent Pool", "#{manage_production_casting_settings_path(@production)}#tab-2", class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+    </div>
+  <% elsif @shows.empty? %>
+    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
+      <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <p class="text-gray-500 text-sm">No shows scheduled yet. Create shows to track availability.</p>
+      <%= link_to "Create Show", new_manage_production_show_path(@production), class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+    </div>
+  <% else %>
+    <div class="mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-280px)] relative z-0" data-controller="availability-grid">
+      <table class="border-collapse" style="table-layout: fixed; min-width: max-content;">
+        <colgroup>
+          <col class="w-[180px] sm:w-[250px]">
+          <% @shows.each do |show| %>
+            <col class="w-[100px] sm:w-[150px]">
+          <% end %>
+        </colgroup>
+        <thead class="sticky top-0 z-30">
+          <tr>
+            <th class="sticky left-0 bg-white z-20 border-b-2 border-r-2 border-gray-300 px-3 sm:px-4 py-3 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <div class="font-semibold text-sm">Cast Member</div>
+            </th>
+            <% @shows.each_with_index do |show, col_index| %>
+              <th class="border-b-2 border-gray-300 px-2 py-2 sm:py-3 text-center bg-white cursor-pointer hover:bg-gray-50 align-top" data-col="<%= col_index %>">
+                <button type="button"
+                        class="block w-full no-underline cursor-pointer"
+                        data-action="click->availability-modal#openShowModal"
+                        data-show-id="<%= show.id %>"
+                        data-modal-url="<%= show_modal_manage_production_casting_availability_path(@production, show) %>">
+                  <div class="text-[10px] sm:text-xs font-medium text-pink-600 uppercase tracking-wide">
+                    <%= show.date_and_time.strftime("%a, %b %-d") %>
+                  </div>
+                  <div class="text-xs sm:text-sm font-semibold text-gray-900 mt-0.5">
+                    <%= show.date_and_time.strftime("%-I:%M %p") %>
+                  </div>
+                  <% if show.secondary_name.present? %>
+                    <div class="hidden sm:block text-xs text-gray-500 truncate mt-0.5 max-w-[130px] mx-auto" title="<%= show.secondary_name %>">
+                      <%= show.secondary_name %>
+                    </div>
+                  <% end %>
+                </button>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @cast_members.each do |member| %>
+            <tr class="border-b border-gray-200 group" data-availability-grid-target="row">
+              <td class="sticky left-0 bg-white group-hover:bg-gray-100 z-10 border-r-2 border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] p-0">
+                <button type="button"
+                        class="block px-3 sm:px-4 py-2 sm:py-3 w-full h-full text-left cursor-pointer"
+                        data-action="click->availability-modal#openMemberModal"
+                        data-member-type="<%= member.class.name %>"
+                        data-member-id="<%= member.id %>"
+                        data-member-name="<%= member.name %>">
+                  <div class="flex items-center space-x-2 sm:space-x-3">
+                    <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <%= image_tag headshot_variant, alt: member.name, class: "w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0" %>
+                    <% else %>
+                      <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-semibold text-xs sm:text-sm flex-shrink-0">
+                        <%= member.initials %>
+                      </div>
+                    <% end %>
+                    <div class="min-w-0">
+                      <div class="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                        <%= member.name %>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </td>
+              <% @shows.each_with_index do |show, col_index| %>
+                <%
+                  availability_key = "#{member.class.name}_#{member.id}"
+                  availability = @availabilities[availability_key][show.id]
+                %>
+                <td class="px-2 sm:px-4 py-2 sm:py-3 text-center bg-white group-hover:bg-gray-100"
+                    data-col="<%= col_index %>"
+                    data-availability-grid-target="cell"
+                    data-action="mouseenter->availability-grid#highlightColumn mouseleave->availability-grid#unhighlightColumn">
+                  <button type="button"
+                          class="block w-full no-underline text-gray-900 hover:text-gray-900 cursor-pointer"
+                          data-action="click->availability-modal#openShowModal"
+                          data-show-id="<%= show.id %>"
+                          data-modal-url="<%= show_modal_manage_production_casting_availability_path(@production, show) %>">
+                    <% if availability %>
+                      <% if availability.available? %>
+                        <span class="text-xs sm:text-sm font-medium text-pink-500">
+                          <span class="hidden sm:inline">Available</span>
+                          <span class="sm:hidden">✓</span>
+                        </span>
+                      <% elsif availability.unavailable? %>
+                        <span class="text-xs sm:text-sm font-medium text-gray-900">
+                          <span class="hidden sm:inline">Unavailable</span>
+                          <span class="sm:hidden">✗</span>
+                        </span>
+                      <% else %>
+                        <span class="text-gray-400 text-xs sm:text-sm">-</span>
+                      <% end %>
+                    <% else %>
+                      <span class="text-gray-400 text-xs sm:text-sm">-</span>
+                    <% end %>
+                  </button>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <%# Modal container for show availability %>
+  <div id="availability-modal-container"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50"
+       data-availability-modal-target="modal"
+       data-action="click->availability-modal#closeModal keydown.esc@window->availability-modal#closeModal">
+    <div class="min-h-screen flex items-start justify-center py-8 px-4">
+      <div id="availability-modal-content"
+           class="bg-white w-full max-w-2xl rounded-lg shadow-xl"
+           data-availability-modal-target="content"
+           data-action="click->availability-modal#stopPropagation">
+        <%# Content loaded dynamically %>
+        <div class="p-8 text-center">
+          <div class="animate-spin w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Modal container for member availability (person/group) %>
+  <div id="member-availability-modal-container"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50"
+       data-availability-modal-target="memberModal"
+       data-action="click->availability-modal#closeMemberModal keydown.esc@window->availability-modal#closeMemberModal">
+    <div class="min-h-screen flex items-start justify-center py-8 px-4">
+      <div id="member-availability-modal-content"
+           class="bg-white w-full max-w-2xl rounded-lg shadow-xl"
+           data-availability-modal-target="memberContent"
+           data-action="click->availability-modal#stopPropagation">
+        <%# Content loaded dynamically %>
+        <div class="p-8 text-center">
+          <div class="animate-spin w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

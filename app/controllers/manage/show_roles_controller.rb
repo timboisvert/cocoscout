@@ -27,6 +27,9 @@ module Manage
       max_position = @show.custom_roles.maximum(:position) || -1
       @role.position = max_position + 1
 
+      # Set pending eligible members for validation
+      @role.pending_eligible_member_ids = params.dig(:show_role, :eligible_member_ids)
+
       ActiveRecord::Base.transaction do
         if @role.save
           update_eligible_members(@role)
@@ -44,6 +47,9 @@ module Manage
 
     # PATCH /manage/productions/:production_id/shows/:show_id/show_roles/:id
     def update
+      # Set pending eligible members for validation
+      @role.pending_eligible_member_ids = params.dig(:show_role, :eligible_member_ids)
+
       ActiveRecord::Base.transaction do
         if @role.update(role_params)
           update_eligible_members(@role)
@@ -180,9 +186,28 @@ module Manage
 
     # POST /manage/productions/:production_id/shows/:show_id/show_roles/clear_assignments
     # Deletes all assignments for this show (called when confirming toggle)
+    # Also updates use_custom_roles based on switching_to parameter
     def clear_assignments
       @show.show_person_role_assignments.destroy_all
-      render json: { success: true }
+
+      # Update use_custom_roles based on switching_to parameter
+      switching_to = params[:switching_to]
+      if switching_to == "custom"
+        @show.update!(use_custom_roles: true)
+      elsif switching_to == "production"
+        @show.update!(use_custom_roles: false)
+      end
+
+      render json: { success: true, use_custom_roles: @show.use_custom_roles? }
+    end
+
+    # POST /manage/productions/:production_id/shows/:show_id/show_roles/toggle_custom_roles
+    # Toggles use_custom_roles flag on the show (called when there are no assignments to clear)
+    def toggle_custom_roles
+      enable = params[:enable] == true || params[:enable] == "true"
+      @show.update!(use_custom_roles: enable)
+
+      render json: { success: true, use_custom_roles: @show.use_custom_roles? }
     end
 
     private

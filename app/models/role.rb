@@ -132,15 +132,18 @@ class Role < ApplicationRecord
   def restricted_role_has_eligible_members
     return unless restricted?
 
-    # Check pending_eligible_member_ids if set (for new roles or updates)
-    if pending_eligible_member_ids.present?
-      if pending_eligible_member_ids.reject(&:blank?).empty?
+    # Check if pending_eligible_member_ids was explicitly set (even to nil or empty array)
+    if instance_variable_defined?(:@pending_eligible_member_ids)
+      non_blank_ids = Array(pending_eligible_member_ids).reject(&:blank?)
+      if non_blank_ids.empty?
         errors.add(:base, "Restricted roles must have at least one eligible person or group")
       end
-    elsif persisted? && role_eligibilities.empty?
+    elsif persisted?
       # For existing roles without pending updates, check existing eligibilities
-      errors.add(:base, "Restricted roles must have at least one eligible person or group")
-    elsif new_record?
+      if role_eligibilities.empty?
+        errors.add(:base, "Restricted roles must have at least one eligible person or group")
+      end
+    else
       # New restricted role without pending members
       errors.add(:base, "Restricted roles must have at least one eligible person or group")
     end

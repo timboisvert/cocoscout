@@ -1,0 +1,192 @@
+<%#
+  Casting Settings Modal - All casting configuration options for a show
+  Contains: Enable casting, Casting source override, Custom roles
+
+  Parameters:
+    - show: The Show object
+    - production: The Production object
+%>
+<div data-casting-settings-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" data-action="click->casting-settings-modal#stopPropagation">
+    <%# Header %>
+    <div class="bg-pink-50 border-b border-pink-100 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <h2 class="text-lg font-semibold text-gray-900">Casting Settings</h2>
+      <button type="button" data-action="click->casting-settings-modal#closeModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%# Content - scrollable %>
+    <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <%# Section 1: Enable Casting %>
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-700">Enable casting for this event</p>
+          <p class="text-xs text-gray-500 mt-1">
+            When enabled, you can assign cast members to roles for this event.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer ml-4">
+          <input type="checkbox"
+                 name="show[casting_enabled]"
+                 <%= 'checked' if show.casting_enabled? %>
+                 class="sr-only peer"
+                 data-casting-settings-modal-target="castingEnabledCheckbox"
+                 data-action="change->casting-settings-modal#updateCastingEnabled">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <%# Section 2: Casting Source Override %>
+      <div class="pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Override casting source</p>
+            <p class="text-xs text-gray-500 mt-1">
+              By default, this event uses the production's casting source (<strong><%= production.casting_source.titleize %></strong>).
+              Enable to use a different source for this event only.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="checkbox"
+                   <%= "checked" if show.uses_custom_casting_source? %>
+                   class="sr-only peer"
+                   data-casting-settings-modal-target="castingSourceOverrideCheckbox"
+                   data-action="change->casting-settings-modal#toggleCastingSourceOverride">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <%# Casting Source Dropdown %>
+        <div data-casting-settings-modal-target="castingSourceOptions" class="<%= show.uses_custom_casting_source? ? '' : 'hidden' %> ml-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="w-full">
+            <label class="text-sm font-medium text-gray-700">Casting Source for This Event</label>
+            <select name="show[casting_source]"
+                    data-casting-settings-modal-target="castingSourceSelect"
+                    data-action="change->casting-settings-modal#updateCastingSource"
+                    class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full">
+              <option value="talent_pool" <%= 'selected' if show.casting_source == 'talent_pool' %>>Talent Pool</option>
+              <option value="manual" <%= 'selected' if show.casting_source == 'manual' %>>Manual Entry</option>
+              <option value="hybrid" <%= 'selected' if show.casting_source == 'hybrid' %>>All Sources (Hybrid)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <%# Section 3: Custom Roles %>
+      <div class="pt-6 border-t border-gray-200"
+           data-controller="show-roles-modal"
+           data-show-roles-modal-show-id-value="<%= show.id %>"
+           data-show-roles-modal-production-id-value="<%= production.id %>"
+           data-show-roles-modal-roles-url-value="<%= manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-copy-url-value="<%= copy_from_production_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-reorder-url-value="<%= reorder_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-talent-pool-url-value="<%= talent_pool_members_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-check-assignments-url-value="<%= check_assignments_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-clear-assignments-url-value="<%= clear_assignments_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-toggle-url-value="<%= toggle_custom_roles_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-using-custom-roles-value="<%= show.use_custom_roles? %>">
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Use custom roles for this event</p>
+            <p class="text-xs text-gray-500 mt-1">
+              When enabled, this event will use its own set of roles instead of the production's default roles.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="checkbox"
+                   <%= 'checked' if show.use_custom_roles? %>
+                   class="sr-only peer"
+                   data-show-roles-modal-target="customRolesCheckbox"
+                   data-action="change->show-roles-modal#toggleCustomRoles">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <%# Custom Roles Content %>
+        <div data-show-roles-modal-target="customRolesContent" class="<%= show.use_custom_roles? ? '' : 'hidden' %> mt-4">
+          <div class="mb-3">
+            <p class="text-sm font-medium text-gray-700">Custom Roles for This Event</p>
+          </div>
+
+          <%# Roles List %>
+          <div data-show-roles-modal-target="inlineRolesList" class="mb-4">
+            <% if show.custom_roles.any? %>
+              <div class="flex flex-wrap gap-2">
+                <% show.custom_roles.each do |role| %>
+                  <span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">
+                    <%= role.name %>
+                    <% if role.quantity > 1 %>
+                      <span class="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600"><%= role.quantity %></span>
+                    <% end %>
+                    <% if role.restricted? %>
+                      <svg class="ml-1 w-3.5 h-3.5 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                    <% end %>
+                  </span>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-500 italic">No custom roles defined yet.</p>
+            <% end %>
+          </div>
+
+          <%# Manage Button %>
+          <div data-show-roles-modal-target="manageButton">
+            <%= render "shared/button",
+              text: "Manage Custom Roles",
+              size: "small",
+              type: :button,
+              data: { action: "show-roles-modal#openModal" } %>
+          </div>
+        </div>
+
+        <%# Show Roles Modal (nested) %>
+        <%= render "manage/show_roles/modal", show: show, production: production %>
+
+        <%# Toggle Confirmation Modal %>
+        <div data-show-roles-modal-target="toggleConfirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center">
+          <div class="fixed inset-0 bg-black/50" data-action="click->show-roles-modal#cancelToggle"></div>
+          <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Clear Existing Assignments?</h3>
+            <p data-show-roles-modal-target="toggleConfirmMessage" class="text-sm text-gray-600 mb-4">
+              Switching role modes will clear existing role assignments. This cannot be undone.
+            </p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
+              <p class="text-xs font-medium text-gray-500 uppercase mb-2">Assignments to be removed:</p>
+              <ul data-show-roles-modal-target="toggleConfirmList" class="text-sm text-gray-700 divide-y divide-gray-200"></ul>
+            </div>
+            <div class="flex justify-end gap-3">
+              <%= render "shared/button",
+                  text: "Cancel",
+                  variant: "secondary",
+                  size: "small",
+                  type: :button,
+                  data: { action: "click->show-roles-modal#cancelToggle" } %>
+              <%= render "shared/button",
+                  text: "Clear Assignments and Switch",
+                  variant: "primary",
+                  size: "small",
+                  type: :button,
+                  data: { action: "click->show-roles-modal#confirmToggle" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Footer %>
+    <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end flex-shrink-0">
+      <%= render "shared/button",
+          text: "Done",
+          variant: "primary",
+          size: "small",
+          type: :button,
+          data: { action: "click->casting-settings-modal#closeModal" } %>
+    </div>
+  </div>
+</div>

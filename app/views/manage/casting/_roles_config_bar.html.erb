@@ -1,0 +1,57 @@
+<%#
+  Roles configuration bar - shows role info with a button to open casting settings modal
+
+  Parameters:
+    - show: The Show object
+    - production: The Production object
+    - roles: Array of Role objects
+%>
+<%
+  uses_custom = show.use_custom_roles?
+  role_count = roles.count
+  total_slots = roles.sum(&:quantity)
+%>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
+     data-controller="casting-settings-modal"
+     data-casting-settings-modal-show-id-value="<%= show.id %>"
+     data-casting-settings-modal-production-id-value="<%= production.id %>"
+     data-casting-settings-modal-update-url-value="<%= manage_production_show_path(production, show) %>">
+  <div class="p-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <%# Icon %>
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg <%= uses_custom ? 'bg-purple-100' : 'bg-gray-100' %> flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 <%= uses_custom ? 'text-purple-600' : 'text-gray-600' %>">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      </div>
+
+      <%# Info text %>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-gray-900">
+            <% if uses_custom %>
+              Using custom roles
+            <% else %>
+              Using production roles
+            <% end %>
+          </span>
+        </div>
+        <p class="text-xs text-gray-500 mt-0.5">
+          <%= role_count %> <%= "role".pluralize(role_count) %>, <%= total_slots %> <%= "slot".pluralize(total_slots) %> total
+        </p>
+      </div>
+    </div>
+
+    <%# Configure button %>
+    <%= render "shared/button",
+      text: "Configure",
+      variant: "secondary",
+      size: "small",
+      icon: "cog-6-tooth",
+      type: :button,
+      data: { action: "casting-settings-modal#openModal" } %>
+  </div>
+
+  <%# Casting Settings Modal %>
+  <%= render "manage/casting/casting_settings_modal", show: show, production: production %>
+</div>

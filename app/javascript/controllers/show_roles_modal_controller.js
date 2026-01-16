@@ -19,7 +19,8 @@ export default class extends Controller {
         reorderUrl: String,
         talentPoolUrl: String,
         checkAssignmentsUrl: String,
-        clearAssignmentsUrl: String
+        clearAssignmentsUrl: String,
+        toggleUrl: String
     }
 
     connect() {
@@ -81,16 +82,33 @@ export default class extends Controller {
             }
         }
 
-        // No assignments, just toggle the visibility
-        this.applyToggleState(enabled)
+        // No assignments, toggle visibility and persist the change
+        this.applyToggleState(enabled, true)
     }
 
     // Apply the toggle state (show/hide custom roles content)
-    applyToggleState(enabled) {
+    async applyToggleState(enabled, persistChange = false) {
         if (enabled) {
             this.customRolesContentTarget.classList.remove("hidden")
         } else {
             this.customRolesContentTarget.classList.add("hidden")
+        }
+
+        // Persist the change if requested and we have the toggle URL
+        if (persistChange && this.hasToggleUrlValue) {
+            try {
+                await fetch(this.toggleUrlValue, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": this.csrfToken
+                    },
+                    body: JSON.stringify({ enable: enabled })
+                })
+            } catch (error) {
+                console.error("Failed to toggle custom roles:", error)
+            }
         }
     }
 
@@ -156,9 +174,9 @@ export default class extends Controller {
             })
 
             if (response.ok) {
-                // Update the checkbox and content visibility
+                // Update the checkbox and content visibility (don't persist - already done by clear_assignments)
                 this.customRolesCheckboxTarget.checked = this.pendingToggleTo
-                this.applyToggleState(this.pendingToggleTo)
+                this.applyToggleState(this.pendingToggleTo, false)
             }
         } catch (error) {
             console.error("Failed to clear assignments:", error)

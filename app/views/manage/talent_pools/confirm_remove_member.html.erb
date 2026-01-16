@@ -6,8 +6,8 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting & Roles", manage_production_casting_path(@production)],
-      ["Talent Pool", manage_production_talent_pools_path(@production)]
+      ["Casting", manage_production_casting_path(@production)],
+      ["Talent Pool", "#{manage_production_casting_settings_path(@production)}#tab-2"]
     ],
     text: "Remove from Talent Pool",
     links: []
@@ -63,7 +63,7 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: manage_production_talent_pools_path(@production) %>
+            path: "#{manage_production_casting_settings_path(@production)}#tab-2" %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",
@@ -93,7 +93,7 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: manage_production_talent_pools_path(@production) %>
+            path: "#{manage_production_casting_settings_path(@production)}#tab-2" %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",

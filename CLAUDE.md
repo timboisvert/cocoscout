@@ -80,6 +80,82 @@ Breadcrumbs must be passed as arrays of `[name, path]` pairs, not hashes:
 } %>
 ```
 
+### Module Header (New Header)
+The "new header" for major module landing pages. Uses a large title with `coustard-regular` font, supports multi-line HTML descriptions, and displays action buttons in a 2x2 grid (4 buttons) or 2+1 layout (3 buttons).
+
+```erb
+<%= render "shared/module_header",
+  title: "Module Title",
+  description: "<p class='mb-2'>First paragraph of description.</p><p>Second paragraph.</p>",
+  actions: [
+    { icon: "calendar", text: "First Action", path: first_path },
+    { icon: "clipboard-list", text: "Second Action", path: second_path },
+    { icon: "cog", text: "Settings", path: settings_path },
+    { icon: "user-group", text: "Fourth Action", path: fourth_path }
+  ]
+%>
+```
+
+**Supported Icons:**
+- `calendar` - Calendar icon
+- `clipboard-list` - Clipboard list icon
+- `user-group` - User group icon
+- `cog` - Settings/gear icon
+- `users` - Users icon
+- `chart-bar` - Chart bar icon
+- `dollar-sign` - Dollar sign icon
+
+**Styling Notes:**
+- Title uses `text-4xl coustard-regular`
+- Description supports raw HTML (use `raw()` helper)
+- Buttons have `bg-gray-50 border border-gray-300` with pink icon circles
+- Grid is 2x2 for 4 actions, 2+1 (two top, one centered below) for 3 actions
+
+### Show Row
+The show_row partial displays a single show/event in a list. It's highly configurable for different contexts (performer view, cast view, manager view, availability tracking, etc.).
+
+```erb
+<%= render "shared/show_row",
+  show: @show,
+  link_path: show_path(@show),  # Optional - makes row clickable
+  right_panel: :availability,   # Panel type
+  entity: @person,              # For availability/cast display
+  entity_key: "person_#{@person.id}",
+  availability: @availability
+%>
+```
+
+**Required Params:**
+- `show` - Show object
+
+**Optional Params:**
+| Param | Default | Description |
+|-------|---------|-------------|
+| `link_path` | nil | Makes row clickable, links to this path |
+| `show_canceled` | false | Show canceled badge and strikethrough date |
+| `show_recurring` | false | Show recurring event indicator |
+| `show_linked` | false | Show linked event indicator with tooltip |
+| `show_production` | false | Show production name in details line |
+| `show_location` | true | Show location/online indicator |
+| `role_assignments` | [] | Array of `{role_name:, entity_type:, entity_id:, entity_name:}` |
+| `entity` | nil | Person/Group for right panel display |
+| `availability` | nil | Availability object for buttons |
+| `entity_key` | nil | Entity key for Stimulus data attribute |
+| `show_cant_make_it` | false | Show "Can't make it" link |
+| `cant_make_it_person` | nil | Person for vacancy token |
+| `my_vacancies` | [] | Array of user's vacancies for this show |
+| `has_groups` | false | Whether user has groups (affects headshot display) |
+| `right_panel` | nil | Panel type: `:cast_assignment`, `:availability`, `:cast_summary`, `:countdown`, or nil |
+| `entity_assignments` | [] | Array of `{entity:, role_assignments:}` for stacked cast panels |
+| `cast_summary` | nil | Hash with `{assignments_count:, roles_count:, vacancies:}` |
+| `closes_at` | nil | DateTime for countdown panel |
+
+**Right Panel Types:**
+- `:availability` - Shows availability status buttons (yes/no/maybe)
+- `:cast_assignment` - Shows entity headshot and assigned roles
+- `:cast_summary` - Shows count of assignments and vacancies
+- `:countdown` - Shows countdown timer to closes_at
+
 ## Routes
 
 ### Money Routes

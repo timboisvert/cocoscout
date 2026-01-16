@@ -1,0 +1,143 @@
+<%#
+  Member Availability Modal Content
+  Shows availability for a specific group across all their productions
+%>
+<%
+  # Group shows by production for tabs
+  shows_by_production = shows.group_by(&:production)
+  productions = shows_by_production.keys
+%>
+<div>
+  <%# Modal Header - compact pink %>
+  <div class="flex items-center justify-between px-6 py-3 bg-pink-50 border-b border-pink-100">
+    <h2 class="text-base font-semibold text-gray-900">Edit Availability</h2>
+    <button type="button"
+            class="text-gray-400 hover:text-gray-600 p-1 -mr-1 cursor-pointer"
+            data-action="click->availability-modal#closeMemberModal">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="p-6">
+    <%# Group Box %>
+    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+      <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+      <% if headshot_variant %>
+        <%= image_tag headshot_variant, alt: member.name, class: "w-12 h-12 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-semibold">
+          <%= member.initials %>
+        </div>
+      <% end %>
+      <div>
+        <div class="font-medium text-gray-900"><%= member.name %></div>
+        <div class="text-sm text-purple-600">Group · <%= productions.count %> <%= "production".pluralize(productions.count) %></div>
+      </div>
+    </div>
+
+    <%# Availability by Production %>
+    <div>
+      <% if shows.empty? %>
+        <div class="text-center py-8">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <p class="text-gray-500 text-sm">No upcoming shows found.</p>
+        </div>
+      <% elsif productions.count == 1 %>
+        <%# Single production - no tabs needed %>
+        <% production = productions.first %>
+        <% production_shows = shows_by_production[production] %>
+        <div class="space-y-2 max-h-[400px] overflow-y-auto">
+          <% production_shows.each do |show| %>
+            <%
+              availability = availabilities[show.id]
+              current_status = availability&.status || 'unset'
+
+              data_attrs = {
+                "controller" => "availability",
+                "availability-show-id-value" => show.id,
+                "availability-status-value" => current_status,
+                "availability-group-id-value" => member.id,
+                "availability-update-url-value" => update_availability_manage_group_path(member)
+              }
+            %>
+            <div <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
+              <%= render "shared/show_row",
+                show: show,
+                show_location: true,
+                show_production: false,
+                right_panel: :availability,
+                entity: member,
+                availability: availability,
+                entity_key: "group_#{member.id}",
+                manage_context: true
+              %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <%# Multiple productions - use tabs %>
+        <div data-controller="tabs">
+          <nav class="flex space-x-1 border-b border-gray-200 mb-4 overflow-x-auto scrollbar-hide">
+            <% productions.each_with_index do |production, index| %>
+              <button type="button"
+                      data-tabs-target="tab"
+                      data-index="<%= index %>"
+                      data-action="tabs#select"
+                      class="px-3 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap flex-shrink-0 <%= index == 0 ? 'bg-white text-pink-600 border-pink-600' : 'bg-gray-50 text-gray-500 border-transparent hover:text-gray-700' %>">
+                <%= production.name %>
+                <span class="ml-1 text-xs text-gray-400">(<%= shows_by_production[production].count %>)</span>
+              </button>
+            <% end %>
+          </nav>
+
+          <% productions.each_with_index do |production, index| %>
+            <div data-tabs-target="panel" class="<%= index > 0 ? 'hidden' : '' %>">
+              <div class="space-y-2 max-h-[350px] overflow-y-auto">
+                <% shows_by_production[production].each do |show| %>
+                  <%
+                    availability = availabilities[show.id]
+                    current_status = availability&.status || 'unset'
+
+                    data_attrs = {
+                      "controller" => "availability",
+                      "availability-show-id-value" => show.id,
+                      "availability-status-value" => current_status,
+                      "availability-group-id-value" => member.id,
+                      "availability-update-url-value" => update_availability_manage_group_path(member)
+                    }
+                  %>
+                  <div <%= data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ").html_safe %>>
+                    <%= render "shared/show_row",
+                      show: show,
+                      show_location: true,
+                      show_production: false,
+                      right_panel: :availability,
+                      entity: member,
+                      availability: availability,
+                      entity_key: "group_#{member.id}",
+                      manage_context: true
+                    %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Footer %>
+    <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+      <%= render "shared/button",
+          text: "Done",
+          variant: "secondary",
+          size: "small",
+          type: :button,
+          data: { action: "click->availability-modal#closeMemberModal" } %>
+    </div>
+  </div>
+</div>

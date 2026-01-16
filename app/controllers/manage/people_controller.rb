@@ -2,28 +2,10 @@
 
 module Manage
   class PeopleController < Manage::ManageController
-    before_action :set_person, only: %i[show update update_availability]
-    before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization]
+    before_action :set_person, only: %i[show update update_availability availability_modal]
+    before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal]
 
     def show
-      # Get all future shows for productions this person is a cast member of
-      production_ids = TalentPool.joins(:talent_pool_memberships)
-                                 .where(talent_pool_memberships: { member: @person })
-                                 .pluck(:production_id).uniq
-      @shows = Show.where(production_id: production_ids, canceled: false)
-                   .where("date_and_time >= ?", Time.current)
-                   .includes(event_linkage: :shows)
-                   .order(:date_and_time)
-
-      # Build a hash of availabilities: { show_id => show_availability }
-      @availabilities = {}
-      @person.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[availability.show_id] = availability
-      end
-
-      # Track edit mode
-      @edit_mode = params[:edit] == "true"
-
       # Load email logs for this person (paginated, with search)
       # Scope to current organization to exclude system emails and cross-org emails
       email_logs_query = EmailLog.for_recipient_entity(@person).for_organization(Current.organization).recent
@@ -232,6 +214,7 @@ module Manage
       # Update availabilities for each show
       updated_count = 0
       last_status = nil
+      current_status_for_response = nil
       params.each do |key, value|
         next unless key.start_with?("availability_") && key != "availability"
 
@@ -251,6 +234,9 @@ module Manage
                            "unavailable"
         end
 
+        # Track current status for response when no change is made
+        current_status_for_response ||= current_status || new_status
+
         next unless new_status != current_status
 
         case new_status
@@ -267,11 +253,8 @@ module Manage
 
       respond_to do |format|
         format.json do
-          if updated_count.positive?
-            render json: { status: last_status }
-          else
-            render json: { error: "No changes made" }, status: :unprocessable_entity
-          end
+          # Always return the current status - don't error if no changes made
+          render json: { status: last_status || current_status_for_response }
         end
         format.html do
           if updated_count.positive?
@@ -282,6 +265,31 @@ module Manage
           end
         end
       end
+    end
+
+    # Returns HTML for member availability modal
+    def availability_modal
+      # Get all future shows for productions this person is a cast member of
+      production_ids = TalentPool.joins(:talent_pool_memberships)
+                                 .where(talent_pool_memberships: { member: @person })
+                                 .pluck(:production_id).uniq
+
+      @shows = Show.where(production_id: production_ids, canceled: false)
+                   .where("date_and_time >= ?", Time.current)
+                   .includes(:production, :location)
+                   .order(:date_and_time)
+
+      # Build a hash of availabilities: { show_id => show_availability }
+      @availabilities = {}
+      @person.show_availabilities.where(show: @shows).each do |availability|
+        @availabilities[availability.show_id] = availability
+      end
+
+      render partial: "manage/people/availability_modal", locals: {
+        member: @person,
+        shows: @shows,
+        availabilities: @availabilities
+      }
     end
 
     def batch_invite

@@ -4,10 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casting_path(@production)],
-      [@show.date_and_time.strftime("%A, %b %d, %Y"), manage_production_show_path(@production, @show)]
+      ["Casting", manage_production_casting_path(@production)]
     ],
-    text: @show.casting_finalized? ? "Finalized Cast" : "Edit Cast",
+    text: @show.date_and_time.strftime("%A, %b %d, %Y"),
     links: []
   } %>
 
@@ -31,39 +30,6 @@
          data-drop-role-production-id-value="<%= @production.id %>"
          data-drop-role-casting-source-value="<%= casting_source %>"
          data-drop-role-click-to-add-value="<%= show_click_to_add %>">
-    <% if is_manual_mode %>
-      <%= render "shared/help_section",
-        title: "How to assign people to roles",
-        initial_state: "closed",
-        storage_key: "casting_help_collapsed_manual",
-        steps: [
-          { text: "<strong>Click to assign:</strong> Click on any empty slot and search for a person or enter their name and email." },
-          { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the Remove button to remove them." }
-        ] %>
-    <% elsif is_hybrid_mode %>
-      <%= render "shared/help_section",
-        title: "How to assign people to roles",
-        initial_state: "closed",
-        storage_key: "casting_help_collapsed_hybrid",
-        steps: [
-          { text: "<strong>Drag to assign:</strong> Drag a talent pool member from the right panel onto a role box on the left." },
-          { text: "<strong>Click to add:</strong> Or click on any empty slot to search for someone or add a guest." },
-          { text: "<strong>Swap roles:</strong> Drag a person from one role to another to swap their assignments." },
-          { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the Remove button to remove them." },
-          { text: "<strong>Filter by availability:</strong> Use the \"Available\" button to see only people who've marked themselves available for this show." }
-        ] %>
-    <% else %>
-      <%= render "shared/help_section",
-        title: "How to assign talent pool members to roles",
-        initial_state: "closed",
-        storage_key: "casting_help_collapsed",
-        steps: [
-          { text: "<strong>Drag to assign:</strong> Drag a talent pool member from the right panel onto a role box on the left." },
-          { text: "<strong>Swap roles:</strong> Drag a person from one role to another to swap their assignments." },
-          { text: "<strong>Remove assignment:</strong> Hover over an assigned person and click the × button to remove them." },
-          { text: "<strong>Filter by availability:</strong> Use the \"Available\" button to see only people who've marked themselves available for this show." }
-        ] %>
-    <% end %>
 
     <%
       # Count filled slots (assignments) vs total slots
@@ -79,35 +45,74 @@
       can_finalize = fully_cast && (!is_linked || all_in_sync)
     %>
 
+    <%# Row 1: Roles configuration bar - always show so users can configure roles %>
+    <div class="mb-4">
+      <%= render "manage/casting/roles_config_bar", show: @show, production: @production, roles: @roles %>
+    </div>
+
     <% if total_slots > 0 %>
+      <%# Row 2: Progress bar with inline linkage sync %>
       <div id="casting-progress-bar" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <span id="progress-label" class="text-sm font-semibold text-gray-900">
-              <% if fully_cast %>
-                This show is 100% cast
-              <% else %>
-                <%= filled_slots %> of <%= total_slots %> slots filled
-              <% end %>
-            </span>
-            <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
-              <%= filled_slots %>/<%= total_slots %> cast
-            </span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-2">
-            <div id="progress-bar" class="<%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
+          <div class="flex flex-col lg:flex-row lg:items-center lg:gap-6">
+            <%# Left: Progress bar (2/3 on desktop) %>
+            <div class="flex-1 lg:flex-[2]">
+              <div class="flex items-center justify-between mb-2">
+                <span id="progress-label" class="text-sm font-semibold text-gray-900">
+                  <% if fully_cast %>
+                    100% cast
+                  <% else %>
+                    <%= filled_slots %> of <%= total_slots %> slots filled
+                  <% end %>
+                </span>
+                <span id="progress-fraction" class="text-sm font-bold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>">
+                  <%= filled_slots %>/<%= total_slots %>
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div id="progress-bar" class="<%= fully_cast ? 'bg-green-500' : 'bg-pink-500' %> h-2 rounded-full transition-all" style="width: <%= percentage %>%"></div>
+              </div>
+            </div>
+
+            <%# Right: Linkage sync (1/3 on desktop, full width row on mobile) %>
+            <% if is_linked && sync_info.present? %>
+              <div id="linkage-sync-section" class="mt-4 pt-4 border-t border-gray-200 lg:mt-0 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6 lg:flex-1">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <% if sync_info[:all_in_sync] %>
+                      <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </div>
+                      <span class="text-sm text-gray-700">
+                        Synced with <%= @linked_shows.count %> linked <%= "event".pluralize(@linked_shows.count) %>
+                      </span>
+                    <% else %>
+                      <div class="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                        </svg>
+                      </div>
+                      <span class="text-sm text-gray-700">
+                        <%= @linked_shows.count %> linked <%= "event".pluralize(@linked_shows.count) %> out of sync
+                      </span>
+                    <% end %>
+                  </div>
+                  <% unless sync_info[:all_in_sync] %>
+                    <%= render "shared/button",
+                        text: "Sync Now",
+                        variant: "primary",
+                        size: "small",
+                        path: manage_production_copy_cast_to_linked_path(@production, show_id: @show.id),
+                        method: :post,
+                        data: { turbo_confirm: "This will copy this event's roles and cast to all #{@linked_shows.count} linked events, replacing their current roles and assignments. Continue?" } %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
           </div>
         </div>
-
-        <%# Linkage sync section - always shown for linked shows %>
-        <% if is_linked && sync_info.present? %>
-          <%= render "manage/casting/linkage_sync_section",
-              show: @show,
-              linked_shows: @linked_shows,
-              sync_info: sync_info,
-              production: @production,
-              fully_cast: fully_cast %>
-        <% end %>
 
         <%# Finalize section - shown when fully cast AND (not linked OR in sync) %>
         <div id="finalize-section-wrapper" class="<%= can_finalize ? '' : 'hidden' %>">
@@ -117,6 +122,23 @@
               linked_shows: is_linked ? @linked_shows : [],
               cast_email_draft: @cast_email_draft,
               removed_email_draft: @removed_email_draft %>
+        </div>
+      </div>
+    <% elsif @show.use_custom_roles? && @roles.empty? %>
+      <%# Show warning when custom roles is enabled but no roles are defined %>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 text-amber-500">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-amber-900">No roles defined</h3>
+            <p class="text-sm text-amber-800 mt-1">
+              Custom roles is enabled for this event, but no roles have been created yet. Configure roles above to start casting.
+            </p>
+          </div>
         </div>
       </div>
     <% end %>

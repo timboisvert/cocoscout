@@ -3,27 +3,9 @@
 module Manage
   class GroupsController < Manage::ManageController
     before_action :set_group,
-                  only: %i[show update update_availability add_to_cast remove_from_cast remove_from_organization destroy]
+                  only: %i[show update update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
 
     def show
-      # Get all future shows for productions this group is a cast member of
-      production_ids = TalentPool.joins(:talent_pool_memberships)
-                                 .where(talent_pool_memberships: { member: @group })
-                                 .pluck(:production_id).uniq
-      @shows = Show.where(production_id: production_ids, canceled: false)
-                   .where("date_and_time >= ?", Time.current)
-                   .includes(:event_linkage)
-                   .order(:date_and_time)
-
-      # Build a hash of availabilities: { show_id => show_availability }
-      @availabilities = {}
-      @group.show_availabilities.where(show: @shows).each do |availability|
-        @availabilities[availability.show_id] = availability
-      end
-
-      # Check for edit mode
-      @edit_mode = params[:edit] == "true"
-
       # Load email logs for this group (paginated, with search)
       # Scope to current organization to exclude system emails and cross-org emails
       email_logs_query = EmailLog.for_recipient_entity(@group).for_organization(Current.organization).recent
@@ -38,6 +20,7 @@ module Manage
     def update_availability
       updated_count = 0
       last_status = nil
+      current_status_for_response = nil
 
       # Loop through all parameters looking for availability_* keys
       params.each do |key, value|
@@ -59,6 +42,9 @@ module Manage
                            "unavailable"
         end
 
+        # Track current status for response when no change is made
+        current_status_for_response ||= current_status || new_status
+
         next unless new_status != current_status
 
         case new_status
@@ -75,11 +61,8 @@ module Manage
 
       respond_to do |format|
         format.json do
-          if updated_count.positive?
-            render json: { status: last_status }
-          else
-            render json: { error: "No changes made" }, status: :unprocessable_entity
-          end
+          # Always return the current status - don't error if no changes made
+          render json: { status: last_status || current_status_for_response }
         end
         format.html do
           if updated_count.positive?
@@ -90,6 +73,31 @@ module Manage
           end
         end
       end
+    end
+
+    # Returns HTML for member availability modal
+    def availability_modal
+      # Get all future shows for productions this group is a cast member of
+      production_ids = TalentPool.joins(:talent_pool_memberships)
+                                 .where(talent_pool_memberships: { member: @group })
+                                 .pluck(:production_id).uniq
+
+      @shows = Show.where(production_id: production_ids, canceled: false)
+                   .where("date_and_time >= ?", Time.current)
+                   .includes(:production, :location)
+                   .order(:date_and_time)
+
+      # Build a hash of availabilities: { show_id => show_availability }
+      @availabilities = {}
+      @group.show_availabilities.where(show: @shows).each do |availability|
+        @availabilities[availability.show_id] = availability
+      end
+
+      render partial: "manage/groups/availability_modal", locals: {
+        member: @group,
+        shows: @shows,
+        availabilities: @availabilities
+      }
     end
 
     def add_to_cast

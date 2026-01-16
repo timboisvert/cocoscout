@@ -50,9 +50,8 @@
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Headshots</button>
       <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Resume</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Availability</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
     </nav>
 
     <%# Profile Tab %>
@@ -68,32 +67,6 @@
     <%# Resume Tab %>
     <div data-tabs-target="panel" class="hidden">
       <%= render "shared/image_gallery", items: @person.profile_resumes, type: "resume", empty_message: "No resume found" %>
-    </div>
-
-    <%# Availability Tab %>
-    <div data-tabs-target="panel" class="hidden">
-      <% if @shows.empty? %>
-        <p class="text-left text-gray-500 text-sm">No upcoming shows found for this person's productions.</p>
-      <% else %>
-        <div class="space-y-4">
-          <% @shows.group_by(&:production).each do |production, shows| %>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <%= render "shared/card_header", title: production.name %>
-              <div class="p-2">
-                <%= render "shared/availability_list",
-                           shows: shows,
-                           entity_key: "person",
-                           entity: @person,
-                           availabilities: @availabilities,
-                           show_production: false,
-                           show_location: true,
-                           has_groups: false,
-                           manage_context: true %>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
     </div>
 
     <%# Notes Tab %>

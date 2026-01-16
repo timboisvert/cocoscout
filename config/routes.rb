@@ -292,6 +292,7 @@ Rails.application.routes.draw do
         get :contact
         post :send_contact_email
         patch :update_availability
+        get :availability_modal
       end
     end
 
@@ -301,6 +302,7 @@ Rails.application.routes.draw do
         post :remove_from_cast
         post :remove_from_organization
         patch :update_availability
+        get :availability_modal
       end
     end
 
@@ -327,11 +329,13 @@ Rails.application.routes.draw do
         delete :revoke_production_invite
       end
 
-      resources :availability, only: %i[index show] do
-        member do
-          patch :update_show_availability
-        end
-      end
+      # Legacy availability routes - redirect to casting/availability
+      get "/availability", to: redirect { |params, _request|
+        "/manage/productions/#{params[:production_id]}/casting/availability"
+      }
+      get "/availability/:id", to: redirect { |params, _request|
+        "/manage/productions/#{params[:production_id]}/casting/availability/#{params[:id]}"
+      }
 
       resources :visual_assets, only: [ :index ] do
         collection do
@@ -373,12 +377,13 @@ Rails.application.routes.draw do
             get :talent_pool_members
             get :check_assignments
             post :clear_assignments
+            post :toggle_custom_roles
           end
         end
       end
 
-      # Single talent pool per production - no CRUD, just member management
-      resources :talent_pools, path: "talent-pools", only: %i[index] do
+      # Talent pool member management (no index view - managed via casting settings tab)
+      resources :talent_pools, path: "talent-pools", only: [] do
         collection do
           get :members
           get :search_people
@@ -399,13 +404,24 @@ Rails.application.routes.draw do
       # Casting routes - manage roles and cast assignments
       get "casting", to: "casting#index", as: "casting"
 
+      # Casting > Availability routes (nested under casting)
+      scope "casting" do
+        resources :availability, only: %i[index], controller: "casting_availability", as: "casting_availability" do
+          member do
+            get :show_modal
+            patch :update_show_availability
+          end
+        end
+      end
+
       # Casting settings
       resource :casting_settings, only: [ :show, :update ], path: "casting/settings" do
         get :setup, on: :member
         post :complete_setup, on: :member
       end
 
-      resources :roles do
+      # Roles routes (CRUD only - no index/edit views, managed via casting settings tab)
+      resources :roles, only: %i[create update destroy] do
         collection do
           post :reorder
         end

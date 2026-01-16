@@ -5,14 +5,10 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_talent_pool
-    before_action :ensure_user_is_manager, except: %i[index members]
+    before_action :ensure_user_is_manager, except: %i[members]
 
     # Each production has exactly one talent pool
-    # This controller manages membership in that pool
-
-    def index
-      # @talent_pool is set by before_action
-    end
+    # This controller manages membership in that pool (no index view - managed via casting settings tab)
 
     def members
       render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
@@ -56,7 +52,7 @@ module Manage
       if request.xhr?
         render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
       else
-        redirect_to manage_production_talent_pools_path(@production),
+        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-2",
                     notice: "#{person.name} removed from talent pool"
       end
     end
@@ -94,7 +90,7 @@ module Manage
       if request.xhr?
         render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
       else
-        redirect_to manage_production_talent_pools_path(@production),
+        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-2",
                     notice: "#{group.name} removed from talent pool"
       end
     end

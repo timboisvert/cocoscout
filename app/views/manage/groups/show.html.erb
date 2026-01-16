@@ -43,9 +43,8 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto -mx-5 px-5 scrollbar-hide">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap flex-shrink-0">Profile</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Members</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Availability</button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Notes</button>
+      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-3 sm:px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap flex-shrink-0">Emails</button>
     </nav>
 
     <div data-tabs-target="panel">
@@ -75,75 +74,6 @@
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-
-    <div data-tabs-target="panel" class="hidden">
-      <% if @shows.empty? %>
-        <p class="text-left text-gray-500 text-sm">No upcoming shows found for this group's productions.</p>
-      <% else %>
-        <div class="space-y-4">
-          <% @shows.group_by(&:production).each do |production, shows| %>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <%= render "shared/card_header", title: production.name do %>
-                <% if current_user_can_manage?(production) %>
-                  <% if @edit_mode %>
-                    <%= link_to "Done", manage_group_path(@group, tab: 2), class: "text-pink-500 text-xs underline" %>
-                  <% else %>
-                    <%= link_to "Edit Availability", manage_group_path(@group, edit: 'true', tab: 2), class: "text-pink-500 text-xs underline" %>
-                  <% end %>
-                <% end %>
-              <% end %>
-              <% if @edit_mode && current_user_can_manage?(production) %>
-                <%= form_with url: update_availability_manage_group_path(@group), method: :patch, local: true do |f| %>
-                  <div class="divide-y divide-gray-200">
-                    <% shows.each do |show| %>
-                      <% availability = @availabilities[show.id] %>
-                      <div class="px-4 py-3">
-                        <div class="flex items-start justify-between">
-                          <div class="flex-1">
-                            <div class="text-sm text-gray-600 font-semibold">
-                              <%= show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %>
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                              <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-                                <%= show.event_type.titleize %>
-                              </span>
-                              <% if show.secondary_name.present? %>
-                                <span class="text-xs text-gray-900 font-medium"><%= show.secondary_name %></span>
-                              <% end %>
-                            </div>
-                          </div>
-                          <div class="ml-4 flex gap-0 flex-shrink-0">
-                            <%= f.radio_button "availability_Group_#{show.id}", 'available', { checked: availability&.available?, class: "sr-only peer/available", id: "availability_Group_#{show.id}_available" } %>
-                            <%= label_tag "availability_Group_#{show.id}_available", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-l border-r-0 bg-white text-gray-700 hover:bg-gray-50 peer-checked/available:bg-pink-500 peer-checked/available:text-white peer-checked/available:hover:bg-pink-500" do %>
-                              Available
-                            <% end %>
-
-                            <%= f.radio_button "availability_Group_#{show.id}", 'unavailable', { checked: availability&.unavailable?, class: "sr-only peer/unavailable", id: "availability_Group_#{show.id}_unavailable" } %>
-                            <%= label_tag "availability_Group_#{show.id}_unavailable", class: "w-24 text-sm px-3 py-2 text-center border border-gray-200 cursor-pointer flex items-center justify-center rounded-r bg-white text-gray-700 hover:bg-gray-50 peer-checked/unavailable:bg-pink-500 peer-checked/unavailable:text-white peer-checked/unavailable:hover:bg-pink-500" do %>
-                              Unavailable
-                            <% end %>
-                          </div>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                  <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    <%= render "shared/button", text: "Update Availability", variant: "primary", type: :submit %>
-                </div>
-                <% end %>
-              <% else %>
-                <%= render "shared/availability_list",
-                    shows: shows,
-                    entity_key: "Group",
-                    entity: @group,
-                    availabilities: @availabilities,
-                    manage_context: true %>
               <% end %>
             </div>
           <% end %>

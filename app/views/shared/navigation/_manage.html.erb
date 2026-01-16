@@ -27,14 +27,9 @@
               active: ["shows", "vacancies"].include?(controller_name)
             },
             {
-              label: "Availability",
-              path: manage_production_availability_index_path(Current.production),
-              active: controller_name == "availability"
-            },
-            {
               label: "Casting",
               path: manage_production_casting_path(Current.production),
-              active: ["casting", "roles", "talent_pools"].include?(controller_name)
+              active: ["casting", "casting_availability", "roles", "talent_pools"].include?(controller_name)
             },
             {
               label: "Auditions",
