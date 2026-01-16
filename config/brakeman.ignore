@@ -7,7 +7,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/manage/show_payouts_controller.rb",
-      "line": 217,
+      "line": 428,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.require(:override_rules).permit!",
       "render_path": null,
@@ -20,6 +20,40 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 84,
+      "fingerprint": "1c99420ad7f4bb11c768aff32496b77a99872787009f9dca8c9a40b18279f823",
+      "check_name": "RenderInline",
+      "message": "Unescaped model attribute rendered inline",
+      "file": "app/views/manage/show_payouts/show.html.erb",
+      "line": 892,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
+      "code": "render(text => \"Add #{(Current.production.shows.find(params[:id]).show_person_role_assignments.pluck(:assignable_id) - (Current.production.shows.find(params[:id]).show_payout or Current.production.shows.find(params[:id]).create_show_payout!(:payout_scheme => Current.production.payout_schemes.find_by(:is_default => true), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").pluck(:payee_id)).size} #{if ((Current.production.shows.find(params[:id]).show_person_role_assignments.pluck(:assignable_id) - (Current.production.shows.find(params[:id]).show_payout or Current.production.shows.find(params[:id]).create_show_payout!(:payout_scheme => Current.production.payout_schemes.find_by(:is_default => true), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").pluck(:payee_id)).size == 1) then\n  \"Person\"\nelse\n  \"People\"\nend}\", { :variant => \"primary\", :size => \"medium\", :type => :submit })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ShowPayoutsController",
+          "method": "show",
+          "line": 21,
+          "file": "app/controllers/manage/show_payouts_controller.rb",
+          "rendered": {
+            "name": "manage/show_payouts/show",
+            "file": "app/views/manage/show_payouts/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/show_payouts/show"
+      },
+      "user_input": "(Current.production.shows.find(params[:id]).show_person_role_assignments.pluck(:assignable_id) - (Current.production.shows.find(params[:id]).show_payout or Current.production.shows.find(params[:id]).create_show_payout!(:payout_scheme => Current.production.payout_schemes.find_by(:is_default => true), :status => \"awaiting_payout\")).line_items.where(:payee_type => \"Person\").pluck(:payee_id)).size",
+      "confidence": "Medium",
+      "cwe_id": [
+        79
       ],
       "note": ""
     },
@@ -38,7 +72,7 @@
           "type": "controller",
           "class": "My::ShowsController",
           "method": "show",
-          "line": 339,
+          "line": 366,
           "file": "app/controllers/my/shows_controller.rb",
           "rendered": {
             "name": "my/shows/show",
@@ -64,7 +98,7 @@
       "check_name": "SQL",
       "message": "Possible SQL injection",
       "file": "app/controllers/superadmin_controller.rb",
-      "line": 718,
+      "line": 742,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
       "code": "ActiveRecord::Base.connection.execute(\"SELECT COUNT(*) FROM #{table_name}\")",
       "render_path": null,
@@ -144,7 +178,7 @@
       "check_name": "RenderInline",
       "message": "Unescaped model attribute rendered inline",
       "file": "app/views/manage/shows/edit.html.erb",
-      "line": 662,
+      "line": 509,
       "link": "https://brakemanscanner.org/docs/warning_types/cross-site_scripting/",
       "code": "render(text => \"Move #{Show.includes(:location, :custom_roles, :show_person_role_assignments => :role, :poster_attachment => :blob, :production => ({ :posters => ({ :image_attachment => :blob }) })).find((params[:show_id] or params[:id])).event_type.titleize}\", { :variant => \"primary\", :size => \"medium\", :type => :submit, :disabled => true, :data => ({ :show_actions_target => \"moveButton\" }) })",
       "render_path": [
