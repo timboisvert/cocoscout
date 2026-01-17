@@ -51,6 +51,7 @@ module Manage
 
     def set_production
       @production = Current.production
+      redirect_to select_production_path unless @production
     end
 
     def set_show

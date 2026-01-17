@@ -12,77 +12,138 @@
     ]
   } %>
 
-  <!-- Row 1: People (3/4) + Impersonate (1/4) -->
+  <!-- Main Grid: Analytics (3/4) + Impersonate (1/4) -->
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-4">
-    <!-- People Card (3/4 width) -->
+    <!-- Analytics Card (3/4 width) -->
     <div class="lg:col-span-3 border border-gray-200 rounded-lg overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="font-semibold text-gray-900 coustard-regular">People</h3>
-        <%= link_to "View All →", people_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
-      </div>
-      <div class="p-4">
-        <!-- Stats Row -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
-          <div class="text-center p-3 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@people_total) %></div>
-            <div class="text-xs text-gray-500 mt-1">Total</div>
-          </div>
-          <div class="text-center p-3 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-pink-600"><%= @people_new_today %></div>
-            <div class="text-xs text-gray-500 mt-1">Today</div>
-          </div>
-          <div class="text-center p-3 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-green-600"><%= @people_new_this_week %></div>
-            <div class="text-xs text-gray-500 mt-1">This Week</div>
-          </div>
-          <div class="text-center p-3 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-blue-600"><%= @people_new_this_month %></div>
-            <div class="text-xs text-gray-500 mt-1">This Month</div>
-          </div>
-          <div class="text-center p-3 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold <%= @people_growth_rate >= 0 ? 'text-green-600' : 'text-red-600' %>">
-              <%= @people_growth_rate >= 0 ? '+' : '' %><%= @people_growth_rate %>%
+      <!-- Tabs for People / Organizations -->
+      <div data-controller="tabs" class="h-full flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <nav class="flex gap-6">
+            <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select"
+                    class="font-semibold text-gray-900 coustard-regular cursor-pointer pb-1 border-b-2 border-pink-500">
+              People
+            </button>
+            <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select"
+                    class="font-semibold text-gray-400 coustard-regular cursor-pointer pb-1 border-b-2 border-transparent hover:text-gray-600">
+              Organizations
+            </button>
+          </nav>
+        </div>
+
+        <!-- People Panel -->
+        <div data-tabs-target="panel" class="p-4 flex-1">
+          <!-- Snapshot Stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@people_total) %></div>
+              <div class="text-xs text-gray-500 mt-1">Total</div>
             </div>
-            <div class="text-xs text-gray-500 mt-1">vs Last Month</div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@people_active) %></div>
+              <div class="text-xs text-gray-500 mt-1">Active (30d)</div>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-pink-600"><%= @people_new_today %></div>
+              <div class="text-xs text-gray-500 mt-1">New Today</div>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-blue-600"><%= @people_new_past_7_days %></div>
+              <div class="text-xs text-gray-500 mt-1">Past 7 Days</div>
+            </div>
+          </div>
+
+          <!-- Chart with Dropdown -->
+          <div data-controller="chart-switcher">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm font-medium text-gray-700">New People Over Time</h4>
+              <select data-chart-switcher-target="select" data-action="chart-switcher#switch"
+                      class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="daily" selected>Daily (Past 30 Days)</option>
+                <option value="weekly">Weekly (Past 12 Weeks)</option>
+                <option value="monthly">Monthly (Past 12 Months)</option>
+              </select>
+            </div>
+
+            <div class="h-48">
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="daily">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_daily_data.to_json %>" data-line-chart-color-value="#ec4899" data-line-chart-label-value="people">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="weekly" class="hidden">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_weekly_data.to_json %>" data-line-chart-color-value="#22c55e" data-line-chart-label-value="people">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="monthly" class="hidden">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @people_monthly_data.to_json %>" data-line-chart-color-value="#3b82f6" data-line-chart-label-value="people">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-gray-100">
+            <%= link_to "View All People →", people_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
           </div>
         </div>
 
-        <!-- Chart Tabs -->
-        <div data-controller="tabs">
-          <nav class="flex space-x-1 border-b border-gray-200 mb-4">
-            <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select"
-                    class="px-3 py-2 text-sm font-medium border-b-2 cursor-pointer bg-white text-pink-600 border-pink-600">
-              Daily (30d)
-            </button>
-            <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select"
-                    class="px-3 py-2 text-sm font-medium border-b-2 cursor-pointer bg-gray-50 text-gray-500 border-transparent hover:text-gray-700">
-              Weekly (12w)
-            </button>
-            <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select"
-                    class="px-3 py-2 text-sm font-medium border-b-2 cursor-pointer bg-gray-50 text-gray-500 border-transparent hover:text-gray-700">
-              Monthly (12m)
-            </button>
-          </nav>
-
-          <!-- Daily Chart -->
-          <div data-tabs-target="panel">
-            <div class="h-48" data-controller="bar-chart" data-bar-chart-data-value="<%= @people_daily_data.to_json %>" data-bar-chart-color-value="#ec4899" data-bar-chart-format-value="day">
-              <canvas data-bar-chart-target="canvas"></canvas>
+        <!-- Organizations Panel -->
+        <div data-tabs-target="panel" class="hidden p-4 flex-1">
+          <!-- Snapshot Stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@organizations_total) %></div>
+              <div class="text-xs text-gray-500 mt-1">Total</div>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@organizations_active) %></div>
+              <div class="text-xs text-gray-500 mt-1">Active (30d)</div>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-pink-600"><%= @organizations_new_today %></div>
+              <div class="text-xs text-gray-500 mt-1">New Today</div>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-bold text-blue-600"><%= @organizations_new_past_7_days %></div>
+              <div class="text-xs text-gray-500 mt-1">Past 7 Days</div>
             </div>
           </div>
 
-          <!-- Weekly Chart -->
-          <div data-tabs-target="panel" class="hidden">
-            <div class="h-48" data-controller="bar-chart" data-bar-chart-data-value="<%= @people_weekly_data.to_json %>" data-bar-chart-color-value="#22c55e" data-bar-chart-format-value="week">
-              <canvas data-bar-chart-target="canvas"></canvas>
+          <!-- Chart with Dropdown -->
+          <div data-controller="chart-switcher">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm font-medium text-gray-700">New Organizations Over Time</h4>
+              <select data-chart-switcher-target="select" data-action="chart-switcher#switch"
+                      class="text-sm border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="daily" selected>Daily (Past 30 Days)</option>
+                <option value="weekly">Weekly (Past 12 Weeks)</option>
+                <option value="monthly">Monthly (Past 12 Months)</option>
+              </select>
+            </div>
+
+            <div class="h-48">
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="daily">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_daily_data.to_json %>" data-line-chart-color-value="#ec4899" data-line-chart-label-value="organizations">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="weekly" class="hidden">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_weekly_data.to_json %>" data-line-chart-color-value="#22c55e" data-line-chart-label-value="organizations">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
+              <div data-chart-switcher-target="panel" data-chart-switcher-key="monthly" class="hidden">
+                <div class="h-48" data-controller="line-chart" data-line-chart-data-value="<%= @organizations_monthly_data.to_json %>" data-line-chart-color-value="#3b82f6" data-line-chart-label-value="organizations">
+                  <canvas data-line-chart-target="canvas"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Monthly Chart -->
-          <div data-tabs-target="panel" class="hidden">
-            <div class="h-48" data-controller="bar-chart" data-bar-chart-data-value="<%= @people_monthly_data.to_json %>" data-bar-chart-color-value="#3b82f6" data-bar-chart-format-value="month">
-              <canvas data-bar-chart-target="canvas"></canvas>
-            </div>
+          <div class="mt-4 pt-4 border-t border-gray-100">
+            <%= link_to "View All Organizations →", organizations_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
           </div>
         </div>
       </div>
@@ -102,7 +163,7 @@
         <!-- Search Input -->
         <div class="relative">
           <input type="text"
-                 placeholder="Search..."
+                 placeholder="Search name, email, or public key..."
                  autocomplete="off"
                  autocapitalize="none"
                  data-impersonate-search-target="input"
@@ -146,52 +207,8 @@
     </div>
   </div>
 
-  <!-- Row 2: Organizations -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-      <h3 class="font-semibold text-gray-900 coustard-regular">Organizations</h3>
-      <%= link_to "View All →", organizations_list_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
-    </div>
-    <div class="p-4">
-      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-gray-900"><%= @organizations_total %></div>
-          <div class="text-xs text-gray-500 mt-1">Total Orgs</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-green-600"><%= @organizations_new_this_week %></div>
-          <div class="text-xs text-gray-500 mt-1">New This Week</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-blue-600"><%= @organizations_new_this_month %></div>
-          <div class="text-xs text-gray-500 mt-1">New This Month</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-purple-600"><%= @organizations_with_productions %></div>
-          <div class="text-xs text-gray-500 mt-1">With Productions</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-amber-600"><%= @organizations_active_30d %></div>
-          <div class="text-xs text-gray-500 mt-1">Active (30d)</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-gray-700"><%= @total_productions %></div>
-          <div class="text-xs text-gray-500 mt-1">Productions</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-gray-700"><%= number_with_delimiter(@total_shows) %></div>
-          <div class="text-xs text-gray-500 mt-1">Total Events</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-2xl font-bold text-pink-600"><%= number_with_delimiter(@upcoming_shows) %></div>
-          <div class="text-xs text-gray-500 mt-1">Upcoming</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 3: Monitor Grid (4 columns) -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+  <!-- Row 2: Monitor Grid (6 columns) -->
+  <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-4">
     <!-- Data Monitor -->
     <%= link_to data_monitor_path, class: "block" do %>
       <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-pink-500 transition-all h-full">
@@ -324,24 +341,5 @@
         </div>
       <% end %>
     <% end %>
-  </div>
-
-  <!-- Change Email Address -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Change Email Address" %>
-    <div class="p-4">
-      <p class="text-xs text-gray-500">This will update the user's email_address and their person's email to the new address.</p>
-      <%= form_with url: change_email_user_path, method: :post, local: true, class: "flex flex-wrap gap-3 mt-2 items-end" do |f| %>
-        <div class="flex-1 min-w-[200px]">
-          <%= f.label :old_email, "Current Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= f.email_field :old_email, required: true, autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
-        </div>
-        <div class="flex-1 min-w-[200px]">
-          <%= f.label :new_email, "New Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
-          <%= f.email_field :new_email, required: true, autocapitalize: "none", class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400" %>
-        </div>
-        <%= f.submit "Change Email", class: "rounded-lg px-3.5 py-2.5 text-white bg-pink-500 hover:bg-pink-600 font-medium cursor-pointer" %>
-      <% end %>
-    </div>
   </div>
 </div>

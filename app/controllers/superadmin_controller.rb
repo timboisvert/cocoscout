@@ -3,7 +3,7 @@
 class SuperadminController < ApplicationController
   before_action :require_superadmin,
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
-                         queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person organizations_list organization_detail
+                         queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
                          email_templates email_template_new email_template_create email_template_edit email_template_update
                          email_template_destroy email_template_preview search_users
                          dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
@@ -19,16 +19,9 @@ class SuperadminController < ApplicationController
     # People stats for overview
     @people_total = Person.count
     @people_new_today = Person.where("created_at > ?", Time.current.beginning_of_day).count
-    @people_new_this_week = Person.where("created_at > ?", 1.week.ago).count
-    @people_new_this_month = Person.where("created_at > ?", 1.month.ago).count
-    @people_new_last_month = Person.where("created_at > ? AND created_at <= ?", 2.months.ago, 1.month.ago).count
-
-    # Calculate growth rate (this month vs last month)
-    @people_growth_rate = if @people_new_last_month > 0
-      (((@people_new_this_month - @people_new_last_month).to_f / @people_new_last_month) * 100).round(1)
-    else
-      @people_new_this_month > 0 ? 100.0 : 0.0
-    end
+    @people_new_past_7_days = Person.where("created_at > ?", 7.days.ago).count
+    # Active = has a user account that has logged in within the past 30 days
+    @people_active = Person.joins(:user).where("users.last_seen_at > ?", 30.days.ago).count
 
     # People chart data - last 30 days by day
     @people_daily_data = build_daily_chart_data(Person, 30)
@@ -41,17 +34,17 @@ class SuperadminController < ApplicationController
 
     # Organization stats for overview
     @organizations_total = Organization.count
-    @organizations_new_this_week = Organization.where("created_at > ?", 1.week.ago).count
-    @organizations_new_this_month = Organization.where("created_at > ?", 1.month.ago).count
+    @organizations_new_today = Organization.where("created_at > ?", Time.current.beginning_of_day).count
+    @organizations_new_past_7_days = Organization.where("created_at > ?", 7.days.ago).count
+    # Active = has had a show within the past 30 days OR upcoming within the next 30 days
+    @organizations_active = Organization.joins(productions: :shows)
+                                        .where("shows.date_and_time > ? AND shows.date_and_time < ?", 30.days.ago, 30.days.from_now)
+                                        .distinct.count
 
-    # Additional organization stats
-    @organizations_with_productions = Organization.joins(:productions).distinct.count
-    @organizations_active_30d = Organization.joins(productions: :shows)
-                                            .where("shows.date_and_time > ? AND shows.date_and_time < ?", 30.days.ago, 30.days.from_now)
-                                            .distinct.count
-    @total_productions = Production.count
-    @total_shows = Show.count
-    @upcoming_shows = Show.where("date_and_time > ?", Time.current).where(canceled: false).count
+    # Organization chart data
+    @organizations_daily_data = build_daily_chart_data(Organization, 30)
+    @organizations_weekly_data = build_weekly_chart_data(Organization, 12)
+    @organizations_monthly_data = build_monthly_chart_data(Organization, 12)
 
     if cookies.encrypted[:recent_impersonations].present?
       begin
@@ -68,9 +61,10 @@ class SuperadminController < ApplicationController
     query = params[:q].to_s.strip.downcase
     return render json: [] if query.length < 2
 
-    # Search users by email or by their person's name
+    # Search users by email, person's name, or public_key (case insensitive)
     users = User.left_joins(:default_person)
-                .where("LOWER(users.email_address) LIKE ? OR LOWER(people.name) LIKE ?", "%#{query}%", "%#{query}%")
+                .where("LOWER(users.email_address) LIKE ? OR LOWER(people.name) LIKE ? OR LOWER(people.public_key) LIKE ?",
+                       "%#{query}%", "%#{query}%", "%#{query}%")
                 .includes(:default_person)
                 .order(:email_address)
                 .limit(10)
@@ -78,7 +72,8 @@ class SuperadminController < ApplicationController
     results = users.map do |user|
       {
         email: user.email_address,
-        name: user.default_person&.name || user.email_address
+        name: user.default_person&.name || user.email_address,
+        public_key: user.default_person&.public_key
       }
     end
 
@@ -155,6 +150,32 @@ class SuperadminController < ApplicationController
 
     redirect_to people_list_path, notice: "Successfully deleted all #{count} suspicious #{'person'.pluralize(count)}",
                                   status: :see_other
+  end
+
+  def merge_person
+    @person = Person.find(params[:id])
+    target_person = Person.find_by(id: params[:target_person_id])
+
+    unless target_person
+      redirect_to person_detail_path(@person), alert: "Target person not found with ID: #{params[:target_person_id]}"
+      return
+    end
+
+    if target_person == @person
+      redirect_to person_detail_path(@person), alert: "Cannot merge a person into themselves"
+      return
+    end
+
+    source_name = @person.name
+    target_name = target_person.name
+
+    ActiveRecord::Base.transaction do
+      merge_person_records(@person, target_person)
+    end
+
+    redirect_to person_detail_path(target_person), notice: "Successfully merged #{source_name} into #{target_name}"
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to person_detail_path(@person), alert: "Merge failed: #{e.message}"
   end
 
   def organizations_list
@@ -1353,6 +1374,80 @@ class SuperadminController < ApplicationController
 
     # Now destroy the person (dependent associations will be handled automatically)
     person.destroy!
+  end
+
+  # Merge source person's associations into target person, then delete source
+  def merge_person_records(source, target)
+    # Transfer talent pool memberships (skip duplicates)
+    source.talent_pool_memberships.each do |membership|
+      unless target.talent_pool_memberships.exists?(talent_pool_id: membership.talent_pool_id)
+        membership.update!(member: target)
+      end
+    end
+
+    # Transfer organization associations (skip duplicates)
+    source.organizations.each do |org|
+      target.organizations << org unless target.organizations.include?(org)
+    end
+
+    # Transfer audition requests
+    source.audition_requests.update_all(requestable_id: target.id)
+
+    # Transfer cast assignment stages
+    source.cast_assignment_stages.update_all(assignable_id: target.id)
+
+    # Transfer show person role assignments
+    source.show_person_role_assignments.update_all(assignable_id: target.id)
+    ShowPersonRoleAssignment.where(person_id: source.id).update_all(person_id: target.id)
+
+    # Transfer questionnaire invitations and responses
+    source.questionnaire_invitations.update_all(invitee_id: target.id)
+    source.questionnaire_responses.update_all(respondent_id: target.id)
+
+    # Transfer sign-up registrations
+    source.sign_up_registrations.update_all(person_id: target.id)
+
+    # Transfer group memberships (skip duplicates)
+    source.group_memberships.each do |gm|
+      unless target.group_memberships.exists?(group_id: gm.group_id)
+        gm.update!(person_id: target.id)
+      end
+    end
+
+    # Transfer shoutouts
+    source.received_shoutouts.update_all(shoutee_id: target.id, shoutee_type: "Person")
+    source.given_shoutouts.update_all(author_id: target.id)
+
+    # Transfer role eligibilities (skip duplicates)
+    source.role_eligibilities.each do |re|
+      unless target.role_eligibilities.exists?(role_id: re.role_id)
+        re.update!(member: target)
+      end
+    end
+
+    # Transfer vacancy-related associations
+    source.role_vacancy_invitations.update_all(person_id: target.id)
+    RoleVacancy.where(vacated_by_id: source.id).update_all(vacated_by_id: target.id)
+    RoleVacancy.where(filled_by_id: source.id).update_all(filled_by_id: target.id)
+
+    # Transfer show availabilities
+    source.show_availabilities.update_all(available_entity_id: target.id)
+
+    # If source has a user but target doesn't, transfer the user
+    if source.user.present? && target.user.blank?
+      user = source.user
+      source.update_column(:user_id, nil)
+      target.update!(user: user)
+      user.update!(person: target, default_person: target)
+    end
+
+    # Clean up remaining associations
+    source.talent_pool_memberships.destroy_all
+    source.organizations.clear
+    source.reload
+
+    # Now destroy the source person
+    source.destroy!
   end
 
   # Safely constantize job class names - only allows ApplicationJob subclasses

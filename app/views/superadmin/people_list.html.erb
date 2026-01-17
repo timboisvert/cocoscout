@@ -97,7 +97,6 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Has User</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Public Key</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talent Pools</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -140,11 +139,6 @@
                   <% else %>
                     <span class="text-gray-400">—</span>
                   <% end %>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center cursor-pointer" onclick="window.location='<%= person_detail_path(person) %>'">
-                  <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-medium text-xs">
-                    <%= person.talent_pool_memberships.count %>
-                  </span>
                 </td>
               </tr>
             <% end %>

@@ -164,3 +164,9 @@ The money section uses nested routes. Note the route naming convention:
 - `manage_production_money_payout_scheme_path(@production, scheme)` - show
 - `manage_production_edit_money_payout_scheme_path(@production, scheme)` - edit (edit comes BEFORE money)
 - `manage_production_new_money_payout_scheme_path(@production)` - new
+
+## Superadmin Metrics
+
+### "Active" Definitions
+- **Active People**: A person is considered "active" if they have a user account with `last_seen_at` within the past 30 days. This means the user has logged in and interacted with the application recently.
+- **Active Organizations**: An organization is considered "active" if it has a show with `date_and_time` within 30 days ago to 30 days from now. This means the organization has recent or upcoming events.

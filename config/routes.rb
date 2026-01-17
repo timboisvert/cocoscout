@@ -72,6 +72,7 @@ Rails.application.routes.draw do
                                              as: "destroy_all_suspicious_people"
     get "/people/:id", to: "superadmin#person_detail", as: "person_detail"
     delete "/people/:id", to: "superadmin#destroy_person", as: "destroy_person"
+    post "/people/:id/merge", to: "superadmin#merge_person", as: "merge_person"
     get  "/organizations",      to: "superadmin#organizations_list",  as: "organizations_list"
     get  "/organizations/:id",  to: "superadmin#organization_detail", as: "organization_detail"
     get  "/storage",            to: "superadmin#storage",             as: "storage_monitor"

@@ -9,3 +9,5 @@ pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin "trix"
 pin "@rails/actiontext", to: "actiontext.esm.js"
+pin "chart.js", to: "chart.js" # @4.4.1 - ESM wrapper
+pin "chart.umd.js", to: "chart.umd.js" # Chart.js UMD build
