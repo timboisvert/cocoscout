@@ -3,8 +3,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["Review", review_manage_production_audition_cycle_path(@production, @audition_cycle)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)],
+      ["Review", review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
     text: @audition_cycle.video_only? ? "Video Auditions" : "Audition Requests",
     links: []
@@ -45,7 +46,7 @@
                data-controller="toggle-voting"
                data-toggle-voting-cycle-id-value="<%= @audition_cycle.id %>"
                data-toggle-voting-enabled-value="<%= @audition_cycle.voting_enabled %>"
-               data-toggle-voting-url-value="<%= toggle_voting_manage_production_audition_cycle_path(@production, @audition_cycle) %>">
+               data-toggle-voting-url-value="<%= toggle_voting_manage_production_signups_auditions_cycle_path(@production, @audition_cycle) %>">
           <span class="text-sm font-semibold <%= @audition_cycle.voting_enabled ? 'text-gray-700' : 'text-gray-400' %>">
             <%= @audition_cycle.voting_enabled ? 'Enabled' : 'Disabled' %>
           </span>
@@ -68,7 +69,7 @@
         <% requestable = audition_request.requestable %>
         <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
 
-        <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, audition_request),
+        <%= link_to manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, audition_request),
             class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200",
             data: { turbo_prefetch: false } do %>
 

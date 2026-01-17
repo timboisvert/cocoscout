@@ -63,7 +63,7 @@
           <!-- Current Production Section -->
           <% if Current.production.present? && !Current.production.new_record? %>
             <% has_team_access = Current.user.role_for_production(Current.production).present? %>
-            <% current_prod_link = has_team_access ? edit_manage_production_path(Current.production) : manage_production_auditions_path(Current.production) %>
+            <% current_prod_link = has_team_access ? edit_manage_production_path(Current.production) : manage_production_signups_auditions_path(Current.production) %>
             <%= link_to current_prod_link, data: { turbo: false }, class: "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition cursor-pointer" do %>
               <div class="flex items-center gap-3">
                 <% logo_variant = Current.production.safe_logo_variant(:small) %>

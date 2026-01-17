@@ -60,7 +60,7 @@
         <% end %>
       </div>
 
-      <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: casting_select_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     <% else %>
       <%# Before notifications sent - show pending changes %>
       <p class="text-sm text-gray-500 mb-4">Click "Select New Cast Members" button to identify the people you want to add to your talent pool.</p>
@@ -91,7 +91,7 @@
         </div>
       <% end %>
 
-      <%= render partial: "shared/button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Select New Cast Members", path: casting_select_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     <% end %>
   </div>
 </div>

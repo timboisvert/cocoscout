@@ -50,7 +50,7 @@ module Manage
 
         raise ActiveRecord::Rollback unless @audition_cycle.save
 
-        redirect_to manage_production_auditions_path(@production), notice: "Audition Cycle was successfully scheduled"
+        redirect_to manage_production_signups_auditions_path(@production), notice: "Audition Cycle was successfully scheduled"
       end
 
       render :new, status: :unprocessable_entity unless @audition_cycle.persisted?
@@ -87,11 +87,11 @@ module Manage
       if @audition_cycle.update(params_to_update)
         # Redirect based on source
         if params[:redirect_to] == "form"
-          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, tab: params[:tab]),
+          redirect_to form_manage_production_signups_auditions_cycle_path(@production, @audition_cycle, tab: params[:tab]),
                       notice: "Form saved",
                       status: :see_other
         else
-          redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
+          redirect_to prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                       notice: "Audition Settings successfully updated",
                       status: :see_other
         end
@@ -111,19 +111,19 @@ module Manage
       # Confirmation page before deleting
       return unless @audition_cycle.active
 
-      redirect_to manage_production_audition_cycle_path(@production, @audition_cycle),
+      redirect_to manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                   alert: "Only archived audition cycles can be deleted"
     end
 
     def destroy
       if @audition_cycle.active
-        redirect_to manage_production_audition_cycle_path(@production, @audition_cycle),
+        redirect_to manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                     alert: "Only archived audition cycles can be deleted"
         return
       end
 
       @audition_cycle.destroy!
-      redirect_to manage_production_auditions_path(@production), notice: "Audition Cycle was successfully deleted",
+      redirect_to manage_production_signups_auditions_path(@production), notice: "Audition Cycle was successfully deleted",
                                                                  status: :see_other
     end
 
@@ -164,7 +164,7 @@ module Manage
       @questions = @audition_cycle.questions.order(:position)
 
       if @question.save
-        redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, questions_open: true),
+        redirect_to form_manage_production_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
                     notice: "Question was successfully created"
       else
         @question_error = true
@@ -175,7 +175,7 @@ module Manage
     # PATCH/PUT /audition_cycles/:id/update_question/:question_id
     def update_question
       if @question.update(question_params)
-        redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, questions_open: true),
+        redirect_to form_manage_production_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
                     notice: "Question was successfully updated", status: :see_other
       else
         render :form, status: :unprocessable_entity
@@ -185,7 +185,7 @@ module Manage
     # DELETE /audition_cycles/:id/destroy_question/:question_id
     def destroy_question
       @question.destroy!
-      redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle, questions_open: true),
+      redirect_to form_manage_production_signups_auditions_cycle_path(@production, @audition_cycle, questions_open: true),
                   notice: "Question was successfully deleted", status: :see_other
     end
 
@@ -204,10 +204,10 @@ module Manage
     # PATCH /audition_cycles/:id/archive
     def archive
       if @audition_cycle.update(active: false)
-        redirect_to manage_production_auditions_path(@production), notice: "Audition Cycle has been archived",
+        redirect_to manage_production_signups_auditions_path(@production), notice: "Audition Cycle has been archived",
                                                                    status: :see_other
       else
-        redirect_to manage_production_auditions_path(@production), alert: "Failed to archive Audition Cycle",
+        redirect_to manage_production_signups_auditions_path(@production), alert: "Failed to archive Audition Cycle",
                                                                    status: :see_other
       end
     end

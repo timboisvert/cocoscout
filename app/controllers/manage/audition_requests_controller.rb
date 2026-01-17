@@ -12,7 +12,7 @@ module Manage
     def index
       # Redirect to audition cycle show page if archived
       unless @audition_cycle.active
-        redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+        redirect_to manage_production_signups_auditions_cycle_path(@production, @audition_cycle)
         return
       end
 
@@ -63,7 +63,7 @@ module Manage
       @audition_request.audition_cycle = @audition_cycle
 
       if @audition_request.save
-        redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle),
+        redirect_to manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle),
                     notice: "Sign-up was successfully created"
       else
         render :new, status: :unprocessable_entity
@@ -107,7 +107,7 @@ module Manage
         render :edit_answers, status: :unprocessable_entity
       elsif @audition_request.valid?
         @audition_request.save!
-        redirect_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
+        redirect_to manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
                     notice: "Sign-up successfully updated", status: :see_other
       else
         render :edit_answers, status: :unprocessable_entity
@@ -116,7 +116,7 @@ module Manage
 
     def destroy
       @audition_request.destroy!
-      redirect_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle),
+      redirect_to manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle),
                   notice: "Sign-up successfully deleted", status: :see_other
     end
 
@@ -128,7 +128,7 @@ module Manage
       # Can only save a comment if we have a vote (vote is required)
       if vote.vote.blank? && vote.new_record?
         respond_to do |format|
-          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url = manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: "Please cast a vote before adding a comment" }
           format.json { render json: { success: false, errors: [ "Please cast a vote first" ] }, status: :unprocessable_entity }
@@ -138,14 +138,14 @@ module Manage
 
       if vote.save
         respond_to do |format|
-          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url = manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
           format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
         end
       else
         respond_to do |format|
-          redirect_url = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request)
+          redirect_url = manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
           format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
@@ -212,7 +212,7 @@ module Manage
 
     def ensure_audition_cycle_active
       unless @audition_cycle&.active
-        redirect_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, @audition_request),
+        redirect_to manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
                     alert: "This audition cycle is archived and cannot be modified."
       end
     end

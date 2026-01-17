@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Forms", manage_production_signups_forms_path(@production)]
     ],
     text: "Archived",
     links: []
@@ -28,12 +29,12 @@
             </div>
           </div>
           <div class="flex items-center gap-2 ml-4">
-            <%= link_to unarchive_manage_production_sign_up_form_path(@production, form),
+            <%= link_to unarchive_manage_production_signups_form_path(@production, form),
                         data: { turbo_method: :patch },
                         class: "px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors" do %>
               Restore
             <% end %>
-            <%= button_to manage_production_sign_up_form_path(@production, form),
+            <%= button_to manage_production_signups_form_path(@production, form),
                           method: :delete,
                           form: { data: { turbo_confirm: "Permanently delete this sign-up form? This cannot be undone and all registrations will be lost." } },
                           class: "px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" do %>
@@ -51,7 +52,7 @@
       <h3 class="mt-2 text-sm font-medium text-gray-900">No archived sign-up forms</h3>
       <p class="mt-1 text-sm text-gray-500">Archived forms will appear here.</p>
       <div class="mt-6">
-        <%= link_to "Back to Sign-ups", manage_production_sign_up_forms_path(@production), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+        <%= link_to "Back to Sign-ups", manage_production_signups_forms_path(@production), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
       </div>
     </div>
   <% end %>

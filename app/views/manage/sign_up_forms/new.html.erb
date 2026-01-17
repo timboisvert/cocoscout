@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_sign_up_forms_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Forms", manage_production_signups_forms_path(@production)]
     ],
     text: "New Sign-up Form",
     links: []

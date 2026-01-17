@@ -3,7 +3,9 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
+    breadcrumbs: [
+      ["Sign-ups", manage_production_signups_path(@production)]
+    ],
     text: "Auditions",
     links: []
   } %>
@@ -14,7 +16,7 @@
     <div class="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <%= render "shared/card_header", title: "Active Audition Cycle" do %>
         <% if current_user_can_manage?(@production) %>
-          <%= link_to edit_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "text-gray-400 hover:text-gray-600", title: "Settings" do %>
+          <%= link_to edit_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), class: "text-gray-400 hover:text-gray-600", title: "Settings" do %>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -140,7 +142,7 @@
 
             <% if current_user_has_role?(@production) %>
             <!-- Step 1: Prepare -->
-            <%= link_to prepare_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
+            <%= link_to prepare_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -176,7 +178,7 @@
             <% end %>
 
             <!-- Step 2: Review -->
-            <%= link_to review_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
+            <%= link_to review_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -209,7 +211,7 @@
 
             <!-- Step 3: Run Auditions -->
             <% if @active_audition_cycle.accepts_in_person_auditions? %>
-              <%= link_to run_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
+              <%= link_to run_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
                 <div class="relative flex flex-col items-start text-left group">
                   <div class="flex items-start gap-6">
                     <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -234,7 +236,7 @@
 
             <% if current_user_has_role?(@production) %>
             <!-- Step 4: Casting -->
-            <%= link_to casting_manage_production_audition_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
+            <%= link_to casting_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), class: "no-underline" do %>
               <div class="relative flex flex-col items-start text-left group">
                 <div class="flex items-start gap-6">
                   <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center z-10 ring-4 ring-white transition-all bg-pink-100">
@@ -301,8 +303,8 @@
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_audition_wizard_production_format_path(@production), variant: "primary", size: "small", icon: "arrow-right" } %>
-            <%= link_to "Start Over", manage_audition_wizard_production_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 underline" %>
+            <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_production_signups_auditions_wizard_format_path(@production), variant: "primary", size: "small", icon: "arrow-right" } %>
+            <%= link_to "Start Over", manage_production_signups_auditions_wizard_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 underline" %>
           </div>
         </div>
       </div>
@@ -380,7 +382,7 @@
                 size: "large",
                 icon: "plus",
                 type: :link,
-                path: manage_audition_wizard_production_format_path(@production) %>
+                path: manage_production_signups_auditions_wizard_format_path(@production) %>
             </div>
           <% end %>
         <% else %>
@@ -406,9 +408,9 @@
       </div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <% if @active_audition_cycle.present? && current_user_can_manage?(@production) %>
-          <%= button_to "Archive This Audition Cycle", archive_manage_production_audition_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer whitespace-nowrap", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
+          <%= button_to "Archive This Audition Cycle", archive_manage_production_signups_auditions_cycle_path(@production, @active_audition_cycle), method: :patch, class: "text-sm text-pink-500 underline cursor-pointer whitespace-nowrap", data: { turbo_confirm: "Are you sure? This will close the current audition cycle and you can create a new one." } %>
         <% end %>
-        <%= link_to "View Archive", archive_manage_production_auditions_path(@production), class: "text-sm text-pink-500 underline whitespace-nowrap" %>
+        <%= link_to "View Archive", manage_production_signups_auditions_archive_path(@production), class: "text-sm text-pink-500 underline whitespace-nowrap" %>
       </div>
     </div>
   </div>

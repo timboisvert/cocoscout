@@ -9,9 +9,9 @@
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
         filters: [
-          { text: "To Be Scheduled", path: manage_production_audition_sessions_path(production, filter: "to_be_scheduled"), active: filter.blank? || filter == "to_be_scheduled" },
-          { text: "All Yes", path: manage_production_audition_sessions_path(production, filter: "accepted"), active: filter == "accepted" },
-          { text: "All Requests", path: manage_production_audition_sessions_path(production, filter: "all"), active: filter == "all" }
+          { text: "To Be Scheduled", path: manage_production_signups_auditions_cycle_sessions_path(production, audition_cycle, filter: "to_be_scheduled"), active: filter.blank? || filter == "to_be_scheduled" },
+          { text: "All Yes", path: manage_production_signups_auditions_cycle_sessions_path(production, audition_cycle, filter: "accepted"), active: filter == "accepted" },
+          { text: "All Requests", path: manage_production_signups_auditions_cycle_sessions_path(production, audition_cycle, filter: "all"), active: filter == "all" }
         ]
       }
     ] %>

@@ -4,8 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Productions", manage_productions_path],
-      [@production.name, manage_production_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)]
     ],
     text: "Offer Auditions",
     links: []

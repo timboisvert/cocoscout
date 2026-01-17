@@ -21,7 +21,7 @@ module Manage
     def show
       # Redirect to audition cycle summary if archived
       unless @audition_cycle.active
-        redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+        redirect_to manage_production_signups_auditions_cycle_path(@production, @audition_cycle)
         return
       end
 
@@ -60,7 +60,7 @@ module Manage
       @audition_session.audition_cycle = @audition_cycle
 
       if @audition_session.save
-        redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+        redirect_to manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                     notice: "Audition session was successfully created", status: :see_other
       else
         render :new, status: :unprocessable_entity
@@ -69,7 +69,7 @@ module Manage
 
     def update
       if @audition_session.update(audition_session_params)
-        redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+        redirect_to manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                     notice: "Audition session was successfully rescheduled", status: :see_other
       else
         render :edit, status: :unprocessable_entity
@@ -78,7 +78,7 @@ module Manage
 
     def destroy
       @audition_session.destroy!
-      redirect_to manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle),
+      redirect_to manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                   notice: "Audition session was successfully canceled", status: :see_other
     end
 

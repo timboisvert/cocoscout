@@ -21,7 +21,7 @@
     </div>
   <% end %>
 
-  <%= form_with url: manage_sign_up_wizard_production_save_slots_path(@production), method: :post, local: true, data: { controller: "slot-mode" } do |form| %>
+  <%= form_with url: manage_production_signups_forms_wizard_save_slots_path(@production), method: :post, local: true, data: { controller: "slot-mode" } do |form| %>
     <div class="space-y-6">
       <!-- Slot Generation Mode Selection -->
       <div class="grid grid-cols-2 gap-3">
@@ -225,7 +225,7 @@
     </div>
 
     <div class="mt-8 flex justify-between">
-      <% back_path = @wizard_state[:scope] == "shared_pool" ? manage_sign_up_wizard_production_scope_path(@production) : manage_sign_up_wizard_production_events_path(@production) %>
+      <% back_path = @wizard_state[:scope] == "shared_pool" ? manage_production_signups_forms_wizard_scope_path(@production) : manage_production_signups_forms_wizard_events_path(@production) %>
       <%= link_to back_path, class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />

@@ -18,6 +18,18 @@ module Manage
 
     def index
       @sign_up_forms = @production.sign_up_forms.not_archived.order(created_at: :desc)
+
+      # Apply filter if provided
+      @filter = params[:filter]
+      case @filter
+      when "registrations"
+        # Event registrations = single_event or repeated scope (not shared_pool/waitlists)
+        @sign_up_forms = @sign_up_forms.where(scope: %w[single_event repeated])
+      when "waitlists"
+        # Waitlists = shared_pool scope
+        @sign_up_forms = @sign_up_forms.where(scope: "shared_pool")
+      end
+
       @archived_count = @production.sign_up_forms.archived.count
       @wizard_state = Rails.cache.read("sign_up_wizard:#{Current.user.id}:#{@production.id}")
     end
@@ -71,7 +83,7 @@ module Manage
       @sign_up_form = @production.sign_up_forms.new(sign_up_form_params)
 
       if @sign_up_form.save
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Sign-up form created successfully. Now configure your slots."
       else
         @shows = available_shows
@@ -90,7 +102,7 @@ module Manage
         respond_to do |format|
           format.html do
             tab = params[:tab].presence || 0
-            redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: tab),
+            redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: tab),
                         notice: "Sign-up form updated successfully"
           end
           format.json { render json: { success: true } }
@@ -109,7 +121,7 @@ module Manage
 
     def destroy
       @sign_up_form.destroy
-      redirect_to manage_production_sign_up_forms_path(@production), notice: "Sign-up form deleted"
+      redirect_to manage_production_signups_forms_path(@production), notice: "Sign-up form deleted"
     end
 
     # Settings - Configuration from wizard
@@ -195,7 +207,7 @@ module Manage
               session[:pending_event_changes] = {
                 form_id: @sign_up_form.id
               }
-              redirect_to confirm_event_changes_manage_production_sign_up_form_path(@production, @sign_up_form)
+              redirect_to confirm_event_changes_manage_production_signups_form_path(@production, @sign_up_form)
               return
             end
           end
@@ -203,9 +215,9 @@ module Manage
 
         # If only slot changes (no event changes), go to slot confirmation
         if session[:pending_slot_changes]&.dig("form_id") == @sign_up_form.id
-          redirect_to confirm_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form)
+          redirect_to confirm_slot_changes_manage_production_signups_form_path(@production, @sign_up_form)
         else
-          redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+          redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                       notice: "Settings updated successfully"
         end
       else
@@ -220,7 +232,7 @@ module Manage
       @pending_changes = session[:pending_slot_changes]
 
       unless @pending_changes && @pending_changes["form_id"] == @sign_up_form.id
-        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form)
+        redirect_to settings_manage_production_signups_form_path(@production, @sign_up_form)
         return
       end
 
@@ -236,7 +248,7 @@ module Manage
       pending = session.delete(:pending_slot_changes)
 
       unless pending && pending["form_id"] == @sign_up_form.id
-        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to settings_manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "No pending changes to apply"
         return
       end
@@ -250,7 +262,7 @@ module Manage
         affected_registration_action: affected_action.to_sym
       )
 
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   notice: "Slot layout updated successfully"
     end
 
@@ -258,7 +270,7 @@ module Manage
       @pending_changes = session[:pending_event_changes]
 
       unless @pending_changes && @pending_changes["form_id"] == @sign_up_form.id
-        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form)
+        redirect_to settings_manage_production_signups_form_path(@production, @sign_up_form)
         return
       end
 
@@ -271,7 +283,7 @@ module Manage
       pending = session.delete(:pending_event_changes)
 
       unless pending && pending["form_id"] == @sign_up_form.id
-        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to settings_manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "No pending changes to apply"
         return
       end
@@ -289,14 +301,14 @@ module Manage
 
         # Check if there are also pending slot changes to process
         if session[:pending_slot_changes]&.dig("form_id") == @sign_up_form.id
-          redirect_to confirm_slot_changes_manage_production_sign_up_form_path(@production, @sign_up_form),
+          redirect_to confirm_slot_changes_manage_production_signups_form_path(@production, @sign_up_form),
                       notice: notice
         else
-          redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+          redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                       notice: notice
         end
       else
-        redirect_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to settings_manage_production_signups_form_path(@production, @sign_up_form),
                     alert: result[:errors]&.first || "Failed to update event associations"
       end
     end
@@ -356,10 +368,10 @@ module Manage
       @slot = @sign_up_form.sign_up_slots.new(slot_params.merge(position: next_position))
 
       if @slot.save
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Slot added successfully"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     alert: @slot.errors.full_messages.join(", ")
       end
     end
@@ -367,10 +379,10 @@ module Manage
     def update_slot
       @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
       if @slot.update(slot_params)
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Slot updated successfully"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     alert: @slot.errors.full_messages.join(", ")
       end
     end
@@ -378,7 +390,7 @@ module Manage
     def destroy_slot
       @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
       @slot.destroy
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+      redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                   notice: "Slot deleted"
     end
 
@@ -407,7 +419,7 @@ module Manage
       end
 
       @sign_up_form.apply_holdouts!
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+      redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                   notice: "#{count} slots generated"
     end
 
@@ -418,7 +430,7 @@ module Manage
       else
         @slot.hold!(reason: params[:reason])
       end
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2)
+      redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2)
     end
 
     # Holdouts management
@@ -430,10 +442,10 @@ module Manage
       @holdout = @sign_up_form.sign_up_form_holdouts.new(holdout_params)
 
       if @holdout.save
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Holdout rule added"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     alert: @holdout.errors.full_messages.join(", ")
       end
     end
@@ -441,7 +453,7 @@ module Manage
     def destroy_holdout
       @holdout = @sign_up_form.sign_up_form_holdouts.find(params[:holdout_id])
       @holdout.destroy
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+      redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                   notice: "Holdout rule removed"
     end
 
@@ -450,10 +462,10 @@ module Manage
       @question = @sign_up_form.questions.new(question_params.merge(position: next_position))
 
       if @question.save
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Question added"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     alert: @question.errors.full_messages.join(", ")
       end
     end
@@ -461,10 +473,10 @@ module Manage
     def update_question
       @question = @sign_up_form.questions.find(params[:question_id])
       if @question.update(question_params)
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     notice: "Question updated"
       else
-        redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+        redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                     alert: @question.errors.full_messages.join(", ")
       end
     end
@@ -472,7 +484,7 @@ module Manage
     def destroy_question
       @question = @sign_up_form.questions.find(params[:question_id])
       @question.destroy
-      redirect_to edit_manage_production_sign_up_form_path(@production, @sign_up_form, tab: 2),
+      redirect_to edit_manage_production_signups_form_path(@production, @sign_up_form, tab: 2),
                   notice: "Question deleted"
     end
 
@@ -497,10 +509,10 @@ module Manage
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     notice: "Registration added"
       rescue StandardError => e
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: e.message
       end
     end
@@ -519,10 +531,10 @@ module Manage
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
                     notice: "Added to queue"
       rescue StandardError => e
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
                     alert: e.message
       end
     end
@@ -530,7 +542,7 @@ module Manage
     def cancel_registration
       @registration = SignUpRegistration.find(params[:registration_id])
       @registration.cancel!
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   notice: "Registration cancelled"
     end
 
@@ -541,14 +553,14 @@ module Manage
       # Ensure the target slot belongs to the same form
       unless target_slot.sign_up_form_id == @sign_up_form.id ||
              target_slot.sign_up_form_instance&.sign_up_form_id == @sign_up_form.id
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "Invalid target slot"
         return
       end
 
       # Check if slot has available capacity
       unless target_slot.spots_remaining > 0
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "Target slot is full"
         return
       end
@@ -560,7 +572,7 @@ module Manage
         position: target_slot.sign_up_registrations.active.count + 1
       )
 
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   notice: "Moved #{@registration.display_name} to #{target_slot.name.presence || "slot #{target_slot.position}"}"
     end
 
@@ -619,19 +631,19 @@ module Manage
     def toggle_active
       @sign_up_form.update!(active: !@sign_up_form.active)
       status = @sign_up_form.active? ? "activated" : "deactivated"
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   notice: "Sign-up form #{status}"
     end
 
     def archive
       @sign_up_form.archive!
-      redirect_to manage_production_sign_up_forms_path(@production),
+      redirect_to manage_production_signups_forms_path(@production),
                   notice: "Sign-up form archived"
     end
 
     def unarchive
       @sign_up_form.unarchive!
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   notice: "Sign-up form restored"
     end
 
@@ -640,13 +652,13 @@ module Manage
       target_production = Current.user.accessible_productions.find_by(id: target_production_id)
 
       unless target_production
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "Target production not found or you don't have access"
         return
       end
 
       if target_production.id == @production.id
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "Cannot move to the same production"
         return
       end
@@ -658,17 +670,17 @@ module Manage
       session[:current_production_id_for_organization] ||= {}
       session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = target_production.id
 
-      redirect_to manage_production_sign_up_form_path(target_production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(target_production, @sign_up_form),
                   notice: "Sign-up form moved to #{target_production.name}"
     rescue StandardError => e
-      redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+      redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                   alert: "Failed to move sign-up form: #{e.message}"
     end
 
     # Queue assignment UI for admin_assigns mode
     def assign
       unless @sign_up_form.admin_assigns?
-        redirect_to manage_production_sign_up_form_path(@production, @sign_up_form),
+        redirect_to manage_production_signups_form_path(@production, @sign_up_form),
                     alert: "Assignment is only available for forms with 'Production team assigns registrants to slots' mode"
         return
       end
@@ -681,20 +693,20 @@ module Manage
       slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
       if slot.full?
-        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+        redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
                     alert: "Slot is full"
         return
       end
 
       registration.assign_to_slot!(slot)
-      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+      redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
                   notice: "#{registration.display_name} assigned to #{slot.display_name}"
     end
 
     def unassign_registration
       registration = SignUpRegistration.find(params[:registration_id])
       registration.unassign!
-      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
+      redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
                   notice: "#{registration.display_name} returned to queue"
     end
 
@@ -712,7 +724,7 @@ module Manage
         assigned_count += 1
       end
 
-      redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+      redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
                   notice: "Auto-assigned #{assigned_count} people to slots"
     end
 
@@ -726,10 +738,10 @@ module Manage
       slot = @instance.sign_up_slots.available.find { |s| !s.full? }
       if slot
         registration.assign_to_slot!(slot)
-        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+        redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
                     notice: "#{registration.display_name} assigned to #{slot.display_name}"
       else
-        redirect_to assign_manage_production_sign_up_form_path(@production, @sign_up_form, instance_id: @instance.id),
+        redirect_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
                     alert: "No available slots"
       end
     end

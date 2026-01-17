@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)]
     ],
     text: "Review",
     links: []
@@ -31,7 +32,7 @@
         <% vote_summary = @audition_cycle.vote_summary %>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
+          <%= link_to manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_requests] %></p>
               <p class="text-xs text-center text-gray-500">
@@ -43,13 +44,13 @@
               </p>
             </div>
           <% end %>
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
+          <%= link_to manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_votes] %></p>
               <p class="text-xs text-center text-gray-500">Votes Cast</p>
             </div>
           <% end %>
-          <%= link_to manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle) do %>
+          <%= link_to manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle) do %>
             <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all min-h-24">
               <p class="font-bold text-4xl text-center text-pink-600"><%= vote_summary[:total_comments] %></p>
               <p class="text-xs text-center text-gray-500">Comments</p>
@@ -61,7 +62,7 @@
           button_text = @audition_cycle.video_only? ? "View all Video Auditions" : "View all Audition Requests"
         %>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle), variant: "primary"} %>
+          <%= render partial: "shared/button", locals: {text: button_text, path: manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle), variant: "primary"} %>
 
           <% if current_user_has_role?(@production) %>
             <div class="flex items-center justify-between sm:justify-start gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded">
@@ -86,7 +87,7 @@
                      data-controller="toggle-voting"
                      data-toggle-voting-cycle-id-value="<%= @audition_cycle.id %>"
                      data-toggle-voting-enabled-value="<%= @audition_cycle.voting_enabled %>"
-                     data-toggle-voting-url-value="<%= toggle_voting_manage_production_audition_cycle_path(@production, @audition_cycle) %>">
+                     data-toggle-voting-url-value="<%= toggle_voting_manage_production_signups_auditions_cycle_path(@production, @audition_cycle) %>">
                 <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
                   <input type="checkbox"
                          <%= 'checked' if @audition_cycle.voting_enabled %>
@@ -116,11 +117,11 @@
           </div>
 
           <div class="mt-4">
-            <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_audition_cycle_path(@production, @audition_cycle), variant: "primary"} %>
+            <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: schedule_auditions_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary"} %>
           </div>
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: manage_production_audition_cycle_audition_sessions_path(@production, @audition_cycle), variant: "primary"} %>
+          <%= render partial: "shared/button", locals: {text: "Schedule Auditions", path: manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle), variant: "primary"} %>
         <% end %>
       </div>
     </div>
@@ -327,7 +328,7 @@
               <p class="text-sm text-gray-700 mb-4">
                 All email groups have been reviewed. Click the button below to send notification emails to all applicants about their audition status.
               </p>
-              <%= form_with url: finalize_and_notify_invitations_manage_production_audition_cycle_path(@production, @audition_cycle), method: :post, local: true do %>
+              <%= form_with url: finalize_and_notify_invitations_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), method: :post, local: true do %>
                 <%= render "shared/button",
                   text: "Send Audition Invitation Notifications",
                   variant: "primary",

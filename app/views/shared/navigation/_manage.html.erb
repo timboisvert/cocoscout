@@ -32,14 +32,9 @@
               active: ["casting", "casting_availability", "roles", "talent_pools"].include?(controller_name)
             },
             {
-              label: "Auditions",
-              path: manage_production_auditions_path(Current.production),
-              active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
-            },
-            {
               label: "Sign-ups",
-              path: manage_production_sign_up_forms_path(Current.production),
-              active: controller_name == "sign_up_forms"
+              path: manage_production_signups_path(Current.production),
+              active: ["signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
             },
             {
               label: "Questionnaires",
@@ -66,9 +61,9 @@
           # Limited navigation for reviewer-only users
           links = [
             {
-              label: "Auditions",
-              path: manage_production_auditions_path(Current.production),
-              active: ["auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+              label: "Sign-ups",
+              path: manage_production_signups_path(Current.production),
+              active: ["signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
             }
           ]
         end

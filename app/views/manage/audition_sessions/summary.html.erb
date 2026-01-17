@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["In-person Sessions", manage_production_audition_sessions_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)],
+      ["In-person Sessions", manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle)]
     ],
     text: "Summary",
     links: []
@@ -79,7 +80,7 @@
         <% end %>
 
       <% else %>
-        <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "Schedule an In-person Session", manage_production_audition_cycle_audition_sessions_path(@production, @production.audition_cycle), class: "text-pink-500 underline" %></p>
+        <p class="text-center text-sm my-10">No audition sessions found. <%= link_to "Schedule an In-person Session", manage_production_signups_auditions_cycle_sessions_path(@production, @production.audition_cycle), class: "text-pink-500 underline" %></p>
       <% end %>
 
 

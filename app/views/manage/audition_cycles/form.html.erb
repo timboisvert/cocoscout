@@ -1,19 +1,20 @@
 <% content_for :title, "Audition Form" %>
 
 <div class="w-full pb-56 lg:pb-48" data-controller="question-modal tabs availability-wizard"
-     data-create-path="<%= create_question_manage_production_audition_cycle_path(@production, @audition_cycle) %>"
+     data-create-path="<%= create_question_manage_production_signups_auditions_cycle_path(@production, @audition_cycle) %>"
      data-new-description="Custom Questions are shown at the bottom of the audition form."
      data-has-errors="<%= @question.errors.any? %>"
      data-tabs-initial-tab-value="<%= params[:tab].to_i %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["Prepare", prepare_manage_production_audition_cycle_path(@production, @audition_cycle)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)],
+      ["Prepare", prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
     text: "Audition Form",
     links: [
-      { text: "Preview Form", path: preview_manage_production_audition_cycle_path(@production, @audition_cycle), icon: "eye", target: "_blank" }
+      { text: "Preview Form", path: preview_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), icon: "eye", target: "_blank" }
     ]
   } %>
 
@@ -43,7 +44,7 @@
 
   <%# ==================== TAB 0: INSTRUCTIONS ==================== %>
   <div data-tabs-target="panel">
-    <%= form_with model: [:manage, @production, @audition_cycle], url: manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true, class: "space-y-6" do |form| %>
+    <%= form_with model: [:manage, @production, @audition_cycle], url: manage_production_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, local: true, class: "space-y-6" do |form| %>
       <%= hidden_field_tag :redirect_to, "form" %>
       <%= hidden_field_tag :tab, "0" %>
 
@@ -90,7 +91,7 @@
 
   <%# ==================== TAB 1: AVAILABILITY ==================== %>
   <div data-tabs-target="panel" class="hidden">
-    <%= form_with model: [:manage, @production, @audition_cycle], url: manage_production_audition_cycle_path(@production, @audition_cycle), method: :patch, local: true do |form| %>
+    <%= form_with model: [:manage, @production, @audition_cycle], url: manage_production_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, local: true do |form| %>
       <%= hidden_field_tag :redirect_to, "form" %>
       <%= hidden_field_tag :tab, "1" %>
 
@@ -212,7 +213,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     No audition sessions configured yet.
-                    <%= link_to "Go to Sessions", audition_sessions_manage_production_audition_cycle_path(@production, @audition_cycle), class: "text-pink-500 hover:text-pink-600 font-medium" %>
+                    <%= link_to "Go to Sessions", manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle), class: "text-pink-500 hover:text-pink-600 font-medium" %>
                   </p>
                 </div>
               <% end %>
@@ -274,7 +275,7 @@
           size: "small",
           type: :button,
           icon: "eye",
-          path: preview_manage_production_audition_cycle_path(@production, @audition_cycle),
+          path: preview_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
           target: "_blank" %>
         <div data-copy-url-target="button" data-url="<%= @audition_cycle.respond_url %>">
           <%= render "shared/button",
@@ -298,7 +299,7 @@
         </div>
         <span class="text-sm text-green-700 font-medium">Form reviewed &amp; ready to share</span>
         <%= form_with model: [:manage, @production, @audition_cycle],
-                      url: manage_production_audition_cycle_path(@production, @audition_cycle),
+                      url: manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                       method: :patch,
                       local: true,
                       class: "ml-auto" do |form| %>
@@ -315,7 +316,7 @@
         </div>
         <span class="text-sm text-gray-600">Preview the form, then confirm it's ready</span>
         <%= form_with model: [:manage, @production, @audition_cycle],
-                      url: manage_production_audition_cycle_path(@production, @audition_cycle),
+                      url: manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                       method: :patch,
                       local: true do |form| %>
           <%= hidden_field_tag :redirect_to, "form" %>

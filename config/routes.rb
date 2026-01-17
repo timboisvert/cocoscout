@@ -405,6 +405,145 @@ Rails.application.routes.draw do
       # Casting routes - manage roles and cast assignments
       get "casting", to: "casting#index", as: "casting"
 
+      # Sign-ups hub - consolidates sign-up forms and auditions
+      # Routes under /manage/productions/:id/signups/...
+      get "signups", to: "signups#index", as: "signups"
+
+      # Sign-up form wizard: /manage/productions/:id/signups/forms/wizard/...
+      # NOTE: Wizard routes must come BEFORE resources to avoid "wizard" being treated as an :id
+      get    "signups/forms/wizard",              to: "sign_up_form_wizard#scope",           as: "signups_forms_wizard_scope"
+      post   "signups/forms/wizard/scope",        to: "sign_up_form_wizard#save_scope",      as: "signups_forms_wizard_save_scope"
+      get    "signups/forms/wizard/events",       to: "sign_up_form_wizard#events",          as: "signups_forms_wizard_events"
+      post   "signups/forms/wizard/events",       to: "sign_up_form_wizard#save_events",     as: "signups_forms_wizard_save_events"
+      get    "signups/forms/wizard/slots",        to: "sign_up_form_wizard#slots",           as: "signups_forms_wizard_slots"
+      post   "signups/forms/wizard/slots",        to: "sign_up_form_wizard#save_slots",      as: "signups_forms_wizard_save_slots"
+      get    "signups/forms/wizard/rules",        to: "sign_up_form_wizard#rules",           as: "signups_forms_wizard_rules"
+      post   "signups/forms/wizard/rules",        to: "sign_up_form_wizard#save_rules",      as: "signups_forms_wizard_save_rules"
+      get    "signups/forms/wizard/schedule",     to: "sign_up_form_wizard#schedule",        as: "signups_forms_wizard_schedule"
+      post   "signups/forms/wizard/schedule",     to: "sign_up_form_wizard#save_schedule",   as: "signups_forms_wizard_save_schedule"
+      get    "signups/forms/wizard/notifications", to: "sign_up_form_wizard#notifications",  as: "signups_forms_wizard_notifications"
+      post   "signups/forms/wizard/notifications", to: "sign_up_form_wizard#save_notifications", as: "signups_forms_wizard_save_notifications"
+      get    "signups/forms/wizard/review",       to: "sign_up_form_wizard#review",          as: "signups_forms_wizard_review"
+      post   "signups/forms/wizard/create",       to: "sign_up_form_wizard#create_form",     as: "signups_forms_wizard_create_form"
+      delete "signups/forms/wizard/cancel",       to: "sign_up_form_wizard#cancel",          as: "signups_forms_wizard_cancel"
+
+      # Sign-up forms: /manage/productions/:id/signups/forms/...
+      resources :sign_up_forms, path: "signups/forms", as: "signups_forms" do
+        collection do
+          get "archived", to: "sign_up_forms#archived", as: "archived"
+        end
+        member do
+          get    "settings",          to: "sign_up_forms#settings",          as: "settings"
+          patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
+          get    "confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes"
+          patch  "apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes"
+          get    "confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes"
+          patch  "apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes"
+          post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
+          patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
+          delete "destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot",  as: "destroy_slot"
+          post   "reorder_slots",     to: "sign_up_forms#reorder_slots",     as: "reorder_slots"
+          post   "generate_slots",    to: "sign_up_forms#generate_slots",    as: "generate_slots"
+          patch  "toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold"
+          get    "holdouts",          to: "sign_up_forms#holdouts",          as: "holdouts"
+          post   "create_holdout",    to: "sign_up_forms#create_holdout",    as: "create_holdout"
+          delete "destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout"
+          post   "create_question",   to: "sign_up_forms#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions"
+          post   "register",          to: "sign_up_forms#register",          as: "register"
+          post   "register_to_queue", to: "sign_up_forms#register_to_queue", as: "register_to_queue"
+          delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
+          patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
+          get    "assign",            to: "sign_up_forms#assign",            as: "assign"
+          patch  "assign_registration/:registration_id", to: "sign_up_forms#assign_registration", as: "assign_registration"
+          patch  "unassign_registration/:registration_id", to: "sign_up_forms#unassign_registration", as: "unassign_registration"
+          post   "auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue"
+          post   "auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one"
+          get    "preview",           to: "sign_up_forms#preview",           as: "preview"
+          get    "print_list",        to: "sign_up_forms#print_list",        as: "print_list"
+          patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
+          patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
+          patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"
+          patch  "transfer",          to: "sign_up_forms#transfer",          as: "transfer"
+        end
+      end
+
+      # Auditions index and archive: /manage/productions/:id/signups/auditions/...
+      get "signups/auditions", to: "auditions#index", as: "signups_auditions"
+      get "signups/auditions/archive", to: "auditions#archive", as: "signups_auditions_archive"
+
+      # Audition wizard: /manage/productions/:id/signups/auditions/wizard/...
+      get    "signups/auditions/wizard",                     to: "audition_cycle_wizard#format",           as: "signups_auditions_wizard_format"
+      post   "signups/auditions/wizard/format",              to: "audition_cycle_wizard#save_format",      as: "signups_auditions_wizard_save_format"
+      get    "signups/auditions/wizard/schedule",            to: "audition_cycle_wizard#schedule",         as: "signups_auditions_wizard_schedule"
+      post   "signups/auditions/wizard/schedule",            to: "audition_cycle_wizard#save_schedule",    as: "signups_auditions_wizard_save_schedule"
+      get    "signups/auditions/wizard/sessions",            to: "audition_cycle_wizard#sessions",         as: "signups_auditions_wizard_sessions"
+      post   "signups/auditions/wizard/sessions",            to: "audition_cycle_wizard#save_sessions",    as: "signups_auditions_wizard_save_sessions"
+      post   "signups/auditions/wizard/sessions/generate",   to: "audition_cycle_wizard#generate_sessions", as: "signups_auditions_wizard_generate_sessions"
+      post   "signups/auditions/wizard/sessions/add",        to: "audition_cycle_wizard#add_session",      as: "signups_auditions_wizard_add_session"
+      patch  "signups/auditions/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
+      delete "signups/auditions/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
+      get    "signups/auditions/wizard/availability",        to: "audition_cycle_wizard#availability",     as: "signups_auditions_wizard_availability"
+      post   "signups/auditions/wizard/availability",        to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
+      get    "signups/auditions/wizard/reviewers",           to: "audition_cycle_wizard#reviewers",        as: "signups_auditions_wizard_reviewers"
+      post   "signups/auditions/wizard/reviewers",           to: "audition_cycle_wizard#save_reviewers",   as: "signups_auditions_wizard_save_reviewers"
+      get    "signups/auditions/wizard/voting",              to: "audition_cycle_wizard#voting",           as: "signups_auditions_wizard_voting"
+      post   "signups/auditions/wizard/voting",              to: "audition_cycle_wizard#save_voting",      as: "signups_auditions_wizard_save_voting"
+      get    "signups/auditions/wizard/review",              to: "audition_cycle_wizard#review",           as: "signups_auditions_wizard_review"
+      post   "signups/auditions/wizard/create",              to: "audition_cycle_wizard#create_cycle",     as: "signups_auditions_wizard_create_cycle"
+      delete "signups/auditions/wizard/cancel",              to: "audition_cycle_wizard#cancel",           as: "signups_auditions_wizard_cancel"
+
+      # Audition cycles: /manage/productions/:id/signups/auditions/:id/...
+      resources :audition_cycles, path: "signups/auditions", as: "signups_auditions_cycles" do
+        resources :audition_requests, path: "requests", as: "requests" do
+          member do
+            get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
+            get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
+            patch "update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_audition_session_availability"
+            post  "cast_vote",          to: "audition_requests#cast_vote",    as: "cast_vote"
+            get   "votes",              to: "audition_requests#votes",        as: "votes"
+          end
+        end
+        resources :audition_sessions, path: "sessions", as: "sessions" do
+          resources :auditions, only: [ :show ] do
+            member do
+              post "cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote"
+            end
+          end
+        end
+        member do
+          get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
+          get    "form",              to: "audition_cycles#form",              as: "form"
+          get    "preview",           to: "audition_cycles#preview",           as: "preview"
+          post   "create_question",   to: "audition_cycles#create_question",   as: "create_question"
+          patch  "update_question/:question_id", to: "audition_cycles#update_question", as: "update_question"
+          delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
+          post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
+          patch  "archive",           to: "audition_cycles#archive",           as: "archive"
+          get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
+          patch  "toggle_voting",     to: "audition_cycles#toggle_voting",     as: "toggle_voting"
+          get    "prepare",           to: "auditions#prepare",                   as: "prepare"
+          patch  "update_reviewers",  to: "auditions#update_reviewers",          as: "update_reviewers"
+          get    "publicize",         to: "auditions#publicize",                 as: "publicize"
+          get    "review",            to: "auditions#review",                    as: "review"
+          patch  "finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations"
+          get    "run",               to: "auditions#run",                       as: "run"
+          get    "casting",           to: "auditions#casting",                   as: "casting"
+          get    "casting/select",    to: "auditions#casting_select", as: "casting_select"
+          post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
+          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment",
+                                                as: "remove_from_cast_assignment"
+          post   "finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify"
+          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations",
+                                                    as: "finalize_and_notify_invitations"
+        end
+      end
+
+      # Audition session summary
+      get "signups/auditions/sessions/summary", to: "audition_sessions#summary", as: "signups_audition_session_summary"
+
       # Casting > Availability routes (nested under casting)
       scope "casting" do
         resources :availability, only: %i[index], controller: "casting_availability", as: "casting_availability" do
@@ -456,74 +595,6 @@ Rails.application.routes.draw do
         end
       end
 
-      # Audition cycle creation wizard
-      scope "audition-wizard", as: "audition_wizard" do
-        get    "/",           to: "audition_cycle_wizard#format",          as: "format"
-        post   "format",      to: "audition_cycle_wizard#save_format",     as: "save_format"
-        get    "schedule",    to: "audition_cycle_wizard#schedule",        as: "schedule"
-        post   "schedule",    to: "audition_cycle_wizard#save_schedule",   as: "save_schedule"
-        get    "sessions",    to: "audition_cycle_wizard#sessions",        as: "sessions"
-        post   "sessions",    to: "audition_cycle_wizard#save_sessions",   as: "save_sessions"
-        post   "sessions/generate", to: "audition_cycle_wizard#generate_sessions", as: "generate_sessions"
-        post   "sessions/add", to: "audition_cycle_wizard#add_session",    as: "add_session"
-        patch  "sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "update_session"
-        delete "sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "delete_session"
-        get    "availability", to: "audition_cycle_wizard#availability",   as: "availability"
-        post   "availability", to: "audition_cycle_wizard#save_availability", as: "save_availability"
-        get    "reviewers",   to: "audition_cycle_wizard#reviewers",       as: "reviewers"
-        post   "reviewers",   to: "audition_cycle_wizard#save_reviewers",  as: "save_reviewers"
-        get    "voting",      to: "audition_cycle_wizard#voting",          as: "voting"
-        post   "voting",      to: "audition_cycle_wizard#save_voting",     as: "save_voting"
-        get    "review",      to: "audition_cycle_wizard#review",          as: "review"
-        post   "create",      to: "audition_cycle_wizard#create_cycle",    as: "create_cycle"
-        delete "cancel",      to: "audition_cycle_wizard#cancel",          as: "cancel"
-      end
-
-      resources :audition_cycles do
-        resources :audition_requests do
-          member do
-            get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
-            get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
-            patch "update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_audition_session_availability"
-            post  "cast_vote",          to: "audition_requests#cast_vote",    as: "cast_vote"
-            get   "votes",              to: "audition_requests#votes",        as: "votes"
-          end
-        end
-        resources :audition_sessions do
-          resources :auditions, only: [ :show ] do
-            member do
-              post "cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote"
-            end
-          end
-        end
-        member do
-          get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
-          get    "form",              to: "audition_cycles#form",              as: "form"
-          get    "preview",           to: "audition_cycles#preview",           as: "preview"
-          post   "create_question",   to: "audition_cycles#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "audition_cycles#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
-          patch  "archive",           to: "audition_cycles#archive",           as: "archive"
-          get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
-          patch  "toggle_voting",     to: "audition_cycles#toggle_voting",     as: "toggle_voting"
-          get    "prepare",           to: "auditions#prepare",                   as: "prepare"
-          patch  "update_reviewers",  to: "auditions#update_reviewers",          as: "update_reviewers"
-          get    "publicize",         to: "auditions#publicize",                 as: "publicize"
-          get    "review",            to: "auditions#review",                    as: "review"
-          patch  "finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations"
-          get    "run",               to: "auditions#run",                       as: "run"
-          get    "casting",           to: "auditions#casting",                   as: "casting"
-          get    "casting/select",    to: "auditions#casting_select", as: "casting_select"
-          post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
-          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment",
-                                                as: "remove_from_cast_assignment"
-          post   "finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify"
-          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations",
-                                                    as: "finalize_and_notify_invitations"
-        end
-      end
-
       resources :questionnaires do
         member do
           get    "form",              to: "questionnaires#form",              as: "form"
@@ -539,70 +610,6 @@ Rails.application.routes.draw do
           get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
         end
       end
-
-      # Sign-up form creation wizard
-      scope "sign-up-wizard", as: "sign_up_wizard" do
-        get    "/",           to: "sign_up_form_wizard#scope",           as: "scope"
-        post   "scope",       to: "sign_up_form_wizard#save_scope",      as: "save_scope"
-        get    "events",      to: "sign_up_form_wizard#events",          as: "events"
-        post   "events",      to: "sign_up_form_wizard#save_events",     as: "save_events"
-        get    "slots",       to: "sign_up_form_wizard#slots",           as: "slots"
-        post   "slots",       to: "sign_up_form_wizard#save_slots",      as: "save_slots"
-        get    "rules",       to: "sign_up_form_wizard#rules",           as: "rules"
-        post   "rules",       to: "sign_up_form_wizard#save_rules",      as: "save_rules"
-        get    "schedule",    to: "sign_up_form_wizard#schedule",        as: "schedule"
-        post   "schedule",    to: "sign_up_form_wizard#save_schedule",   as: "save_schedule"
-        get    "notifications", to: "sign_up_form_wizard#notifications", as: "notifications"
-        post   "notifications", to: "sign_up_form_wizard#save_notifications", as: "save_notifications"
-        get    "review",      to: "sign_up_form_wizard#review",          as: "review"
-        post   "create",      to: "sign_up_form_wizard#create_form",     as: "create_form"
-        delete "cancel",      to: "sign_up_form_wizard#cancel",          as: "cancel"
-      end
-
-      # Sign-up forms for events
-      resources :sign_up_forms, path: "sign-ups" do
-        collection do
-          get "archived", to: "sign_up_forms#archived", as: "archived"
-        end
-        member do
-          get    "settings",          to: "sign_up_forms#settings",          as: "settings"
-          patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
-          get    "confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes"
-          patch  "apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes"
-          get    "confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes"
-          patch  "apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes"
-          post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
-          patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
-          delete "destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot",  as: "destroy_slot"
-          post   "reorder_slots",     to: "sign_up_forms#reorder_slots",     as: "reorder_slots"
-          post   "generate_slots",    to: "sign_up_forms#generate_slots",    as: "generate_slots"
-          patch  "toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold"
-          get    "holdouts",          to: "sign_up_forms#holdouts",          as: "holdouts"
-          post   "create_holdout",    to: "sign_up_forms#create_holdout",    as: "create_holdout"
-          delete "destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout"
-          post   "create_question",   to: "sign_up_forms#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions"
-          post   "register",          to: "sign_up_forms#register",          as: "register"
-          post   "register_to_queue", to: "sign_up_forms#register_to_queue", as: "register_to_queue"
-          delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
-          patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
-          get    "assign",            to: "sign_up_forms#assign",            as: "assign"
-          patch  "assign_registration/:registration_id", to: "sign_up_forms#assign_registration", as: "assign_registration"
-          patch  "unassign_registration/:registration_id", to: "sign_up_forms#unassign_registration", as: "unassign_registration"
-          post   "auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue"
-          post   "auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one"
-          get    "preview",           to: "sign_up_forms#preview",           as: "preview"
-          get    "print_list",        to: "sign_up_forms#print_list",        as: "print_list"
-          patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
-          patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
-          patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"
-          patch  "transfer",          to: "sign_up_forms#transfer",          as: "transfer"
-        end
-      end
-
-      get "/audition_sessions/summary", to: "audition_sessions#summary", as: "audition_session_summary"
 
       resources :communications, only: %i[index show] do
         collection do
@@ -661,11 +668,7 @@ Rails.application.routes.draw do
       resources :cast_assignment_stages, only: %i[create update destroy]
       # resources :email_groups, only: %i[create update destroy] (removed)
       resources :audition_email_assignments, only: %i[create update destroy]
-      resources :auditions do
-        collection do
-          get :archive
-        end
-      end
+      # Note: auditions routes are now under signups/auditions
     end
 
     # Used for adding people and removing them from an audition session

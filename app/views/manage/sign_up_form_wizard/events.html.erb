@@ -30,7 +30,7 @@
   <% end %>
 
   <% if @wizard_state[:scope] == 'single_event' %>
-    <%= form_with url: manage_sign_up_wizard_production_save_events_path(@production), method: :post, local: true, data: { controller: "single-event-select", "single-event-select-selected-id-value": @wizard_state[:selected_show_ids]&.first } do |form| %>
+    <%= form_with url: manage_production_signups_forms_wizard_save_events_path(@production), method: :post, local: true, data: { controller: "single-event-select", "single-event-select-selected-id-value": @wizard_state[:selected_show_ids]&.first } do |form| %>
       <!-- Single Event Selection - show_row style -->
       <div class="space-y-2 max-h-[28rem] overflow-y-auto">
         <% @shows.each do |show| %>
@@ -104,7 +104,7 @@
       <input type="hidden" name="event_matching" value="manual">
 
       <div class="mt-8 flex justify-between">
-        <%= link_to manage_sign_up_wizard_production_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <%= link_to manage_production_signups_forms_wizard_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
@@ -114,7 +114,7 @@
       </div>
     <% end %>
   <% else %>
-    <%= form_with url: manage_sign_up_wizard_production_save_events_path(@production), method: :post, local: true, data: { controller: "event-matching multi-event-select", "event-matching-selected-value": @wizard_state[:event_matching] || 'all' } do |form| %>
+    <%= form_with url: manage_production_signups_forms_wizard_save_events_path(@production), method: :post, local: true, data: { controller: "event-matching multi-event-select", "event-matching-selected-value": @wizard_state[:event_matching] || 'all' } do |form| %>
       <!-- Repeated Event Matching Options -->
       <div class="space-y-4">
         <!-- All Events -->
@@ -237,7 +237,7 @@
       </div>
 
       <div class="mt-8 flex justify-between">
-        <%= link_to manage_sign_up_wizard_production_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+        <%= link_to manage_production_signups_forms_wizard_scope_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>

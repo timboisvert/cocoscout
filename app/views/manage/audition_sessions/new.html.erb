@@ -7,8 +7,9 @@
     <%= render partial: "shared/notice", locals: { notice: notice } %>
     <%= render partial: "shared/top_menu", locals: {
       breadcrumbs: [
-        ["Auditions", manage_production_auditions_path(@production)],
-        ["In-person Sessions", manage_production_audition_sessions_path(@production)]
+        ["Sign-ups", manage_production_signups_path(@production)],
+        ["Auditions", manage_production_signups_auditions_path(@production)],
+        ["In-person Sessions", manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle)]
       ],
       text: "Schedule an In-person Session",
       links: []

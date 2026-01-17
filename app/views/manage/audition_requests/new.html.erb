@@ -3,8 +3,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      [(@audition_cycle.video_only? ? "Video Auditions" : "Audition Requests"), manage_production_audition_cycle_audition_requests_path(@production, @audition_cycle)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)],
+      [(@audition_cycle.video_only? ? "Video Auditions" : "Audition Requests"), manage_production_signups_auditions_cycle_requests_path(@production, @audition_cycle)]
     ],
     text: "Manually Create an Audition Request",
     links: []

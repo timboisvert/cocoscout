@@ -3,7 +3,7 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who reviews submissions?</h2>
   <p class="text-gray-600 mb-6">Choose who can see and vote on audition submissions.</p>
 
-  <%= form_with url: manage_audition_wizard_production_save_reviewers_path(@production), method: :post, local: true, data: { controller: "reviewer-wizard" } do |form| %>
+  <%= form_with url: manage_production_signups_auditions_wizard_save_reviewers_path(@production), method: :post, local: true, data: { controller: "reviewer-wizard" } do |form| %>
     <div class="space-y-3">
       <!-- Production Team -->
       <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-pink-300 transition">
@@ -167,7 +167,7 @@
     </div>
 
     <div class="mt-8 flex justify-between">
-      <%= link_to manage_audition_wizard_production_availability_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+      <%= link_to manage_production_signups_auditions_wizard_availability_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>

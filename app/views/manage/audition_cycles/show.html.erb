@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Auditions", manage_production_auditions_path(@production)],
-      ["Archive", archive_manage_production_auditions_path(@production)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Auditions", manage_production_signups_auditions_path(@production)],
+      ["Archive", archive_manage_production_signups_auditions_path(@production)]
     ],
     text: "Archived Audition Cycle",
     links: []
@@ -69,7 +70,7 @@
       <% if @audition_requests.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <% @audition_requests.each do |request| %>
-            <%= link_to manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+            <%= link_to manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, request), class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
               <div class="flex items-center gap-3">
                 <% if request.requestable.respond_to?(:safe_headshot_variant) %>
                   <% headshot_variant = request.requestable.safe_headshot_variant(:thumb) %>
@@ -147,9 +148,9 @@
               <%
                 audition_data = auditions_by_person[request.person.id]
                 if audition_data
-                  link_path = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, audition_data[:session], audition_data[:audition])
+                  link_path = manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_data[:session], audition_data[:audition])
                 else
-                  link_path = manage_production_audition_cycle_audition_request_path(@production, @audition_cycle, request)
+                  link_path = manage_production_signups_auditions_cycle_request_path(@production, @audition_cycle, request)
                 end
               %>
               <%= link_to link_path, class: "block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
@@ -245,7 +246,7 @@
                      text: "Delete Audition Cycle",
                      variant: "danger",
                      size: "medium",
-                     path: delete_confirm_manage_production_audition_cycle_path(@production, @audition_cycle),
+                     path: delete_confirm_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                      classes: "flex-shrink-0" %>
         </div>
       </div>

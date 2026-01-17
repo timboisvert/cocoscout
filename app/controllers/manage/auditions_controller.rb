@@ -17,6 +17,10 @@ module Manage
       @active_audition_cycle = @production.active_audition_cycle
       @past_audition_cycles = @production.audition_cycles.where(active: false).order(created_at: :desc).limit(3)
 
+      # Apply filter if provided
+      @filter = params[:filter]
+      # Filter is used in the view to show filtered audition cycles
+
       # Check for wizard in progress
       @wizard_in_progress = session[:audition_wizard].present? && session[:audition_wizard][@production.id.to_s].present?
     end
@@ -50,13 +54,13 @@ module Manage
         end
       end
 
-      redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle),
+      redirect_to prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                   notice: "Audition review team updated successfully."
     end
 
     # GET /auditions/publicize - redirects to prepare (publicize section removed)
     def publicize
-      redirect_to prepare_manage_production_audition_cycle_path(@production, @audition_cycle)
+      redirect_to prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)
     end
 
     # GET /auditions/review
@@ -147,7 +151,7 @@ module Manage
     def finalize_invitations
       audition_cycle = @production.audition_cycle
       audition_cycle.update(finalize_audition_invitations: params[:finalize])
-      redirect_to manage_production_auditions_review_path(@production),
+      redirect_to review_manage_production_signups_auditions_cycle_path(@production, audition_cycle),
                   notice: "Audition invitations #{params[:finalize] == 'true' ? 'finalized' : 'unfin finalized'}"
     end
 
@@ -181,14 +185,14 @@ module Manage
 
       if vote.save
         respond_to do |format|
-          redirect_url = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
+          redirect_url = manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, notice: "Vote recorded" }
           format.json { render json: { success: true, vote: vote.vote, comment: vote.comment } }
         end
       else
         respond_to do |format|
-          redirect_url = manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
+          redirect_url = manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
           format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
@@ -546,7 +550,7 @@ module Manage
       # Mark the audition cycle as having finalized casting and disable audition voting
       audition_cycle.update(casting_finalized_at: Time.current, audition_voting_enabled: false)
 
-      redirect_to casting_manage_production_audition_cycle_path(@production, audition_cycle),
+      redirect_to casting_manage_production_signups_auditions_cycle_path(@production, audition_cycle),
                   notice: "#{emails_sent} notification email#{emails_sent != 1 ? 's' : ''} sent and #{auditionees_added_to_casts} auditionee#{auditionees_added_to_casts != 1 ? 's' : ''} added to casts."
     end
 
@@ -659,7 +663,7 @@ module Manage
       # Also disable both voting types since scheduling is finalized
       audition_cycle.update(finalize_audition_invitations: true, voting_enabled: false, audition_voting_enabled: false)
 
-      redirect_to review_manage_production_audition_cycle_path(@production, audition_cycle),
+      redirect_to review_manage_production_signups_auditions_cycle_path(@production, audition_cycle),
                   notice: "#{emails_sent} invitation email#{emails_sent != 1 ? 's' : ''} sent successfully."
     end
 
@@ -667,7 +671,7 @@ module Manage
 
     def ensure_audition_cycle_active
       unless @audition_cycle.active
-        redirect_to manage_production_audition_cycle_audition_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition),
+        redirect_to manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition),
                     alert: "This audition cycle is archived. Voting is not allowed."
       end
     end
@@ -718,7 +722,7 @@ module Manage
         # When coming from /audition_cycles/:id or /audition_cycles/:audition_cycle_id/*
         @audition_cycle = @production.audition_cycles.find_by(id: cycle_id)
         unless @audition_cycle
-          redirect_to manage_production_auditions_path(@production), alert: "Audition cycle not found."
+          redirect_to manage_production_signups_auditions_path(@production), alert: "Audition cycle not found."
           nil
         end
       else
@@ -747,13 +751,13 @@ module Manage
     end
 
     def redirect_to_archived_summary
-      redirect_to manage_production_audition_cycle_path(@production, @audition_cycle)
+      redirect_to manage_production_signups_auditions_cycle_path(@production, @audition_cycle)
     end
 
     def ensure_user_has_role
       return if Current.user.role_for_production(@production).present?
 
-      redirect_to review_manage_production_audition_cycle_path(@production, @audition_cycle),
+      redirect_to review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                   alert: "You don't have permission to access this page."
     end
   end

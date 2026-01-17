@@ -3,9 +3,10 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
-      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)],
-      ["Settings", settings_manage_production_sign_up_form_path(@production, @sign_up_form)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Forms", manage_production_signups_forms_path(@production)],
+      [@sign_up_form.name, manage_production_signups_form_path(@production, @sign_up_form)],
+      ["Settings", settings_manage_production_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Confirm Event Changes",
     links: []
@@ -200,7 +201,7 @@
 
     <%# Action Buttons %>
     <div class="mt-8 flex justify-between">
-      <%= link_to settings_manage_production_sign_up_form_path(@production, @sign_up_form),
+      <%= link_to settings_manage_production_signups_form_path(@production, @sign_up_form),
                   class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -208,7 +209,7 @@
         Cancel & Go Back
       <% end %>
 
-      <%= form_with url: apply_event_changes_manage_production_sign_up_form_path(@production, @sign_up_form), method: :patch, local: true, id: "apply_event_changes_form" do %>
+      <%= form_with url: apply_event_changes_manage_production_signups_form_path(@production, @sign_up_form), method: :patch, local: true, id: "apply_event_changes_form" do %>
         <% if @event_analysis[:has_affected_registrations] %>
           <input type="hidden" name="affected_action" value="cancel">
         <% end %>

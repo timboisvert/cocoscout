@@ -4,12 +4,13 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_sign_up_forms_path(@production)],
-      [@sign_up_form.name, manage_production_sign_up_form_path(@production, @sign_up_form)]
+      ["Sign-ups", manage_production_signups_path(@production)],
+      ["Forms", manage_production_signups_forms_path(@production)],
+      [@sign_up_form.name, manage_production_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Preview Sign-up Form",
     links: [
-      { text: "Edit Form", path: edit_manage_production_sign_up_form_path(@production, @sign_up_form) }
+      { text: "Edit Form", path: edit_manage_production_signups_form_path(@production, @sign_up_form) }
     ]
   } %>
 

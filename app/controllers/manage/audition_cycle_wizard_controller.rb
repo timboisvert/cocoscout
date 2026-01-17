@@ -22,7 +22,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_schedule_path(@production)
+      redirect_to manage_production_signups_auditions_wizard_schedule_path(@production)
     end
 
     # Step 2: Sign-up Window
@@ -44,9 +44,9 @@ module Manage
 
       # If in-person auditions are enabled, go to sessions step, otherwise skip to availability
       if @wizard_state[:allow_in_person_auditions]
-        redirect_to manage_audition_wizard_production_sessions_path(@production)
+        redirect_to manage_production_signups_auditions_wizard_sessions_path(@production)
       else
-        redirect_to manage_audition_wizard_production_availability_path(@production)
+        redirect_to manage_production_signups_auditions_wizard_availability_path(@production)
       end
     end
 
@@ -54,7 +54,7 @@ module Manage
     def sessions
       # Redirect if in-person auditions not enabled
       unless @wizard_state[:allow_in_person_auditions]
-        redirect_to manage_audition_wizard_production_availability_path(@production)
+        redirect_to manage_production_signups_auditions_wizard_availability_path(@production)
         return
       end
 
@@ -65,7 +65,7 @@ module Manage
     def save_sessions
       # Just move to next step - sessions are already saved in wizard state
       save_wizard_state
-      redirect_to manage_audition_wizard_production_availability_path(@production)
+      redirect_to manage_production_signups_auditions_wizard_availability_path(@production)
     end
 
     def generate_sessions
@@ -112,7 +112,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_sessions_path(@production), notice: "#{count} sessions generated"
+      redirect_to manage_production_signups_auditions_wizard_sessions_path(@production), notice: "#{count} sessions generated"
     end
 
     def add_session
@@ -122,7 +122,7 @@ module Manage
 
       if start_at.blank? || duration <= 0 || location_id.blank?
         flash[:alert] = "Please fill in all session details"
-        redirect_to manage_audition_wizard_production_sessions_path(@production) and return
+        redirect_to manage_production_signups_auditions_wizard_sessions_path(@production) and return
       end
 
       @wizard_state[:audition_sessions] ||= []
@@ -133,7 +133,7 @@ module Manage
       }
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_sessions_path(@production), notice: "Session added"
+      redirect_to manage_production_signups_auditions_wizard_sessions_path(@production), notice: "Session added"
     end
 
     def update_session
@@ -147,14 +147,14 @@ module Manage
         save_wizard_state
       end
 
-      redirect_to manage_audition_wizard_production_sessions_path(@production), notice: "Session updated"
+      redirect_to manage_production_signups_auditions_wizard_sessions_path(@production), notice: "Session updated"
     end
 
     def delete_session
       index = params[:session_index].to_i
       @wizard_state[:audition_sessions]&.delete_at(index)
       save_wizard_state
-      redirect_to manage_audition_wizard_production_sessions_path(@production), notice: "Session removed"
+      redirect_to manage_production_signups_auditions_wizard_sessions_path(@production), notice: "Session removed"
     end
 
     # Step 4: Availability Requirements
@@ -174,7 +174,7 @@ module Manage
       @wizard_state[:require_all_audition_availability] = params[:require_all_audition_availability] == "1"
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_reviewers_path(@production)
+      redirect_to manage_production_signups_auditions_wizard_reviewers_path(@production)
     end
 
     # Step 4: Reviewer Team
@@ -196,7 +196,7 @@ module Manage
       @wizard_state[:reviewer_person_ids] = params[:reviewer_person_ids] || []
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_voting_path(@production)
+      redirect_to manage_production_signups_auditions_wizard_voting_path(@production)
     end
 
     # Step 5: Voting
@@ -208,7 +208,7 @@ module Manage
       @wizard_state[:audition_voting_enabled] = params[:audition_voting_enabled] == "1"
 
       save_wizard_state
-      redirect_to manage_audition_wizard_production_review_path(@production)
+      redirect_to manage_production_signups_auditions_wizard_review_path(@production)
     end
 
     # Step 6: Review & Create
@@ -272,7 +272,7 @@ module Manage
           # Clear wizard state
           clear_wizard_state
 
-          redirect_to form_manage_production_audition_cycle_path(@production, @audition_cycle),
+          redirect_to form_manage_production_signups_auditions_cycle_path(@production, @audition_cycle),
                       notice: "Audition cycle created! Now customize your sign-up form."
         else
           flash.now[:alert] = @audition_cycle.errors.full_messages.to_sentence
@@ -284,7 +284,7 @@ module Manage
     # Cancel wizard and clear state
     def cancel
       clear_wizard_state
-      redirect_to manage_production_auditions_path(@production)
+      redirect_to manage_production_signups_auditions_path(@production)
     end
 
     private
