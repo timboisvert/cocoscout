@@ -63,7 +63,7 @@ module My
         all_talent_pool_show_ids.merge(shared_group_shows)
       end
 
-      # Step 1b: Get shows where user has sign-up registrations
+      # Step 1b: Get shows where user has sign-up registrations (exclude archived forms)
       sign_up_show_ids = Set.new
       @sign_up_registrations_by_show = Hash.new { |h, k| h[k] = [] }
 
@@ -74,12 +74,16 @@ module My
           .where.not(status: "cancelled")
           .includes(
             :person,
-            sign_up_slot: { sign_up_form_instance: :show },
+            sign_up_slot: { sign_up_form_instance: :show, sign_up_form: {} },
             sign_up_form_instance: :show
           )
           .to_a
 
         registrations.each do |reg|
+          # Skip if the sign-up form is archived
+          form = reg.sign_up_slot&.sign_up_form
+          next if form&.archived_at.present?
+
           # Get the show from either the slot's instance or the direct instance (queued)
           show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
           next unless show && show.date_and_time >= Time.current

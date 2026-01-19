@@ -1,0 +1,217 @@
+<% content_for :title, "Key Monitor - Superadmin" %>
+
+<div class="w-full px-5 pt-5">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+        ["Superadmin", superadmin_path]
+    ],
+    text: "Key Monitor",
+    links: []
+  } %>
+
+  <!-- Health Status -->
+  <% unless @health[:healthy] %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span class="font-semibold text-amber-800">Capacity Warning</span>
+      </div>
+      <ul class="mt-2 text-sm text-amber-700">
+        <% @health[:warnings].each do |warning| %>
+          <li>• <%= warning %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- Overview Stats -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+    <!-- Audition Keys -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-500">/a/ Keys (Auditions)</span>
+        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+          <%= number_to_percentage(@statistics[:audition][:usage_percentage], precision: 2) %>
+        </span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:audition][:used]) %></div>
+      <div class="text-xs text-gray-500">of <%= number_with_delimiter(@statistics[:audition][:total_capacity]) %> available</div>
+      <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-full bg-purple-500 rounded-full" style="width: <%= [@statistics[:audition][:usage_percentage], 100].min %>%"></div>
+      </div>
+    </div>
+
+    <!-- Sign-up Keys -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-500">/s/ Keys (Sign-ups)</span>
+        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+          <%= number_to_percentage(@statistics[:signup][:usage_percentage], precision: 2) %>
+        </span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:signup][:used]) %></div>
+      <div class="text-xs text-gray-500">of <%= number_with_delimiter(@statistics[:signup][:total_capacity]) %> available</div>
+      <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-full bg-blue-500 rounded-full" style="width: <%= [@statistics[:signup][:usage_percentage], 100].min %>%"></div>
+      </div>
+    </div>
+
+    <!-- Total Used -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-sm font-medium text-gray-500 mb-2">Total Keys Used</div>
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:combined][:total_used]) %></div>
+      <div class="text-xs text-gray-500 mt-1">
+        <%= @statistics[:audition][:used] %> audition + <%= @statistics[:signup][:used] %> sign-up
+      </div>
+    </div>
+
+    <!-- Key Configuration -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="text-sm font-medium text-gray-500 mb-2">Key Configuration</div>
+      <div class="text-lg font-bold text-gray-900"><%= @statistics[:audition][:key_length] %> characters</div>
+      <div class="text-xs text-gray-500 mt-1">
+        <%= @statistics[:audition][:charset_size] %> chars (A-Z, 0-9)
+      </div>
+      <div class="text-xs text-gray-500">
+        <%= number_with_delimiter(@statistics[:audition][:total_capacity]) %> combinations per type
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="border-b border-gray-200 mt-6">
+    <nav class="flex gap-4" aria-label="Tabs">
+      <%= link_to "All Keys",
+                  keys_monitor_path(filter: "all"),
+                  class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'all' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "Audition (/a/)",
+                  keys_monitor_path(filter: "audition"),
+                  class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'audition' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "Sign-up (/s/)",
+                  keys_monitor_path(filter: "signup"),
+                  class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'signup' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+    </nav>
+  </div>
+
+  <!-- Keys List -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <%= render "shared/card_header", title: "Short URL Keys (#{number_with_delimiter(@total_keys)} total)" %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b bg-gray-50">
+            <th class="px-4 py-3 font-medium">Key</th>
+            <th class="px-4 py-3 font-medium">Type</th>
+            <th class="px-4 py-3 font-medium">Name</th>
+            <th class="px-4 py-3 font-medium">Production</th>
+            <th class="px-4 py-3 font-medium">Organization</th>
+            <th class="px-4 py-3 font-medium">Status</th>
+            <th class="px-4 py-3 font-medium">Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @keys.empty? %>
+            <tr>
+              <td colspan="7" class="px-4 py-8 text-center text-gray-500">No keys found</td>
+            </tr>
+          <% else %>
+            <% @keys.each do |key_info| %>
+              <tr class="border-b border-gray-100 hover:bg-gray-50">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <code class="px-2 py-1 bg-gray-100 rounded text-xs font-mono font-semibold">
+                      <%= key_info[:path] %>
+                    </code>
+                    <a href="<%= key_info[:path] %>" target="_blank" class="text-gray-400 hover:text-gray-600" title="Open in new tab">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <% if key_info[:type] == :audition %>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">Audition</span>
+                  <% else %>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Sign-up</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-900"><%= key_info[:name] || "—" %></td>
+                <td class="px-4 py-3">
+                  <% if key_info[:production_id] %>
+                    <%= key_info[:production_name] %>
+                  <% else %>
+                    <span class="text-gray-400">—</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3">
+                  <% if key_info[:organization_id] %>
+                    <%= link_to key_info[:organization_name], organization_detail_path(key_info[:organization_id]), class: "text-blue-600 hover:underline" %>
+                  <% else %>
+                    <span class="text-gray-400">—</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3">
+                  <% if key_info[:status] == "active" %>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                  <% else %>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-gray-500">
+                  <%= key_info[:created_at]&.strftime("%b %d, %Y") %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <% if @total_pages > 1 %>
+      <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          Showing <%= ((@page - 1) * @per_page) + 1 %> - <%= [(@page * @per_page), @total_keys].min %> of <%= number_with_delimiter(@total_keys) %>
+        </div>
+        <div class="flex gap-2">
+          <% if @page > 1 %>
+            <%= link_to "← Previous", keys_monitor_path(filter: @filter, page: @page - 1), class: "px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100" %>
+          <% end %>
+          <% if @page < @total_pages %>
+            <%= link_to "Next →", keys_monitor_path(filter: @filter, page: @page + 1), class: "px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Technical Details -->
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <%= render "shared/card_header", title: "Technical Details" %>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 mb-4">
+        Short URL keys are <strong>sacred</strong> and permanent. Once assigned, a key should last forever.
+        The <code>/a/</code> prefix is for audition response URLs, and <code>/s/</code> is for sign-up form short links.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <dt class="font-medium text-gray-700">Character Set</dt>
+          <dd class="text-gray-500">A-Z, 0-9 (36 characters)</dd>
+        </div>
+        <div>
+          <dt class="font-medium text-gray-700">Key Length</dt>
+          <dd class="text-gray-500"><%= @statistics[:audition][:key_length] %> characters</dd>
+        </div>
+        <div>
+          <dt class="font-medium text-gray-700">Total Capacity (per type)</dt>
+          <dd class="text-gray-500"><%= number_with_delimiter(@statistics[:audition][:total_capacity]) %> keys (36<sup>5</sup>)</dd>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

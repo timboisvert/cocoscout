@@ -128,18 +128,61 @@ module My
       # Build combined list for unified display, sorted by relevance
       @combined_items = []
 
-      # Group sign_up_registrations by sign_up_form to show multiple slots on same row
-      registrations_by_form = @sign_up_registrations.group_by { |reg| reg.sign_up_slot&.sign_up_form&.id }
-      registrations_by_form.each do |form_id, registrations|
-        next unless form_id
-        form = registrations.first.sign_up_slot&.sign_up_form
-        # Use form.show for single_event, or instance shows for repeated
-        sort_date = if form&.scope == "single_event"
-          form.show&.date_and_time || Time.new(9999)
-        else
-          registrations.map { |reg| reg.sign_up_slot&.sign_up_form_instance&.show&.date_and_time }.compact.min || Time.new(9999)
+      # Group sign_up_registrations appropriately based on form scope
+      # - single_event: group by form (one show)
+      # - repeated: group by instance (each show date is separate)
+      # - shared_pool: group by form (no show)
+      @sign_up_registrations.each do |reg|
+        form = reg.sign_up_slot&.sign_up_form
+        next unless form
+
+        instance = reg.sign_up_slot&.sign_up_form_instance
+        show = instance&.show || form.show
+
+        # Skip past events
+        if show&.date_and_time && show.date_and_time < Time.current
+          next
         end
-        @combined_items << { type: :sign_up_registrations, records: registrations, sort_date: sort_date }
+
+        sort_date = show&.date_and_time || Time.new(9999)
+
+        if form.scope == "repeated"
+          # For repeated events, group by instance (each show gets its own row)
+          instance_id = instance&.id
+          existing = @combined_items.find { |item|
+            item[:type] == :sign_up_registrations &&
+            item[:instance_id] == instance_id
+          }
+          if existing
+            existing[:records] << reg
+          else
+            @combined_items << {
+              type: :sign_up_registrations,
+              records: [ reg ],
+              sort_date: sort_date,
+              instance_id: instance_id,
+              form_id: form.id
+            }
+          end
+        else
+          # For single_event and shared_pool, group by form
+          existing = @combined_items.find { |item|
+            item[:type] == :sign_up_registrations &&
+            item[:form_id] == form.id &&
+            item[:instance_id].nil?
+          }
+          if existing
+            existing[:records] << reg
+          else
+            @combined_items << {
+              type: :sign_up_registrations,
+              records: [ reg ],
+              sort_date: sort_date,
+              instance_id: nil,
+              form_id: form.id
+            }
+          end
+        end
       end
 
       @audition_requests.each do |req|

@@ -12,10 +12,10 @@
   HTML
 
   signup_actions = [
-    { icon: "calendar", text: "Event Registrations", description: "Let people sign up for show dates", path: manage_production_signups_forms_path(@production, filter: "registrations") },
-    { icon: "queue-list", text: "Waitlists", description: "Admin-assigned sign-up queues", path: manage_production_signups_forms_path(@production, filter: "waitlists") },
-    { icon: "users", text: "In-person Auditions", description: "Live audition sessions", path: manage_production_signups_auditions_path(@production) },
-    { icon: "video-camera", text: "Video Auditions", description: "Remote video submissions", path: manage_production_signups_auditions_path(@production) }
+    { icon: "calendar", text: "Event Registrations", description: "Sign up for specific events", path: manage_production_signups_forms_path(@production, filter: "registrations") },
+    { icon: "queue-list", text: "Waitlists", description: "Not tied to specific lists", path: manage_production_signups_forms_path(@production, filter: "waitlists") },
+    { icon: "users", text: "In-person Auditions", description: "Apply for live audition sessions", path: manage_production_signups_auditions_path(@production) },
+    { icon: "video-camera", text: "Video Auditions", description: "Submit video auditions", path: manage_production_signups_auditions_path(@production) }
   ]
 %>
 

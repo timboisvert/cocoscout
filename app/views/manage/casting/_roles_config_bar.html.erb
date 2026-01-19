@@ -30,21 +30,25 @@
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-gray-900">
             <% if uses_custom %>
-              Using custom roles
+              Using custom roles for this <%= show.event_type.humanize.downcase %>
             <% else %>
-              Using production roles
+              This <%= show.event_type.humanize.downcase %> uses the standard <%= production.name %> roles
             <% end %>
           </span>
         </div>
         <p class="text-xs text-gray-500 mt-0.5">
-          <%= role_count %> <%= "role".pluralize(role_count) %>, <%= total_slots %> <%= "slot".pluralize(total_slots) %> total
+          <% if roles.any? %>
+            <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+          <% else %>
+            No roles defined
+          <% end %>
         </p>
       </div>
     </div>
 
     <%# Configure button %>
     <%= render "shared/button",
-      text: "Configure",
+      text: "Manage Roles",
       variant: "secondary",
       size: "small",
       icon: "cog-6-tooth",

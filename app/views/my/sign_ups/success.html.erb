@@ -48,7 +48,7 @@
         <% elsif assigned_regs.any? %>
           <div class="bg-pink-50 rounded-lg p-4 mb-5 border border-pink-100">
             <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">
-              Your Slot<%= assigned_regs.count > 1 ? 's' : '' %>
+              Your Position<%= assigned_regs.count > 1 ? 's' : '' %>
             </p>
             <% if assigned_regs.count == 1 %>
               <p class="text-lg font-semibold text-gray-900"><%= assigned_regs.first.sign_up_slot.display_name %></p>
@@ -74,26 +74,23 @@
       <!-- Action Buttons -->
       <div class="flex flex-wrap gap-3">
         <% if @can_register_more || @sign_up_form.allow_edit %>
-          <%= link_to my_sign_up_form_path(@code), class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors" do %>
-            <svg class="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
-            <% if @can_register_more %>
-              Add Another Slot
-            <% else %>
-              View Registration
-            <% end %>
-          <% end %>
+          <%= render "shared/button",
+            text: @can_register_more ? "Add Another Position" : "View Registration",
+            path: my_sign_up_form_path(@code),
+            variant: "outline",
+            icon: "eye"
+          %>
         <% end %>
 
         <% if @sign_up_form.allow_cancel %>
-          <%= link_to my_cancel_sign_up_registration_path(@code), data: { turbo_method: :post, turbo_confirm: "Are you sure? This will cancel all your registrations." }, class: "inline-flex items-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-lg text-red-600 bg-white hover:bg-red-50 transition-colors" do %>
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-            Cancel Registration<%= @my_registrations.count > 1 ? 's' : '' %>
-          <% end %>
+          <%= render "shared/button",
+            text: "Cancel Registration#{@my_registrations.count > 1 ? 's' : ''}",
+            path: my_cancel_sign_up_registration_path(@code),
+            method: :post,
+            variant: "outline",
+            icon: "x-mark",
+            data: { turbo_confirm: "Are you sure? This will cancel all your registrations." }
+          %>
         <% end %>
       </div>
     </div>

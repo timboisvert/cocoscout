@@ -18,7 +18,7 @@ class DashboardService
   end
 
   def self.invalidate(production)
-    Rails.cache.delete([ "dashboard_v4", production.id ])
+    Rails.cache.delete([ "dashboard_v5", production.id ])
   end
 
   private
@@ -30,15 +30,17 @@ class DashboardService
     max_vacancy_updated = RoleVacancy.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)
     max_assignment_updated = ShowPersonRoleAssignment.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)
     max_role_updated = @production.roles.maximum(:updated_at)
+    max_sign_up_form_updated = @production.sign_up_forms.maximum(:updated_at)
     [
-      "dashboard_v4",
+      "dashboard_v5",
       @production.id,
       @production.updated_at.to_i,
       max_show_updated&.to_i,
       max_request_updated&.to_i,
       max_vacancy_updated&.to_i,
       max_assignment_updated&.to_i,
-      max_role_updated&.to_i
+      max_role_updated&.to_i,
+      max_sign_up_form_updated&.to_i
     ]
   end
 

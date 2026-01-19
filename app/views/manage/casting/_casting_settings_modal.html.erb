@@ -87,6 +87,8 @@
            data-show-roles-modal-check-assignments-url-value="<%= check_assignments_manage_production_show_show_roles_path(production, show) %>"
            data-show-roles-modal-clear-assignments-url-value="<%= clear_assignments_manage_production_show_show_roles_path(production, show) %>"
            data-show-roles-modal-toggle-url-value="<%= toggle_custom_roles_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-migration-preview-url-value="<%= migration_preview_manage_production_show_show_roles_path(production, show) %>"
+           data-show-roles-modal-execute-migration-url-value="<%= execute_migration_manage_production_show_show_roles_path(production, show) %>"
            data-show-roles-modal-using-custom-roles-value="<%= show.use_custom_roles? %>">
 
         <div class="flex items-center justify-between">
@@ -118,10 +120,7 @@
               <div class="flex flex-wrap gap-2">
                 <% show.custom_roles.each do |role| %>
                   <span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">
-                    <%= role.name %>
-                    <% if role.quantity > 1 %>
-                      <span class="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600"><%= role.quantity %></span>
-                    <% end %>
+                    <%= role.name %><% if role.quantity > 1 %><span class="ml-1.5 text-gray-400">x <%= role.quantity %></span><% end %>
                     <% if role.restricted? %>
                       <svg class="ml-1 w-3.5 h-3.5 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -148,31 +147,182 @@
         <%# Show Roles Modal (nested) %>
         <%= render "manage/show_roles/modal", show: show, production: production %>
 
-        <%# Toggle Confirmation Modal %>
-        <div data-show-roles-modal-target="toggleConfirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center">
-          <div class="fixed inset-0 bg-black/50" data-action="click->show-roles-modal#cancelToggle"></div>
-          <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Clear Existing Assignments?</h3>
-            <p data-show-roles-modal-target="toggleConfirmMessage" class="text-sm text-gray-600 mb-4">
-              Switching role modes will clear existing role assignments. This cannot be undone.
-            </p>
-            <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-48 overflow-y-auto">
-              <p class="text-xs font-medium text-gray-500 uppercase mb-2">Assignments to be removed:</p>
-              <ul data-show-roles-modal-target="toggleConfirmList" class="text-sm text-gray-700 divide-y divide-gray-200"></ul>
+        <%# Role Migration Modal - shows when toggling between custom/production roles with existing assignments %>
+        <div data-show-roles-modal-target="migrationModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center">
+          <div class="fixed inset-0 bg-black/50" data-action="click->show-roles-modal#cancelMigration"></div>
+          <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <%# Header %>
+            <div class="bg-pink-50 border-b border-pink-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">Transfer Role Assignments</h3>
+                <p data-show-roles-modal-target="migrationSubtitle" class="text-sm text-gray-600 mt-1">
+                  Review how your assignments will be transferred
+                </p>
+              </div>
+              <button type="button" data-action="click->show-roles-modal#cancelMigration" class="text-gray-500 hover:text-gray-700 cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
             </div>
-            <div class="flex justify-end gap-3">
-              <%= render "shared/button",
-                  text: "Cancel",
-                  variant: "secondary",
-                  size: "small",
-                  type: :button,
-                  data: { action: "click->show-roles-modal#cancelToggle" } %>
-              <%= render "shared/button",
-                  text: "Clear Assignments and Switch",
-                  variant: "primary",
-                  size: "small",
-                  type: :button,
-                  data: { action: "click->show-roles-modal#confirmToggle" } %>
+
+            <%# Content - scrollable %>
+            <div class="flex-1 overflow-y-auto px-6 py-4">
+              <%# Loading state %>
+              <div data-show-roles-modal-target="migrationLoading" class="hidden py-8 text-center">
+                <svg class="animate-spin h-8 w-8 mx-auto text-pink-500" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-500 mt-2">Loading migration preview...</p>
+              </div>
+
+              <%# Migration content %>
+              <div data-show-roles-modal-target="migrationContent" class="space-y-4">
+                <%# Summary banner %>
+                <div data-show-roles-modal-target="migrationSummary" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="text-sm text-blue-800">
+                      <p class="font-medium">Review cast assignments before switching</p>
+                      <p class="mt-1" data-show-roles-modal-target="migrationSummaryText">
+                        Switching role sets means each person's role assignment needs to be mapped to a role in the new set. Matching role names transfer automatically; others need your decision.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <%# Linked shows warning %>
+                <div data-show-roles-modal-target="linkedShowsWarning" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="text-sm text-amber-800">
+                      <p class="font-medium">This event is linked to other events</p>
+                      <p class="mt-1" data-show-roles-modal-target="linkedShowsText"></p>
+                    </div>
+                  </div>
+                </div>
+
+                <%# Auto-mappable assignments %>
+                <div data-show-roles-modal-target="autoMappableSection" class="hidden">
+                  <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Will be transferred automatically
+                  </h4>
+                  <div data-show-roles-modal-target="autoMappableList" class="space-y-2"></div>
+                </div>
+
+                <%# Assignments needing decision %>
+                <div data-show-roles-modal-target="needsDecisionSection" class="hidden">
+                  <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Needs your decision (no matching role found)
+                  </h4>
+                  <div data-show-roles-modal-target="needsDecisionList" class="space-y-2"></div>
+                </div>
+
+                <%# No assignments state %>
+                <div data-show-roles-modal-target="noAssignmentsMessage" class="hidden py-8 text-center">
+                  <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p class="text-gray-700 font-medium">No assignments to transfer</p>
+                  <p class="text-gray-500 text-sm mt-1">You can switch role modes without affecting anyone.</p>
+                </div>
+              </div>
+            </div>
+
+            <%# Footer %>
+            <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex flex-col gap-3 flex-shrink-0">
+              <div data-show-roles-modal-target="migrationHint" class="hidden text-sm text-gray-600 bg-gray-100 rounded-lg px-3 py-2">
+                <svg class="inline w-4 h-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                After transferring, you'll be able to add, edit, or remove custom roles.
+              </div>
+              <div class="flex items-center justify-between">
+                <div data-show-roles-modal-target="migrationStats" class="text-sm text-gray-600">
+                  <!-- Stats will be populated by JS -->
+                </div>
+                <div class="flex gap-3">
+                  <%= render "shared/button",
+                      text: "Cancel",
+                      variant: "secondary",
+                      size: "small",
+                      type: :button,
+                      data: { action: "click->show-roles-modal#cancelMigration" } %>
+                  <%= render "shared/button",
+                      text: "Transfer Assignments",
+                      variant: "primary",
+                      size: "small",
+                      type: :button,
+                      data: {
+                        action: "click->show-roles-modal#executeMigration",
+                        "show-roles-modal-target": "migrationExecuteButton"
+                      } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# Slot Change Modal (nested, appears when changing role quantity) %>
+        <div data-show-roles-modal-target="slotChangeModal"
+             class="hidden fixed inset-0 z-[70] flex items-center justify-center"
+             data-action="click->show-roles-modal#cancelSlotChange">
+          <div class="absolute inset-0 bg-black/50"></div>
+          <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] flex flex-col"
+               data-action="click->show-roles-modal#stopPropagation">
+            <%# Header %>
+            <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+              <h3 data-show-roles-modal-target="slotChangeTitle" class="text-lg font-semibold text-gray-900">
+                Changing Role Slots
+              </h3>
+            </div>
+
+            <%# Content %>
+            <div class="p-6 overflow-y-auto flex-1">
+              <div data-show-roles-modal-target="slotChangeMessage" class="mb-4">
+                <!-- Message populated by JS -->
+              </div>
+
+              <div data-show-roles-modal-target="slotChangeList" class="space-y-2 max-h-64 overflow-y-auto">
+                <!-- Assignment list populated by JS -->
+              </div>
+            </div>
+
+            <%# Footer %>
+            <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div data-show-roles-modal-target="slotChangeStats" class="text-sm text-gray-600">
+                <!-- Stats populated by JS -->
+              </div>
+              <div class="flex gap-3">
+                <%= render "shared/button",
+                    text: "Cancel",
+                    variant: "secondary",
+                    size: "small",
+                    type: :button,
+                    data: { action: "click->show-roles-modal#cancelSlotChange" } %>
+                <%= render "shared/button",
+                    text: "Confirm Changes",
+                    variant: "primary",
+                    size: "small",
+                    type: :button,
+                    data: {
+                      action: "click->show-roles-modal#executeSlotChange",
+                      "show-roles-modal-target": "slotChangeExecuteButton"
+                    } %>
+              </div>
             </div>
           </div>
         </div>

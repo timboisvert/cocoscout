@@ -36,13 +36,8 @@ module Manage
       @audition_cycle.production = @production
       @audition_cycle.active = true
 
-      # Create a random hex code for the audition link
-      @audition_cycle.token = SecureRandom.alphanumeric(5).upcase
-
-      # Make sure it's unique and regenerate if not
-      while AuditionCycle.exists?(token: @audition_cycle.token)
-        @audition_cycle.token = SecureRandom.alphanumeric(5).upcase
-      end
+      # Generate unique token using ShortKeyService
+      @audition_cycle.token = ShortKeyService.generate(type: :audition)
 
       ActiveRecord::Base.transaction do
         # Deactivate all other audition cycles for this production

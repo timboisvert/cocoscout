@@ -108,8 +108,9 @@ class Show < ApplicationRecord
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
 
-  # Clear assignments when toggling custom roles
-  before_save :clear_assignments_on_custom_roles_toggle, if: :use_custom_roles_changed?
+  # Clear assignments when toggling custom roles (unless migration is handling it)
+  attr_accessor :skip_assignment_clear_on_role_toggle
+  before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
@@ -479,6 +480,11 @@ class Show < ApplicationRecord
 
     # Also unmark this show as finalized (will be saved with the record)
     self.casting_finalized_at = nil
+  end
+
+  # Determine if we should clear assignments when toggling custom roles
+  def should_clear_assignments_on_toggle?
+    use_custom_roles_changed? && !skip_assignment_clear_on_role_toggle
   end
 
   def trigger_calendar_sync

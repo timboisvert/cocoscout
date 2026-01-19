@@ -5,7 +5,7 @@ class SuperadminController < ApplicationController
                 only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
                          queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
                          email_templates email_template_new email_template_create email_template_edit email_template_update
-                         email_template_destroy email_template_preview search_users
+                         email_template_destroy email_template_preview search_users keys
                          dev_tools dev_create_users dev_submit_auditions dev_submit_signups dev_delete_signups dev_delete_users]
   before_action :hide_sidebar
 
@@ -1095,6 +1095,34 @@ class SuperadminController < ApplicationController
       format.html
       format.json { render json: @preview.merge(styled_body: @styled_body) }
     end
+  end
+
+  # =========================================================================
+  # Key Monitor (Short URL keys)
+  # =========================================================================
+
+  def keys
+    @statistics = ShortKeyService.statistics
+    @health = ShortKeyService.health_check
+
+    # Get filter from params
+    @filter = params[:filter].to_s.presence || "all"
+
+    # Get all keys with optional type filter
+    type_filter = case @filter
+    when "audition" then :audition
+    when "signup" then :signup
+    else nil
+    end
+
+    @keys = ShortKeyService.all_keys(type: type_filter)
+
+    # Pagination
+    @page = (params[:page] || 1).to_i
+    @per_page = 50
+    @total_keys = @keys.size
+    @total_pages = (@total_keys.to_f / @per_page).ceil
+    @keys = @keys.slice((@page - 1) * @per_page, @per_page) || []
   end
 
   # =========================================================================

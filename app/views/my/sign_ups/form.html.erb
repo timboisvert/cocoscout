@@ -74,15 +74,24 @@
                 Your position: <span class="font-medium">#<%= queue_position %></span>
               </p>
               <p class="text-sm text-pink-700">The organizer will assign you to a slot.</p>
+            <% elsif @sign_up_form.slot_generation_mode == 'open_list' %>
+              <%# Open list - don't show slot numbers %>
+              <% on_waitlist = assigned_regs.any? { |r| r.status == 'waitlisted' } %>
+              <% if on_waitlist %>
+                <h3 class="font-semibold text-pink-900 mb-2">You're on the Waitlist</h3>
+                <p class="text-sm text-pink-700">You'll be notified if a spot opens up.</p>
+              <% else %>
+                <h3 class="font-semibold text-pink-900">You're on the List</h3>
+              <% end %>
             <% elsif assigned_regs.count == 1 %>
               <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
               <p class="text-sm text-pink-800">
-                Your slot: <span class="font-medium"><%= assigned_regs.first.sign_up_slot.display_name %></span>
+                Your position: <span class="font-medium"><%= assigned_regs.first.sign_up_slot.display_name %></span>
               </p>
             <% else %>
               <h3 class="font-semibold text-pink-900 mb-2">You're Registered</h3>
               <div class="text-sm text-pink-800">
-                <p class="mb-1">Your slots:</p>
+                <p class="mb-1">Your positions:</p>
                 <ul class="list-disc list-inside space-y-1">
                   <% assigned_regs.each do |reg| %>
                     <li><span class="font-medium"><%= reg.sign_up_slot.display_name %></span></li>
@@ -328,7 +337,7 @@
                 <% if @my_registrations.present? && @can_register_more %>
                   Add Another Slot
                 <% elsif @my_registrations.present? && @can_edit %>
-                  Change Your Slot
+                  Change Your Position
                 <% else %>
                   Select a Slot
                 <% end %>
@@ -360,7 +369,7 @@
                               <span class="text-sm text-pink-100"><%= Current.user&.person&.name %></span>
                             <% end %>
                           </div>
-                          <span class="text-xs text-pink-100 font-medium">Your slot</span>
+                          <span class="text-xs text-pink-100 font-medium">Your position</span>
                         </div>
                       </div>
                     <% elsif slot.full? %>
@@ -526,7 +535,7 @@
                 </svg>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Your Slot</p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Your Position</p>
                 <p class="font-semibold text-gray-900" data-sign-up-confirmation-target="slotName"></p>
                 <p class="text-sm text-gray-500 hidden" data-sign-up-confirmation-target="slotInfo"></p>
               </div>

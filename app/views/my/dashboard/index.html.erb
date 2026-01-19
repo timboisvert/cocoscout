@@ -110,13 +110,11 @@
               <% production = form&.production %>
               <% next unless form && production %>
 
-              <%# Get the show for this form - use form.show for single_event, or instance shows for repeated %>
-              <% if form.scope == 'single_event' %>
-                <% single_show = form.show %>
-              <% else %>
-                <% shows = registrations.map { |r| r.sign_up_slot&.sign_up_form_instance&.show }.compact.uniq %>
-                <% single_show = shows.length == 1 ? shows.first : nil %>
-              <% end %>
+              <%# Get the show - for repeated use instance.show, otherwise form.show %>
+              <%
+                instance = first_reg.sign_up_slot&.sign_up_form_instance
+                single_show = instance&.show || form.show
+              %>
 
               <div class="flex items-stretch px-3 py-2 border rounded-lg bg-white border-gray-200 hover:border-gray-400 transition-all">
                 <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
@@ -163,17 +161,31 @@
                   <%# Right Section: Slots & Actions %>
                   <div class="w-full md:w-1/2 flex items-center border-t border-gray-100 md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0 md:border-l md:border-gray-200 md:pl-4">
                     <div class="flex-1 min-w-0">
-                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">
-                        <%= registrations.size == 1 ? "Your Slot" : "Your Slots" %>
-                      </div>
-                      <% if registrations.size == 1 %>
-                        <div class="text-sm font-medium text-gray-900"><%= first_reg.sign_up_slot&.display_name %></div>
-                      <% else %>
-                        <div class="text-sm font-medium text-gray-900">
-                          <%= registrations.map { |r| r.sign_up_slot&.display_name }.compact.join(", ") %>
+                      <% if form.slot_generation_mode == 'open_list' %>
+                        <%# Open list - show status instead of slot numbers %>
+                        <% on_waitlist = registrations.any? { |r| r.status == 'waitlisted' } %>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wide">Status</div>
+                        <div class="text-sm font-medium <%= on_waitlist ? 'text-amber-600' : 'text-green-600' %>">
+                          <%= on_waitlist ? 'On Waitlist' : 'Signed Up' %>
                         </div>
+                      <% else %>
+                        <%# Numbered/time-based slots - show slot info %>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wide">
+                          <%= registrations.size == 1 ? "Your Position" : "Your Positions" %>
+                        </div>
+                        <% if registrations.size == 1 %>
+                          <div class="text-sm font-medium text-gray-900"><%= first_reg.sign_up_slot&.display_name %></div>
+                        <% else %>
+                          <div class="text-sm font-medium text-gray-900">
+                            <%= registrations.map { |r| r.sign_up_slot&.display_name }.compact.join(", ") %>
+                          </div>
+                        <% end %>
                       <% end %>
-                      <%= link_to my_sign_up_form_path(form.short_code), class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
+                      <%
+                        # For repeated events, include instance_id so they go to the right date
+                        link_params = form.scope == 'repeated' && instance ? { instance_id: instance.id } : {}
+                      %>
+                      <%= link_to my_sign_up_form_path(form.short_code, **link_params), class: "text-xs text-pink-500 hover:text-pink-600 underline" do %>
                         View Registration
                       <% end %>
                     </div>

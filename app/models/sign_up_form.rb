@@ -256,13 +256,7 @@ class SignUpForm < ApplicationRecord
   def generate_short_code!
     return if short_code.present?
 
-    loop do
-      code = SecureRandom.alphanumeric(5).upcase
-      unless SignUpForm.exists?(short_code: code)
-        update!(short_code: code)
-        break
-      end
-    end
+    ShortKeyService.generate_for!(self, type: :signup)
   end
 
   def short_url_path

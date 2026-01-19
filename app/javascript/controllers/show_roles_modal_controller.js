@@ -7,8 +7,13 @@ export default class extends Controller {
         "restrictedCheckbox", "eligibleMembersSection", "memberSearchInput", "membersList",
         "saveButtonText", "modalFooter", "customRolesCheckbox", "customRolesContent",
         "deleteConfirmModal", "deleteConfirmMessage", "inlineRolesList", "manageButton",
-        "toggleConfirmModal", "toggleConfirmMessage", "toggleConfirmList",
-        "quantityInput", "categorySelect"
+        "migrationModal", "migrationSubtitle", "migrationLoading", "migrationContent",
+        "migrationSummary", "migrationSummaryText", "linkedShowsWarning", "linkedShowsText",
+        "autoMappableSection", "autoMappableList", "needsDecisionSection", "needsDecisionList",
+        "noAssignmentsMessage", "migrationStats", "migrationExecuteButton", "migrationHint",
+        "quantityInput", "categorySelect",
+        "slotChangeModal", "slotChangeTitle", "slotChangeMessage", "slotChangeList",
+        "slotChangeStats", "slotChangeExecuteButton"
     ]
 
     static values = {
@@ -20,7 +25,10 @@ export default class extends Controller {
         talentPoolUrl: String,
         checkAssignmentsUrl: String,
         clearAssignmentsUrl: String,
-        toggleUrl: String
+        toggleUrl: String,
+        migrationPreviewUrl: String,
+        executeMigrationUrl: String,
+        usingCustomRoles: Boolean
     }
 
     connect() {
@@ -29,6 +37,11 @@ export default class extends Controller {
         this.talentPoolMembers = []
         this.selectedMemberKeys = []
         this.pendingDeleteRoleId = null
+        this.pendingToggleTo = null
+        this.migrationData = null
+        this.roleMappings = {} // {assignment_id: {target_role_id, action}}
+        this.slotChangeData = null // For slot quantity change migrations
+        this.selectedKeepAssignments = new Set() // Assignment IDs to keep during slot reduction
 
         this.boundHandleKeydown = this.handleKeydown.bind(this)
         document.addEventListener("keydown", this.boundHandleKeydown)
@@ -40,8 +53,10 @@ export default class extends Controller {
 
     handleKeydown(event) {
         if (event.key === "Escape") {
-            if (this.hasToggleConfirmModalTarget && !this.toggleConfirmModalTarget.classList.contains("hidden")) {
-                this.cancelToggle()
+            if (this.hasSlotChangeModalTarget && !this.slotChangeModalTarget.classList.contains("hidden")) {
+                this.cancelSlotChange()
+            } else if (this.hasMigrationModalTarget && !this.migrationModalTarget.classList.contains("hidden")) {
+                this.cancelMigration()
             } else if (!this.deleteConfirmModalTarget.classList.contains("hidden")) {
                 this.cancelDelete()
             } else if (!this.modalTarget.classList.contains("hidden")) {
@@ -53,36 +68,51 @@ export default class extends Controller {
     // Toggle custom roles on/off
     async toggleCustomRoles() {
         const enabled = this.customRolesCheckboxTarget.checked
+        console.log("[Migration] Toggle triggered, enabled:", enabled)
 
-        // Check if there are existing assignments that would be cleared
-        if (this.hasCheckAssignmentsUrlValue) {
+        // Always check migration preview to get assignment count and whether custom roles exist
+        if (this.hasMigrationPreviewUrlValue) {
             try {
-                const response = await fetch(`${this.checkAssignmentsUrlValue}?switching_to=${enabled ? 'custom' : 'production'}`, {
+                const url = `${this.migrationPreviewUrlValue}?switching_to=${enabled ? 'custom' : 'production'}`
+                console.log("[Migration] Fetching:", url)
+
+                const response = await fetch(url, {
                     headers: {
                         "Accept": "application/json",
                         "X-CSRF-Token": this.csrfToken
                     }
                 })
                 const data = await response.json()
+                console.log("[Migration] Response data:", data)
 
-                // Show modal if there are assignments OR if this is a linked show (affects other shows)
-                if (data.has_assignments || (data.is_linked && data.linked_shows.length > 0)) {
-                    // Store the intended state for after confirmation
+                // Always show migration modal when there are assignments
+                // This gives the user visibility into what will happen, even if all roles match
+                if (data.total_assignments > 0) {
+                    console.log("[Migration] Showing modal - has assignments")
                     this.pendingToggleTo = enabled
-
-                    // Show the confirmation modal
-                    this.showToggleConfirmModal(data)
-
-                    // Revert checkbox to previous state until confirmed
+                    this.migrationData = data
+                    this.showMigrationModal(data)
                     this.customRolesCheckboxTarget.checked = !enabled
                     return
                 }
+
+                // Also show for linked shows even without assignments
+                if (data.is_linked && data.linked_shows.length > 0) {
+                    console.log("[Migration] Showing modal - is linked")
+                    this.pendingToggleTo = enabled
+                    this.migrationData = data
+                    this.showMigrationModal(data)
+                    this.customRolesCheckboxTarget.checked = !enabled
+                    return
+                }
+
+                console.log("[Migration] No assignments, proceeding with toggle")
             } catch (error) {
-                console.error("Failed to check assignments:", error)
+                console.error("[Migration] Failed to check assignments:", error)
             }
         }
 
-        // No assignments, toggle visibility and persist the change
+        // No assignments or fallback, toggle visibility and persist the change
         this.applyToggleState(enabled, true)
     }
 
@@ -106,91 +136,271 @@ export default class extends Controller {
                     },
                     body: JSON.stringify({ enable: enabled })
                 })
+                // Reload roles after toggle
+                if (enabled) {
+                    this.loadRoles()
+                }
             } catch (error) {
                 console.error("Failed to toggle custom roles:", error)
             }
         }
     }
 
-    // Show the toggle confirmation modal
-    showToggleConfirmModal(data) {
-        if (!this.hasToggleConfirmModalTarget) return
+    // Show the migration modal with preview data
+    showMigrationModal(data) {
+        if (!this.hasMigrationModalTarget) return
 
-        // Set the message
+        // Reset mappings
+        this.roleMappings = {}
+
+        // Update subtitle based on direction
         const direction = data.switching_to === 'custom' ? 'custom roles' : 'production roles'
-        let message = ''
+        if (this.hasMigrationSubtitleTarget) {
+            this.migrationSubtitleTarget.textContent = `Switching to ${direction}`
+        }
 
-        if (data.assignments.length > 0) {
-            message = `Switching to ${direction} will clear ${data.assignments.length} existing role assignment(s). This cannot be undone.`
-
-            // Add linked shows warning if applicable
-            if (data.is_linked && data.linked_shows.length > 0) {
-                message += ` This will also affect the following linked events:`
+        // Show hint about editing roles when switching TO custom roles
+        if (this.hasMigrationHintTarget) {
+            if (data.switching_to === 'custom') {
+                this.migrationHintTarget.classList.remove("hidden")
+            } else {
+                this.migrationHintTarget.classList.add("hidden")
             }
-        } else if (data.is_linked && data.linked_shows.length > 0) {
-            // No assignments but there are linked shows
-            message = `Switching to ${direction} will affect the following linked events:`
         }
 
-        this.toggleConfirmMessageTarget.textContent = message
+        // Show/hide sections based on data
+        this.migrationLoadingTarget.classList.add("hidden")
+        this.migrationContentTarget.classList.remove("hidden")
 
-        // Build the assignment list with headshots
-        let listHtml = data.assignments.map(a => {
-            const avatar = a.headshot_url
-                ? `<img src="${a.headshot_url}" alt="${a.assignable_name}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">`
-                : `<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">${a.initials}</div>`
-            return `<li class="py-2 flex items-center gap-3">${avatar}<span>${a.assignable_name} as <span class="font-medium">${a.role_name}</span></span></li>`
-        }).join("")
-
-        // Add linked shows section if applicable
+        // Handle linked shows warning
         if (data.is_linked && data.linked_shows.length > 0) {
-            const separator = data.assignments.length > 0 ? `<li class="pt-4 mt-4 border-t border-gray-200">` : `<li>`
-            listHtml += `${separator}
-                <div class="font-medium text-gray-900 mb-2">Linked Events That Will Be Affected:</div>
-                <ul class="space-y-1 text-sm text-gray-700">
-                    ${data.linked_shows.map(show => `<li>• ${show.title} (${show.event_date})</li>`).join("")}
-                </ul>
-            </li>`
+            this.linkedShowsWarningTarget.classList.remove("hidden")
+            const showNames = data.linked_shows.map(s => s.title).join(", ")
+            this.linkedShowsTextTarget.textContent = `This will also affect: ${showNames}`
+        } else {
+            this.linkedShowsWarningTarget.classList.add("hidden")
         }
 
-        this.toggleConfirmListTarget.innerHTML = listHtml
+        // Build the assignment lists
+        const autoMappable = data.mappings.filter(m => m.can_auto_map)
+        const needsDecision = data.mappings.filter(m => !m.can_auto_map)
 
-        this.toggleConfirmModalTarget.classList.remove("hidden")
+        // Auto-mappable section
+        if (autoMappable.length > 0) {
+            this.autoMappableSectionTarget.classList.remove("hidden")
+            this.autoMappableListTarget.innerHTML = autoMappable.map(m => this.buildAutoMappableRow(m)).join("")
+        } else {
+            this.autoMappableSectionTarget.classList.add("hidden")
+        }
+
+        // Needs decision section
+        if (needsDecision.length > 0) {
+            this.needsDecisionSectionTarget.classList.remove("hidden")
+            this.needsDecisionListTarget.innerHTML = needsDecision.map(m => this.buildNeedsDecisionRow(m, data.target_roles)).join("")
+
+            // Initialize dropdowns with remove action
+            needsDecision.forEach(m => {
+                this.roleMappings[m.assignment_id] = { action: 'remove', target_role_id: null }
+            })
+        } else {
+            this.needsDecisionSectionTarget.classList.add("hidden")
+        }
+
+        // No assignments state
+        if (data.total_assignments === 0) {
+            this.noAssignmentsMessageTarget.classList.remove("hidden")
+            this.autoMappableSectionTarget.classList.add("hidden")
+            this.needsDecisionSectionTarget.classList.add("hidden")
+            this.migrationSummaryTarget.classList.add("hidden")
+        } else {
+            this.noAssignmentsMessageTarget.classList.add("hidden")
+            this.migrationSummaryTarget.classList.remove("hidden")
+        }
+
+        // Update stats
+        this.updateMigrationStats(autoMappable.length, needsDecision.length)
+
+        // Show the modal
+        this.migrationModalTarget.classList.remove("hidden")
     }
 
-    // Confirm the toggle
-    async confirmToggle() {
-        if (!this.hasClearAssignmentsUrlValue) return
+    // Build a row for an auto-mappable assignment
+    buildAutoMappableRow(mapping) {
+        const avatar = mapping.headshot_url
+            ? `<img src="${mapping.headshot_url}" alt="${mapping.assignable_name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">${mapping.initials}</div>`
+
+        return `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                ${avatar}
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 truncate">${mapping.assignable_name}</p>
+                    <p class="text-sm text-gray-600">
+                        <span class="text-gray-500">${mapping.current_role_name}</span>
+                        <svg class="inline w-4 h-4 mx-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                        <span class="text-gray-700 font-medium">${mapping.suggested_target_role_name}</span>
+                    </p>
+                </div>
+                <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        `
+    }
+
+    // Build a row for an assignment needing decision
+    buildNeedsDecisionRow(mapping, targetRoles) {
+        const avatar = mapping.headshot_url
+            ? `<img src="${mapping.headshot_url}" alt="${mapping.assignable_name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">${mapping.initials}</div>`
+
+        const roleOptions = targetRoles.map(r =>
+            `<option value="${r.id}">${r.name}${r.category !== 'performing' ? ` (${r.category})` : ''}</option>`
+        ).join("")
+
+        return `
+            <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                ${avatar}
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 truncate">${mapping.assignable_name}</p>
+                    <p class="text-sm text-gray-600">
+                        Currently: <span class="text-amber-700 font-medium">${mapping.current_role_name}</span>
+                        <span class="text-gray-400 ml-1">(no matching role found)</span>
+                    </p>
+                </div>
+                <select class="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white min-w-[140px]"
+                        data-assignment-id="${mapping.assignment_id}"
+                        data-action="change->show-roles-modal#updateRoleMapping">
+                    <option value="remove" selected>Remove from cast</option>
+                    <option disabled>──────────</option>
+                    <option value="" disabled>Assign to role:</option>
+                    ${roleOptions}
+                </select>
+            </div>
+        `
+    }
+
+    // Handle dropdown change for role mapping
+    updateRoleMapping(event) {
+        const select = event.target
+        const assignmentId = parseInt(select.dataset.assignmentId)
+        const value = select.value
+
+        if (value === 'remove') {
+            this.roleMappings[assignmentId] = { action: 'remove', target_role_id: null }
+        } else {
+            this.roleMappings[assignmentId] = { action: 'transfer', target_role_id: parseInt(value) }
+        }
+
+        this.updateMigrationStats()
+    }
+
+    // Update the stats display in the migration modal footer
+    updateMigrationStats(autoMappableCount = null, needsDecisionCount = null) {
+        if (!this.hasMigrationStatsTarget) return
+
+        if (autoMappableCount === null && this.migrationData) {
+            autoMappableCount = this.migrationData.mappings.filter(m => m.can_auto_map).length
+            needsDecisionCount = this.migrationData.mappings.filter(m => !m.can_auto_map).length
+        }
+
+        // Count how many from "needs decision" will be kept vs removed
+        let keptCount = autoMappableCount || 0
+        let removedCount = 0
+
+        Object.values(this.roleMappings).forEach(mapping => {
+            if (mapping.action === 'remove') {
+                removedCount++
+            } else {
+                keptCount++
+            }
+        })
+
+        const parts = []
+        if (keptCount > 0) parts.push(`${keptCount} will transfer`)
+        if (removedCount > 0) parts.push(`${removedCount} will be removed`)
+
+        this.migrationStatsTarget.textContent = parts.join(", ") || "No changes"
+    }
+
+    // Execute the migration
+    async executeMigration() {
+        if (!this.hasExecuteMigrationUrlValue) return
+
+        // Disable button during request
+        if (this.hasMigrationExecuteButtonTarget) {
+            this.migrationExecuteButtonTarget.disabled = true
+            this.migrationExecuteButtonTarget.textContent = "Transferring..."
+        }
 
         try {
-            const response = await fetch(this.clearAssignmentsUrlValue, {
+            // Build role_mappings array from our tracking object
+            const roleMappings = Object.entries(this.roleMappings).map(([assignmentId, mapping]) => ({
+                assignment_id: parseInt(assignmentId),
+                target_role_id: mapping.target_role_id,
+                action: mapping.action
+            }))
+
+            const response = await fetch(this.executeMigrationUrlValue, {
                 method: "POST",
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "X-CSRF-Token": this.csrfToken
                 },
-                body: JSON.stringify({ switching_to: this.pendingToggleTo ? 'custom' : 'production' })
+                body: JSON.stringify({
+                    switching_to: this.pendingToggleTo ? 'custom' : 'production',
+                    role_mappings: roleMappings,
+                    apply_to_linked: true
+                })
             })
 
-            if (response.ok) {
-                // Update the checkbox and content visibility (don't persist - already done by clear_assignments)
-                this.customRolesCheckboxTarget.checked = this.pendingToggleTo
-                this.applyToggleState(this.pendingToggleTo, false)
+            const data = await response.json()
+
+            if (data.success) {
+                // Save the toggle direction before canceling (which resets pendingToggleTo)
+                const switchingToCustom = this.pendingToggleTo
+
+                // Update the checkbox and content visibility
+                this.customRolesCheckboxTarget.checked = switchingToCustom
+                this.applyToggleState(switchingToCustom, false)
+
+                // Close the migration modal
+                this.cancelMigration()
+
+                // If switching TO custom roles, stay in the casting settings modal so user can edit roles
+                // Otherwise reload the page
+                if (switchingToCustom) {
+                    // Reload the roles list to show custom roles
+                    this.loadRoles()
+                } else {
+                    // Switching to production roles - reload the page
+                    window.location.reload()
+                }
+            } else {
+                alert(data.error || "Failed to transfer assignments. Please try again.")
             }
         } catch (error) {
-            console.error("Failed to clear assignments:", error)
+            console.error("Failed to execute migration:", error)
+            alert("Failed to transfer assignments. Please try again.")
         } finally {
-            this.cancelToggle()
+            if (this.hasMigrationExecuteButtonTarget) {
+                this.migrationExecuteButtonTarget.disabled = false
+                this.migrationExecuteButtonTarget.textContent = "Transfer Assignments"
+            }
         }
     }
 
-    // Cancel the toggle
-    cancelToggle() {
-        if (this.hasToggleConfirmModalTarget) {
-            this.toggleConfirmModalTarget.classList.add("hidden")
+    // Cancel the migration
+    cancelMigration() {
+        if (this.hasMigrationModalTarget) {
+            this.migrationModalTarget.classList.add("hidden")
         }
         this.pendingToggleTo = null
+        this.migrationData = null
+        this.roleMappings = {}
     }
 
     // Open the modal
@@ -254,12 +464,14 @@ export default class extends Controller {
             this.inlineRolesListTarget.innerHTML = `<p class="text-sm text-gray-500 italic">No custom roles defined yet. Click "Manage Custom Roles" to add some.</p>`
         } else {
             const rolesHtml = this.roles.map(role => {
+                const quantity = role.quantity || 1
+                const quantityText = quantity > 1 ? `<span class="ml-1.5 text-gray-400">x ${quantity}</span>` : ""
                 const restrictedIcon = role.restricted
                     ? `<svg class="ml-1 w-3.5 h-3.5 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                        </svg>`
                     : ""
-                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${role.name}${restrictedIcon}</span>`
+                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${role.name}${quantityText}${restrictedIcon}</span>`
             }).join("")
 
             this.inlineRolesListTarget.innerHTML = `<div class="flex flex-wrap gap-2">${rolesHtml}</div>`
@@ -502,6 +714,7 @@ export default class extends Controller {
     }
 
     // Save role
+    // Save role
     async saveRole() {
         const name = this.roleNameInputTarget.value.trim()
 
@@ -510,6 +723,42 @@ export default class extends Controller {
             return
         }
 
+        const newQuantity = this.hasQuantityInputTarget ? parseInt(this.quantityInputTarget.value) || 1 : 1
+
+        // If editing, check if we're reducing slots below the number of current assignments
+        if (this.editingRoleId) {
+            const currentRole = this.roles.find(r => r.id === this.editingRoleId)
+
+            // Only show migration if we're reducing slots AND we have more assignments than new slots
+            if (currentRole && currentRole.assignments_count > newQuantity) {
+                // Fetch preview from server
+                try {
+                    const previewUrl = `${this.rolesUrlValue}/${this.editingRoleId}/slot_change_preview?new_quantity=${newQuantity}`
+                    const response = await fetch(previewUrl, {
+                        headers: {
+                            "Accept": "application/json",
+                            "X-CSRF-Token": this.csrfToken
+                        }
+                    })
+                    const data = await response.json()
+
+                    if (data.needs_decision) {
+                        // Show slot change modal for user to choose who to remove
+                        this.showSlotChangeModal(data, name)
+                        return
+                    }
+                } catch (error) {
+                    console.error("Failed to check slot change:", error)
+                }
+            }
+        }
+
+        // No migration needed, proceed with normal save
+        await this.executeSaveRole(name, newQuantity)
+    }
+
+    // Execute the actual role save
+    async executeSaveRole(name, quantity, keepAssignmentIds = null) {
         const url = this.editingRoleId
             ? `${this.rolesUrlValue}/${this.editingRoleId}`
             : this.rolesUrlValue
@@ -524,14 +773,55 @@ export default class extends Controller {
         }
 
         // Add quantity and category
-        if (this.hasQuantityInputTarget) {
-            roleData.quantity = parseInt(this.quantityInputTarget.value) || 1
-        }
+        roleData.quantity = quantity
         if (this.hasCategorySelectTarget) {
             roleData.category = this.categorySelectTarget.value
         }
 
         const body = { show_role: roleData }
+
+        // If we have slot changes with assignments to keep, use the slot_change endpoint instead
+        if (keepAssignmentIds !== null && this.editingRoleId) {
+            try {
+                const response = await fetch(`${this.rolesUrlValue}/${this.editingRoleId}/execute_slot_change`, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": this.csrfToken
+                    },
+                    body: JSON.stringify({
+                        new_quantity: quantity,
+                        keep_assignment_ids: keepAssignmentIds
+                    })
+                })
+
+                const data = await response.json()
+
+                if (data.success) {
+                    // Also update name and other fields if changed
+                    const currentRoleData = this.roles.find(r => r.id === this.editingRoleId)
+                    if (currentRoleData && (currentRoleData.name !== name || currentRoleData.category !== this.categorySelectTarget?.value)) {
+                        // Do a follow-up update for other fields
+                        await this.updateRoleFields(name)
+                    } else {
+                        const index = this.roles.findIndex(r => r.id === this.editingRoleId)
+                        if (index !== -1) {
+                            this.roles[index] = data.role
+                        }
+                    }
+                    this.cancelSlotChange()
+                    this.hideForm()
+                } else {
+                    const errorMsg = data.error || "Failed to save role"
+                    this.showRoleNameError(errorMsg)
+                }
+            } catch (error) {
+                console.error("Failed to execute slot change:", error)
+                this.showRoleNameError("Failed to save role. Please try again.")
+            }
+            return
+        }
 
         try {
             const response = await fetch(url, {
@@ -564,6 +854,226 @@ export default class extends Controller {
             console.error("Failed to save role:", error)
             this.showRoleNameError("Failed to save role. Please try again.")
         }
+    }
+
+    // Update just the name/category fields after a slot change
+    async updateRoleFields(name) {
+        const roleData = {
+            name: name,
+            restricted: this.restrictedCheckboxTarget.checked,
+            eligible_member_ids: this.restrictedCheckboxTarget.checked ? this.selectedMemberKeys : []
+        }
+        if (this.hasCategorySelectTarget) {
+            roleData.category = this.categorySelectTarget.value
+        }
+
+        try {
+            const response = await fetch(`${this.rolesUrlValue}/${this.editingRoleId}`, {
+                method: "PATCH",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": this.csrfToken
+                },
+                body: JSON.stringify({ show_role: roleData })
+            })
+
+            const data = await response.json()
+            if (data.success) {
+                const index = this.roles.findIndex(r => r.id === this.editingRoleId)
+                if (index !== -1) {
+                    this.roles[index] = data.role
+                }
+            }
+        } catch (error) {
+            console.error("Failed to update role fields:", error)
+        }
+    }
+
+    // Show modal for slot reduction requiring decision
+    showSlotChangeModal(data, roleName) {
+        if (!this.hasSlotChangeModalTarget) return
+
+        this.slotChangeData = { ...data, pendingRoleName: roleName }
+        this.selectedKeepAssignments = new Set()
+
+        // Pre-select assignments up to the new quantity (first N by position)
+        data.assignments.slice(0, data.new_quantity).forEach(a => {
+            this.selectedKeepAssignments.add(a.assignment_id)
+        })
+
+        // Update title
+        if (this.hasSlotChangeTitleTarget) {
+            this.slotChangeTitleTarget.textContent = `Reducing ${data.role_name} slots`
+        }
+
+        // Update message
+        if (this.hasSlotChangeMessageTarget) {
+            this.slotChangeMessageTarget.innerHTML = `
+                <p class="text-gray-700">
+                    You're reducing this role from <strong>${data.current_assignment_count} assigned</strong> to <strong>${data.new_quantity} slots</strong>.
+                </p>
+                <p class="text-gray-600 mt-1">
+                    Select which ${data.new_quantity} ${data.new_quantity === 1 ? 'person' : 'people'} to keep:
+                </p>
+            `
+        }
+
+        // Build assignment list with checkboxes
+        if (this.hasSlotChangeListTarget) {
+            this.slotChangeListTarget.innerHTML = data.assignments.map((a, index) => {
+                const checked = index < data.new_quantity ? 'checked' : ''
+                const avatar = a.headshot_url
+                    ? `<img src="${a.headshot_url}" alt="${a.assignable_name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
+                    : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">${a.initials}</div>`
+
+                return `
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" value="${a.assignment_id}" ${checked}
+                               data-action="change->show-roles-modal#slotKeepCheckboxChanged"
+                               class="w-5 h-5 accent-pink-500 cursor-pointer flex-shrink-0">
+                        ${avatar}
+                        <span class="font-medium text-gray-900">${a.assignable_name}</span>
+                    </label>
+                `
+            }).join("")
+        }
+
+        this.updateSlotChangeStats()
+        this.slotChangeModalTarget.classList.remove("hidden")
+    }
+
+    // Show modal for slot increase (just confirmation)
+    showSlotIncreaseModal(data, roleName) {
+        if (!this.hasSlotChangeModalTarget) return
+
+        this.slotChangeData = { ...data, pendingRoleName: roleName, isIncrease: true }
+
+        // Update title
+        if (this.hasSlotChangeTitleTarget) {
+            this.slotChangeTitleTarget.textContent = `Adding slots to ${data.role_name}`
+        }
+
+        // Update message
+        if (this.hasSlotChangeMessageTarget) {
+            this.slotChangeMessageTarget.innerHTML = `
+                <p class="text-gray-700">
+                    You're increasing this role from <strong>${data.current_quantity} slots</strong> to <strong>${data.new_quantity} slots</strong>.
+                </p>
+                <p class="text-gray-600 mt-1">
+                    ${data.slots_being_added} new ${data.slots_being_added === 1 ? 'slot' : 'slots'} will be available for casting.
+                </p>
+            `
+        }
+
+        // Show current assignments
+        if (this.hasSlotChangeListTarget) {
+            if (data.assignments.length > 0) {
+                this.slotChangeListTarget.innerHTML = `
+                    <p class="text-sm text-gray-500 mb-2">Currently assigned:</p>
+                    ${data.assignments.map(a => {
+                    const avatar = a.headshot_url
+                        ? `<img src="${a.headshot_url}" alt="${a.assignable_name}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">`
+                        : `<div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs flex-shrink-0">${a.initials}</div>`
+                    return `
+                            <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                ${avatar}
+                                <span class="text-sm text-gray-700">${a.assignable_name}</span>
+                            </div>
+                        `
+                }).join("")}
+                `
+            } else {
+                this.slotChangeListTarget.innerHTML = ''
+            }
+        }
+
+        // Update stats for increase
+        if (this.hasSlotChangeStatsTarget) {
+            this.slotChangeStatsTarget.textContent = `${data.current_assignment_count} assigned, adding ${data.slots_being_added} slots`
+        }
+
+        this.slotChangeModalTarget.classList.remove("hidden")
+    }
+
+    // Handle checkbox change in slot change modal
+    slotKeepCheckboxChanged(event) {
+        const assignmentId = parseInt(event.target.value)
+
+        if (event.target.checked) {
+            this.selectedKeepAssignments.add(assignmentId)
+        } else {
+            this.selectedKeepAssignments.delete(assignmentId)
+        }
+
+        this.updateSlotChangeStats()
+    }
+
+    // Update the stats in slot change modal
+    updateSlotChangeStats() {
+        if (!this.hasSlotChangeStatsTarget || !this.slotChangeData) return
+
+        const keepCount = this.selectedKeepAssignments.size
+        const removeCount = this.slotChangeData.current_assignment_count - keepCount
+        const newQuantity = this.slotChangeData.new_quantity
+
+        let message = `${keepCount} will be kept`
+        if (removeCount > 0) {
+            message += `, ${removeCount} will be removed`
+        }
+
+        // Validation message
+        if (keepCount > newQuantity) {
+            message = `⚠️ Select only ${newQuantity} (you have ${keepCount} selected)`
+            if (this.hasSlotChangeExecuteButtonTarget) {
+                this.slotChangeExecuteButtonTarget.disabled = true
+            }
+        } else if (keepCount < newQuantity && this.slotChangeData.current_assignment_count >= newQuantity) {
+            message = `Select ${newQuantity - keepCount} more to fill all slots`
+            if (this.hasSlotChangeExecuteButtonTarget) {
+                this.slotChangeExecuteButtonTarget.disabled = false
+            }
+        } else {
+            if (this.hasSlotChangeExecuteButtonTarget) {
+                this.slotChangeExecuteButtonTarget.disabled = false
+            }
+        }
+
+        this.slotChangeStatsTarget.textContent = message
+    }
+
+    // Execute the slot change
+    async executeSlotChange() {
+        if (!this.slotChangeData) return
+
+        // Disable button
+        if (this.hasSlotChangeExecuteButtonTarget) {
+            this.slotChangeExecuteButtonTarget.disabled = true
+            this.slotChangeExecuteButtonTarget.textContent = "Saving..."
+        }
+
+        const keepAssignmentIds = this.slotChangeData.isIncrease ? null : Array.from(this.selectedKeepAssignments)
+
+        await this.executeSaveRole(
+            this.slotChangeData.pendingRoleName,
+            this.slotChangeData.new_quantity,
+            keepAssignmentIds
+        )
+
+        // Reset button
+        if (this.hasSlotChangeExecuteButtonTarget) {
+            this.slotChangeExecuteButtonTarget.disabled = false
+            this.slotChangeExecuteButtonTarget.textContent = "Confirm Changes"
+        }
+    }
+
+    // Cancel slot change modal
+    cancelSlotChange() {
+        if (this.hasSlotChangeModalTarget) {
+            this.slotChangeModalTarget.classList.add("hidden")
+        }
+        this.slotChangeData = null
+        this.selectedKeepAssignments = new Set()
     }
 
     showRoleNameError(message) {

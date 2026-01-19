@@ -197,14 +197,19 @@
                 <% end %>
                 <div class="flex-1 min-w-0">
                   <div class="text-sm font-medium text-gray-900">
-                    <% if slot&.name.present? %>
-                      <%= slot.name %>
-                    <% elsif slot %>
-                      Slot <%= slot.position %>
-                    <% elsif registration.queued? %>
+                    <% if form&.slot_generation_mode == 'open_list' %>
+                      <%# Open list - show status instead of position %>
+                      <% if registration.status == 'waitlisted' %>
+                        <span class="text-amber-600">On Waitlist</span>
+                      <% else %>
+                        <span class="text-green-600">Signed Up</span>
+                      <% end %>
+                    <% elsif slot.nil? && registration.queued? %>
                       <span class="text-amber-600">In Queue</span>
-                    <% else %>
+                    <% elsif slot.nil? %>
                       <span class="text-gray-500">Pending Assignment</span>
+                    <% else %>
+                      <%= slot.display_name %>
                     <% end %>
                   </div>
                   <% if form %>

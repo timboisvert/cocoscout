@@ -91,6 +91,7 @@ Rails.application.routes.draw do
     patch "/email_templates/:id", to: "superadmin#email_template_update", as: "email_template_update"
     delete "/email_templates/:id", to: "superadmin#email_template_destroy", as: "email_template_destroy"
     get  "/email_templates/:id/preview", to: "superadmin#email_template_preview", as: "email_template_preview"
+    get  "/keys",               to: "superadmin#keys",                as: "keys_monitor"
 
     # Dev tools (development only)
     get  "/dev_tools",                    to: "superadmin#dev_tools",                 as: "dev_tools"
@@ -379,6 +380,12 @@ Rails.application.routes.draw do
             get :check_assignments
             post :clear_assignments
             post :toggle_custom_roles
+            get :migration_preview
+            post :execute_migration
+          end
+          member do
+            get :slot_change_preview
+            post :execute_slot_change
           end
         end
       end

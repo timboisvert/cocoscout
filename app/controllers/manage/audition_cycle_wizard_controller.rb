@@ -241,11 +241,8 @@ module Manage
         @audition_cycle.audition_type = :in_person
       end
 
-      # Generate unique token
-      @audition_cycle.token = SecureRandom.alphanumeric(5).upcase
-      while AuditionCycle.exists?(token: @audition_cycle.token)
-        @audition_cycle.token = SecureRandom.alphanumeric(5).upcase
-      end
+      # Generate unique token using ShortKeyService
+      @audition_cycle.token = ShortKeyService.generate(type: :audition)
 
       ActiveRecord::Base.transaction do
         # Deactivate other active cycles for this production

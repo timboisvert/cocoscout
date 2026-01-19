@@ -48,7 +48,7 @@
 
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v8",
+    "cast_card_v11",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
@@ -133,8 +133,9 @@
               role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id }.sort_by { |a| a.position || 0 }
               role_open_vacancies = (open_vacancies_by_role[role.id] || []).dup  # dup so we can shift
             %>
-            <% (1..role_quantity).each do |slot_position| %>
-              <% assignment = role_assignments.find { |a| a.position == slot_position } %>
+            <% (0...role_quantity).each do |slot_index| %>
+              <%# Get assignment by index in sorted list (handles both 0 and 1 indexed positions) %>
+              <% assignment = role_assignments[slot_index] %>
               <% if assignment %>
                 <%
                   is_guest = assignment.guest?
