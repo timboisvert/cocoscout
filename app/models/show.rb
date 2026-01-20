@@ -53,6 +53,9 @@ class Show < ApplicationRecord
   has_one :show_financials, dependent: :destroy
   has_one :show_payout, dependent: :destroy
 
+  # Attendance tracking
+  has_many :show_attendance_records, dependent: :destroy
+
   # Linkage roles
   enum :linkage_role, { sibling: "sibling", child: "child" }, prefix: :linkage
 
@@ -111,6 +114,9 @@ class Show < ApplicationRecord
   # Clear assignments when toggling custom roles (unless migration is handling it)
   attr_accessor :skip_assignment_clear_on_role_toggle
   before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
+
+  # Set default attendance_enabled based on event type
+  before_validation :set_attendance_enabled_default, on: :create
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
@@ -302,6 +308,145 @@ class Show < ApplicationRecord
       production.roles.production_roles
     end
   end
+
+  # Signup-based casting - pulls attendees from sign-up form registrations
+  # Returns the sign-up form instance(s) associated with this show
+  def sign_up_form_instances_for_casting
+    sign_up_form_instances.includes(:sign_up_form)
+  end
+
+  # Find or create the system-managed Attendees role for signup-based casting
+  def attendees_role
+    return nil unless signup_based_casting?
+    custom_roles.find_by(system_managed: true, system_role_type: "attendees")
+  end
+
+  # Sync attendees from sign-up form registrations
+  def sync_attendees_from_signups!
+    return unless signup_based_casting?
+
+    # Ensure we have the attendees role
+    role = attendees_role || create_attendees_role!
+
+    # Get all confirmed registrations from sign-up form instances for this show
+    registrations = SignUpRegistration.joins(sign_up_slot: :sign_up_form_instance)
+                                       .where(sign_up_form_instances: { show_id: id })
+                                       .where(status: %w[confirmed waitlisted])
+                                       .includes(:person)
+
+    # Get current assignment person IDs
+    current_person_ids = show_person_role_assignments.where(role: role).pluck(:assignable_id)
+    registration_person_ids = registrations.map(&:person_id).uniq
+
+    # Remove assignments for people who are no longer registered
+    show_person_role_assignments.where(role: role)
+                                 .where.not(assignable_id: registration_person_ids)
+                                 .destroy_all
+
+    # Add assignments for new registrations
+    (registration_person_ids - current_person_ids).each do |person_id|
+      show_person_role_assignments.create!(
+        role: role,
+        assignable_type: "Person",
+        assignable_id: person_id
+      )
+    end
+
+    # Update role quantity to match sign-up form capacity
+    update_attendees_role_quantity!
+  end
+
+  # Enable signup-based casting
+  def enable_signup_based_casting!
+    return if signup_based_casting?
+
+    # Must use custom roles for signup-based casting
+    self.use_custom_roles = true unless use_custom_roles?
+    self.signup_based_casting = true
+    save!
+
+    create_attendees_role!
+    sync_attendees_from_signups!
+  end
+
+  # Disable signup-based casting
+  def disable_signup_based_casting!
+    return unless signup_based_casting?
+
+    # Remove the attendees role and its assignments
+    if attendees_role.present?
+      attendees_role.destroy!
+    end
+
+    self.signup_based_casting = false
+    save!
+  end
+
+  # Attendance tracking helpers
+  def attendance_enabled_default?
+    %w[class workshop open_stage].include?(event_type)
+  end
+
+  # Get or initialize attendance records for all cast members
+  # Returns array of { assignment:, record:, person: } hashes
+  def attendance_records_for_all_cast
+    show_person_role_assignments.includes(:role, person: :profile).map do |assignment|
+      record = show_attendance_records.find_or_initialize_by(show_person_role_assignment: assignment)
+      {
+        assignment: assignment,
+        record: record,
+        person: assignment.person
+      }
+    end
+  end
+
+  # Calculate attendance summary
+  def attendance_summary
+    records = show_attendance_records
+    {
+      total: show_person_role_assignments.count,
+      present: records.present.count,
+      absent: records.absent.count,
+      late: records.late.count,
+      excused: records.excused.count,
+      unknown: show_person_role_assignments.count - records.count + records.unknown.count
+    }
+  end
+
+  private
+
+  def set_attendance_enabled_default
+    return if attendance_enabled.present? # Don't override if explicitly set
+    self.attendance_enabled = attendance_enabled_default?
+  end
+
+  def create_attendees_role!
+    # Determine capacity from sign-up form
+    form_instance = sign_up_form_instances.first
+    capacity = form_instance&.sign_up_form&.capacity || 20
+
+    custom_roles.create!(
+      name: "Attendees",
+      position: custom_roles.maximum(:position).to_i + 1,
+      quantity: capacity,
+      category: "performing",
+      restricted: false,
+      production: production,
+      system_managed: true,
+      system_role_type: "attendees"
+    )
+  end
+
+  def update_attendees_role_quantity!
+    return unless attendees_role
+
+    form_instance = sign_up_form_instances.first
+    capacity = form_instance&.sign_up_form&.capacity || 20
+
+    attendees_role.update!(quantity: capacity) if attendees_role.quantity != capacity
+  end
+
+  public
 
   # Copy all production roles to this show's custom roles
   def copy_roles_from_production!

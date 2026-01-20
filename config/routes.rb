@@ -368,6 +368,10 @@ Rails.application.routes.draw do
           post :link_show
           delete :unlink_show
           delete :delete_linkage
+          post :toggle_signup_based_casting
+          post :toggle_attendance
+          get :attendance
+          patch :update_attendance
           patch :transfer
         end
 

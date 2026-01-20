@@ -4,6 +4,9 @@ class Role < ApplicationRecord
   # Role categories (performing = on stage, technical = backstage/crew)
   CATEGORIES = %w[performing technical].freeze
 
+  # System role types (for system-managed roles)
+  SYSTEM_ROLE_TYPES = %w[attendees].freeze
+
   belongs_to :production
   belongs_to :show, optional: true  # nil for production-level roles, set for show-specific roles
 
@@ -23,10 +26,15 @@ class Role < ApplicationRecord
   scope :performing, -> { where(category: "performing") }
   scope :technical, -> { where(category: "technical") }
 
+  # Scopes for system-managed roles
+  scope :system_managed, -> { where(system_managed: true) }
+  scope :user_managed, -> { where(system_managed: false) }
+
   validates :name, presence: true
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
-  validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 20 }
+  validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 100 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
+  validates :system_role_type, inclusion: { in: SYSTEM_ROLE_TYPES, allow_nil: true }
   validate :restricted_role_has_eligible_members
 
   default_scope { order(position: :asc, created_at: :asc) }
@@ -42,6 +50,11 @@ class Role < ApplicationRecord
   # Check if this is a production-level role
   def production_role?
     show_id.nil?
+  end
+
+  # Check if this is the attendees role from signup-based casting
+  def attendees_role?
+    system_managed? && system_role_type == "attendees"
   end
 
   # Returns all eligible members (people and groups) for this role

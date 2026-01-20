@@ -15,7 +15,9 @@
      data-controller="casting-settings-modal"
      data-casting-settings-modal-show-id-value="<%= show.id %>"
      data-casting-settings-modal-production-id-value="<%= production.id %>"
-     data-casting-settings-modal-update-url-value="<%= manage_production_show_path(production, show) %>">
+     data-casting-settings-modal-update-url-value="<%= manage_production_show_path(production, show) %>"
+     data-casting-settings-modal-toggle-signup-based-casting-url-value="<%= toggle_signup_based_casting_manage_production_show_path(production, show) %>"
+     data-casting-settings-modal-toggle-attendance-url-value="<%= toggle_attendance_manage_production_show_path(production, show) %>">
   <div class="p-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <%# Icon %>

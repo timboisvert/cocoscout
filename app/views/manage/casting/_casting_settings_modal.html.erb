@@ -75,6 +75,97 @@
         </div>
       </div>
 
+      <%# Section 2.5: Signup-Based Casting %>
+      <div class="pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Use sign-up form for attendees</p>
+            <p class="text-xs text-gray-500 mt-1">
+              Sync the "Attendees" role from the sign-up form for this event. You can still add other roles for staff like teachers or musical support.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="checkbox"
+                   <%= "checked" if show.signup_based_casting? %>
+                   class="sr-only peer"
+                   data-casting-settings-modal-target="signupBasedCastingCheckbox"
+                   data-action="change->casting-settings-modal#toggleSignupBasedCasting">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <%# Show sign-up form status %>
+        <div data-casting-settings-modal-target="signupBasedCastingInfo" class="<%= show.signup_based_casting? ? '' : 'hidden' %> ml-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <% form_instance = show.sign_up_form_instances.first %>
+          <% if form_instance.present? %>
+            <div class="flex items-center gap-2 text-sm text-blue-800">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>Syncing from: <strong><%= form_instance.sign_up_form.name %></strong></span>
+            </div>
+            <p class="text-xs text-blue-600 mt-1 ml-6">
+              <%= form_instance.sign_up_registrations.confirmed.count %> confirmed registrations
+            </p>
+          <% else %>
+            <div class="flex items-center gap-2 text-sm text-amber-800">
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+              <span>No sign-up form for this event</span>
+            </div>
+            <p class="text-xs text-amber-600 mt-1 ml-6">
+              <%= link_to "Create a sign-up form", manage_production_signups_path(production), class: "underline hover:no-underline" %> that includes this event.
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Section 2.7: Attendance Tracking %>
+      <div class="pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Track attendance</p>
+            <p class="text-xs text-gray-500 mt-1">
+              Record attendance for all cast members assigned to this event.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="checkbox"
+                   <%= "checked" if show.attendance_enabled? %>
+                   class="sr-only peer"
+                   data-casting-settings-modal-target="attendanceCheckbox"
+                   data-action="change->casting-settings-modal#toggleAttendance">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <%# Show attendance quick summary if enabled and has cast %>
+        <% if show.attendance_enabled? && show.show_person_role_assignments.any? %>
+          <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+            <% summary = show.attendance_summary %>
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-green-800">
+                <span class="font-medium"><%= summary[:present] %></span> present,
+                <span class="font-medium"><%= summary[:absent] %></span> absent,
+                <span class="font-medium"><%= summary[:late] %></span> late
+                <% if summary[:unknown] > 0 %>
+                  <span class="text-green-600">(<%= summary[:unknown] %> not recorded)</span>
+                <% end %>
+              </div>
+              <%= link_to attendance_manage_production_show_path(production, show),
+                          class: "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-white border border-green-300 rounded-md hover:bg-green-50 transition-colors",
+                          data: { turbo_frame: "_top" } do %>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                Take Attendance
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
       <%# Section 3: Custom Roles %>
       <div class="pt-6 border-t border-gray-200"
            data-controller="show-roles-modal"

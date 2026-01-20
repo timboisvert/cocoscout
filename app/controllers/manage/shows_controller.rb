@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer toggle_signup_based_casting toggle_attendance attendance update_attendance]
     before_action :ensure_user_is_manager, except: %i[index show]
 
     def index
@@ -786,6 +786,62 @@ module Manage
       else
         redirect_to edit_manage_production_show_path(@production, @show),
                     alert: result[:error] || "Failed to move #{@show.event_type}"
+      end
+    end
+
+    def toggle_signup_based_casting
+      if params[:enabled] == "true" || params[:enabled] == true
+        result = @show.enable_signup_based_casting!
+        if result[:success]
+          flash[:notice] = "Sign-up based casting enabled. #{result[:synced_count]} attendee(s) synced from sign-ups."
+        else
+          flash[:alert] = result[:error]
+        end
+      else
+        @show.disable_signup_based_casting!
+        flash[:notice] = "Sign-up based casting disabled."
+      end
+
+      respond_to do |format|
+        format.html { redirect_to edit_manage_production_show_path(@production, @show) }
+        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show) }
+      end
+    end
+
+    def toggle_attendance
+      @show.update!(attendance_enabled: !@show.attendance_enabled)
+
+      respond_to do |format|
+        format.html { redirect_to edit_manage_production_show_path(@production, @show) }
+        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show) }
+      end
+    end
+
+    def attendance
+      @attendance_records = @show.attendance_records_for_all_cast
+      @attendance_summary = @show.attendance_summary
+
+      respond_to do |format|
+        format.html { render :attendance }
+        format.json { render json: { records: @attendance_records, summary: @attendance_summary } }
+      end
+    end
+
+    def update_attendance
+      attendance_params = params.require(:attendance).permit!.to_h
+
+      attendance_params.each do |assignment_id, status|
+        record = ShowAttendanceRecord.find_or_initialize_by(
+          show: @show,
+          show_person_role_assignment_id: assignment_id
+        )
+        record.update!(status: status)
+      end
+
+      respond_to do |format|
+        format.html { redirect_to edit_manage_production_show_path(@production, @show), notice: "Attendance updated successfully." }
+        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show), notice: "Attendance updated successfully." }
+        format.json { render json: { success: true } }
       end
     end
 

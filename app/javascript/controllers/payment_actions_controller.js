@@ -175,7 +175,8 @@ export default class extends Controller {
   openVenmo(event) {
     event.preventDefault()
     const button = event.currentTarget
-    const handle = button.dataset.venmoHandle
+    // Strip @ prefix if present - Venmo deep links don't want it
+    const handle = (button.dataset.venmoHandle || "").replace(/^@/, "")
     const amount = button.dataset.venmoAmount
     const note = button.dataset.venmoNote || ""
 

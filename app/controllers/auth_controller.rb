@@ -66,7 +66,9 @@ class AuthController < ApplicationController
                          my_dashboard_path
         end
 
-        redirect_to(session.delete(:return_to) || default_path) and return
+        # Check both return_to sources: explicit param and authentication redirect
+        redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
+        redirect_to(redirect_path) and return
       else
         render :signup, status: :unprocessable_entity
       end
@@ -93,7 +95,9 @@ class AuthController < ApplicationController
                        my_dashboard_path
       end
 
-      redirect_to(session.delete(:return_to) || default_path) and return
+      # Check both return_to sources: explicit param and authentication redirect
+      redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
+      redirect_to(redirect_path) and return
     end
 
     @user = User.new
@@ -148,7 +152,9 @@ class AuthController < ApplicationController
                        my_dashboard_path
       end
 
-      redirect_to(session.delete(:return_to) || default_path) and return
+      # Check both return_to sources: explicit param and authentication redirect
+      redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
+      redirect_to(redirect_path) and return
     else
       @error = true
       render :signin, status: :unprocessable_entity

@@ -32,3 +32,9 @@ event_types:
     public_visible_default: true
     call_time_enabled_default: false
     revenue_event: true
+  open_stage:
+    label: "Open Stage"
+    casting_enabled_default: true
+    public_visible_default: true
+    call_time_enabled_default: false
+    revenue_event: false

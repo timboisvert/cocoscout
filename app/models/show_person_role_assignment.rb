@@ -5,6 +5,8 @@ class ShowPersonRoleAssignment < ApplicationRecord
   belongs_to :assignable, polymorphic: true, optional: true
   belongs_to :role
 
+  has_one :show_attendance_record, dependent: :destroy
+
   validates :role, presence: true
   # Prevent duplicate assignments: same person can't be assigned to same role on same show
   validates :assignable_id, uniqueness: { scope: [ :show_id, :role_id, :assignable_type ], message: "is already assigned to this role" }, if: -> { assignable_id.present? }

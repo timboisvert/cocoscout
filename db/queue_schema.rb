@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -815,6 +815,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
     t.integer "quantity", default: 1, null: false
     t.boolean "restricted", default: false, null: false
     t.integer "show_id"
+    t.boolean "system_managed", default: false, null: false
+    t.string "system_role_type"
     t.datetime "updated_at", null: false
     t.index ["category"], name: "index_roles_on_category"
     t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name", unique: true
@@ -843,6 +845,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
     t.index ["replaces_shoutout_id"], name: "index_shoutouts_on_replaces_shoutout_id"
     t.index ["shoutee_type", "shoutee_id", "created_at"], name: "index_shoutouts_on_shoutee_and_created"
     t.index ["shoutee_type", "shoutee_id"], name: "index_shoutouts_on_shoutee"
+  end
+
+  create_table "show_attendance_records", force: :cascade do |t|
+    t.datetime "checked_in_at"
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.bigint "show_id", null: false
+    t.bigint "show_person_role_assignment_id", null: false
+    t.string "status", default: "unknown", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id", "show_person_role_assignment_id"], name: "idx_attendance_show_assignment", unique: true
+    t.index ["show_id"], name: "index_show_attendance_records_on_show_id"
+    t.index ["show_person_role_assignment_id"], name: "idx_on_show_person_role_assignment_id_aacbb17773"
   end
 
   create_table "show_availabilities", force: :cascade do |t|
@@ -965,6 +980,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
   end
 
   create_table "shows", force: :cascade do |t|
+    t.boolean "attendance_enabled", default: false, null: false
     t.datetime "call_time"
     t.boolean "call_time_enabled", default: false, null: false
     t.boolean "canceled", default: false, null: false
@@ -983,6 +999,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
     t.boolean "public_profile_visible"
     t.string "recurrence_group_id"
     t.string "secondary_name"
+    t.boolean "signup_based_casting", default: false, null: false
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
     t.index ["casting_source"], name: "index_shows_on_casting_source"
@@ -1421,6 +1438,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_203634) do
   add_foreign_key "roles", "shows", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "shoutouts", "people", column: "author_id"
+  add_foreign_key "show_attendance_records", "show_person_role_assignments"
+  add_foreign_key "show_attendance_records", "shows"
   add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_cast_notifications", "roles"
   add_foreign_key "show_cast_notifications", "shows"
