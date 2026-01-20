@@ -1136,9 +1136,11 @@ module Manage
       source_roles.each do |source_role|
         target_role = existing_roles[source_role.name]
         if target_role
-          # Update existing role
+          # Update existing role to match source (including quantity and category)
           target_role.update!(
             position: source_role.position,
+            quantity: source_role.quantity,
+            category: source_role.category,
             restricted: source_role.restricted
           )
 
@@ -1155,17 +1157,29 @@ module Manage
             target_role.role_eligibilities.destroy_all
           end
         else
-          # Create new role
-          new_role = target_show.custom_roles.create!(
+          # Create new role with all attributes from source
+          eligibilities_to_copy = source_role.restricted? ? source_role.role_eligibilities.to_a : []
+          should_be_restricted = source_role.restricted? && eligibilities_to_copy.any?
+
+          new_role = target_show.custom_roles.new(
             name: source_role.name,
             position: source_role.position,
-            restricted: source_role.restricted,
+            quantity: source_role.quantity,
+            category: source_role.category,
+            restricted: should_be_restricted,
             production: target_show.production
           )
 
-          # Copy eligibilities if restricted
-          if source_role.restricted?
-            source_role.role_eligibilities.each do |eligibility|
+          # Set pending eligible member IDs to pass validation for restricted roles
+          if should_be_restricted
+            new_role.pending_eligible_member_ids = eligibilities_to_copy.map { |e| "#{e.member_type}_#{e.member_id}" }
+          end
+
+          new_role.save!
+
+          # Copy eligibilities after save
+          if should_be_restricted
+            eligibilities_to_copy.each do |eligibility|
               new_role.role_eligibilities.create!(
                 member_type: eligibility.member_type,
                 member_id: eligibility.member_id
@@ -1458,6 +1472,8 @@ module Manage
     # Build sync info comparing this show's cast with linked shows
     def build_linkage_sync_info(show, linked_shows)
       current_roles = show.available_roles.pluck(:id, :name).to_h
+      # Build role signature including name, quantity, category, and restricted status for comparison
+      current_role_signatures = show.available_roles.pluck(:name, :quantity, :category, :restricted).map { |r| r.join("|") }.sort
 
       sync_info = {
         all_in_sync: true,
@@ -1469,9 +1485,10 @@ module Manage
 
       linked_shows.each do |linked_show|
         linked_roles = linked_show.available_roles.pluck(:id, :name).to_h
+        linked_role_signatures = linked_show.available_roles.pluck(:name, :quantity, :category, :restricted).map { |r| r.join("|") }.sort
 
-        # Check if roles match (by name, since IDs will differ for custom roles)
-        roles_match = current_roles.values.sort == linked_roles.values.sort
+        # Check if roles match (by name, quantity, category, and restricted status)
+        roles_match = current_role_signatures == linked_role_signatures
 
         # Check if casts match (comparing assignable keys, normalized by role name)
         # Build a map of role_name => [assignable_key, ...] for comparison

@@ -306,19 +306,33 @@ class Show < ApplicationRecord
   # Copy all production roles to this show's custom roles
   def copy_roles_from_production!
     production.roles.production_roles.each do |role|
-      new_role = custom_roles.create!(
+      # For restricted roles, get the eligibilities to copy
+      eligibilities_to_copy = role.restricted? ? role.role_eligibilities.to_a : []
+
+      # Only mark as restricted if there are actual eligibilities
+      # (a restricted role without eligibilities is invalid)
+      should_be_restricted = role.restricted? && eligibilities_to_copy.any?
+
+      new_role = custom_roles.new(
         name: role.name,
         position: role.position,
-        restricted: role.restricted,
+        restricted: should_be_restricted,
         production: production,
         # Multi-person and category fields
         quantity: role.quantity,
         category: role.category
       )
 
-      # Copy role eligibilities if restricted
-      if role.restricted?
-        role.role_eligibilities.each do |eligibility|
+      # Set pending eligible member IDs to pass validation for restricted roles
+      if should_be_restricted
+        new_role.pending_eligible_member_ids = eligibilities_to_copy.map { |e| "#{e.member_type}_#{e.member_id}" }
+      end
+
+      new_role.save!
+
+      # Copy role eligibilities after save
+      if should_be_restricted
+        eligibilities_to_copy.each do |eligibility|
           new_role.role_eligibilities.create!(
             member_type: eligibility.member_type,
             member_id: eligibility.member_id

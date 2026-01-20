@@ -333,8 +333,13 @@ module Manage
         target_roles_by_id = target_roles.index_by(&:id)
         target_roles_by_name = target_roles.index_by { |r| r.name.downcase.strip }
 
+        Rails.logger.info "[Migration] switching_to: #{switching_to}"
+        Rails.logger.info "[Migration] target_roles count: #{target_roles.count}"
+        Rails.logger.info "[Migration] target_roles_by_name: #{target_roles_by_name.keys.inspect}"
+
         # Get current assignments
         current_assignments = @show.show_person_role_assignments.includes(:role).index_by(&:id)
+        Rails.logger.info "[Migration] current_assignments count: #{current_assignments.count}"
 
         # Build a mapping index from provided params
         mappings_by_assignment_id = role_mappings.index_by { |m| m[:assignment_id].to_i }
@@ -384,17 +389,22 @@ module Manage
             end
           else
             # No mapping provided - try auto-mapping by role name
-            matched_role = assignment.role ? target_roles_by_name[assignment.role.name.downcase.strip] : nil
+            role_name = assignment.role&.name&.downcase&.strip
+            matched_role = role_name ? target_roles_by_name[role_name] : nil
+            Rails.logger.info "[Migration] Auto-mapping assignment #{assignment_id}: role_name='#{role_name}', matched=#{matched_role.present?}"
             if matched_role
               assignment.update!(role_id: matched_role.id)
               people_kept << { assignment: assignment, role: matched_role }
             else
               # No match found - remove assignment
+              Rails.logger.warn "[Migration] No match found for '#{role_name}' - destroying assignment #{assignment_id}"
               record_removal_for_notification(assignment, people_removed)
               assignment.destroy!
             end
           end
         end
+
+        Rails.logger.info "[Migration] After processing: kept=#{people_kept.count}, removed=#{people_removed.count}"
 
         # Update the use_custom_roles flag
         @show.update!(use_custom_roles: switching_to == "custom")
@@ -407,12 +417,8 @@ module Manage
         # Clear finalized status since cast has changed
         @show.update!(casting_finalized_at: nil) if @show.casting_finalized?
 
-        # Handle linked shows if applicable
-        if @show.linked? && params[:apply_to_linked] == true
-          @show.event_linkage.shows.where.not(id: @show.id).each do |linked_show|
-            migrate_linked_show(linked_show, switching_to, target_roles_by_name)
-          end
-        end
+        # Note: We don't automatically migrate linked shows here.
+        # Use the "Sync" button to synchronize linked shows after migration.
 
         render json: {
           success: true,
@@ -630,6 +636,9 @@ module Manage
 
     # Migrate a linked show to match the primary show's role mode
     def migrate_linked_show(linked_show, switching_to, target_roles_by_name)
+      # Skip the automatic assignment clearing callback - we're handling it manually
+      linked_show.skip_assignment_clear_on_role_toggle = true
+
       linked_show.show_person_role_assignments.includes(:role).each do |assignment|
         matched_role = assignment.role ? target_roles_by_name[assignment.role.name.downcase.strip] : nil
         if matched_role

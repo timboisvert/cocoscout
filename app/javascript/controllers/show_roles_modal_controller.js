@@ -172,14 +172,9 @@ export default class extends Controller {
         this.migrationLoadingTarget.classList.add("hidden")
         this.migrationContentTarget.classList.remove("hidden")
 
-        // Handle linked shows warning
-        if (data.is_linked && data.linked_shows.length > 0) {
-            this.linkedShowsWarningTarget.classList.remove("hidden")
-            const showNames = data.linked_shows.map(s => s.title).join(", ")
-            this.linkedShowsTextTarget.textContent = `This will also affect: ${showNames}`
-        } else {
-            this.linkedShowsWarningTarget.classList.add("hidden")
-        }
+        // Hide linked shows warning - migration only affects this show, not linked shows
+        // Use the Sync button to synchronize linked shows after migration
+        this.linkedShowsWarningTarget.classList.add("hidden")
 
         // Build the assignment lists
         const autoMappable = data.mappings.filter(m => m.can_auto_map)
@@ -352,8 +347,7 @@ export default class extends Controller {
                 },
                 body: JSON.stringify({
                     switching_to: this.pendingToggleTo ? 'custom' : 'production',
-                    role_mappings: roleMappings,
-                    apply_to_linked: true
+                    role_mappings: roleMappings
                 })
             })
 
@@ -370,15 +364,9 @@ export default class extends Controller {
                 // Close the migration modal
                 this.cancelMigration()
 
-                // If switching TO custom roles, stay in the casting settings modal so user can edit roles
-                // Otherwise reload the page
-                if (switchingToCustom) {
-                    // Reload the roles list to show custom roles
-                    this.loadRoles()
-                } else {
-                    // Switching to production roles - reload the page
-                    window.location.reload()
-                }
+                // Always reload the page after migration to show updated cast
+                // The cast assignments have been updated on the server
+                window.location.reload()
             } else {
                 alert(data.error || "Failed to transfer assignments. Please try again.")
             }
