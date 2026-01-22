@@ -229,11 +229,37 @@ module Manage
 
     def generate_default_name
       productions = Current.organization.productions.where(id: @wizard_state[:production_ids])
-      if productions.count == 1
-        "#{productions.first.name} - #{Date.today.strftime('%B %Y')}"
+      shows = Show.where(id: @wizard_state[:show_ids]).order(:date_and_time)
+      
+      # Build production names portion
+      production_names = if productions.count == 1
+        productions.first.name
+      elsif productions.count <= 3
+        productions.pluck(:name).join(", ")
       else
-        "Casting Table - #{Date.today.strftime('%B %Y')}"
+        "#{productions.count} Productions"
       end
+      
+      # Build date range portion
+      date_range = if shows.any?
+        first_date = shows.first.date_and_time
+        last_date = shows.last.date_and_time
+        if first_date.to_date == last_date.to_date
+          first_date.strftime("%b %-d")
+        elsif first_date.month == last_date.month && first_date.year == last_date.year
+          "#{first_date.strftime('%b %-d')}-#{last_date.strftime('%-d')}"
+        else
+          "#{first_date.strftime('%b %-d')} - #{last_date.strftime('%b %-d')}"
+        end
+      else
+        Date.today.strftime("%B %Y")
+      end
+      
+      # Build event count portion
+      event_count = shows.count
+      event_text = event_count == 1 ? "1 event" : "#{event_count} events"
+      
+      "#{production_names} (#{date_range}, #{event_text})"
     end
   end
 end

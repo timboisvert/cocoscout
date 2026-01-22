@@ -18,6 +18,13 @@ class TalentPool < ApplicationRecord
     Production.where(id: [ production_id ] + shared_productions.pluck(:id))
   end
 
+  # Display name showing all production names (for dropdowns)
+  def production_names
+    names = [production.name]
+    names += shared_productions.pluck(:name)
+    names.join(", ")
+  end
+
   # Helper method to get all members (both people and groups)
   def members
     talent_pool_memberships.includes(:member).map(&:member)

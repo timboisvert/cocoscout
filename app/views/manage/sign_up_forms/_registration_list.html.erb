@@ -36,12 +36,12 @@
 
       <%# Determine label width - wider for named slots or time_based %>
       <% has_name = slot.name.present? %>
-      <% label_width_class = if sign_up_form.slot_generation_mode == 'time_based'
-           'w-28'
+      <% label_width_style = if sign_up_form.slot_generation_mode == 'time_based'
+           'width: 5rem;'
          elsif has_name
-           'w-32'
+           'width: 6rem;'
          else
-           'w-16'
+           'width: 2rem;'
          end %>
 
       <% if slot.is_held %>
@@ -53,7 +53,7 @@
         <%# Multi-capacity slot: show label on left, individual rows on right %>
         <div class="flex">
           <%# Left side: slot label (vertically centered) %>
-          <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3">
+          <div class="flex-shrink-0 flex items-center border-r border-gray-100 bg-gray-50 px-2" style="<%= label_width_style %>">
             <span class="text-sm font-medium <%= registrations_in_slot.any? ? 'text-gray-500' : 'text-gray-400' %>"><%= slot.name.presence || slot.position %></span>
           </div>
 
@@ -63,7 +63,7 @@
           <div class="flex-1 divide-y divide-gray-50">
             <% registrations_in_slot.each do |registration| %>
               <%# Filled position %>
-              <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 hover:bg-gray-50">
                 <div class="flex items-center gap-3">
                   <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
                   <% if headshot %>
@@ -79,7 +79,7 @@
                     <span class="text-sm text-gray-900"><%= registration.display_name %></span>
                   <% end %>
                 </div>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                <div class="flex items-center gap-1 mt-2 sm:mt-0">
                   <% headshot_url = headshot ? url_for(headshot) : nil %>
                   <button type="button"
                           class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
@@ -124,7 +124,7 @@
         <div class="flex">
           <% if show_slot_label %>
             <%# Left side: slot label (vertically centered, left-aligned) %>
-            <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+            <div class="flex-shrink-0 flex items-center border-r border-gray-100 bg-gray-50 px-2 py-2" style="<%= label_width_style %>">
               <span class="text-sm font-medium text-gray-500"><%= slot.name.presence || slot.position %></span>
             </div>
           <% end %>
@@ -132,7 +132,7 @@
           <%# Right side: registrations %>
           <div class="flex-1 divide-y divide-gray-50">
             <% registrations_in_slot.each do |registration| %>
-              <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 hover:bg-gray-50">
                 <div class="flex items-center gap-3">
                   <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
                   <% if headshot %>
@@ -148,7 +148,7 @@
                     <span class="text-sm text-gray-900"><%= registration.display_name %></span>
                   <% end %>
                 </div>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                <div class="flex items-center gap-1 mt-2 sm:mt-0">
                   <% if show_slot_label %>
                     <% headshot_url = headshot ? url_for(headshot) : nil %>
                     <button type="button"
@@ -177,7 +177,7 @@
         <%# Empty slot - only show for numbered/time_based/named modes %>
         <% if show_slot_label %>
           <div class="flex">
-            <div class="flex-shrink-0 <%= label_width_class %> flex items-center border-r border-gray-100 bg-gray-50 px-3 py-2">
+            <div class="flex-shrink-0 flex items-center border-r border-gray-100 bg-gray-50 px-2 py-2" style="<%= label_width_style %>">
               <span class="text-sm font-medium text-gray-400"><%= slot.name.presence || slot.position %></span>
             </div>
             <div class="flex-1 px-4 py-2">

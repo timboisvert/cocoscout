@@ -15,8 +15,9 @@ export default class extends Controller {
         const showValue = select.dataset.filterSelectShowValue
         const filterValue = select.dataset.filterSelectFilterValue
         const typeValue = select.dataset.filterSelectTypeValue
+        const talentPoolIdValue = select.dataset.filterSelectTalentPoolIdValue
 
-        console.log("Data values:", { searchValue, showValue, filterValue, typeValue })
+        console.log("Data values:", { searchValue, showValue, filterValue, typeValue, talentPoolIdValue })
 
         if (searchValue) params.set("q", searchValue)
         if (showValue) params.set("show", showValue)
@@ -24,13 +25,20 @@ export default class extends Controller {
         if (select.name === "filter") {
             params.set("filter", select.value)
             if (typeValue) params.set("type", typeValue)
+            // Don't carry over talent_pool_id when changing filter
+        } else if (select.name === "talent_pool_id") {
+            params.set("talent_pool_id", select.value)
+            if (filterValue) params.set("filter", filterValue)
+            if (typeValue) params.set("type", typeValue)
         } else if (select.name === "type") {
             params.set("type", select.value)
             if (filterValue) params.set("filter", filterValue)
+            if (talentPoolIdValue) params.set("talent_pool_id", talentPoolIdValue)
         } else if (select.name === "sort") {
             params.set("sort", select.value)
             if (filterValue) params.set("filter", filterValue)
             if (typeValue) params.set("type", typeValue)
+            if (talentPoolIdValue) params.set("talent_pool_id", talentPoolIdValue)
         }
 
         const baseUrl = select.closest("form")?.action || window.location.pathname

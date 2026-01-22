@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["cell", "roleSelector", "roleOptions", "showCount", "memberCount", "totalCount"]
+  static targets = ["cell", "roleSelector", "roleOptions", "showCount", "memberCount", "totalCount", "draftAssignmentCount"]
   static values = { tableId: Number }
 
   connect() {
@@ -195,6 +195,8 @@ export default class extends Controller {
         this.roleCountsData[countKey] = (this.roleCountsData[countKey] || 0) + 1
         // Update tally displays
         this.updateTallyCounts(showId, memberType, memberId, 1)
+        // Update draft assignment count in the floating bar
+        this.updateDraftAssignmentCount(1)
       } else {
         alert(data.error || 'Error assigning role')
       }
@@ -237,6 +239,8 @@ export default class extends Controller {
         }
         // Update tally displays (decrement)
         this.updateTallyCounts(showId, memberType, memberId, -1)
+        // Update draft assignment count in the floating bar
+        this.updateDraftAssignmentCount(-1)
       } else {
         alert(data.error || 'Error removing assignment')
       }
@@ -339,6 +343,16 @@ export default class extends Controller {
         }
       }
     }
+  }
+
+  updateDraftAssignmentCount(delta) {
+    if (!this.hasDraftAssignmentCountTarget) return
+    
+    const countEl = this.draftAssignmentCountTarget
+    let currentCount = parseInt(countEl.textContent) || 0
+    currentCount += delta
+    currentCount = Math.max(0, currentCount) // Don't go negative
+    countEl.textContent = currentCount
   }
 
   showRestrictedRoleConfirmation(role, showId, memberType, memberId, memberName) {

@@ -51,21 +51,20 @@ class DirectoryQueryService
 
   def apply_scope_filter(people, groups)
     case params[:filter]
-    when "current_production"
-      return [ Person.none, Group.none ] unless production
-
-      # Get the effective talent pool (either the production's own or a shared pool)
-      effective_pool = production.effective_talent_pool
-
-      people = people.joins(:talent_pools)
-                     .where(talent_pools: { id: effective_pool.id })
-                     .distinct
-      groups = groups.joins(:talent_pools)
-                     .where(talent_pools: { id: effective_pool.id })
-                     .distinct
-    when "org_talent_pools"
-      people = people.joins(:talent_pools).distinct
-      groups = groups.joins(:talent_pools).distinct
+    when "talent_pools"
+      if params[:talent_pool_id].present?
+        # Filter to a specific talent pool
+        people = people.joins(:talent_pools)
+                       .where(talent_pools: { id: params[:talent_pool_id] })
+                       .distinct
+        groups = groups.joins(:talent_pools)
+                       .where(talent_pools: { id: params[:talent_pool_id] })
+                       .distinct
+      else
+        # Show people/groups in any talent pool
+        people = people.joins(:talent_pools).distinct
+        groups = groups.joins(:talent_pools).distinct
+      end
     when "everyone"
       # No additional filtering
     end

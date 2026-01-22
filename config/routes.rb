@@ -323,6 +323,24 @@ Rails.application.routes.draw do
     get  "/signups/forms/:production_id/archived", to: "sign_up_forms#archived", as: "signups_forms_archived"
     get  "/signups/forms/:production_id/new", to: "sign_up_forms#new", as: "new_signups_form"
     post "/signups/forms/:production_id", to: "sign_up_forms#create", as: "create_signups_form"
+
+    # Sign-ups > Forms > Wizard (must come before :id routes)
+    get  "/signups/forms/:production_id/wizard", to: "sign_up_form_wizard#scope", as: "signups_forms_wizard"
+    post "/signups/forms/:production_id/wizard/scope", to: "sign_up_form_wizard#save_scope", as: "signups_forms_wizard_save_scope"
+    get  "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#events", as: "signups_forms_wizard_events"
+    post "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#save_events", as: "signups_forms_wizard_save_events"
+    get  "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#slots", as: "signups_forms_wizard_slots"
+    post "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#save_slots", as: "signups_forms_wizard_save_slots"
+    get  "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#rules", as: "signups_forms_wizard_rules"
+    post "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#save_rules", as: "signups_forms_wizard_save_rules"
+    get  "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#schedule", as: "signups_forms_wizard_schedule"
+    post "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#save_schedule", as: "signups_forms_wizard_save_schedule"
+    get  "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#notifications", as: "signups_forms_wizard_notifications"
+    post "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#save_notifications", as: "signups_forms_wizard_save_notifications"
+    get  "/signups/forms/:production_id/wizard/review", to: "sign_up_form_wizard#review", as: "signups_forms_wizard_review"
+    post "/signups/forms/:production_id/wizard/create", to: "sign_up_form_wizard#create_form", as: "signups_forms_wizard_create"
+    delete "/signups/forms/:production_id/wizard/cancel", to: "sign_up_form_wizard#cancel", as: "signups_forms_wizard_cancel"
+
     get  "/signups/forms/:production_id/:id", to: "sign_up_forms#show", as: "signups_form"
     get  "/signups/forms/:production_id/:id/edit", to: "sign_up_forms#edit", as: "edit_signups_form"
     patch "/signups/forms/:production_id/:id", to: "sign_up_forms#update", as: "update_signups_form"
@@ -362,26 +380,32 @@ Rails.application.routes.draw do
     post "/signups/forms/:production_id/:id/auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue_signups_form"
     post "/signups/forms/:production_id/:id/auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one_signups_form"
 
-    # Sign-ups > Forms > Wizard
-    get  "/signups/forms/:production_id/wizard", to: "sign_up_form_wizard#scope", as: "signups_forms_wizard"
-    post "/signups/forms/:production_id/wizard/scope", to: "sign_up_form_wizard#save_scope", as: "signups_forms_wizard_save_scope"
-    get  "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#events", as: "signups_forms_wizard_events"
-    post "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#save_events", as: "signups_forms_wizard_save_events"
-    get  "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#slots", as: "signups_forms_wizard_slots"
-    post "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#save_slots", as: "signups_forms_wizard_save_slots"
-    get  "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#rules", as: "signups_forms_wizard_rules"
-    post "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#save_rules", as: "signups_forms_wizard_save_rules"
-    get  "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#schedule", as: "signups_forms_wizard_schedule"
-    post "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#save_schedule", as: "signups_forms_wizard_save_schedule"
-    get  "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#notifications", as: "signups_forms_wizard_notifications"
-    post "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#save_notifications", as: "signups_forms_wizard_save_notifications"
-    get  "/signups/forms/:production_id/wizard/review", to: "sign_up_form_wizard#review", as: "signups_forms_wizard_review"
-    post "/signups/forms/:production_id/wizard/create", to: "sign_up_form_wizard#create_form", as: "signups_forms_wizard_create"
-    delete "/signups/forms/:production_id/wizard/cancel", to: "sign_up_form_wizard#cancel", as: "signups_forms_wizard_cancel"
-
     # Sign-ups > Auditions - production-level (new URL pattern: /manage/signups/auditions/:production_id)
     get  "/signups/auditions/:production_id", to: "auditions#index", as: "signups_auditions"
     get  "/signups/auditions/:production_id/archive", to: "auditions#archive", as: "signups_auditions_archive"
+
+    # Sign-ups > Auditions > Wizard (must come before :id routes)
+    get  "/signups/auditions/:production_id/wizard", to: "audition_cycle_wizard#format", as: "signups_auditions_wizard"
+    post "/signups/auditions/:production_id/wizard/format", to: "audition_cycle_wizard#save_format", as: "signups_auditions_wizard_save_format"
+    get  "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#schedule", as: "signups_auditions_wizard_schedule"
+    post "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#save_schedule", as: "signups_auditions_wizard_save_schedule"
+    get  "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#sessions", as: "signups_auditions_wizard_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#save_sessions", as: "signups_auditions_wizard_save_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions/generate", to: "audition_cycle_wizard#generate_sessions", as: "signups_auditions_wizard_generate_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions/add", to: "audition_cycle_wizard#add_session", as: "signups_auditions_wizard_add_session"
+    patch "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
+    delete "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
+    get  "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#availability", as: "signups_auditions_wizard_availability"
+    post "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
+    get  "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#reviewers", as: "signups_auditions_wizard_reviewers"
+    post "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#save_reviewers", as: "signups_auditions_wizard_save_reviewers"
+    get  "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#voting", as: "signups_auditions_wizard_voting"
+    post "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#save_voting", as: "signups_auditions_wizard_save_voting"
+    get  "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#notifications", as: "signups_auditions_wizard_notifications"
+    post "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#save_notifications", as: "signups_auditions_wizard_save_notifications"
+    get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
+    post "/signups/auditions/:production_id/wizard/create", to: "audition_cycle_wizard#create_cycle", as: "signups_auditions_wizard_create"
+    delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
 
     # Sign-ups > Auditions > Cycles (new URL pattern: /manage/signups/auditions/:production_id/:id)
     get  "/signups/auditions/:production_id/:id", to: "audition_cycles#show", as: "signups_auditions_cycle"
@@ -439,27 +463,6 @@ Rails.application.routes.draw do
     # Sign-ups > Auditions > Sessions > Auditions (individual audition slots)
     get  "/signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id", to: "auditions#show", as: "signups_auditions_cycle_session_audition"
     post "/signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id/cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote_signups_auditions_cycle_session_audition"
-
-    # Sign-ups > Auditions > Wizard
-    get  "/signups/auditions/:production_id/wizard", to: "audition_cycle_wizard#format", as: "signups_auditions_wizard"
-    post "/signups/auditions/:production_id/wizard/format", to: "audition_cycle_wizard#save_format", as: "signups_auditions_wizard_save_format"
-    get  "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#schedule", as: "signups_auditions_wizard_schedule"
-    post "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#save_schedule", as: "signups_auditions_wizard_save_schedule"
-    get  "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#sessions", as: "signups_auditions_wizard_sessions"
-    post "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#save_sessions", as: "signups_auditions_wizard_save_sessions"
-    post "/signups/auditions/:production_id/wizard/sessions/generate", to: "audition_cycle_wizard#generate_sessions", as: "signups_auditions_wizard_generate_sessions"
-    post "/signups/auditions/:production_id/wizard/sessions/add", to: "audition_cycle_wizard#add_session", as: "signups_auditions_wizard_add_session"
-    patch "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
-    delete "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
-    get  "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#availability", as: "signups_auditions_wizard_availability"
-    post "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
-    get  "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#reviewers", as: "signups_auditions_wizard_reviewers"
-    post "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#save_reviewers", as: "signups_auditions_wizard_save_reviewers"
-    get  "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#voting", as: "signups_auditions_wizard_voting"
-    post "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#save_voting", as: "signups_auditions_wizard_save_voting"
-    get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
-    post "/signups/auditions/:production_id/wizard/create", to: "audition_cycle_wizard#create_cycle", as: "signups_auditions_wizard_create"
-    delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
 
     # Casting - org-level (aggregates all productions)
     get  "/casting",            to: "org_casting#index", as: "casting"
@@ -542,6 +545,8 @@ Rails.application.routes.draw do
 
     # Communications - org-level (aggregates all productions)
     get  "/communications",     to: "org_communications#index", as: "communications"
+    post "/communications/send_message", to: "org_communications#send_message", as: "org_communications_send_message"
+    get  "/communications/talent_pool_members/:production_id", to: "org_communications#talent_pool_members", as: "org_communications_talent_pool_members"
     get  "/communications/questionnaires", to: "org_questionnaires#index", as: "communications_all_questionnaires"
     get  "/communications/questionnaires/new", to: "questionnaires#select_production", as: "communications_questionnaires_new_wizard"
     post "/communications/questionnaires/new", to: "questionnaires#save_production_selection", as: "communications_questionnaires_save_production_selection"

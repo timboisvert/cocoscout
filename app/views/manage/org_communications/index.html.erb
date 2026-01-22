@@ -8,6 +8,7 @@
   HTML
 
   communications_actions = [
+    { icon: "paper-airplane", text: "Send Message", description: "Email organization members", path: "#send-message", data: { action: "click->communications#openModal" } },
     { icon: "document-text", text: "Questionnaires", description: "Collect information via forms", path: manage_communications_all_questionnaires_path }
   ]
 %>
@@ -124,5 +125,110 @@
         <%== pagy_nav_tailwind(@email_logs_pagy) if @email_logs_pagy.pages > 1 %>
       </div>
     <% end %>
+  </div>
+
+  <%# Send Message Modal %>
+  <div id="send-message-modal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+       data-communications-target="modal"
+       data-action="click->communications#closeModalOnBackdrop">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+         data-communications-target="modalContent"
+         data-action="click->communications#stopPropagation">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Send Message</h2>
+        <button type="button"
+                data-action="click->communications#closeModal"
+                class="text-gray-400 hover:text-gray-600 transition cursor-pointer">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <%= form_with model: @email_draft, url: manage_org_communications_send_message_path, method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+          <%# Production Selection %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Production</label>
+            <select name="production_id" required 
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-pink-500 focus:ring-pink-500"
+                    data-communications-target="productionSelect"
+                    data-action="change->communications#loadTalentPool">
+              <option value="">Select a production...</option>
+              <% @productions.each do |production| %>
+                <option value="<%= production.id %>"><%= production.name %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <%# Recipient Selection %>
+          <div data-communications-target="recipientSection" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
+            <div class="space-y-2">
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="recipient_type" value="all" checked
+                         data-action="change->communications#toggleRecipientType"
+                         class="mr-2 accent-pink-500 cursor-pointer">
+                  <span class="text-sm">Entire talent pool (<span data-communications-target="talentPoolCount">0</span>)</span>
+                  <button type="button" data-action="click->communications#toggleRecipientList" class="ml-2 text-xs text-pink-500 hover:text-pink-600 underline cursor-pointer">
+                    Show
+                  </button>
+                </label>
+              </div>
+
+              <div class="hidden ml-6 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs" data-communications-target="recipientList">
+                <div class="space-y-1 max-h-32 overflow-y-auto" data-communications-target="recipientListContent">
+                  <div class="text-gray-500">Select a production first</div>
+                </div>
+              </div>
+
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="recipient_type" value="individuals"
+                       data-action="change->communications#toggleRecipientType"
+                       class="mr-2 accent-pink-500 cursor-pointer">
+                <span class="text-sm">Select specific people</span>
+              </label>
+            </div>
+
+            <%# Hidden field for send_to_all %>
+            <input type="hidden" name="send_to_all" value="1" data-communications-target="sendToAllField">
+
+            <%# Individual Selection (hidden by default) %>
+            <div class="hidden ml-6 mt-3" data-communications-target="individualsSection">
+              <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2" data-communications-target="individualsList">
+                <div class="text-gray-500 text-sm">Select a production first</div>
+              </div>
+            </div>
+          </div>
+
+          <%# Subject %>
+          <div class="hidden" data-communications-target="subjectSection">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+            <div class="flex items-stretch">
+              <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap" data-communications-target="subjectPrefix">
+                [Production]
+              </span>
+              <%= form.text_field :title,
+                class: "block w-full min-w-0 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm",
+                placeholder: "Email subject...",
+                required: true %>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+            <%= form.rich_text_area :body,
+              class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", data: { action: "click->communications#closeModal" } %>
+            <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
   </div>
 </div>

@@ -36,5 +36,65 @@ module Manage
                                   .order(:name)
                                   .distinct
     end
+
+    def send_message
+      production = Current.organization.productions.find(params[:production_id])
+
+      # Build email draft
+      email_draft = EmailDraft.new(
+        title: params[:email_draft][:title],
+        body: params[:email_draft][:body]
+      )
+
+      # Determine recipients
+      if params[:send_to_all] == "1"
+        talent_pool = production.effective_talent_pool
+        recipients = talent_pool&.people&.to_a || []
+      else
+        person_ids = params[:person_ids] || []
+        recipients = Person.where(id: person_ids).to_a
+      end
+
+      if recipients.empty?
+        flash[:alert] = "No recipients selected."
+        redirect_to manage_communications_path and return
+      end
+
+      # Create email batch
+      email_batch = EmailBatch.create!(
+        production: production,
+        subject: email_draft.title,
+        body: email_draft.body.to_s
+      )
+
+      # Send emails
+      recipients.each do |person|
+        next unless person.email.present?
+
+        CommunicationsMailer.send_message(
+          production: production,
+          recipient: person,
+          subject: email_draft.title,
+          body: email_draft.body,
+          email_batch: email_batch
+        ).deliver_later
+      end
+
+      flash[:notice] = "Message sent to #{recipients.count} #{"recipient".pluralize(recipients.count)}."
+      redirect_to manage_communications_path
+    end
+
+    def talent_pool_members
+      production = Current.organization.productions.find(params[:production_id])
+      talent_pool = production.effective_talent_pool
+
+      people = if talent_pool
+                 talent_pool.people.order(:name).map { |p| { id: p.id, name: p.name } }
+               else
+                 []
+               end
+
+      render json: { people: people }
+    end
   end
 end

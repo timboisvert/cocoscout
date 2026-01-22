@@ -8,15 +8,31 @@ module Manage
       # Get filter params (prioritize params, fall back to session, then defaults)
       @sort = params[:sort] || session[:directory_sort] || "name_asc"
       @show = params[:show] || session[:directory_show] || "tiles"
-      @filter = params[:filter] || session[:directory_filter] || (Current.production ? "current_production" : "everyone")
+      @filter = params[:filter] || session[:directory_filter] || "talent_pools"
       @type = params[:type] || session[:directory_type] || "all"
       @search = params[:q] || ""
+      @talent_pool_id = params[:talent_pool_id]
 
       # Validate values
       @show = "tiles" unless %w[tiles list].include?(@show)
-      @filter = "everyone" unless %w[current_production org_talent_pools everyone].include?(@filter)
+      @filter = "talent_pools" unless %w[talent_pools everyone].include?(@filter)
       @type = "all" unless %w[people groups all].include?(@type)
       @sort = "name_asc" unless %w[name_asc name_desc date_asc date_desc].include?(@sort)
+
+      # Load all talent pools for the filter dropdown
+      # A production that has received a share from another pool doesn't use its own pool
+      # So exclude pools belonging to productions that have received a share
+      productions_receiving_shares = TalentPoolShare.pluck(:production_id)
+
+      @talent_pools = TalentPool.joins(:production)
+                                .includes(:production, :shared_productions)
+                                .where(productions: { organization_id: Current.organization.id })
+                                .where.not(production_id: productions_receiving_shares)
+                                .distinct
+                                .order(:name)
+
+      # Validate talent_pool_id if provided
+      @talent_pool_id = nil unless @talent_pool_id.blank? || @talent_pools.exists?(id: @talent_pool_id)
 
       # Save to session (except search - that's transient)
       session[:directory_sort] = @sort
@@ -30,7 +46,8 @@ module Manage
           sort: @sort,
           filter: @filter,
           type: @type,
-          q: @search
+          q: @search,
+          talent_pool_id: @talent_pool_id
         },
         Current.organization,
         Current.production

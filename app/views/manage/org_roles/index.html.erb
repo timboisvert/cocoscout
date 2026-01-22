@@ -15,35 +15,33 @@
     <% if @productions.any? %>
       <div class="space-y-1">
         <% @productions.each do |production| %>
-          <%= link_to "#{manage_casting_settings_path(production)}#tab-1", class: "flex items-center px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+          <%= link_to "#{manage_casting_settings_path(production)}#tab-1", class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
             <%# Left Section: Production Logo + Name %>
-            <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="w-1/2 flex items-center gap-4 pr-4">
               <% logo_variant = production.safe_logo_variant(:small) %>
               <% if logo_variant %>
-                <div class="w-10 h-10 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
                   <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
                 </div>
               <% else %>
-                <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
+                <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                  <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
                 </div>
               <% end %>
               <span class="font-medium text-gray-900"><%= production.name %></span>
             </div>
 
-            <%# Separator %>
-            <div class="flex-1"></div>
-            <div class="border-l border-gray-200 h-8 mx-4"></div>
-
             <%# Right Section: Role Badges %>
-            <div class="flex items-center gap-1.5 flex-wrap">
+            <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
               <% roles = production.roles.order(:name) %>
               <% if roles.any? %>
-                <% roles.each do |role| %>
-                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    <%= role.name %><% if role.quantity.to_i > 1 %> x <%= role.quantity %><% end %>
-                  </span>
-                <% end %>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <% roles.each do |role| %>
+                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      <%= role.name %><% if role.quantity.to_i > 1 %> x<%= role.quantity %><% end %>
+                    </span>
+                  <% end %>
+                </div>
               <% else %>
                 <span class="text-sm text-gray-400">No roles</span>
               <% end %>

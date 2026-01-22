@@ -78,19 +78,15 @@
             label: "Group",
             name: "filter",
             options: [
-              (Current.production ? {
-                value: "current_production",
-                text: "#{Current.production.name} Talent Pool"
-              } : nil),
               {
-                value: "org_talent_pools",
-                text: "#{Current.organization.name} Talent Pool"
+                value: "talent_pools",
+                text: "Talent Pool"
               },
               {
                 value: "everyone",
                 text: "Everyone"
               }
-            ].compact,
+            ],
             selected: @filter,
             data_attributes: {
               action: "change->filter-select#update",
@@ -100,6 +96,22 @@
             }
           }
         },
+        (@filter == "talent_pools" && @talent_pools.any? ? {
+          partial: "shared/filters/dropdown_filter",
+          locals: {
+            label: "Pool",
+            name: "talent_pool_id",
+            options: [{ value: "", text: "All Talent Pools" }] + @talent_pools.map { |tp| { value: tp.id.to_s, text: tp.production_names } },
+            selected: @talent_pool_id.to_s,
+            data_attributes: {
+              action: "change->filter-select#update",
+              filter_select_search_value: @search,
+              filter_select_show_value: @show,
+              filter_select_filter_value: @filter,
+              filter_select_type_value: @type
+            }
+          }
+        } : nil),
         { separator: true },
         {
           partial: "shared/filters/dropdown_filter",

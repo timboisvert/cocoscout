@@ -58,32 +58,41 @@
           <% if show_slot_label %>
             <%# Slot-based modes (numbered/named/timed): show each slot with its label %>
             <% @slots.each do |slot| %>
-              <% next if slot.is_held %>
-              <% registrations = slot.sign_up_registrations.active.includes(:person).order(:position).to_a %>
-
-              <% if registrations.any? %>
-                <% registrations.each do |registration| %>
-                  <tr class="border-b border-gray-100">
-                    <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
-                    <td class="py-2 px-2 font-medium text-gray-900"><%= registration.display_name %></td>
-                    <td class="py-2 px-2 text-gray-600"><%= registration.display_email %></td>
-                  </tr>
-                <% end %>
-                <%# Show remaining capacity as empty rows %>
-                <% remaining = slot.capacity - registrations.size %>
-                <% remaining.times do %>
+              <% if slot.is_held %>
+                <%# Held slot - show empty row(s) with just the position number %>
+                <% slot.capacity.times do %>
                   <tr class="border-b border-gray-100">
                     <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
                     <td colspan="2"></td>
                   </tr>
                 <% end %>
               <% else %>
-                <%# Empty slot - show all capacity slots %>
-                <% slot.capacity.times do %>
-                  <tr class="border-b border-gray-100">
-                    <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
-                    <td colspan="2"></td>
-                  </tr>
+                <% registrations = slot.sign_up_registrations.active.includes(:person).order(:position).to_a %>
+
+                <% if registrations.any? %>
+                  <% registrations.each do |registration| %>
+                    <tr class="border-b border-gray-100">
+                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td class="py-2 px-2 font-medium text-gray-900"><%= registration.display_name %></td>
+                      <td class="py-2 px-2 text-gray-600"><%= registration.display_email %></td>
+                    </tr>
+                  <% end %>
+                  <%# Show remaining capacity as empty rows %>
+                  <% remaining = slot.capacity - registrations.size %>
+                  <% remaining.times do %>
+                    <tr class="border-b border-gray-100">
+                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td colspan="2"></td>
+                    </tr>
+                  <% end %>
+                <% else %>
+                  <%# Empty slot - show all capacity slots %>
+                  <% slot.capacity.times do %>
+                    <tr class="border-b border-gray-100">
+                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td colspan="2"></td>
+                    </tr>
+                  <% end %>
                 <% end %>
               <% end %>
             <% end %>

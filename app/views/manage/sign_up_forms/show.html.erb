@@ -99,14 +99,21 @@
           <%= render "shared/button", text: "Print List", path: manage_print_list_signups_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "print", target: "_blank" %>
           <% if @sign_up_form.single_event? && @sign_up_form.show %>
             <%= render "shared/attendance_modal", show: @sign_up_form.show, production: @production, variant: "secondary" %>
+          <% elsif @sign_up_form.repeated? && @current_instance %>
+            <%= render "shared/attendance_modal", show: @current_instance.show, production: @production, variant: "secondary" %>
           <% end %>
           <%= render "shared/button", text: "Settings", path: manage_settings_signups_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
           <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: manage_toggle_active_signups_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
         </div>
       </div>
       <%# Mobile buttons - shown below status %>
-      <div class="flex sm:hidden items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+      <div class="flex sm:hidden items-center gap-2 mt-3 pt-3 border-t border-gray-100 flex-wrap">
         <%= render "shared/button", text: "Print", path: manage_print_list_signups_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "print", target: "_blank" %>
+        <% if @sign_up_form.single_event? && @sign_up_form.show %>
+          <%= render "shared/attendance_modal", show: @sign_up_form.show, production: @production, variant: "secondary" %>
+        <% elsif @sign_up_form.repeated? && @current_instance %>
+          <%= render "shared/attendance_modal", show: @current_instance.show, production: @production, variant: "secondary" %>
+        <% end %>
         <%= render "shared/button", text: "Settings", path: manage_settings_signups_form_path(@production, @sign_up_form), variant: "secondary", size: "small", icon: "cog" %>
         <%= render "shared/button", text: @sign_up_form.active? ? 'Turn Off' : 'Turn On', path: manage_toggle_active_signups_form_path(@production, @sign_up_form), variant: @sign_up_form.active? ? 'secondary' : 'primary', size: "small", data: { turbo_method: :patch } %>
       </div>
@@ -264,10 +271,6 @@
                     show: @current_instance.show,
                     show_location: true
                   } %>
-                </div>
-
-                <div class="shrink-0">
-                  <%= render "shared/attendance_modal", show: @current_instance.show, production: @production %>
                 </div>
 
                 <% if @instances.size > 1 %>

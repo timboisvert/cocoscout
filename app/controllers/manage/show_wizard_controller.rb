@@ -77,7 +77,7 @@ module Manage
     # Step 2: Schedule - When is the event?
     def schedule
       @wizard_state[:event_frequency] ||= "single"
-      @wizard_state[:date_and_time] ||= 1.week.from_now.beginning_of_hour
+      @wizard_state[:date_and_time] ||= 1.week.from_now.change(hour: 19, min: 0)
     end
 
     def save_schedule
