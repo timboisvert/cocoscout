@@ -22,7 +22,7 @@ module Manage
 
     def update
       if @show_payout.update(show_payout_params)
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout updated."
       else
         render :show, status: :unprocessable_entity
@@ -42,7 +42,7 @@ module Manage
 
       @show_financials.assign_attributes(attrs)
       if @show_financials.save
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Financial data saved."
       else
         render :edit_financials, status: :unprocessable_entity
@@ -52,17 +52,20 @@ module Manage
     def calculate
       # Ensure we have financials
       unless @show.show_financials&.complete?
-        redirect_to manage_production_edit_money_show_financials_path(@production, @show),
+        redirect_to manage_edit_money_show_financials_path(@show),
                     alert: "Please enter financial data before calculating payouts."
         return
       end
 
       # Get the scheme to use (with any overrides)
-      scheme = @show_payout.payout_scheme || @production.payout_schemes.find_by(is_default: true)
+      # Look for production-level scheme first, then organization-level
+      scheme = @show_payout.payout_scheme ||
+               @production.payout_schemes.find_by(is_default: true) ||
+               Current.organization.payout_schemes.organization_level.find_by(is_default: true)
       rules = @show_payout.override_rules.presence || scheme&.rules
 
       unless rules.present?
-        redirect_to manage_production_money_payout_schemes_path(@production),
+        redirect_to manage_money_payout_schemes_path,
                     alert: "Please create a payout scheme first."
         return
       end
@@ -79,16 +82,16 @@ module Manage
           total_payout: result[:total]
         )
 
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payouts calculated: #{helpers.number_to_currency(result[:total])} total."
       else
         # Provide more helpful error messages
         error_message = result[:error]
         if error_message&.include?("No performers")
-          redirect_to manage_production_money_show_payout_path(@production, @show),
+          redirect_to manage_money_show_payout_path(@show),
                       alert: "No performers are assigned to this show. Add cast members first, or use 'Close as Non-Paying' to close this show without payouts."
         else
-          redirect_to manage_production_money_show_payout_path(@production, @show),
+          redirect_to manage_money_show_payout_path(@show),
                       alert: "Could not calculate payouts: #{error_message}"
         end
       end
@@ -96,20 +99,20 @@ module Manage
 
     def approve
       if @show_payout.approve!(Current.user)
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout approved and locked."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "Could not approve payout."
       end
     end
 
     def mark_paid
       if @show_payout.mark_paid!
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout marked as paid."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "Could not mark as paid."
       end
     end
@@ -117,48 +120,51 @@ module Manage
     def mark_non_revenue
       financials = @show.show_financials || @show.create_show_financials!
       financials.update!(non_revenue_override: true)
-      redirect_to manage_production_money_index_path(@production),
+      redirect_to manage_money_index_path,
                   notice: "#{view_context.show_display_name(@show)} marked as non-revenue event."
     end
 
     def unmark_non_revenue
       if @show.show_financials&.non_revenue_override?
         @show.show_financials.update!(non_revenue_override: false)
-        redirect_to manage_production_edit_money_show_financials_path(@production, @show),
+        redirect_to manage_edit_money_show_financials_path(@show),
                     notice: "Event restored as revenue event. Enter financial data below."
       else
-        redirect_to manage_production_money_index_path(@production),
+        redirect_to manage_money_index_path,
                     alert: "This event was not marked as non-revenue."
       end
     end
 
     def override
-      @default_scheme = @production.payout_schemes.find_by(is_default: true)
+      @default_scheme = @production.payout_schemes.find_by(is_default: true) ||
+                        Current.organization.payout_schemes.organization_level.find_by(is_default: true)
       @current_rules = @show_payout.override_rules.presence || @default_scheme&.rules || {}
 
       if turbo_frame_request?
         render partial: "manage/show_payouts/override_modal"
       else
         # Redirect back to show page - modal-only feature
-        redirect_to manage_production_money_show_payout_path(@production, @show)
+        redirect_to manage_money_show_payout_path(@show)
       end
     end
 
     def save_override
       rules = build_override_rules
       @show_payout.update!(override_rules: rules)
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "Custom rules saved for this show."
     end
 
     def clear_override
       @show_payout.update!(override_rules: nil)
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "Custom rules cleared. Using default scheme."
     end
 
     def change_scheme
-      @available_schemes = @production.payout_schemes.order(:name)
+      # Include both production-level and organization-level schemes
+      @available_schemes = PayoutScheme.where(organization: Current.organization)
+                                       .order(:name)
       @current_scheme = @show_payout.payout_scheme
       @future_shows_count = @production.shows
         .where("date_and_time > ?", @show.date_and_time)
@@ -167,7 +173,9 @@ module Manage
     end
 
     def apply_scheme_change
-      new_scheme = @production.payout_schemes.find(params[:payout_scheme_id])
+      # Find scheme from organization (includes both org-level and production-level)
+      new_scheme = PayoutScheme.where(organization: Current.organization)
+                               .find(params[:payout_scheme_id])
       apply_to_future = params[:apply_to_future] == "1"
 
       if apply_to_future
@@ -184,12 +192,12 @@ module Manage
           updated_count += 1
         end
 
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout scheme changed to \"#{new_scheme.name}\" for #{updated_count} show#{"s" if updated_count != 1}."
       else
         # Clear any custom overrides when changing scheme
         @show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout scheme changed to \"#{new_scheme.name}\" for this show."
       end
     end
@@ -202,7 +210,7 @@ module Manage
 
       respond_to do |format|
         format.html do
-          redirect_to manage_production_money_show_payout_path(@production, @show),
+          redirect_to manage_money_show_payout_path(@show),
                       notice: "#{line_item.payee_name} marked as paid#{method ? " via #{line_item.payment_method_label}" : ""}."
         end
         format.any { head :ok }
@@ -212,7 +220,7 @@ module Manage
     def unmark_line_item_paid
       line_item = @show_payout.line_items.find(params[:line_item_id])
       line_item.unmark_as_already_paid!
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "#{line_item.payee_name} no longer marked as paid."
     end
 
@@ -231,10 +239,10 @@ module Manage
         if @show_payout.line_items.all?(&:paid?)
           @show_payout.mark_paid!
         end
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "#{count} payment#{"s" if count != 1} marked as #{ShowPayoutLineItem::PAYMENT_METHODS.include?(method) ? method : "paid"}."
       else
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "No unpaid line items to mark."
       end
     end
@@ -246,14 +254,14 @@ module Manage
       end
 
       if line_items_needing_setup.empty?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "All performers have Venmo set up!"
         return
       end
 
       # TODO: Implement actual email sending when mailer is set up
       count = line_items_needing_setup.size
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "Payment setup reminders will be sent to #{count} performer#{"s" if count != 1}. (Coming soon!)"
     end
 
@@ -269,20 +277,20 @@ module Manage
         override_rules: { "distribution" => { "method" => "no_pay" }, "closed_as_non_paying" => true }
       )
 
-      redirect_to manage_production_money_index_path(@production),
+      redirect_to manage_money_index_path,
                   notice: "#{view_context.show_display_name(@show)} closed as non-paying."
     end
 
     # Reopen a paid payout to add more people or make changes
     def reopen
       unless @show_payout.paid?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "This payout is not marked as paid."
         return
       end
 
       @show_payout.update!(status: "awaiting_payout")
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "Payout reopened. You can now add people or make changes."
     end
 
@@ -293,7 +301,7 @@ module Manage
       amount = params[:amount].to_f
 
       unless payee_id.present?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "Please select a person to add."
         return
       end
@@ -302,7 +310,7 @@ module Manage
 
       # Check if already in payout
       if @show_payout.line_items.exists?(payee: payee)
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "#{payee.name} is already in this payout."
         return
       end
@@ -327,7 +335,7 @@ module Manage
       notice = "Added #{payee.name} with payout of #{helpers.number_to_currency(amount)}."
       notice += " Payout reopened." if was_paid
 
-      redirect_to manage_production_money_show_payout_path(@production, @show), notice: notice
+      redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
     # Remove a line item
@@ -336,7 +344,7 @@ module Manage
       name = line_item.payee_name
 
       if line_item.paid?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     alert: "Cannot remove #{name} - they have already been paid. Unmark as paid first."
         return
       end
@@ -344,7 +352,7 @@ module Manage
       line_item.destroy!
       @show_payout.recalculate_total!
 
-      redirect_to manage_production_money_show_payout_path(@production, @show),
+      redirect_to manage_money_show_payout_path(@show),
                   notice: "Removed #{name} from payout."
     end
 
@@ -361,13 +369,15 @@ module Manage
       missing = current_cast.reject { |p| existing_payees.include?(p.id) }
 
       if missing.empty?
-        redirect_to manage_production_money_show_payout_path(@production, @show),
+        redirect_to manage_money_show_payout_path(@show),
                     notice: "All cast members are already in the payout."
         return
       end
 
       # Determine amount to pay - use the rules if available, otherwise $0
-      scheme = @show_payout.payout_scheme || @production.payout_schemes.find_by(is_default: true)
+      scheme = @show_payout.payout_scheme ||
+               @production.payout_schemes.find_by(is_default: true) ||
+               Current.organization.payout_schemes.organization_level.find_by(is_default: true)
       rules = @show_payout.override_rules.presence || scheme&.rules
       amount = params[:amount]&.to_f || 0
 
@@ -393,21 +403,28 @@ module Manage
       notice = "Added #{missing.count} missing cast member#{'s' if missing.count != 1}."
       notice += " Payout reopened." if was_paid
 
-      redirect_to manage_production_money_show_payout_path(@production, @show), notice: notice
+      redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
     private
 
     def set_production
-      @production = Current.production
-      redirect_to select_production_path unless @production
+      @production = @show&.production
     end
 
     def set_show_payout
       # ShowPayout is keyed by show - find or create
-      @show = @production.shows.find(params[:id])
+      @show = Show.joins(:production)
+                  .where(productions: { organization: Current.organization })
+                  .find(params[:id])
+      @production = @show.production
+
+      # Find default scheme: production-level first, then organization-level
+      default_scheme = @production.payout_schemes.find_by(is_default: true) ||
+                       Current.organization.payout_schemes.organization_level.find_by(is_default: true)
+
       @show_payout = @show.show_payout || @show.create_show_payout!(
-        payout_scheme: @production.payout_schemes.find_by(is_default: true),
+        payout_scheme: default_scheme,
         status: "awaiting_payout"
       )
     end

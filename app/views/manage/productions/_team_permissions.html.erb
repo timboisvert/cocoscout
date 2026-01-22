@@ -1,14 +1,4 @@
 <div data-controller="production-team-modals">
-  <%= render "shared/help_section",
-    title: "About Production Team",
-    initial_state: "open",
-    storage_key: "production_team_help_collapsed",
-    steps: [
-      { text: "Add team members who need <strong>Manager</strong> or <strong>Viewer</strong> access to this production only." },
-      { text: "<strong>Managers</strong> can edit this production's settings, shows, and cast. <strong>Viewers</strong> have read-only access." },
-      { text: "Organization team members with global access are shown at the bottom for reference." }
-    ] %>
-
   <div class="mt-4">
     <% production_permissions = @production.production_permissions.includes(user: :default_person) %>
     <% if production_permissions.any? %>

@@ -2,7 +2,7 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When can people submit an audition request?</h2>
   <p class="text-gray-600 mb-6">Set when the audition form opens and when it closes.</p>
 
-  <%= form_with url: manage_production_signups_auditions_wizard_save_schedule_path(@production), method: :post, local: true,
+  <%= form_with url: manage_signups_auditions_wizard_save_schedule_path(@production), method: :post, local: true,
       data: { controller: "audition-schedule" } do |form| %>
     <div class="space-y-6">
       <div>
@@ -33,7 +33,7 @@
     </div>
 
     <div class="mt-8 flex justify-between">
-      <%= link_to manage_production_signups_auditions_wizard_format_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+      <%= link_to manage_signups_auditions_wizard_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>

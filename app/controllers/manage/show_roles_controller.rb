@@ -8,17 +8,15 @@ module Manage
     before_action :ensure_user_is_manager
     before_action :set_role, only: %i[update destroy slot_change_preview execute_slot_change]
 
-    # GET /manage/productions/:production_id/shows/:show_id/show_roles
     def index
       @roles = @show.custom_roles
 
       respond_to do |format|
-        format.html { redirect_to edit_manage_production_show_path(@production, @show) }
+        format.html { redirect_to manage_edit_show_path(@production, @show) }
         format.json { render json: roles_json(@roles) }
       end
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles
     def create
       @role = @show.custom_roles.new(role_params)
       @role.production = @production
@@ -45,7 +43,6 @@ module Manage
       render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
     end
 
-    # PATCH /manage/productions/:production_id/shows/:show_id/show_roles/:id
     def update
       # Set pending eligible members for validation
       @role.pending_eligible_member_ids = params.dig(:show_role, :eligible_member_ids)
@@ -65,7 +62,6 @@ module Manage
       render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
     end
 
-    # DELETE /manage/productions/:production_id/shows/:show_id/show_roles/:id
     def destroy
       assignments_count = @role.show_person_role_assignments.count
 
@@ -82,7 +78,6 @@ module Manage
       end
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/reorder
     def reorder
       role_ids = params[:role_ids]
       role_ids.each_with_index do |id, index|
@@ -91,7 +86,6 @@ module Manage
       head :ok
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/copy_from_production
     def copy_from_production
       if @show.custom_roles.any?
         render json: {
@@ -110,7 +104,6 @@ module Manage
       }
     end
 
-    # GET /manage/productions/:production_id/shows/:show_id/show_roles/talent_pool_members
     def talent_pool_members
       talent_pool = @production.effective_talent_pool
 
@@ -132,7 +125,6 @@ module Manage
       }
     end
 
-    # GET /manage/productions/:production_id/shows/:show_id/show_roles/check_assignments
     # Returns current assignments that would be deleted when toggling custom roles
     def check_assignments
       assignments = @show.show_person_role_assignments.includes(:role)
@@ -184,7 +176,6 @@ module Manage
       }
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/clear_assignments
     # Deletes all assignments for this show (called when confirming toggle)
     # Also updates use_custom_roles based on switching_to parameter
     def clear_assignments
@@ -201,7 +192,6 @@ module Manage
       render json: { success: true, use_custom_roles: @show.use_custom_roles? }
     end
 
-    # GET /manage/productions/:production_id/shows/:show_id/show_roles/migration_preview
     # Returns a preview of how assignments would map when switching between custom/production roles
     def migration_preview
       switching_to = params[:switching_to] || (@show.use_custom_roles? ? "production" : "custom")
@@ -303,7 +293,6 @@ module Manage
       }
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/execute_migration
     # Executes the role migration with the specified mappings
     def execute_migration
       switching_to = params[:switching_to]
@@ -435,7 +424,6 @@ module Manage
       render json: { success: false, error: "An unexpected error occurred" }, status: :internal_server_error
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/toggle_custom_roles
     # Toggles use_custom_roles flag on the show (called when there are no assignments to clear)
     def toggle_custom_roles
       enable = params[:enable] == true || params[:enable] == "true"
@@ -444,7 +432,6 @@ module Manage
       render json: { success: true, use_custom_roles: @show.use_custom_roles? }
     end
 
-    # GET /manage/productions/:production_id/shows/:show_id/show_roles/:id/slot_change_preview
     # Returns a preview of how assignments would be affected by changing the role quantity
     def slot_change_preview
       new_quantity = params[:new_quantity].to_i
@@ -496,7 +483,6 @@ module Manage
       }
     end
 
-    # POST /manage/productions/:production_id/shows/:show_id/show_roles/:id/execute_slot_change
     # Executes the slot quantity change with specified assignment removals
     def execute_slot_change
       new_quantity = params[:new_quantity].to_i

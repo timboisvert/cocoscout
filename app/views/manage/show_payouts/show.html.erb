@@ -41,8 +41,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)],
-      ["Payouts", manage_production_money_payouts_path(@production)]
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path],
+      [@production.name, manage_money_production_payouts_path(@production)]
     ],
     text: page_title,
     links: []
@@ -115,15 +116,15 @@
               <p class="text-sm text-red-800 font-medium">This show was canceled</p>
               <p class="text-sm text-red-700 mt-1">You can still process payouts for this show. Choose how you'd like to handle compensation:</p>
               <div class="mt-3 flex flex-wrap gap-2">
-                <%= form_with url: manage_production_close_as_non_paying_money_show_payout_path(@production, @show), method: :post, local: true do %>
+                <%= form_with url: manage_close_as_non_paying_money_show_payout_path(@show), method: :post, local: true do %>
                   <%= render "shared/button", text: "Close as Non-Paying", variant: "secondary", size: "small", type: :submit %>
                 <% end %>
                 <% if @show_payout.payout_scheme || @show_payout.has_overrides? %>
-                  <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true do %>
+                  <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
                     <%= render "shared/button", text: "Pay as Originally Planned", variant: "secondary", size: "small", type: :submit %>
                   <% end %>
                 <% end %>
-                <%= link_to manage_production_override_money_show_payout_path(@production, @show), data: { turbo_frame: "customize_modal" } do %>
+                <%= link_to manage_override_money_show_payout_path(@show), data: { turbo_frame: "customize_modal" } do %>
                   <%= render "shared/button", text: "Set Custom Amounts", variant: "secondary", size: "small" %>
                 <% end %>
               </div>
@@ -144,7 +145,7 @@
                 <p class="text-sm text-pink-800 font-medium">Financial data needs confirmation</p>
                 <p class="text-sm text-pink-700 mt-1">Review and confirm your financial data to calculate payouts.</p>
                 <div class="mt-3">
-                  <%= link_to manage_production_money_show_financials_path(@production, @show) do %>
+                  <%= link_to manage_money_show_financials_path(@show) do %>
                     <%= render "shared/button", text: "View & Confirm Financials", variant: "primary", size: "small" %>
                   <% end %>
                 </div>
@@ -152,7 +153,7 @@
                 <p class="text-sm text-pink-800 font-medium">Financial data needed</p>
                 <p class="text-sm text-pink-700 mt-1">Enter ticket sales and revenue data to calculate payouts for this show.</p>
                 <div class="mt-3">
-                  <%= link_to manage_production_money_show_financials_path(@production, @show) do %>
+                  <%= link_to manage_money_show_financials_path(@show) do %>
                     <%= render "shared/button", text: "Enter Financial Data", variant: "primary", size: "small" %>
                   <% end %>
                 </div>
@@ -166,7 +167,7 @@
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-gray-900">Payout Scheme</h3>
-          <%= link_to manage_production_money_payout_schemes_path(@production), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+          <%= link_to manage_money_payout_schemes_path, class: "text-sm text-pink-600 hover:text-pink-700" do %>
             Manage Schemes
           <% end %>
         </div>
@@ -180,10 +181,10 @@
           <p class="text-sm text-gray-600 mb-3">This show has custom payout rules.</p>
           <% if @show_payout.can_edit? %>
             <div class="flex flex-wrap gap-2">
-              <%= link_to manage_production_override_money_show_payout_path(@production, @show), data: { turbo_frame: "customize_modal" } do %>
+              <%= link_to manage_override_money_show_payout_path(@show), data: { turbo_frame: "customize_modal" } do %>
                 <%= render "shared/button", text: "Edit Custom Rules", variant: "secondary", size: "small" %>
               <% end %>
-              <%= form_with url: manage_production_clear_override_money_show_payout_path(@production, @show), method: :delete, local: true, class: "inline" do %>
+              <%= form_with url: manage_clear_override_money_show_payout_path(@show), method: :delete, local: true, class: "inline" do %>
                 <%= render "shared/button", text: "Use Default Scheme", variant: "ghost", size: "small", type: :submit %>
               <% end %>
             </div>
@@ -193,19 +194,19 @@
           <p class="text-sm text-gray-500 mt-1"><%= @show_payout.payout_scheme.rules_summary %></p>
           <% if @show_payout.can_edit? %>
             <div class="mt-3 flex flex-wrap gap-2">
-              <%= link_to manage_production_override_money_show_payout_path(@production, @show), data: { turbo_frame: "customize_modal" } do %>
+              <%= link_to manage_override_money_show_payout_path(@show), data: { turbo_frame: "customize_modal" } do %>
                 <%= render "shared/button", text: "Customize", variant: "secondary", size: "small" %>
               <% end %>
-              <%= link_to manage_production_change_scheme_money_show_payout_path(@production, @show), data: { turbo_frame: "change_scheme_modal" } do %>
+              <%= link_to manage_change_scheme_money_show_payout_path(@show), data: { turbo_frame: "change_scheme_modal" } do %>
                 <%= render "shared/button", text: "Change Scheme", variant: "ghost", size: "small" %>
               <% end %>
             </div>
           <% end %>
         <% else %>
-          <% available_schemes = @production.payout_schemes.order(:name) %>
+          <% available_schemes = PayoutScheme.where(organization: Current.organization).order(:name) %>
           <% if available_schemes.any? %>
             <p class="text-sm text-gray-500 mb-3">Select a scheme to use for this show's payouts.</p>
-            <%= form_with model: @show_payout, url: manage_production_money_show_payout_path(@production, @show), method: :patch, local: true do |f| %>
+            <%= form_with model: @show_payout, url: manage_money_show_payout_path(@show), method: :patch, local: true do |f| %>
               <div class="flex flex-wrap gap-2">
                 <%= f.select :payout_scheme_id,
                     options_from_collection_for_select(available_schemes, :id, :name),
@@ -216,7 +217,7 @@
             <% end %>
           <% else %>
             <p class="text-sm text-gray-500 mb-3">No payout schemes available. Create one to calculate payouts.</p>
-            <%= link_to manage_production_presets_money_payout_schemes_path(@production) do %>
+            <%= link_to manage_presets_money_payout_schemes_path do %>
               <%= render "shared/button", text: "Create a Scheme", variant: "primary", size: "small" %>
             <% end %>
           <% end %>
@@ -339,7 +340,7 @@
                               <% end %>
                             </div>
                             <% unless @show_payout.paid? %>
-                              <%= button_to manage_production_unmark_line_item_paid_money_show_payout_path(@production, @show, item),
+                              <%= button_to manage_unmark_line_item_paid_money_show_payout_path(@show, item),
                                   method: :delete,
                                   class: "text-gray-400 hover:text-gray-600",
                                   title: "Unmark as paid",
@@ -413,7 +414,7 @@
             <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Mark All as Paid</h3>
               <p class="text-sm text-gray-600 mb-4">This will mark all unpaid performers as paid via the selected method. Use this for historical records or when payments were made outside of CocoScout.</p>
-              <%= form_with url: manage_production_mark_all_offline_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+              <%= form_with url: manage_mark_all_offline_money_show_payout_path(@show), method: :post, local: true do |f| %>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <select name="payment_method" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
@@ -510,7 +511,7 @@
                         </div>
 
                         <div class="space-y-3">
-                          <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: "n/a"), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                          <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(@show, item, payment_method: "n/a"), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
                             <%= render "shared/button", text: "Mark as Complete", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
                           <% end %>
                         </div>
@@ -570,7 +571,7 @@
                                 } %>
                           <% end %>
 
-                          <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: payment_info[:method]), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                          <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(@show, item, payment_method: payment_info[:method]), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
                             <%= render "shared/button", text: "I Paid via #{payment_info[:method].titleize}", variant: "primary", size: "large", type: :submit, icon: "check", classes: "w-full bg-green-600 hover:bg-green-700" %>
                           <% end %>
                         </div>
@@ -591,7 +592,7 @@
                           <p class="text-sm text-gray-500 text-center">Mark as paid via:</p>
                           <div class="grid grid-cols-2 gap-2">
                             <% %w[venmo zelle cash check].each do |method| %>
-                              <%= form_with url: manage_production_mark_line_item_paid_money_show_payout_path(@production, @show, item, payment_method: method), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
+                              <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(@show, item, payment_method: method), method: :post, local: true, data: { action: "submit->payment-actions#nextPayee" } do |_f| %>
                                 <%= render "shared/button", text: method.titleize, variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
                               <% end %>
                             <% end %>
@@ -625,7 +626,7 @@
           <div class="text-center py-6">
             <% if has_cast %>
               <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
-              <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true do %>
+              <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
                 <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
               <% end %>
             <% else %>
@@ -638,13 +639,13 @@
                     <p class="text-sm text-amber-800 font-medium">No performers assigned</p>
                     <p class="text-sm text-amber-700 mt-1">This show has no cast members to pay. You can either:</p>
                     <ul class="text-sm text-amber-700 mt-2 ml-4 list-disc space-y-1">
-                      <li><%= link_to "Add cast members", manage_production_show_path(@production, @show), class: "underline hover:text-amber-900" %> to this show</li>
+                      <li><%= link_to "Add cast members", manage_show_path(@production, @show), class: "underline hover:text-amber-900" %> to this show</li>
                       <li>Close this show as non-paying (no payouts needed)</li>
                     </ul>
                   </div>
                 </div>
               </div>
-              <%= form_with url: manage_production_close_as_non_paying_money_show_payout_path(@production, @show), method: :post, local: true do %>
+              <%= form_with url: manage_close_as_non_paying_money_show_payout_path(@show), method: :post, local: true do %>
                 <%= render "shared/button", text: "Close as Non-Paying", variant: "secondary", size: "medium", type: :submit %>
               <% end %>
             <% end %>
@@ -678,7 +679,7 @@
             </div>
 
             <%# Reopen and Add Person options for paid payouts %>
-            <%= form_with url: manage_production_reopen_money_show_payout_path(@production, @show), method: :post, local: true, class: "block" do %>
+            <%= form_with url: manage_reopen_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
               <button type="submit"
                       data-turbo-confirm="Reopen this payout? You'll be able to add more people or make changes."
                       class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
@@ -754,7 +755,7 @@
               </svg>
             </button>
 
-            <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true, class: "block" do %>
+            <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
               <button type="submit"
                       class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
                 <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -790,7 +791,7 @@
             </button>
           <% elsif has_financials %>
             <%# Ready to calculate %>
-            <%= form_with url: manage_production_calculate_money_show_payout_path(@production, @show), method: :post, local: true, class: "block" do %>
+            <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
               <button type="submit"
                       class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full text-left cursor-pointer">
                 <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
@@ -809,7 +810,7 @@
             <% end %>
           <% else %>
             <%# Awaiting calculation - needs financial data %>
-            <%= link_to manage_production_money_show_financials_path(@production, @show), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+            <%= link_to manage_money_show_financials_path(@show), class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
               <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -836,7 +837,7 @@
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Person to Payout</h3>
         <p class="text-sm text-gray-600 mb-4">Add someone who was missed from the original calculation. This will <%= @show_payout.paid? ? "reopen the payout" : "add them to the payout" %>.</p>
-        <%= form_with url: manage_production_add_line_item_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+        <%= form_with url: manage_add_line_item_money_show_payout_path(@show), method: :post, local: true do |f| %>
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">Person</label>
             <select name="payee_id" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
@@ -877,7 +878,7 @@
             <%= missing_cast_count %> cast member<%= missing_cast_count == 1 ? " is" : "s are" %> in this show's cast but not in the payout.
             <% if @show_payout.paid? %>This will reopen the payout.<% end %>
           </p>
-          <%= form_with url: manage_production_add_missing_cast_money_show_payout_path(@production, @show), method: :post, local: true do |f| %>
+          <%= form_with url: manage_add_missing_cast_money_show_payout_path(@show), method: :post, local: true do |f| %>
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 mb-1">Amount per person</label>
               <div class="relative">

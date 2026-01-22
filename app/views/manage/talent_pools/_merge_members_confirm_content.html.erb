@@ -2,7 +2,7 @@
   <div class="relative p-5 border w-full max-w-lg shadow-lg rounded-md bg-white mx-4">
     <div class="flex items-center justify-between pb-3 border-b border-gray-200">
       <h3 class="text-lg font-semibold text-gray-900">Add Members</h3>
-      <a href="<%= manage_production_casting_settings_path(@production, anchor: "talent-pool") %>" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+      <a href="<%= manage_casting_settings_path(@production, anchor: "talent-pool") %>" class="text-gray-400 hover:text-gray-600 cursor-pointer">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -14,7 +14,7 @@
         The following productions have talent pool members. Choose which members to add to the shared pool:
       </p>
 
-      <form action="<%= update_shares_manage_production_talent_pools_path(@production) %>" method="post" accept-charset="UTF-8" data-turbo="false">
+      <form action="<%= manage_casting_talent_pool_update_shares_path(@production) %>" method="post" accept-charset="UTF-8" data-turbo="false">
         <input type="hidden" name="_method" value="patch">
         <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
         <%# Pass through the shared production IDs %>
@@ -83,7 +83,7 @@
         </p>
 
         <div class="flex justify-end gap-2 mt-6">
-          <a href="<%= manage_production_casting_settings_path(@production, anchor: "talent-pool") %>" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+          <a href="<%= manage_casting_settings_path(@production, anchor: "talent-pool") %>" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
             Cancel
           </a>
           <%= render "shared/button", text: "Save Sharing Settings", variant: "primary", size: "small", type: :submit %>

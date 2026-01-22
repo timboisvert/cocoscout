@@ -1,17 +1,28 @@
 <% content_for :title, "Directory" %>
 
-<div class="w-full">
+<%
+  directory_actions = [
+    { icon: "user-plus", text: "Invite People", description: "Add new performers or staff", path: new_manage_person_path }
+  ]
 
+  directory_description = <<~HTML
+    <p>
+      Your organization's directory of performers, staff, and groups. Search, filter, and manage everyone
+      who's part of your productions.
+    </p>
+  HTML
+%>
+
+<div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Directory",
-    links: [
-      { text: "Invite People", path: new_manage_person_path, global_manager_required: true }
-    ]
-  } %>
+  <%= render "shared/module_header",
+    title: "Directory",
+    description: directory_description,
+    actions: directory_actions
+  %>
 
+  <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search Bar - Always Visible %>
   <div class="mb-4" data-controller="search-bar">
     <%= form_with url: manage_directory_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
@@ -335,5 +346,5 @@
   </div>
 
   </div><%# Close directory-selection controller %>
-
+  </div><%# Close module content wrapper %>
 </div>

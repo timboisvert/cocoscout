@@ -473,6 +473,25 @@ module EmailTemplateSeeds
           ]
         },
         {
+          key: "casting_table_notification",
+          name: "Casting Table Notification",
+          category: "notification",
+          subject: "Cast Confirmation: {{production_names}}",
+          description: "Notifies someone they've been cast through a casting table. Multiple productions may be listed.",
+          template_type: "hybrid",
+          mailer_class: "CastingTableMailer",
+          mailer_action: "casting_notification",
+          body: <<~HTML,
+            <p>You have been cast for the following shows:</p>
+            {{shows_by_production}}
+            <p>Please let us know if you have any scheduling conflicts or questions.</p>
+          HTML
+          available_variables: [
+            { name: "production_names", description: "Comma-separated list of production names (e.g., 'Show A, Show B, and Show C')" },
+            { name: "shows_by_production", description: "HTML sections with show dates grouped by production" }
+          ]
+        },
+        {
           key: "production_message",
           name: "Production Message",
           category: "notification",

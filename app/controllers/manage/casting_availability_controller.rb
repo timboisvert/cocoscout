@@ -136,7 +136,7 @@ module Manage
       end
 
       respond_to do |format|
-        format.html { redirect_to manage_production_casting_availability_index_path(@production), notice: "Availability updated" }
+        format.html { redirect_to manage_casting_availability_path(@production), notice: "Availability updated" }
         format.json { render json: { success: true } }
       end
     end

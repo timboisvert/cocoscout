@@ -1,19 +1,23 @@
-<% content_for :title, "Communications" %>
+<% content_for :title, "Communications - #{@production.name}" %>
 
 <div class="w-full" data-controller="communications">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Communications",
+    breadcrumbs: [
+      ["Communications", manage_communications_path]
+    ],
+    text: @production.name,
     links: [
-      { text: "Send Message", path: "#", data_action: "click->communications#openModal" }
+      { text: "Send Message", path: "#send-message", data: { action: "click->communications#openModal" } },
+      { text: "Questionnaires", path: manage_communications_questionnaires_path(@production) }
     ]
   } %>
 
+  <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search form %>
   <div class="mb-4" data-controller="search-bar">
-    <%= form_with url: manage_production_communications_path(@production), method: :get, data: { turbo: false, search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+    <%= form_with url: manage_communications_production_path(@production), method: :get, data: { turbo: false, search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
       <div class="relative flex-1">
         <input
           type="text"
@@ -77,7 +81,7 @@
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div class="divide-y divide-gray-200">
         <% @email_logs.each do |log| %>
-          <%= link_to manage_production_communication_path(@production, log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
+          <%= link_to manage_communication_path(@production, log), class: "block px-4 py-3 hover:bg-pink-50 transition group" do %>
             <div class="flex items-center justify-between gap-4">
               <div class="flex-1 min-w-0">
                 <div class="text-sm text-gray-900 font-medium truncate group-hover:text-pink-600">
@@ -122,12 +126,12 @@
           </div>
           <div class="flex gap-2">
             <% if @email_logs_pagy.previous %>
-              <%= link_to "← Previous", manage_production_communications_path(@production, page: @email_logs_pagy.previous, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
+              <%= link_to "← Previous", manage_communications_production_path(@production, page: @email_logs_pagy.previous, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
             <% else %>
               <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">← Previous</span>
             <% end %>
             <% if @email_logs_pagy.next %>
-              <%= link_to "Next →", manage_production_communications_path(@production, page: @email_logs_pagy.next, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
+              <%= link_to "Next →", manage_communications_production_path(@production, page: @email_logs_pagy.next, search: @search_query), class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50", data: { turbo: false } %>
             <% else %>
               <span class="px-3 py-1.5 text-sm font-medium text-gray-300 bg-white border border-gray-200 rounded-md cursor-not-allowed">Next →</span>
             <% end %>
@@ -157,7 +161,7 @@
       </div>
 
       <div class="p-6">
-        <%= form_with model: @email_draft, url: send_message_manage_production_communications_path(@production), method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
+        <%= form_with model: @email_draft, url: manage_communications_send_message_path(@production), method: :post, class: "space-y-4", data: { turbo: false } do |form| %>
           <%# Recipient Selection %>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
@@ -226,4 +230,5 @@
       </div>
     </div>
   </div>
+  </div><%# Close module content wrapper %>
 </div>

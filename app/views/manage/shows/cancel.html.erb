@@ -13,7 +13,8 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows & Events", manage_production_shows_path(@production)]
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)]
     ],
     text: @show.canceled ? "Manage Canceled Event" : "Cancel or Delete Event",
     links: []
@@ -73,18 +74,18 @@
         <% if @show.recurring? %>
           <div class="flex flex-wrap gap-2">
             <%= button_to "Uncancel Only This Occurrence",
-                uncancel_manage_production_show_path(@production, @show, scope: "this"),
+                unmanage_cancel_show_form_path(@production, @show, scope: "this"),
                 method: :patch,
                 class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
 
             <%= button_to "Uncancel All Canceled Occurrences",
-                uncancel_manage_production_show_path(@production, @show, scope: "all"),
+                unmanage_cancel_show_form_path(@production, @show, scope: "all"),
                 method: :patch,
                 class: "rounded-lg px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer transition-colors" %>
           </div>
         <% else %>
           <%= button_to "Uncancel This #{@show.event_type.titleize}",
-              uncancel_manage_production_show_path(@production, @show),
+              unmanage_cancel_show_form_path(@production, @show),
               method: :patch,
               class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
         <% end %>
@@ -97,7 +98,7 @@
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-6">Mark as canceled but keep it visible in the calendar. You can uncancel it later if needed.</p>
 
-        <%= form_with url: cancel_show_manage_production_show_path(@production, @show), method: :patch, data: { "cancel-show-target": "cancelForm" } do |f| %>
+        <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, data: { "cancel-show-target": "cancelForm" } do |f| %>
           <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
           <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
           <input type="hidden" name="email_subject" value="" data-cancel-show-target="emailSubjectField">
@@ -251,20 +252,20 @@
       <% if @show.recurring? %>
         <div class="flex flex-wrap gap-2">
           <%= button_to "Delete Only This Occurrence",
-              delete_show_manage_production_show_path(@production, @show, scope: "this"),
+              manage_delete_show_path(@production, @show, scope: "this"),
               method: :delete,
               class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
               data: { turbo_confirm: "Are you sure you want to permanently delete this occurrence on #{@show.date_and_time.strftime('%B %-d, %Y')}? This cannot be undone." } %>
 
           <%= button_to "Delete All #{@show.recurrence_group.count} Occurrences",
-              delete_show_manage_production_show_path(@production, @show, scope: "all"),
+              manage_delete_show_path(@production, @show, scope: "all"),
               method: :delete,
               class: "rounded-lg px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium cursor-pointer transition-colors",
               data: { turbo_confirm: "Are you sure you want to permanently delete all #{@show.recurrence_group.count} occurrences in this series? This cannot be undone." } %>
         </div>
       <% else %>
         <%= button_to "Delete This #{@show.event_type.titleize}",
-            delete_show_manage_production_show_path(@production, @show, scope: "this"),
+            manage_delete_show_path(@production, @show, scope: "this"),
             method: :delete,
             class: "rounded-lg px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer transition-colors",
             data: { turbo_confirm: "Are you sure you want to permanently delete this #{@show.event_type.downcase}? This cannot be undone." } %>

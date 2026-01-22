@@ -1,0 +1,66 @@
+<%= render layout: "manage/show_wizard/wizard_layout", locals: { current_step: 3, step_name: "Location" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Where is this event?</h2>
+  <p class="text-gray-600 mb-6">Choose the location for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
+
+  <%= form_with url: manage_shows_wizard_save_location_path(@production), method: :post, local: true, data: { controller: "location-toggle" } do |form| %>
+    <div class="mb-6">
+      <div class="flex items-center gap-4 mb-4">
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="radio" name="is_online" value="false" 
+                 <%= "checked" unless @wizard_state[:is_online] %>
+                 class="sr-only peer"
+                 data-action="change->location-toggle#toggle"
+                 data-location-toggle-target="inPersonRadio">
+          <span class="px-4 py-2 rounded-lg border-2 peer-checked:border-pink-500 peer-checked:bg-pink-50 border-gray-200 bg-gray-50 transition-colors">
+            In-Person
+          </span>
+        </label>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="radio" name="is_online" value="true" 
+                 <%= "checked" if @wizard_state[:is_online] %>
+                 class="sr-only peer"
+                 data-action="change->location-toggle#toggle"
+                 data-location-toggle-target="onlineRadio">
+          <span class="px-4 py-2 rounded-lg border-2 peer-checked:border-pink-500 peer-checked:bg-pink-50 border-gray-200 bg-gray-50 transition-colors">
+            Online
+          </span>
+        </label>
+      </div>
+
+      <!-- In-Person Location -->
+      <div data-location-toggle-target="inPersonFields" class="<%= 'hidden' if @wizard_state[:is_online] %>">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Select Location</label>
+        <select name="location_id" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+          <option value="">Select a location</option>
+          <% @locations.each do |location| %>
+            <option value="<%= location.id %>" <%= "selected" if @wizard_state[:location_id].to_s == location.id.to_s %>><%= location.name %></option>
+          <% end %>
+        </select>
+        <p class="text-sm text-gray-500 mt-2">
+          Don't see your location? You can add locations in 
+          <%= link_to "Locations", manage_locations_path, class: "text-pink-500 hover:text-pink-600 underline" %>.
+        </p>
+      </div>
+
+      <!-- Online Location -->
+      <div data-location-toggle-target="onlineFields" class="<%= 'hidden' unless @wizard_state[:is_online] %>">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Online Location Info (optional)</label>
+        <input type="text" 
+               name="online_location_info" 
+               value="<%= @wizard_state[:online_location_info] %>"
+               placeholder="e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'"
+               class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+        <p class="text-sm text-gray-500 mt-2">
+          Add a URL or instructions for joining online. This can also be added or updated later.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_shows_wizard_schedule_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

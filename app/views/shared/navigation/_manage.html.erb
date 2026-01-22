@@ -4,11 +4,11 @@
 
     <div class="mt-2">
 
-      <% if Current.production.present? && !Current.production.new_record? %>
+      <% if Current.organization.present? %>
 
         <%
-        # Check if user has production team access (not just reviewer access)
-        has_team_access = Current.user.role_for_production(Current.production).present?
+        # Check if user has team access to any production
+        has_team_access = Current.user.accessible_productions.where(organization: Current.organization).any? { |p| Current.user.role_for_production(p).present? }
 
         # Build links based on access level
         links = []
@@ -18,38 +18,33 @@
           links = [
             {
               label: "Home",
-              path: manage_path(Current.production),
-              active: controller_name == "productions"
+              path: manage_path,
+              active: controller_name == "manage" && action_name == "index"
             },
             {
               label: "Shows & Events",
-              path: manage_production_shows_path(Current.production),
-              active: ["shows", "vacancies"].include?(controller_name)
+              path: manage_shows_path,
+              active: ["shows", "org_shows", "vacancies"].include?(controller_name)
             },
             {
               label: "Casting",
-              path: manage_production_casting_path(Current.production),
-              active: ["casting", "casting_availability", "roles", "talent_pools"].include?(controller_name)
+              path: manage_casting_path,
+              active: ["casting", "org_casting", "casting_availability", "roles", "talent_pools"].include?(controller_name)
             },
             {
               label: "Sign-ups",
-              path: manage_production_signups_path(Current.production),
-              active: ["signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
-            },
-            {
-              label: "Questionnaires",
-              path: manage_production_questionnaires_path(Current.production),
-              active: controller_name == "questionnaires"
+              path: manage_signups_path,
+              active: ["signups", "org_signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
             },
             {
               label: "Communications",
-              path: manage_production_communications_path(Current.production),
-              active: controller_name == "communications"
+              path: manage_communications_path,
+              active: ["communications", "org_communications", "questionnaires"].include?(controller_name)
             },
             {
               label: "Money",
-              path: manage_production_money_index_path(Current.production),
-              active: controller_name == "payouts" || controller_name == "payout_schemes" || controller_name == "show_payouts" || controller_name == "show_financials"
+              path: manage_money_index_path,
+              active: controller_name == "money" || controller_name == "money_financials" || controller_name == "money_payouts" || controller_name == "show_payouts" || controller_name == "show_financials"
             },
             {
               label: "Directory",
@@ -62,8 +57,8 @@
           links = [
             {
               label: "Sign-ups",
-              path: manage_production_signups_path(Current.production),
-              active: ["signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+              path: manage_signups_path,
+              active: ["signups", "org_signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
             }
           ]
         end

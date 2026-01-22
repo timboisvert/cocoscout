@@ -1,21 +1,22 @@
 <% content_for :title, "Edit - #{@sign_up_form.name}" %>
 
 <div class="w-full pb-16" data-controller="question-modal tabs"
-     data-create-path="<%= create_question_manage_production_signups_form_path(@production, @sign_up_form) %>"
+     data-create-path="<%= manage_create_question_signups_form_path(@production, @sign_up_form) %>"
      data-new-description="Custom Questions are shown on the sign-up form."
      data-has-errors="<%= @question.errors.any? %>"
      data-tabs-initial-tab-value="<%= params[:tab].to_i %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Forms", manage_production_signups_forms_path(@production)],
-      [@sign_up_form.name, manage_production_signups_form_path(@production, @sign_up_form)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Forms", manage_signups_forms_path(@production)],
+      [@sign_up_form.name, manage_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Edit Form",
     links: [
-      { text: "Settings", path: settings_manage_production_signups_form_path(@production, @sign_up_form) },
-      { text: "Preview Form", path: preview_manage_production_signups_form_path(@production, @sign_up_form) }
+      { text: "Settings", path: manage_settings_signups_form_path(@production, @sign_up_form) },
+      { text: "Preview Form", path: manage_preview_signups_form_path(@production, @sign_up_form) }
     ]
   } %>
 
@@ -28,7 +29,7 @@
 
   <%# ==================== TAB 0: BASIC INFO ==================== %>
   <div data-tabs-target="panel">
-    <%= form_with model: @sign_up_form, url: manage_production_signups_form_path(@production, @sign_up_form), method: :patch, local: true, class: "space-y-6" do |form| %>
+    <%= form_with model: @sign_up_form, url: manage_signups_form_path(@production, @sign_up_form), method: :patch, local: true, class: "space-y-6" do |form| %>
       <%= hidden_field_tag :tab, "0" %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -53,7 +54,7 @@
 
   <%# ==================== TAB 1: INSTRUCTIONS ==================== %>
   <div data-tabs-target="panel" class="hidden">
-    <%= form_with model: @sign_up_form, url: manage_production_signups_form_path(@production, @sign_up_form), method: :patch, local: true, class: "space-y-6" do |form| %>
+    <%= form_with model: @sign_up_form, url: manage_signups_form_path(@production, @sign_up_form), method: :patch, local: true, class: "space-y-6" do |form| %>
       <%= hidden_field_tag :tab, "1" %>
 
       <%# Introduction Instructions %>

@@ -1,11 +1,11 @@
-<% content_for :title, "Choose Preset - #{@production.name}" %>
+<% content_for :title, "Choose Payout Scheme Preset" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)],
-      ["Payout Schemes", manage_production_money_payout_schemes_path(@production)]
+      ["Money", manage_money_index_path],
+      ["Payout Schemes", manage_money_payout_schemes_path]
     ],
     text: "Choose a Preset",
     links: []
@@ -51,7 +51,7 @@
           <% end %>
         </div>
 
-        <%= form_with url: manage_production_create_from_preset_money_payout_schemes_path(@production), method: :post, local: true do |f| %>
+        <%= form_with url: manage_create_from_preset_money_payout_schemes_path, method: :post, local: true do |f| %>
           <%= hidden_field_tag :preset_key, key %>
           <%= render "shared/button", text: "Use This Preset", variant: "secondary", size: "small", type: :submit %>
         <% end %>
@@ -65,7 +65,7 @@
       </svg>
       <h3 class="font-semibold text-gray-900 mb-1">Custom Scheme</h3>
       <p class="text-sm text-gray-500 text-center mb-4">Build your own from scratch</p>
-      <%= link_to manage_production_new_money_payout_scheme_path(@production) do %>
+      <%= link_to manage_new_money_payout_scheme_path do %>
         <%= render "shared/button", text: "Create Custom", variant: "outline", size: "small" %>
       <% end %>
     </div>

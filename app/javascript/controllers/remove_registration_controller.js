@@ -45,7 +45,7 @@ export default class extends Controller {
     // Create and submit deletion form
     const form = document.createElement("form")
     form.method = "POST"
-    form.action = `/manage/productions/${this.productionId}/sign-ups/${this.formId}/cancel_registration/${this.registrationId}`
+    form.action = `/manage/signups/forms/${this.productionId}/${this.formId}/cancel_registration/${this.registrationId}`
     
     // Add CSRF token
     const csrfToken = document.querySelector("[name='csrf-token']")?.content

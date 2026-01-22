@@ -1,6 +1,6 @@
 <div class="space-y-4">
   <% if @questions.any? %>
-    <div class="space-y-2" data-controller="question-order" data-question-order-url="<%= reorder_questions_manage_production_signups_form_path(@production, @sign_up_form) %>">
+    <div class="space-y-2" data-controller="question-order" data-question-order-url="<%= manage_reorder_questions_signups_form_path(@production, @sign_up_form) %>">
       <% @questions.each do |question| %>
         <div class="p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move relative group" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd">
           <div class="flex items-start gap-4">
@@ -37,9 +37,9 @@
                 "question-text": question.text,
                 "question-type": question.question_type,
                 "question-required": question.required,
-                "update-path": update_question_manage_production_signups_form_path(@production, @sign_up_form, question_id: question.id)
+                "update-path": manage_update_question_signups_form_path(@production, @sign_up_form, question_id: question.id)
               } %>
-            <%= button_to destroy_question_manage_production_signups_form_path(@production, @sign_up_form, question_id: question.id),
+            <%= button_to manage_destroy_question_signups_form_path(@production, @sign_up_form, question_id: question.id),
                 method: :delete,
                 form: { data: { turbo_confirm: "Are you sure you want to delete this question?" }, class: "inline" },
                 class: "cursor-pointer" do %>

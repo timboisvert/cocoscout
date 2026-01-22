@@ -1,0 +1,64 @@
+<%= render layout: "manage/show_wizard/wizard_layout", locals: { current_step: 4, step_name: "Details" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Additional details</h2>
+  <p class="text-gray-600 mb-6">Optional settings for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
+
+  <%= form_with url: manage_shows_wizard_save_details_path(@production), method: :post, local: true do |form| %>
+    <div class="space-y-6">
+      <!-- Secondary Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Name (optional)</label>
+        <input type="text" 
+               name="secondary_name" 
+               value="<%= @wizard_state[:secondary_name] %>"
+               placeholder="e.g., Opening Night, Special Guest Performance"
+               class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+        <p class="text-sm text-gray-500 mt-2">
+          Add a subtitle if this event has a special name to go along with the production name.
+        </p>
+      </div>
+
+      <!-- Casting Enabled -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div class="flex-1">
+          <p class="text-sm font-medium text-gray-700">Enable casting for this event</p>
+          <p class="text-xs text-gray-500 mt-1">
+            When enabled, you can assign cast members to roles for this event.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer ml-4">
+          <input type="hidden" name="casting_enabled" value="0">
+          <input type="checkbox" name="casting_enabled" value="1"
+                 <%= "checked" if @wizard_state[:casting_enabled] %>
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+
+      <!-- Public Profile Visible -->
+      <% if @production.public_profile_enabled && @production.public_key.present? %>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Show on public profile</p>
+            <p class="text-xs text-gray-500 mt-1">
+              When enabled, this event will be visible to anyone viewing your public profile.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="hidden" name="public_profile_visible" value="0">
+            <input type="checkbox" name="public_profile_visible" value="1"
+                   <%= "checked" if @wizard_state[:public_profile_visible].nil? ? @production.event_type_publicly_visible?(@wizard_state[:event_type]) : @wizard_state[:public_profile_visible] %>
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_shows_wizard_location_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

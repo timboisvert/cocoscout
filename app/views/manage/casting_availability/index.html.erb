@@ -11,11 +11,12 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casting_path(@production)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)]
     ],
     text: "Availability",
     links: [
-      { text: "Request Availability", path: manage_production_questionnaires_path(@production), icon: "clipboard" }
+      { text: "Request Availability", path: manage_communications_questionnaires_path(@production), icon: "clipboard" }
     ]
   } %>
 
@@ -25,7 +26,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
       </svg>
       <p class="text-gray-500 text-sm">No cast members found. Add people to your talent pool to see their availability.</p>
-      <%= link_to "Manage Talent Pool", "#{manage_production_casting_settings_path(@production)}#tab-2", class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+      <%= link_to "Manage Talent Pool", "#{manage_casting_settings_path(@production)}#tab-2", class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
     </div>
   <% elsif @shows.empty? %>
     <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
@@ -33,7 +34,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
       <p class="text-gray-500 text-sm">No shows scheduled yet. Create shows to track availability.</p>
-      <%= link_to "Create Show", new_manage_production_show_path(@production), class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+      <%= link_to "Create Show", manage_shows_wizard_path(@production), class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
     </div>
   <% else %>
     <div class="mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-280px)] relative z-0" data-controller="availability-grid">
@@ -55,7 +56,7 @@
                         class="block w-full no-underline cursor-pointer"
                         data-action="click->availability-modal#openShowModal"
                         data-show-id="<%= show.id %>"
-                        data-modal-url="<%= show_modal_manage_production_casting_availability_path(@production, show) %>">
+                        data-modal-url="<%= manage_show_modal_casting_availability_path(@production, show) %>">
                   <div class="text-[10px] sm:text-xs font-medium text-pink-600 uppercase tracking-wide">
                     <%= show.date_and_time.strftime("%a, %b %-d") %>
                   </div>
@@ -112,7 +113,7 @@
                           class="block w-full no-underline text-gray-900 hover:text-gray-900 cursor-pointer"
                           data-action="click->availability-modal#openShowModal"
                           data-show-id="<%= show.id %>"
-                          data-modal-url="<%= show_modal_manage_production_casting_availability_path(@production, show) %>">
+                          data-modal-url="<%= manage_show_modal_casting_availability_path(@production, show) %>">
                     <% if availability %>
                       <% if availability.available? %>
                         <span class="text-xs sm:text-sm font-medium text-pink-500">

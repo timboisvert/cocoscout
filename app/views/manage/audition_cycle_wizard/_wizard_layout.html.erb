@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)]
     ],
     text: "Set Up Auditions",
     links: []
@@ -18,15 +19,15 @@
         <%
           # Build steps dynamically based on wizard state
           all_steps = []
-          all_steps << { key: "format", name: "Format", path: manage_production_signups_auditions_wizard_format_path(@production) }
-          all_steps << { key: "schedule", name: "Schedule", path: manage_production_signups_auditions_wizard_schedule_path(@production) }
+          all_steps << { key: "format", name: "Format", path: manage_signups_auditions_wizard_path(@production) }
+          all_steps << { key: "schedule", name: "Schedule", path: manage_signups_auditions_wizard_schedule_path(@production) }
           if @wizard_state && @wizard_state[:allow_in_person_auditions]
-            all_steps << { key: "sessions", name: "Sessions", path: manage_production_signups_auditions_wizard_sessions_path(@production) }
+            all_steps << { key: "sessions", name: "Sessions", path: manage_signups_auditions_wizard_sessions_path(@production) }
           end
-          all_steps << { key: "availability", name: "Availability", path: manage_production_signups_auditions_wizard_availability_path(@production) }
-          all_steps << { key: "reviewers", name: "Reviewers", path: manage_production_signups_auditions_wizard_reviewers_path(@production) }
-          all_steps << { key: "voting", name: "Voting", path: manage_production_signups_auditions_wizard_voting_path(@production) }
-          all_steps << { key: "review", name: "Review", path: manage_production_signups_auditions_wizard_review_path(@production) }
+          all_steps << { key: "availability", name: "Availability", path: manage_signups_auditions_wizard_availability_path(@production) }
+          all_steps << { key: "reviewers", name: "Reviewers", path: manage_signups_auditions_wizard_reviewers_path(@production) }
+          all_steps << { key: "voting", name: "Voting", path: manage_signups_auditions_wizard_voting_path(@production) }
+          all_steps << { key: "review", name: "Review", path: manage_signups_auditions_wizard_review_path(@production) }
 
           # Assign step numbers
           steps = all_steps.each_with_index.map { |step, i| step.merge(num: i + 1) }
@@ -74,7 +75,7 @@
 
     <!-- Cancel Link -->
     <div class="mt-4 text-center">
-      <%= link_to "Cancel", manage_production_signups_auditions_wizard_cancel_path(@production),
+      <%= link_to "Cancel", manage_signups_auditions_wizard_cancel_path(@production),
           data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." },
           class: "text-sm text-gray-500 hover:text-gray-700" %>
     </div>

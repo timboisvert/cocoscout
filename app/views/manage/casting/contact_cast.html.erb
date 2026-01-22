@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casting_path(@production)],
-      [@show.date_and_time.strftime("%A, %b %d, %Y"), manage_production_show_cast_path(@production, @show)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)],
+      [@show.date_and_time.strftime("%A, %b %d, %Y"), manage_casting_show_cast_path(@production, @show)]
     ],
     text: "Contact Cast",
     links: []
@@ -57,14 +58,14 @@
       <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
         <p class="text-sm text-amber-800">
           No cast members have been assigned to this show yet.
-          <%= link_to "Assign cast members", manage_production_show_cast_path(@production, @show), class: "underline font-medium" %>
+          <%= link_to "Assign cast members", manage_casting_show_cast_path(@production, @show), class: "underline font-medium" %>
           before sending an email.
         </p>
       </div>
     <% end %>
 
     <!-- Email Compose -->
-    <%= form_with model: @email_draft, url: manage_production_send_cast_email_path(@production, @show), method: :post, class: "space-y-4" do |form| %>
+    <%= form_with model: @email_draft, url: manage_casting_show_send_email_path(@production, @show), method: :post, class: "space-y-4" do |form| %>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
@@ -78,7 +79,7 @@
 
       <div class="flex items-center justify-between pt-2">
         <div class="flex items-center gap-3">
-          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_production_show_cast_path(@production, @show) %>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_casting_show_cast_path(@production, @show) %>
           <%= render "shared/button", text: "Send Email", variant: "primary", size: "medium", type: :submit, disabled: @cast_members.empty? %>
         </div>
       </div>

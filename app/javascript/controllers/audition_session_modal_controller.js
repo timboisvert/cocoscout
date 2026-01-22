@@ -18,7 +18,7 @@ export default class extends Controller {
         const auditionCycleId = this.element.dataset.auditionCycleId
 
         // Fetch the new session form
-        fetch(`/manage/productions/${productionId}/audition_cycles/${auditionCycleId}/audition_sessions/new`, {
+        fetch(`/manage/signups/auditions/${productionId}/${auditionCycleId}/sessions/new`, {
             headers: {
                 "X-Requested-With": "XMLHttpRequest"
             }
@@ -38,7 +38,7 @@ export default class extends Controller {
         const productionId = this.element.dataset.productionId
 
         // Fetch the edit session form
-        fetch(`/manage/productions/${productionId}/audition_cycles/${auditionCycleId}/audition_sessions/${sessionId}/edit`, {
+        fetch(`/manage/signups/auditions/${productionId}/${auditionCycleId}/sessions/${sessionId}/edit`, {
             headers: {
                 "X-Requested-With": "XMLHttpRequest"
             }

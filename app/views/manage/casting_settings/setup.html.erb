@@ -14,7 +14,7 @@
     </div>
 
     <!-- Setup Form -->
-    <%= form_with model: @production, url: complete_setup_manage_production_casting_settings_path(@production), method: :post do |form| %>
+    <%= form_with model: @production, url: complete_setup_manage_casting_settings_path(@production), method: :post do |form| %>
       <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <!-- Casting Source -->
         <div class="p-6 border-b border-gray-200">
@@ -45,18 +45,6 @@
                 <span class="block text-sm text-gray-500 mt-0.5">
                   You add performers by name or email as needed.
                   <strong>Best for:</strong> guest artists, one-off events, collaborations.
-                </span>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-gray-200 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <%= form.radio_button :casting_source, "hybrid",
-                  class: "h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer" %>
-              <div class="flex-1">
-                <span class="block font-medium text-gray-900">Hybrid</span>
-                <span class="block text-sm text-gray-500 mt-0.5">
-                  Combine talent pool and manual entry for maximum flexibility.
-                  <strong>Best for:</strong> complex productions, festivals, mixed-format events.
                 </span>
               </div>
             </label>

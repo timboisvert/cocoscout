@@ -76,6 +76,16 @@ module Manage
         open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
         @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)
       end
+
+      # Load sign-up registrations for shows that have linked sign-up forms
+      sign_up_registrations = SignUpRegistration
+        .joins(sign_up_slot: :sign_up_form_instance)
+        .where(sign_up_form_instances: { show_id: show_ids })
+        .where(status: %w[confirmed waitlisted])
+        .includes(:person, person: { profile_headshots: { image_attachment: :blob } }, sign_up_slot: { sign_up_form_instance: :sign_up_form })
+        .to_a
+
+      @sign_up_registrations_by_show = sign_up_registrations.group_by { |r| r.sign_up_slot.sign_up_form_instance.show_id }
     end
 
     def show_cast
@@ -147,6 +157,9 @@ module Manage
         @linked_availability = {}
       end
 
+      # Load sign-up registrations if this show has a linked sign-up form
+      @sign_up_registrations = @show.sign_up_registrations.includes(person: { profile_headshots: { image_attachment: :blob } }).to_a
+
       # Create email drafts for finalization section
       if @show.fully_cast? && !@show.casting_finalized?
         @cast_email_draft = EmailDraft.new(
@@ -206,7 +219,7 @@ module Manage
       @email_draft = EmailDraft.new(email_draft_params.merge(emailable: @show))
 
       if @email_draft.title.blank? || @email_draft.body.blank?
-        redirect_to manage_production_show_contact_cast_path(@production, @show),
+        redirect_to manage_casting_show_contact_path(@production, @show),
                     alert: "Title and message are required"
         return
       end
@@ -261,7 +274,7 @@ module Manage
         Manage::ProductionMailer.send_message(person, @email_draft.title, body_html, Current.user, email_batch_id: email_batch&.id, production_id: @production.id).deliver_later
       end
 
-      redirect_to manage_production_show_path(@production, @show),
+      redirect_to manage_show_path(@production, @show),
                   notice: "Email sent to #{cast_member_count} cast #{'member'.pluralize(cast_member_count)}"
     end
 
@@ -805,7 +818,7 @@ module Manage
 
     def finalize_casting
       unless @show.fully_cast?
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     alert: "Cannot finalize casting until all roles are filled."
         return
       end
@@ -817,7 +830,7 @@ module Manage
         sync_info = build_linkage_sync_info(@show, linked_shows)
 
         unless sync_info[:all_in_sync]
-          redirect_to manage_production_show_cast_path(@production, @show),
+          redirect_to manage_casting_show_cast_path(@production, @show),
                       alert: "Cannot finalize casting: linked events are not in sync. Please copy cast to linked events first."
           return
         end
@@ -938,10 +951,10 @@ module Manage
 
       finalized_count = shows_to_finalize.count
       if finalized_count > 1
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     notice: "Casting finalized for #{finalized_count} linked events and notifications sent!"
       else
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     notice: "Casting finalized and notifications sent!"
       end
     end
@@ -956,24 +969,24 @@ module Manage
       shows_to_reopen.each(&:reopen_casting!)
 
       if shows_to_reopen.count > 1
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     notice: "Casting reopened for #{shows_to_reopen.count} linked events. You can now make changes."
       else
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     notice: "Casting reopened. You can now make changes."
       end
     end
 
     def copy_cast_to_linked
       unless @show.linked?
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     alert: "This event is not linked to any other events."
         return
       end
 
       linked_shows = @show.linked_shows.to_a
       if linked_shows.empty?
-        redirect_to manage_production_show_cast_path(@production, @show),
+        redirect_to manage_casting_show_cast_path(@production, @show),
                     alert: "No linked events found."
         return
       end
@@ -1014,10 +1027,10 @@ module Manage
         end
       end
 
-      redirect_to manage_production_show_cast_path(@production, @show),
+      redirect_to manage_casting_show_cast_path(@production, @show),
                   notice: "Roles and cast successfully synced to #{linked_shows.count} linked #{'event'.pluralize(linked_shows.count)}."
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to manage_production_show_cast_path(@production, @show),
+      redirect_to manage_casting_show_cast_path(@production, @show),
                   alert: "Failed to sync: #{e.message}"
     end
 
@@ -1102,13 +1115,14 @@ module Manage
 
     def check_casting_setup
       unless @production.casting_setup_completed?
-        redirect_to setup_manage_production_casting_settings_path(@production)
+        redirect_to setup_manage_casting_settings_path(@production)
       end
     end
 
     # Helper to determine if click-to-add should be enabled for roles
+    # Now always enabled - talent_pool includes this functionality (formerly hybrid-only)
     def click_to_add?
-      @production.casting_manual? || @production.casting_hybrid?
+      true
     end
 
     # Sync roles from source to target show

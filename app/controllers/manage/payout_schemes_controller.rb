@@ -2,11 +2,13 @@
 
 module Manage
   class PayoutSchemesController < Manage::ManageController
-    before_action :set_production
     before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :preview ]
 
     def index
-      @payout_schemes = @production.payout_schemes.default_first
+      # Show all payout schemes for the organization (both org-level and production-level)
+      @payout_schemes = Current.organization.payout_schemes
+                                            .default_first
+                                            .includes(:production)
     end
 
     def show
@@ -14,17 +16,19 @@ module Manage
     end
 
     def new
-      @payout_scheme = @production.payout_schemes.new
+      @payout_scheme = PayoutScheme.new(organization: Current.organization)
     end
 
     def create
-      @payout_scheme = @production.payout_schemes.new(payout_scheme_params)
+      @payout_scheme = PayoutScheme.new(payout_scheme_params)
+      @payout_scheme.organization = Current.organization
 
       if @payout_scheme.save
-        # Make default if it's the first scheme
-        @payout_scheme.make_default! if @production.payout_schemes.count == 1
+        # Make default if it's the first org-level scheme
+        org_level_count = Current.organization.payout_schemes.organization_level.count
+        @payout_scheme.make_default! if org_level_count == 1
 
-        redirect_to manage_production_money_payout_scheme_path(@production, @payout_scheme),
+        redirect_to manage_money_payout_scheme_path(@payout_scheme),
                     notice: "Payout scheme created successfully."
       else
         render :new, status: :unprocessable_entity
@@ -36,7 +40,7 @@ module Manage
 
     def update
       if @payout_scheme.update(payout_scheme_params)
-        redirect_to manage_production_money_payout_scheme_path(@production, @payout_scheme),
+        redirect_to manage_money_payout_scheme_path(@payout_scheme),
                     notice: "Payout scheme updated successfully."
       else
         render :edit, status: :unprocessable_entity
@@ -45,26 +49,31 @@ module Manage
 
     def destroy
       if @payout_scheme.show_payouts.paid.any?
-        redirect_to manage_production_money_payout_schemes_path(@production),
+        redirect_to manage_money_payout_schemes_path,
                     alert: "Cannot delete a scheme that has been used for paid payouts."
         return
       end
 
       was_default = @payout_scheme.is_default?
+      was_org_level = @payout_scheme.organization_level?
       @payout_scheme.destroy!
 
       # If we deleted the default, make another one default
       if was_default
-        @production.payout_schemes.first&.make_default!
+        if was_org_level
+          Current.organization.payout_schemes.organization_level.first&.make_default!
+        elsif @payout_scheme.production.present?
+          @payout_scheme.production.payout_schemes.first&.make_default!
+        end
       end
 
-      redirect_to manage_production_money_payout_schemes_path(@production),
+      redirect_to manage_money_payout_schemes_path,
                   notice: "Payout scheme deleted."
     end
 
     def make_default
       @payout_scheme.make_default!
-      redirect_to manage_production_money_payout_schemes_path(@production),
+      redirect_to manage_money_payout_schemes_path,
                   notice: "#{@payout_scheme.name} is now the default payout scheme."
     end
 
@@ -96,29 +105,26 @@ module Manage
     def create_from_preset
       preset_key = params[:preset_key]&.to_sym
 
-      @payout_scheme = PayoutScheme.create_from_preset(@production, preset_key)
+      @payout_scheme = PayoutScheme.create_from_preset(Current.organization, preset_key)
 
       if @payout_scheme&.persisted?
-        # Make default if it's the first scheme
-        @payout_scheme.make_default! if @production.payout_schemes.count == 1
+        # Make default if it's the first org-level scheme
+        org_level_count = Current.organization.payout_schemes.organization_level.count
+        @payout_scheme.make_default! if org_level_count == 1
 
-        redirect_to manage_production_edit_money_payout_scheme_path(@production, @payout_scheme),
+        redirect_to manage_edit_money_payout_scheme_path(@payout_scheme),
                     notice: "Created #{@payout_scheme.name}. Customize it below."
       else
-        redirect_to manage_production_money_payout_schemes_path(@production),
+        redirect_to manage_money_payout_schemes_path,
                     alert: "Could not create payout scheme from preset."
       end
     end
 
     private
 
-    def set_production
-      @production = Current.production
-      redirect_to select_production_path unless @production
-    end
-
     def set_payout_scheme
-      @payout_scheme = @production.payout_schemes.find(params[:id])
+      @payout_scheme = PayoutScheme.where(organization: Current.organization)
+                                   .find(params[:id])
     end
 
     def payout_scheme_params

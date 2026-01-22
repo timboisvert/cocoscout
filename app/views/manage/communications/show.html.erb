@@ -5,7 +5,8 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Communications", manage_production_communications_path(@production)]
+      ["Communications", manage_communications_path],
+      [@production.name, manage_communications_production_path(@production)]
     ],
     text: @email_log.subject || "(no subject)",
     links: []

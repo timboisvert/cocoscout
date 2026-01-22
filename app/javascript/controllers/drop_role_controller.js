@@ -284,7 +284,7 @@ export default class extends Controller {
             this.moveAssignment(productionId, showId, assignableId, sourceRoleId, roleId, assignableType);
         } else if (assignableType === "Guest") {
             // Handle guest assignment to restricted role
-            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+            fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -318,7 +318,7 @@ export default class extends Controller {
                 requestBody.group_id = assignableId;
             }
 
-            fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+            fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -430,7 +430,7 @@ export default class extends Controller {
         const productionId = this.productionId;
 
         try {
-            const response = await fetch(`/manage/productions/${productionId}/casting/search_people?q=${encodeURIComponent(query)}`, {
+            const response = await fetch(`/manage/casting/${productionId}/search_people?q=${encodeURIComponent(query)}`, {
                 headers: {
                     "Accept": "application/json",
                     "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
@@ -575,7 +575,7 @@ export default class extends Controller {
             payload.group_id = groupId;
         }
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -651,7 +651,7 @@ export default class extends Controller {
         const showId = this.showId;
         const productionId = this.productionId;
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -724,7 +724,7 @@ export default class extends Controller {
         // Close modal immediately
         this.closeGuestModal();
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_guest_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -790,7 +790,7 @@ export default class extends Controller {
         // Close modal immediately
         this.closeAssignModal();
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -990,7 +990,7 @@ export default class extends Controller {
             requestBody.group_id = assignableId;
         }
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1167,7 +1167,7 @@ export default class extends Controller {
             requestBody.source_role_id = sourceRoleId;
         }
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/replace_assignment`, {
+        fetch(`/manage/casting/${productionId}/${showId}/replace_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1210,7 +1210,7 @@ export default class extends Controller {
             requestBody.group_id = assignableId;
         }
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1252,7 +1252,7 @@ export default class extends Controller {
         const removeBody = assignmentId ? { assignment_id: assignmentId } : { role_id: sourceRoleId };
 
         // First, remove the entity from the source role
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1273,7 +1273,7 @@ export default class extends Controller {
                     requestBody.person_id = assignableId;
                 }
 
-                return fetch(`/manage/productions/${productionId}/casting/shows/${showId}/assign_person_to_role`, {
+                return fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1319,7 +1319,7 @@ export default class extends Controller {
         const showId = this.showId;
         const productionId = this.productionId;
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/remove_person_from_role`, {
+        fetch(`/manage/casting/${productionId}/${showId}/remove_person_from_role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1422,7 +1422,7 @@ export default class extends Controller {
         const reason = prompt("Reason for vacancy (optional):");
         if (reason === null) return; // User cancelled
 
-        fetch(`/manage/productions/${productionId}/casting/shows/${showId}/create_vacancy`, {
+        fetch(`/manage/casting/${productionId}/${showId}/create_vacancy`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

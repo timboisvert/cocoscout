@@ -8,15 +8,16 @@
 
 <div class="w-full"
      data-controller="<%= supports_drag ? 'assign-drag' : '' %> add-sign-up-person"
-     data-add-sign-up-person-search-url-value="<%= manage_production_casting_search_people_path(@production) %>"
-     data-add-sign-up-person-register-url-value="<%= register_manage_production_signups_form_path(@production, @sign_up_form) %>"
-     data-add-sign-up-person-register-queue-url-value="<%= register_to_queue_manage_production_signups_form_path(@production, @sign_up_form) %>">
+     data-add-sign-up-person-search-url-value="<%= manage_casting_search_people_path(@production) %>"
+     data-add-sign-up-person-register-url-value="<%= manage_register_signups_form_path(@production, @sign_up_form) %>"
+     data-add-sign-up-person-register-queue-url-value="<%= manage_register_to_queue_signups_form_path(@production, @sign_up_form) %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: flash[:alert] } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Forms", manage_production_signups_forms_path(@production)],
-      [@sign_up_form.name, manage_production_signups_form_path(@production, @sign_up_form)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Forms", manage_signups_forms_path(@production)],
+      [@sign_up_form.name, manage_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Assign Slots",
     links: []
@@ -33,7 +34,7 @@
       <div class="flex flex-wrap gap-2">
         <% @sign_up_form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", 1.week.ago).order("shows.date_and_time ASC, sign_up_form_instances.id ASC").limit(10).each do |inst| %>
           <% is_current = @instance&.id == inst.id %>
-          <%= link_to assign_manage_production_signups_form_path(@production, @sign_up_form, instance_id: inst.id),
+          <%= link_to manage_assign_signups_form_path(@production, @sign_up_form, instance_id: inst.id),
               class: "px-3 py-2 rounded-lg border text-sm #{is_current ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-700 border-gray-300 hover:border-pink-400'}" do %>
             <%= inst.show.date_and_time.strftime("%b %-d") %>
             <span class="text-xs opacity-75">(<%= inst.queue_count %> queued)</span>
@@ -90,7 +91,7 @@
                         text: "Return to Queue",
                         variant: "ghost",
                         size: "small",
-                        path: unassign_registration_manage_production_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                        path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                         method: :patch,
                         data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                   </div>
@@ -158,7 +159,7 @@
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: unassign_registration_manage_production_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                               method: :patch,
                               data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                         </div>
@@ -216,7 +217,7 @@
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: unassign_registration_manage_production_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                               method: :patch,
                               data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                         </div>
@@ -268,7 +269,7 @@
                   text: "Auto-assign All",
                   variant: "primary",
                   size: "small",
-                  path: auto_assign_queue_manage_production_signups_form_path(@production, @sign_up_form, instance_id: @instance&.id),
+                  path: manage_auto_assign_queue_signups_form_path(@production, @sign_up_form, instance_id: @instance&.id),
                   method: :post,
                   disabled: @queue.empty?,
                   data: { turbo_method: :post } %>
@@ -317,14 +318,14 @@
                       text: "Auto-assign",
                       variant: "primary",
                       size: "small",
-                      path: auto_assign_one_manage_production_signups_form_path(@production, @sign_up_form, registration_id: registration.id, instance_id: @instance.id),
+                      path: manage_auto_assign_one_signups_form_path(@production, @sign_up_form, registration_id: registration.id, instance_id: @instance.id),
                       method: :post,
                       data: { turbo_method: :post } %>
                   <%= render "shared/button",
                       text: "Remove",
                       variant: "ghost",
                       size: "small",
-                      path: cancel_registration_manage_production_signups_form_path(@production, @sign_up_form, registration_id: registration.id),
+                      path: manage_cancel_registration_signups_form_path(@production, @sign_up_form, registration_id: registration.id),
                       method: :delete,
                       data: { turbo_method: :delete, turbo_confirm: "Remove #{registration.display_name} from the queue?" } %>
                 </div>

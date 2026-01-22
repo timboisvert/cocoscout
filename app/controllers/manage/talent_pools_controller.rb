@@ -52,7 +52,7 @@ module Manage
       if request.xhr?
         render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
       else
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-2",
+        redirect_to "#{manage_casting_settings_path(@production)}#tab-2",
                     notice: "#{person.name} removed from talent pool"
       end
     end
@@ -90,7 +90,7 @@ module Manage
       if request.xhr?
         render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
       else
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-2",
+        redirect_to "#{manage_casting_settings_path(@production)}#tab-2",
                     notice: "#{group.name} removed from talent pool"
       end
     end
@@ -99,8 +99,12 @@ module Manage
       q = (params[:q] || params[:query]).to_s.strip
 
       if q.present?
-        @people = Current.organization.people.where("name LIKE :q OR email LIKE :q", q: "%#{q}%")
-        @groups = Current.organization.groups.where("name LIKE :q", q: "%#{q}%")
+        # Case-insensitive search by name, email, and public_key
+        @people = Current.organization.people.where(
+          "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
+          q: "%#{q}%"
+        )
+        @groups = Current.organization.groups.where("LOWER(name) LIKE LOWER(:q)", q: "%#{q}%")
       else
         @people = Person.none
         @groups = Group.none
@@ -110,7 +114,7 @@ module Manage
       @people = @people.where.not(id: @talent_pool.people.pluck(:id))
       @groups = @groups.where.not(id: @talent_pool.groups.pluck(:id))
 
-      @members = (@people.to_a + @groups.to_a).sort_by(&:name)
+      @members = (@people.to_a + @groups.to_a).sort_by { |m| m.name.downcase }
 
       render partial: "manage/talent_pools/search_results",
              locals: { members: @members, talent_pool_id: @talent_pool.id }
@@ -195,7 +199,7 @@ module Manage
     def leave_shared_pool
       TalentPoolShare.find_by(production: @production)&.destroy
 
-      redirect_to manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+      redirect_to manage_casting_settings_path(@production, anchor: "talent-pool"),
                   notice: "You are now using a separate talent pool for this production."
     end
 
@@ -232,7 +236,7 @@ module Manage
       end
 
       flash[:notice] = "Sharing settings updated."
-      redirect_to manage_production_casting_settings_path(@production, anchor: "talent-pool"), status: :see_other
+      redirect_to manage_casting_settings_path(@production, anchor: "talent-pool"), status: :see_other
     end
 
     def set_production

@@ -5,7 +5,9 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-        ["Availability", manage_production_availability_index_path(@production)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)],
+      ["Availability", manage_casting_availability_path(@production)]
     ],
     text: @show.date_and_time.strftime("%b %d, %Y at %l:%M %p"),
     links: []

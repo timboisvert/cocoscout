@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_22_055912) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -247,6 +247,66 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.index ["talent_pool_id"], name: "index_cast_assignment_stages_on_talent_pool_id"
   end
 
+  create_table "casting_table_draft_assignments", force: :cascade do |t|
+    t.bigint "assignable_id", null: false
+    t.string "assignable_type", null: false
+    t.bigint "casting_table_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "role_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignable_type", "assignable_id"], name: "index_casting_table_draft_assignments_on_assignable"
+    t.index ["casting_table_id", "show_id", "role_id", "assignable_type", "assignable_id"], name: "idx_casting_table_draft_assignments_unique", unique: true
+    t.index ["casting_table_id"], name: "index_casting_table_draft_assignments_on_casting_table_id"
+    t.index ["role_id"], name: "index_casting_table_draft_assignments_on_role_id"
+    t.index ["show_id"], name: "index_casting_table_draft_assignments_on_show_id"
+  end
+
+  create_table "casting_table_events", force: :cascade do |t|
+    t.bigint "casting_table_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["casting_table_id", "show_id"], name: "idx_casting_table_events_unique", unique: true
+    t.index ["casting_table_id"], name: "index_casting_table_events_on_casting_table_id"
+    t.index ["show_id"], name: "index_casting_table_events_on_show_id"
+  end
+
+  create_table "casting_table_members", force: :cascade do |t|
+    t.bigint "casting_table_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "memberable_id", null: false
+    t.string "memberable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["casting_table_id", "memberable_type", "memberable_id"], name: "idx_casting_table_members_unique", unique: true
+    t.index ["casting_table_id"], name: "index_casting_table_members_on_casting_table_id"
+    t.index ["memberable_type", "memberable_id"], name: "index_casting_table_members_on_memberable"
+  end
+
+  create_table "casting_table_productions", force: :cascade do |t|
+    t.bigint "casting_table_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "production_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["casting_table_id", "production_id"], name: "idx_casting_table_productions_unique", unique: true
+    t.index ["casting_table_id"], name: "index_casting_table_productions_on_casting_table_id"
+    t.index ["production_id"], name: "index_casting_table_productions_on_production_id"
+  end
+
+  create_table "casting_tables", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.datetime "finalized_at"
+    t.bigint "finalized_by_id"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_casting_tables_on_created_by_id"
+    t.index ["finalized_by_id"], name: "index_casting_tables_on_finalized_by_id"
+    t.index ["organization_id"], name: "index_casting_tables_on_organization_id"
+  end
+
   create_table "email_batches", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "mailer_action"
@@ -459,9 +519,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.text "description"
     t.boolean "is_default", default: false
     t.string "name", null: false
-    t.bigint "production_id", null: false
+    t.bigint "organization_id"
+    t.bigint "production_id"
     t.jsonb "rules", default: {}, null: false
     t.datetime "updated_at", null: false
+    t.index ["organization_id", "is_default"], name: "index_payout_schemes_on_organization_id_and_is_default"
+    t.index ["organization_id"], name: "index_payout_schemes_on_organization_id"
     t.index ["production_id", "is_default"], name: "index_payout_schemes_on_production_id_and_is_default"
     t.index ["production_id"], name: "index_payout_schemes_on_production_id"
   end
@@ -610,6 +673,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.string "casting_source", default: "talent_pool", null: false
     t.string "contact_email"
     t.datetime "created_at", null: false
+    t.boolean "default_attendance_enabled", default: false, null: false
+    t.boolean "default_signup_based_casting", default: false, null: false
     t.text "description"
     t.text "event_visibility_overrides"
     t.boolean "forum_enabled", default: true, null: false
@@ -852,10 +917,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.datetime "created_at", null: false
     t.text "notes"
     t.bigint "show_id", null: false
-    t.bigint "show_person_role_assignment_id", null: false
+    t.bigint "show_person_role_assignment_id"
+    t.bigint "sign_up_registration_id"
     t.string "status", default: "unknown", null: false
     t.datetime "updated_at", null: false
+    t.index ["show_id", "show_person_role_assignment_id"], name: "idx_attendance_by_assignment", unique: true, where: "(show_person_role_assignment_id IS NOT NULL)"
     t.index ["show_id", "show_person_role_assignment_id"], name: "idx_attendance_show_assignment", unique: true
+    t.index ["show_id", "sign_up_registration_id"], name: "idx_attendance_by_signup", unique: true, where: "(sign_up_registration_id IS NOT NULL)"
     t.index ["show_id"], name: "index_show_attendance_records_on_show_id"
     t.index ["show_person_role_assignment_id"], name: "idx_on_show_person_role_assignment_id_aacbb17773"
   end
@@ -994,6 +1062,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.boolean "is_online", default: false, null: false
     t.string "linkage_role"
     t.bigint "location_id"
+    t.text "notes"
     t.string "online_location_info"
     t.integer "production_id", null: false
     t.boolean "public_profile_visible"
@@ -1354,6 +1423,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
     t.bigint "default_person_id"
     t.string "email_address", null: false
     t.datetime "email_changed_at"
+    t.integer "included_production_ids", default: [], null: false, array: true
     t.datetime "invitation_sent_at"
     t.string "invitation_token"
     t.datetime "last_seen_at"
@@ -1394,6 +1464,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
   add_foreign_key "calendar_events", "shows"
   add_foreign_key "calendar_subscriptions", "people"
   add_foreign_key "cast_assignment_stages", "talent_pools"
+  add_foreign_key "casting_table_draft_assignments", "casting_tables"
+  add_foreign_key "casting_table_draft_assignments", "roles"
+  add_foreign_key "casting_table_draft_assignments", "shows"
+  add_foreign_key "casting_table_events", "casting_tables"
+  add_foreign_key "casting_table_events", "shows"
+  add_foreign_key "casting_table_members", "casting_tables"
+  add_foreign_key "casting_table_productions", "casting_tables"
+  add_foreign_key "casting_table_productions", "productions"
+  add_foreign_key "casting_tables", "organizations"
+  add_foreign_key "casting_tables", "users", column: "created_by_id"
+  add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "email_batches", "users"
   add_foreign_key "email_drafts", "shows"
   add_foreign_key "email_groups", "audition_cycles"
@@ -1409,6 +1490,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
   add_foreign_key "organization_roles", "organizations"
   add_foreign_key "organization_roles", "users"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "payout_schemes", "organizations"
   add_foreign_key "payout_schemes", "productions"
   add_foreign_key "people", "users"
   add_foreign_key "performance_credits", "performance_sections"
@@ -1440,6 +1522,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_174541) do
   add_foreign_key "shoutouts", "people", column: "author_id"
   add_foreign_key "show_attendance_records", "show_person_role_assignments"
   add_foreign_key "show_attendance_records", "shows"
+  add_foreign_key "show_attendance_records", "sign_up_registrations"
   add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_cast_notifications", "roles"
   add_foreign_key "show_cast_notifications", "shows"

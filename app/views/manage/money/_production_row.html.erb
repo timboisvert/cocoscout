@@ -1,0 +1,78 @@
+<%#
+  Money Production Row - Four Panel Layout
+
+  Required:
+    - summary: Hash with production summary data
+
+  Optional:
+    - link_path: Path to navigate to when clicking (defaults to financials)
+
+  Panels:
+    1. Production name and basic info
+    2. Gross Revenue
+    3. Direct Costs
+    4. Gross Profit
+%>
+
+<%
+  production = summary[:production]
+  gross_revenue = summary[:gross_revenue] || 0
+  cost_of_shows = (summary[:show_expenses] || 0) + (summary[:total_payouts] || 0)
+  gross_profit = gross_revenue - cost_of_shows
+  row_link_path = local_assigns[:link_path] || manage_money_production_financials_path(production)
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+  <%= link_to row_link_path, class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+
+      <%# Panel 1: Production Info %>
+      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+        <%# Production Logo or Initials %>
+        <% logo_variant = production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+            <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
+          </div>
+        <% else %>
+          <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+            <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
+          </div>
+        <% end %>
+
+        <%# Production Details %>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900"><%= production.name %></div>
+          <div class="text-sm text-gray-600">
+            <%= summary[:revenue_shows] %> revenue <%= "event".pluralize(summary[:revenue_shows]) %>
+          </div>
+        </div>
+      </div>
+
+      <%# Panel 2: Gross Revenue %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Revenue</div>
+        <div class="text-sm font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></div>
+      </div>
+
+      <%# Panel 3: Direct Costs %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Direct Costs</div>
+        <% if cost_of_shows > 0 %>
+          <div class="text-sm font-medium text-red-600"><%= number_to_currency(cost_of_shows) %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">$0.00</div>
+        <% end %>
+      </div>
+
+      <%# Panel 4: Gross Profit %>
+      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Gross Profit</div>
+        <div class="text-sm font-medium <%= gross_profit >= 0 ? 'text-green-600' : 'text-red-600' %>">
+          <%= number_to_currency(gross_profit) %>
+        </div>
+      </div>
+
+    </div>
+  <% end %>
+</div>

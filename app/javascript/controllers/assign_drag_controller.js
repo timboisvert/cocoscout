@@ -150,21 +150,21 @@ export default class extends Controller {
         const url = new URL(window.location.href)
         const pathParts = url.pathname.split("/")
 
-        // Path is like /manage/productions/:prod_id/sign-ups/:form_id/assign
-        const productionIndex = pathParts.indexOf("productions")
-        const signUpsIndex = pathParts.indexOf("sign-ups")
+        // Path is like /manage/signups/forms/:prod_id/:form_id/assign
+        const signupsIndex = pathParts.indexOf("signups")
+        const formsIndex = pathParts.indexOf("forms")
 
-        if (productionIndex === -1 || signUpsIndex === -1) {
+        if (signupsIndex === -1 || formsIndex === -1) {
             console.error("Could not parse URL for assign action")
             return
         }
 
-        const productionId = pathParts[productionIndex + 1]
-        const formId = pathParts[signUpsIndex + 1]
+        const productionId = pathParts[formsIndex + 1]
+        const formId = pathParts[formsIndex + 2]
         const instanceId = url.searchParams.get("instance_id")
 
         // Build the assign URL
-        let assignUrl = `/manage/productions/${productionId}/sign-ups/${formId}/assign_registration/${registrationId}?slot_id=${slotId}`
+        let assignUrl = `/manage/signups/forms/${productionId}/${formId}/assign_registration/${registrationId}?slot_id=${slotId}`
         if (instanceId) {
             assignUrl += `&instance_id=${instanceId}`
         }

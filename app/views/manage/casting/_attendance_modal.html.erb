@@ -9,7 +9,7 @@
 
 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
      data-controller="attendance-modal"
-     data-attendance-modal-update-url-value="<%= update_attendance_manage_production_show_path(show.production, show) %>">
+     data-attendance-modal-update-url-value="<%= update_manage_attendance_show_path(show.production, show) %>">
   <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" data-action="click->attendance-modal#stopPropagation">
     <%# Header %>
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -19,7 +19,7 @@
           <%= show.event_type.humanize %> · <%= show.date_and_time.strftime("%B %d, %Y at %I:%M %p") %>
         </p>
       </div>
-      <%= link_to edit_manage_production_show_path(show.production, show), class: "text-gray-400 hover:text-gray-600 transition-colors" do %>
+      <%= link_to manage_edit_show_path(show.production, show), class: "text-gray-400 hover:text-gray-600 transition-colors" do %>
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -126,7 +126,7 @@
         </button>
       </div>
       <div class="flex items-center gap-2">
-        <%= link_to "Cancel", edit_manage_production_show_path(show.production, show),
+        <%= link_to "Cancel", manage_edit_show_path(show.production, show),
                     class: "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" %>
         <button type="button"
                 data-action="click->attendance-modal#save"

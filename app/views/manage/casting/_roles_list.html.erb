@@ -50,7 +50,7 @@
   # Hash keyed by [role_id, assignable_type, assignable_id]
   cancelled_vacancies_by_assignment = local_assigns[:cancelled_vacancies_by_assignment] || @cancelled_vacancies_by_assignment || {}
 
-  # Click-to-add mode for Manual Entry or Hybrid casting
+  # Click-to-add mode - always enabled for all casting modes
   click_to_add = local_assigns[:click_to_add] || false
 
   # Manual mode flag for differentiating slot text
@@ -67,10 +67,10 @@
     <div class="text-sm text-gray-500">
       <% if using_custom_roles %>
         No custom roles defined for this event yet.
-        <%= link_to "Manage Custom Roles", edit_manage_production_show_path(production, show, anchor: "tab-3"), class: "text-pink-500 underline" %>
+        <%= link_to "Manage Custom Roles", manage_edit_show_path(production, show, anchor: "tab-3"), class: "text-pink-500 underline" %>
       <% else %>
         You haven't added any roles to this production yet.
-        <%= link_to "Add Roles", "#{manage_production_casting_settings_path(production)}#tab-1", class: "text-pink-500 underline" %>
+        <%= link_to "Add Roles", "#{manage_casting_settings_path(production)}#tab-1", class: "text-pink-500 underline" %>
       <% end %>
     </div>
   <% end %>
@@ -472,7 +472,7 @@
                             </div>
                             <p class="text-xs text-amber-600 mt-0.5">
                               <span class="hidden md:inline">Drag a talent pool member here, or</span>
-                              <%= link_to "find a replacement", manage_production_vacancy_path(production, slot_vacancy), class: "underline hover:text-amber-800" %>
+                              <%= link_to "find a replacement", manage_casting_vacancy_path(production, slot_vacancy), class: "underline hover:text-amber-800" %>
                             </p>
                           </div>
                         </div>

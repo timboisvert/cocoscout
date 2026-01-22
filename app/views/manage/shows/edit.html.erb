@@ -4,21 +4,12 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-       ["Shows & Events", manage_production_shows_path(@production)]
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)]
     ],
     text: @show.date_and_time.strftime("%A, %B %-d, %Y"),
     links: []
   } %>
-
-  <%= render "shared/help_section",
-    title: "Editing Shows & Events",
-    initial_state: "closed",
-    storage_key: "shows_edit_help_collapsed",
-    steps: [
-      { text: "<strong>Event Type:</strong> You can change the event type (show, rehearsal, meeting, etc.) after creation." },
-      { text: "<strong>Recurring Events:</strong> For recurring series, you can update properties on all events at once, or optionally change the schedule (which recreates the series)." },
-      { text: "<strong>Optional Settings:</strong> Update the secondary name, change the poster image, or modify notes as needed." }
-    ] %>
 
 <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
 
@@ -26,10 +17,11 @@
   <nav class="flex space-x-2 border-b border-gray-200 mt-6 mb-4 overflow-x-auto">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Schedule</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Poster & Links</button>
-    <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Linked Events</button>
-    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-    <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Notes</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Poster & Links</button>
+    <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Linked Events</button>
+    <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+    <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
   </nav>
 
   <!-- Tab 1: Basic Information -->
@@ -259,7 +251,17 @@
         </div>
   </div>
 
-  <!-- Tab 3: Poster & Links -->
+  <!-- Tab 3: Notes -->
+  <div data-tabs-target="panel" class="hidden">
+    <%= form.label :notes, "Event Notes" %>
+    <p class="text-sm text-gray-500 mb-2">Add notes specific to this event that cast and production team can see (e.g., "We'll have a family in the audience celebrating their daughter's birthday" or "Bring your own water bottles")</p>
+    <%= form.text_area :notes,
+        placeholder: "Add notes for this event...",
+        rows: 6,
+        class: "w-full shadow-sm rounded-lg border border-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+  </div>
+
+  <!-- Tab 4: Poster & Links -->
   <div data-tabs-target="panel" class="hidden">
         <% if @show.poster.attached? && @show.poster.blob&.persisted? %>
           <div class="text-md flex items-center">
@@ -434,7 +436,7 @@
                   variant: "danger",
                   size: "medium",
                   icon: "trash",
-                  path: cancel_manage_production_show_path(@production, @show) %>
+                  path: manage_cancel_show_form_path(@production, @show) %>
             </div>
           </div>
         </div>
@@ -499,12 +501,8 @@
         </div>
       </div>
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-        <button type="button"
-                data-action="click->show-actions#closeMoveModal"
-                class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-          Cancel
-        </button>
-        <%= form_with url: transfer_manage_production_show_path(@production, @show), method: :patch, data: { show_actions_target: "moveForm" } do |f| %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->show-actions#closeMoveModal" } %>
+        <%= form_with url: manage_transfer_show_path(@production, @show), method: :patch, data: { show_actions_target: "moveForm" } do |f| %>
           <%= f.hidden_field :target_production_id, value: "", data: { show_actions_target: "targetProductionId" } %>
           <%= render "shared/button", text: "Move #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, disabled: true, data: { show_actions_target: "moveButton" } %>
         <% end %>

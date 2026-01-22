@@ -1,0 +1,87 @@
+<%= render layout: "manage/show_wizard/wizard_layout", locals: { current_step: 5, step_name: "Review" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review and create</h2>
+  <p class="text-gray-600 mb-6">Please review your event details before creating.</p>
+
+  <div class="space-y-4">
+    <!-- Event Type -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Event Type</p>
+        <p class="text-base text-gray-900"><%= @wizard_state[:event_type]&.titleize %></p>
+      </div>
+      <%= link_to "Edit", manage_shows_wizard_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Schedule -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Schedule</p>
+        <% if @wizard_state[:event_frequency] == "recurring" %>
+          <p class="text-base text-gray-900">
+            Recurring: <%= @wizard_state[:recurrence_pattern]&.titleize&.gsub("_", " ") %>
+          </p>
+          <p class="text-sm text-gray-600">
+            Starting <%= Time.zone.parse(@wizard_state[:recurrence_start_datetime])&.strftime("%B %-d, %Y at %-I:%M %p") rescue @wizard_state[:recurrence_start_datetime] %>
+          </p>
+        <% else %>
+          <% datetime = @wizard_state[:date_and_time].is_a?(String) ? Time.zone.parse(@wizard_state[:date_and_time]) : @wizard_state[:date_and_time] rescue nil %>
+          <p class="text-base text-gray-900"><%= datetime&.strftime("%B %-d, %Y at %-I:%M %p") || @wizard_state[:date_and_time] %></p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_shows_wizard_schedule_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Location -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Location</p>
+        <% if @wizard_state[:is_online] %>
+          <p class="text-base text-gray-900">Online</p>
+          <% if @wizard_state[:online_location_info].present? %>
+            <p class="text-sm text-gray-600"><%= @wizard_state[:online_location_info] %></p>
+          <% end %>
+        <% elsif @location %>
+          <p class="text-base text-gray-900"><%= @location.name %></p>
+          <% if @location.full_address.present? %>
+            <p class="text-sm text-gray-600"><%= @location.full_address %></p>
+          <% end %>
+        <% else %>
+          <p class="text-base text-gray-500">Not specified</p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_shows_wizard_location_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Details -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Details</p>
+        <% if @wizard_state[:secondary_name].present? %>
+          <p class="text-base text-gray-900"><%= @wizard_state[:secondary_name] %></p>
+        <% else %>
+          <p class="text-sm text-gray-500">No secondary name</p>
+        <% end %>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <% if @wizard_state[:casting_enabled] %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Casting enabled</span>
+          <% else %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Casting disabled</span>
+          <% end %>
+          <% if @wizard_state[:public_profile_visible] %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Public</span>
+          <% end %>
+        </div>
+      </div>
+      <%= link_to "Edit", manage_shows_wizard_details_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+  </div>
+
+  <%= form_with url: manage_shows_wizard_create_path(@production), method: :post, local: true do |form| %>
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_shows_wizard_details_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: (@wizard_state[:event_frequency] == "recurring" ? "Create Recurring Events" : "Create Show"), variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

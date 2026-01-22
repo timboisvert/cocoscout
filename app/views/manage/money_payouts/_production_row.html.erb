@@ -1,0 +1,76 @@
+<%#
+  Money Payouts Production Row - Three Panel Layout
+
+  Required:
+    - summary: Hash with production payout summary data
+
+  Optional:
+    - link_path: Path to navigate to when clicking (defaults to payouts for this production)
+
+  Panels:
+    1. Production name and basic info
+    2. Awaiting Payout
+    3. Total Paid
+%>
+
+<%
+  production = summary[:production]
+  awaiting_payout = summary[:awaiting_payout_amount] || 0
+  awaiting_count = summary[:awaiting_payout_count] || 0
+  paid_amount = summary[:paid_amount] || 0
+  paid_count = summary[:paid_count] || 0
+  row_link_path = local_assigns[:link_path] || manage_money_production_payouts_path(production)
+%>
+
+<div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+  <%= link_to row_link_path, class: "block" do %>
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+
+      <%# Panel 1: Production Info %>
+      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+        <%# Production Logo or Initials %>
+        <% logo_variant = production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+          <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+            <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
+          </div>
+        <% else %>
+          <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+            <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
+          </div>
+        <% end %>
+
+        <%# Production Details %>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900"><%= production.name %></div>
+          <div class="text-sm text-gray-600">
+            <%= summary[:revenue_shows] %> revenue <%= "event".pluralize(summary[:revenue_shows]) %>
+          </div>
+        </div>
+      </div>
+
+      <%# Panel 2: Awaiting Payout %>
+      <div class="w-full lg:w-1/3 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Awaiting Payout</div>
+        <% if awaiting_payout > 0 %>
+          <div class="text-sm font-medium text-pink-600"><%= number_to_currency(awaiting_payout) %></div>
+          <div class="text-xs text-gray-500"><%= awaiting_count %> <%= "show".pluralize(awaiting_count) %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">$0.00</div>
+        <% end %>
+      </div>
+
+      <%# Panel 3: Total Paid %>
+      <div class="w-full lg:w-1/3 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Total Paid</div>
+        <% if paid_amount > 0 %>
+          <div class="text-sm font-medium text-green-600"><%= number_to_currency(paid_amount) %></div>
+          <div class="text-xs text-gray-500"><%= paid_count %> <%= "show".pluralize(paid_count) %></div>
+        <% else %>
+          <div class="text-sm text-gray-400">$0.00</div>
+        <% end %>
+      </div>
+
+    </div>
+  <% end %>
+</div>

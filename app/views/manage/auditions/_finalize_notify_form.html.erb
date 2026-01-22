@@ -9,7 +9,7 @@
   <% # Filter staged_casts to only those with people %>
   <% staged_casts_with_people = staged_casts.select { |tp| cast_people_by_pool[tp.id].present? } %>
 
-  <%= form_with url: finalize_and_notify_manage_production_signups_auditions_cycle_path(@production, audition_cycle), method: :post, local: true do |f| %>
+  <%= form_with url: manage_finalize_and_notify_signups_auditions_cycle_path(@production, audition_cycle), method: :post, local: true do |f| %>
     <div class="mt-6" data-controller="tabs">
       <h4 class="text-lg font-semibold text-gray-900 mb-4">Email Notifications</h4>
 

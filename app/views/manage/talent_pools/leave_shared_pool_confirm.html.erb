@@ -3,7 +3,7 @@
     <div class="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white mx-4">
       <div class="flex items-center justify-between pb-3 border-b border-gray-200">
         <h3 class="text-lg font-semibold text-gray-900">Leave Shared Pool</h3>
-        <%= link_to manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+        <%= link_to manage_casting_settings_path(@production, anchor: "talent-pool"),
             class: "text-gray-400 hover:text-gray-600 cursor-pointer",
             data: { turbo_frame: "_top" } do %>
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,11 +33,11 @@
 
         <div class="flex justify-end gap-2 mt-6">
           <%= link_to "Cancel",
-              manage_production_casting_settings_path(@production, anchor: "talent-pool"),
+              manage_casting_settings_path(@production, anchor: "talent-pool"),
               class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900",
               data: { turbo_frame: "_top" } %>
           <%= button_to "Leave Shared Pool",
-              leave_shared_pool_manage_production_talent_pools_path(@production),
+              manage_casting_talent_pool_leave_shared_pool_path(@production),
               method: :post,
               class: "px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-md cursor-pointer",
               data: { turbo_frame: "_top" } %>

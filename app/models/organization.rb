@@ -3,10 +3,12 @@
 class Organization < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :productions, dependent: :destroy
+  has_many :payout_schemes, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
   has_many :organization_roles, dependent: :destroy
   has_many :users, through: :organization_roles
   has_many :locations, dependent: :destroy
+  has_many :casting_tables, dependent: :destroy
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
 

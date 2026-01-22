@@ -4,9 +4,10 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)],
-      ["Prepare", prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)],
+      ["Prepare", manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
     text: "Manage Audition Sessions",
     links: []
@@ -59,7 +60,7 @@
                 text: "Delete",
                 variant: "danger",
                 size: "small",
-                path: manage_production_signups_auditions_cycle_session_path(@production, @audition_cycle, session),
+                path: manage_signups_auditions_cycle_session_path(@production, @audition_cycle, session),
                 method: :delete,
                 data: {
                   turbo_confirm: "Are you sure you want to delete this session?"

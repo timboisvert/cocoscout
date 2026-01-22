@@ -1,0 +1,39 @@
+<%= render layout: "manage/show_wizard/wizard_layout", locals: { current_step: 1, step_name: "Type" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What kind of event?</h2>
+  <p class="text-gray-600 mb-6">Choose the type of event you're scheduling.</p>
+
+  <%= form_with url: manage_shows_wizard_save_event_type_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": @wizard_state[:event_type] } do |form| %>
+    <div class="space-y-3">
+      <% EventTypes.for_select.each do |label, value| %>
+        <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:event_type] == value ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300"
+             data-option-select-target="option"
+             data-value="<%= value %>"
+             data-action="click->option-select#select">
+          <input type="radio" name="event_type" value="<%= value %>"
+                 <%= "checked" if @wizard_state[:event_type] == value %>
+                 class="sr-only"
+                 data-option-select-target="input">
+          <p class="font-medium text-gray-900"><%= label %></p>
+          <p class="text-sm text-gray-500 mt-1">
+            <% case value %>
+            <% when "show" %>
+              A performance for an audience
+            <% when "rehearsal" %>
+              Practice session for cast members
+            <% when "meeting" %>
+              Team meeting or planning session
+            <% when "class" %>
+              Educational or training session
+            <% when "workshop" %>
+              Interactive learning or creation session
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

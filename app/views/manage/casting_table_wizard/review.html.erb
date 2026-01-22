@@ -1,0 +1,128 @@
+<% content_for :title, "Create Casting Table - Review" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      ["Casting Tables", manage_casting_tables_path]
+    ],
+    text: "Create Casting Table",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-8">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline">Productions</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-pink-500"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline">Events</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-pink-500"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline">Members</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-pink-500"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">4</div>
+          <span class="ml-2 text-sm font-medium text-pink-600 hidden sm:inline">Review</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review Your Casting Table</h2>
+      <p class="text-gray-600 mb-6">Confirm the details below, then create your casting table to start assigning roles.</p>
+
+      <%= form_with url: manage_casting_tables_create_path, method: :post, local: true do |form| %>
+        
+        <!-- Name -->
+        <div class="mb-6">
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <%= form.text_field :name, value: @default_name, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-base p-3", placeholder: "e.g., January 2026 Casting" %>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="space-y-4">
+          <!-- Productions -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-semibold text-gray-700">Productions</h4>
+              <%= link_to "Edit", manage_casting_tables_new_path, class: "text-xs text-pink-600 hover:text-pink-700" %>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <% @productions.each do |production| %>
+                <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                  <%= production.name %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Events -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-semibold text-gray-700">Events (<%= @shows.count %>)</h4>
+              <%= link_to "Edit", manage_casting_tables_events_path, class: "text-xs text-pink-600 hover:text-pink-700" %>
+            </div>
+            <div class="space-y-1 max-h-32 overflow-y-auto">
+              <% @shows.each do |show| %>
+                <p class="text-sm text-gray-600">
+                  <%= show.date_and_time.strftime("%a, %b %-d at %-I:%M %p") %>
+                  <span class="text-gray-400">· <%= show.production.name %></span>
+                </p>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Members -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-semibold text-gray-700">
+                Members (<%= @people.count + @groups.count %>)
+              </h4>
+              <%= link_to "Edit", manage_casting_tables_members_path, class: "text-xs text-pink-600 hover:text-pink-700" %>
+            </div>
+            <div class="flex flex-wrap gap-1">
+              <% (@people + @groups).each do |member| %>
+                <% headshot = member.safe_headshot_variant(:thumb) %>
+                <% if headshot %>
+                  <%= image_tag headshot, alt: member.name, class: "w-8 h-8 rounded-lg object-cover", title: member.name %>
+                <% else %>
+                  <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center" title="<%= member.name %>">
+                    <span class="text-xs font-medium text-gray-500"><%= member.initials[0..1] %></span>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 flex justify-between">
+          <%= link_to "Back", manage_casting_tables_members_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" %>
+          <%= render "shared/button", text: "Create Casting Table", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

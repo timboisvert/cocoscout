@@ -65,14 +65,14 @@ module Manage
         people_to_email = @production.effective_talent_pool.people.to_a
       else
         if person_ids.empty?
-          redirect_to manage_production_communications_path(@production), alert: "Please select at least one recipient."
+          redirect_to manage_communications_production_path(@production), alert: "Please select at least one recipient."
           return
         end
         people_to_email = @production.effective_talent_pool.people.where(id: person_ids).to_a
       end
 
       if people_to_email.empty?
-        redirect_to manage_production_communications_path(@production), alert: "No valid recipients found."
+        redirect_to manage_communications_production_path(@production), alert: "No valid recipients found."
         return
       end
 
@@ -102,7 +102,7 @@ module Manage
         ).deliver_later
       end
 
-      redirect_to manage_production_communications_path(@production),
+      redirect_to manage_communications_production_path(@production),
                   notice: "Message sent to #{people_to_email.count} #{'recipient'.pluralize(people_to_email.count)}."
     end
 

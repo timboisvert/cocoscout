@@ -90,7 +90,7 @@
 
     <% if is_revenue_event %>
       <%# Panel 3: Financials (revenue events) %>
-      <%= link_to manage_production_money_show_financials_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors flex flex-col justify-center" do %>
+      <%= link_to manage_money_show_financials_path(show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors flex flex-col justify-center" do %>
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1">
           Financials
           <% if data_confirmed %>
@@ -108,7 +108,7 @@
       <% end %>
 
       <%# Panel 4: Payout Status (revenue events) %>
-      <%= link_to manage_production_money_show_payout_path(production, show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
+      <%= link_to manage_money_show_payout_path(show), class: "w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1">
           Payout
           <% if payout_status == :paid %>
@@ -128,7 +128,7 @@
       <%# Single panel for non-revenue events %>
       <% if is_overridden_non_revenue %>
         <%# Was marked as non-revenue - can be undone %>
-        <%= button_to manage_production_unmark_non_revenue_money_show_financials_path(production, show),
+        <%= button_to manage_unmark_non_revenue_money_show_financials_path(show),
             method: :post,
             class: "w-full lg:w-1/2 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center text-left cursor-pointer",
             form: { data: { turbo_confirm: "Restore this as a revenue event?" } } do %>
@@ -142,7 +142,7 @@
         <% end %>
       <% else %>
         <%# Naturally non-revenue event type - can add financial data if needed %>
-        <%= link_to manage_production_money_show_financials_path(production, show), class: "w-full lg:w-1/2 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
+        <%= link_to manage_money_show_financials_path(show), class: "w-full lg:w-1/2 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 hover:bg-gray-50 transition-colors rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center" do %>
           <div class="flex items-center gap-2">
             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>

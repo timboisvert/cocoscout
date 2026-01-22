@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casting_path(@production)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)]
     ],
     text: @show.date_and_time.strftime("%A, %b %d, %Y"),
     links: []
@@ -21,9 +22,9 @@
       # Determine casting source mode - use show's effective source (respects show-level override)
       casting_source = @show.effective_casting_source
       is_manual_mode = casting_source == "manual"
-      is_hybrid_mode = casting_source == "hybrid"
-      show_talent_pool_panel = !is_manual_mode # Show for talent_pool, sign_up, or hybrid modes
-      show_click_to_add = is_manual_mode || is_hybrid_mode
+      show_talent_pool_panel = !is_manual_mode # Show for talent_pool or sign_up modes
+      # Talent pool now supports click-to-add (formerly hybrid-only behavior)
+      show_click_to_add = true # Always show click-to-add for all modes
     %>
     <div data-controller="drop-role"
          data-drop-role-show-id-value="<%= @show.id %>"
@@ -104,7 +105,7 @@
                         text: "Sync Now",
                         variant: "primary",
                         size: "small",
-                        path: manage_production_copy_cast_to_linked_path(@production, show_id: @show.id),
+                        path: manage_casting_show_copy_to_linked_path(@production, show_id: @show.id),
                         method: :post,
                         data: { turbo_confirm: "This will copy this event's roles and cast to all #{@linked_shows.count} linked events, replacing their current roles and assignments. Continue?" } %>
                   <% end %>
@@ -157,6 +158,92 @@
           click_to_add: show_click_to_add,
           is_manual_mode: is_manual_mode
         } %>
+
+        <%# Sign-up Attendees Box %>
+        <% if @sign_up_registrations.any? %>
+          <%
+            # Calculate total capacity from sign-up form instances
+            total_capacity = @show.sign_up_form_instances.sum { |instance| instance.total_capacity }
+            attendee_count = @sign_up_registrations.count
+            # Get sign-up form for linking
+            first_sign_up_form = @sign_up_registrations.first&.sign_up_form
+          %>
+          <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div class="p-3">
+              <div class="flex flex-col sm:grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 sm:items-center">
+                <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
+                  Attendees
+                  <span class="text-xs px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700">
+                    <%= attendee_count %>/<%= total_capacity %>
+                  </span>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <% @sign_up_registrations.each do |registration| %>
+                    <%
+                      person = registration.person
+                      slot = registration.sign_up_slot
+                      sign_up_form = registration.sign_up_form
+                      tooltip_text = registration_slot_tooltip(registration)
+
+                      display_name = person&.name || registration.guest_name || "Guest"
+                    %>
+                    <% if person %>
+                      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                      <% if headshot_variant %>
+                        <% if sign_up_form %>
+                          <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                            <%= image_tag headshot_variant,
+                                alt: display_name,
+                                class: "w-10 h-10 rounded-md object-cover hover:ring-2 hover:ring-pink-300 transition-all",
+                                data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                          <% end %>
+                        <% else %>
+                          <%= image_tag headshot_variant,
+                              alt: display_name,
+                              class: "w-10 h-10 rounded-md object-cover",
+                              data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                        <% end %>
+                      <% else %>
+                        <% if sign_up_form %>
+                          <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                            <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 hover:ring-2 hover:ring-pink-300 transition-all flex items-center justify-center font-bold text-xs"
+                                 data-controller="tooltip"
+                                 data-tooltip-text="<%= tooltip_text %>">
+                              <%= person.initials %>
+                            </div>
+                          <% end %>
+                        <% else %>
+                          <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                               data-controller="tooltip"
+                               data-tooltip-text="<%= tooltip_text %>">
+                            <%= person.initials %>
+                          </div>
+                        <% end %>
+                      <% end %>
+                    <% else %>
+                      <% if sign_up_form %>
+                        <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                          <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 hover:ring-2 hover:ring-pink-300 transition-all flex items-center justify-center font-bold text-xs"
+                               data-controller="tooltip"
+                               data-tooltip-text="<%= tooltip_text %>">
+                            <%= registration.display_initials %>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                             data-controller="tooltip"
+                             data-tooltip-text="<%= tooltip_text %>">
+                          <%= registration.display_initials %>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
 
       <% if show_talent_pool_panel %>
@@ -170,11 +257,11 @@
             is_linked = @show.linked?
             linked_count = is_linked ? @linked_shows.count : 0
           %>
-          <div class="p-4 border-b border-gray-200" data-controller="cast-filter" data-cast-filter-is-linked-value="<%= is_linked %>" data-cast-filter-linked-count-value="<%= linked_count %>">
+          <div class="px-4 pt-4 <%= @restricted_roles.any? ? 'pb-4 border-b border-gray-200' : 'pb-0' %>" data-controller="cast-filter" data-cast-filter-is-linked-value="<%= is_linked %>" data-cast-filter-linked-count-value="<%= linked_count %>">
             <!-- Availability Filter -->
             <% if is_linked && linked_count > 0 %>
               <%# Linked shows: Show Fully Available / Partially Available / All filters %>
-              <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+              <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
                 {
                   filters: [
                     {
@@ -209,7 +296,7 @@
               ] %>
             <% else %>
               <%# Non-linked shows: Show Available / All filters %>
-              <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+              <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
                 {
                   filters: [
                     {
@@ -475,10 +562,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="button" data-action="click->drop-role#addGuestFromModal"
-                    class="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-md cursor-pointer">
-              Add Guest
-            </button>
+            <%= render "shared/button", text: "Add Guest", variant: "primary", type: :button, data: { action: "click->drop-role#addGuestFromModal" } %>
           </div>
         </div>
 
@@ -525,14 +609,8 @@
         </div>
 
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button type="button" data-action="click->drop-role#closeRestrictedWarningModal"
-                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md cursor-pointer">
-            Cancel
-          </button>
-          <button type="button" data-action="click->drop-role#confirmRestrictedAssignment"
-                  class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-md cursor-pointer">
-            Assign Anyway
-          </button>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->drop-role#closeRestrictedWarningModal" } %>
+          <%= render "shared/button", text: "Assign Anyway", variant: "primary", type: :button, data: { action: "click->drop-role#confirmRestrictedAssignment" } %>
         </div>
 
         <input type="hidden" data-drop-role-target="restrictedWarningRoleId">
@@ -596,10 +674,7 @@
         </div>
 
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button type="button" data-action="click->drop-role#closeReplaceModal"
-                  class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md cursor-pointer">
-            Cancel
-          </button>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->drop-role#closeReplaceModal" } %>
         </div>
 
         <input type="hidden" data-drop-role-target="replaceRoleId">

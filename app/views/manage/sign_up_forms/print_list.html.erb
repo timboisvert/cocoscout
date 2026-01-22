@@ -12,7 +12,7 @@
         <select onchange="window.location.href=this.value" class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
           <% @instances.each do |instance| %>
             <% next unless instance.show %>
-            <option value="<%= print_list_manage_production_signups_form_path(@production, @sign_up_form, instance_id: instance.id) %>"
+            <option value="<%= manage_print_list_signups_form_path(@production, @sign_up_form, instance_id: instance.id) %>"
                     <%= 'selected' if instance.id == @current_instance&.id %>>
               <%= instance.show.date_and_time.strftime("%b %-d, %Y - %-I:%M %p") %>
             </option>

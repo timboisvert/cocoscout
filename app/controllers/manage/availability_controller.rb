@@ -131,7 +131,7 @@ module Manage
         availability.save
       end
 
-      redirect_to manage_production_availability_path(@production, @show), notice: "Availability updated"
+      redirect_to manage_casting_availability_path(@production, @show), notice: "Availability updated"
     end
 
     private

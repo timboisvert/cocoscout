@@ -32,10 +32,11 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)],
-      ["Run Auditions", run_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)],
-      [audition_session.start_at.strftime("%b %-d, %Y at %-l:%M %p"), manage_production_signups_auditions_cycle_session_path(@production, @audition_cycle, audition_session)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)],
+      ["Run Auditions", manage_run_signups_auditions_cycle_path(@production, @audition_cycle)],
+      [audition_session.start_at.strftime("%b %-d, %Y at %-l:%M %p"), manage_signups_auditions_cycle_session_path(@production, @audition_cycle, audition_session)]
     ],
     text: auditionable&.name&.truncate(40, omission: "...") || "Audition",
     links: []
@@ -376,7 +377,7 @@
 
   <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
        data-controller="vote-form"
-       data-vote-form-save-url-value="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>">
+       data-vote-form-save-url-value="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>">
     <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Should this <%= auditionable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?</h3>
     </div>
@@ -386,7 +387,7 @@
         <!-- Previous button -->
         <div class="flex-shrink-0">
           <% if prev_audition %>
-            <%= link_to manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, prev_audition),
+            <%= link_to manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, prev_audition),
                 class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
                 data: { action: "click->vote-form#navigateWithSave" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -409,7 +410,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="yes"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>👍</span>
             <span class="opacity-75"><%= vote_counts[:yes] %></span>
@@ -420,7 +421,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="no"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>👎</span>
             <span class="opacity-75"><%= vote_counts[:no] %></span>
@@ -431,7 +432,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="maybe"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>🤔</span>
             <span class="opacity-75"><%= vote_counts[:maybe] %></span>
@@ -441,7 +442,7 @@
         <!-- Next button on mobile -->
         <div class="flex-shrink-0 sm:hidden">
           <% if next_audition %>
-            <%= link_to manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
+            <%= link_to manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
                 class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
                 data: { action: "click->vote-form#navigateWithSave" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -467,7 +468,7 @@
                class="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
         <button type="button"
                 data-action="click->vote-form#submitComment"
-                data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                 class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
           Save
         </button>
@@ -486,7 +487,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="yes"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>Yes</span>
             <span class="opacity-75">(<%= vote_counts[:yes] %>)</span>
@@ -497,7 +498,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="no"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>No</span>
             <span class="opacity-75">(<%= vote_counts[:no] %>)</span>
@@ -508,7 +509,7 @@
           <button type="button"
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="maybe"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap w-32 <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
             <span>Not Sure</span>
             <span class="opacity-75">(<%= vote_counts[:maybe] %>)</span>
@@ -526,7 +527,7 @@
                  class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
           <button type="button"
                   data-action="click->vote-form#submitComment"
-                  data-vote-form-url-param="<%= cast_vote_manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
+                  data-vote-form-url-param="<%= cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, @audition) %>"
                   class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
             Save
           </button>
@@ -539,7 +540,7 @@
       <!-- Next button - desktop only -->
       <div class="hidden sm:block flex-shrink-0">
         <% if next_audition %>
-          <%= link_to manage_production_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
+          <%= link_to manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition_session, next_audition),
               class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all nav-preserve-tab",
               data: { action: "click->vote-form#navigateWithSave" } do %>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">

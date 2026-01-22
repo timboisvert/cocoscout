@@ -1,0 +1,141 @@
+<%#
+  Attendance Modal - Attendance tracking with walk-in support
+  Can be included on sign-up pages, show pages, or casting pages
+
+  Parameters:
+    - show: The Show object
+    - production: The Production object
+    - variant: Button style - "secondary" (default gray) or "primary" (pink)
+%>
+<%
+  button_variant = local_assigns[:variant] || "secondary"
+%>
+<div data-controller="attendance-modal"
+     data-attendance-modal-show-id-value="<%= show.id %>"
+     data-attendance-modal-production-id-value="<%= production.id %>"
+     data-attendance-modal-attendance-url-value="<%= manage_attendance_show_path(production, show, format: :json) %>"
+     data-attendance-modal-update-url-value="<%= manage_update_attendance_show_path(production, show) %>"
+     data-attendance-modal-create-walkin-url-value="<%= manage_create_walkin_show_path(production, show, format: :json) %>">
+
+  <%# Trigger Button %>
+  <%= render "shared/button",
+      text: "Take Attendance",
+      variant: button_variant,
+      size: "small",
+      type: :button,
+      data: { action: "click->attendance-modal#openModal" } %>
+
+  <%# Modal %>
+  <div data-attendance-modal-target="modal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       data-action="click->attendance-modal#closeModal">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+         data-action="click->attendance-modal#stopPropagation">
+
+      <%# Header with title %>
+      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <h2 class="text-xl font-semibold text-gray-900">Attendance</h2>
+        <button type="button"
+                data-action="click->attendance-modal#closeModal"
+                class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <%# Show Row %>
+      <div class="border-b border-gray-200 px-6 py-3 bg-gray-50 flex-shrink-0">
+        <%= render "shared/show_row", show: show %>
+      </div>
+
+      <%# Content Area - Split between attendance list and walk-in form %>
+      <div class="flex-1 overflow-hidden flex flex-col">
+        <%# Attendance List %>
+        <div class="flex-1 overflow-y-auto px-6 py-4">
+          <%# Loading state %>
+          <div data-attendance-modal-target="loading" class="py-12 text-center">
+            <svg class="animate-spin h-8 w-8 mx-auto text-pink-500" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gray-500 mt-3 text-sm">Loading attendance...</p>
+          </div>
+
+          <%# Empty state %>
+          <div data-attendance-modal-target="emptyState" class="hidden py-12 text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+            </div>
+            <p class="text-gray-600 font-medium">No cast members yet</p>
+            <p class="text-gray-400 text-sm mt-1">Add cast members to track attendance</p>
+          </div>
+
+          <%# Person list (populated by JS) %>
+          <div data-attendance-modal-target="list" class="hidden space-y-3"></div>
+        </div>
+
+        <%# Walk-in Form Section %>
+        <div class="border-t border-gray-200 bg-gray-50 px-6 py-4 space-y-3">
+          <%= render "shared/button",
+              text: "Add a walk-in",
+              variant: "secondary",
+              size: "small",
+              type: :button,
+              data: { action: "click->attendance-modal#toggleWalkinForm" } %>
+
+          <div data-attendance-modal-target="walkinForm" class="hidden space-y-2">
+            <div class="flex gap-2">
+              <input type="email"
+                     data-attendance-modal-target="walkinEmailInput"
+                     placeholder="Email"
+                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
+              <input type="text"
+                     data-attendance-modal-target="walkinNameInput"
+                     placeholder="Name (if new)"
+                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
+              <%= render "shared/button",
+                  text: "Add",
+                  variant: "primary",
+                  size: "small",
+                  type: :button,
+                  data: { action: "click->attendance-modal#addWalkin" } %>
+            </div>
+            <div data-attendance-modal-target="walkinList" class="space-y-2"></div>
+            <div class="pt-2">
+              <%= render "shared/button",
+                  text: "Submit Walk-ins",
+                  variant: "primary",
+                  size: "small",
+                  type: :button,
+                  data: { action: "click->attendance-modal#submitWalkins" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Footer with controls %>
+      <div class="bg-gray-50 border-t border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+        <div class="text-sm text-gray-600">
+          <span data-attendance-modal-target="presentCount">0</span> / <span data-attendance-modal-target="totalCount">0</span> present
+        </div>
+        <div class="flex gap-2">
+          <%= render "shared/button",
+              text: "Mark All Present",
+              variant: "secondary",
+              size: "small",
+              type: :button,
+              data: { action: "click->attendance-modal#markAllPresent" } %>
+          <%= render "shared/button",
+              text: "Done",
+              variant: "primary",
+              size: "small",
+              type: :button,
+              data: { action: "click->attendance-modal#closeModal" } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

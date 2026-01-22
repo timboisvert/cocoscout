@@ -1,13 +1,19 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["statusButtons", "presentCount", "absentCount", "lateCount", "excusedCount"]
-    static values = { updateUrl: String }
+    static targets = ["modal", "list", "loading", "emptyState", "presentCount", "totalCount", "walkinForm", "walkinNameInput", "walkinEmailInput", "walkinList"]
+    static values = {
+        showId: Number,
+        productionId: Number,
+        attendanceUrl: String,
+        updateUrl: String,
+        createWalkinUrl: String
+    }
 
     connect() {
-        this.pendingChanges = {}
         this.boundHandleKeydown = this.handleKeydown.bind(this)
         document.addEventListener("keydown", this.boundHandleKeydown)
+        this.walkinRecords = []
     }
 
     disconnect() {
@@ -15,8 +21,25 @@ export default class extends Controller {
     }
 
     handleKeydown(event) {
-        if (event.key === "Escape") {
-            window.history.back()
+        if (event.key === "Escape" && this.hasModalTarget && !this.modalTarget.classList.contains("hidden")) {
+            this.closeModal()
+        }
+    }
+
+    async openModal(event) {
+        if (event) event.preventDefault()
+        if (this.hasModalTarget) {
+            this.modalTarget.classList.remove("hidden")
+            document.body.classList.add("overflow-hidden")
+            this.walkinRecords = []
+            await this.loadAttendance()
+        }
+    }
+
+    closeModal() {
+        if (this.hasModalTarget) {
+            this.modalTarget.classList.add("hidden")
+            document.body.classList.remove("overflow-hidden")
         }
     }
 
@@ -24,96 +47,239 @@ export default class extends Controller {
         event.stopPropagation()
     }
 
+    toggleWalkinForm() {
+        if (this.hasWalkinFormTarget) {
+            this.walkinFormTarget.classList.toggle("hidden")
+        }
+    }
+
+    addWalkin() {
+        const nameInput = this.walkinNameInputTarget
+        const emailInput = this.walkinEmailInputTarget
+        const email = emailInput?.value?.trim()
+        const name = nameInput?.value?.trim()
+
+        if (!email) {
+            alert("Please enter an email")
+            return
+        }
+
+        const walkinRecord = {
+            id: `walkin_${Date.now()}_${Math.random()}`,
+            name: name || email.split("@")[0],
+            email,
+            initials: this.getInitials(name || email)
+        }
+
+        this.walkinRecords.push(walkinRecord)
+
+        if (nameInput) nameInput.value = ""
+        if (emailInput) emailInput.value = ""
+
+        this.renderWalkinList()
+        this.updateCounts()
+    }
+
+    renderWalkinList() {
+        if (!this.hasWalkinListTarget) return
+
+        this.walkinListTarget.innerHTML = this.walkinRecords
+            .map(record => this.renderWalkinRow(record))
+            .join("")
+    }
+
+    renderWalkinRow(record) {
+        return `
+      <div class="flex items-center justify-between py-2 px-3 bg-white border border-gray-200 rounded-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
+            ${record.initials}
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900">${record.name}</p>
+            <p class="text-xs text-gray-500">${record.email}</p>
+          </div>
+        </div>
+        <button type="button"
+                data-action="click->attendance-modal#removeWalkin"
+                data-walkin-id="${record.id}"
+                class="text-gray-400 hover:text-red-500 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `
+    }
+
+    removeWalkin(event) {
+        const walkinId = event.target.closest("button").dataset.walkinId
+        this.walkinRecords = this.walkinRecords.filter(r => r.id !== walkinId)
+        this.renderWalkinList()
+        this.updateCounts()
+    }
+
+    async submitWalkins(event) {
+        if (this.walkinRecords.length === 0) {
+            alert("No walk-ins to submit")
+            return
+        }
+
+        const submitButton = event.target.closest("button")
+        submitButton.disabled = true
+        submitButton.textContent = "Submitting..."
+
+        try {
+            for (const walkin of this.walkinRecords) {
+                const response = await fetch(this.createWalkinUrlValue, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": this.csrfToken
+                    },
+                    body: JSON.stringify({
+                        name: walkin.name,
+                        email: walkin.email
+                    })
+                })
+
+                if (!response.ok) {
+                    console.error(`Failed to create walk-in: ${walkin.name}`)
+                    alert(`Failed to create walk-in for ${walkin.name}`)
+                    submitButton.disabled = false
+                    submitButton.textContent = "Submit Walk-ins"
+                    return
+                }
+            }
+
+            this.walkinRecords = []
+            this.renderWalkinList()
+            this.updateCounts()
+            this.walkinFormTarget.classList.add("hidden")
+            await this.loadAttendance()
+
+            submitButton.disabled = false
+            submitButton.textContent = "Submit Walk-ins"
+            alert("Walk-ins added successfully!")
+        } catch (error) {
+            console.error("Failed to submit walk-ins:", error)
+            alert("Failed to submit walk-ins")
+            submitButton.disabled = false
+            submitButton.textContent = "Submit Walk-ins"
+        }
+    }
+
     get csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content
     }
 
-    setStatus(event) {
-        const button = event.currentTarget
-        const status = button.dataset.status
-        const container = button.closest('[data-attendance-modal-target="statusButtons"]')
-        const assignmentId = container.dataset.assignmentId
+    async loadAttendance() {
+        if (!this.hasAttendanceUrlValue) return
 
-        // Update button styling
-        container.querySelectorAll('button').forEach(btn => {
-            const btnStatus = btn.dataset.status
-            btn.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'text-white')
-            btn.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-300')
+        this.showLoading()
 
-            if (btn === button) {
-                btn.classList.remove('bg-white', 'text-gray-600', 'border-gray-300')
-                btn.classList.add('text-white')
-                switch (btnStatus) {
-                    case 'present': btn.classList.add('bg-green-500'); break
-                    case 'absent': btn.classList.add('bg-red-500'); break
-                    case 'late': btn.classList.add('bg-yellow-500'); break
-                    case 'excused': btn.classList.add('bg-blue-500'); break
+        try {
+            const response = await fetch(this.attendanceUrlValue, {
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRF-Token": this.csrfToken
                 }
-            }
-        })
-
-        // Track the change
-        this.pendingChanges[assignmentId] = status
-        this.updateCounts()
-    }
-
-    markAllPresent() {
-        this.statusButtonsTargets.forEach(container => {
-            const presentBtn = container.querySelector('[data-status="present"]')
-            if (presentBtn) {
-                presentBtn.click()
-            }
-        })
-    }
-
-    clearAll() {
-        this.statusButtonsTargets.forEach(container => {
-            const assignmentId = container.dataset.assignmentId
-            container.querySelectorAll('button').forEach(btn => {
-                btn.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'text-white')
-                btn.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-300')
             })
-            this.pendingChanges[assignmentId] = 'unknown'
-        })
+
+            if (response.ok) {
+                const data = await response.json()
+                this.renderAttendance(data.records)
+            } else {
+                console.error("Failed to load attendance")
+                this.showEmptyState()
+            }
+        } catch (error) {
+            console.error("Failed to load attendance:", error)
+            this.showEmptyState()
+        }
+    }
+
+    showLoading() {
+        if (this.hasLoadingTarget) this.loadingTarget.classList.remove("hidden")
+        if (this.hasListTarget) this.listTarget.classList.add("hidden")
+        if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.add("hidden")
+    }
+
+    showEmptyState() {
+        if (this.hasLoadingTarget) this.loadingTarget.classList.add("hidden")
+        if (this.hasListTarget) this.listTarget.classList.add("hidden")
+        if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.remove("hidden")
+    }
+
+    renderAttendance(records) {
+        if (this.hasLoadingTarget) this.loadingTarget.classList.add("hidden")
+
+        if (!records || records.length === 0) {
+            this.showEmptyState()
+            return
+        }
+
+        if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.add("hidden")
+        if (this.hasListTarget) {
+            this.listTarget.classList.remove("hidden")
+            this.listTarget.innerHTML = records.map(record => this.renderPersonRow(record)).join("")
+        }
+
         this.updateCounts()
+    }
+
+    renderPersonRow(record) {
+        const person = record.person
+        const isPresent = record.record?.status === "present"
+        const assignmentId = record.assignment.id
+        const name = person?.name || "Unknown"
+        const roleName = record.assignment?.role?.name || ""
+        const headshotUrl = person?.headshot_url
+        const initials = person?.initials || name.charAt(0).toUpperCase()
+
+        const headshotHtml = headshotUrl
+            ? `<img src="${headshotUrl}" alt="${name}" class="w-10 h-10 object-cover rounded-lg">`
+            : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">${initials}</div>`
+
+        return `
+      <div class="flex items-center justify-between py-3 px-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+        <div class="flex items-center gap-3">
+          ${headshotHtml}
+          <div>
+            <p class="text-sm font-medium text-gray-900">${name}</p>
+            ${roleName ? `<p class="text-xs text-gray-500">${roleName}</p>` : ""}
+          </div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox"
+                 ${isPresent ? "checked" : ""}
+                 data-assignment-id="${assignmentId}"
+                 data-action="change->attendance-modal#togglePresent"
+                 class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+        </label>
+      </div>
+    `
     }
 
     updateCounts() {
-        let present = 0, absent = 0, late = 0, excused = 0
+        if (!this.hasListTarget) return
 
-        this.statusButtonsTargets.forEach(container => {
-            const selectedBtn = container.querySelector('.bg-green-500, .bg-red-500, .bg-yellow-500, .bg-blue-500')
-            if (selectedBtn) {
-                const status = selectedBtn.dataset.status
-                switch (status) {
-                    case 'present': present++; break
-                    case 'absent': absent++; break
-                    case 'late': late++; break
-                    case 'excused': excused++; break
-                }
-            }
-        })
+        const checkboxes = this.listTarget.querySelectorAll('input[type="checkbox"]')
+        const total = checkboxes.length + this.walkinRecords.length
+        const present = Array.from(checkboxes).filter(cb => cb.checked).length + this.walkinRecords.length
 
         if (this.hasPresentCountTarget) this.presentCountTarget.textContent = present
-        if (this.hasAbsentCountTarget) this.absentCountTarget.textContent = absent
-        if (this.hasLateCountTarget) this.lateCountTarget.textContent = late
-        if (this.hasExcusedCountTarget) this.excusedCountTarget.textContent = excused
+        if (this.hasTotalCountTarget) this.totalCountTarget.textContent = total
     }
 
-    async save() {
-        if (!this.hasUpdateUrlValue) return
+    async togglePresent(event) {
+        const checkbox = event.target
+        const assignmentId = checkbox.dataset.assignmentId
+        const status = checkbox.checked ? "present" : "absent"
 
-        // Collect all current statuses
-        const attendance = {}
-        this.statusButtonsTargets.forEach(container => {
-            const assignmentId = container.dataset.assignmentId
-            const selectedBtn = container.querySelector('.bg-green-500, .bg-red-500, .bg-yellow-500, .bg-blue-500')
-            if (selectedBtn) {
-                attendance[assignmentId] = selectedBtn.dataset.status
-            } else {
-                attendance[assignmentId] = 'unknown'
-            }
-        })
+        if (!this.hasUpdateUrlValue) return
 
         try {
             const response = await fetch(this.updateUrlValue, {
@@ -123,19 +289,37 @@ export default class extends Controller {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": this.csrfToken
                 },
-                body: JSON.stringify({ attendance })
+                body: JSON.stringify({ attendance: { [assignmentId]: status } })
             })
 
             if (response.ok) {
-                // Redirect back to the show edit page
-                window.location.href = response.url || document.referrer
+                this.updateCounts()
             } else {
-                console.error("Failed to save attendance")
-                alert("Failed to save attendance. Please try again.")
+                checkbox.checked = !checkbox.checked
+                console.error("Failed to update attendance")
             }
         } catch (error) {
-            console.error("Failed to save attendance:", error)
-            alert("Failed to save attendance. Please try again.")
+            checkbox.checked = !checkbox.checked
+            console.error("Failed to update attendance:", error)
         }
+    }
+
+    markAllPresent() {
+        if (!this.hasListTarget) return
+
+        const checkboxes = this.listTarget.querySelectorAll('input[type="checkbox"]:not(:checked)')
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }))
+        })
+    }
+
+    getInitials(name) {
+        return name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(part => part[0].toUpperCase())
+            .join("")
     }
 }

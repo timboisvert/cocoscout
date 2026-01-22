@@ -2,12 +2,37 @@
 
 module Manage
   class SignUpFormWizardController < Manage::ManageController
-    before_action :set_production
-    before_action :check_production_access
+    before_action :set_production, except: [ :select_production, :save_production_selection ]
+    before_action :check_production_access, except: [ :select_production, :save_production_selection ]
     before_action :ensure_user_is_manager
-    before_action :load_wizard_state
+    before_action :load_wizard_state, except: [ :select_production, :save_production_selection ]
 
     helper_method :generate_default_name
+
+    # Step 0: Select Production (when entering from org-level)
+    def select_production
+      @productions = Current.organization.productions.order(:name)
+    end
+
+    def save_production_selection
+      production_id = params[:production_id]
+
+      if production_id.blank?
+        flash.now[:alert] = "Please select a production"
+        @productions = Current.organization.productions.order(:name)
+        render :select_production, status: :unprocessable_entity and return
+      end
+
+      production = Current.organization.productions.find_by(id: production_id)
+      unless production
+        flash.now[:alert] = "Production not found"
+        @productions = Current.organization.productions.order(:name)
+        render :select_production, status: :unprocessable_entity and return
+      end
+
+      # Redirect to the production-level wizard
+      redirect_to manage_signups_forms_wizard_path(production)
+    end
 
     # Step 1: Scope - What type of sign-up form?
     def scope
@@ -26,9 +51,9 @@ module Manage
 
       # If single_event or repeated, go to events selection; shared_pool skips to slots
       if @wizard_state[:scope] == "shared_pool"
-        redirect_to manage_production_signups_forms_wizard_slots_path(@production)
+        redirect_to manage_signups_forms_wizard_slots_path(@production)
       else
-        redirect_to manage_production_signups_forms_wizard_events_path(@production)
+        redirect_to manage_signups_forms_wizard_events_path(@production)
       end
     end
 
@@ -36,7 +61,7 @@ module Manage
     def events
       # Skip this step for shared_pool
       if @wizard_state[:scope] == "shared_pool"
-        redirect_to manage_production_signups_forms_wizard_slots_path(@production)
+        redirect_to manage_signups_forms_wizard_slots_path(@production)
         return
       end
 
@@ -72,7 +97,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_production_signups_forms_wizard_slots_path(@production)
+      redirect_to manage_signups_forms_wizard_slots_path(@production)
     end
 
     # Step 3: Slots & Capacity - How are registration slots structured?
@@ -132,7 +157,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_production_signups_forms_wizard_rules_path(@production)
+      redirect_to manage_signups_forms_wizard_rules_path(@production)
     end
 
     # Step 4: Rules - Registration limits, editing, cancellation
@@ -218,7 +243,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_production_signups_forms_wizard_schedule_path(@production)
+      redirect_to manage_signups_forms_wizard_schedule_path(@production)
     end
 
     # Step 5: Schedule - When does registration open/close?
@@ -275,7 +300,7 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_production_signups_forms_wizard_notifications_path(@production)
+      redirect_to manage_signups_forms_wizard_notifications_path(@production)
     end
 
     # Step 6: Notifications - Notify team when someone registers?
@@ -287,7 +312,7 @@ module Manage
       @wizard_state[:notify_on_registration] = params[:notify_on_registration] == "1"
 
       save_wizard_state
-      redirect_to manage_production_signups_forms_wizard_review_path(@production)
+      redirect_to manage_signups_forms_wizard_review_path(@production)
     end
 
     # Step 7: Review - Summary of all settings
@@ -401,7 +426,7 @@ module Manage
           end
 
           clear_wizard_state
-          redirect_to manage_production_signups_form_path(@production, @sign_up_form, just_created: true)
+          redirect_to manage_signups_form_path(@production, @sign_up_form, just_created: true)
         else
           flash.now[:alert] = @sign_up_form.errors.full_messages.to_sentence
           render :review, status: :unprocessable_entity
@@ -412,7 +437,7 @@ module Manage
     # Cancel wizard
     def cancel
       clear_wizard_state
-      redirect_to manage_production_signups_forms_path(@production)
+      redirect_to manage_signups_forms_path(@production)
     end
 
     private

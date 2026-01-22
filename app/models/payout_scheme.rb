@@ -4,15 +4,41 @@ class PayoutScheme < ApplicationRecord
   # Distribution methods
   DISTRIBUTION_METHODS = %w[equal shares per_ticket per_ticket_guaranteed flat_fee no_pay].freeze
 
-  belongs_to :production
+  belongs_to :organization, optional: true
+  belongs_to :production, optional: true
 
   has_many :show_payouts, dependent: :nullify
 
   validates :name, presence: true
-  validates :name, uniqueness: { scope: :production_id }
   validates :rules, presence: true
+  validate :must_have_organization_or_production
+  validates :name, uniqueness: { scope: :organization_id }, if: -> { organization_id.present? && production_id.blank? }
+  validates :name, uniqueness: { scope: :production_id }, if: -> { production_id.present? }
 
   scope :default_first, -> { order(is_default: :desc, created_at: :asc) }
+  scope :organization_level, -> { where(production_id: nil) }
+  scope :production_level, -> { where.not(production_id: nil) }
+  scope :for_organization, ->(org) { where(organization: org) }
+
+  # Check if this is an organization-level scheme (not tied to a specific production)
+  def organization_level?
+    production_id.blank?
+  end
+
+  # Check if this is a production-specific scheme
+  def production_level?
+    production_id.present?
+  end
+
+  private
+
+  def must_have_organization_or_production
+    if organization_id.blank? && production_id.blank?
+      errors.add(:base, "must belong to either an organization or a production")
+    end
+  end
+
+  public
 
   # Preset templates for quick setup
   PRESETS = {
@@ -91,25 +117,48 @@ class PayoutScheme < ApplicationRecord
     }
   }.freeze
 
-  def self.create_from_preset(production, preset_key)
+  # Create a scheme from preset for a production (legacy) or organization
+  def self.create_from_preset(owner, preset_key)
     preset = PRESETS[preset_key.to_sym]
     return nil unless preset
 
-    production.payout_schemes.create(
-      name: preset[:name],
-      description: preset[:description],
-      rules: preset[:rules]
-    )
+    if owner.is_a?(Organization)
+      PayoutScheme.create(
+        organization: owner,
+        name: preset[:name],
+        description: preset[:description],
+        rules: preset[:rules]
+      )
+    else
+      # Legacy production-level support
+      PayoutScheme.create(
+        production: owner,
+        organization: owner.organization,
+        name: preset[:name],
+        description: preset[:description],
+        rules: preset[:rules]
+      )
+    end
   end
 
   def self.preset_options
     PRESETS.map { |key, preset| [ preset[:name], key ] }
   end
 
-  # Mark this scheme as the default (unmark others)
+  # Mark this scheme as the default (unmark others in the same scope)
   def make_default!
     transaction do
-      production.payout_schemes.where.not(id: id).update_all(is_default: false)
+      if organization_level?
+        # Organization-level: unmark other org-level defaults in same org
+        PayoutScheme.where(organization_id: organization_id, production_id: nil)
+                    .where.not(id: id)
+                    .update_all(is_default: false)
+      else
+        # Production-level: unmark other production defaults
+        PayoutScheme.where(production_id: production_id)
+                    .where.not(id: id)
+                    .update_all(is_default: false)
+      end
       update!(is_default: true)
     end
   end

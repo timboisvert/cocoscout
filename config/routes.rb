@@ -235,11 +235,385 @@ Rails.application.routes.draw do
     get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
+    # Shows & Events - org-level (aggregates all productions)
+    get  "/shows",              to: "org_shows#index", as: "shows"
+    get  "/shows/calendar",     to: "org_shows#calendar", as: "shows_calendar"
+    get  "/shows/new",          to: "show_wizard#select_production", as: "shows_new_wizard"
+    post "/shows/new",          to: "show_wizard#save_production_selection", as: "shows_save_production_selection"
+
+    # Shows > Wizard (production-level)
+    get  "/shows/:production_id/wizard", to: "show_wizard#event_type", as: "shows_wizard"
+    post "/shows/:production_id/wizard/event_type", to: "show_wizard#save_event_type", as: "shows_wizard_save_event_type"
+    get  "/shows/:production_id/wizard/schedule", to: "show_wizard#schedule", as: "shows_wizard_schedule"
+    post "/shows/:production_id/wizard/schedule", to: "show_wizard#save_schedule", as: "shows_wizard_save_schedule"
+    get  "/shows/:production_id/wizard/location", to: "show_wizard#location", as: "shows_wizard_location"
+    post "/shows/:production_id/wizard/location", to: "show_wizard#save_location", as: "shows_wizard_save_location"
+    get  "/shows/:production_id/wizard/details", to: "show_wizard#details", as: "shows_wizard_details"
+    post "/shows/:production_id/wizard/details", to: "show_wizard#save_details", as: "shows_wizard_save_details"
+    get  "/shows/:production_id/wizard/review", to: "show_wizard#review", as: "shows_wizard_review"
+    post "/shows/:production_id/wizard/create", to: "show_wizard#create_show", as: "shows_wizard_create"
+    delete "/shows/:production_id/wizard/cancel", to: "show_wizard#cancel", as: "shows_wizard_cancel"
+
+    # Shows - production-level (new URL pattern: /manage/shows/:production_id)
+    get  "/shows/:production_id",          to: "shows#index", as: "production_shows"
+    get  "/shows/:production_id/calendar", to: "shows#calendar", as: "production_shows_calendar"
+    get  "/shows/:production_id/:id",      to: "shows#show", as: "show"
+    get  "/shows/:production_id/:id/edit", to: "shows#edit", as: "edit_show"
+    patch "/shows/:production_id/:id",     to: "shows#update", as: "update_show"
+    delete "/shows/:production_id/:id",    to: "shows#destroy"
+    get "/shows/:production_id/:id/cancel", to: "shows#cancel", as: "cancel_show_form"
+    patch "/shows/:production_id/:id/cancel_show", to: "shows#cancel_show", as: "cancel_show"
+    delete "/shows/:production_id/:id/delete_show", to: "shows#delete_show", as: "delete_show"
+    patch "/shows/:production_id/:id/uncancel", to: "shows#uncancel", as: "uncancel_show"
+    post "/shows/:production_id/:id/link_show", to: "shows#link_show", as: "link_show"
+    delete "/shows/:production_id/:id/unlink_show", to: "shows#unlink_show", as: "unlink_show"
+    delete "/shows/:production_id/:id/delete_linkage", to: "shows#delete_linkage", as: "delete_linkage_show"
+    post "/shows/:production_id/:id/toggle_signup_based_casting", to: "shows#toggle_signup_based_casting", as: "toggle_signup_based_casting_show"
+    post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
+    get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
+    patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"
+    post "/shows/:production_id/:id/create_walkin", to: "shows#create_walkin", as: "create_walkin_show"
+    patch "/shows/:production_id/:id/transfer", to: "shows#transfer", as: "transfer_show"
+
+    # Shows > Show Roles (custom roles per show)
+    get  "/shows/:production_id/:show_id/roles", to: "show_roles#index", as: "show_roles"
+    post "/shows/:production_id/:show_id/roles", to: "show_roles#create", as: "create_show_role"
+    patch "/shows/:production_id/:show_id/roles/:id", to: "show_roles#update", as: "update_show_role"
+    delete "/shows/:production_id/:show_id/roles/:id", to: "show_roles#destroy", as: "destroy_show_role"
+    post "/shows/:production_id/:show_id/roles/reorder", to: "show_roles#reorder", as: "reorder_show_roles"
+    post "/shows/:production_id/:show_id/roles/copy_from_production", to: "show_roles#copy_from_production", as: "copy_from_production_show_roles"
+    get  "/shows/:production_id/:show_id/roles/talent_pool_members", to: "show_roles#talent_pool_members", as: "talent_pool_members_show_roles"
+    get  "/shows/:production_id/:show_id/roles/check_assignments", to: "show_roles#check_assignments", as: "check_assignments_show_roles"
+    post "/shows/:production_id/:show_id/roles/clear_assignments", to: "show_roles#clear_assignments", as: "clear_assignments_show_roles"
+    post "/shows/:production_id/:show_id/roles/toggle_custom_roles", to: "show_roles#toggle_custom_roles", as: "toggle_custom_roles_show_roles"
+    get  "/shows/:production_id/:show_id/roles/migration_preview", to: "show_roles#migration_preview", as: "migration_preview_show_roles"
+    post "/shows/:production_id/:show_id/roles/execute_migration", to: "show_roles#execute_migration", as: "execute_migration_show_roles"
+    get  "/shows/:production_id/:show_id/roles/:id/slot_change_preview", to: "show_roles#slot_change_preview", as: "slot_change_preview_show_role"
+    post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
+
+    # Visual Assets (production-level)
+    get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
+    get  "/shows/:production_id/visual_assets/new_poster", to: "visual_assets#new_poster", as: "new_poster_production_visual_asset"
+    post "/shows/:production_id/visual_assets/create_poster", to: "visual_assets#create_poster", as: "create_poster_production_visual_asset"
+    get  "/shows/:production_id/visual_assets/new_logo", to: "visual_assets#new_logo", as: "new_logo_production_visual_asset"
+    post "/shows/:production_id/visual_assets/create_logo", to: "visual_assets#create_logo", as: "create_logo_production_visual_asset"
+    get  "/shows/:production_id/visual_assets/:id/edit_poster", to: "visual_assets#edit_poster", as: "edit_poster_production_visual_asset"
+    patch "/shows/:production_id/visual_assets/:id/update_poster", to: "visual_assets#update_poster", as: "update_poster_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/:id/destroy_poster", to: "visual_assets#destroy_poster", as: "destroy_poster_production_visual_asset"
+    patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
+    get "/shows/:production_id/visual_assets/:id/edit_logo", to: "visual_assets#edit_logo", as: "edit_logo_production_visual_asset"
+    patch "/shows/:production_id/visual_assets/:id/update_logo", to: "visual_assets#update_logo", as: "update_logo_production_visual_asset"
+
+    # Sign-ups - org-level (aggregates all productions)
+    get  "/signups",            to: "org_signups#index", as: "signups"
+    get  "/signups/forms",      to: "org_sign_up_forms#index", as: "signups_all_forms"
+    get  "/signups/auditions",  to: "org_auditions#index", as: "signups_all_auditions"
+
+    # Sign-ups - org-level wizards (production selection first)
+    get  "/signups/forms/new",       to: "sign_up_form_wizard#select_production", as: "signups_forms_new_wizard"
+    post "/signups/forms/new",       to: "sign_up_form_wizard#save_production_selection", as: "signups_forms_save_production_selection"
+    get  "/signups/auditions/new",   to: "audition_cycle_wizard#select_production", as: "signups_auditions_new_wizard"
+    post "/signups/auditions/new",   to: "audition_cycle_wizard#save_production_selection", as: "signups_auditions_save_production_selection"
+
+    # Sign-ups - production-level (new URL pattern: /manage/signups/:production_id)
+    get  "/signups/:production_id", to: "signups#index", as: "signups_production"
+
+    # Sign-ups > Forms - production-level (new URL pattern: /manage/signups/forms/:production_id)
+    get  "/signups/forms/:production_id", to: "sign_up_forms#index", as: "signups_forms"
+    get  "/signups/forms/:production_id/archived", to: "sign_up_forms#archived", as: "signups_forms_archived"
+    get  "/signups/forms/:production_id/new", to: "sign_up_forms#new", as: "new_signups_form"
+    post "/signups/forms/:production_id", to: "sign_up_forms#create", as: "create_signups_form"
+    get  "/signups/forms/:production_id/:id", to: "sign_up_forms#show", as: "signups_form"
+    get  "/signups/forms/:production_id/:id/edit", to: "sign_up_forms#edit", as: "edit_signups_form"
+    patch "/signups/forms/:production_id/:id", to: "sign_up_forms#update", as: "update_signups_form"
+    delete "/signups/forms/:production_id/:id", to: "sign_up_forms#destroy", as: "destroy_signups_form"
+    get "/signups/forms/:production_id/:id/settings", to: "sign_up_forms#settings", as: "settings_signups_form"
+    patch "/signups/forms/:production_id/:id/update_settings", to: "sign_up_forms#update_settings", as: "update_settings_signups_form"
+    get  "/signups/forms/:production_id/:id/preview", to: "sign_up_forms#preview", as: "preview_signups_form"
+    get  "/signups/forms/:production_id/:id/print_list", to: "sign_up_forms#print_list", as: "print_list_signups_form"
+    get  "/signups/forms/:production_id/:id/assign", to: "sign_up_forms#assign", as: "assign_signups_form"
+    patch "/signups/forms/:production_id/:id/toggle_active", to: "sign_up_forms#toggle_active", as: "toggle_active_signups_form"
+    patch "/signups/forms/:production_id/:id/archive", to: "sign_up_forms#archive", as: "archive_signups_form"
+    patch "/signups/forms/:production_id/:id/unarchive", to: "sign_up_forms#unarchive", as: "unarchive_signups_form"
+    patch "/signups/forms/:production_id/:id/transfer", to: "sign_up_forms#transfer", as: "transfer_signups_form"
+    get "/signups/forms/:production_id/:id/confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes_signups_form"
+    patch "/signups/forms/:production_id/:id/apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes_signups_form"
+    get "/signups/forms/:production_id/:id/confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes_signups_form"
+    patch "/signups/forms/:production_id/:id/apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes_signups_form"
+    post "/signups/forms/:production_id/:id/create_slot", to: "sign_up_forms#create_slot", as: "create_slot_signups_form"
+    patch "/signups/forms/:production_id/:id/update_slot/:slot_id", to: "sign_up_forms#update_slot", as: "update_slot_signups_form"
+    delete "/signups/forms/:production_id/:id/destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot", as: "destroy_slot_signups_form"
+    post "/signups/forms/:production_id/:id/reorder_slots", to: "sign_up_forms#reorder_slots", as: "reorder_slots_signups_form"
+    post "/signups/forms/:production_id/:id/generate_slots", to: "sign_up_forms#generate_slots", as: "generate_slots_signups_form"
+    patch "/signups/forms/:production_id/:id/toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold_signups_form"
+    get  "/signups/forms/:production_id/:id/holdouts", to: "sign_up_forms#holdouts", as: "holdouts_signups_form"
+    post "/signups/forms/:production_id/:id/create_holdout", to: "sign_up_forms#create_holdout", as: "create_holdout_signups_form"
+    delete "/signups/forms/:production_id/:id/destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout_signups_form"
+    post "/signups/forms/:production_id/:id/create_question", to: "sign_up_forms#create_question", as: "create_question_signups_form"
+    patch "/signups/forms/:production_id/:id/update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question_signups_form"
+    delete "/signups/forms/:production_id/:id/destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question_signups_form"
+    post "/signups/forms/:production_id/:id/reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions_signups_form"
+    post "/signups/forms/:production_id/:id/register", to: "sign_up_forms#register", as: "register_signups_form"
+    post "/signups/forms/:production_id/:id/register_to_queue", to: "sign_up_forms#register_to_queue", as: "register_to_queue_signups_form"
+    delete "/signups/forms/:production_id/:id/cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration_signups_form"
+    patch "/signups/forms/:production_id/:id/move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration_signups_form"
+    patch "/signups/forms/:production_id/:id/assign_registration/:registration_id", to: "sign_up_forms#assign_registration", as: "assign_registration_signups_form"
+    patch "/signups/forms/:production_id/:id/unassign_registration/:registration_id", to: "sign_up_forms#unassign_registration", as: "unassign_registration_signups_form"
+    post "/signups/forms/:production_id/:id/auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue_signups_form"
+    post "/signups/forms/:production_id/:id/auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one_signups_form"
+
+    # Sign-ups > Forms > Wizard
+    get  "/signups/forms/:production_id/wizard", to: "sign_up_form_wizard#scope", as: "signups_forms_wizard"
+    post "/signups/forms/:production_id/wizard/scope", to: "sign_up_form_wizard#save_scope", as: "signups_forms_wizard_save_scope"
+    get  "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#events", as: "signups_forms_wizard_events"
+    post "/signups/forms/:production_id/wizard/events", to: "sign_up_form_wizard#save_events", as: "signups_forms_wizard_save_events"
+    get  "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#slots", as: "signups_forms_wizard_slots"
+    post "/signups/forms/:production_id/wizard/slots", to: "sign_up_form_wizard#save_slots", as: "signups_forms_wizard_save_slots"
+    get  "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#rules", as: "signups_forms_wizard_rules"
+    post "/signups/forms/:production_id/wizard/rules", to: "sign_up_form_wizard#save_rules", as: "signups_forms_wizard_save_rules"
+    get  "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#schedule", as: "signups_forms_wizard_schedule"
+    post "/signups/forms/:production_id/wizard/schedule", to: "sign_up_form_wizard#save_schedule", as: "signups_forms_wizard_save_schedule"
+    get  "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#notifications", as: "signups_forms_wizard_notifications"
+    post "/signups/forms/:production_id/wizard/notifications", to: "sign_up_form_wizard#save_notifications", as: "signups_forms_wizard_save_notifications"
+    get  "/signups/forms/:production_id/wizard/review", to: "sign_up_form_wizard#review", as: "signups_forms_wizard_review"
+    post "/signups/forms/:production_id/wizard/create", to: "sign_up_form_wizard#create_form", as: "signups_forms_wizard_create"
+    delete "/signups/forms/:production_id/wizard/cancel", to: "sign_up_form_wizard#cancel", as: "signups_forms_wizard_cancel"
+
+    # Sign-ups > Auditions - production-level (new URL pattern: /manage/signups/auditions/:production_id)
+    get  "/signups/auditions/:production_id", to: "auditions#index", as: "signups_auditions"
+    get  "/signups/auditions/:production_id/archive", to: "auditions#archive", as: "signups_auditions_archive"
+
+    # Sign-ups > Auditions > Cycles (new URL pattern: /manage/signups/auditions/:production_id/:id)
+    get  "/signups/auditions/:production_id/:id", to: "audition_cycles#show", as: "signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/edit", to: "audition_cycles#edit", as: "edit_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id", to: "audition_cycles#update", as: "update_signups_auditions_cycle"
+    delete "/signups/auditions/:production_id/:id", to: "audition_cycles#destroy", as: "destroy_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/form", to: "audition_cycles#form", as: "form_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/preview", to: "audition_cycles#preview", as: "preview_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/create_question", to: "audition_cycles#create_question", as: "create_question_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/update_question/:question_id", to: "audition_cycles#update_question", as: "update_question_signups_auditions_cycle"
+    delete "/signups/auditions/:production_id/:id/destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/archive", to: "audition_cycles#archive", as: "archive_signups_auditions_cycle"
+    get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
+    get "/signups/auditions/:production_id/:id/prepare", to: "auditions#prepare", as: "prepare_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/update_reviewers", to: "auditions#update_reviewers", as: "update_reviewers_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/publicize", to: "auditions#publicize", as: "publicize_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/review", to: "auditions#review", as: "review_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/run", to: "auditions#run", as: "run_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/casting", to: "auditions#casting", as: "casting_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/casting/select", to: "auditions#casting_select", as: "casting_select_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment", as: "remove_from_cast_assignment_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify_signups_auditions_cycle"
+    post "/signups/auditions/:production_id/:id/finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations", as: "finalize_and_notify_invitations_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/schedule_auditions", to: "auditions#schedule_auditions", as: "schedule_auditions_signups_auditions_cycle"
+    get  "/signups/auditions/:production_id/:id/communicate", to: "auditions#communicate", as: "communicate_signups_auditions_cycle"
+
+    # Sign-ups > Auditions > Requests
+    get  "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#index", as: "signups_auditions_cycle_requests"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/new", to: "audition_requests#new", as: "new_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#create", as: "create_signups_auditions_cycle_request"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#show", as: "signups_auditions_cycle_request"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
+    patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
+    delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_video", to: "audition_requests#edit_video", as: "edit_video_signups_auditions_cycle_request"
+    patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_session_availability_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/:id/cast_vote", to: "audition_requests#cast_vote", as: "cast_vote_signups_auditions_cycle_request"
+    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/votes", to: "audition_requests#votes", as: "votes_signups_auditions_cycle_request"
+
+    # Sign-ups > Auditions > Sessions
+    get  "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#index", as: "signups_auditions_cycle_sessions"
+    get  "/signups/auditions/:production_id/:cycle_id/sessions/summary", to: "audition_sessions#summary", as: "signups_auditions_cycle_sessions_summary"
+    get  "/signups/auditions/:production_id/:cycle_id/sessions/new", to: "audition_sessions#new", as: "new_signups_auditions_cycle_session"
+    post "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#create", as: "create_signups_auditions_cycle_session"
+    get  "/signups/auditions/:production_id/:cycle_id/sessions/:id", to: "audition_sessions#show", as: "signups_auditions_cycle_session"
+    get  "/signups/auditions/:production_id/:cycle_id/sessions/:id/edit", to: "audition_sessions#edit", as: "edit_signups_auditions_cycle_session"
+    patch "/signups/auditions/:production_id/:cycle_id/sessions/:id", to: "audition_sessions#update", as: "update_signups_auditions_cycle_session"
+    delete "/signups/auditions/:production_id/:cycle_id/sessions/:id", to: "audition_sessions#destroy", as: "destroy_signups_auditions_cycle_session"
+
+    # Sign-ups > Auditions > Sessions > Auditions (individual audition slots)
+    get  "/signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id", to: "auditions#show", as: "signups_auditions_cycle_session_audition"
+    post "/signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id/cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote_signups_auditions_cycle_session_audition"
+
+    # Sign-ups > Auditions > Wizard
+    get  "/signups/auditions/:production_id/wizard", to: "audition_cycle_wizard#format", as: "signups_auditions_wizard"
+    post "/signups/auditions/:production_id/wizard/format", to: "audition_cycle_wizard#save_format", as: "signups_auditions_wizard_save_format"
+    get  "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#schedule", as: "signups_auditions_wizard_schedule"
+    post "/signups/auditions/:production_id/wizard/schedule", to: "audition_cycle_wizard#save_schedule", as: "signups_auditions_wizard_save_schedule"
+    get  "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#sessions", as: "signups_auditions_wizard_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions", to: "audition_cycle_wizard#save_sessions", as: "signups_auditions_wizard_save_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions/generate", to: "audition_cycle_wizard#generate_sessions", as: "signups_auditions_wizard_generate_sessions"
+    post "/signups/auditions/:production_id/wizard/sessions/add", to: "audition_cycle_wizard#add_session", as: "signups_auditions_wizard_add_session"
+    patch "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
+    delete "/signups/auditions/:production_id/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
+    get  "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#availability", as: "signups_auditions_wizard_availability"
+    post "/signups/auditions/:production_id/wizard/availability", to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
+    get  "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#reviewers", as: "signups_auditions_wizard_reviewers"
+    post "/signups/auditions/:production_id/wizard/reviewers", to: "audition_cycle_wizard#save_reviewers", as: "signups_auditions_wizard_save_reviewers"
+    get  "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#voting", as: "signups_auditions_wizard_voting"
+    post "/signups/auditions/:production_id/wizard/voting", to: "audition_cycle_wizard#save_voting", as: "signups_auditions_wizard_save_voting"
+    get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
+    post "/signups/auditions/:production_id/wizard/create", to: "audition_cycle_wizard#create_cycle", as: "signups_auditions_wizard_create"
+    delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
+
+    # Casting - org-level (aggregates all productions)
+    get  "/casting",            to: "org_casting#index", as: "casting"
+    get  "/casting/roles",      to: "org_roles#index", as: "casting_roles"
+    get  "/casting/talent-pools", to: "org_talent_pools#index", as: "casting_talent_pools"
+
+    # Casting Tables (org-level)
+    get  "/casting/tables",              to: "casting_tables#index", as: "casting_tables"
+    get  "/casting/tables/new",          to: "casting_table_wizard#productions", as: "casting_tables_new"
+    post "/casting/tables/new",          to: "casting_table_wizard#save_productions", as: "casting_tables_save_productions"
+    get  "/casting/tables/new/events",   to: "casting_table_wizard#events", as: "casting_tables_events"
+    post "/casting/tables/new/events",   to: "casting_table_wizard#save_events", as: "casting_tables_save_events"
+    get  "/casting/tables/new/members",  to: "casting_table_wizard#members", as: "casting_tables_members"
+    post "/casting/tables/new/members",  to: "casting_table_wizard#save_members", as: "casting_tables_save_members"
+    get  "/casting/tables/new/review",   to: "casting_table_wizard#review", as: "casting_tables_review"
+    post "/casting/tables/new/create",   to: "casting_table_wizard#create_table", as: "casting_tables_create"
+    delete "/casting/tables/new/cancel", to: "casting_table_wizard#cancel", as: "casting_tables_cancel"
+
+    # Casting Table (individual)
+    get   "/casting/tables/:id",           to: "casting_tables#show", as: "casting_table"
+    get   "/casting/tables/:id/edit",      to: "casting_tables#edit", as: "edit_casting_table"
+    patch "/casting/tables/:id",           to: "casting_tables#update", as: "update_casting_table"
+    post  "/casting/tables/:id/assign",    to: "casting_tables#assign", as: "casting_table_assign"
+    delete "/casting/tables/:id/unassign", to: "casting_tables#unassign", as: "casting_table_unassign"
+    get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"
+    post  "/casting/tables/:id/finalize",  to: "casting_tables#finalize", as: "casting_table_finalize"
+
+    # Casting - production-level (new URL pattern: /manage/casting/:production_id)
+    get  "/casting/:production_id", to: "casting#index", as: "casting_production"
+    get  "/casting/:production_id/settings", to: "casting_settings#show", as: "casting_settings"
+    patch "/casting/:production_id/settings", to: "casting_settings#update", as: "update_casting_settings"
+    get  "/casting/:production_id/settings/setup", to: "casting_settings#setup", as: "setup_casting_settings"
+    post "/casting/:production_id/settings/complete_setup", to: "casting_settings#complete_setup", as: "complete_setup_casting_settings"
+    get  "/casting/:production_id/search_people", to: "casting#search_people", as: "casting_search_people"
+
+    # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
+    get  "/casting/:production_id/availability", to: "casting_availability#index", as: "casting_availability"
+    get  "/casting/:production_id/availability/:id/show_modal", to: "casting_availability#show_modal", as: "show_modal_casting_availability"
+    patch "/casting/:production_id/availability/:id/update_show_availability", to: "casting_availability#update_show_availability", as: "update_show_availability_casting_availability"
+
+    # Casting > Roles
+    post "/casting/:production_id/roles", to: "roles#create", as: "create_casting_role"
+    patch "/casting/:production_id/roles/:id", to: "roles#update", as: "update_casting_role"
+    delete "/casting/:production_id/roles/:id", to: "roles#destroy", as: "destroy_casting_role"
+    post "/casting/:production_id/roles/reorder", to: "roles#reorder", as: "reorder_casting_roles"
+
+    # Casting > Talent Pools
+    get  "/casting/:production_id/talent-pools/members", to: "talent_pools#members", as: "casting_talent_pool_members"
+    get  "/casting/:production_id/talent-pools/search_people", to: "talent_pools#search_people", as: "casting_talent_pool_search_people"
+    post "/casting/:production_id/talent-pools/add_person", to: "talent_pools#add_person", as: "casting_talent_pool_add_person"
+    get  "/casting/:production_id/talent-pools/confirm-remove-person/:person_id", to: "talent_pools#confirm_remove_person", as: "casting_talent_pool_confirm_remove_person"
+    post "/casting/:production_id/talent-pools/remove_person", to: "talent_pools#remove_person", as: "casting_talent_pool_remove_person"
+    post "/casting/:production_id/talent-pools/add_group", to: "talent_pools#add_group", as: "casting_talent_pool_add_group"
+    get  "/casting/:production_id/talent-pools/confirm-remove-group/:group_id", to: "talent_pools#confirm_remove_group", as: "casting_talent_pool_confirm_remove_group"
+    post "/casting/:production_id/talent-pools/remove_group", to: "talent_pools#remove_group", as: "casting_talent_pool_remove_group"
+    get  "/casting/:production_id/talent-pools/upcoming_assignments/:id", to: "talent_pools#upcoming_assignments", as: "casting_talent_pool_upcoming_assignments"
+    patch "/casting/:production_id/talent-pools/update_shares", to: "talent_pools#update_shares", as: "casting_talent_pool_update_shares"
+    get  "/casting/:production_id/talent-pools/leave_shared_pool_confirm", to: "talent_pools#leave_shared_pool_confirm", as: "casting_talent_pool_leave_shared_pool_confirm"
+    post "/casting/:production_id/talent-pools/leave_shared_pool", to: "talent_pools#leave_shared_pool", as: "casting_talent_pool_leave_shared_pool"
+
+    # Casting > Shows (new URL pattern: /manage/casting/:production_id/:show_id)
+    get  "/casting/:production_id/:show_id/cast", to: "casting#show_cast", as: "casting_show_cast"
+    get  "/casting/:production_id/:show_id/contact", to: "casting#contact_cast", as: "casting_show_contact"
+    post "/casting/:production_id/:show_id/contact", to: "casting#send_cast_email", as: "casting_show_send_email"
+    post "/casting/:production_id/:show_id/assign_person_to_role", to: "casting#assign_person_to_role", as: "casting_show_assign_person"
+    post "/casting/:production_id/:show_id/assign_guest_to_role", to: "casting#assign_guest_to_role", as: "casting_show_assign_guest"
+    post "/casting/:production_id/:show_id/remove_person_from_role", to: "casting#remove_person_from_role", as: "casting_show_remove_person"
+    post "/casting/:production_id/:show_id/replace_assignment", to: "casting#replace_assignment", as: "casting_show_replace_assignment"
+    post "/casting/:production_id/:show_id/create_vacancy", to: "casting#create_vacancy", as: "casting_show_create_vacancy"
+    post "/casting/:production_id/:show_id/finalize", to: "casting#finalize_casting", as: "casting_show_finalize"
+    patch "/casting/:production_id/:show_id/reopen", to: "casting#reopen_casting", as: "casting_show_reopen"
+    post "/casting/:production_id/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "casting_show_copy_to_linked"
+
+    # Casting > Vacancies
+    get  "/casting/:production_id/vacancies/:id", to: "vacancies#show", as: "casting_vacancy"
+    post "/casting/:production_id/vacancies/:id/send_invitations", to: "vacancies#send_invitations", as: "send_invitations_casting_vacancy"
+    post "/casting/:production_id/vacancies/:id/cancel", to: "vacancies#cancel", as: "cancel_casting_vacancy"
+    post "/casting/:production_id/vacancies/:id/fill", to: "vacancies#fill", as: "fill_casting_vacancy"
+    post "/casting/:production_id/vacancies/:id/invitations/:invitation_id/resend", to: "vacancy_invitations#resend", as: "resend_casting_vacancy_invitation"
+
+    # Communications - org-level (aggregates all productions)
+    get  "/communications",     to: "org_communications#index", as: "communications"
+    get  "/communications/questionnaires", to: "org_questionnaires#index", as: "communications_all_questionnaires"
+    get  "/communications/questionnaires/new", to: "questionnaires#select_production", as: "communications_questionnaires_new_wizard"
+    post "/communications/questionnaires/new", to: "questionnaires#save_production_selection", as: "communications_questionnaires_save_production_selection"
+
+    # Communications - production-level (new URL pattern: /manage/communications/:production_id)
+    get  "/communications/:production_id", to: "communications#index", as: "communications_production"
+    get  "/communications/:production_id/:id", to: "communications#show", as: "communication"
+    post "/communications/:production_id/send_message", to: "communications#send_message", as: "communications_send_message"
+
+    # Questionnaires (under communications)
+    get  "/communications/:production_id/questionnaires", to: "questionnaires#index", as: "communications_questionnaires"
+    get  "/communications/:production_id/questionnaires/new", to: "questionnaires#new", as: "new_communications_questionnaire"
+    post "/communications/:production_id/questionnaires", to: "questionnaires#create", as: "create_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id", to: "questionnaires#show", as: "communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/edit", to: "questionnaires#edit", as: "edit_communications_questionnaire"
+    patch "/communications/:production_id/questionnaires/:id", to: "questionnaires#update", as: "update_communications_questionnaire"
+    delete "/communications/:production_id/questionnaires/:id", to: "questionnaires#destroy", as: "destroy_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/form", to: "questionnaires#form", as: "form_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_communications_questionnaire"
+    post "/communications/:production_id/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_communications_questionnaire"
+    patch "/communications/:production_id/questionnaires/:id/update_question/:question_id", to: "questionnaires#update_question", as: "update_question_communications_questionnaire"
+    delete "/communications/:production_id/questionnaires/:id/destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question_communications_questionnaire"
+    post "/communications/:production_id/questionnaires/:id/reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions_communications_questionnaire"
+    post "/communications/:production_id/questionnaires/:id/invite_people", to: "questionnaires#invite_people", as: "invite_people_communications_questionnaire"
+    patch "/communications/:production_id/questionnaires/:id/archive", to: "questionnaires#archive", as: "archive_communications_questionnaire"
+    patch "/communications/:production_id/questionnaires/:id/unarchive", to: "questionnaires#unarchive", as: "unarchive_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_communications_questionnaire"
+    get  "/communications/:production_id/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_communications_questionnaire"
+
+    # Email Groups (under communications, used for casting email notifications)
+    post "/communications/:production_id/email_groups", to: "email_groups#create", as: "create_communications_email_group"
+    patch "/communications/:production_id/email_groups/:id", to: "email_groups#update", as: "update_communications_email_group"
+    delete "/communications/:production_id/email_groups/:id", to: "email_groups#destroy", as: "destroy_communications_email_group"
+
+    # Audition Email Assignments (under communications)
+    post "/communications/:production_id/audition_email_assignments", to: "audition_email_assignments#create", as: "create_communications_audition_email_assignment"
+    patch "/communications/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_communications_audition_email_assignment"
+    delete "/communications/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_communications_audition_email_assignment"
+
     # Directory - unified people and groups listing
     get  "/directory",          to: "directory#index", as: "directory"
     post "/directory/contact",  to: "directory#contact_directory", as: "contact_directory"
     patch "/directory/group/:id/update_availability", to: "directory#update_group_availability",
                                                       as: "update_group_availability"
+
+    # Directory - people (new URL pattern: /manage/directory/people/:id)
+    get  "/directory/people/new", to: "people#new", as: "new_directory_person"
+    post "/directory/people", to: "people#create", as: "create_directory_person"
+    get  "/directory/people/search", to: "people#search", as: "search_directory_people"
+    post "/directory/people/batch_invite", to: "people#batch_invite", as: "batch_invite_directory_people"
+    get  "/directory/people/check_email", to: "people#check_email", as: "check_email_directory_people"
+    get  "/directory/people/:id", to: "people#show", as: "directory_person"
+    get  "/directory/people/:id/edit", to: "people#edit", as: "edit_directory_person"
+    patch "/directory/people/:id", to: "people#update", as: "update_directory_person"
+    post "/directory/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_directory_person"
+    post "/directory/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_directory_person"
+    post "/directory/people/:id/remove_from_organization", to: "people#remove_from_organization", as: "remove_from_organization_directory_person"
+    get  "/directory/people/:id/contact", to: "people#contact", as: "contact_directory_person"
+    post "/directory/people/:id/send_contact_email", to: "people#send_contact_email", as: "send_contact_email_directory_person"
+    patch "/directory/people/:id/update_availability", to: "people#update_availability", as: "update_availability_directory_person"
+    get  "/directory/people/:id/availability_modal", to: "people#availability_modal", as: "availability_modal_directory_person"
+
+    # Directory - groups (new URL pattern: /manage/directory/groups/:id)
+    get  "/directory/groups/:id", to: "groups#show", as: "directory_group"
+    patch "/directory/groups/:id", to: "groups#update", as: "update_directory_group"
+    delete "/directory/groups/:id", to: "groups#destroy", as: "destroy_directory_group"
+    post "/directory/groups/:id/add_to_cast", to: "groups#add_to_cast", as: "add_to_cast_directory_group"
+    post "/directory/groups/:id/remove_from_cast", to: "groups#remove_from_cast", as: "remove_from_cast_directory_group"
+    post "/directory/groups/:id/remove_from_organization", to: "groups#remove_from_organization", as: "remove_from_organization_directory_group"
+    patch "/directory/groups/:id/update_availability", to: "groups#update_availability", as: "update_availability_directory_group"
+    get "/directory/groups/:id/availability_modal", to: "groups#availability_modal", as: "availability_modal_directory_group"
 
     resources :organizations do
       collection do
@@ -331,14 +705,6 @@ Rails.application.routes.draw do
         delete :revoke_production_invite
       end
 
-      # Legacy availability routes - redirect to casting/availability
-      get "/availability", to: redirect { |params, _request|
-        "/manage/productions/#{params[:production_id]}/casting/availability"
-      }
-      get "/availability/:id", to: redirect { |params, _request|
-        "/manage/productions/#{params[:production_id]}/casting/availability/#{params[:id]}"
-      }
-
       resources :visual_assets, only: [ :index ] do
         collection do
           get :new_poster
@@ -372,6 +738,7 @@ Rails.application.routes.draw do
           post :toggle_attendance
           get :attendance
           patch :update_attendance
+          post :create_walkin
           patch :transfer
         end
 
@@ -394,295 +761,68 @@ Rails.application.routes.draw do
         end
       end
 
-      # Talent pool member management (no index view - managed via casting settings tab)
-      resources :talent_pools, path: "talent-pools", only: [] do
-        collection do
-          get :members
-          get :search_people
-          post :add_person
-          get "confirm-remove-person/:person_id", action: :confirm_remove_person, as: :confirm_remove_person
-          post :remove_person
-          post :add_group
-          get "confirm-remove-group/:group_id", action: :confirm_remove_group, as: :confirm_remove_group
-          post :remove_group
-          get "upcoming_assignments/:id", action: :upcoming_assignments, as: :upcoming_assignments
-          # Shared talent pool actions
-          patch :update_shares
-          get :leave_shared_pool_confirm
-          post :leave_shared_pool
-        end
-      end
-
-      # Casting routes - manage roles and cast assignments
-      get "casting", to: "casting#index", as: "casting"
-
-      # Sign-ups hub - consolidates sign-up forms and auditions
-      # Routes under /manage/productions/:id/signups/...
-      get "signups", to: "signups#index", as: "signups"
-
-      # Sign-up form wizard: /manage/productions/:id/signups/forms/wizard/...
-      # NOTE: Wizard routes must come BEFORE resources to avoid "wizard" being treated as an :id
-      get    "signups/forms/wizard",              to: "sign_up_form_wizard#scope",           as: "signups_forms_wizard_scope"
-      post   "signups/forms/wizard/scope",        to: "sign_up_form_wizard#save_scope",      as: "signups_forms_wizard_save_scope"
-      get    "signups/forms/wizard/events",       to: "sign_up_form_wizard#events",          as: "signups_forms_wizard_events"
-      post   "signups/forms/wizard/events",       to: "sign_up_form_wizard#save_events",     as: "signups_forms_wizard_save_events"
-      get    "signups/forms/wizard/slots",        to: "sign_up_form_wizard#slots",           as: "signups_forms_wizard_slots"
-      post   "signups/forms/wizard/slots",        to: "sign_up_form_wizard#save_slots",      as: "signups_forms_wizard_save_slots"
-      get    "signups/forms/wizard/rules",        to: "sign_up_form_wizard#rules",           as: "signups_forms_wizard_rules"
-      post   "signups/forms/wizard/rules",        to: "sign_up_form_wizard#save_rules",      as: "signups_forms_wizard_save_rules"
-      get    "signups/forms/wizard/schedule",     to: "sign_up_form_wizard#schedule",        as: "signups_forms_wizard_schedule"
-      post   "signups/forms/wizard/schedule",     to: "sign_up_form_wizard#save_schedule",   as: "signups_forms_wizard_save_schedule"
-      get    "signups/forms/wizard/notifications", to: "sign_up_form_wizard#notifications",  as: "signups_forms_wizard_notifications"
-      post   "signups/forms/wizard/notifications", to: "sign_up_form_wizard#save_notifications", as: "signups_forms_wizard_save_notifications"
-      get    "signups/forms/wizard/review",       to: "sign_up_form_wizard#review",          as: "signups_forms_wizard_review"
-      post   "signups/forms/wizard/create",       to: "sign_up_form_wizard#create_form",     as: "signups_forms_wizard_create_form"
-      delete "signups/forms/wizard/cancel",       to: "sign_up_form_wizard#cancel",          as: "signups_forms_wizard_cancel"
-
-      # Sign-up forms: /manage/productions/:id/signups/forms/...
-      resources :sign_up_forms, path: "signups/forms", as: "signups_forms" do
-        collection do
-          get "archived", to: "sign_up_forms#archived", as: "archived"
-        end
-        member do
-          get    "settings",          to: "sign_up_forms#settings",          as: "settings"
-          patch  "update_settings",   to: "sign_up_forms#update_settings",   as: "update_settings"
-          get    "confirm_slot_changes", to: "sign_up_forms#confirm_slot_changes", as: "confirm_slot_changes"
-          patch  "apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes"
-          get    "confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes"
-          patch  "apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes"
-          post   "create_slot",       to: "sign_up_forms#create_slot",       as: "create_slot"
-          patch  "update_slot/:slot_id", to: "sign_up_forms#update_slot",    as: "update_slot"
-          delete "destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot",  as: "destroy_slot"
-          post   "reorder_slots",     to: "sign_up_forms#reorder_slots",     as: "reorder_slots"
-          post   "generate_slots",    to: "sign_up_forms#generate_slots",    as: "generate_slots"
-          patch  "toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold"
-          get    "holdouts",          to: "sign_up_forms#holdouts",          as: "holdouts"
-          post   "create_holdout",    to: "sign_up_forms#create_holdout",    as: "create_holdout"
-          delete "destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout"
-          post   "create_question",   to: "sign_up_forms#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "sign_up_forms#reorder_questions", as: "reorder_questions"
-          post   "register",          to: "sign_up_forms#register",          as: "register"
-          post   "register_to_queue", to: "sign_up_forms#register_to_queue", as: "register_to_queue"
-          delete "cancel_registration/:registration_id", to: "sign_up_forms#cancel_registration", as: "cancel_registration"
-          patch  "move_registration/:registration_id", to: "sign_up_forms#move_registration", as: "move_registration"
-          get    "assign",            to: "sign_up_forms#assign",            as: "assign"
-          patch  "assign_registration/:registration_id", to: "sign_up_forms#assign_registration", as: "assign_registration"
-          patch  "unassign_registration/:registration_id", to: "sign_up_forms#unassign_registration", as: "unassign_registration"
-          post   "auto_assign_queue", to: "sign_up_forms#auto_assign_queue", as: "auto_assign_queue"
-          post   "auto_assign_one/:registration_id", to: "sign_up_forms#auto_assign_one", as: "auto_assign_one"
-          get    "preview",           to: "sign_up_forms#preview",           as: "preview"
-          get    "print_list",        to: "sign_up_forms#print_list",        as: "print_list"
-          patch  "toggle_active",     to: "sign_up_forms#toggle_active",     as: "toggle_active"
-          patch  "archive",           to: "sign_up_forms#archive",           as: "archive"
-          patch  "unarchive",         to: "sign_up_forms#unarchive",         as: "unarchive"
-          patch  "transfer",          to: "sign_up_forms#transfer",          as: "transfer"
-        end
-      end
-
-      # Auditions index and archive: /manage/productions/:id/signups/auditions/...
-      get "signups/auditions", to: "auditions#index", as: "signups_auditions"
-      get "signups/auditions/archive", to: "auditions#archive", as: "signups_auditions_archive"
-
-      # Audition wizard: /manage/productions/:id/signups/auditions/wizard/...
-      get    "signups/auditions/wizard",                     to: "audition_cycle_wizard#format",           as: "signups_auditions_wizard_format"
-      post   "signups/auditions/wizard/format",              to: "audition_cycle_wizard#save_format",      as: "signups_auditions_wizard_save_format"
-      get    "signups/auditions/wizard/schedule",            to: "audition_cycle_wizard#schedule",         as: "signups_auditions_wizard_schedule"
-      post   "signups/auditions/wizard/schedule",            to: "audition_cycle_wizard#save_schedule",    as: "signups_auditions_wizard_save_schedule"
-      get    "signups/auditions/wizard/sessions",            to: "audition_cycle_wizard#sessions",         as: "signups_auditions_wizard_sessions"
-      post   "signups/auditions/wizard/sessions",            to: "audition_cycle_wizard#save_sessions",    as: "signups_auditions_wizard_save_sessions"
-      post   "signups/auditions/wizard/sessions/generate",   to: "audition_cycle_wizard#generate_sessions", as: "signups_auditions_wizard_generate_sessions"
-      post   "signups/auditions/wizard/sessions/add",        to: "audition_cycle_wizard#add_session",      as: "signups_auditions_wizard_add_session"
-      patch  "signups/auditions/wizard/sessions/:session_index", to: "audition_cycle_wizard#update_session", as: "signups_auditions_wizard_update_session"
-      delete "signups/auditions/wizard/sessions/:session_index", to: "audition_cycle_wizard#delete_session", as: "signups_auditions_wizard_delete_session"
-      get    "signups/auditions/wizard/availability",        to: "audition_cycle_wizard#availability",     as: "signups_auditions_wizard_availability"
-      post   "signups/auditions/wizard/availability",        to: "audition_cycle_wizard#save_availability", as: "signups_auditions_wizard_save_availability"
-      get    "signups/auditions/wizard/reviewers",           to: "audition_cycle_wizard#reviewers",        as: "signups_auditions_wizard_reviewers"
-      post   "signups/auditions/wizard/reviewers",           to: "audition_cycle_wizard#save_reviewers",   as: "signups_auditions_wizard_save_reviewers"
-      get    "signups/auditions/wizard/voting",              to: "audition_cycle_wizard#voting",           as: "signups_auditions_wizard_voting"
-      post   "signups/auditions/wizard/voting",              to: "audition_cycle_wizard#save_voting",      as: "signups_auditions_wizard_save_voting"
-      get    "signups/auditions/wizard/review",              to: "audition_cycle_wizard#review",           as: "signups_auditions_wizard_review"
-      post   "signups/auditions/wizard/create",              to: "audition_cycle_wizard#create_cycle",     as: "signups_auditions_wizard_create_cycle"
-      delete "signups/auditions/wizard/cancel",              to: "audition_cycle_wizard#cancel",           as: "signups_auditions_wizard_cancel"
-
-      # Audition cycles: /manage/productions/:id/signups/auditions/:id/...
-      resources :audition_cycles, path: "signups/auditions", as: "signups_auditions_cycles" do
-        resources :audition_requests, path: "requests", as: "requests" do
-          member do
-            get   "edit_answers",       to: "audition_requests#edit_answers", as: "edit_answers"
-            get   "edit_video",         to: "audition_requests#edit_video",   as: "edit_video"
-            patch "update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_audition_session_availability"
-            post  "cast_vote",          to: "audition_requests#cast_vote",    as: "cast_vote"
-            get   "votes",              to: "audition_requests#votes",        as: "votes"
-          end
-        end
-        resources :audition_sessions, path: "sessions", as: "sessions" do
-          resources :auditions, only: [ :show ] do
-            member do
-              post "cast_vote", to: "auditions#cast_audition_vote", as: "cast_vote"
-            end
-          end
-        end
-        member do
-          get    "auditions", to: "auditions#schedule_auditions", as: "schedule_auditions"
-          get    "form",              to: "audition_cycles#form",              as: "form"
-          get    "preview",           to: "audition_cycles#preview",           as: "preview"
-          post   "create_question",   to: "audition_cycles#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "audition_cycles#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions"
-          patch  "archive",           to: "audition_cycles#archive",           as: "archive"
-          get    "delete_confirm",    to: "audition_cycles#delete_confirm",    as: "delete_confirm"
-          patch  "toggle_voting",     to: "audition_cycles#toggle_voting",     as: "toggle_voting"
-          get    "prepare",           to: "auditions#prepare",                   as: "prepare"
-          patch  "update_reviewers",  to: "auditions#update_reviewers",          as: "update_reviewers"
-          get    "publicize",         to: "auditions#publicize",                 as: "publicize"
-          get    "review",            to: "auditions#review",                    as: "review"
-          patch  "finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations"
-          get    "run",               to: "auditions#run",                       as: "run"
-          get    "casting",           to: "auditions#casting",                   as: "casting"
-          get    "casting/select",    to: "auditions#casting_select", as: "casting_select"
-          post   "add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment"
-          post   "remove_from_cast_assignment", to: "auditions#remove_from_cast_assignment",
-                                                as: "remove_from_cast_assignment"
-          post   "finalize_and_notify", to: "auditions#finalize_and_notify", as: "finalize_and_notify"
-          post   "finalize_and_notify_invitations", to: "auditions#finalize_and_notify_invitations",
-                                                    as: "finalize_and_notify_invitations"
-        end
-      end
-
-      # Audition session summary
-      get "signups/auditions/sessions/summary", to: "audition_sessions#summary", as: "signups_audition_session_summary"
-
-      # Casting > Availability routes (nested under casting)
-      scope "casting" do
-        resources :availability, only: %i[index], controller: "casting_availability", as: "casting_availability" do
-          member do
-            get :show_modal
-            patch :update_show_availability
-          end
-        end
-      end
-
-      # Casting settings
-      resource :casting_settings, only: [ :show, :update ], path: "casting/settings" do
-        get :setup, on: :member
-        post :complete_setup, on: :member
-      end
-
-      # Roles routes (CRUD only - no index/edit views, managed via casting settings tab)
-      resources :roles, only: %i[create update destroy] do
-        collection do
-          post :reorder
-        end
-      end
-
-      # Show cast assignment
-      get "casting/shows/:show_id/cast", to: "casting#show_cast", as: "show_cast"
-      get "casting/shows/:show_id/contact", to: "casting#contact_cast", as: "show_contact_cast"
-      post "casting/shows/:show_id/contact", to: "casting#send_cast_email", as: "send_cast_email"
-      get "casting/search_people", to: "casting#search_people", as: "casting_search_people"
-      post "casting/shows/:show_id/assign_person_to_role", to: "casting#assign_person_to_role"
-      post "casting/shows/:show_id/assign_guest_to_role", to: "casting#assign_guest_to_role"
-      post "casting/shows/:show_id/remove_person_from_role", to: "casting#remove_person_from_role"
-      post "casting/shows/:show_id/replace_assignment", to: "casting#replace_assignment"
-      post "casting/shows/:show_id/create_vacancy", to: "casting#create_vacancy", as: "create_vacancy"
-      post "casting/shows/:show_id/finalize", to: "casting#finalize_casting", as: "finalize_casting"
-      patch "casting/shows/:show_id/reopen", to: "casting#reopen_casting", as: "reopen_casting"
-      post "casting/shows/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "copy_cast_to_linked"
-
-      # Vacancies management (detail and actions only - no index)
-      resources :vacancies, only: %i[show] do
-        member do
-          post :send_invitations
-          post :cancel
-          post :fill
-        end
-        resources :invitations, only: [], controller: "vacancy_invitations" do
-          member do
-            post :resend
-          end
-        end
-      end
-
-      resources :questionnaires do
-        member do
-          get    "form",              to: "questionnaires#form",              as: "form"
-          get    "preview",           to: "questionnaires#preview",           as: "preview"
-          post   "create_question",   to: "questionnaires#create_question",   as: "create_question"
-          patch  "update_question/:question_id", to: "questionnaires#update_question", as: "update_question"
-          delete "destroy_question/:question_id", to: "questionnaires#destroy_question", as: "destroy_question"
-          post   "reorder_questions", to: "questionnaires#reorder_questions", as: "reorder_questions"
-          post   "invite_people",     to: "questionnaires#invite_people",     as: "invite_people"
-          patch  "archive",           to: "questionnaires#archive",           as: "archive"
-          patch  "unarchive",         to: "questionnaires#unarchive",         as: "unarchive"
-          get    "responses",         to: "questionnaires#responses",         as: "responses"
-          get    "responses/:response_id", to: "questionnaires#show_response",    as: "response"
-        end
-      end
-
-      resources :communications, only: %i[index show] do
-        collection do
-          post :send_message
-        end
-      end
-
-      # Money / Payouts section
-      get "money", to: "payouts#index", as: "money_index"
-      get "money/financials", to: "money_financials#index", as: "money_financials"
-      get "money/payouts", to: "money_payouts#index", as: "money_payouts"
-      post "money/payouts/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"
-
-      # Show financials - the main financial data view for a show
-      get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
-      get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
-      patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
-      post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
-      post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
-
-      # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
-      get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
-      post "money/schemes", to: "payout_schemes#create"
-      get "money/schemes/new", to: "payout_schemes#new", as: "new_money_payout_scheme"
-      get "money/schemes/presets", to: "payout_schemes#presets", as: "presets_money_payout_schemes"
-      post "money/schemes/create_from_preset", to: "payout_schemes#create_from_preset", as: "create_from_preset_money_payout_schemes"
-      get "money/schemes/:id", to: "payout_schemes#show", as: "money_payout_scheme"
-      get "money/schemes/:id/edit", to: "payout_schemes#edit", as: "edit_money_payout_scheme"
-      patch "money/schemes/:id", to: "payout_schemes#update"
-      put "money/schemes/:id", to: "payout_schemes#update"
-      delete "money/schemes/:id", to: "payout_schemes#destroy"
-      post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
-      get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
-
-      # Show payouts - now under /money/shows/:id/payouts
-      get "money/shows/:id/payouts", to: "show_payouts#show", as: "money_show_payout"
-      patch "money/shows/:id/payouts", to: "show_payouts#update"
-      put "money/shows/:id/payouts", to: "show_payouts#update"
-      post "money/shows/:id/payouts/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
-      post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
-      get "money/shows/:id/payouts/override", to: "show_payouts#override", as: "override_money_show_payout"
-      patch "money/shows/:id/payouts/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
-      delete "money/shows/:id/payouts/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
-      get "money/shows/:id/payouts/change_scheme", to: "show_payouts#change_scheme", as: "change_scheme_money_show_payout"
-      patch "money/shows/:id/payouts/apply_scheme_change", to: "show_payouts#apply_scheme_change", as: "apply_scheme_change_money_show_payout"
-      post "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
-      delete "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
-      post "money/shows/:id/payouts/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
-      post "money/shows/:id/payouts/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
-      post "money/shows/:id/payouts/close_as_non_paying", to: "show_payouts#close_as_non_paying", as: "close_as_non_paying_money_show_payout"
-      post "money/shows/:id/payouts/reopen", to: "show_payouts#reopen", as: "reopen_money_show_payout"
-      post "money/shows/:id/payouts/add_line_item", to: "show_payouts#add_line_item", as: "add_line_item_money_show_payout"
-      delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
-      post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
-
-      resources :cast_assignment_stages, only: %i[create update destroy]
-      # resources :email_groups, only: %i[create update destroy] (removed)
-      resources :audition_email_assignments, only: %i[create update destroy]
-      # Note: auditions routes are now under signups/auditions
+      # Note: Most nested routes have been moved to top-level manage routes
+      # Only keeping show-specific nested resources that require production context
     end
 
-    # Used for adding people and removing them from an audition session
+    # Money / Payouts section - org-level
+    get "money", to: "money#index", as: "money_index"
+    get "money/financials", to: "money_financials#index", as: "money_financials"
+    get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
+    get "money/payouts", to: "money_payouts#index", as: "money_payouts"
+    get "money/payouts/:production_id", to: "money_payouts#index", as: "money_production_payouts"
+    post "money/payouts/:production_id/send_payment_setup_reminders", to: "money_payouts#send_payment_setup_reminders", as: "send_payment_setup_reminders_money_payouts"
+
+    # Show financials - the main financial data view for a show
+    get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
+    get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
+    patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
+    post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
+    post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
+
+    # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
+    get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
+    post "money/schemes", to: "payout_schemes#create"
+    get "money/schemes/new", to: "payout_schemes#new", as: "new_money_payout_scheme"
+    get "money/schemes/presets", to: "payout_schemes#presets", as: "presets_money_payout_schemes"
+    post "money/schemes/create_from_preset", to: "payout_schemes#create_from_preset", as: "create_from_preset_money_payout_schemes"
+    get "money/schemes/:id", to: "payout_schemes#show", as: "money_payout_scheme"
+    get "money/schemes/:id/edit", to: "payout_schemes#edit", as: "edit_money_payout_scheme"
+    patch "money/schemes/:id", to: "payout_schemes#update"
+    put "money/schemes/:id", to: "payout_schemes#update"
+    delete "money/schemes/:id", to: "payout_schemes#destroy"
+    post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
+    get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
+
+    # Show payouts - now under /money/shows/:id/payouts
+    get "money/shows/:id/payouts", to: "show_payouts#show", as: "money_show_payout"
+    patch "money/shows/:id/payouts", to: "show_payouts#update"
+    put "money/shows/:id/payouts", to: "show_payouts#update"
+    post "money/shows/:id/payouts/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
+    post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
+    get "money/shows/:id/payouts/override", to: "show_payouts#override", as: "override_money_show_payout"
+    patch "money/shows/:id/payouts/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
+    delete "money/shows/:id/payouts/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
+    get "money/shows/:id/payouts/change_scheme", to: "show_payouts#change_scheme", as: "change_scheme_money_show_payout"
+    patch "money/shows/:id/payouts/apply_scheme_change", to: "show_payouts#apply_scheme_change", as: "apply_scheme_change_money_show_payout"
+    post "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
+    delete "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
+    post "money/shows/:id/payouts/mark_all_offline", to: "show_payouts#mark_all_offline", as: "mark_all_offline_money_show_payout"
+    post "money/shows/:id/payouts/send_payment_reminders", to: "show_payouts#send_payment_reminders", as: "send_payment_reminders_money_show_payout"
+    post "money/shows/:id/payouts/close_as_non_paying", to: "show_payouts#close_as_non_paying", as: "close_as_non_paying_money_show_payout"
+    post "money/shows/:id/payouts/reopen", to: "show_payouts#reopen", as: "reopen_money_show_payout"
+    post "money/shows/:id/payouts/add_line_item", to: "show_payouts#add_line_item", as: "add_line_item_money_show_payout"
+    delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
+    post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
+
+    resources :cast_assignment_stages, only: %i[create update destroy]
+    # resources :email_groups, only: %i[create update destroy] (moved to communications)
+    # resources :audition_email_assignments, only: %i[create update destroy] (moved to communications)
+    # Note: auditions routes are now under signups/auditions
+  end
+
+  # Used for adding people and removing them from an audition session (outside manage namespace)
+  namespace :manage do
     post "/auditions/add_to_session",       to: "auditions#add_to_session"
     post "/auditions/remove_from_session",  to: "auditions#remove_from_session"
     post "/auditions/move_to_session",      to: "auditions#move_to_session"

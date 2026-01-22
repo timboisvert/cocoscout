@@ -1,52 +1,23 @@
-<% content_for :title, "Casting" %>
-
-<%
-  # Build actions based on production settings
-  show_talent_pool = @production.casting_talent_pool? || @production.casting_hybrid?
-
-  casting_actions = [
-    { icon: "calendar", text: "Availability", description: "Track who can make each show", path: manage_production_casting_availability_index_path(@production) },
-    { icon: "clipboard-list", text: "Roles", description: "Define positions to fill", path: "#{manage_production_casting_settings_path(@production)}#tab-1" }
-  ]
-
-  if show_talent_pool
-    casting_actions << { icon: "cog", text: "Casting Settings", description: "Configure casting options", path: manage_production_casting_settings_path(@production) }
-    casting_actions << { icon: "user-group", text: "Talent Pool", description: "Manage who can be cast", path: "#{manage_production_casting_settings_path(@production)}#tab-2" }
-  else
-    casting_actions << { icon: "cog", text: "Casting Settings", description: "Configure casting options", path: manage_production_casting_settings_path(@production) }
-  end
-
-  description = <<~HTML
-    <p>
-      This is your production's casting hub — the central place to manage who performs at each show.
-      From here, you can view upcoming and past shows, see who's assigned to each role, and make
-      changes to cast assignments on the fly.
-    </p>
-    <p>
-      Use the <strong>Availability</strong> page to track who's available for each show date.
-      Configure your <strong>Roles</strong> to define the positions that need to be filled.
-      #{show_talent_pool ? "Manage your <strong>Talent Pool</strong> to control who can be cast in your shows." : ""}
-      Adjust your <strong>Casting Settings</strong> to control how casting works for this production.
-    </p>
-  HTML
-%>
+<% content_for :title, "Casting - #{@production.name}" %>
 
 <div class="w-full" data-controller="linked-highlight">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render "shared/module_header",
-    title: "Casting",
-    description: description,
-    actions: casting_actions
-  %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path]
+    ],
+    text: @production.name,
+    links: []
+  } %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
         label: "View",
         filters: [
-          { text: "Upcoming", path: manage_production_casting_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
-          { text: "Past", path: manage_production_casting_path(@production, filter: "past"), active: @filter == "past" }
+          { text: "Upcoming", path: manage_casting_production_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
+          { text: "Past", path: manage_casting_production_path(@production, filter: "past"), active: @filter == "past" }
         ]
       }
     ] %>
@@ -56,7 +27,10 @@
       <% if @shows.any? %>
         <div class="space-y-1">
           <% @shows.each do |show| %>
-            <%= render "manage/casting/cast_card", show: show, production: @production, title: nil, roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
+            <%
+              sign_up_regs = @sign_up_registrations_by_show[show.id] || []
+            %>
+            <%= render "manage/casting/cast_card", show: show, production: @production, title: nil, roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id, sign_up_registrations: sign_up_regs %>
           <% end %>
         </div>
       <% else %>

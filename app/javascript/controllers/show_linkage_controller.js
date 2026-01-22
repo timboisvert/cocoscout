@@ -66,7 +66,7 @@ export default class extends Controller {
         }
 
         // Build URL
-        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/link_show`
+        const url = `/manage/shows/${this.productionIdValue}/${this.showIdValue}/link_show`
 
         fetch(url, {
             method: "POST",
@@ -115,7 +115,7 @@ export default class extends Controller {
         }
 
         // Build URL
-        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/link_show`
+        const url = `/manage/shows/${this.productionIdValue}/${this.showIdValue}/link_show`
 
         fetch(url, {
             method: "POST",
@@ -157,7 +157,7 @@ export default class extends Controller {
 
         // Build URL - we're removing another show from the linkage
         // Pass requesting_show_id so the server knows which show's view to refresh
-        const url = `/manage/productions/${this.productionIdValue}/shows/${targetShowId}/unlink_show?requesting_show_id=${this.showIdValue}`
+        const url = `/manage/shows/${this.productionIdValue}/${targetShowId}/unlink_show?requesting_show_id=${this.showIdValue}`
 
         fetch(url, {
             method: "DELETE",
@@ -206,7 +206,7 @@ export default class extends Controller {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content
 
         // Build URL
-        const url = `/manage/productions/${this.productionIdValue}/shows/${this.showIdValue}/delete_linkage`
+        const url = `/manage/shows/${this.productionIdValue}/${this.showIdValue}/delete_linkage`
 
         fetch(url, {
             method: "DELETE",

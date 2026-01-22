@@ -15,6 +15,6 @@ export default class extends Controller {
         // Navigate to confirmation page
         // Routes are now collection routes (no talent pool id in URL)
         const endpoint = memberType === "Person" ? "confirm-remove-person" : "confirm-remove-group";
-        window.location.href = `/manage/productions/${productionId}/talent-pools/${endpoint}/${personId}`;
+        window.location.href = `/manage/casting/${productionId}/talent-pools/${endpoint}/${personId}`;
     }
 }

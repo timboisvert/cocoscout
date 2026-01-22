@@ -1,11 +1,11 @@
-<% content_for :title, "New Payout Scheme - #{@production.name}" %>
+<% content_for :title, "New Payout Scheme" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)],
-      ["Payout Schemes", manage_production_money_payout_schemes_path(@production)]
+      ["Money", manage_money_index_path],
+      ["Payout Schemes", manage_money_payout_schemes_path]
     ],
     text: "New Payout Scheme",
     links: []

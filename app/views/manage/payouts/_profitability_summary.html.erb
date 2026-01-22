@@ -4,7 +4,9 @@
   Required:
     - summary: Hash with financial metrics from FinancialSummaryService
     - selected_period: Symbol (:this_week, :this_month, etc.)
-    - production: Production object
+    - period_path: Path to use for period switching (e.g. manage_money_financials_path)
+  Optional:
+    - production: Production object (for display purposes only)
 %>
 
 <% period_labels = FinancialSummaryService::PERIOD_LABELS %>
@@ -17,7 +19,7 @@
     <div class="relative">
       <select
         name="period"
-        onchange="window.location.href = '<%= manage_production_money_index_path(production) %>?period=' + this.value"
+        onchange="window.location.href = '<%= period_path %>?period=' + this.value"
         class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600"
       >
         <% period_labels.each do |key, label| %>

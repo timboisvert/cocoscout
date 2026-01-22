@@ -44,7 +44,7 @@
 <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= 'opacity-60' if is_canceled %>"
      data-money-filter-target="showRow">
 
-  <%= link_to manage_production_money_show_payout_path(production, show), class: "block" do %>
+  <%= link_to manage_money_show_payout_path(show), class: "block" do %>
     <div class="flex flex-col lg:flex-row lg:items-stretch">
 
       <%# Panel 1: Date + Show Info %>

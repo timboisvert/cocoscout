@@ -46,9 +46,13 @@
   open_vacancies_by_role = @open_vacancies_by_show&.dig(show.id) || {}
   open_vacancies_key = open_vacancies_by_role.keys.sort.hash
 
+  # Get sign-up registrations for cache key
+  sign_up_regs = local_assigns[:sign_up_registrations] || []
+  sign_up_regs_key = sign_up_regs.map { |r| [r.id, r.updated_at.to_i] }.hash
+
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v11",
+    "cast_card_v12",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
@@ -57,6 +61,7 @@
     total_slots,
     cancelled_vacancies_key,
     open_vacancies_key,
+    sign_up_regs_key,
     title.presence || "default"
   ]
 %>
@@ -71,7 +76,7 @@
   end
   card_data_attrs_str = card_data_attrs.map { |k, v| "data-#{k}=\"#{v}\"" }.join(" ")
 %>
-<%= link_to manage_production_show_cast_path(production, show), class: "block no-underline" do %>
+<%= link_to manage_casting_show_cast_path(production, show), class: "block no-underline" do %>
   <div class="px-3 py-3 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white group" <%= card_data_attrs_str.html_safe %>>
     <div class="flex flex-col sm:flex-row sm:items-stretch gap-3 sm:gap-4">
       <%# Left Third: Date & Show Details %>
@@ -85,6 +90,9 @@
 
         <%# Show Details %>
         <div class="min-w-0">
+          <% if local_assigns[:show_production] %>
+            <div class="text-xs text-gray-400 mb-0.5"><%= production.name %></div>
+          <% end %>
           <div class="font-medium text-gray-900 flex items-center gap-1.5">
             <%= show.secondary_name.presence || show.event_type.titleize %>
             <% if show.linked? %>
@@ -206,6 +214,51 @@
                   <% end %>
                 </div>
               <% end %>
+            <% end %>
+          <% end %>
+
+          <%# Attendees from sign-up registrations %>
+          <% sign_up_regs = local_assigns[:sign_up_registrations] || [] %>
+          <% if sign_up_regs.any? %>
+            <%# Separator %>
+            <div class="w-px h-8 bg-gray-300 mx-1"></div>
+            <% sign_up_regs.first(8).each do |registration| %>
+              <%
+                person = registration.person
+                slot = registration.sign_up_slot
+                tooltip_text = registration_slot_tooltip(registration)
+
+                display_name = person&.name || registration.guest_name || "Guest"
+              %>
+              <% if person %>
+                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant,
+                      alt: person.name,
+                      class: "w-10 h-10 rounded-md object-cover",
+                      data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                       data-controller="tooltip"
+                       data-tooltip-text="<%= tooltip_text %>">
+                    <%= person.initials %>
+                  </div>
+                <% end %>
+              <% else %>
+                <%# Guest registration - show initials from guest_name %>
+                <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                     data-controller="tooltip"
+                     data-tooltip-text="<%= tooltip_text %>">
+                  <%= (registration.guest_name || "G").split.map { |n| n[0] }.join.upcase[0, 2] %>
+                </div>
+              <% end %>
+            <% end %>
+            <% if sign_up_regs.size > 8 %>
+              <div class="w-10 h-10 rounded-md bg-gray-50 text-gray-600 flex items-center justify-center font-bold text-xs"
+                   data-controller="tooltip"
+                   data-tooltip-text="<%= sign_up_regs.size - 8 %> more attendees">
+                +<%= sign_up_regs.size - 8 %>
+              </div>
             <% end %>
           <% end %>
         </div>

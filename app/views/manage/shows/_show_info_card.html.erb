@@ -44,9 +44,11 @@
                 </span>
               <% end %>
             <% end %>
-            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
-              <%= show.event_type.titleize %>
-            </span>
+            <% if show.event_type.present? %>
+              <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(show.event_type) %>">
+                <%= show.event_type.titleize %>
+              </span>
+            <% end %>
           </div>
         </div>
 
@@ -120,7 +122,7 @@
         <div data-disclosure-target="content" class="hidden border-t border-gray-200 divide-y divide-gray-100 bg-white">
           <% other_linked_shows.each do |linked_show| %>
             <% event_name = linked_show.secondary_name.presence || linked_show.event_type.titleize %>
-            <%= link_to manage_production_show_path(show.production, linked_show), class: "flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors" do %>
+            <%= link_to manage_show_path(show.production, linked_show), class: "flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors" do %>
               <div class="flex-shrink-0 w-10 text-center">
                 <div class="text-[10px] font-semibold text-pink-600 uppercase leading-tight"><%= linked_show.date_and_time.strftime("%b") %></div>
                 <div class="text-lg font-bold text-gray-900 leading-tight"><%= linked_show.date_and_time.strftime("%-d") %></div>

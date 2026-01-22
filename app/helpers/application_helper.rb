@@ -90,8 +90,8 @@ module ApplicationHelper
     disabled_classes = "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed"
     gap_classes      = "inline-flex items-center justify-center px-3 py-1 text-sm text-slate-400"
 
-    anchor = lambda do |page, text = pagy.label_for(page), classes: nil, aria_label: nil|
-      link_to text, pagy.url_for(page),
+    anchor = lambda do |page, text = page.to_s, classes: nil, aria_label: nil|
+      link_to text, pagy.page_url(page),
               class: classes,
               "aria-label": aria_label
     end
@@ -99,18 +99,20 @@ module ApplicationHelper
     html = %(<nav#{id} class="pagy-tailwind nav" aria-label="#{aria_label || 'Pagination'}"><ul class="flex items-center gap-2">#{
 							 tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
 						})
-    pagy.series.each do |item|
+
+    # Build series manually: show first, last, current and nearby pages with gaps
+    series = build_pagination_series(pagy.page, pagy.pages)
+    series.each do |item|
       segment =
         case item
         when Integer
-          %(<li>#{anchor.call(item, classes: link_classes)}</li>)
-        when String
-          %(<li><span class="#{active_classes}" aria-current="page">#{pagy.label_for(item)}</span></li>)
+          if item == pagy.page
+            %(<li><span class="#{active_classes}" aria-current="page">#{item}</span></li>)
+          else
+            %(<li>#{anchor.call(item, classes: link_classes)}</li>)
+          end
         when :gap
           %(<li><span class="#{gap_classes}" aria-hidden="true">&hellip;</span></li>)
-        else
-          raise Pagy::InternalError,
-                "expected item types in series to be Integer, String or :gap; got #{item.inspect}"
         end
       html << segment
     end
@@ -121,8 +123,45 @@ module ApplicationHelper
 
   private
 
+  # Build an array like [1, :gap, 4, 5, 6, :gap, 10] for pagination display
+  def build_pagination_series(current_page, total_pages)
+    return (1..total_pages).to_a if total_pages <= 7
+
+    series = []
+    # Always show first page
+    series << 1
+
+    # Calculate range around current page
+    start_range = [ current_page - 1, 2 ].max
+    end_range = [ current_page + 1, total_pages - 1 ].min
+
+    # Add gap if needed before the range
+    if start_range > 2
+      series << :gap
+    elsif start_range == 2
+      series << 2
+    end
+
+    # Add pages in range (excluding first and last)
+    (start_range..end_range).each do |p|
+      series << p unless p == 1 || p == total_pages
+    end
+
+    # Add gap if needed after the range
+    if end_range < total_pages - 1
+      series << :gap
+    elsif end_range == total_pages - 1
+      series << (total_pages - 1)
+    end
+
+    # Always show last page
+    series << total_pages unless total_pages == 1
+
+    series.uniq
+  end
+
   def tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
-    if (p_prev = pagy.prev)
+    if (p_prev = pagy.previous)
       %(<li>#{anchor.call(p_prev, 'Previous', classes: link_classes, aria_label: 'Previous page')}</li>)
     else
       %(<li><span class="#{disabled_classes}" aria-disabled="true">Previous</span></li>)
@@ -231,5 +270,27 @@ module ApplicationHelper
   def vacancy_link_for(person, show)
     token = VacancyController.generate_token(person)
     vacancy_url(show, token: token)
+  end
+
+  # Build tooltip text for sign-up registration slot display
+  # Shows "Position X", "7:15 PM", or "B group" depending on slot mode
+  def registration_slot_tooltip(registration)
+    slot = registration.sign_up_slot
+    sign_up_form = registration.sign_up_form
+
+    slot_text = if sign_up_form && slot
+      # For time_based or named modes, use the slot's name directly
+      # For numbered and open_list modes, show "Position X"
+      if sign_up_form.slot_generation_mode.in?(%w[time_based named])
+        slot.name.presence || "Position #{registration.position}"
+      else
+        "Position #{registration.position}"
+      end
+    else
+      "Position #{registration.position}"
+    end
+
+    display_name = registration.person&.name || registration.guest_name || "Guest"
+    "#{display_name} - #{slot_text}"
   end
 end

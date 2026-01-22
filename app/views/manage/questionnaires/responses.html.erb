@@ -4,8 +4,10 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Questionnaires", manage_production_questionnaires_path(@production)],
-      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
+      ["Communications", manage_communications_path],
+      [@production.name, manage_communications_production_path(@production)],
+      ["Questionnaires", manage_communications_questionnaires_path(@production)],
+      [@questionnaire.title, manage_communications_questionnaire_path(@production, @questionnaire)]
     ],
     text: "Responses",
     links: []
@@ -20,7 +22,7 @@
   <% if @responses.any? %>
     <div class="space-y-3">
       <% @responses.each do |response| %>
-        <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
+        <%= link_to manage_response_communications_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors no-underline" do %>
           <div class="flex items-center gap-3">
             <% headshot_variant = response.person.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>

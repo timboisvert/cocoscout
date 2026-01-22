@@ -19,7 +19,7 @@ module Manage
         # Still set the production in session, but don't allow the redirect within it
         session[:current_production_id_for_organization] ||= {}
         session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
-        return redirect_to manage_production_signups_auditions_path(@production)
+        return redirect_to manage_signups_auditions_path(@production)
       end
 
       set_production_in_session

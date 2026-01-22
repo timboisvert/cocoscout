@@ -4,12 +4,14 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Questionnaires", manage_production_questionnaires_path(@production)]
+      ["Communications", manage_communications_path],
+      [@production.name, manage_communications_production_path(@production)],
+      ["Questionnaires", manage_communications_questionnaires_path(@production)]
     ],
     text: @questionnaire.title,
     links: [
-      {text: "Edit Questionnaire", path: form_manage_production_questionnaire_path(@production, @questionnaire)},
-      {text: "Preview Questionnaire", path: preview_manage_production_questionnaire_path(@production, @questionnaire), target: "_blank"}
+      {text: "Edit Questionnaire", path: manage_form_communications_questionnaire_path(@production, @questionnaire)},
+      {text: "Preview Questionnaire", path: manage_preview_communications_questionnaire_path(@production, @questionnaire), target: "_blank"}
     ]
   } %>
 
@@ -27,14 +29,14 @@
                 </span>
                 <span class="text-xs text-gray-500">on <%= @questionnaire.archived_at.strftime("%b %d, %Y") %></span>
               </div>
-              <%= link_to "Unarchive this Questionnaire", unarchive_manage_production_questionnaire_path(@production, @questionnaire), method: :patch, data: { turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600" %>
+              <%= link_to "Unarchive this Questionnaire", unmanage_archive_communications_questionnaire_path(@production, @questionnaire), method: :patch, data: { turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600" %>
             <% else %>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" <%= 'checked' if @questionnaire.accepting_responses %> class="sr-only peer" data-questionnaire-status-target="toggle" data-action="change->questionnaire-status#toggleStatus">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                 <span class="ms-3 text-sm font-medium text-gray-900" data-questionnaire-status-target="statusLabel"><%= @questionnaire.accepting_responses ? 'Accepting Responses' : 'Not Accepting Responses' %></span>
               </label>
-              <%= link_to "Archive this Questionnaire", archive_manage_production_questionnaire_path(@production, @questionnaire), method: :patch, data: { confirm: "Are you sure you want to archive this questionnaire?", "questionnaire-status-target": "archiveButton", turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600 #{'hidden' if @questionnaire.accepting_responses}" %>
+              <%= link_to "Archive this Questionnaire", manage_archive_communications_questionnaire_path(@production, @questionnaire), method: :patch, data: { confirm: "Are you sure you want to archive this questionnaire?", "questionnaire-status-target": "archiveButton", turbo_method: :patch }, class: "text-xs text-pink-500 hover:text-pink-600 #{'hidden' if @questionnaire.accepting_responses}" %>
             <% end %>
           </div>
         </div>
@@ -98,7 +100,7 @@
         <% end %>
       <% else %>
         <!-- Active invitation form -->
-        <%= form_with url: invite_people_manage_production_questionnaire_path(@production, @questionnaire), method: :post, local: true, data: { controller: "questionnaire-invitation" } do |form| %>
+        <%= form_with url: manage_invite_people_communications_questionnaire_path(@production, @questionnaire), method: :post, local: true, data: { controller: "questionnaire-invitation" } do |form| %>
 
         <!-- Already Invited People and Groups -->
         <% invited_people = @questionnaire.questionnaire_invitations.includes(:invitee).where(invitee_type: 'Person').map(&:invitee).sort_by(&:name) %>
@@ -111,7 +113,7 @@
               <% invited_people.each do |person| %>
                 <% response = @questionnaire.questionnaire_responses.find_by(respondent: person) %>
                 <% if response %>
-                  <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
+                  <%= link_to manage_response_communications_questionnaire_path(@production, @questionnaire, response_id: response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
                     <div class="flex items-center gap-3">
                       <% headshot_variant = person.safe_headshot_variant(:thumb) %>
                       <% if headshot_variant %>
@@ -149,7 +151,7 @@
               <% invited_groups.each do |group| %>
                 <% group_response = @questionnaire.questionnaire_responses.find_by(respondent: group) %>
                 <% if group_response %>
-                  <%= link_to response_manage_production_questionnaire_path(@production, @questionnaire, response_id: group_response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
+                  <%= link_to manage_response_communications_questionnaire_path(@production, @questionnaire, response_id: group_response.id), class: "block p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition" do %>
                     <div class="flex items-center gap-3">
                       <% if group.primary_headshot&.image&.attached? %>
                         <%= image_tag group.primary_headshot.image.variant(resize_to_limit: [80, 80]), alt: group.name, class: "w-10 h-10 rounded-lg object-cover" %>

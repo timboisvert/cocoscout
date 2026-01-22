@@ -83,16 +83,6 @@
 
   <!-- Tab 2: Organization Team Members -->
   <div data-tabs-target="panel" class="hidden">
-    <%= render "shared/help_section",
-      title: "About Organization Team Members",
-      initial_state: "open",
-      storage_key: "org_team_help_collapsed",
-      steps: [
-        { text: "Organization team members have global access to <strong>all productions</strong> in this organization." },
-        { text: "<strong>Managers</strong> can create, edit, and manage all productions and settings. <strong>Viewers</strong> have read-only access." },
-        { text: "For production-specific access, use the <strong>Team tab</strong> on individual production settings pages." }
-      ] %>
-
     <div class="mt-4 space-y-1">
       <% @team_members.each do |member| %>
         <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
@@ -237,16 +227,6 @@
 
   <!-- Tab 3: Locations -->
   <div data-tabs-target="panel" class="hidden">
-    <%= render "shared/help_section",
-      title: "About Locations",
-      initial_state: "open",
-      storage_key: "org_locations_help_collapsed",
-      steps: [
-        { text: "Locations are venues where your shows, rehearsals, and events take place." },
-        { text: "Set a default location to automatically pre-fill it when scheduling new events." },
-        { text: "Locations are shared across all productions in this organization." }
-      ] %>
-
     <% if @locations.any? %>
       <div class="grid grid-cols-1 gap-2 mt-4">
         <% @locations.each do |location| %>

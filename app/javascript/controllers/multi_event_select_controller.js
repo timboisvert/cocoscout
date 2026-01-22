@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Controller for multi-select show rows (click to toggle selection)
 export default class extends Controller {
-    static targets = ["row", "input"]
+    static targets = ["row", "input", "checkmark"]
 
     connect() {
         this.updateAllRows()
@@ -14,14 +14,15 @@ export default class extends Controller {
 
         // Find the hidden checkbox for this row and toggle it
         const input = this.inputTargets.find(i => i.value === showId)
-        if (input) {
+        if (input && !input.disabled) {
             input.checked = !input.checked
             this.updateRow(row, input.checked)
         }
     }
 
     updateRow(row, isSelected) {
-        const checkmark = row.querySelector('[data-checkmark]')
+        // Find checkmark using target or data attribute
+        const checkmark = row.querySelector('[data-multi-event-select-target="checkmark"]') || row.querySelector('[data-checkmark]')
 
         if (isSelected) {
             row.classList.remove("border-gray-200", "bg-white")

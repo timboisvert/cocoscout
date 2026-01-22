@@ -45,7 +45,7 @@
         </div>
       </div>
 
-      <%= form_with url: manage_production_save_override_money_show_payout_path(@production, @show), method: :patch, local: true, data: { controller: "customize-payout-form" } do |f| %>
+      <%= form_with url: manage_save_override_money_show_payout_path(@show), method: :patch, local: true, data: { controller: "customize-payout-form" } do |f| %>
 
         <!-- Distribution Method -->
         <div class="space-y-4 mb-6">

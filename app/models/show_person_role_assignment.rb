@@ -16,6 +16,12 @@ class ShowPersonRoleAssignment < ApplicationRecord
   # Order assignments by position within a role
   scope :ordered, -> { order(position: :asc) }
 
+  # Get the person, handling polymorphic assignable
+  def person
+    return nil unless assignable_type == "Person"
+    assignable
+  end
+
   # Auto-assign position on create
   before_create :assign_position
 

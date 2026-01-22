@@ -166,7 +166,7 @@ export default class extends Controller {
     }
 
     addToCast(auditioneeType, auditioneeId, auditioneeName, talentPoolId, csrfToken, productionId) {
-        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
+        fetch(`/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/add_to_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -192,7 +192,7 @@ export default class extends Controller {
     removeFromCast(auditioneeType, auditioneeId, talentPoolId, callback) {
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
-        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
+        fetch(`/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -227,7 +227,7 @@ export default class extends Controller {
         const auditioneeId = button.dataset.auditioneeId
         const csrfToken = document.querySelector('meta[name=csrf-token]').content
 
-        fetch(`/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
+        fetch(`/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/remove_from_cast_assignment`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

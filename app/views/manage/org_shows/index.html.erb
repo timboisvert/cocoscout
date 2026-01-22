@@ -1,0 +1,86 @@
+<% content_for :title, "Shows & Events" %>
+
+<%
+  shows_actions = [
+    { icon: "calendar", text: "Calendar", description: "View all events on a calendar", path: manage_shows_calendar_path },
+    { icon: "clipboard-list", text: "Schedule Event", description: "Create a new show or event", path: manage_shows_new_wizard_path }
+  ]
+
+  shows_description = <<~HTML
+    <p>
+      Manage all your shows and events across all productions. View upcoming performances, track
+      past events, and see cast assignments at a glance.
+    </p>
+  HTML
+%>
+
+<div class="w-full" data-turbo-cache="false">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render "shared/module_header",
+    title: "Shows & Events",
+    description: shows_description,
+    actions: shows_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-4 mt-2">
+    <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "View",
+      filters: [
+        { text: "Upcoming", path: manage_shows_path(filter: "upcoming", event_type: @event_type_filter.join(",")), active: @filter == "upcoming" },
+        { text: "Past", path: manage_shows_path(filter: "past", event_type: @event_type_filter.join(",")), active: @filter == "past" }
+      ]
+    },
+    { separator: true },
+    {
+      partial: "shared/filters/event_type_filter",
+      locals: {
+        path_helper: ->(event_type:, entity:, filter:) { manage_shows_path(event_type: event_type, filter: filter) },
+        event_type_filter: @event_type_filter,
+        entity_filter: [],
+        filter: @filter
+      }
+    }
+  ] %>
+
+  <% if @shows.any? %>
+    <div class="space-y-1" data-controller="linked-highlight">
+      <% @shows.each do |show| %>
+        <%
+          assignments = @assignments_by_show[show.id] || []
+          roles = @roles_by_show[show.id] || []
+          cant_make_it = @cant_make_it_by_show[show.id] || {}
+          sign_up_regs = @sign_up_registrations_by_show[show.id] || []
+          assignments_by_role = assignments.group_by(&:role_id)
+          cast_summary = {
+            roles: roles,
+            assignments_by_role: assignments_by_role,
+            cant_make_it_by_assignment: cant_make_it,
+            sign_up_registrations: sign_up_regs
+          }
+        %>
+        <%= render partial: "shared/show_row", locals: {
+          show: show,
+          link_path: manage_show_path(show.production, show),
+          show_canceled: true,
+          show_recurring: true,
+          show_linked: true,
+          show_location: true,
+          show_production: true,
+          right_panel: :cast_summary,
+          cast_summary: cast_summary
+        } %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-sm text-gray-500">
+      <% if @filter == "upcoming" %>
+        No upcoming shows or events scheduled.
+      <% else %>
+        No past shows or events found.
+      <% end %>
+    </div>
+  <% end %>
+  </div>
+</div>

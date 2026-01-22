@@ -136,7 +136,7 @@ module Manage
       end
 
       if person_ids.empty?
-        redirect_to manage_production_vacancy_path(@production, @vacancy),
+        redirect_to manage_casting_vacancy_path(@production, @vacancy),
                     alert: "Please select at least one cast member to invite."
         return
       end
@@ -178,7 +178,7 @@ module Manage
       # Mark the vacancy as finding replacement if we sent any invitations
       @vacancy.mark_finding_replacement! if invited_count > 0
 
-      redirect_to manage_production_vacancy_path(@production, @vacancy),
+      redirect_to manage_casting_vacancy_path(@production, @vacancy),
                   notice: "Invited #{invited_count} #{'person'.pluralize(invited_count)}."
     end
 

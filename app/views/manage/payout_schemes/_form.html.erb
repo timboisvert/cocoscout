@@ -21,7 +21,7 @@
   available_people = talent_pool&.people&.order(:name) || []
 %>
 
-<%= form_with model: payout_scheme, url: payout_scheme.persisted? ? manage_production_money_payout_scheme_path(@production, payout_scheme) : manage_production_money_payout_schemes_path(@production), method: payout_scheme.persisted? ? :patch : :post, local: true, data: { controller: "payout-scheme-form" } do |form| %>
+<%= form_with model: payout_scheme, url: payout_scheme.persisted? ? manage_money_payout_scheme_path(payout_scheme) : manage_money_payout_schemes_path, method: payout_scheme.persisted? ? :patch : :post, local: true, data: { controller: "payout-scheme-form" } do |form| %>
 
   <% if payout_scheme.errors.any? %>
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -281,7 +281,7 @@
 
     <!-- Form Actions -->
     <div class="flex items-center justify-between pt-4">
-      <%= link_to manage_production_money_payout_schemes_path(@production), class: "text-gray-600 hover:text-gray-900" do %>
+      <%= link_to manage_money_payout_schemes_path, class: "text-gray-600 hover:text-gray-900" do %>
         Cancel
       <% end %>
       <%= render "shared/button", text: payout_scheme.persisted? ? "Save Changes" : "Create Scheme", variant: "primary", size: "medium", type: :submit %>

@@ -4,8 +4,10 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Questionnaires", manage_production_questionnaires_path(@production)],
-      [@questionnaire.title, manage_production_questionnaire_path(@production, @questionnaire)]
+      ["Communications", manage_communications_path],
+      [@production.name, manage_communications_production_path(@production)],
+      ["Questionnaires", manage_communications_questionnaires_path(@production)],
+      [@questionnaire.title, manage_communications_questionnaire_path(@production, @questionnaire)]
     ],
     text: @response.respondent.name,
     links: []

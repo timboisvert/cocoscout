@@ -67,18 +67,38 @@ Key classes:
 - `rounded` - Rounded corners
 
 ### Top Menu Breadcrumbs
-Breadcrumbs must be passed as arrays of `[name, path]` pairs, not hashes:
 
+**CRITICAL: Breadcrumbs MUST be arrays, NOT hashes!**
+
+The `_top_menu.html.erb` partial uses `breadcrumbs.each do |name, path|` which deconstructs arrays.
+Using hashes will break the breadcrumbs - the whole hash gets assigned to `name` and `path` becomes nil.
+
+**CORRECT format (arrays):**
 ```erb
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
     ["Parent Page", parent_path],
-    ["Child Page", child_path]
+    ["Production Name", production_path(@production)]
   ],
-  text: "Current Page",
-  links: []
+  text: "Current Page Title",
+  links: [
+    { text: "Action Button", path: action_path }
+  ]
 } %>
 ```
+
+**WRONG format (hashes) - DO NOT USE:**
+```erb
+breadcrumbs: [
+  { text: "Parent Page", path: parent_path }  # WRONG!
+]
+```
+
+**Key differences:**
+- `breadcrumbs`: Array of `[name, path]` pairs (2-element arrays)
+- `links`: Array of hashes with `{ text:, path:, icon:, data:, color: }` keys
+
+The `text:` parameter is the current page title (shown last in breadcrumb trail, not clickable).
 
 ### Module Header (New Header)
 The "new header" for major module landing pages. Uses a large title with `coustard-regular` font, supports multi-line HTML descriptions, and displays action buttons in a 2x2 grid (4 buttons) or 2+1 layout (3 buttons).

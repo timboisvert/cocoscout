@@ -30,7 +30,7 @@
       schedule_mode
     end
   %>
-  <%= form_with url: manage_production_signups_forms_wizard_save_schedule_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": initial_selected } do |form| %>
+  <%= form_with url: manage_signups_forms_wizard_save_schedule_path(@production), method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": initial_selected } do |form| %>
     <div class="space-y-6">
       <% if is_waitlist %>
         <!-- Simple activation date for waitlist -->
@@ -393,7 +393,7 @@
     </div>
 
     <div class="mt-8 flex justify-between">
-      <%= link_to manage_production_signups_forms_wizard_rules_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
+      <%= link_to manage_signups_forms_wizard_rules_path(@production), class: "inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" do %>
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>

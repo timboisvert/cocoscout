@@ -71,7 +71,7 @@ export default class extends Controller {
         const endpoint = memberType === "Person" ? "add_person" : "add_group";
         const paramKey = memberType === "Person" ? "person_id" : "group_id";
 
-        fetch(`/manage/productions/${productionId}/talent-pools/${endpoint}`, {
+        fetch(`/manage/casting/${productionId}/talent-pools/${endpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

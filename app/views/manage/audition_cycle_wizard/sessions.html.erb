@@ -30,7 +30,7 @@
                         data-session-location="<%= session[:location_id] %>">
                   <%= render "shared/button", text: "Edit", variant: "ghost", size: "small", type: :button %>
                 </button>
-                <%= button_to manage_production_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
+                <%= button_to manage_signups_auditions_wizard_delete_session_path(@production, session_index: original_index),
                     method: :delete,
                     class: "inline-block",
                     data: { turbo_confirm: "Remove this session?" } do %>
@@ -48,7 +48,7 @@
       <h3 class="font-medium text-gray-900 mb-3"><%= @wizard_state[:audition_sessions].present? ? "Generate More Audition Sessions" : "Generate Audition Sessions" %></h3>
       <p class="text-sm text-gray-500 mb-4">Automatically create consecutive audition slots.</p>
 
-      <%= form_with url: manage_production_signups_auditions_wizard_generate_sessions_path(@production), method: :post, local: true do |form| %>
+      <%= form_with url: manage_signups_auditions_wizard_generate_sessions_path(@production), method: :post, local: true do |form| %>
         <div class="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Number of sessions</label>
@@ -128,7 +128,7 @@
       <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 pointer-events-auto" data-action="keydown.escape->session-wizard#closeAddModal" tabindex="-1">
           <h3 class="text-lg font-bold text-gray-900 mb-4">Add Audition Session</h3>
-          <%= form_with url: manage_production_signups_auditions_wizard_add_session_path(@production), method: :post, local: true, data: { "session-wizard-target": "addForm" } do |form| %>
+          <%= form_with url: manage_signups_auditions_wizard_add_session_path(@production), method: :post, local: true, data: { "session-wizard-target": "addForm" } do |form| %>
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
@@ -322,9 +322,9 @@
       </div>
     </div>
 
-    <%= form_with url: manage_production_signups_auditions_wizard_save_sessions_path(@production), method: :post, local: true do |form| %>
+    <%= form_with url: manage_signups_auditions_wizard_save_sessions_path(@production), method: :post, local: true do |form| %>
       <div class="mt-8 flex justify-between">
-        <%= link_to manage_production_signups_auditions_wizard_schedule_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
+        <%= link_to manage_signups_auditions_wizard_schedule_path(@production), class: "inline-flex items-center text-gray-600 hover:text-gray-900" do %>
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>

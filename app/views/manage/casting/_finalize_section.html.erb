@@ -34,7 +34,7 @@
     <% end %>
   </p>
 
-  <%= form_with url: manage_production_finalize_casting_path(production, show.id), method: :post, class: "space-y-4" do |f| %>
+  <%= form_with url: manage_casting_show_finalize_path(production, show.id), method: :post, class: "space-y-4" do |f| %>
 
     <% if has_removed %>
       <%# Tabs for multiple email types %>

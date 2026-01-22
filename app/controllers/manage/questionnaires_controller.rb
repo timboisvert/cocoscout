@@ -2,10 +2,35 @@
 
 module Manage
   class QuestionnairesController < Manage::ManageController
-    before_action :set_production
+    before_action :set_production, except: [ :select_production, :save_production_selection ]
     before_action :set_questionnaire,
                   only: %i[show update archive unarchive form preview create_question update_question destroy_question reorder_questions
                            responses show_response invite_people]
+
+    # Step 0: Select Production (when entering from org-level)
+    def select_production
+      @productions = Current.organization.productions.order(:name)
+    end
+
+    def save_production_selection
+      production_id = params[:production_id]
+
+      if production_id.blank?
+        flash.now[:alert] = "Please select a production"
+        @productions = Current.organization.productions.order(:name)
+        render :select_production, status: :unprocessable_entity and return
+      end
+
+      production = Current.organization.productions.find_by(id: production_id)
+      unless production
+        flash.now[:alert] = "Production not found"
+        @productions = Current.organization.productions.order(:name)
+        render :select_production, status: :unprocessable_entity and return
+      end
+
+      # Redirect to the production-level new questionnaire page
+      redirect_to manage_new_communications_questionnaire_path(production)
+    end
 
     def index
       @filter = params[:filter] || "all"
@@ -39,7 +64,7 @@ module Manage
       @questionnaire = @production.questionnaires.new(questionnaire_params)
 
       if @questionnaire.save
-        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_communications_questionnaire_path(@production, @questionnaire),
                     notice: "Questionnaire created successfully"
       else
         render :new, status: :unprocessable_entity
@@ -64,10 +89,10 @@ module Manage
                params[:questionnaire]&.key?(:title) ||
                params[:questionnaire]&.key?(:require_all_availability) ||
                params[:questionnaire]&.key?(:instruction_text)
-              redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_form_communications_questionnaire_path(@production, @questionnaire),
                           notice: "Questionnaire updated successfully"
             else
-              redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+              redirect_to manage_communications_questionnaire_path(@production, @questionnaire),
                           notice: "Questionnaire updated successfully"
             end
           end
@@ -83,12 +108,12 @@ module Manage
 
     def archive
       @questionnaire.update(archived_at: Time.current)
-      redirect_to manage_production_questionnaires_path(@production), notice: "Questionnaire archived successfully"
+      redirect_to manage_communications_questionnaires_path(@production), notice: "Questionnaire archived successfully"
     end
 
     def unarchive
       @questionnaire.update(archived_at: nil)
-      redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_communications_questionnaire_path(@production, @questionnaire),
                   notice: "Questionnaire unarchived successfully"
     end
 
@@ -126,7 +151,7 @@ module Manage
       @question.position = max_position + 1
 
       if @question.save
-        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_communications_questionnaire_path(@production, @questionnaire),
                     notice: "Question added successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -138,7 +163,7 @@ module Manage
       @question = @questionnaire.questions.find(params[:question_id])
 
       if @question.update(question_params)
-        redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+        redirect_to manage_form_communications_questionnaire_path(@production, @questionnaire),
                     notice: "Question updated successfully"
       else
         @questions = @questionnaire.questions.order(:position)
@@ -149,7 +174,7 @@ module Manage
     def destroy_question
       @question = @questionnaire.questions.find(params[:question_id])
       @question.destroy
-      redirect_to form_manage_production_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_form_communications_questionnaire_path(@production, @questionnaire),
                   notice: "Question deleted successfully"
     end
 
@@ -292,7 +317,7 @@ module Manage
         end
       end
 
-      redirect_to manage_production_questionnaire_path(@production, @questionnaire),
+      redirect_to manage_communications_questionnaire_path(@production, @questionnaire),
                   notice: "Invited #{invitation_count} #{'member'.pluralize(invitation_count)}"
     end
 

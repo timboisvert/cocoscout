@@ -403,6 +403,67 @@
         <% if roles.empty? %>
           <span class="text-sm text-gray-400 pl-2">No roles</span>
         <% end %>
+
+        <%# Sign-up Attendees - with separator %>
+        <% sign_up_regs = cast_summary[:sign_up_registrations] || [] %>
+        <% if sign_up_regs.any? %>
+          <%# Separator %>
+          <div class="w-px h-8 bg-gray-300 mx-1"></div>
+          <% sign_up_regs.each do |registration| %>
+            <%
+              person = registration.person
+              slot = registration.sign_up_slot
+              tooltip_text = registration_slot_tooltip(registration)
+
+              display_name = person&.name || registration.guest_name || "Guest"
+            %>
+            <% if person %>
+              <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+              <% if headshot_variant %>
+                <%= image_tag headshot_variant,
+                    class: "w-10 h-10 rounded-md object-cover",
+                    data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+              <% else %>
+                <div class="w-10 h-10 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs"
+                     data-controller="tooltip"
+                     data-tooltip-text="<%= tooltip_text %>">
+                  <%= person.initials %>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="w-10 h-10 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs"
+                   data-controller="tooltip"
+                   data-tooltip-text="<%= tooltip_text %>">
+                <%= registration.display_initials %>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+  <% elsif right_panel == :draft_assignments && local_assigns[:draft_assignments].present? %>
+    <%# Right Section: Draft assignments with headshots and tooltips %>
+    <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
+      <div class="flex-1 min-w-0 flex items-center gap-1 flex-wrap">
+        <% local_assigns[:draft_assignments].each do |da| %>
+          <%
+            assignable = da[:assignable]
+            tooltip_text = "#{assignable.name} - #{da[:role_name]}"
+            headshot_variant = assignable.safe_headshot_variant(:thumb)
+          %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant,
+                class: "w-10 h-10 rounded-lg object-cover",
+                data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs"
+                 data-controller="tooltip"
+                 data-tooltip-text="<%= tooltip_text %>">
+              <%= assignable.respond_to?(:initials) ? assignable.initials : assignable.name[0..1].upcase %>
+            </div>
+          <% end %>
+        <% end %>
       </div>
     </div>
 
@@ -567,6 +628,23 @@
         <% end %>
       </div>
     <% end %>
+  <% end %>
+
+  <%# Notes Icon - appears on far right if notes exist %>
+  <% if show.notes.present? %>
+    <div class="flex-shrink-0 ml-auto pl-2 md:pl-4 flex items-center">
+      <button type="button"
+              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="View notes"
+              data-controller="notes-modal"
+              data-action="click->notes-modal#show"
+              data-notes-modal-notes="<%= show.notes %>">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-5 h-5">
+          <path d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5zm0 2h14v14H5V5z"/>
+          <path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z"/>
+        </svg>
+      </button>
+    </div>
   <% end %>
 <% end %>
 

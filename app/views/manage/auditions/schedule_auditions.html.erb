@@ -4,9 +4,10 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)],
-      ["Review", review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)],
+      ["Review", manage_review_signups_auditions_cycle_path(@production, @audition_cycle)]
     ],
     text: "Schedule Auditions",
     links: []
@@ -21,7 +22,7 @@
         <p class="text-sm text-gray-600 hidden sm:block">Drag each person from the right to a session on the left to schedule them.</p>
         <p class="text-sm text-gray-600 sm:hidden">Tap + on a session to add auditionees.</p>
       </div>
-      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <%= render partial: "shared/button", locals: { text: "Done Scheduling", path: manage_review_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
     </div>
   </div>
 

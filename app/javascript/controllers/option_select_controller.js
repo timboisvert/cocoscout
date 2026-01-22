@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Generic controller for click-to-select option cards (no visible radio buttons)
 export default class extends Controller {
-    static targets = ["option", "input", "conditionalRelative", "conditionalFixed", "conditionalScheduled", "conditionalImmediate"]
+    static targets = ["option", "input", "conditionalRelative", "conditionalFixed", "conditionalScheduled", "conditionalImmediate", "conditionalManual"]
     static values = { selected: String }
 
     connect() {
@@ -68,6 +68,15 @@ export default class extends Controller {
                 this.conditionalImmediateTarget.classList.remove("hidden")
             } else {
                 this.conditionalImmediateTarget.classList.add("hidden")
+            }
+        }
+
+        // Handle manual selection section
+        if (this.hasConditionalManualTarget) {
+            if (this.selectedValue === "manual") {
+                this.conditionalManualTarget.classList.remove("hidden")
+            } else {
+                this.conditionalManualTarget.classList.add("hidden")
             }
         }
     }

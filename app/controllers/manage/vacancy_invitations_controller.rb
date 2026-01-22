@@ -8,7 +8,7 @@ module Manage
 
     def resend
       VacancyInvitationMailer.invitation_email(@invitation).deliver_later
-      redirect_to manage_production_vacancy_path(@production, @vacancy),
+      redirect_to manage_casting_vacancy_path(@production, @vacancy),
                   notice: "Invitation resent to #{@invitation.person.name}."
     end
 

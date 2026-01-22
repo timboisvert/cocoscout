@@ -1,21 +1,21 @@
-<% content_for :title, "Shows" %>
+<% content_for :title, "Shows - #{@production.name}" %>
 
 <div class="w-full" data-turbo-cache="false">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
+
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Shows & Events",
+    breadcrumbs: [
+      ["Shows & Events", manage_shows_path]
+    ],
+    text: @production.name,
     links: [
-      {
-        text: "Calendar",
-        path: calendar_manage_production_shows_path(@production, filter: @filter),
-        icon: "calendar"
-      },
-      { text: "Schedule Shows & Events", path: new_manage_production_show_path(@production)}
+      { text: "Calendar", path: manage_production_shows_calendar_path(@production, filter: @filter) },
+      { text: "Schedule Event", path: manage_shows_wizard_path(@production) }
     ]
   } %>
 
-  <%= render "shared/filters/filter_bar", filter_groups: [
+  <div class="border-t border-gray-200 pt-4 mt-2">
+    <%= render "shared/filters/filter_bar", filter_groups: [
     {
       label: "View",
       filters: [
@@ -42,16 +42,18 @@
           assignments = @assignments_by_show[show.id] || []
           roles = @roles_by_show[show.id] || []
           cant_make_it = @cant_make_it_by_show[show.id] || {}
+          sign_up_regs = @sign_up_registrations_by_show[show.id] || []
           assignments_by_role = assignments.group_by(&:role_id)
           cast_summary = {
             roles: roles,
             assignments_by_role: assignments_by_role,
-            cant_make_it_by_assignment: cant_make_it
+            cant_make_it_by_assignment: cant_make_it,
+            sign_up_registrations: sign_up_regs
           }
         %>
         <%= render partial: "shared/show_row", locals: {
           show: show,
-          link_path: manage_production_show_path(@production, show),
+          link_path: manage_show_path(@production, show),
           show_canceled: true,
           show_recurring: true,
           show_linked: true,
@@ -66,5 +68,5 @@
       You haven't scheduled any shows or events.
     </div>
   <% end %>
-
+  </div>
 </div>

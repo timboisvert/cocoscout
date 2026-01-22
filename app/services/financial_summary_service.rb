@@ -32,8 +32,9 @@ class FinancialSummaryService
   # Quick access periods (shown as pills)
   QUICK_PERIODS = %i[this_month last_30_days this_year all_time].freeze
 
-  def initialize(production)
-    @production = production
+  # Accepts a single production or a collection of productions
+  def initialize(productions)
+    @productions = productions.respond_to?(:each) ? productions : [ productions ]
   end
 
   def self.quick_period_labels
@@ -61,10 +62,11 @@ class FinancialSummaryService
     # Only include revenue events (shows, classes, workshops) - not rehearsals/meetings
     revenue_event_types = EventTypes.revenue_event_types
 
-    # Include all shows (including canceled) - canceled shows may still have revenue/payouts
-    scope = @production.shows
-                       .where(event_type: revenue_event_types)
-                       .where("date_and_time < ?", Time.current) # Only past shows
+    # Build scope across all productions
+    production_ids = @productions.map(&:id)
+    scope = Show.where(production_id: production_ids)
+                .where(event_type: revenue_event_types)
+                .where("date_and_time < ?", Time.current) # Only past shows
 
     if date_range
       scope = scope.where(date_and_time: date_range)

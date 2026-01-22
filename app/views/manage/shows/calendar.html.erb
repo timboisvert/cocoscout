@@ -4,7 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-        ["Shows & Events", manage_production_shows_path(@production)]
+        ["Shows & Events", manage_shows_path],
+        [@production.name, manage_production_shows_path(@production)]
     ],
     text: "Calendar",
     links: [
@@ -13,7 +14,7 @@
         path: manage_production_shows_path(@production, filter: @filter),
         icon: "list"
       },
-      { text: "Schedule Shows & Events", path: new_manage_production_show_path(@production)}
+      { text: "Schedule Shows & Events", path: manage_shows_wizard_path(@production)}
     ]
   } %>
 
@@ -21,8 +22,8 @@
     {
       label: "View",
       filters: [
-        { text: "Upcoming", path: calendar_manage_production_shows_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
-        { text: "Past", path: calendar_manage_production_shows_path(@production, filter: "past"), active: @filter == "past" }
+        { text: "Upcoming", path: manage_production_shows_calendar_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
+        { text: "Past", path: manage_production_shows_calendar_path(@production, filter: "past"), active: @filter == "past" }
       ]
     },
     { separator: true }
@@ -58,7 +59,7 @@
                 </div>
 
                 <% day_shows.each do |show| %>
-                  <%= link_to edit_manage_production_show_path(@production, show),
+                  <%= link_to manage_edit_show_path(@production, show),
                       class: "block mb-1" do %>
                     <% is_past = show.date_and_time < Time.current %>
                     <div class="text-xs p-1 rounded border <%= event_type_badge_classes(show.event_type, style: :calendar, is_past: is_past) %> <%= 'opacity-50 line-through' if show.canceled %>">

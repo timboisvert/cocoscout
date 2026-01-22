@@ -2,8 +2,8 @@
 
 module Manage
   class ShowFinancialsController < Manage::ManageController
-    before_action :set_production
     before_action :set_show
+    before_action :set_production
     before_action :set_show_financials
 
     def show
@@ -27,8 +27,8 @@ module Manage
     def update
       if @show_financials.update(show_financials_params)
         respond_to do |format|
-          format.html { redirect_to manage_production_money_show_financials_path(@production, @show), notice: "Financial data saved successfully." }
-          format.turbo_stream { redirect_to manage_production_money_show_financials_path(@production, @show), notice: "Financial data saved successfully." }
+          format.html { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
+          format.turbo_stream { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
         end
       else
         render :edit, status: :unprocessable_entity
@@ -37,25 +37,26 @@ module Manage
 
     def mark_non_revenue
       @show_financials.update!(non_revenue_override: true, data_confirmed: true)
-      redirect_to manage_production_money_show_financials_path(@production, @show),
+      redirect_to manage_money_show_financials_path(@show),
                   notice: "#{show_display_name(@show)} marked as non-revenue event."
     end
 
     def unmark_non_revenue
       @show_financials.update!(non_revenue_override: false)
-      redirect_to manage_production_money_show_financials_path(@production, @show),
+      redirect_to manage_money_show_financials_path(@show),
                   notice: "#{show_display_name(@show)} restored as revenue event."
     end
 
     private
 
-    def set_production
-      @production = Current.production
-      redirect_to select_production_path unless @production
+    def set_show
+      @show = Show.joins(:production)
+                  .where(productions: { organization: Current.organization })
+                  .find(params[:id])
     end
 
-    def set_show
-      @show = @production.shows.find(params[:id])
+    def set_production
+      @production = @show.production
     end
 
     def set_show_financials

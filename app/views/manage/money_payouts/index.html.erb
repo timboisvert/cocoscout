@@ -1,208 +1,248 @@
-<% content_for :title, "Payouts - #{@production.name}" %>
+<% content_for :title, @production ? "#{@production.name} Payouts" : "Payouts" %>
 
 <div class="w-full mb-10" data-controller="modal">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)]
+    breadcrumbs: @production ? [
+      ["Money", manage_money_index_path],
+      ["Payouts", manage_money_payouts_path]
+    ] : [
+      ["Money", manage_money_index_path]
     ],
-    text: "Payouts",
+    text: @production ? @production.name : "Payouts",
     links: [
-      { text: "Manage Schemes", path: manage_production_money_payout_schemes_path(@production) }
+      { text: "Manage Schemes", path: manage_money_payout_schemes_path }
     ]
   } %>
 
-  <%# Payout Stats Cards %>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Awaiting Calculation</div>
-      <div class="text-2xl font-semibold text-pink-600"><%= @needs_calculation_count %> shows</div>
-      <div class="text-xs text-gray-500">need financial data or calculation</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
-      <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_awaiting_payout) %></div>
-      <div class="text-xs text-gray-500"><%= @awaiting_payout_count %> shows · <%= @awaiting_payout_people_count %> people</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
-      <div class="text-sm text-gray-500 mb-1">Paid Out</div>
-      <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@total_paid) %></div>
-      <div class="text-xs text-gray-500"><%= @paid_shows_count %> shows · <%= @paid_people_count %> people</div>
-    </div>
-  </div>
+  <% if @production %>
+    <%# Single Production View %>
 
-  <%# Payment Setup Section %>
-  <div class="mb-6 bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
-    <div class="flex items-center justify-between mb-3">
-      <div>
-        <h3 class="font-semibold text-gray-900">Payment Setup</h3>
-        <p class="text-sm text-gray-500 mt-0.5">
+    <%# Payout Stats Cards %>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Awaiting Calculation</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= @needs_calculation_count %> shows</div>
+        <div class="text-xs text-gray-500">need financial data or calculation</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@total_awaiting_payout) %></div>
+        <div class="text-xs text-gray-500"><%= @awaiting_payout_count %> shows · <%= @awaiting_payout_people_count %> people</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Paid Out</div>
+        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@total_paid) %></div>
+        <div class="text-xs text-gray-500"><%= @paid_shows_count %> shows · <%= @paid_people_count %> people</div>
+      </div>
+    </div>
+
+    <%# Payment Setup Section %>
+    <div class="mb-6 bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">Payment Setup</h3>
+          <p class="text-sm text-gray-500 mt-0.5">
+            <% if @missing_payment_info.any? %>
+              <%= @missing_payment_info.count %> talent pool <%= "member".pluralize(@missing_payment_info.count) %> haven't set up their payment info
+            <% else %>
+              All talent pool members have payment info configured
+            <% end %>
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <%= render "shared/button", text: "QR Code", variant: "outline", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
           <% if @missing_payment_info.any? %>
-            <%= @missing_payment_info.count %> talent pool <%= "member".pluralize(@missing_payment_info.count) %> haven't set up their payment info
-          <% else %>
-            All talent pool members have payment info configured
-          <% end %>
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <%= render "shared/button", text: "QR Code", variant: "outline", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
-        <% if @missing_payment_info.any? %>
-          <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "mail", data: { action: "click->modal#open", "modal-id": "notify-modal" } %>
-        <% end %>
-      </div>
-    </div>
-
-    <% if @missing_payment_info.any? %>
-      <button type="button" data-action="click->show-toggle#toggle" class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
-        <svg data-show-toggle-target="icon" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-        </svg>
-        Show names
-      </button>
-      <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
-        <div class="flex flex-wrap gap-1.5">
-          <% @missing_payment_info.each do |person| %>
-            <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-              <%= person.name %>
-            </span>
+            <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "mail", data: { action: "click->modal#open", "modal-id": "notify-modal" } %>
           <% end %>
         </div>
       </div>
-    <% end %>
 
-    <%# QR Code Modal - controlled by qr-code controller %>
-    <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
+      <% if @missing_payment_info.any? %>
+        <button type="button" data-action="click->show-toggle#toggle" class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
+          <svg data-show-toggle-target="icon" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          Show names
+        </button>
+        <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
+          <div class="flex flex-wrap gap-1.5">
+            <% @missing_payment_info.each do |person| %>
+              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                <%= person.name %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# QR Code Modal %>
+      <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Payment Setup QR Code</h3>
+            <button type="button" data-action="click->qr-code#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="p-6 text-center">
+            <p class="text-sm text-gray-600 mb-4">Show this QR code at your venue. When scanned, it takes performers to their payment setup page.</p>
+            <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+              <canvas data-qr-code-target="canvas" width="200" height="200"></canvas>
+            </div>
+            <p class="text-xs text-gray-500 mt-4"><%= my_payments_setup_url %></p>
+            <button type="button" data-action="click->qr-code#download" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Download
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Shows List %>
+    <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
+      <%# Filter Bar with toggle %>
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+        {
+          label: "Status",
+          filters: [
+            { text: "All", path: manage_money_production_payouts_path(@production, filter: "all"), active: @filter == "all" },
+            { text: "Awaiting Calculation", path: manage_money_production_payouts_path(@production, filter: "awaiting_calculation"), active: @filter == "awaiting_calculation" },
+            { text: "Awaiting Payout", path: manage_money_production_payouts_path(@production, filter: "awaiting_payout"), active: @filter == "awaiting_payout" },
+            { text: "Paid", path: manage_money_production_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
+          ]
+        },
+        { separator: true },
+        {
+          partial: "shared/filters/toggle_filter",
+          locals: {
+            label: "Hide Non-revenue Events",
+            active: @hide_non_revenue,
+            toggle_action: "click->money-filter#toggle"
+          }
+        }
+      ] %>
+
+      <% if @shows.any? %>
+        <div class="space-y-2">
+          <% @shows.each do |show| %>
+            <%= render partial: "manage/money_payouts/show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+          <p class="text-gray-600">
+            <% if @filter == "all" %>
+              No past revenue events yet.
+            <% elsif @filter == "awaiting_calculation" %>
+              No shows awaiting calculation.
+            <% elsif @filter == "awaiting_payout" %>
+              No shows awaiting payout.
+            <% elsif @filter == "paid" %>
+              No paid shows yet.
+            <% else %>
+              No shows with this status.
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Notify Modal %>
+    <div id="notify-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-y-auto py-8" data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4" data-action="click->modal#stopPropagation">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Payment Setup QR Code</h3>
-          <button type="button" data-action="click->qr-code#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+          <h3 class="text-lg font-semibold text-gray-900">Send Payment Setup Reminder</h3>
+          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
-        <div class="p-6 text-center">
-          <p class="text-sm text-gray-600 mb-4">Show this QR code at your venue. When scanned, it takes performers to their payment setup page.</p>
-          <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-            <canvas data-qr-code-target="canvas" width="200" height="200"></canvas>
+        <div class="p-6">
+          <%# Recipients Summary %>
+          <div class="mb-4 pb-4 border-b border-gray-100">
+            <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span><strong><%= @missing_payment_info.count %></strong> <%= "recipient".pluralize(@missing_payment_info.count) %></span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <% @missing_payment_info.first(8).each do |person| %>
+                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                  <%= person.name %>
+                </span>
+              <% end %>
+              <% if @missing_payment_info.count > 8 %>
+                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
+                  +<%= @missing_payment_info.count - 8 %> more
+                </span>
+              <% end %>
+            </div>
           </div>
-          <p class="text-xs text-gray-500 mt-4"><%= my_payments_setup_url %></p>
-          <button type="button" data-action="click->qr-code#download" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Download
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <%# Shows List %>
-  <div class="mb-8 pt-6 border-t border-gray-200" data-controller="money-filter">
-    <%# Filter Bar with toggle %>
-    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-      {
-        label: "Status",
-        filters: [
-          { text: "All", path: manage_production_money_payouts_path(@production, filter: "all"), active: @filter == "all" },
-          { text: "Awaiting Calculation", path: manage_production_money_payouts_path(@production, filter: "awaiting_calculation"), active: @filter == "awaiting_calculation" },
-          { text: "Awaiting Payout", path: manage_production_money_payouts_path(@production, filter: "awaiting_payout"), active: @filter == "awaiting_payout" },
-          { text: "Paid", path: manage_production_money_payouts_path(@production, filter: "paid"), active: @filter == "paid" }
-        ]
-      },
-      { separator: true },
-      {
-        partial: "shared/filters/toggle_filter",
-        locals: {
-          label: "Hide Non-revenue Events",
-          active: @hide_non_revenue,
-          toggle_action: "click->money-filter#toggle"
-        }
-      }
-    ] %>
-
-    <% if @shows.any? %>
-      <div class="space-y-2">
-        <% @shows.each do |show| %>
-          <%= render partial: "manage/money_payouts/show_row", locals: { show: show, production: @production, hide_non_revenue: @hide_non_revenue } %>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">
-          <% if @filter == "all" %>
-            No past revenue events yet.
-          <% elsif @filter == "awaiting_calculation" %>
-            No shows awaiting calculation.
-          <% elsif @filter == "awaiting_payout" %>
-            No shows awaiting payout.
-          <% elsif @filter == "paid" %>
-            No paid shows yet.
-          <% else %>
-            No shows with this status.
-          <% end %>
-        </p>
-      </div>
-    <% end %>
-  </div>
-
-  <%# Notify Modal %>
-  <div id="notify-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-y-auto py-8" data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4" data-action="click->modal#stopPropagation">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">Send Payment Setup Reminder</h3>
-        <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-      <div class="p-6">
-        <%# Recipients Summary %>
-        <div class="mb-4 pb-4 border-b border-gray-100">
-          <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <span><strong><%= @missing_payment_info.count %></strong> <%= "recipient".pluralize(@missing_payment_info.count) %></span>
-          </div>
-          <div class="flex flex-wrap gap-1.5">
-            <% @missing_payment_info.first(8).each do |person| %>
-              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                <%= person.name %>
-              </span>
-            <% end %>
-            <% if @missing_payment_info.count > 8 %>
-              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
-                +<%= @missing_payment_info.count - 8 %> more
-              </span>
-            <% end %>
-          </div>
-        </div>
-
-        <%= form_with url: manage_production_send_payment_setup_reminders_money_payouts_path(@production), method: :post, local: true, class: "space-y-4" do %>
-          <%# Email Editor %>
-          <%= fields_for :email_draft, @payment_reminder_email_draft do |email_form| %>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-                <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, production: @production, placeholder: "Email subject..." %>
+          <%= form_with url: manage_send_payment_setup_reminders_money_payouts_path(@production), method: :post, local: true, class: "space-y-4" do %>
+            <%# Email Editor %>
+            <%= fields_for :email_draft, @payment_reminder_email_draft do |email_form| %>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                  <%= render "shared/subject_field_with_prefix", form: email_form, field_name: :title, organization: Current.organization, placeholder: "Email subject..." %>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                  <%= email_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
-                <%= email_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
-              </div>
+            <% end %>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "medium", type: :submit, icon: "paper-airplane" %>
             </div>
           <% end %>
-
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <button type="button" data-action="click->modal#close" class="px-4 py-2 text-gray-600 hover:text-gray-800 cursor-pointer">Cancel</button>
-            <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "medium", type: :submit, icon: "paper-airplane" %>
-          </div>
-        <% end %>
+        </div>
       </div>
     </div>
-  </div>
+
+  <% else %>
+    <%# All Productions View %>
+
+    <%# Organization Summary %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Awaiting Payout</div>
+        <div class="text-2xl font-semibold text-pink-600"><%= number_to_currency(@org_awaiting_payout) %></div>
+        <div class="text-xs text-gray-500"><%= @org_awaiting_count %> shows across all productions</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500 mb-1">Total Paid Out</div>
+        <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@org_paid) %></div>
+        <div class="text-xs text-gray-500"><%= @org_paid_count %> shows across all productions</div>
+      </div>
+    </div>
+
+    <%# Productions List %>
+    <div class="">
+
+      <% if @production_summaries.any? %>
+        <div class="space-y-2">
+          <% @production_summaries.each do |summary| %>
+            <%= render "manage/money_payouts/production_row", summary: summary %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+          <p class="text-gray-600">No productions yet.</p>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 </div>

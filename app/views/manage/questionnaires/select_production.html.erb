@@ -1,0 +1,72 @@
+<% content_for :title, "Create Questionnaire - Select Production" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Communications", manage_communications_path],
+      ["Questionnaires", manage_communications_all_questionnaires_path]
+    ],
+    text: "Create Questionnaire",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-8">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+            1
+          </div>
+          <span class="ml-2 text-sm font-medium text-pink-600 hidden sm:inline">Production</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">
+            2
+          </div>
+          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Details</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Which production is this questionnaire for?</h2>
+      <p class="text-gray-600 mb-6">Select the production this questionnaire will belong to.</p>
+
+      <%= form_with url: manage_communications_questionnaires_new_wizard_path, method: :post, local: true, data: { controller: "option-select", "option-select-selected-value": "" } do |form| %>
+        <div class="space-y-3 max-h-96 overflow-y-auto">
+          <% @productions.each do |production| %>
+            <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
+                 data-option-select-target="option"
+                 data-value="<%= production.id %>"
+                 data-action="click->option-select#select">
+              <input type="radio" name="production_id" value="<%= production.id %>"
+                     class="sr-only"
+                     data-option-select-target="input">
+              <p class="font-medium text-gray-900"><%= production.name %></p>
+              <p class="text-sm text-gray-500 mt-1">
+                <% questionnaire_count = production.questionnaires.count %>
+                <%= pluralize(questionnaire_count, "questionnaire") %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @productions.empty? %>
+          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+            <p class="text-gray-600">No productions found. Create a production first.</p>
+            <%= link_to "Create Production", new_manage_production_path, class: "mt-2 inline-block text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% end %>
+
+        <div class="mt-8 flex justify-between">
+          <%= link_to "Cancel", manage_communications_all_questionnaires_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" %>
+          <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -6,8 +6,9 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Casting", manage_production_casting_path(@production)],
-      ["Talent Pool", "#{manage_production_casting_settings_path(@production)}#tab-2"]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)],
+      ["Talent Pool", "#{manage_casting_settings_path(@production)]#tab-2" }
     ],
     text: "Remove from Talent Pool",
     links: []
@@ -63,13 +64,13 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: "#{manage_production_casting_settings_path(@production)}#tab-2" %>
+            path: "#{manage_casting_settings_path(@production)}#tab-2" %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",
             path: @member_type == "person" ?
-              remove_person_manage_production_talent_pools_path(@production, person_id: member.id) :
-              remove_group_manage_production_talent_pools_path(@production, group_id: member.id),
+              manage_casting_talent_pool_remove_person_path(@production, person_id: member.id) :
+              manage_casting_talent_pool_remove_group_path(@production, group_id: member.id),
             method: :post %>
       </div>
     </div>
@@ -93,13 +94,13 @@
         <%= render "shared/button",
             text: "Cancel",
             variant: "ghost-cancel",
-            path: "#{manage_production_casting_settings_path(@production)}#tab-2" %>
+            path: "#{manage_casting_settings_path(@production)}#tab-2" %>
         <%= render "shared/button",
             text: "Remove from Talent Pool",
             variant: "danger",
             path: @member_type == "person" ?
-              remove_person_manage_production_talent_pools_path(@production, person_id: member.id) :
-              remove_group_manage_production_talent_pools_path(@production, group_id: member.id),
+              manage_casting_talent_pool_remove_person_path(@production, person_id: member.id) :
+              manage_casting_talent_pool_remove_group_path(@production, group_id: member.id),
             method: :post %>
       </div>
     </div>

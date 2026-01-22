@@ -74,6 +74,16 @@ module Manage
           @cant_make_it_by_show[affected_show_id][key] = vacancy
         end
       end
+
+      # Load sign-up registrations for shows that have linked sign-up forms
+      sign_up_registrations = SignUpRegistration
+        .joins(sign_up_slot: :sign_up_form_instance)
+        .where(sign_up_form_instances: { show_id: show_ids })
+        .where(status: %w[confirmed waitlisted])
+        .includes(:person, person: { profile_headshots: { image_attachment: :blob } }, sign_up_slot: { sign_up_form_instance: :sign_up_form })
+        .to_a
+
+      @sign_up_registrations_by_show = sign_up_registrations.group_by { |r| r.sign_up_slot.sign_up_form_instance.show_id }
     end
 
     def show
@@ -122,6 +132,9 @@ module Manage
 
       # Load cancelled/open vacancies for linked shows (person still cast but can't make it)
       @cancelled_vacancies_by_assignment = @show.cancelled_vacancies_by_assignment
+
+      # Load sign-up registrations if this show has a linked sign-up form
+      @sign_up_registrations = @show.sign_up_registrations.includes(person: { profile_headshots: { image_attachment: :blob } }).to_a
     end
 
     def calendar
@@ -290,6 +303,13 @@ module Manage
       # Generate a UUID for this recurrence group
       recurrence_group_id = SecureRandom.uuid
 
+      # Determine casting_source - respect the clear_casting_source flag
+      effective_casting_source = if params[:clear_casting_source] == "1"
+        nil # Inherit from production
+      else
+        params[:show][:casting_source]
+      end
+
       # Create shows for each datetime
       created_count = 0
       datetimes.each do |datetime|
@@ -300,7 +320,7 @@ module Manage
           is_online: params[:show][:is_online],
           online_location_info: params[:show][:online_location_info],
           casting_enabled: params[:show][:casting_enabled],
-          casting_source: params[:show][:casting_source],
+          casting_source: effective_casting_source,
           date_and_time: datetime,
           production: @production,
           recurrence_group_id: recurrence_group_id
@@ -339,7 +359,7 @@ module Manage
             updated_count += 1 if show.update(update_params)
           end
 
-          redirect_to manage_production_show_path(@production, @show),
+          redirect_to manage_show_path(@production, @show),
                       notice: "Successfully updated #{updated_count} events in the series",
                       status: :see_other
         end
@@ -360,7 +380,7 @@ module Manage
         update_params.delete(:remove_poster)
 
         if @show.update(update_params)
-          redirect_to manage_production_show_path(@production, @show),
+          redirect_to manage_show_path(@production, @show),
                       notice: "#{@show.event_type.titleize} was successfully updated",
                       status: :see_other
         else
@@ -380,7 +400,12 @@ module Manage
       is_online = params[:show][:is_online].nil? ? @show.is_online : params[:show][:is_online]
       online_location_info = params[:show][:online_location_info] || @show.online_location_info
       casting_enabled = params[:show][:casting_enabled].nil? ? @show.casting_enabled : params[:show][:casting_enabled]
-      casting_source = params[:show][:casting_source] || @show.casting_source
+      # Respect clear_casting_source flag
+      casting_source = if params[:clear_casting_source] == "1"
+        nil # Inherit from production
+      else
+        params[:show][:casting_source] || @show.casting_source
+      end
       # Preserve call time settings
       call_time = params[:show][:call_time].presence || @show.call_time
       call_time_enabled = params[:show][:call_time_enabled].nil? ? @show.call_time_enabled : params[:show][:call_time_enabled]
@@ -673,7 +698,7 @@ module Manage
           render json: {
             success: true,
             message: "Event linked successfully",
-            redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+            redirect_url: manage_edit_show_path(@production, @show, anchor: "tab-5")
           }
         }
       end
@@ -725,7 +750,7 @@ module Manage
           render json: {
             success: true,
             message: "Event unlinked successfully",
-            redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+            redirect_url: manage_edit_show_path(@production, @show, anchor: "tab-5")
           }
         }
       end
@@ -748,13 +773,13 @@ module Manage
       render json: {
         success: true,
         message: "All events unlinked successfully",
-        redirect_url: edit_manage_production_show_path(@production, @show, anchor: "tab-5")
+        redirect_url: manage_edit_show_path(@production, @show, anchor: "tab-5")
       }
     end
 
     def destroy
       # Legacy destroy action - redirects to new cancel page
-      redirect_to cancel_manage_production_show_path(@production, @show)
+      redirect_to manage_cancel_show_form_path(@production, @show)
     end
 
     def transfer
@@ -762,13 +787,13 @@ module Manage
       target_production = Current.user.accessible_productions.find_by(id: target_production_id)
 
       unless target_production
-        redirect_to edit_manage_production_show_path(@production, @show),
+        redirect_to manage_edit_show_path(@production, @show),
                     alert: "Target production not found or you don't have access"
         return
       end
 
       if target_production.id == @production.id
-        redirect_to edit_manage_production_show_path(@production, @show),
+        redirect_to manage_edit_show_path(@production, @show),
                     alert: "Cannot move to the same production"
         return
       end
@@ -781,39 +806,48 @@ module Manage
         session[:current_production_id_for_organization] ||= {}
         session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = target_production.id
 
-        redirect_to edit_manage_production_show_path(target_production, @show),
+        redirect_to manage_edit_show_path(target_production, @show),
                     notice: "Successfully moved #{@show.event_type} to #{target_production.name}"
       else
-        redirect_to edit_manage_production_show_path(@production, @show),
+        redirect_to manage_edit_show_path(@production, @show),
                     alert: result[:error] || "Failed to move #{@show.event_type}"
       end
     end
 
     def toggle_signup_based_casting
-      if params[:enabled] == "true" || params[:enabled] == true
+      enabled = params[:enabled] == "true" || params[:enabled] == true
+
+      if enabled
         result = @show.enable_signup_based_casting!
         if result[:success]
           flash[:notice] = "Sign-up based casting enabled. #{result[:synced_count]} attendee(s) synced from sign-ups."
         else
-          flash[:alert] = result[:error]
+          flash[:alert] = result[:error] || "Failed to enable sign-up based casting"
         end
       else
-        @show.disable_signup_based_casting!
-        flash[:notice] = "Sign-up based casting disabled."
+        result = @show.disable_signup_based_casting!
+        if result[:success]
+          flash[:notice] = "Sign-up based casting disabled."
+        else
+          flash[:alert] = result[:error] || "Failed to disable sign-up based casting"
+        end
       end
 
       respond_to do |format|
-        format.html { redirect_to edit_manage_production_show_path(@production, @show) }
-        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show) }
+        format.html { redirect_to manage_edit_show_path(@production, @show) }
+        format.turbo_stream { redirect_to manage_edit_show_path(@production, @show) }
+        format.json { render json: { success: result[:success], enabled: enabled } }
       end
     end
 
     def toggle_attendance
-      @show.update!(attendance_enabled: !@show.attendance_enabled)
+      enabled = params[:enabled] == "true" || params[:enabled] == true
+      @show.update!(attendance_enabled: enabled)
 
       respond_to do |format|
-        format.html { redirect_to edit_manage_production_show_path(@production, @show) }
-        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show) }
+        format.html { redirect_to manage_edit_show_path(@production, @show) }
+        format.turbo_stream { redirect_to manage_edit_show_path(@production, @show) }
+        format.json { render json: { success: true, enabled: enabled } }
       end
     end
 
@@ -823,25 +857,108 @@ module Manage
 
       respond_to do |format|
         format.html { render :attendance }
-        format.json { render json: { records: @attendance_records, summary: @attendance_summary } }
+        format.json do
+          records_json = @attendance_records.map do |rec|
+            person = rec[:person]
+            headshot_variant = person&.safe_headshot_variant(:thumb)
+            headshot_url = headshot_variant ? url_for(headshot_variant) : nil
+
+            {
+              assignment: {
+                id: rec[:assignment].id,
+                role: { name: rec[:assignment].role&.name }
+              },
+              record: rec[:record].persisted? ? { status: rec[:record].status } : nil,
+              person: {
+                id: person&.id,
+                name: person&.name,
+                initials: person&.initials,
+                headshot_url: headshot_url
+              }
+            }
+          end
+          render json: { records: records_json, summary: @attendance_summary }
+        end
       end
     end
 
     def update_attendance
       attendance_params = params.require(:attendance).permit!.to_h
 
-      attendance_params.each do |assignment_id, status|
-        record = ShowAttendanceRecord.find_or_initialize_by(
-          show: @show,
-          show_person_role_assignment_id: assignment_id
-        )
+      attendance_params.each do |record_id, status|
+        if record_id.start_with?("signup_")
+          # Handle sign-up registration attendance
+          signup_id = record_id.sub("signup_", "")
+          record = ShowAttendanceRecord.find_or_initialize_by(
+            show: @show,
+            sign_up_registration_id: signup_id
+          )
+        else
+          # Handle cast member attendance
+          record = ShowAttendanceRecord.find_or_initialize_by(
+            show: @show,
+            show_person_role_assignment_id: record_id
+          )
+        end
         record.update!(status: status)
       end
 
       respond_to do |format|
-        format.html { redirect_to edit_manage_production_show_path(@production, @show), notice: "Attendance updated successfully." }
-        format.turbo_stream { redirect_to edit_manage_production_show_path(@production, @show), notice: "Attendance updated successfully." }
+        format.html { redirect_to manage_edit_show_path(@production, @show), notice: "Attendance updated successfully." }
+        format.turbo_stream { redirect_to manage_edit_show_path(@production, @show), notice: "Attendance updated successfully." }
         format.json { render json: { success: true } }
+      end
+    end
+
+    def create_walkin
+      email = params.require(:email)
+      name = params[:name]
+
+      # Search for existing person by email
+      person = Person.find_by(email: email)
+
+      if person
+        # Person exists - ensure they're in current organization
+        unless person.organization_members.exists?(organization: Current.organization)
+          OrganizationMember.create!(
+            person: person,
+            organization: Current.organization,
+            role: :member
+          )
+        end
+      else
+        # Person doesn't exist - create new person
+        person = Person.create!(
+          name: name.presence || email.split("@")[0],
+          email: email
+        )
+        # Add to organization
+        OrganizationMember.create!(
+          person: person,
+          organization: Current.organization,
+          role: :member
+        )
+        # Send invitation
+        PersonInvitation.create_and_send!(person: person, sender: Current.user, organization: Current.organization)
+      end
+
+      # Create attendance record marked as present
+      record = ShowAttendanceRecord.create!(
+        show: @show,
+        status: "present"
+      )
+
+      respond_to do |format|
+        format.json do
+          render json: {
+            success: true,
+            person: {
+              id: person.id,
+              name: person.name,
+              email: person.email
+            }
+          }
+        end
       end
     end
 

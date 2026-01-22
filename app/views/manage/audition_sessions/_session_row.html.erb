@@ -1,7 +1,7 @@
 <%# Shared audition session row component %>
 <%# Required locals: session, production, audition_cycle %>
 
-<%= link_to manage_production_signups_auditions_cycle_session_path(production, audition_cycle, session),
+<%= link_to manage_signups_auditions_cycle_session_path(production, audition_cycle, session),
     class: "flex flex-col sm:flex-row sm:items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white border-gray-200",
     data: { turbo_prefetch: false } do %>
   <%# Left Section: Date & Session Details %>

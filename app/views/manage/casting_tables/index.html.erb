@@ -1,0 +1,87 @@
+<% content_for :title, "Casting Tables" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path]
+    ],
+    text: "Casting Tables",
+    links: [
+      { text: "Create Casting Table", path: manage_casting_tables_new_path }
+    ]
+  } %>
+
+  <div class="pt-4">
+    <% if @draft_tables.any? %>
+      <div class="mb-8">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Draft Tables</h3>
+        <div class="space-y-1">
+          <% @draft_tables.each do |table| %>
+            <%= link_to manage_casting_table_path(table), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+              <div class="flex items-center gap-4 flex-1">
+                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-gray-900"><%= table.name %></span>
+                    <span class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/10">Draft</span>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    <%= pluralize(table.shows.count, "event") %> · <%= pluralize(table.casting_table_members.count, "member") %>
+                    · Created <%= time_ago_in_words(table.created_at) %> ago
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @finalized_tables.any? %>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Finalized Tables</h3>
+        <div class="space-y-1">
+          <% @finalized_tables.each do |table| %>
+            <%= link_to manage_casting_table_path(table), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+              <div class="flex items-center gap-4 flex-1">
+                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-gray-900"><%= table.name %></span>
+                    <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10">Finalized</span>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    <%= pluralize(table.shows.count, "event") %>
+                    · Finalized <%= time_ago_in_words(table.finalized_at) %> ago
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @casting_tables.empty? %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <div class="mb-4">
+          <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+          </svg>
+        </div>
+        <p class="text-gray-600 mb-4">No casting tables yet. Create one to start batch casting for multiple shows.</p>
+        <%= render "shared/button", text: "Create Casting Table", variant: "primary", size: "medium", path: manage_casting_tables_new_path %>
+      </div>
+    <% end %>
+  </div>
+</div>

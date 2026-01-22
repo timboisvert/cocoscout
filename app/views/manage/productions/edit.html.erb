@@ -64,7 +64,7 @@
     </div>
 
     <!-- Tab 2: Visual Assets -->
-    <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= create_poster_manage_production_visual_assets_path(@production) %>">
+    <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= manage_create_poster_production_visual_asset_path(@production) %>">
       <!-- Logo Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <%= render "shared/card_header", title: "Logo" %>
@@ -109,10 +109,10 @@
                   <% if current_user_can_manage?(@production) %>
                     <div class="flex flex-wrap gap-2 mt-2">
                       <% unless poster.is_primary %>
-                        <%= link_to "Set as Primary", set_primary_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :patch }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                        <%= link_to "Set as Primary", manage_set_primary_poster_production_visual_asset_path(@production, poster), data: { turbo_method: :patch }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
                       <% end %>
-                      <button type="button" data-action="click->visual-assets-modal#openEditPosterModal" data-poster-id="<%= poster.id %>" data-poster-name="<%= poster.name %>" data-poster-image-url="<%= image_variant ? url_for(image_variant) : '' %>" data-edit-poster-path="<%= update_poster_manage_production_visual_asset_path(@production, poster) %>" class="text-sm underline text-pink-500 hover:text-pink-600 cursor-pointer">Edit</button>
-                      <%= link_to "Delete", destroy_poster_manage_production_visual_asset_path(@production, poster), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
+                      <button type="button" data-action="click->visual-assets-modal#openEditPosterModal" data-poster-id="<%= poster.id %>" data-poster-name="<%= poster.name %>" data-poster-image-url="<%= image_variant ? url_for(image_variant) : '' %>" data-edit-poster-path="<%= manage_update_poster_production_visual_asset_path(@production, poster) %>" class="text-sm underline text-pink-500 hover:text-pink-600 cursor-pointer">Edit</button>
+                      <%= link_to "Delete", manage_destroy_poster_production_visual_asset_path(@production, poster), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this poster?" }, class: "text-sm underline text-pink-500 hover:text-pink-600" %>
                     </div>
                   <% end %>
                 </div>
@@ -145,7 +145,7 @@
                 <%= image_tag @production.logo, class: "h-20 object-contain bg-gray-50 rounded p-2" %>
               </div>
             <% end %>
-            <%= form_with model: [:manage, @production], url: (@production.logo.attached? ? update_logo_manage_production_visual_asset_path(@production, :logo) : create_logo_manage_production_visual_assets_path(@production)), method: (@production.logo.attached? ? :patch : :post), local: true do |f| %>
+            <%= form_with model: [:manage, @production], url: (@production.logo.attached? ? manage_update_logo_production_visual_asset_path(@production, :logo) : manage_create_logo_production_visual_asset_path(@production)), method: (@production.logo.attached? ? :patch : :post), local: true do |f| %>
               <div class="mb-4">
                 <%= f.label :logo, "Logo Image", class: "block text-sm font-medium text-gray-700 mb-2" %>
                 <span class="text-sm text-gray-500">(PNG, JPG, or GIF)</span>
@@ -169,7 +169,7 @@
             <h2 data-visual-assets-modal-target="posterModalTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Add a Poster</h2>
           </div>
           <div class="p-6">
-            <form data-visual-assets-modal-target="posterForm" action="<%= create_poster_manage_production_visual_assets_path(@production) %>" method="post" enctype="multipart/form-data">
+            <form data-visual-assets-modal-target="posterForm" action="<%= manage_create_poster_production_visual_asset_path(@production) %>" method="post" enctype="multipart/form-data">
               <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
               <input type="hidden" data-visual-assets-modal-target="posterIdField" name="poster[id]" value="">
               <!-- Current Poster Preview (shown only when editing) -->

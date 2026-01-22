@@ -1,10 +1,39 @@
 <% content_for :title, "#{@show.event_type.titleize} Details" %>
 
+<%
+  is_past = @show.date_and_time <= Time.current
+  is_canceled = @show.canceled
+%>
+
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%# Banner for canceled shows %>
+  <% if is_canceled %>
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+      <div class="flex items-center gap-2 text-red-800">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+        <span class="font-medium">This <%= @show.event_type %> has been canceled.</span>
+      </div>
+    </div>
+  <% elsif is_past %>
+    <%# Banner for past shows %>
+    <div class="mb-4 px-4 py-3 bg-pink-50 border border-pink-200 rounded-lg">
+      <div class="flex items-center gap-2 text-pink-800">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+        <span class="font-medium">You're viewing a past <%= @show.event_type %> that has already happened.</span>
+      </div>
+    </div>
+  <% end %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows & Events", manage_production_shows_path(@production) ]
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)]
     ],
     text: "#{@show.event_type.titleize}",
     links: []
@@ -26,21 +55,37 @@
               duplicate_label = "Duplicate #{event_label}"
               delete_label = "Delete #{event_label}"
               uncancel_label = "Uncancel #{event_label}"
-              is_past = @show.date_and_time <= Time.current
             %>
-            <div class="flex flex-wrap gap-2">
-              <% if is_past %>
-                <%= render "shared/button", text: duplicate_label, path: new_manage_production_show_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
-                <%= render "shared/button", text: delete_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
-              <% elsif @show.canceled %>
-                <%= render "shared/button", text: uncancel_label, path: uncancel_manage_production_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
-                <%= render "shared/button", text: delete_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+            <div class="flex flex-wrap gap-2 items-center">
+              <% if is_canceled %>
+                <%= render "shared/button", text: uncancel_label, path: unmanage_cancel_show_form_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
+                <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
               <% else %>
-                <%= render "shared/button", text: edit_label, path: edit_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
-                <%= render "shared/button", text: duplicate_label, path: new_manage_production_show_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
-                <%= render "shared/button", text: cancel_label, path: cancel_manage_production_show_path(@production, @show), variant: "primary", size: "small" %>
+                <%# Always show edit button, even for past events %>
+                <%= render "shared/button", text: edit_label, path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
+                <%= render "shared/button", text: duplicate_label, path: manage_shows_wizard_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
+                <% unless is_past %>
+                  <%= render "shared/button", text: cancel_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+                <% end %>
               <% end %>
             </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Notes Box %>
+      <% if @show.notes.present? %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.86-8.888z" />
+              </svg>
+              Notes
+            </h3>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= @show.notes %></p>
           </div>
         </div>
       <% end %>
@@ -136,7 +181,7 @@
                       </div>
                     </div>
                     <div class="flex-shrink-0 hidden group-hover:block">
-                      <%= render "shared/button", text: "Review", path: manage_production_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
+                      <%= render "shared/button", text: "Review", path: manage_casting_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
                     </div>
                   </div>
                 </div>
@@ -146,7 +191,10 @@
         <% end %>
 
         <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Casting" %>
+          <%= render "shared/card_header", title: "Casting" do %>
+            <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
+            <%= render "shared/button", text: "Contact Cast", path: manage_casting_show_contact_path(@production, @show), variant: "primary", size: "small" %>
+          <% end %>
           <div class="p-4">
             <%
               cast_count = @show.show_person_role_assignments.size
@@ -245,7 +293,7 @@
                           "#{role.name} - Not Cast"
                         end
                       %>
-                      <%= link_to manage_production_show_cast_path(@production, @show), class: "block" do %>
+                      <%= link_to manage_casting_show_cast_path(@production, @show), class: "block" do %>
                         <div class="w-10 h-10 rounded-md border-2 border-dashed <%= has_open_vacancy ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-gray-50' %> flex items-center justify-center <%= has_open_vacancy ? 'text-amber-500' : 'text-gray-400' %> text-xs hover:border-pink-400 hover:bg-pink-50 transition-all"
                              data-controller="tooltip"
                              data-tooltip-text="<%= tooltip_text %>">
@@ -326,14 +374,89 @@
             <% else %>
               <p class="text-xs text-gray-400 italic">No roles defined yet</p>
             <% end %>
-
-            <%# Casting action buttons %>
-            <div class="flex flex-wrap gap-2 mt-4">
-              <%= render "shared/button", text: "Manage Cast", path: manage_production_show_cast_path(@production, @show), variant: "primary", size: "small" %>
-              <%= render "shared/button", text: "Contact Cast", path: manage_production_show_contact_cast_path(@production, @show), variant: "primary", size: "small" %>
-            </div>
           </div>
         </div>
+
+        <%# Attendees Section - from sign-up registrations %>
+        <% if @sign_up_registrations.any? %>
+          <%
+            # Get sign-up form for linking (use first registration's form)
+            first_sign_up_form = @sign_up_registrations.first&.sign_up_form
+          %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <%= render "shared/card_header", title: "Attendees" do %>
+              <div class="flex items-center gap-2">
+                <% if first_sign_up_form %>
+                  <%= render "shared/button", text: "View Sign-ups", path: manage_signups_form_path(@production, first_sign_up_form), variant: "secondary", size: "small" %>
+                <% end %>
+                <%= render "shared/attendance_modal", show: @show, production: @production, variant: "primary" %>
+              </div>
+            <% end %>
+            <div class="p-4">
+              <div class="flex flex-wrap gap-1.5">
+                <% @sign_up_registrations.each do |registration| %>
+                  <%
+                    person = registration.person
+                    slot = registration.sign_up_slot
+                    sign_up_form = registration.sign_up_form
+                    tooltip_text = registration_slot_tooltip(registration)
+                    display_name = person&.name || registration.guest_name || "Guest"
+                  %>
+                  <% if person %>
+                    <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                    <% if headshot_variant %>
+                      <% if sign_up_form %>
+                        <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                          <%= image_tag headshot_variant,
+                              alt: display_name,
+                              class: "w-10 h-10 rounded-md object-cover hover:ring-2 hover:ring-pink-300 transition-all",
+                              data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                        <% end %>
+                      <% else %>
+                        <%= image_tag headshot_variant,
+                            alt: display_name,
+                            class: "w-10 h-10 rounded-md object-cover",
+                            data: { controller: "tooltip", tooltip_text: tooltip_text } %>
+                      <% end %>
+                    <% else %>
+                      <% if sign_up_form %>
+                        <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                          <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 hover:ring-2 hover:ring-pink-300 transition-all flex items-center justify-center font-bold text-xs"
+                               data-controller="tooltip"
+                               data-tooltip-text="<%= tooltip_text %>">
+                            <%= person.initials %>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                             data-controller="tooltip"
+                             data-tooltip-text="<%= tooltip_text %>">
+                          <%= person.initials %>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  <% else %>
+                    <% if sign_up_form %>
+                      <%= link_to manage_signups_form_path(@production, sign_up_form) do %>
+                        <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 hover:ring-2 hover:ring-pink-300 transition-all flex items-center justify-center font-bold text-xs"
+                             data-controller="tooltip"
+                             data-tooltip-text="<%= tooltip_text %>">
+                          <%= registration.display_initials %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="w-10 h-10 rounded-md bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs"
+                           data-controller="tooltip"
+                           data-tooltip-text="<%= tooltip_text %>">
+                        <%= registration.display_initials %>
+                      </div>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
 
         <%# Vacancy History - show all vacancies including resolved ones %>
         <% if @all_vacancies.any? %>
@@ -342,7 +465,7 @@
             <div class="divide-y divide-gray-200">
               <% @all_vacancies.each do |vacancy| %>
                 <% vacated_by = vacancy.vacated_by %>
-                <%= link_to manage_production_vacancy_path(@production, vacancy), class: "flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors group" do %>
+                <%= link_to manage_casting_vacancy_path(@production, vacancy), class: "flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors group" do %>
                   <div class="flex items-center gap-3">
                     <% if vacated_by %>
                       <% headshot = vacated_by.safe_headshot_variant(:thumb) %>

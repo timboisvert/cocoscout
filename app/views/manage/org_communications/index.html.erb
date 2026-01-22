@@ -1,0 +1,128 @@
+<% content_for :title, "Communications" %>
+
+<%
+  communications_description = <<~HTML
+    <p>
+      Your organization's communication hub — view sent messages and manage questionnaires across all productions.
+    </p>
+  HTML
+
+  communications_actions = [
+    { icon: "document-text", text: "Questionnaires", description: "Collect information via forms", path: manage_communications_all_questionnaires_path }
+  ]
+%>
+
+<div class="w-full" data-controller="communications">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render "shared/module_header",
+    title: "Communications",
+    description: communications_description,
+    actions: communications_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-4 mt-2">
+    <%# Search form %>
+    <div class="mb-4" data-controller="search-bar">
+      <%= form_with url: manage_communications_path, method: :get, data: { turbo: false, search_bar_target: "form" }, class: "relative flex gap-2" do |f| %>
+        <div class="relative flex-1">
+          <input
+            type="text"
+            name="search"
+            value="<%= @search_query %>"
+            placeholder="Search emails by subject or recipient..."
+            class="w-full h-12 px-4 pl-10 pr-10 rounded border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            autocomplete="off"
+            data-action="input->search-bar#toggleClear"
+            data-search-bar-target="input"
+          />
+          <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <% if @search_query.present? %>
+            <button
+              type="button"
+              data-action="click->search-bar#clear"
+              data-search-bar-target="clearBtn"
+              class="absolute right-2 top-2.5 p-1 rounded-full hover:bg-gray-100 transition cursor-pointer"
+              title="Clear search"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 hover:text-gray-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          <% end %>
+        </div>
+
+        <%= render "shared/button",
+            text: "Search",
+            variant: "primary",
+            size: "large",
+            icon: "search",
+            type: :submit %>
+      <% end %>
+    </div>
+
+    <%# Results count %>
+    <div class="mb-3 text-sm text-gray-600">
+      <% if @search_query.present? %>
+        <%= pluralize(@email_logs_pagy.count, "email") %> matching "<%= @search_query %>"
+      <% else %>
+        <%= pluralize(@email_logs_pagy.count, "email") %>
+      <% end %>
+    </div>
+
+    <% if @email_logs.empty? %>
+      <div class="text-center py-12 text-gray-500 bg-white border border-gray-200 rounded-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-12 mx-auto mb-3 text-gray-300">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 0 1-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 0 0 1.183 1.981l6.478 3.488m8.839 2.51-4.66-2.51m0 0-1.023-.55a2.25 2.25 0 0 0-2.134 0l-1.022.55m0 0-4.661 2.51m16.5 1.615a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V8.844a2.25 2.25 0 0 1 1.183-1.981l7.5-4.039a2.25 2.25 0 0 1 2.134 0l7.5 4.039a2.25 2.25 0 0 1 1.183 1.98V19.5Z" />
+        </svg>
+        <% if @search_query.present? %>
+          <p class="text-lg font-medium">No emails found matching "<%= @search_query %>"</p>
+          <p class="text-sm mt-1">Try a different search term.</p>
+        <% else %>
+          <p class="text-lg font-medium">No emails sent yet</p>
+          <p class="text-sm mt-1">Messages you send to your talent will appear here.</p>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="space-y-1">
+        <% @email_logs.each do |email| %>
+          <% 
+            production = email.production
+            has_production = production.present?
+          %>
+          <%= link_to has_production ? manage_communication_path(production, email) : "#", class: "block px-4 py-3 border border-gray-200 rounded-lg hover:border-gray-400 bg-white transition-all no-underline" do %>
+            <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+              <%# Left: Subject and production %>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-base font-medium text-gray-900 truncate"><%= email.subject %></h3>
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                  <span><%= email.created_at.strftime("%b %-d, %Y at %-l:%M %p") %></span>
+                  <% if has_production %>
+                    <span>·</span>
+                    <span class="text-pink-600"><%= production.name %></span>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Right: Recipient count %>
+              <div class="text-sm text-gray-600">
+                <% if email.email_batch.present? %>
+                  <span class="bg-gray-100 px-2 py-1 rounded"><%= email.email_batch.email_logs.count %> recipients</span>
+                <% else %>
+                  <span><%= email.recipient %></span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <%# Pagination %>
+      <div class="mt-6">
+        <%== pagy_nav_tailwind(@email_logs_pagy) if @email_logs_pagy.pages > 1 %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -5,7 +5,6 @@ module Manage
     before_action :set_production
     before_action :check_production_access
 
-    # GET /manage/productions/:production_id/signups
     def index
       # Sign-up forms stats
       @sign_up_forms = @production.sign_up_forms.not_archived

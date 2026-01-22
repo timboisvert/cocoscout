@@ -61,11 +61,11 @@ class Show < ApplicationRecord
 
   # Casting source determines how performers are assigned to this show
   # nil means "inherit from production"
+  # Talent pool now includes click-to-add functionality (formerly hybrid behavior)
   enum :casting_source, {
-    talent_pool: "talent_pool",   # Traditional casting from production members
+    talent_pool: "talent_pool",   # Traditional casting from production members (with click-to-add)
     sign_up: "sign_up",           # Self-service registration via sign-up forms
-    manual: "manual",             # Admin manually adds names/emails
-    hybrid: "hybrid"              # All sources: talent pool + sign-up + manual
+    manual: "manual"              # Admin manually adds names/emails
   }, default: nil, prefix: :casting
 
   # Returns the effective casting source (inheriting from production if not overridden)
@@ -309,6 +309,22 @@ class Show < ApplicationRecord
     end
   end
 
+  # Check if this show has any linked sign-up forms
+  def has_sign_up_form?
+    sign_up_form_instances.exists?
+  end
+
+  # Get all confirmed sign-up registrations for this show
+  # Returns registrations with person and slot preloaded
+  def sign_up_registrations
+    SignUpRegistration
+      .joins(sign_up_slot: :sign_up_form_instance)
+      .where(sign_up_form_instances: { show_id: id })
+      .where(status: %w[confirmed waitlisted])
+      .includes(:person, sign_up_slot: { sign_up_form_instance: :sign_up_form })
+      .order(:position)
+  end
+
   # Signup-based casting - pulls attendees from sign-up form registrations
   # Returns the sign-up form instance(s) associated with this show
   def sign_up_form_instances_for_casting
@@ -323,7 +339,7 @@ class Show < ApplicationRecord
 
   # Sync attendees from sign-up form registrations
   def sync_attendees_from_signups!
-    return unless signup_based_casting?
+    return 0 unless signup_based_casting?
 
     # Ensure we have the attendees role
     role = attendees_role || create_attendees_role!
@@ -344,7 +360,8 @@ class Show < ApplicationRecord
                                  .destroy_all
 
     # Add assignments for new registrations
-    (registration_person_ids - current_person_ids).each do |person_id|
+    new_person_ids = registration_person_ids - current_person_ids
+    new_person_ids.each do |person_id|
       show_person_role_assignments.create!(
         role: role,
         assignable_type: "Person",
@@ -354,62 +371,141 @@ class Show < ApplicationRecord
 
     # Update role quantity to match sign-up form capacity
     update_attendees_role_quantity!
+
+    # Return the count of synced registrations
+    registration_person_ids.count
   end
 
   # Enable signup-based casting
   def enable_signup_based_casting!
-    return if signup_based_casting?
+    return { success: true, synced_count: 0, message: "Already enabled" } if signup_based_casting?
 
-    # Must use custom roles for signup-based casting
-    self.use_custom_roles = true unless use_custom_roles?
-    self.signup_based_casting = true
-    save!
+    begin
+      # Must use custom roles for signup-based casting
+      self.use_custom_roles = true unless use_custom_roles?
+      self.signup_based_casting = true
+      save!(validate: false) # Skip validation as we're just updating flags
 
-    create_attendees_role!
-    sync_attendees_from_signups!
+      create_attendees_role!
+      synced_count = sync_attendees_from_signups!
+
+      { success: true, synced_count: synced_count || 0 }
+    rescue => e
+      Rails.logger.error("Failed to enable signup-based casting: #{e.message}")
+      { success: false, error: e.message }
+    end
   end
 
   # Disable signup-based casting
   def disable_signup_based_casting!
-    return unless signup_based_casting?
+    return { success: true, message: "Already disabled" } unless signup_based_casting?
 
-    # Remove the attendees role and its assignments
-    if attendees_role.present?
-      attendees_role.destroy!
+    begin
+      # Remove the attendees role and its assignments
+      if attendees_role.present?
+        attendees_role.destroy!
+      end
+
+      self.signup_based_casting = false
+      save!(validate: false) # Skip validation as we're just updating flags
+
+      { success: true }
+    rescue => e
+      Rails.logger.error("Failed to disable signup-based casting: #{e.message}")
+      { success: false, error: e.message }
     end
+  end
 
-    self.signup_based_casting = false
-    save!
+  # Check if signup-based casting is effectively enabled (considers production default)
+  def effective_signup_based_casting?
+    # If show has explicit setting, use it; otherwise use production default
+    if signup_based_casting.nil?
+      production&.default_signup_based_casting || false
+    else
+      signup_based_casting
+    end
+  end
+
+  # Check if show overrides the production default for signup-based casting
+  def overrides_signup_based_casting?
+    !signup_based_casting.nil? && signup_based_casting != production&.default_signup_based_casting
   end
 
   # Attendance tracking helpers
   def attendance_enabled_default?
-    %w[class workshop open_stage].include?(event_type)
+    # Check production default first, then fall back to event type
+    return production.default_attendance_enabled if production&.default_attendance_enabled?
+    %w[class workshop open_mic].include?(event_type)
+  end
+
+  # Check if attendance is effectively enabled (considers production default)
+  def effective_attendance_enabled?
+    # If show has explicit setting, use it; otherwise use production default or event type default
+    if attendance_enabled.nil?
+      attendance_enabled_default?
+    else
+      attendance_enabled
+    end
+  end
+
+  # Check if show overrides the production default for attendance
+  def overrides_attendance?
+    !attendance_enabled.nil? && attendance_enabled != attendance_enabled_default?
   end
 
   # Get or initialize attendance records for all cast members
   # Returns array of { assignment:, record:, person: } hashes
   def attendance_records_for_all_cast
-    show_person_role_assignments.includes(:role, person: :profile).map do |assignment|
+    records = []
+
+    # Add cast members (show_person_role_assignments)
+    show_person_role_assignments.includes(:role).each do |assignment|
       record = show_attendance_records.find_or_initialize_by(show_person_role_assignment: assignment)
-      {
+      records << {
         assignment: assignment,
         record: record,
-        person: assignment.person
+        person: assignment.person,
+        type: "cast"
       }
     end
+
+    # Add sign-up registrations (attendees)
+    sign_up_registrations.includes(:person).each do |registration|
+      person = registration.person
+      sign_up_form = registration.sign_up_form_instance&.sign_up_form
+      # Create a pseudo-assignment object for sign-up registrations
+      pseudo_assignment = Struct.new(:id, :role, :person).new(
+        "signup_#{registration.id}",
+        Struct.new(:name).new(sign_up_form&.name || "Sign-up"),
+        person
+      )
+
+      # Find or initialize attendance record for this sign-up
+      record = show_attendance_records.find_or_initialize_by(sign_up_registration: registration)
+
+      records << {
+        assignment: pseudo_assignment,
+        record: record,
+        person: person,
+        registration_id: registration.id,
+        type: "signup"
+      }
+    end
+
+    records
   end
 
   # Calculate attendance summary
   def attendance_summary
     records = show_attendance_records
+    total_people = show_person_role_assignments.count + sign_up_registrations.count
     {
-      total: show_person_role_assignments.count,
+      total: total_people,
       present: records.present.count,
       absent: records.absent.count,
       late: records.late.count,
       excused: records.excused.count,
-      unknown: show_person_role_assignments.count - records.count + records.unknown.count
+      unknown: total_people - records.count + records.unknown.count
     }
   end
 

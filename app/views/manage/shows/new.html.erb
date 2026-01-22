@@ -6,22 +6,12 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows & Events", manage_production_shows_path(@production)]
+      ["Shows & Events", manage_shows_path],
+      [@production.name, manage_production_shows_path(@production)]
     ],
     text: @original_show.present? ? "Duplicate Show or Event" : "Schedule Shows & Events",
     links: []
   } %>
-
-  <%= render "shared/help_section",
-    title: "How to Schedule Shows & Events",
-    initial_state: "closed",
-    storage_key: "shows_new_help_collapsed",
-    steps: [
-      { text: "<strong>Event Type:</strong> Choose whether you're scheduling a show, rehearsal, meeting, or other event type." },
-      { text: "<strong>Single vs Recurring:</strong> Create a single event for one date/time, or set up a recurring pattern to automatically create multiple events." },
-      { text: "<strong>Duplicate:</strong> When duplicating an existing event, all settings (location, poster, etc.) are copied to save you time." },
-      { text: "<strong>Optional Settings:</strong> Add a secondary name, upload a poster image, and include additional notes for any event type." }
-    ] %>
 
   <% if @original_show.present? %>
     <div class="bg-pink-50 border-l-4 border-pink-400 p-4 mb-4">
@@ -355,8 +345,7 @@
             <%= form.select :casting_source,
               [
                 ["Talent Pool", "talent_pool"],
-                ["Manual Entry", "manual"],
-                ["All Sources (Hybrid)", "hybrid"]
+                ["Manual Entry", "manual"]
               ],
               { include_blank: false },
               { class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full" } %>

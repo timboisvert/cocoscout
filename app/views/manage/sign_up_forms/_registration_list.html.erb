@@ -89,10 +89,10 @@
                           data-person-initial="<%= registration.display_name.first.upcase %>"
                           data-person-headshot-url="<%= headshot_url %>"
                           data-current-slot-id="<%= slot.id %>"
-                          data-form-action-url="<%= move_registration_manage_production_signups_form_path(production, sign_up_form, registration_id: registration.id) %>">
+                          data-form-action-url="<%= manage_move_registration_signups_form_path(production, sign_up_form, registration_id: registration.id) %>">
                     Move
                   </button>
-                  <%= link_to cancel_registration_manage_production_signups_form_path(production, sign_up_form, registration_id: registration.id),
+                  <%= link_to manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id),
                       class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
                       data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
                     Remove
@@ -159,11 +159,11 @@
                             data-person-initial="<%= registration.display_name.first.upcase %>"
                             data-person-headshot-url="<%= headshot_url %>"
                             data-current-slot-id="<%= slot.id %>"
-                            data-form-action-url="<%= move_registration_manage_production_signups_form_path(production, sign_up_form, registration_id: registration.id) %>">
+                            data-form-action-url="<%= manage_move_registration_signups_form_path(production, sign_up_form, registration_id: registration.id) %>">
                       Move
                     </button>
                   <% end %>
-                  <%= link_to cancel_registration_manage_production_signups_form_path(production, sign_up_form, registration_id: registration.id),
+                  <%= link_to manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id),
                       class: "px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors",
                       data: { turbo_method: :delete, turbo_confirm: "Remove this registration?" } do %>
                     Remove

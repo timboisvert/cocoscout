@@ -19,9 +19,9 @@ module Manage
 
       if @role.save
         update_eligible_members(@role)
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-1", notice: "Role was successfully created"
+        redirect_to manage_casting_settings_path(@production, tab: 1), notice: "Role was successfully created"
       else
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-1", alert: @role.errors.full_messages.join(", ")
+        redirect_to manage_casting_settings_path(@production, tab: 1), alert: @role.errors.full_messages.join(", ")
       end
     end
 
@@ -31,16 +31,16 @@ module Manage
 
       if @role.update(role_params)
         update_eligible_members(@role)
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-1", notice: "Role was successfully updated",
+        redirect_to manage_casting_settings_path(@production, tab: 1), notice: "Role was successfully updated",
                                                                status: :see_other
       else
-        redirect_to "#{manage_production_casting_settings_path(@production)}#tab-1", alert: @role.errors.full_messages.join(", ")
+        redirect_to manage_casting_settings_path(@production, tab: 1), alert: @role.errors.full_messages.join(", ")
       end
     end
 
     def destroy
       @role.destroy!
-      redirect_to "#{manage_production_casting_settings_path(@production)}#tab-1", notice: "Role was successfully deleted", status: :see_other
+      redirect_to manage_casting_settings_path(@production, tab: 1), notice: "Role was successfully deleted", status: :see_other
     end
 
     def reorder

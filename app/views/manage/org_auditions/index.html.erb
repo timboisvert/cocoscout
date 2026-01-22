@@ -1,0 +1,111 @@
+<% content_for :title, "Auditions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_signups_path]
+    ],
+    text: "Auditions",
+    links: [
+      { text: "Create Audition Cycle", path: manage_signups_auditions_new_wizard_path }
+    ]
+  } %>
+
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "Type",
+      filters: [
+        { text: "All", path: manage_signups_all_auditions_path, active: @filter.blank? },
+        { text: "In-person", path: manage_signups_all_auditions_path(filter: "in_person"), active: @filter == "in_person" },
+        { text: "Video Only", path: manage_signups_all_auditions_path(filter: "video"), active: @filter == "video" }
+      ]
+    },
+    { separator: true }
+  ] %>
+
+  <div class="pt-4">
+    <% if @cycles.any? %>
+      <div class="space-y-1">
+        <% @cycles.each do |cycle| %>
+          <%= link_to manage_signups_auditions_path(cycle.production), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+            <%# Left Section: Production Logo %>
+            <div class="flex items-center gap-4 flex-1">
+              <%# Production Logo Box %>
+              <div class="flex-shrink-0 w-14 text-center">
+                <% logo_variant = cycle.production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+                    <%= image_tag logo_variant, alt: cycle.production.name, class: "w-full h-full object-cover rounded" %>
+                  </div>
+                <% else %>
+                  <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <span class="text-xl font-bold text-pink-600"><%= cycle.production.initials %></span>
+                  </div>
+                <% end %>
+              </div>
+
+              <%# Cycle Details %>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <% cycle_label = cycle.opens_at&.strftime("%b %-d, %Y").to_s %>
+                  <% cycle_label += " - #{cycle.closes_at.strftime("%b %-d, %Y")}" if cycle.closes_at.present? %>
+                  <% cycle_label = "Audition Cycle" if cycle_label.blank? %>
+                  <span class="font-medium text-gray-900"><%= cycle_label %></span>
+                  <% if cycle.video_only? %>
+                    <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Video Only</span>
+                  <% elsif cycle.hybrid_auditions? %>
+                    <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/10">Hybrid</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/10">In-person</span>
+                  <% end %>
+                  <% if cycle.active? %>
+                    <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10">● Active</span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <%= cycle.production.name %>
+                  · <%= cycle.audition_requests.count %> requests
+                  <% if cycle.accepts_in_person_auditions? %>
+                    · <%= cycle.audition_sessions.count %> sessions
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">
+          <% if @filter == "in_person" %>
+            No in-person audition cycles found. Create one from a production's auditions page.
+          <% elsif @filter == "video" %>
+            No video audition cycles found. Create one from a production's auditions page.
+          <% else %>
+            No audition cycles found. Create one from a production's auditions page.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+
+    <% if @archived_cycles.any? %>
+      <div class="mt-8">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Archived Cycles (<%= @archived_cycles.count %>)</h3>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+          <div class="flex flex-wrap gap-2">
+            <% @archived_cycles.each do |cycle| %>
+              <% cycle_label = cycle.opens_at&.strftime("%b %Y") || "Cycle" %>
+              <%= link_to manage_signups_auditions_cycle_path(cycle.production, cycle), class: "inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 bg-white border border-gray-200 rounded hover:border-gray-300" do %>
+                <span class="font-medium"><%= cycle.production.name %></span>
+                <span class="text-gray-400">·</span>
+                <span><%= cycle_label %></span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

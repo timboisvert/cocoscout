@@ -1,0 +1,79 @@
+<%= render layout: "manage/show_wizard/wizard_layout", locals: { current_step: 2, step_name: "Schedule" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">When is this event?</h2>
+  <p class="text-gray-600 mb-6">Set the date and time for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
+
+  <%= form_with url: manage_shows_wizard_save_schedule_path(@production), method: :post, local: true, data: { controller: "recurring-event" } do |form| %>
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Event Frequency</label>
+      <select name="event_frequency" 
+              class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64"
+              data-action="change->recurring-event#toggle">
+        <option value="single" <%= "selected" if @wizard_state[:event_frequency] == "single" %>>Single Event</option>
+        <option value="recurring" <%= "selected" if @wizard_state[:event_frequency] == "recurring" %>>Recurring Event</option>
+      </select>
+    </div>
+
+    <!-- Single Event Fields -->
+    <div data-recurring-event-target="singleFields" class="<%= 'hidden' if @wizard_state[:event_frequency] == 'recurring' %>">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
+      <input type="datetime-local" 
+             name="date_and_time" 
+             value="<%= @wizard_state[:date_and_time].is_a?(String) ? @wizard_state[:date_and_time] : @wizard_state[:date_and_time]&.strftime('%Y-%m-%dT%H:%M') %>"
+             class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+    </div>
+
+    <!-- Recurring Event Fields -->
+    <div data-recurring-event-target="recurringFields" class="<%= 'hidden' unless @wizard_state[:event_frequency] == 'recurring' %> space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Start Date and Time</label>
+        <input type="datetime-local" 
+               name="recurrence_start_datetime" 
+               value="<%= @wizard_state[:recurrence_start_datetime] %>"
+               class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64"
+               data-action="change->recurring-event#updatePatternOptions">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Repeat Pattern</label>
+        <select name="recurrence_pattern"
+                class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-96"
+                data-recurring-event-target="patternSelect">
+          <option value="">Select pattern</option>
+          <option value="weekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "weekly" %>>Weekly (same day each week)</option>
+          <option value="biweekly" <%= "selected" if @wizard_state[:recurrence_pattern] == "biweekly" %>>Every other week</option>
+          <option value="monthly_date" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_date" %>>Monthly (same date each month)</option>
+          <option value="monthly_week" <%= "selected" if @wizard_state[:recurrence_pattern] == "monthly_week" %>>Monthly (same week and day)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+        <select name="recurrence_end_type"
+                class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-96"
+                data-action="change->recurring-event#toggleCustomEndDate">
+          <option value="">Select duration</option>
+          <option value="3_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "3_months" %>>3 Months</option>
+          <option value="6_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "6_months" %>>6 Months</option>
+          <option value="12_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "12_months" %>>12 Months</option>
+          <option value="end_of_year" <%= "selected" if @wizard_state[:recurrence_end_type] == "end_of_year" %>>Until End of <%= Date.current.year %></option>
+          <option value="custom" <%= "selected" if @wizard_state[:recurrence_end_type] == "custom" %>>Until Specific Date</option>
+        </select>
+      </div>
+
+      <div data-recurring-event-target="customEndDateField" class="<%= 'hidden' unless @wizard_state[:recurrence_end_type] == 'custom' %>">
+        <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+        <input type="date" 
+               name="recurrence_custom_end_date" 
+               value="<%= @wizard_state[:recurrence_custom_end_date] %>"
+               class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= link_to manage_shows_wizard_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -31,10 +31,11 @@ export default class extends Controller {
         const viewBtn = this.element.querySelector("[data-action-type='view']")
 
         const production = this.element.getAttribute("data-production-id")
+        const cycleId = this.element.getAttribute("data-audition-cycle-id")
 
-        if (editBtn) editBtn.href = `/manage/productions/${production}/audition_sessions/${sessionId}/edit`
-        if (cancelBtn) cancelBtn.href = `/manage/productions/${production}/audition_sessions/${sessionId}`
-        if (duplicateBtn) duplicateBtn.href = `/manage/productions/${production}/audition_sessions/new?duplicate=${sessionId}`
-        if (viewBtn) viewBtn.href = `/manage/productions/${production}/audition_sessions/${sessionId}`
+        if (editBtn) editBtn.href = `/manage/signups/auditions/${production}/${cycleId}/sessions/${sessionId}/edit`
+        if (cancelBtn) cancelBtn.href = `/manage/signups/auditions/${production}/${cycleId}/sessions/${sessionId}`
+        if (duplicateBtn) duplicateBtn.href = `/manage/signups/auditions/${production}/${cycleId}/sessions/new?duplicate=${sessionId}`
+        if (viewBtn) viewBtn.href = `/manage/signups/auditions/${production}/${cycleId}/sessions/${sessionId}`
     }
 }

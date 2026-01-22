@@ -14,17 +14,6 @@
 
   <div class="w-full" data-controller="tabs invite-email-checker" data-tabs-initial-tab-value="<%= @batch_results || @errors&.any? ? 2 : 0 %>">
 
-    <%= render "shared/help_section",
-      title: "Inviting People to CocoScout",
-      initial_state: "open",
-      storage_key: "invite_people_help_collapsed",
-      steps: [
-        { text: "Get Invite Link: Copy a shareable link to send through your own email, Slack, or messaging apps." },
-        { text: "Invite Directly: Have CocoScout send an invitation email on your behalf." },
-        { text: "Batch Invite: Invite many people at once by pasting a list of email addresses." },
-        { text: "Once they accept the invitation, you can add them to your production casts in the Directory." }
-      ] %>
-
     <nav class="flex space-x-2 border-b border-gray-200 mb-4">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Get Invite Link</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer">Invite Directly</button>

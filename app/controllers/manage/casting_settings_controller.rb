@@ -18,7 +18,7 @@ module Manage
     def complete_setup
       # Process the setup form and mark setup as completed
       if @production.update(casting_settings_params.merge(casting_setup_completed: true))
-        redirect_to manage_production_casting_settings_path(@production, anchor: "tab-1"),
+        redirect_to manage_casting_settings_path(@production, anchor: "tab-1"),
                     notice: "Casting settings saved! Now let's set up your roles."
       else
         render :setup, status: :unprocessable_entity
@@ -28,7 +28,7 @@ module Manage
     def update
       if @production.update(casting_settings_params)
         respond_to do |format|
-          format.html { redirect_to manage_production_casting_settings_path(@production), notice: "Casting settings updated." }
+          format.html { redirect_to manage_casting_settings_path(@production), notice: "Casting settings updated." }
           format.turbo_stream { head :ok }
         end
       else
@@ -51,7 +51,7 @@ module Manage
 
     def check_casting_setup
       unless @production.casting_setup_completed?
-        redirect_to setup_manage_production_casting_settings_path(@production)
+        redirect_to setup_manage_casting_settings_path(@production)
       end
     end
 
@@ -86,7 +86,7 @@ module Manage
     end
 
     def casting_settings_params
-      params.require(:production).permit(:casting_source)
+      params.require(:production).permit(:casting_source, :default_signup_based_casting, :default_attendance_enabled)
     end
   end
 end

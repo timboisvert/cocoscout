@@ -1,0 +1,89 @@
+<% content_for :title, "Sign-up Forms" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Sign-ups", manage_signups_path]
+    ],
+    text: "Sign-up Forms",
+    links: [
+      { text: "Create Sign-Up Form", path: manage_signups_forms_new_wizard_path }
+    ]
+  } %>
+
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "Type",
+      filters: [
+        { text: "All", path: manage_signups_all_forms_path, active: @filter.blank? },
+        { text: "Event Registrations", path: manage_signups_all_forms_path(filter: "registrations"), active: @filter == "registrations" },
+        { text: "Waitlists", path: manage_signups_all_forms_path(filter: "waitlists"), active: @filter == "waitlists" }
+      ]
+    },
+    { separator: true }
+  ] %>
+
+  <div class="pt-4">
+    <% if @sign_up_forms.any? %>
+      <div class="space-y-1">
+        <% @sign_up_forms.each do |form| %>
+          <%= link_to manage_signups_form_path(form.production, form), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+            <%# Left Section: Production Logo %>
+            <div class="flex items-center gap-4 flex-1">
+              <%# Production Logo Box %>
+              <div class="flex-shrink-0 w-14 text-center">
+                <% logo_variant = form.production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+                    <%= image_tag logo_variant, alt: form.production.name, class: "w-full h-full object-cover rounded" %>
+                  </div>
+                <% else %>
+                  <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <span class="text-xl font-bold text-pink-600"><%= form.production.initials %></span>
+                  </div>
+                <% end %>
+              </div>
+
+              <%# Form Details %>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-gray-900"><%= form.name %></span>
+                  <% if form.scope == "shared_pool" %>
+                    <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10">Waitlist</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/10">Events</span>
+                  <% end %>
+                  <% status = form.current_status %>
+                  <% if status[:accepting_registrations] %>
+                    <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10">● Open</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">○ Closed</span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <%= form.production.name %>
+                  · <%= form.sign_up_slots.count %> slots
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">
+          <% if @filter == "registrations" %>
+            No event registration forms found. Create one from a production's sign-ups page.
+          <% elsif @filter == "waitlists" %>
+            No waitlist forms found. Create one from a production's sign-ups page.
+          <% else %>
+            No sign-up forms found. Create one from a production's sign-ups page.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
+</div>

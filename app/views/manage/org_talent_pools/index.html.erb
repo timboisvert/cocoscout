@@ -1,0 +1,79 @@
+<% content_for :title, "Talent Pools" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path]
+    ],
+    text: "Talent Pools",
+    links: []
+  } %>
+
+  <div class="pt-4">
+    <% if @productions.any? %>
+      <div class="space-y-1">
+        <% @productions.each do |production| %>
+          <%= link_to manage_casting_talent_pool_members_path(production), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+            <%# Left Section: Production Logo %>
+            <div class="flex items-center gap-4 flex-1">
+              <%# Production Logo Box %>
+              <div class="flex-shrink-0 w-14 text-center">
+                <% logo_variant = production.safe_logo_variant(:small) %>
+                <% if logo_variant %>
+                  <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
+                    <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
+                  </div>
+                <% else %>
+                  <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
+                  </div>
+                <% end %>
+              </div>
+
+              <%# Production Details %>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-gray-900"><%= production.name %></span>
+                </div>
+                
+                <%# Show headshots of first few members %>
+                <% pool = production.talent_pool %>
+                <% memberships = pool ? pool.talent_pool_memberships.includes(:memberable).limit(8) : [] %>
+                <% member_count = pool ? pool.talent_pool_memberships.count : 0 %>
+                <% if memberships.any? %>
+                  <div class="flex items-center gap-1 mt-1">
+                    <% memberships.each do |membership| %>
+                      <% memberable = membership.memberable %>
+                      <% if memberable.respond_to?(:safe_headshot_variant) %>
+                        <% headshot = memberable.safe_headshot_variant(:thumb) %>
+                        <% if headshot %>
+                          <%= image_tag headshot, alt: memberable.name, class: "w-6 h-6 rounded-full object-cover" %>
+                        <% else %>
+                          <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span class="text-xs font-medium text-gray-500"><%= memberable.initials[0] %></span>
+                          </div>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                    <% remaining = member_count - 8 %>
+                    <% if remaining > 0 %>
+                      <span class="text-xs text-gray-500 ml-1">+<%= remaining %> more</span>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-sm text-gray-500 mt-1">No members yet</div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">No productions found. Create a production first to set up talent pools.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

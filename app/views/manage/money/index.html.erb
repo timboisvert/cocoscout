@@ -1,0 +1,51 @@
+<% content_for :title, "Money" %>
+
+<%
+  money_description = <<~HTML
+    <p>
+      This is your organization's financial hub — the central place to track revenue, manage payouts,
+      and understand your show economics across all productions.
+    </p>
+  HTML
+
+  money_actions = [
+    { icon: "chart-bar", text: "Financials", description: "Track revenue and costs", path: manage_money_financials_path },
+    { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path }
+  ]
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render "shared/module_header",
+    title: "Money",
+    description: money_description,
+    actions: money_actions
+  %>
+
+  <div class="border-t border-gray-200 pt-4 mt-2">
+    <%# Financial Overview with Period Selector %>
+    <%= render partial: "manage/payouts/profitability_summary", locals: {
+      summary: @org_summary,
+      selected_period: @selected_period,
+      production: nil,
+      period_path: manage_money_index_path
+    } %>
+  </div>
+
+  <%# Productions List %>
+  <div class="">
+
+    <% if @production_summaries.any? %>
+      <div class="space-y-2">
+        <% @production_summaries.each do |summary| %>
+          <%= render "manage/money/production_row", summary: summary %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">No productions yet. Create a production to start tracking finances.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

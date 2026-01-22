@@ -7,7 +7,7 @@
       <% other_linked_shows.each do |linked_show| %>
         <%= render partial: "shared/show_row", locals: {
           show: linked_show,
-          link_path: edit_manage_production_show_path(production, linked_show),
+          link_path: manage_edit_show_path(production, linked_show),
           show_location: true,
           show_production: false,
           right_panel: nil

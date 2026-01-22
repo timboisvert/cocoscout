@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)]
     ],
     text: "Prepare",
     links: []
@@ -30,8 +31,8 @@
             <h3 class="font-semibold text-pink-900 mb-1">You have an audition setup in progress</h3>
             <p class="text-sm text-pink-700 mb-3">Pick up where you left off or start fresh.</p>
             <div class="flex gap-3">
-              <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_production_signups_auditions_wizard_format_path(@production), variant: "primary", size: "small" } %>
-              <%= link_to "Start Over", manage_production_signups_auditions_wizard_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 self-center underline" %>
+              <%= render partial: "shared/button", locals: { text: "Continue Setup", path: manage_signups_auditions_wizard_path(@production), variant: "primary", size: "small" } %>
+              <%= link_to "Start Over", manage_signups_auditions_wizard_cancel_path(@production), method: :delete, data: { turbo_method: :delete, turbo_confirm: "Are you sure? This will discard your progress." }, class: "text-sm text-pink-700 hover:text-pink-900 self-center underline" %>
             </div>
           </div>
         </div>
@@ -49,7 +50,7 @@
             <h3 class="font-semibold text-gray-900 mb-1 text-lg">Ready to find new talent?</h3>
             <p class="text-sm text-gray-600 mb-4">Set up auditions to collect video submissions, schedule audition sessions, or both.</p>
             <% if current_user_can_manage?(@production) %>
-              <%= render partial: "shared/button", locals: { text: "Set Up Auditions", path: manage_production_signups_auditions_wizard_format_path(@production), variant: "primary" } %>
+              <%= render partial: "shared/button", locals: { text: "Set Up Auditions", path: manage_signups_auditions_wizard_path(@production), variant: "primary" } %>
             <% end %>
           </div>
         </div>
@@ -130,7 +131,7 @@
           <%# Quick actions %>
           <div class="flex items-center gap-2">
             <% if current_user_can_manage?(@production) %>
-              <%= link_to edit_manage_production_signups_auditions_cycle_path(@production, audition_cycle), class: "inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors", title: "Settings" do %>
+              <%= link_to manage_edit_signups_auditions_cycle_path(@production, audition_cycle), class: "inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors", title: "Settings" do %>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -157,7 +158,7 @@
             </svg>
             <span class="text-sm text-pink-800">
               <strong>Heads up!</strong> Review your audition form before the window opens.
-              <%= link_to "Review now →", form_manage_production_signups_auditions_cycle_path(@production, audition_cycle), class: "font-semibold underline ml-1" %>
+              <%= link_to "Review now →", manage_form_signups_auditions_cycle_path(@production, audition_cycle), class: "font-semibold underline ml-1" %>
             </span>
           </div>
         </div>
@@ -221,9 +222,9 @@
 
           <div class="flex gap-2">
             <% if current_user_can_manage?(@production) %>
-              <%= render partial: "shared/button", locals: { text: "Edit Form", path: form_manage_production_signups_auditions_cycle_path(@production, audition_cycle), variant: "outline", size: "small", icon: "pencil" } %>
+              <%= render partial: "shared/button", locals: { text: "Edit Form", path: manage_form_signups_auditions_cycle_path(@production, audition_cycle), variant: "outline", size: "small", icon: "pencil" } %>
             <% end %>
-            <%= render partial: "shared/button", locals: { text: "Preview", path: preview_manage_production_signups_auditions_cycle_path(@production, audition_cycle), variant: "ghost", size: "small", icon: "eye", target: "_blank" } %>
+            <%= render partial: "shared/button", locals: { text: "Preview", path: manage_preview_signups_auditions_cycle_path(@production, audition_cycle), variant: "ghost", size: "small", icon: "eye", target: "_blank" } %>
           </div>
         </div>
       </div>
@@ -331,7 +332,7 @@
 
           <%# Edit form (hidden by default) %>
           <div class="hidden" data-prepare-reviewers-target="editor">
-            <%= form_with url: update_reviewers_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
+            <%= form_with url: manage_update_reviewers_signups_auditions_cycle_path(@production, @audition_cycle), method: :patch, local: true, data: { controller: "reviewer-selector" } do |form| %>
               <div class="space-y-3 mb-4">
                 <label class="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition <%= reviewer_type == 'managers' ? 'ring-2 ring-pink-500' : '' %>">
                   <%= radio_button_tag :reviewer_access_type, 'managers', reviewer_type == 'managers', class: "mr-3 accent-pink-500", data: { action: "change->reviewer-selector#toggleSpecific" } %>
@@ -421,7 +422,7 @@
           <% end %>
 
           <% if current_user_can_manage?(@production) %>
-            <%= render partial: "shared/button", locals: { text: "Manage Sessions", path: manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle), variant: "outline", size: "small", icon: "calendar" } %>
+            <%= render partial: "shared/button", locals: { text: "Manage Sessions", path: manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle), variant: "outline", size: "small", icon: "calendar" } %>
           <% end %>
         </div>
       </div>

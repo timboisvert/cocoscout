@@ -1,0 +1,95 @@
+<% content_for :title, "Create Casting Table - Select Productions" %>
+
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      ["Casting Tables", manage_casting_tables_path]
+    ],
+    text: "Create Casting Table",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto mt-8">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">1</div>
+          <span class="ml-2 text-sm font-medium text-pink-600 hidden sm:inline">Productions</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">2</div>
+          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Events</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">3</div>
+          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Members</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 bg-gray-200"></div>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-gray-200 text-gray-600">4</div>
+          <span class="ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Review</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Which productions are you casting?</h2>
+      <p class="text-gray-600 mb-6">Select one or more productions to include in this casting table.</p>
+
+      <%= form_with url: manage_casting_tables_save_productions_path, method: :post, local: true, data: { controller: "multi-event-select" } do |form| %>
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          <% @productions.each do |production| %>
+            <% is_selected = @selected_production_ids.include?(production.id) %>
+            <div class="flex items-stretch px-3 py-3 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= is_selected ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+                 data-multi-event-select-target="row"
+                 data-show-id="<%= production.id %>"
+                 data-action="click->multi-event-select#toggle">
+              <input type="checkbox" name="production_ids[]" value="<%= production.id %>"
+                     class="sr-only"
+                     data-multi-event-select-target="input"
+                     <%= "checked" if is_selected %>>
+
+              <%# Production Details %>
+              <div class="flex-1 min-w-0 flex flex-col justify-center">
+                <p class="font-medium text-gray-900"><%= production.name %></p>
+                <p class="text-sm text-gray-500 mt-0.5">
+                  <%= pluralize(production.roles.count, "role") %> · <%= pluralize(production.shows.where("date_and_time >= ?", Time.current).count, "upcoming show") %>
+                </p>
+              </div>
+
+              <%# Selection indicator %>
+              <div class="flex items-center ml-4" data-multi-event-select-target="checkmark">
+                <% if is_selected %>
+                  <div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                <% else %>
+                  <div class="w-6 h-6 rounded-full border-2 border-gray-300"></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @productions.empty? %>
+          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+            <p class="text-gray-600">No productions found. Create a production first.</p>
+          </div>
+        <% end %>
+
+        <div class="mt-8 flex justify-between">
+          <%= link_to "Cancel", manage_casting_tables_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" %>
+          <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

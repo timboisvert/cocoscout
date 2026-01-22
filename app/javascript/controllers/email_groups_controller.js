@@ -203,7 +203,7 @@ export default class extends Controller {
         const groupType = this.groupTypeValue || 'casting'
 
         // Create the new group via AJAX
-        fetch(`/manage/productions/${this.productionIdValue}/email_groups`, {
+        fetch(`/manage/communications/${this.productionIdValue}/email_groups`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -384,7 +384,7 @@ export default class extends Controller {
         if (groupId === 'unassigned' || groupId.startsWith('default_')) {
             if (emailAssignmentId && emailAssignmentId !== '') {
                 // Delete the email assignment to revert to default
-                fetch(`/manage/productions/${this.productionIdValue}/audition_email_assignments/${emailAssignmentId}`, {
+                fetch(`/manage/communications/${this.productionIdValue}/audition_email_assignments/${emailAssignmentId}`, {
                     method: "DELETE",
                     headers: {
                         "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
@@ -408,7 +408,7 @@ export default class extends Controller {
         }
         // If there's an existing email assignment, update it
         else if (emailAssignmentId && emailAssignmentId !== '') {
-            fetch(`/manage/productions/${this.productionIdValue}/audition_email_assignments/${emailAssignmentId}`, {
+            fetch(`/manage/communications/${this.productionIdValue}/audition_email_assignments/${emailAssignmentId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -433,7 +433,7 @@ export default class extends Controller {
         }
         // Otherwise, create a new email assignment
         else {
-            fetch(`/manage/productions/${this.productionIdValue}/audition_email_assignments`, {
+            fetch(`/manage/communications/${this.productionIdValue}/audition_email_assignments`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -535,8 +535,8 @@ export default class extends Controller {
         button.textContent = "Sending..."
 
         const endpoint = isInvitation
-            ? `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify_invitations`
-            : `/manage/productions/${this.productionIdValue}/audition_cycles/${this.auditionCycleIdValue}/finalize_and_notify`
+            ? `/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/finalize_and_notify_invitations`
+            : `/manage/signups/auditions/${this.productionIdValue}/${this.auditionCycleIdValue}/finalize_and_notify`
 
         // Create a form and submit it to trigger proper redirect with flash notice
         const form = document.createElement('form')
@@ -563,7 +563,7 @@ export default class extends Controller {
             return
         }
 
-        fetch(`/manage/productions/${this.productionIdValue}/email_groups/${groupId}`, {
+        fetch(`/manage/communications/${this.productionIdValue}/email_groups/${groupId}`, {
             method: "DELETE",
             headers: {
                 "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
@@ -623,7 +623,7 @@ export default class extends Controller {
             }
 
             // Create a new EmailGroup with this group_id and email_template
-            fetch(`/manage/productions/${this.productionIdValue}/email_groups`, {
+            fetch(`/manage/communications/${this.productionIdValue}/email_groups`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -650,7 +650,7 @@ export default class extends Controller {
                 })
         } else {
             // Update existing EmailGroup
-            fetch(`/manage/productions/${this.productionIdValue}/email_groups/${emailGroupId}`, {
+            fetch(`/manage/communications/${this.productionIdValue}/email_groups/${emailGroupId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",

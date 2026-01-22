@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Auditions", manage_production_signups_auditions_path(@production)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Auditions", manage_signups_auditions_path(@production)]
     ],
     text: "Run Auditions",
     links: []
@@ -59,7 +60,7 @@
                        data-controller="toggle-voting"
                        data-toggle-voting-cycle-id-value="<%= @audition_cycle.id %>"
                        data-toggle-voting-enabled-value="<%= @audition_cycle.audition_voting_enabled %>"
-                       data-toggle-voting-url-value="<%= toggle_voting_manage_production_signups_auditions_cycle_path(@production, @audition_cycle) %>"
+                       data-toggle-voting-url-value="<%= manage_toggle_voting_signups_auditions_cycle_path(@production, @audition_cycle) %>"
                        data-toggle-voting-voting-type-value="audition">
                   <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out">
                     <input type="checkbox"
@@ -76,7 +77,7 @@
 
         <% else %>
           <p class="text-gray-500 text-sm mb-4">No audition sessions have been scheduled yet.</p>
-          <%= render partial: "shared/button", locals: { text: "Schedule Auditions", path: manage_production_signups_auditions_cycle_sessions_path(@production, @audition_cycle), variant: "primary" } %>
+          <%= render partial: "shared/button", locals: { text: "Schedule Auditions", path: manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle), variant: "primary" } %>
         <% end %>
         </div>
       </div>

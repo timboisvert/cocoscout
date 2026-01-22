@@ -38,7 +38,7 @@
           text: "Sync Now",
           variant: "primary",
           size: "small",
-          path: manage_production_copy_cast_to_linked_path(production, show_id: show.id),
+          path: manage_casting_show_copy_to_linked_path(production, show_id: show.id),
           method: :post,
           data: { turbo_confirm: "This will copy this event's roles and cast to all #{linked_shows.count} linked events, replacing their current roles and assignments. Continue?" } %>
     <% end %>

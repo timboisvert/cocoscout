@@ -16,18 +16,19 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Sign-ups", manage_production_signups_path(@production)],
-      ["Forms", manage_production_signups_forms_path(@production)],
-      [@sign_up_form.name, manage_production_signups_form_path(@production, @sign_up_form)]
+      ["Sign-ups", manage_signups_path],
+      [@production.name, manage_signups_production_path(@production)],
+      ["Forms", manage_signups_forms_path(@production)],
+      [@sign_up_form.name, manage_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Settings",
     links: [
-      { text: "View Registrations", path: manage_production_signups_form_path(@production, @sign_up_form) },
-      { text: "Edit Form", path: edit_manage_production_signups_form_path(@production, @sign_up_form) }
+      { text: "View Registrations", path: manage_signups_form_path(@production, @sign_up_form) },
+      { text: "Edit Form", path: manage_edit_signups_form_path(@production, @sign_up_form) }
     ]
   } %>
 
-  <%= form_with model: [:manage, @production, @sign_up_form], url: update_settings_manage_production_signups_form_path(@production, @sign_up_form), method: :patch, data: { turbo: true, "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
+  <%= form_with model: [:manage, @production, @sign_up_form], url: update_manage_settings_signups_form_path(@production, @sign_up_form), method: :patch, data: { turbo: true, "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
 
     <%# Tab Navigation %>
     <nav class="flex space-x-1 border-b border-gray-200 mb-6 overflow-x-auto">
@@ -967,7 +968,7 @@
           <span class="hidden" data-settings-form-target="unsavedChanges">You have unsaved changes</span>
         </div>
         <div class="flex items-center gap-3">
-          <%= link_to "Cancel", manage_production_signups_form_path(@production, @sign_up_form), class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" %>
+          <%= link_to "Cancel", manage_signups_form_path(@production, @sign_up_form), class: "px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900" %>
           <%= render "shared/button", type: :submit, text: "Save Changes", variant: "primary", size: "medium" %>
         </div>
       </div>

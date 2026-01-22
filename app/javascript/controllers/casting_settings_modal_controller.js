@@ -6,18 +6,13 @@ export default class extends Controller {
         "castingEnabledCheckbox",
         "castingSourceOverrideCheckbox",
         "castingSourceOptions",
-        "castingSourceSelect",
-        "signupBasedCastingCheckbox",
-        "signupBasedCastingInfo",
-        "attendanceCheckbox"
+        "castingSourceSelect"
     ]
 
     static values = {
         showId: Number,
         productionId: Number,
-        updateUrl: String,
-        toggleSignupBasedCastingUrl: String,
-        toggleAttendanceUrl: String
+        updateUrl: String
     }
 
     connect() {
@@ -75,65 +70,6 @@ export default class extends Controller {
     async updateCastingSource() {
         const source = this.castingSourceSelectTarget.value
         await this.updateShow({ casting_source: source })
-    }
-
-    async toggleSignupBasedCasting() {
-        const enabled = this.signupBasedCastingCheckboxTarget.checked
-
-        if (this.hasToggleSignupBasedCastingUrlValue) {
-            try {
-                const response = await fetch(this.toggleSignupBasedCastingUrlValue, {
-                    method: "POST",
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": this.csrfToken
-                    },
-                    body: JSON.stringify({ enabled: enabled })
-                })
-
-                if (response.ok) {
-                    // Show/hide the info section
-                    if (this.hasSignupBasedCastingInfoTarget) {
-                        if (enabled) {
-                            this.signupBasedCastingInfoTarget.classList.remove("hidden")
-                        } else {
-                            this.signupBasedCastingInfoTarget.classList.add("hidden")
-                        }
-                    }
-                    // Reload the page to show updated attendee role
-                    window.location.reload()
-                } else {
-                    // Revert the checkbox on error
-                    this.signupBasedCastingCheckboxTarget.checked = !enabled
-                    console.error("Failed to toggle signup-based casting")
-                }
-            } catch (error) {
-                this.signupBasedCastingCheckboxTarget.checked = !enabled
-                console.error("Failed to toggle signup-based casting:", error)
-            }
-        }
-    }
-
-    async toggleAttendance() {
-        if (this.hasToggleAttendanceUrlValue) {
-            try {
-                const response = await fetch(this.toggleAttendanceUrlValue, {
-                    method: "POST",
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                        "X-CSRF-Token": this.csrfToken
-                    }
-                })
-
-                if (!response.ok) {
-                    console.error("Failed to toggle attendance")
-                }
-            } catch (error) {
-                console.error("Failed to toggle attendance:", error)
-            }
-        }
     }
 
     async updateShow(params) {

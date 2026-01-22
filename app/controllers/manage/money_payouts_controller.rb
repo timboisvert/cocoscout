@@ -6,61 +6,13 @@ module Manage
     before_action :set_production
 
     def index
-      @payout_schemes = @production.payout_schemes.default_first
-      @default_scheme = @payout_schemes.find(&:is_default)
-
-      # Get shows with payout status - include all past events
-      @shows = @production.shows
-                          .where("date_and_time <= ?", 1.day.from_now)
-                          .order(date_and_time: :desc)
-                          .includes(:show_financials, :show_payout, :location)
-                          .limit(50)
-
-      # Apply filter if provided
-      @filter = params[:filter].presence || "all"
-      @shows = apply_filter(@shows, @filter)
-
-      # Persist hide_non_revenue preference in cookie
-      if params[:hide_non_revenue].present?
-        @hide_non_revenue = params[:hide_non_revenue] == "true"
-        cookies[:money_hide_non_revenue] = { value: @hide_non_revenue.to_s, expires: 1.year.from_now }
+      if @production
+        # Single production view - show list of shows
+        load_production_shows
       else
-        @hide_non_revenue = cookies[:money_hide_non_revenue] != "false"
+        # All productions view - show list of productions with summaries
+        load_all_productions
       end
-
-      # Filter out non-revenue events if toggle is on
-      if @hide_non_revenue
-        @shows = @shows.where(event_type: EventTypes.revenue_event_types)
-      end
-
-      # Summary stats - payout focused
-      revenue_types = EventTypes.revenue_event_types
-      revenue_shows = @production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
-
-      # Awaiting calculation: shows that need data or haven't been calculated
-      @needs_calculation_count = revenue_shows.left_joins(:show_payout)
-                                              .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
-                                              .count
-
-      # Awaiting payout: calculated but not fully paid
-      awaiting_payouts = @production.show_payouts.where(status: "awaiting_payout")
-                                                  .where.not(calculated_at: nil)
-      @awaiting_payout_count = awaiting_payouts.count
-      @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
-      @awaiting_payout_people_count = ShowPayoutLineItem.where(show_payout: awaiting_payouts)
-                                                         .not_already_paid
-                                                         .count
-
-      # Paid out
-      paid_payouts = @production.show_payouts.paid
-      @paid_shows_count = paid_payouts.count
-      @total_paid = paid_payouts.sum(:total_payout) || 0
-      @paid_people_count = ShowPayoutLineItem.where(show_payout: paid_payouts)
-                                              .already_paid
-                                              .count
-
-      # People missing payment info
-      @missing_payment_info = people_missing_payment_info
 
       # Set up email draft for payment setup reminder modal
       @payment_reminder_email_draft = EmailDraft.new(
@@ -73,7 +25,7 @@ module Manage
       missing_people = people_missing_payment_info
 
       if missing_people.empty?
-        redirect_to manage_production_money_payouts_path(@production),
+        redirect_to manage_money_production_payouts_path(@production),
                     alert: "No people missing payment information."
         return
       end
@@ -83,13 +35,14 @@ module Manage
       body_html = params.dig(:email_draft, :body)
 
       if subject.blank? || body_html.blank?
-        redirect_to manage_production_money_payouts_path(@production),
+        redirect_to manage_money_production_payouts_path(@production),
                     alert: "Subject and message are required."
         return
       end
 
-      # Prepend production name to subject
-      full_subject = "[#{@production.name}] #{subject}"
+      # Prepend organization name to subject
+      org_name = Current.organization.name
+      full_subject = "[#{org_name}] #{subject}"
 
       # Create email batch for tracking
       email_batch = EmailBatch.create!(
@@ -106,7 +59,7 @@ module Manage
 
         Manage::PaymentMailer.payment_setup_reminder(
           person,
-          @production,
+          Current.organization,
           full_subject,
           body_html,
           email_batch_id: email_batch.id
@@ -115,43 +68,139 @@ module Manage
         sent_count += 1
       end
 
-      redirect_to manage_production_money_payouts_path(@production),
+      redirect_to manage_money_production_payouts_path(@production),
                   notice: "Payment setup reminders sent to #{sent_count} #{"person".pluralize(sent_count)}."
     end
 
     private
 
     def set_production
-      @production = Current.production
-      redirect_to select_production_path unless @production
+      if params[:production_id].present?
+        @production = Current.organization.productions.find_by(id: params[:production_id])
+      end
+    end
+
+    def load_production_shows
+      @shows = @production.shows
+                          .where("date_and_time <= ?", 1.day.from_now)
+                          .order(date_and_time: :desc)
+                          .includes(:show_financials, :show_payout, :location)
+                          .limit(100)
+                          .to_a
+
+      # Apply filter
+      @filter = params[:filter].presence || "all"
+      @shows = apply_filter(@shows, @filter)
+
+      # Handle hide_non_revenue toggle
+      if params[:hide_non_revenue].present?
+        @hide_non_revenue = params[:hide_non_revenue] == "true"
+        cookies[:money_hide_non_revenue] = { value: @hide_non_revenue.to_s, expires: 1.year.from_now }
+      else
+        @hide_non_revenue = cookies[:money_hide_non_revenue] != "false"
+      end
+
+      if @hide_non_revenue
+        @shows = @shows.select { |show| EventTypes.revenue_event_types.include?(show.event_type) }
+      end
+
+      # Summary stats for production
+      revenue_types = EventTypes.revenue_event_types
+      revenue_shows = @production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
+
+      @needs_calculation_count = revenue_shows.left_joins(:show_payout)
+                                               .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+                                               .count
+
+      awaiting_payouts = @production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil)
+      @awaiting_payout_count = awaiting_payouts.count
+      @total_awaiting_payout = awaiting_payouts.sum(:total_payout) || 0
+      @awaiting_payout_people_count = ShowPayoutLineItem.where(show_payout: awaiting_payouts)
+                                                         .not_already_paid
+                                                         .count
+
+      paid_payouts = @production.show_payouts.paid
+      @paid_shows_count = paid_payouts.count
+      @total_paid = paid_payouts.sum(:total_payout) || 0
+      @paid_people_count = ShowPayoutLineItem.where(show_payout: paid_payouts)
+                                              .already_paid
+                                              .count
+
+      @missing_payment_info = people_missing_payment_info
+    end
+
+    def load_all_productions
+      @productions = Current.organization.productions.order(:name)
+      @production_summaries = @productions.map do |production|
+        build_payout_summary(production)
+      end
+
+      # Organization-wide stats
+      all_awaiting = @production_summaries.sum { |s| s[:awaiting_payout_amount] }
+      all_paid = @production_summaries.sum { |s| s[:paid_amount] }
+      all_awaiting_count = @production_summaries.sum { |s| s[:awaiting_payout_count] }
+      all_paid_count = @production_summaries.sum { |s| s[:paid_count] }
+
+      @org_awaiting_payout = all_awaiting
+      @org_paid = all_paid
+      @org_awaiting_count = all_awaiting_count
+      @org_paid_count = all_paid_count
+
+      @missing_payment_info = []
+    end
+
+    def build_payout_summary(production)
+      revenue_types = EventTypes.revenue_event_types
+      revenue_shows = production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
+
+      # Get financial summary for consistent data
+      financial_summary = FinancialSummaryService.new(production).summary_for_period(:all_time)
+
+      awaiting_payout = production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil)
+      paid_payouts = production.show_payouts.paid
+
+      needs_calculation = revenue_shows.left_joins(:show_payout)
+                                       .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+                                       .count
+
+      {
+        production: production,
+        revenue_shows: revenue_shows.count,
+        gross_revenue: financial_summary[:gross_revenue],
+        show_expenses: financial_summary[:show_expenses],
+        total_payouts: financial_summary[:total_payouts],
+        net_income: financial_summary[:net_income],
+        needs_calculation_count: needs_calculation,
+        awaiting_payout_count: awaiting_payout.count,
+        awaiting_payout_amount: awaiting_payout.sum(:total_payout) || 0,
+        paid_count: paid_payouts.count,
+        paid_amount: paid_payouts.sum(:total_payout) || 0
+      }
     end
 
     def apply_filter(scope, filter)
+      revenue_types = EventTypes.revenue_event_types
+
       case filter
       when "awaiting_calculation"
-        # Revenue events with financial data but not yet calculated
-        revenue_types = EventTypes.revenue_event_types
-        scope.where(event_type: revenue_types)
-             .left_joins(:show_payout)
-             .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
+        scope.select do |show|
+          revenue_types.include?(show.event_type) &&
+          (show.show_payout.nil? || show.show_payout.calculated_at.nil?)
+        end
       when "awaiting_payout"
-        scope.joins(:show_payout)
-             .where(show_payouts: { status: "awaiting_payout" })
-             .where.not(show_payouts: { calculated_at: nil })
+        scope.select { |show| show.show_payout&.status == "awaiting_payout" && show.show_payout.calculated_at.present? }
       when "paid"
-        scope.joins(:show_payout).where(show_payouts: { status: "paid" })
+        scope.select { |show| show.show_payout&.status == "paid" }
       else
         # Only show revenue events by default for payouts
-        revenue_types = EventTypes.revenue_event_types
-        scope.where(event_type: revenue_types)
+        scope.select { |show| revenue_types.include?(show.event_type) }
       end
     end
 
     def people_missing_payment_info
-      # Get all people who have line items awaiting payout but no payment info
-      awaiting_payout_ids = @production.show_payouts
-                                        .where(status: "awaiting_payout")
-                                        .pluck(:id)
+      productions = @production ? [ @production ] : Current.organization.productions
+
+      awaiting_payout_ids = productions.flat_map { |prod| prod.show_payouts.where(status: "awaiting_payout").pluck(:id) }
 
       return [] if awaiting_payout_ids.empty?
 
@@ -167,13 +216,13 @@ module Manage
 
     def default_payment_reminder_subject
       EmailTemplateService.render_subject_without_prefix("payment_setup_reminder", {
-        production_name: @production.name
+        production_name: Current.organization.name
       })
     end
 
     def default_payment_reminder_body
       EmailTemplateService.render_body("payment_setup_reminder", {
-        production_name: @production.name,
+        production_name: Current.organization.name,
         payment_setup_url: my_payments_setup_url
       })
     end

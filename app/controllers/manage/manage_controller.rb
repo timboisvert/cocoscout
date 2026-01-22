@@ -43,12 +43,16 @@ module Manage
         Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage' for user #{Current.user.id}"
       end
 
-      if (production = Current.production)
-        redirect_to manage_production_path(production)
-      else
-        # Redirect to production selection
-        redirect_to select_production_path
+      # Build org-level home page data
+      @productions = Current.organization.productions.order(:name)
+      @production_dashboards = {}
+
+      @productions.each do |production|
+        next unless Current.user.role_for_production(production).present?
+        @production_dashboards[production.id] = DashboardService.new(production).generate
       end
+
+      render "home"
     end
 
     def welcome
@@ -69,12 +73,8 @@ module Manage
 
       Current.user.update(welcomed_production_at: Time.current)
 
-      # Redirect to shows page if we have a production, otherwise to manage path
-      if Current.production.present?
-        redirect_to manage_production_shows_path(Current.production)
-      else
-        redirect_to manage_path
-      end
+      # Redirect to home page
+      redirect_to manage_path
     end
 
     def ensure_user_is_manager

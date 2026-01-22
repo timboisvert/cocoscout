@@ -1,28 +1,33 @@
-<% content_for :title, "Payout Schemes - #{@production.name}" %>
+<% content_for :title, "Payout Schemes" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Money", manage_production_money_index_path(@production)]
+      ["Money", manage_money_index_path]
     ],
     text: "Payout Schemes",
     links: [
-      { text: "Create from Preset", path: manage_production_presets_money_payout_schemes_path(@production) },
-      { text: "New Custom Scheme", path: manage_production_new_money_payout_scheme_path(@production) }
+      { text: "Create from Preset", path: manage_presets_money_payout_schemes_path },
+      { text: "New Custom Scheme", path: manage_new_money_payout_scheme_path }
     ]
   } %>
 
   <% if @payout_schemes.any? %>
     <div class="space-y-2">
       <% @payout_schemes.each do |scheme| %>
-        <%= link_to manage_production_money_payout_scheme_path(@production, scheme), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+        <%= link_to manage_money_payout_scheme_path(scheme), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
           <div class="flex items-center justify-between">
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <h3 class="font-semibold text-gray-900"><%= scheme.name %></h3>
                 <% if scheme.is_default? %>
                   <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Default</span>
+                <% end %>
+                <% if scheme.organization_level? %>
+                  <span class="text-xs text-gray-500">Organization-wide</span>
+                <% else %>
+                  <span class="text-xs text-gray-500"><%= scheme.production&.name %></span>
                 <% end %>
               </div>
               <% if scheme.description.present? %>
@@ -44,7 +49,7 @@
       </svg>
       <h3 class="text-lg font-medium text-gray-900 mb-2">No payout schemes yet</h3>
       <p class="text-gray-600 mb-4">Create a scheme to define how performers get paid.</p>
-      <%= link_to manage_production_presets_money_payout_schemes_path(@production) do %>
+      <%= link_to manage_presets_money_payout_schemes_path do %>
         <%= render "shared/button", text: "Choose a Preset", variant: "primary", size: "medium" %>
       <% end %>
     </div>

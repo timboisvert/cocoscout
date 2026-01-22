@@ -9,14 +9,14 @@
       <%
         steps = []
         if current_user_has_role?(@production)
-          steps << { key: :prepare, label: "Prepare", path: prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), icon: "settings" }
+          steps << { key: :prepare, label: "Prepare", path: manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle), icon: "settings" }
         end
-        steps << { key: :review, label: "Review", path: review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), icon: "clipboard" }
+        steps << { key: :review, label: "Review", path: manage_review_signups_auditions_cycle_path(@production, @audition_cycle), icon: "clipboard" }
         if @production.audition_cycle&.accepts_in_person_auditions?
-          steps << { key: :run, label: "Run Auditions", path: run_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), icon: "star" }
+          steps << { key: :run, label: "Run Auditions", path: manage_run_signups_auditions_cycle_path(@production, @audition_cycle), icon: "star" }
         end
         if current_user_has_role?(@production)
-          steps << { key: :communicate, label: "Casting", path: casting_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), icon: "users" }
+          steps << { key: :communicate, label: "Casting", path: manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), icon: "users" }
         end
 
         current_step_info = steps.find { |s| s[:key] == current_step } || steps.first
@@ -103,7 +103,7 @@
 
         <% if current_user_has_role?(@production) %>
         <!-- Step 1: Prepare -->
-        <%= link_to prepare_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
+        <%= link_to manage_prepare_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :prepare %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :prepare %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :prepare ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :prepare ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@
         <% end %>
 
         <!-- Step 2: Review -->
-        <%= link_to review_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
+        <%= link_to manage_review_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :review %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :review %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :review ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :review ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +132,7 @@
 
         <!-- Step 3: Run Auditions (In-Person Only) -->
         <% if @production.audition_cycle&.accepts_in_person_auditions? %>
-          <%= link_to run_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
+          <%= link_to manage_run_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
             <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :run %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :run %>">
               <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :run ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
                 <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :run ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@
 
         <% if current_user_has_role?(@production) %>
         <!-- Step 4: Casting -->
-        <%= link_to casting_manage_production_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
+        <%= link_to manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), class: "no-underline" do %>
           <div class="relative flex flex-col items-center text-center group <%= 'current-step' if defined?(current_step) && current_step == :communicate %>" style="<%= 'opacity: 1;' if defined?(current_step) && current_step == :communicate %>">
             <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center z-10 ring-4 mb-3 transition-all <%= defined?(current_step) && current_step == :communicate ? 'bg-pink-500 ring-pink-500 shadow-lg shadow-pink-500/50' : 'bg-pink-100 ring-white group-hover:ring-pink-500' %>">
               <svg class="w-6 h-6 <%= defined?(current_step) && current_step == :communicate ? 'text-white' : 'text-pink-500' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -12,7 +12,7 @@
   breadcrumbs: [],
   text: "Availability",
   links: [
-    { text: "Request Availability", path: manage_production_questionnaires_path(@production) }
+    { text: "Request Availability", path: manage_communications_questionnaires_path(@production) }
   ]
 } %>
 
@@ -44,7 +44,7 @@
             </th>
             <% @shows.each_with_index do |show, col_index| %>
               <th class="border-b-2 border-gray-300 px-2 py-2 sm:py-3 text-center bg-white cursor-pointer hover:bg-gray-50 align-top" data-col="<%= col_index %>">
-                <%= link_to manage_production_availability_path(@production, show), class: "block no-underline" do %>
+                <%= link_to manage_casting_availability_path(@production, show), class: "block no-underline" do %>
                   <div class="text-[10px] sm:text-xs font-medium text-pink-600 uppercase tracking-wide">
                     <%= show.date_and_time.strftime("%a, %b %-d") %>
                   </div>
@@ -99,7 +99,7 @@
                     data-col="<%= col_index %>"
                     data-availability-grid-target="cell"
                     data-action="mouseenter->availability-grid#highlightColumn mouseleave->availability-grid#unhighlightColumn">
-                  <%= link_to manage_production_availability_path(@production, show), class: "block no-underline text-gray-900 hover:text-gray-900" do %>
+                  <%= link_to manage_casting_availability_path(@production, show), class: "block no-underline text-gray-900 hover:text-gray-900" do %>
                     <% if availability %>
                       <% if availability.available? %>
                         <span class="text-xs sm:text-sm font-medium text-pink-500">

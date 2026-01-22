@@ -21,7 +21,8 @@
 <div class="w-full">
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      [@production.name, manage_production_path(@production)]
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)]
     ],
     text: "Open Vacancy",
     links: []
@@ -347,7 +348,7 @@
                   <% end %>
                 </div>
                 <% if invitation.pending? && !invitation.expired? %>
-                  <%= button_to resend_manage_production_vacancy_invitation_path(@production, @vacancy, invitation),
+                  <%= button_to manage_resend_casting_vacancy_invitation_path(@production, @vacancy, invitation),
                       method: :post,
                       class: "mt-2 text-xs text-pink-500 hover:text-pink-600 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity",
                       form: { class: "inline" } do %>
@@ -367,7 +368,7 @@
       <div class="p-6">
 
         <% if @eligible_people.any? || @all_potential_people.any? %>
-          <%= form_with url: send_invitations_manage_production_vacancy_path(@production, @vacancy), method: :post, class: "space-y-6", data: { controller: "invite-mode" } do %>
+          <%= form_with url: manage_send_invitations_casting_vacancy_path(@production, @vacancy), method: :post, class: "space-y-6", data: { controller: "invite-mode" } do %>
             <% unless @vacancy.restricted? %>
               <!-- Selection Mode (unrestricted roles only) -->
               <div class="mb-4">
@@ -634,7 +635,7 @@
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
           </p>
-          <%= button_to cancel_manage_production_vacancy_path(@production, @vacancy),
+          <%= button_to manage_cancel_casting_vacancy_path(@production, @vacancy),
               method: :post,
               form: { data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } },
               class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer" do %>
@@ -653,7 +654,7 @@
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
             The show will proceed without someone in this role.
           </p>
-          <%= button_to cancel_manage_production_vacancy_path(@production, @vacancy),
+          <%= button_to manage_cancel_casting_vacancy_path(@production, @vacancy),
               method: :post,
               form: { data: { turbo_confirm: "Are you sure you want to close this vacancy without filling it? This cannot be undone." } },
               class: "inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer" do %>

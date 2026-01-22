@@ -1,0 +1,104 @@
+<% content_for :title, @page_title %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Questionnaires",
+    links: [
+      { text: "New Questionnaire", path: manage_communications_new_questionnaire_wizard_path }
+    ]
+  } %>
+
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      label: "Status",
+      filters: [
+        { text: "All", path: manage_communications_all_questionnaires_path, active: @filter.blank? },
+        { text: "Accepting Responses", path: manage_communications_all_questionnaires_path(filter: "accepting"), active: @filter == "accepting" },
+        { text: "Archived", path: manage_communications_all_questionnaires_path(filter: "archived"), active: @filter == "archived" }
+      ]
+    },
+    { separator: true }
+  ] %>
+
+  <div class="pt-4">
+    <% if @questionnaires_by_production.any? %>
+      <div class="space-y-6">
+        <% @questionnaires_by_production.each do |production, questionnaires| %>
+          <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gray-900"><%= production.name %></h3>
+                <%= link_to "View Production", manage_communications_questionnaires_path(production), class: "text-xs text-pink-600 hover:text-pink-700" %>
+              </div>
+            </div>
+            <div class="divide-y divide-gray-100">
+              <% questionnaires.each do |questionnaire| %>
+                <div class="px-4 py-3 hover:bg-gray-50 transition-colors">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <%= link_to questionnaire.title.presence || "Untitled Questionnaire", manage_communications_questionnaire_path(production, questionnaire), class: "text-sm font-medium text-gray-900 hover:text-pink-600 truncate" %>
+                        <% if questionnaire.accepting_responses? %>
+                          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Accepting</span>
+                        <% else %>
+                          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Closed</span>
+                        <% end %>
+                        <% if questionnaire.archived_at.present? %>
+                          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Archived</span>
+                        <% end %>
+                      </div>
+                      <p class="text-xs text-gray-500 mt-0.5">
+                        <%= questionnaire.questionnaire_responses.count %> responses
+                        · <%= questionnaire.questions.count %> questions
+                        · Created <%= time_ago_in_words(questionnaire.created_at) %> ago
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <%= link_to manage_communications_questionnaire_path(production, questionnaire), class: "text-gray-400 hover:text-gray-600" do %>
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600">
+          <% if @filter == "accepting" %>
+            No questionnaires currently accepting responses. Create one from a production's communications page.
+          <% elsif @filter == "archived" %>
+            No archived questionnaires found.
+          <% else %>
+            No questionnaires found. Create one from a production's communications page.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+
+    <% if @archived_questionnaires.present? && @archived_questionnaires.any? %>
+      <div class="mt-8">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Archived Questionnaires (<%= @archived_questionnaires.count %>)</h3>
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+          <div class="flex flex-wrap gap-2">
+            <% @archived_questionnaires.each do |questionnaire| %>
+              <%= link_to manage_communications_questionnaire_path(questionnaire.production, questionnaire), class: "inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 bg-white border border-gray-200 rounded hover:border-gray-300" do %>
+                <span class="font-medium"><%= questionnaire.production.name %></span>
+                <span class="text-gray-400">·</span>
+                <span><%= questionnaire.title.presence || "Questionnaire" %></span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

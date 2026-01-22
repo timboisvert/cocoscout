@@ -47,7 +47,7 @@
 
       <% unless sync_info[:all_in_sync] %>
         <%= button_to "Copy cast to linked events",
-            manage_production_copy_cast_to_linked_path(production, show_id: show.id),
+            manage_casting_show_copy_to_linked_path(production, show_id: show.id),
             method: :post,
             class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-pink-500 rounded-md hover:bg-pink-600 transition-colors cursor-pointer",
             data: { turbo_confirm: "This will copy this event's cast assignments to all #{linked_shows.count} linked events. Existing assignments on those events will be replaced. Continue?" } %>
@@ -67,7 +67,7 @@
       <div data-disclosure-target="content" class="hidden border-t border-gray-200 divide-y divide-gray-100">
         <% sync_info[:linked_shows_info].each do |info| %>
           <% linked_show = info[:show] %>
-          <%= link_to manage_production_show_cast_path(production, linked_show), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors" do %>
+          <%= link_to manage_casting_show_cast_path(production, linked_show), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors" do %>
             <div class="flex-shrink-0 w-10 text-center">
               <div class="text-[10px] font-semibold text-pink-600 uppercase leading-tight"><%= linked_show.date_and_time.strftime("%b") %></div>
               <div class="text-lg font-bold text-gray-900 leading-tight"><%= linked_show.date_and_time.strftime("%-d") %></div>
