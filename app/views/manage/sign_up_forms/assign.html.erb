@@ -91,7 +91,7 @@
                         text: "Return to Queue",
                         variant: "ghost",
                         size: "small",
-                        path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                        path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                         method: :patch,
                         data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                   </div>
@@ -159,7 +159,7 @@
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                               method: :patch,
                               data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                         </div>
@@ -217,7 +217,7 @@
                               text: "Return to Queue",
                               variant: "ghost",
                               size: "small",
-                              path: unmanage_assign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
+                              path: manage_unassign_registration_signups_form_path(@production, @sign_up_form, registration_id: reg.id, instance_id: @instance.id),
                               method: :patch,
                               data: { turbo_method: :patch, turbo_confirm: "Return #{reg.display_name} to queue?" } %>
                         </div>

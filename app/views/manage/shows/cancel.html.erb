@@ -74,18 +74,18 @@
         <% if @show.recurring? %>
           <div class="flex flex-wrap gap-2">
             <%= button_to "Uncancel Only This Occurrence",
-                unmanage_cancel_show_form_path(@production, @show, scope: "this"),
+                manage_uncancel_show_path(@production, @show, scope: "this"),
                 method: :patch,
                 class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
 
             <%= button_to "Uncancel All Canceled Occurrences",
-                unmanage_cancel_show_form_path(@production, @show, scope: "all"),
+                manage_uncancel_show_path(@production, @show, scope: "all"),
                 method: :patch,
                 class: "rounded-lg px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer transition-colors" %>
           </div>
         <% else %>
           <%= button_to "Uncancel This #{@show.event_type.titleize}",
-              unmanage_cancel_show_form_path(@production, @show),
+              manage_uncancel_show_path(@production, @show),
               method: :patch,
               class: "rounded-lg px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium cursor-pointer transition-colors" %>
         <% end %>

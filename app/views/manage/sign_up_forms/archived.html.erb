@@ -30,7 +30,7 @@
             </div>
           </div>
           <div class="flex items-center gap-2 ml-4">
-            <%= link_to unmanage_archive_signups_form_path(@production, form),
+            <%= link_to manage_unarchive_signups_form_path(@production, form),
                         data: { turbo_method: :patch },
                         class: "px-3 py-1.5 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg transition-colors" do %>
               Restore
