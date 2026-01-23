@@ -49,6 +49,7 @@ module Manage
         revenue_shows: revenue_shows.count,
         gross_revenue: financial_summary[:gross_revenue],
         show_expenses: financial_summary[:show_expenses],
+        production_expenses: financial_summary[:production_expenses],
         total_payouts: financial_summary[:total_payouts],
         net_income: financial_summary[:net_income],
         awaiting_financials_count: awaiting_financials_count,

@@ -31,8 +31,8 @@
             <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
           </div>
         <% else %>
-          <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
-            <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
+          <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+            <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
           </div>
         <% end %>
 

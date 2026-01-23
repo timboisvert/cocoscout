@@ -9,6 +9,11 @@ module Manage
     def show
       @show_payout = @show.show_payout || @show.build_show_payout
 
+      # Load production expense allocations for this show
+      @production_expense_allocations = @show.production_expense_allocations
+                                             .includes(:production_expense)
+                                             .order("production_expenses.name")
+
       # Calculate comparison metrics for this show type
       @comparison_data = calculate_comparison_data
 

@@ -14,9 +14,10 @@
   # Proper accounting calculations
   gross_revenue = @show_financials.total_revenue
   show_expenses = @show_financials.calculated_expenses
+  production_expenses = @show_financials.calculated_production_expenses
 
-  # Cost of Show = Show Expenses + Performer Payouts
-  cost_of_show = show_expenses + total_payouts
+  # Cost of Show = Show Expenses + Production Expenses + Performer Payouts
+  cost_of_show = show_expenses + production_expenses + total_payouts
 
   # Gross Profit = Revenue - Cost of Show (including payouts as direct cost)
   gross_profit = gross_revenue - cost_of_show
@@ -66,7 +67,7 @@
                 <div class="bg-gray-50 rounded-lg p-3">
                   <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Cost of Show</div>
                   <div class="text-xl font-semibold text-red-600"><%= number_to_currency(cost_of_show) %></div>
-                  <div class="text-xs text-gray-500">expenses + payouts</div>
+                  <div class="text-xs text-gray-500">expenses<%= production_expenses > 0 ? ' + allocated' : '' %> + payouts</div>
                 </div>
                 <div class="bg-gray-50 rounded-lg p-3">
                   <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Gross Profit</div>
@@ -90,8 +91,11 @@
                 <% end %>
               <% else %>
                 <div class="bg-gray-50 rounded-lg p-3">
-                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Show Expenses</div>
-                  <div class="text-xl font-semibold text-red-600"><%= number_to_currency(show_expenses) %></div>
+                  <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Expenses</div>
+                  <div class="text-xl font-semibold text-red-600"><%= number_to_currency(show_expenses + production_expenses) %></div>
+                  <% if production_expenses > 0 %>
+                    <div class="text-xs text-gray-500">show + allocated</div>
+                  <% end %>
                 </div>
                 <div class="bg-gray-50 rounded-lg p-3">
                   <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Net Before Payouts</div>
@@ -186,6 +190,33 @@
               </div>
             <% end %>
 
+            <% if production_expenses > 0 %>
+              <!-- Production Expenses (amortized from production level) -->
+              <div class="border-t border-gray-200 pt-4 mt-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Production Expenses (Allocated)</h4>
+                <div class="space-y-2">
+                  <% @production_expense_allocations.each do |allocation| %>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-gray-600 flex items-center gap-2">
+                        <%= allocation.production_expense.name %>
+                        <% if allocation.is_override? %>
+                          <span class="text-xs text-amber-600" data-controller="tooltip" data-tooltip-text="<%= allocation.override_reason.presence || 'Custom amount' %>">⚡ Override</span>
+                        <% end %>
+                      </span>
+                      <span class="text-red-600"><%= number_to_currency(allocation.allocated_amount) %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex justify-between text-sm pt-2 border-t border-gray-100">
+                    <span class="font-medium text-gray-700">Total Allocated Expenses</span>
+                    <span class="font-semibold text-red-600"><%= number_to_currency(production_expenses) %></span>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    <%= link_to "View all production expenses →", manage_money_financials_production_expenses_path(@production), class: "text-pink-600 hover:text-pink-700" %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
             <% if payout_calculated && total_payouts > 0 %>
               <!-- Talent Payouts (part of Cost of Show) -->
               <div class="border-t border-gray-200 pt-4 mt-4">
@@ -220,6 +251,12 @@
                     <span class="pl-2">Less: Show Expenses</span>
                     <span class="text-red-600">(<%= number_to_currency(show_expenses) %>)</span>
                   </div>
+                  <% if production_expenses > 0 %>
+                    <div class="flex justify-between text-sm text-gray-500">
+                      <span class="pl-2">Less: Production Expenses (Allocated)</span>
+                      <span class="text-red-600">(<%= number_to_currency(production_expenses) %>)</span>
+                    </div>
+                  <% end %>
                   <div class="flex justify-between text-sm text-gray-500">
                     <span class="pl-2">Less: Performer Payouts</span>
                     <span class="text-pink-600">(<%= number_to_currency(total_payouts) %>)</span>

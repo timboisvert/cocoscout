@@ -31,12 +31,17 @@
           end
         %>
         <% if can_show_link %>
+          <%
+            # Build data hash: merge link[:data] with data_action if present
+            button_data = link[:data] || {}
+            button_data[:action] = link[:data_action] if link[:data_action].present?
+          %>
           <%= render partial: "shared/button", locals: {
             text: link[:text],
             path: link[:path],
             icon: link[:icon],
             variant: link[:color] == "white" ? "outline" : "primary",
-            data: link[:data_action].present? ? { action: link[:data_action] } : {},
+            data: button_data,
             size: "small"
           } %>
         <% end %>

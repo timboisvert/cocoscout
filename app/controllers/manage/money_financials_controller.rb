@@ -24,6 +24,7 @@ module Manage
             revenue_shows: summary[:show_count],
             gross_revenue: summary[:gross_revenue],
             show_expenses: summary[:show_expenses],
+            production_expenses: summary[:production_expenses],
             total_payouts: summary[:total_payouts],
             net_income: summary[:net_income]
           }

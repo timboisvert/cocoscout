@@ -45,13 +45,13 @@
       <div class="text-sm text-gray-500 mb-1">Direct Costs</div>
       <div class="text-2xl font-semibold text-red-600"><%= number_to_currency(summary[:cost_of_shows]) %></div>
       <div class="text-xs text-gray-500">
-        <% if summary[:total_payouts] > 0 && summary[:show_expenses] > 0 %>
-          payouts + expenses
-        <% elsif summary[:total_payouts] > 0 %>
-          payouts
-        <% else %>
-          expenses
-        <% end %>
+        <%
+          cost_components = []
+          cost_components << "payouts" if summary[:total_payouts].to_f > 0
+          cost_components << "expenses" if summary[:show_expenses].to_f > 0
+          cost_components << "allocated" if summary[:production_expenses].to_f > 0
+        %>
+        <%= cost_components.any? ? cost_components.join(" + ") : "expenses" %>
       </div>
     </div>
 
@@ -141,6 +141,24 @@
         </div>
       <% end %>
 
+      <% if summary[:production_expenses].to_f > 0 %>
+        <!-- Production Expenses (Allocated) -->
+        <div class="border-t border-gray-200 pt-4 pb-4">
+          <h4 class="text-sm font-medium text-gray-700 mb-3">Production Expenses (Allocated)</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Amortized costs across shows</span>
+              <span class="text-red-600"><%= number_to_currency(summary[:production_expenses]) %></span>
+            </div>
+            <% if local_assigns[:production] %>
+              <div class="text-xs text-gray-500 pt-1">
+                <%= link_to "View production expenses →", manage_money_financials_production_expenses_path(production), class: "text-pink-600 hover:text-pink-700" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
       <% if summary[:total_payouts].to_f > 0 %>
         <!-- Talent Payouts -->
         <div class="border-t border-gray-200 pt-4 pb-4">
@@ -165,6 +183,12 @@
               <div class="flex justify-between text-sm text-gray-500">
                 <span class="pl-2">Less: Show Expenses</span>
                 <span class="text-red-600">(<%= number_to_currency(summary[:show_expenses]) %>)</span>
+              </div>
+            <% end %>
+            <% if summary[:production_expenses].to_f > 0 %>
+              <div class="flex justify-between text-sm text-gray-500">
+                <span class="pl-2">Less: Production Expenses (Allocated)</span>
+                <span class="text-red-600">(<%= number_to_currency(summary[:production_expenses]) %>)</span>
               </div>
             <% end %>
             <div class="flex justify-between text-sm text-gray-500">

@@ -819,16 +819,17 @@ Rails.application.routes.draw do
     resources :ticket_fee_templates, only: [ :index, :create, :update, :destroy ], path: "money/fees"
 
     # Production expenses (amortized costs spread across shows)
-    scope "/:production_id" do
-      get  "money/expenses", to: "production_expenses#index", as: "production_money_expenses"
-      get  "money/expenses/new", to: "production_expenses#new", as: "new_production_money_expense"
-      post "money/expenses", to: "production_expenses#create", as: "create_production_money_expense"
-      get  "money/expenses/:id", to: "production_expenses#show", as: "production_money_expense"
-      get  "money/expenses/:id/edit", to: "production_expenses#edit", as: "edit_production_money_expense"
-      patch "money/expenses/:id", to: "production_expenses#update", as: "update_production_money_expense"
-      delete "money/expenses/:id", to: "production_expenses#destroy", as: "delete_production_money_expense"
-      post "money/expenses/:id/recalculate", to: "production_expenses#recalculate", as: "recalculate_production_money_expense"
-      patch "money/expenses/:id/allocations/:allocation_id/override", to: "production_expenses#override_allocation", as: "override_production_money_expense_allocation"
+    # Nested under /money/financials/:production_id/expenses
+    scope "money/financials/:production_id" do
+      get  "expenses", to: "production_expenses#index", as: "money_financials_production_expenses"
+      get  "expenses/new", to: "production_expenses#new", as: "new_money_financials_production_expense"
+      post "expenses", to: "production_expenses#create", as: "create_money_financials_production_expense"
+      get  "expenses/:id", to: "production_expenses#show", as: "money_financials_production_expense"
+      get  "expenses/:id/edit", to: "production_expenses#edit", as: "edit_money_financials_production_expense"
+      patch "expenses/:id", to: "production_expenses#update", as: "update_money_financials_production_expense"
+      delete "expenses/:id", to: "production_expenses#destroy", as: "delete_money_financials_production_expense"
+      post "expenses/:id/recalculate", to: "production_expenses#recalculate", as: "recalculate_money_financials_production_expense"
+      patch "expenses/:id/allocations/:allocation_id/override", to: "production_expenses#override_allocation", as: "override_money_financials_production_expense_allocation"
     end
 
     # Show payouts - now under /money/shows/:id/payouts

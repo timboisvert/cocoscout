@@ -1,11 +1,12 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
     ["Money", manage_money_index_path],
-    [@production.name, manage_production_money_expenses_path(@production)]
+    ["Financials", manage_money_financials_path],
+    [@production.name, manage_money_production_financials_path(@production)]
   ],
   text: "Production Expenses",
   links: [
-    { text: "New Expense", path: manage_new_production_money_expense_path(@production), icon: "plus" }
+    { text: "New Expense", path: manage_new_money_financials_production_expense_path(@production), icon: "plus" }
   ]
 } %>
 
@@ -22,7 +23,7 @@
     <div class="bg-white rounded-lg border border-gray-200">
       <div class="divide-y divide-gray-200">
         <% @production_expenses.each do |expense| %>
-          <a href="<%= manage_production_money_expense_path(@production, expense) %>"
+          <a href="<%= manage_money_financials_production_expense_path(@production, expense) %>"
              class="block px-6 py-4 hover:bg-gray-50 transition-colors">
             <div class="flex items-center justify-between">
               <div class="flex-1">
@@ -75,7 +76,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
       </svg>
       <p class="text-gray-600 mb-4">No production expenses yet.</p>
-      <%= link_to manage_new_production_money_expense_path(@production) do %>
+      <%= link_to manage_new_money_financials_production_expense_path(@production) do %>
         <%= render "shared/button", text: "Add First Expense", variant: "primary", size: "medium" %>
       <% end %>
     </div>

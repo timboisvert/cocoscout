@@ -11,7 +11,9 @@
       ["Money", manage_money_index_path]
     ],
     text: @production ? @production.name : "Financials",
-    links: []
+    links: @production ? [
+      { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) }
+    ] : []
   } %>
 
   <%# Profitability Summary %>

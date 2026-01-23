@@ -100,8 +100,13 @@
           <% end %>
         </div>
         <% if has_data %>
+          <%
+            show_expenses = financials.calculated_expenses
+            prod_expenses = financials.calculated_production_expenses
+            all_expenses = show_expenses + prod_expenses
+          %>
           <div class="text-sm font-medium text-gray-900"><%= number_to_currency(financials.total_revenue) %> revenue</div>
-          <div class="text-xs text-gray-500"><%= number_to_currency(financials.calculated_expenses) %> expenses</div>
+          <div class="text-xs text-gray-500"><%= number_to_currency(all_expenses) %> expenses<%= prod_expenses > 0 ? ' (incl. allocated)' : '' %></div>
         <% else %>
           <div class="text-sm font-medium text-pink-600">Awaiting Financials</div>
         <% end %>

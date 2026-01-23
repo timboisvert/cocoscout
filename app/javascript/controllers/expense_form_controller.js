@@ -9,57 +9,95 @@ export default class extends Controller {
     "specificEventsFields"
   ]
 
+  connect() {
+    // Disable inputs in hidden sections on initial load
+    this.disableHiddenInputs()
+  }
+
   toggleSpreadFields(event) {
     const method = event.target.value
 
-    // Hide all fields first
+    // Hide all fields first and disable their inputs
     this.hideAllFields()
 
-    // Show the relevant fields
+    // Show the relevant fields and enable their inputs
     switch (method) {
       case "fixed_months":
         if (this.hasFixedMonthsFieldsTarget) {
-          this.fixedMonthsFieldsTarget.classList.remove("hidden")
+          this.showAndEnable(this.fixedMonthsFieldsTarget)
         }
         break
       case "fixed_events":
         if (this.hasFixedEventsFieldsTarget) {
-          this.fixedEventsFieldsTarget.classList.remove("hidden")
+          this.showAndEnable(this.fixedEventsFieldsTarget)
         }
         break
       case "date_range":
         if (this.hasDateRangeFieldsTarget) {
-          this.dateRangeFieldsTarget.classList.remove("hidden")
+          this.showAndEnable(this.dateRangeFieldsTarget)
         }
         break
       case "until_date":
         if (this.hasUntilDateFieldsTarget) {
-          this.untilDateFieldsTarget.classList.remove("hidden")
+          this.showAndEnable(this.untilDateFieldsTarget)
         }
         break
       case "specific_events":
         if (this.hasSpecificEventsFieldsTarget) {
-          this.specificEventsFieldsTarget.classList.remove("hidden")
+          this.showAndEnable(this.specificEventsFieldsTarget)
         }
         break
     }
   }
 
+  showAndEnable(target) {
+    target.classList.remove("hidden")
+    target.querySelectorAll("input, select, textarea").forEach(input => {
+      input.disabled = false
+    })
+  }
+
+  hideAndDisable(target) {
+    target.classList.add("hidden")
+    target.querySelectorAll("input, select, textarea").forEach(input => {
+      input.disabled = true
+    })
+  }
+
   hideAllFields() {
     if (this.hasFixedMonthsFieldsTarget) {
-      this.fixedMonthsFieldsTarget.classList.add("hidden")
+      this.hideAndDisable(this.fixedMonthsFieldsTarget)
     }
     if (this.hasFixedEventsFieldsTarget) {
-      this.fixedEventsFieldsTarget.classList.add("hidden")
+      this.hideAndDisable(this.fixedEventsFieldsTarget)
     }
     if (this.hasDateRangeFieldsTarget) {
-      this.dateRangeFieldsTarget.classList.add("hidden")
+      this.hideAndDisable(this.dateRangeFieldsTarget)
     }
     if (this.hasUntilDateFieldsTarget) {
-      this.untilDateFieldsTarget.classList.add("hidden")
+      this.hideAndDisable(this.untilDateFieldsTarget)
     }
     if (this.hasSpecificEventsFieldsTarget) {
-      this.specificEventsFieldsTarget.classList.add("hidden")
+      this.hideAndDisable(this.specificEventsFieldsTarget)
     }
+  }
+
+  disableHiddenInputs() {
+    // Disable inputs in any sections that are currently hidden
+    const allTargets = [
+      this.hasFixedMonthsFieldsTarget ? this.fixedMonthsFieldsTarget : null,
+      this.hasFixedEventsFieldsTarget ? this.fixedEventsFieldsTarget : null,
+      this.hasDateRangeFieldsTarget ? this.dateRangeFieldsTarget : null,
+      this.hasUntilDateFieldsTarget ? this.untilDateFieldsTarget : null,
+      this.hasSpecificEventsFieldsTarget ? this.specificEventsFieldsTarget : null
+    ].filter(Boolean)
+
+    allTargets.forEach(target => {
+      if (target.classList.contains("hidden")) {
+        target.querySelectorAll("input, select, textarea").forEach(input => {
+          input.disabled = true
+        })
+      }
+    })
   }
 }

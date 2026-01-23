@@ -28,7 +28,7 @@ module Manage
 
       if @production_expense.save
         @production_expense.recalculate_allocations!
-        redirect_to manage_production_money_expense_path(@production, @production_expense),
+        redirect_to manage_money_financials_production_expense_path(@production, @production_expense),
                     notice: "Production expense created."
       else
         @upcoming_shows = upcoming_shows_for_selection
@@ -43,7 +43,7 @@ module Manage
     def update
       if @production_expense.update(production_expense_params)
         @production_expense.recalculate_allocations!
-        redirect_to manage_production_money_expense_path(@production, @production_expense),
+        redirect_to manage_money_financials_production_expense_path(@production, @production_expense),
                     notice: "Production expense updated."
       else
         @upcoming_shows = upcoming_shows_for_selection
@@ -53,13 +53,13 @@ module Manage
 
     def destroy
       @production_expense.destroy
-      redirect_to manage_production_money_expenses_path(@production),
+      redirect_to manage_money_financials_production_expenses_path(@production),
                   notice: "Production expense deleted."
     end
 
     def recalculate
       @production_expense.recalculate_allocations!
-      redirect_to manage_production_money_expense_path(@production, @production_expense),
+      redirect_to manage_money_financials_production_expense_path(@production, @production_expense),
                   notice: "Allocations recalculated."
     end
 
@@ -68,14 +68,14 @@ module Manage
 
       if params[:clear_override]
         allocation.clear_override!
-        redirect_to manage_production_money_expense_path(@production, @production_expense),
+        redirect_to manage_money_financials_production_expense_path(@production, @production_expense),
                     notice: "Override cleared."
       else
         allocation.override!(
           params[:allocated_amount].to_f,
           reason: params[:override_reason]
         )
-        redirect_to manage_production_money_expense_path(@production, @production_expense),
+        redirect_to manage_money_financials_production_expense_path(@production, @production_expense),
                     notice: "Allocation updated."
       end
     end

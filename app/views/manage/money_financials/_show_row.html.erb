@@ -40,6 +40,8 @@
 
   total_revenue = financials&.total_revenue || 0
   total_expenses = financials&.calculated_expenses || 0
+  production_expenses = financials&.calculated_production_expenses || 0
+  all_expenses = total_expenses + production_expenses
 %>
 
 <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= is_revenue_event ? '' : 'opacity-60' %> <%= 'opacity-60' if is_canceled %>"
@@ -98,8 +100,13 @@
         <%# Panel 3: Expenses %>
         <div class="w-full lg:w-1/6 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
           <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Expenses</div>
-          <% if has_data %>
-            <div class="text-sm font-medium text-red-600"><%= number_to_currency(total_expenses) %></div>
+          <% if has_data || production_expenses > 0 %>
+            <div class="text-sm font-medium text-red-600"><%= number_to_currency(all_expenses) %></div>
+            <% if production_expenses > 0 && total_expenses > 0 %>
+              <div class="text-xs text-gray-400">incl. allocated</div>
+            <% elsif production_expenses > 0 %>
+              <div class="text-xs text-gray-400">allocated only</div>
+            <% end %>
           <% else %>
             <div class="text-sm text-gray-400">—</div>
           <% end %>

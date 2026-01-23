@@ -1,8 +1,8 @@
 <%
   is_edit = @production_expense.persisted?
   form_url = is_edit ?
-    manage_update_production_money_expense_path(@production, @production_expense) :
-    manage_create_production_money_expense_path(@production)
+    manage_update_money_financials_production_expense_path(@production, @production_expense) :
+    manage_create_money_financials_production_expense_path(@production)
 %>
 
 <%= form_with model: @production_expense, url: form_url, method: is_edit ? :patch : :post, local: true,
@@ -164,7 +164,7 @@
 
     <%# Submit %>
     <div class="flex items-center justify-between">
-      <%= link_to manage_production_money_expenses_path(@production) do %>
+      <%= link_to manage_money_financials_production_expenses_path(@production) do %>
         <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium" %>
       <% end %>
       <%= render "shared/button", text: is_edit ? "Save Changes" : "Create Expense", variant: "primary", size: "medium", type: :submit %>

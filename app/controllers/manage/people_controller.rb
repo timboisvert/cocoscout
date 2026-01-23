@@ -473,7 +473,7 @@ module Manage
         # Use selected production if provided
         production = if params[:production_id].present?
                        Current.organization.productions.find_by(id: params[:production_id])
-                     end
+        end
 
         # Prepend production name or organization name to subject
         prefix_name = production&.name || Current.organization.name

@@ -91,7 +91,7 @@
         <%# Show Details %>
         <div class="min-w-0">
           <% if local_assigns[:show_production] %>
-            <div class="text-xs text-gray-400 mb-0.5"><%= production.name %></div>
+            <div class="text-xs text-gray-400 mb-0"><%= production.name %></div>
           <% end %>
           <div class="font-medium text-gray-900 flex items-center gap-1.5">
             <%= show.secondary_name.presence || show.event_type.titleize %>

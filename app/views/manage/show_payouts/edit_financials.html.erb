@@ -278,8 +278,14 @@
             <% end %>
             <% if @show_financials.calculated_expenses > 0 %>
               <div class="flex justify-between">
-                <span class="text-gray-600">Expenses</span>
+                <span class="text-gray-600">Show Expenses</span>
                 <span class="font-medium text-red-600">-<%= number_to_currency(@show_financials.calculated_expenses) %></span>
+              </div>
+            <% end %>
+            <% if @show_financials.calculated_production_expenses > 0 %>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Allocated Expenses</span>
+                <span class="font-medium text-red-600">-<%= number_to_currency(@show_financials.calculated_production_expenses) %></span>
               </div>
             <% end %>
             <div class="flex justify-between pt-2 border-t border-gray-300">

@@ -1,10 +1,13 @@
 <%= render partial: "shared/top_menu", locals: {
   breadcrumbs: [
     ["Money", manage_money_index_path],
-    [@production.name, manage_production_money_expenses_path(@production)],
-    [@production_expense.name, manage_production_money_expense_path(@production, @production_expense)]
+    ["Financials", manage_money_financials_path],
+    [@production.name, manage_money_production_financials_path(@production)],
+    ["Expenses", manage_money_financials_production_expenses_path(@production)],
+    [@production_expense.name, manage_money_financials_production_expense_path(@production, @production_expense)]
   ],
-  text: "Edit Expense"
+  text: "Edit",
+  links: []
 } %>
 
 <div class="max-w-2xl mx-auto px-4 py-8">

@@ -17,7 +17,8 @@
 <%
   production = summary[:production]
   gross_revenue = summary[:gross_revenue] || 0
-  cost_of_shows = (summary[:show_expenses] || 0) + (summary[:total_payouts] || 0)
+  production_expenses = summary[:production_expenses] || 0
+  cost_of_shows = (summary[:show_expenses] || 0) + production_expenses + (summary[:total_payouts] || 0)
   gross_profit = gross_revenue - cost_of_shows
   row_link_path = local_assigns[:link_path] || manage_money_production_financials_path(production)
 %>
@@ -35,8 +36,8 @@
             <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-full h-full object-cover rounded" %>
           </div>
         <% else %>
-          <div class="flex-shrink-0 w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
-            <span class="text-xl font-bold text-pink-600"><%= production.initials %></span>
+          <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+            <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
           </div>
         <% end %>
 

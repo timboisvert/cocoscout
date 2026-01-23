@@ -78,6 +78,7 @@ class FinancialSummaryService
     # Calculate totals
     gross_revenue = 0.0
     show_expenses = 0.0
+    production_expenses = 0.0
     shows_with_data = 0
     expense_by_category = Hash.new(0.0)
     ticket_revenue = 0.0
@@ -91,6 +92,7 @@ class FinancialSummaryService
       financials = show.show_financials
       gross_revenue += financials.total_revenue
       show_expenses += financials.calculated_expenses
+      production_expenses += financials.calculated_production_expenses
 
       # Track revenue by type
       if financials.ticket_sales?
@@ -115,8 +117,18 @@ class FinancialSummaryService
     show_ids = scope.pluck(:id)
     total_payouts = ShowPayout.where(show_id: show_ids).sum(:total_payout) || 0
 
-    # Cost of Shows = Show Expenses + Performer Payouts (direct costs)
-    cost_of_shows = show_expenses + total_payouts
+    # Also include production expenses for shows that may not have financial data yet
+    # (production expenses are allocated to all shows regardless of whether financials are entered)
+    if production_expenses == 0 && @productions.any?
+      production_expense_total = ProductionExpenseAllocation
+        .joins(:show)
+        .where(shows: { id: show_ids })
+        .sum(:allocated_amount)
+      production_expenses = production_expense_total.to_f
+    end
+
+    # Cost of Shows = Show Expenses + Production Expenses (Allocated) + Performer Payouts (direct costs)
+    cost_of_shows = show_expenses + production_expenses + total_payouts
 
     # Gross Profit = Revenue - Cost of Shows
     gross_profit = gross_revenue - cost_of_shows
@@ -131,6 +143,7 @@ class FinancialSummaryService
       shows_with_data: shows_with_data,
       gross_revenue: gross_revenue,
       show_expenses: show_expenses,
+      production_expenses: production_expenses,
       total_payouts: total_payouts,
       cost_of_shows: cost_of_shows,
       gross_profit: gross_profit,
