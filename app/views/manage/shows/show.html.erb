@@ -58,7 +58,7 @@
             %>
             <div class="flex flex-wrap gap-2 items-center">
               <% if is_canceled %>
-                <%= render "shared/button", text: uncancel_label, path: unmanage_cancel_show_form_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
+                <%= render "shared/button", text: uncancel_label, path: manage_uncancel_show_path(@production, @show), variant: "primary", size: "small", data: {turbo_method: :patch, turbo_confirm: "Are you sure you want to uncancel this #{event_label.downcase}?"} %>
                 <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
               <% else %>
                 <%# Always show edit button, even for past events %>
