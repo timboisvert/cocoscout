@@ -73,7 +73,7 @@
       <!-- Right Column: Form -->
       <div class="order-1 lg:order-2">
         <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
-          <% if User.exists?(email_address: @team_invitation.email.downcase) %>
+          <% if @existing_user %>
             <h2 class="text-xl font-bold text-slate-900 mb-2">Welcome back</h2>
             <p class="text-sm text-slate-600 mb-6">Enter your password to continue</p>
           <% else %>
@@ -97,7 +97,31 @@
               </div>
             </div>
 
-            <div class="mb-6" data-controller="password-visibility<%= User.exists?(email_address: @team_invitation.email.downcase) ? '' : ' password-strength' %>">
+            <% if @team_invitation.person.present? %>
+              <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                  Profile being added
+                </label>
+                <div class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                  <% profile = @team_invitation.person %>
+                  <% if profile.headshot&.attached? %>
+                    <%= image_tag profile.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
+                      <span class="text-sm font-semibold text-gray-600"><%= profile.name.first.upcase %></span>
+                    </div>
+                  <% end %>
+                  <div>
+                    <div class="font-medium text-slate-900"><%= profile.name %></div>
+                    <% if profile.organizations.any? %>
+                      <div class="text-xs text-slate-500">Also in: <%= profile.organizations.pluck(:name).join(", ") %></div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <div class="mb-6" data-controller="password-visibility<%= @existing_user ? '' : ' password-strength' %>">
               <label class="block text-sm font-semibold text-slate-700 mb-2">
                 Password
               </label>
@@ -105,14 +129,14 @@
                 <%= form.password_field :password,
                       required: true,
                       minlength: 8,
-                      autocomplete: User.exists?(email_address: @team_invitation.email.downcase) ? "current-password" : "new-password",
-                      placeholder: User.exists?(email_address: @team_invitation.email.downcase) ? "Enter your password" : "Set a password (at least 8 characters)",
+                      autocomplete: @existing_user ? "current-password" : "new-password",
+                      placeholder: @existing_user ? "Enter your password" : "Set a password (at least 8 characters)",
                       maxlength: 72,
                       class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
                       data: {
                         password_visibility_target: "input",
-                        password_strength_target: User.exists?(email_address: @team_invitation.email.downcase) ? nil : "input",
-                        action: User.exists?(email_address: @team_invitation.email.downcase) ? nil : "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength"
+                        password_strength_target: @existing_user ? nil : "input",
+                        action: @existing_user ? nil : "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength"
                       }.compact
                 %>
                 <button type="button"
@@ -126,7 +150,7 @@
                   </span>
                 </button>
               </div>
-              <% unless User.exists?(email_address: @team_invitation.email.downcase) %>
+              <% unless @existing_user %>
                 <div class="mt-2 bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
                   <p class="text-xs font-medium text-slate-700 mb-1.5">Password requirements:</p>
                   <div class="space-y-1">
@@ -171,14 +195,14 @@
                     size: "medium",
                     type: :submit,
                     class: "w-full",
-                    disabled: User.exists?(email_address: @team_invitation.email.downcase) ? false : true,
-                    classes: User.exists?(email_address: @team_invitation.email.downcase) ? "" : "!opacity-50 !cursor-not-allowed",
-                    data: User.exists?(email_address: @team_invitation.email.downcase) ? {} : { password_strength_target: "submit" } %>
+                    disabled: @existing_user ? false : true,
+                    classes: @existing_user ? "" : "!opacity-50 !cursor-not-allowed",
+                    data: @existing_user ? {} : { password_strength_target: "submit" } %>
               </div>
             </div>
           <% end %>
 
-          <% if User.exists?(email_address: @team_invitation.email.downcase) %>
+          <% if @existing_user %>
             <div class="mt-6 pt-6 border-t border-slate-200">
               <p class="text-sm text-slate-600 text-center">
                 Forgot your password?

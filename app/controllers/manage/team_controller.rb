@@ -9,9 +9,30 @@ module Manage
       redirect_to manage_organization_path(Current.organization, anchor: "tab-1")
     end
 
+    def check_profiles
+      email = params[:email]&.strip&.downcase
+      return render json: { profiles: [] } if email.blank?
+
+      profiles = Person.where(email: email).map do |p|
+        {
+          id: p.id,
+          name: p.name,
+          organizations: p.organizations.pluck(:name),
+          already_in_org: p.organizations.include?(Current.organization)
+        }
+      end
+
+      render json: { profiles: profiles }
+    end
+
     def invite
       @team_invitation = TeamInvitation.new(team_invitation_params)
       @team_invitation.organization = Current.organization
+
+      # If a person_id was provided, use that profile
+      if params[:team_invitation][:person_id].present?
+        @team_invitation.person_id = params[:team_invitation][:person_id]
+      end
 
       default_subject = EmailTemplateService.render_subject("team_invitation", {
         organization_name: Current.organization.name

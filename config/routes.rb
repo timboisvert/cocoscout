@@ -646,6 +646,7 @@ Rails.application.routes.draw do
     resources :team, only: [ :index ] do
       collection do
         post :invite
+        post :check_profiles
         delete :revoke_invite
         delete :remove_member
       end

@@ -87,26 +87,61 @@
       <% @team_members.each do |member| %>
         <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
         <% next unless organization_role&.company_role.in?(%w[manager viewer]) %>
+        <% all_profiles = member.people.where(archived_at: nil).order(:created_at) %>
+        <% primary_profile = organization_role.display_person %>
         <div class="group flex items-stretch px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
           <%# Left Section: Person Info %>
           <div class="w-1/2 flex items-center gap-3">
-            <% if member.person&.headshot&.attached? %>
-              <%= image_tag member.person.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% if all_profiles.size > 1 %>
+              <%# Multiple profiles - show stacked headshots %>
+              <div class="flex -space-x-2 flex-shrink-0">
+                <% all_profiles.limit(3).each_with_index do |profile, idx| %>
+                  <% if profile.headshot&.attached? %>
+                    <%= image_tag profile.safe_headshot_variant(:thumb),
+                        class: "w-10 h-10 rounded-lg object-cover border-2 border-white",
+                        style: "z-index: #{3 - idx}",
+                        title: profile.name %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center border-2 border-white"
+                         style="z-index: <%= 3 - idx %>"
+                         title="<%= profile.name %>">
+                      <span class="text-sm font-semibold text-gray-600"><%= profile.name&.first&.upcase || "?" %></span>
+                    </div>
+                  <% end %>
+                <% end %>
+                <% if all_profiles.size > 3 %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-300 flex items-center justify-center border-2 border-white">
+                    <span class="text-xs font-semibold text-gray-600">+<%= all_profiles.size - 3 %></span>
+                  </div>
+                <% end %>
+              </div>
+            <% elsif primary_profile&.headshot&.attached? %>
+              <%= image_tag primary_profile.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
             <% else %>
               <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
                 <span class="text-sm font-semibold text-gray-600">
-                  <%= (member.person&.name || member.email_address).first.upcase %>
+                  <%= (primary_profile&.name || member.email_address).first.upcase %>
                 </span>
               </div>
             <% end %>
             <div class="min-w-0">
-              <div class="font-medium text-sm text-gray-900 truncate">
-                <%= member.person&.name || member.email_address %>
-                <% if member == Current.user %>
-                  <span class="text-gray-500">(Me)</span>
-                <% end %>
-              </div>
-              <div class="text-xs text-gray-500 truncate"><%= member.email_address %></div>
+              <% if all_profiles.size > 1 %>
+                <div class="font-medium text-sm text-gray-900 truncate">
+                  <%= all_profiles.map(&:name).compact.join(", ") %>
+                  <% if member == Current.user %>
+                    <span class="text-gray-500">(Me)</span>
+                  <% end %>
+                </div>
+                <div class="text-xs text-gray-500 truncate"><%= all_profiles.size %> profiles · <%= member.email_address %></div>
+              <% else %>
+                <div class="font-medium text-sm text-gray-900 truncate">
+                  <%= primary_profile&.name || member.email_address %>
+                  <% if member == Current.user %>
+                    <span class="text-gray-500">(Me)</span>
+                  <% end %>
+                </div>
+                <div class="text-xs text-gray-500 truncate"><%= member.email_address %></div>
+              <% end %>
             </div>
           </div>
           <%# Right Section: Role %>
@@ -127,7 +162,7 @@
                     data: {
                       action: "click->org-team-modals#openPermissionsModal",
                       "member-id": member.id,
-                      "member-name": member.person&.name || member.email_address,
+                      "member-name": primary_profile&.name || member.email_address,
                       "permissions-url": permissions_manage_team_path(id: member.id)
                     } %>
               </div>
@@ -180,12 +215,22 @@
           <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Invite an Organization Team Member</h2>
           </div>
-          <div class="p-6">
+          <div class="p-6" data-controller="team-invite-profiles" data-team-invite-profiles-check-url-value="<%= check_profiles_manage_team_index_path %>">
             <%= form_with(model: @team_invitation, url: invite_manage_team_index_path, method: :post, data: { turbo: false }) do |f| %>
-              <div class="space-y-1">
+              <div class="space-y-4">
                 <div>
                   <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
-                  <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+                  <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { team_invite_profiles_target: "email", action: "blur->team-invite-profiles#checkProfiles" } %>
+                </div>
+
+                <!-- Profile Selection (shown when multiple profiles exist) -->
+                <div data-team-invite-profiles-target="profilesSection" class="hidden">
+                  <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm font-medium text-yellow-800 mb-3">This email has multiple profiles. Which profile should be invited?</p>
+                    <div data-team-invite-profiles-target="profilesList" class="space-y-2">
+                      <!-- Profiles will be inserted here -->
+                    </div>
+                  </div>
                 </div>
 
                 <div>

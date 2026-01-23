@@ -11,14 +11,26 @@ module Manage
     before_action :ensure_user_is_manager, except: %i[accept do_accept]
 
     def accept
-      # Renders a form for the invitee to sign up or log in
+      # Load all profiles with this email for selection
+      @available_profiles = Person.where(email: @team_invitation.email.downcase)
+      @existing_user = User.find_by(email_address: @team_invitation.email.downcase)
     end
 
     def do_accept
       # Try and find the user accepting the invitation
-      # Also get their person
       user = User.find_by(email_address: @team_invitation.email.downcase)
-      person = Person.find_by(email: @team_invitation.email.downcase)
+
+      # Set up instance variables for the view (in case we need to re-render)
+      @available_profiles = Person.where(email: @team_invitation.email.downcase)
+      @existing_user = user
+
+      # Use the person_id stored on the invitation (selected when inviting)
+      # Fall back to first profile with this email if no person_id was set
+      if @team_invitation.person_id.present?
+        person = Person.find_by(id: @team_invitation.person_id)
+      else
+        person = @available_profiles.first
+      end
 
       if user
         if user.authenticate(params[:password])
@@ -60,8 +72,21 @@ module Manage
       end
 
       # Set a role and the organization (viewer by default, notifications off)
-      unless OrganizationRole.exists?(user: user, organization: @team_invitation.organization)
-        OrganizationRole.create!(user: user, organization: @team_invitation.organization, company_role: "viewer", notifications_enabled: false)
+      # Store the person_id so we know which profile was invited for this team role
+      existing_role = OrganizationRole.find_by(user: user, organization: @team_invitation.organization)
+      if existing_role
+        # Update the person_id if this invitation specified a different profile
+        if @team_invitation.person_id.present? && existing_role.person_id != @team_invitation.person_id
+          existing_role.update!(person_id: @team_invitation.person_id)
+        end
+      else
+        OrganizationRole.create!(
+          user: user,
+          organization: @team_invitation.organization,
+          company_role: "viewer",
+          notifications_enabled: false,
+          person_id: person&.id
+        )
       end
 
       # If this is a production-specific invitation, create the production permission

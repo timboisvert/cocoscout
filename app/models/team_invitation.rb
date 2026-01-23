@@ -3,6 +3,7 @@
 class TeamInvitation < ApplicationRecord
   belongs_to :organization
   belongs_to :production, optional: true
+  belongs_to :person, optional: true
 
   validates :email, presence: true
   validates :token, presence: true, uniqueness: true
