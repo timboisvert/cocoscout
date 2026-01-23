@@ -75,10 +75,16 @@ module Manage
       # Store the person_id so we know which profile was invited for this team role
       existing_role = OrganizationRole.find_by(user: user, organization: @team_invitation.organization)
       if existing_role
-        # Update the person_id if this invitation specified a different profile
-        if @team_invitation.person_id.present? && existing_role.person_id != @team_invitation.person_id
-          existing_role.update!(person_id: @team_invitation.person_id)
+        # Upgrade "member" to "viewer" if this is an org team invitation (not production-specific)
+        # "member" is a minimal role for production-only access, org invites should be "viewer" or higher
+        updates = {}
+        if existing_role.company_role == "member" && !@team_invitation.production_invite?
+          updates[:company_role] = "viewer"
         end
+        if @team_invitation.person_id.present? && existing_role.person_id != @team_invitation.person_id
+          updates[:person_id] = @team_invitation.person_id
+        end
+        existing_role.update!(updates) if updates.any?
       else
         OrganizationRole.create!(
           user: user,
