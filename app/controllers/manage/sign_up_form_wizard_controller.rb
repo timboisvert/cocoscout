@@ -299,6 +299,13 @@ module Manage
         end
       end
 
+      # Handle hide registrations settings (only if show_registrations is enabled)
+      if @wizard_state[:show_registrations]
+        @wizard_state[:hide_registrations_mode] = params[:hide_registrations_mode] || "event_start"
+        @wizard_state[:hide_registrations_offset_value] = params[:hide_registrations_offset_value].to_i
+        @wizard_state[:hide_registrations_offset_unit] = params[:hide_registrations_offset_unit] || "hours"
+      end
+
       save_wizard_state
       redirect_to manage_signups_forms_wizard_notifications_path(@production)
     end
@@ -379,7 +386,11 @@ module Manage
           closes_offset_unit: @wizard_state[:closes_offset_unit] || "hours",
           closes_minutes_offset: @wizard_state[:closes_minutes_offset] || 0,
           holdback_visible: @wizard_state.fetch(:holdback_visible, true),
-          notify_on_registration: @wizard_state.fetch(:notify_on_registration, false)
+          notify_on_registration: @wizard_state.fetch(:notify_on_registration, false),
+          # Hide registrations fields
+          hide_registrations_mode: @wizard_state[:hide_registrations_mode] || "event_start",
+          hide_registrations_offset_value: @wizard_state[:hide_registrations_offset_value] || 2,
+          hide_registrations_offset_unit: @wizard_state[:hide_registrations_offset_unit] || "hours"
         )
 
         # Set fixed schedule dates for single_event or fixed mode

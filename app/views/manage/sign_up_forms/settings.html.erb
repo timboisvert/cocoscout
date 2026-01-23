@@ -799,15 +799,19 @@
               opens_hours = @sign_up_form.opens_hours_before || 0
               opens_mins = @sign_up_form.opens_minutes_before || 0
               # Close registration timing (default: 0 days, 2 hours, 0 minutes after)
-              closes_days = 0  # Days field for closes - we'll derive from offset_value if unit is days
-              closes_hours = @sign_up_form.closes_hours_before || 2
               closes_mins = @sign_up_form.closes_minutes_offset || 0
               # Determine before/after based on closes_offset_value sign (negative = after, positive = before)
               closes_offset = @sign_up_form.closes_offset_value || 0
               closes_before_after = closes_offset < 0 ? "after" : "before"
-              # If unit is days, use that value for closes_days
+              # If unit is days, show days and compute remaining hours; otherwise use closes_hours_before
               if @sign_up_form.closes_offset_unit == "days"
                 closes_days = closes_offset.abs
+                closes_hours = 0
+              else
+                # closes_hours_before stores total hours - convert to days + hours
+                total_hours = @sign_up_form.closes_hours_before || 2
+                closes_days = total_hours / 24
+                closes_hours = total_hours % 24
               end
             %>
             <div data-settings-form-target="relativeScheduleSection" class="<%= schedule_mode == 'relative' ? '' : 'hidden' %> space-y-4">
@@ -911,6 +915,36 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Closes at</label>
                   <%= form.datetime_local_field :closes_at, step: 300, class: "block w-full sm:w-2/3 rounded-lg border border-gray-300 px-3 py-2", data: { toggle_section_target: "requiredField" } %>
                 </div>
+              </div>
+            </div>
+          <% end %>
+
+          <%# Hide Registration Names Section - shown when show_registrations is enabled %>
+          <% if @sign_up_form.show_registrations %>
+            <% hide_mode = @sign_up_form.hide_registrations_mode || 'event_start' %>
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200" data-controller="hide-registrations">
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700">Hide registration names</label>
+                <p class="text-xs text-gray-500 mt-0.5">Since "Show registered names" is enabled, choose when to stop showing them.</p>
+              </div>
+              <div class="space-y-2">
+                <%# Option 1: When event starts (default) %>
+                <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= hide_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
+                  <input type="radio" name="sign_up_form[hide_registrations_mode]" value="event_start"
+                         <%= "checked" if hide_mode == 'event_start' %>
+                         class="sr-only"
+                         data-action="change->hide-registrations#updateStyles">
+                  <span class="text-sm font-medium text-gray-900">When event starts</span>
+                </label>
+
+                <%# Option 2: At midnight after the event %>
+                <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= hide_mode == 'midnight_after' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
+                  <input type="radio" name="sign_up_form[hide_registrations_mode]" value="midnight_after"
+                         <%= "checked" if hide_mode == 'midnight_after' %>
+                         class="sr-only"
+                         data-action="change->hide-registrations#updateStyles">
+                  <span class="text-sm font-medium text-gray-900">At midnight after the event</span>
+                </label>
               </div>
             </div>
           <% end %>

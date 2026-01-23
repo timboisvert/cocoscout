@@ -22,6 +22,7 @@ class Production < ApplicationRecord
   has_many :payout_schemes, dependent: :destroy
   has_many :show_payouts, through: :shows
   has_many :posts, dependent: :destroy
+  has_many :production_expenses, dependent: :destroy
   belongs_to :organization
 
   has_one_attached :logo, dependent: :purge_later do |attachable|

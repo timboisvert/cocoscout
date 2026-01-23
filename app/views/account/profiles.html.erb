@@ -13,7 +13,7 @@
         <% @profiles.each do |profile| %>
           <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg <%= profile.default_profile? ? 'bg-pink-50/30 border-pink-200' : '' %>">
             <div class="flex items-center gap-4">
-              <% headshot = profile.profile_headshots.order(created_at: :desc).first %>
+              <% headshot = profile.primary_headshot %>
               <% if headshot&.image&.attached? %>
                 <%= image_tag headshot.image.variant(resize_to_fill: [64, 64]), class: "w-16 h-16 rounded-lg object-cover" %>
               <% else %>

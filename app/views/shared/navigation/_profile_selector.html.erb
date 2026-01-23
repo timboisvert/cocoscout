@@ -17,7 +17,7 @@
   else
     current_entity ||= Current.user.person
     current_name = current_entity&.name || Current.user.email_address
-    current_headshot = current_entity&.profile_headshots&.order(created_at: :desc)&.first&.image
+    current_headshot = current_entity&.primary_headshot&.image
     current_initials = current_entity&.initials || Current.user.email_address[0].upcase
     is_group = false
   end
@@ -49,7 +49,7 @@
         <% all_profiles.each do |profile| %>
           <% is_current = !is_group && profile.id == current_entity&.id %>
           <%= link_to edit_profile_path(profile), data: { turbo: false }, class: "flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition cursor-pointer #{ is_current ? 'bg-pink-50' : '' }" do %>
-            <% headshot = profile.profile_headshots.order(created_at: :desc).first %>
+            <% headshot = profile.primary_headshot %>
             <% if headshot&.image&.attached? %>
               <%= image_tag headshot.image.variant(resize_to_fill: [32, 32]), class: "w-8 h-8 rounded-lg object-cover" %>
             <% else %>

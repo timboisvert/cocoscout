@@ -1,0 +1,12 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Money", manage_money_index_path],
+    [@production.name, manage_production_money_expenses_path(@production)],
+    [@production_expense.name, manage_production_money_expense_path(@production, @production_expense)]
+  ],
+  text: "Edit Expense"
+} %>
+
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <%= render "form" %>
+</div>

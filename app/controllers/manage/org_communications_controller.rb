@@ -62,9 +62,11 @@ module Manage
 
       # Create email batch
       email_batch = EmailBatch.create!(
-        production: production,
+        user: Current.user,
         subject: email_draft.title,
-        body: email_draft.body.to_s
+        mailer_class: "CommunicationsMailer",
+        mailer_action: "send_message",
+        sent_at: Time.current
       )
 
       # Send emails

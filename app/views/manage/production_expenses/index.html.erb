@@ -1,0 +1,83 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Money", manage_money_index_path],
+    [@production.name, manage_production_money_expenses_path(@production)]
+  ],
+  text: "Production Expenses",
+  links: [
+    { text: "New Expense", path: manage_new_production_money_expense_path(@production), icon: "plus" }
+  ]
+} %>
+
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Production Expenses</h1>
+    <p class="text-gray-600">
+      Track costs that should be spread across multiple shows, like equipment purchases,
+      venue deposits, or marketing campaigns.
+    </p>
+  </div>
+
+  <% if @production_expenses.any? %>
+    <div class="bg-white rounded-lg border border-gray-200">
+      <div class="divide-y divide-gray-200">
+        <% @production_expenses.each do |expense| %>
+          <a href="<%= manage_production_money_expense_path(@production, expense) %>"
+             class="block px-6 py-4 hover:bg-gray-50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3">
+                  <div class="font-medium text-gray-900"><%= expense.name %></div>
+                  <% unless expense.active? %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                      Inactive
+                    </span>
+                  <% end %>
+                </div>
+                <div class="text-sm text-gray-500 mt-1">
+                  <%= expense.spread_description %>
+                  <span class="mx-1">&middot;</span>
+                  <%= pluralize(expense.allocations.count, "show") %>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-semibold text-gray-900"><%= number_to_currency(expense.total_amount) %></div>
+                <div class="text-sm text-gray-500">
+                  <%= number_to_currency(expense.per_show_amount) %>/show
+                </div>
+              </div>
+            </div>
+          </a>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Summary %>
+    <%
+      total = @production_expenses.sum(&:total_amount)
+      allocated = @production_expenses.sum(&:total_allocated)
+    %>
+    <div class="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-sm text-gray-500">Total Production Expenses</div>
+          <div class="text-xl font-bold text-gray-900"><%= number_to_currency(total) %></div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm text-gray-500">Total Allocated</div>
+          <div class="text-xl font-bold text-green-600"><%= number_to_currency(allocated) %></div>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+      </svg>
+      <p class="text-gray-600 mb-4">No production expenses yet.</p>
+      <%= link_to manage_new_production_money_expense_path(@production) do %>
+        <%= render "shared/button", text: "Add First Expense", variant: "primary", size: "medium" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

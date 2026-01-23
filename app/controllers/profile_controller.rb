@@ -248,7 +248,11 @@ class ProfileController < ApplicationController
   private
 
   def set_person
-    if params[:id].present?
+    # For headshot actions, params[:id] is the headshot ID, not the person ID
+    headshot_actions = %w[set_primary_headshot delete_headshot reorder_headshots]
+    skip_id_lookup = headshot_actions.include?(action_name)
+
+    if params[:id].present? && !skip_id_lookup
       # Load specific profile by ID, but only if user owns it
       @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: params[:id])
       unless @person

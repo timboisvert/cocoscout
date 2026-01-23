@@ -475,6 +475,17 @@ class SignUpFormStatusService
       build_shared_pool_explanation(explanations)
     end
 
+    # Add show_registrations and hide timing info
+    if sign_up_form.show_registrations
+      hide_text = case sign_up_form.hide_registrations_mode
+      when "midnight_after"
+        "Line-up visible until midnight after event"
+      else
+        "Line-up visible until event starts"
+      end
+      explanations << { check: true, text: hide_text }
+    end
+
     explanations
   end
 

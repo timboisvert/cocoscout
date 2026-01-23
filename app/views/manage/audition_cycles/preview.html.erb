@@ -61,7 +61,7 @@
                                 !Current.user.person.profile_resumes.exists?
 
             entity = Current.user.person
-            entity_headshot = entity.profile_headshots.order(created_at: :desc).first
+            entity_headshot = entity.primary_headshot
             entity_profile_path = profile_path
           %>
 

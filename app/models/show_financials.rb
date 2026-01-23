@@ -4,6 +4,9 @@ class ShowFinancials < ApplicationRecord
   belongs_to :show
 
   has_one :production, through: :show
+  has_many :expense_items, -> { ordered }, dependent: :destroy
+
+  accepts_nested_attributes_for :expense_items, allow_destroy: true, reject_if: :all_blank
 
   REVENUE_TYPES = %w[ticket_sales flat_fee].freeze
 
@@ -62,8 +65,14 @@ class ShowFinancials < ApplicationRecord
     end
   end
 
-  # Calculate expenses from details if present, otherwise use stored amount
+  # Calculate expenses from expense_items (preferred) or legacy expense_details
   def calculated_expenses
+    # Prefer expense_items if present
+    if expense_items.loaded? ? expense_items.any? : expense_items.exists?
+      return expense_items.sum(:amount).to_f
+    end
+
+    # Fall back to legacy JSONB expense_details
     details = expense_details
     # Handle case where data is stored as hash (from form params) instead of array
     details = details.values if details.is_a?(Hash)
@@ -90,9 +99,40 @@ class ShowFinancials < ApplicationRecord
     primary_revenue + calculated_other_revenue
   end
 
-  # Net revenue after expenses
+  # Calculate ticket fees from stored fees array
+  def calculated_ticket_fees
+    return 0 unless ticket_sales? && ticket_fees.is_a?(Array) && ticket_fees.any?
+
+    ticket_fees.sum do |fee|
+      fee["amount"].to_f
+    end
+  end
+
+  # Recalculate ticket fees from templates
+  def recalculate_ticket_fees!
+    return unless ticket_sales?
+
+    self.ticket_fees = ticket_fees.map do |fee|
+      template = TicketFeeTemplate.find_by(id: fee["template_id"])
+      if template
+        template.to_fee_hash(ticket_count: ticket_count.to_i, ticket_revenue: ticket_revenue.to_f)
+      else
+        # Keep the fee but recalculate amount
+        flat_total = (fee["flat"].to_f) * ticket_count.to_i
+        pct_total = (fee["pct"].to_f) / 100.0 * ticket_revenue.to_f
+        fee.merge("amount" => (flat_total + pct_total).round(2))
+      end
+    end
+  end
+
+  # Calculate production expense allocations for this show
+  def calculated_production_expenses
+    show.production_expense_allocations.sum(:allocated_amount).to_f
+  end
+
+  # Net revenue after expenses, ticket fees, and production expense allocations
   def net_revenue
-    total_revenue - calculated_expenses
+    total_revenue - calculated_expenses - calculated_ticket_fees - calculated_production_expenses
   end
 
   # Average ticket price (if any tickets sold)

@@ -36,7 +36,7 @@
                 <div class="flex items-center gap-3">
                   <% person = vote.user.person %>
                   <% if person %>
-                    <% headshot_url = person.profile_headshots.first&.file&.attached? ? url_for(person.profile_headshots.first.file.variant(:thumb)) : nil %>
+                    <% headshot_url = person.primary_headshot&.file&.attached? ? url_for(person.primary_headshot.file.variant(:thumb)) : nil %>
                     <% if headshot_url %>
                       <%= image_tag headshot_url, class: "w-8 h-8 rounded-full object-cover" %>
                     <% else %>

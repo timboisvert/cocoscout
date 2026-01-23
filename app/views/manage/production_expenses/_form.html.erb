@@ -1,0 +1,173 @@
+<%
+  is_edit = @production_expense.persisted?
+  form_url = is_edit ?
+    manage_update_production_money_expense_path(@production, @production_expense) :
+    manage_create_production_money_expense_path(@production)
+%>
+
+<%= form_with model: @production_expense, url: form_url, method: is_edit ? :patch : :post, local: true,
+              data: { controller: "expense-form" } do |form| %>
+
+  <% if @production_expense.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <ul class="text-sm text-red-700 list-disc list-inside">
+        <% @production_expense.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="space-y-6">
+    <%# Basic Info %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Expense Details</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.text_field :name, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "e.g., Sound Equipment" %>
+        </div>
+
+        <div>
+          <%= form.label :total_amount, "Amount", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <%= form.number_field :total_amount, step: 0.01, min: 0, class: "w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "0.00" %>
+          </div>
+        </div>
+
+        <div>
+          <%= form.label :category, class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.select :category, ProductionExpense::CATEGORIES.map { |c| [c.titleize, c] }, {}, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div>
+          <%= form.label :purchase_date, class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.date_field :purchase_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+
+        <div class="md:col-span-2">
+          <%= form.label :description, class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.text_area :description, rows: 2, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500", placeholder: "Optional notes about this expense..." %>
+        </div>
+      </div>
+    </div>
+
+    <%# Spread Method %>
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">How to Spread This Cost</h2>
+
+      <div class="space-y-4">
+        <%# Spread Method Selector %>
+        <div>
+          <%= form.label :spread_method, "Spread Method", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <div class="space-y-2">
+            <% ProductionExpense::SPREAD_METHODS.each do |key, description| %>
+              <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                <%= form.radio_button :spread_method, key, data: { action: "change->expense-form#toggleSpreadFields" }, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500" %>
+                <div>
+                  <div class="font-medium text-sm text-gray-900"><%= key.titleize.gsub("_", " ") %></div>
+                  <div class="text-xs text-gray-500"><%= description %></div>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Fixed Months Options %>
+        <div data-expense-form-target="fixedMonthsFields" class="<%= @production_expense.spread_method != 'fixed_months' ? 'hidden' : '' %> bg-gray-50 rounded-lg p-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <%= form.label :spread_months, "Number of Months", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.number_field :spread_months, min: 1, max: 24, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+            <div>
+              <%= form.label :spread_start_date, "Starting From", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.date_field :spread_start_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+          </div>
+        </div>
+
+        <%# Fixed Events Options %>
+        <div data-expense-form-target="fixedEventsFields" class="<%= @production_expense.spread_method != 'fixed_events' ? 'hidden' : '' %> bg-gray-50 rounded-lg p-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <%= form.label :spread_event_count, "Number of Events", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.number_field :spread_event_count, min: 1, max: 100, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+            <div>
+              <%= form.label :spread_start_date, "Starting From", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.date_field :spread_start_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+          </div>
+        </div>
+
+        <%# Date Range Options %>
+        <div data-expense-form-target="dateRangeFields" class="<%= @production_expense.spread_method != 'date_range' ? 'hidden' : '' %> bg-gray-50 rounded-lg p-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <%= form.label :spread_start_date, "Start Date", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.date_field :spread_start_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+            <div>
+              <%= form.label :spread_end_date, "End Date", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.date_field :spread_end_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+            </div>
+          </div>
+        </div>
+
+        <%# Until Date Options %>
+        <div data-expense-form-target="untilDateFields" class="<%= @production_expense.spread_method != 'until_date' ? 'hidden' : '' %> bg-gray-50 rounded-lg p-4">
+          <div>
+            <%= form.label :spread_end_date, "Until Date", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.date_field :spread_end_date, class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+        </div>
+
+        <%# Specific Events Selection %>
+        <div data-expense-form-target="specificEventsFields" class="<%= @production_expense.spread_method != 'specific_events' ? 'hidden' : '' %> bg-gray-50 rounded-lg p-4">
+          <div class="mb-2 text-sm font-medium text-gray-700">Select Shows</div>
+          <div class="max-h-64 overflow-y-auto space-y-2">
+            <% @upcoming_shows.each do |show| %>
+              <label class="flex items-center gap-3 p-2 bg-white rounded border border-gray-200 cursor-pointer hover:border-pink-300 transition-colors">
+                <%= check_box_tag "production_expense[selected_show_ids][]", show.id, @production_expense.selected_show_ids&.include?(show.id), class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-gray-900">
+                    <%= show.date_and_time.strftime("%b %d, %Y") %> - <%= show.secondary_name.presence || show.event_type.titleize %>
+                  </div>
+                  <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Exclusion Options %>
+        <div class="flex flex-col gap-3 pt-4 border-t border-gray-200">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <%= form.check_box :exclude_non_revenue, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+            <div>
+              <span class="text-sm font-medium text-gray-900">Exclude non-revenue events</span>
+              <span class="text-xs text-gray-500 block">Rehearsals, workshops, meetings, etc.</span>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <%= form.check_box :exclude_canceled, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+            <div>
+              <span class="text-sm font-medium text-gray-900">Exclude canceled shows</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <%# Submit %>
+    <div class="flex items-center justify-between">
+      <%= link_to manage_production_money_expenses_path(@production) do %>
+        <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium" %>
+      <% end %>
+      <%= render "shared/button", text: is_edit ? "Save Changes" : "Create Expense", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  </div>
+<% end %>

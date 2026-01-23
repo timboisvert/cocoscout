@@ -53,39 +53,54 @@
 
   <% if @filter == 'no_response' %>
     <% if @no_response_shows.any? %>
-      <%# Group no-response shows by entity, then render with linkage awareness %>
-      <% @entity_data.each do |entity_key, data| %>
-        <% entity_no_response = data[:no_response_shows] %>
-        <% if entity_no_response.any? %>
-          <%= render "shared/availability_list",
-                     shows: entity_no_response,
-                     entity_key: entity_key,
-                     entity: data[:entity],
-                     availabilities: data[:availabilities],
-                     show_production: true,
-                     show_location: true,
-                     has_groups: @groups.any? %>
+      <%# Single date-sorted list of all no-response shows across all entities %>
+      <div class="space-y-1" data-controller="linked-highlight">
+        <% @no_response_shows.each do |show| %>
+          <% entities = @show_entities[show.id] || [] %>
+          <% primary_entity = entities.first %>
+          <% entity_key = primary_entity ? "#{primary_entity[:type]}_#{primary_entity[:entity].id}" : nil %>
+          <% entity = primary_entity ? primary_entity[:entity] : nil %>
+          <% availability = @combined_availabilities[show.id] %>
+          <%= render partial: "shared/show_row", locals: {
+            show: show,
+            show_location: true,
+            show_production: true,
+            show_linked: true,
+            availability: availability,
+            entity_key: entity_key,
+            entity: entity,
+            has_groups: @groups.any?,
+            right_panel: :availability
+          } %>
         <% end %>
-      <% end %>
+      </div>
     <% else %>
       <p class="text-gray-500 text-sm">You're up to date on your show availabilities</p>
     <% end %>
 
   <% elsif @filter == 'all' %>
     <% if @all_shows.any? %>
-      <%# Group all shows by entity, then render with linkage awareness %>
-      <% @entity_data.each do |entity_key, data| %>
-        <% if data[:shows].any? %>
-          <%= render "shared/availability_list",
-                     shows: data[:shows],
-                     entity_key: entity_key,
-                     entity: data[:entity],
-                     availabilities: data[:availabilities],
-                     show_production: true,
-                     show_location: true,
-                     has_groups: @groups.any? %>
+      <%# Single date-sorted list of all shows across all entities %>
+      <div class="space-y-1" data-controller="linked-highlight">
+        <% @all_shows.each do |show| %>
+          <% entities = @show_entities[show.id] || [] %>
+          <% primary_entity = entities.first %>
+          <% entity_key = primary_entity ? "#{primary_entity[:type]}_#{primary_entity[:entity].id}" : nil %>
+          <% entity = primary_entity ? primary_entity[:entity] : nil %>
+          <% availability = @combined_availabilities[show.id] %>
+          <%= render partial: "shared/show_row", locals: {
+            show: show,
+            show_location: true,
+            show_production: true,
+            show_linked: true,
+            availability: availability,
+            entity_key: entity_key,
+            entity: entity,
+            has_groups: @groups.any?,
+            right_panel: :availability
+          } %>
         <% end %>
-      <% end %>
+      </div>
     <% else %>
       <p class="text-gray-500 text-sm">You don't have any upcoming shows</p>
     <% end %>

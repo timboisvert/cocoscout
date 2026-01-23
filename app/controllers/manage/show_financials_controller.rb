@@ -25,6 +25,9 @@ module Manage
     end
 
     def update
+      # Process ticket fee templates if present
+      process_ticket_fee_templates
+
       if @show_financials.update(show_financials_params)
         respond_to do |format|
           format.html { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
@@ -68,6 +71,23 @@ module Manage
       authorize_production_action!(:manage)
     end
 
+    def process_ticket_fee_templates
+      template_ids = params.dig(:show_financials, :ticket_fee_template_ids)&.reject(&:blank?) || []
+
+      if template_ids.any?
+        # Get revenue values from params (they may not be saved yet)
+        ticket_count = params.dig(:show_financials, :ticket_count).to_i
+        ticket_revenue = params.dig(:show_financials, :ticket_revenue).to_f
+
+        templates = Current.organization.ticket_fee_templates.where(id: template_ids)
+        @show_financials.ticket_fees = templates.map do |template|
+          template.to_fee_hash(ticket_count: ticket_count, ticket_revenue: ticket_revenue)
+        end
+      else
+        @show_financials.ticket_fees = []
+      end
+    end
+
     def show_financials_params
       permitted = params.require(:show_financials).permit(
         :revenue_type,
@@ -79,7 +99,8 @@ module Manage
         :notes,
         :data_confirmed,
         other_revenue_details: [ :description, :amount ],
-        expense_details: [ :category, :description, :amount ]
+        expense_details: [ :category, :description, :amount ],
+        expense_items_attributes: [ :id, :category, :description, :amount, :position, :_destroy ]
       )
 
       # Convert hash-style params to arrays for details fields

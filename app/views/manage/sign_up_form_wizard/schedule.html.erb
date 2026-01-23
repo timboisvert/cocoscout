@@ -390,6 +390,36 @@
           </div>
         </div>
       <% end %>
+
+      <%# Hide Registration Names Section - shown when show_registrations is enabled %>
+      <% if @wizard_state[:show_registrations] %>
+        <% hide_mode = @wizard_state[:hide_registrations_mode] || 'event_start' %>
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200" data-controller="hide-registrations">
+          <div class="mb-3">
+            <label class="block text-gray-700 font-medium">Hide registration names</label>
+            <p class="text-sm text-gray-500 mt-0.5">Since "Show registered names" is enabled, choose when to stop showing them.</p>
+          </div>
+          <div class="space-y-2">
+            <%# Option 1: When event starts (default) %>
+            <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= hide_mode == 'event_start' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
+              <input type="radio" name="hide_registrations_mode" value="event_start"
+                     <%= "checked" if hide_mode == 'event_start' %>
+                     class="sr-only"
+                     data-action="change->hide-registrations#updateStyles">
+              <span class="text-sm font-medium text-gray-900">When event starts</span>
+            </label>
+
+            <%# Option 2: At midnight after the event %>
+            <label class="flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors <%= hide_mode == 'midnight_after' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300 bg-white' %>">
+              <input type="radio" name="hide_registrations_mode" value="midnight_after"
+                     <%= "checked" if hide_mode == 'midnight_after' %>
+                     class="sr-only"
+                     data-action="change->hide-registrations#updateStyles">
+              <span class="text-sm font-medium text-gray-900">At midnight after the event</span>
+            </label>
+          </div>
+        </div>
+      <% end %>
     </div>
 
     <div class="mt-8 flex justify-between">

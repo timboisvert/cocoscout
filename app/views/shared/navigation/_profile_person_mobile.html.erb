@@ -61,7 +61,7 @@
           <div data-controller="dropdown" class="mb-3">
             <button type="button" data-action="dropdown#toggle" class="w-full flex items-center justify-between px-3 py-2 rounded border border-gray-200 bg-white">
               <div class="flex items-center gap-2 min-w-0 flex-1">
-                <% headshot = current_person&.profile_headshots&.order(created_at: :desc)&.first&.image %>
+                <% headshot = current_person&.primary_headshot&.image %>
                 <% if headshot&.attached? %>
                   <%= image_tag headshot.variant(resize_to_fill: [28, 28]), class: "w-7 h-7 rounded object-cover flex-shrink-0" %>
                 <% else %>
@@ -78,7 +78,7 @@
             <div data-dropdown-target="menu" class="hidden mt-1 rounded border border-gray-200 bg-white shadow-lg overflow-hidden">
               <% other_profiles.each do |profile| %>
                 <%= link_to edit_profile_path(profile), data: { turbo: false }, class: "flex items-center gap-2 px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0" do %>
-                  <% profile_headshot = profile.profile_headshots&.order(created_at: :desc)&.first&.image %>
+                  <% profile_headshot = profile.primary_headshot&.image %>
                   <% if profile_headshot&.attached? %>
                     <%= image_tag profile_headshot.variant(resize_to_fill: [24, 24]), class: "w-6 h-6 rounded object-cover flex-shrink-0" %>
                   <% else %>

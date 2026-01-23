@@ -241,14 +241,31 @@ module My
 
         # If an instance_id is specified, use that one
         if params[:instance_id].present?
+          # First try to find in open instances
           @instance = @open_instances.find_by(id: params[:instance_id])
+          # If not found but show_registrations is enabled, allow viewing past events
+          if @instance.nil? && @sign_up_form.show_registrations
+            @instance = @sign_up_form.sign_up_form_instances
+              .includes(:show)
+              .find_by(id: params[:instance_id])
+          end
         end
 
         # If no specific instance and multiple are open, user needs to pick
         if @instance.nil? && @open_instances.count > 1
           @show_event_picker = true
-        else
-          @instance ||= @open_instances.first
+        elsif @instance.nil?
+          @instance = @open_instances.first
+          # If no open instances but show_registrations is enabled, show the most recent past event
+          # (not future events that haven't opened yet)
+          if @instance.nil? && @sign_up_form.show_registrations
+            @instance = @sign_up_form.sign_up_form_instances
+              .joins(:show)
+              .where("shows.date_and_time < ?", Time.current)
+              .order("shows.date_and_time DESC")
+              .includes(:show)
+              .first
+          end
         end
       else
         @instance = find_current_instance
@@ -262,11 +279,14 @@ module My
       @registrations_remaining = registrations_remaining_for_user(@my_registrations)
       @can_register_more = @registrations_remaining > 0
       @can_edit = @sign_up_form.allow_edit && @instance&.can_edit?
+      @is_accepting_registrations = @sign_up_form.status_service.accepting_registrations?
+      @registrations_visible = @sign_up_form.registrations_visible_for_show?(@show)
 
       # Allow users to view the form if:
       # 1. Form is accepting registrations, OR
-      # 2. User has registrations they can view/edit
-      unless @sign_up_form.status_service.accepting_registrations? || @my_registrations.present?
+      # 2. User has registrations they can view/edit, OR
+      # 3. Form has show_registrations enabled AND registrations are still visible
+      unless @is_accepting_registrations || @my_registrations.present? || @registrations_visible
         redirect_to my_sign_up_inactive_path(@code) and return
       end
 
@@ -360,6 +380,12 @@ module My
 
       unless @sign_up_form.allow_edit
         redirect_to my_sign_up_success_path(@code), alert: "Editing is not allowed"
+        return
+      end
+
+      # Don't allow slot changes if the form is paused or registration is closed
+      unless @sign_up_form.status_service.accepting_registrations?
+        redirect_to my_sign_up_success_path(@code), alert: "Registration is not currently open"
         return
       end
 

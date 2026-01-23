@@ -460,6 +460,7 @@ module Manage
     def contact
       @person = Current.organization.people.find(params[:id])
       @email_draft = EmailDraft.new
+      @productions = Current.organization.productions.order(:name)
       render partial: "contact_modal", layout: false
     end
 
@@ -469,14 +470,20 @@ module Manage
       body_html = params.dig(:email_draft, :body)
 
       if subject.present? && body_html.present?
-        # Prepend production name to subject if in production context
-        full_subject = Current.production ? "[#{Current.production.name}] #{subject}" : subject
+        # Use selected production if provided
+        production = if params[:production_id].present?
+                       Current.organization.productions.find_by(id: params[:production_id])
+                     end
+
+        # Prepend production name or organization name to subject
+        prefix_name = production&.name || Current.organization.name
+        full_subject = "[#{prefix_name}] #{subject}"
         Manage::PersonMailer.contact_email(
           @person,
           full_subject,
           body_html,
           Current.user,
-          production_id: Current.production&.id,
+          production_id: production&.id,
           organization_id: Current.organization&.id
         ).deliver_later
         redirect_to manage_person_path(@person), notice: "Email sent to #{@person.name}"

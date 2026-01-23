@@ -42,7 +42,7 @@
                   <% if connections[:people].any? || connections[:groups].any? %>
                     <div class="flex items-center gap-2 mt-2">
                       <% connections[:people].first(3).each do |person| %>
-                        <% headshot = person.profile_headshots.order(created_at: :desc).first %>
+                        <% headshot = person.primary_headshot %>
                         <% if headshot&.image&.attached? %>
                           <%= image_tag headshot.image.variant(resize_to_fill: [24, 24]), class: "w-6 h-6 rounded object-cover border border-white shadow-sm", title: person.name %>
                         <% else %>

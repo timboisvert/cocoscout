@@ -202,7 +202,7 @@
 
       <!-- Right Column: Form -->
       <div class="space-y-4">
-
+        <% if @is_accepting_registrations || @my_registrations.present? %>
         <!-- Profile Section -->
         <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
           <div class="p-5">
@@ -365,7 +365,7 @@
                         <div class="flex items-center justify-between">
                           <div class="flex items-center gap-2">
                             <span class="text-sm font-medium text-white"><%= slot.display_name %></span>
-                            <% if @sign_up_form.show_registrations %>
+                            <% if @registrations_visible %>
                               <span class="text-sm text-pink-100"><%= Current.user&.person&.name %></span>
                             <% end %>
                           </div>
@@ -377,7 +377,7 @@
                         <div class="flex items-center justify-between">
                           <div class="flex items-center gap-2">
                             <span class="text-sm text-gray-600"><%= slot.display_name %></span>
-                            <% if @sign_up_form.show_registrations && slot.sign_up_registrations.any? %>
+                            <% if @registrations_visible && slot.sign_up_registrations.any? %>
                               <% names = slot.sign_up_registrations.filter { |r| r.status != 'cancelled' }.map { |r| r.person&.name || 'Anonymous' }.join(', ') %>
                               <% if names.present? %>
                                 <span class="text-sm text-gray-500"><%= names %></span>
@@ -394,7 +394,7 @@
                       <div class="py-3 px-4 bg-white border border-gray-200 rounded-lg opacity-60">
                         <div class="flex items-center gap-2">
                           <span class="text-sm text-gray-600"><%= slot.display_name %></span>
-                          <% if @sign_up_form.show_registrations && slot.sign_up_registrations.any? %>
+                          <% if @registrations_visible && slot.sign_up_registrations.any? %>
                             <% names = slot.sign_up_registrations.filter { |r| r.status != 'cancelled' }.map { |r| r.person&.name || 'Anonymous' }.join(', ') %>
                             <% if names.present? %>
                               <span class="text-sm text-gray-500"><%= names %></span>
@@ -423,7 +423,7 @@
                       >
                         <div class="flex-1 flex items-center gap-2">
                           <span class="text-sm font-medium text-gray-900 group-hover:text-pink-700"><%= slot.display_name %></span>
-                          <% if @sign_up_form.show_registrations && slot.sign_up_registrations.any? %>
+                          <% if @registrations_visible && slot.sign_up_registrations.any? %>
                             <% names = slot.sign_up_registrations.filter { |r| r.status != 'cancelled' }.map { |r| r.person.name rescue 'Anonymous' }.join(', ') %>
                             <% if names.present? %>
                               <span class="text-sm text-gray-500"><%= names %></span>
@@ -470,6 +470,45 @@
             <% end %>
           </div>
         <% end %>
+        <% else %>
+        <%# Show Line-Up when registration is closed but registrations are still visible %>
+        <% if @registrations_visible && @slots.any? %>
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-500">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-semibold text-gray-900">Line-Up</h3>
+                <p class="text-sm text-gray-500">Registration is closed · Showing who's signed up</p>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <% @slots.each do |slot| %>
+                <% if slot.is_held? %>
+                  <div class="py-2 px-3 bg-gray-100 border border-gray-200 rounded-lg">
+                    <span class="text-sm text-gray-500"><%= slot.held_reason.presence || "Unavailable" %></span>
+                  </div>
+                <% else %>
+                  <% registrations = slot.sign_up_registrations.select { |r| r.status != 'cancelled' } %>
+                  <div class="py-2 px-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-gray-700"><%= slot.display_name %></span>
+                      <% if registrations.any? %>
+                        <span class="text-sm text-gray-600"><%= registrations.map { |r| r.person&.name || 'Anonymous' }.join(', ') %></span>
+                      <% else %>
+                        <span class="text-sm text-gray-400 italic">Open</span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% end %> <%# end if @is_accepting_registrations || @my_registrations.present? %>
       </div>
     </div>
     <% end %> <%# end unless @show_event_picker %>

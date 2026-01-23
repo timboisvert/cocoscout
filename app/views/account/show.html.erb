@@ -11,7 +11,7 @@
       <div class="flex items-start gap-6">
         <!-- User Headshot -->
         <div class="flex-shrink-0">
-          <% headshot = @person&.profile_headshots&.order(created_at: :desc)&.first %>
+          <% headshot = @person&.primary_headshot %>
           <% if headshot&.image&.attached? %>
             <%= image_tag headshot.image.variant(resize_to_fill: [120, 120]), class: "w-24 h-24 rounded-xl object-cover" %>
           <% else %>

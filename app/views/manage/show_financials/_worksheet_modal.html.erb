@@ -4,8 +4,11 @@
   other_revenue_items = @show_financials.normalized_other_revenue_details
   has_other_revenue_details = other_revenue_items.any?
 
-  expense_items = @show_financials.normalized_expense_details
-  has_expense_details = expense_items.any?
+  # Prefer ExpenseItem records over legacy JSONB
+  use_expense_items = @show_financials.expense_items.any?
+  expense_item_records = @show_financials.expense_items.ordered
+  legacy_expense_items = @show_financials.normalized_expense_details
+  has_expense_details = use_expense_items || legacy_expense_items.any?
 %>
 
 <div id="financialWorksheet"
@@ -105,6 +108,61 @@
             </div>
           </div>
 
+          <!-- Ticket Fees (only shown for ticket sales) -->
+          <%
+            fee_templates = Current.organization.ticket_fee_templates.default_first
+            current_ticket_fees = @show_financials.ticket_fees || []
+          %>
+          <% if fee_templates.any? %>
+            <div data-financials-form-target="ticketFeesSection" class="bg-gray-50 rounded-lg p-4 <%= @show_financials.flat_fee? ? 'hidden' : '' %>">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                  </svg>
+                  Ticket Fees
+                </h3>
+              </div>
+              <p class="text-sm text-gray-600 mb-3">Select fee templates to apply to this show's ticket sales.</p>
+              <div class="space-y-2">
+                <% fee_templates.each do |template| %>
+                  <%
+                    is_selected = current_ticket_fees.any? { |f| f["template_id"] == template.id }
+                    fee_data = template.to_fee_hash(
+                      ticket_count: @show_financials.ticket_count.to_i,
+                      ticket_revenue: @show_financials.ticket_revenue.to_f
+                    )
+                  %>
+                  <label class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-pink-300 transition-colors">
+                    <input type="checkbox"
+                           name="show_financials[ticket_fee_template_ids][]"
+                           value="<%= template.id %>"
+                           <%= is_selected ? 'checked' : '' %>
+                           data-action="change->financials-form#updateTicketFees"
+                           data-template-id="<%= template.id %>"
+                           data-template-name="<%= template.name %>"
+                           data-template-flat="<%= template.flat_per_ticket %>"
+                           data-template-pct="<%= template.percentage %>"
+                           class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600">
+                    <div class="flex-1">
+                      <div class="font-medium text-sm text-gray-900"><%= template.name %></div>
+                      <div class="text-xs text-gray-500"><%= template.fee_description %></div>
+                    </div>
+                    <div class="text-sm font-medium text-orange-600" data-financials-form-target="feeAmount<%= template.id %>">
+                      <%= number_to_currency(fee_data["amount"]) %>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
+              <% if current_ticket_fees.any? %>
+                <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                  <span class="text-sm font-medium text-gray-700">Total Fees</span>
+                  <span data-financials-form-target="ticketFeesTotal" class="text-sm font-semibold text-orange-600"><%= number_to_currency(@show_financials.calculated_ticket_fees) %></span>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
           <!-- Other Revenue -->
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="flex items-center justify-between mb-3">
@@ -170,38 +228,99 @@
 
             <% if has_expense_details %>
               <div data-financials-form-target="expenseItems" class="space-y-2 mb-3">
-                <% expense_items.each_with_index do |item, index| %>
-                  <%
-                    category = item["category"].presence || "other"
-                    category_label = ExpenseCategories.label_for(category)
-                    description = item["description"].presence
-                    display_text = description.present? ? "#{category_label}: #{description}" : category_label
-                  %>
-                  <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="<%= index %>">
-                    <span class="text-sm text-gray-900"><%= display_text %></span>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-medium text-red-600"><%= number_to_currency(item["amount"]) %></span>
-                      <button type="button" class="text-gray-400 hover:text-pink-600 p-1"
-                              data-action="click->financials-form#editExpenseItem"
-                              data-index="<%= index %>"
-                              data-category="<%= category %>"
-                              data-description="<%= item["description"] %>"
-                              data-amount="<%= item["amount"] %>">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                        </svg>
-                      </button>
-                      <button type="button" class="text-gray-400 hover:text-red-500 p-1"
-                              data-action="click->financials-form#removeExpenseItem" data-index="<%= index %>">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                      </button>
+                <% if use_expense_items %>
+                  <%# Use ExpenseItem records %>
+                  <% expense_item_records.each_with_index do |item, index| %>
+                    <%
+                      category_label = ExpenseCategories.label_for(item.category)
+                      display_text = item.description.present? ? "#{category_label}: #{item.description}" : category_label
+                    %>
+                    <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="<%= index %>" data-expense-item-id="<%= item.id %>">
+                      <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="text-sm text-gray-900 truncate"><%= display_text %></span>
+                        <% if item.receipt.attached? %>
+                          <a href="<%= url_for(item.receipt) %>" target="_blank" class="text-pink-500 hover:text-pink-600" title="View receipt">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                          </a>
+                        <% end %>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-red-600"><%= number_to_currency(item.amount) %></span>
+                        <%# Receipt upload button - only for persisted items %>
+                        <button type="button" class="text-gray-400 hover:text-blue-600 p-1"
+                                data-action="click->financials-form#openReceiptModal"
+                                data-expense-item-id="<%= item.id %>"
+                                data-has-receipt="<%= item.receipt.attached? %>"
+                                title="<%= item.receipt.attached? ? 'Change receipt' : 'Add receipt' %>">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                          </svg>
+                        </button>
+                        <button type="button" class="text-gray-400 hover:text-pink-600 p-1"
+                                data-action="click->financials-form#editExpenseItem"
+                                data-index="<%= index %>"
+                                data-expense-item-id="<%= item.id %>"
+                                data-category="<%= item.category %>"
+                                data-description="<%= item.description %>"
+                                data-amount="<%= item.amount %>">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                          </svg>
+                        </button>
+                        <button type="button" class="text-gray-400 hover:text-red-500 p-1"
+                                data-action="click->financials-form#removeExpenseItem"
+                                data-index="<%= index %>"
+                                data-expense-item-id="<%= item.id %>">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][id]" value="<%= item.id %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][category]" value="<%= item.category %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][description]" value="<%= item.description %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][amount]" value="<%= item.amount %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][position]" value="<%= index %>">
                     </div>
-                    <input type="hidden" name="show_financials[expense_details][<%= index %>][category]" value="<%= category %>">
-                    <input type="hidden" name="show_financials[expense_details][<%= index %>][description]" value="<%= item["description"] %>">
-                    <input type="hidden" name="show_financials[expense_details][<%= index %>][amount]" value="<%= item["amount"] %>">
-                  </div>
+                  <% end %>
+                <% else %>
+                  <%# Legacy JSONB format - will be converted on save %>
+                  <% legacy_expense_items.each_with_index do |item, index| %>
+                    <%
+                      category = item["category"].presence || "other"
+                      category_label = ExpenseCategories.label_for(category)
+                      description = item["description"].presence
+                      display_text = description.present? ? "#{category_label}: #{description}" : category_label
+                    %>
+                    <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="<%= index %>">
+                      <span class="text-sm text-gray-900"><%= display_text %></span>
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-red-600"><%= number_to_currency(item["amount"]) %></span>
+                        <button type="button" class="text-gray-400 hover:text-pink-600 p-1"
+                                data-action="click->financials-form#editExpenseItem"
+                                data-index="<%= index %>"
+                                data-category="<%= category %>"
+                                data-description="<%= item["description"] %>"
+                                data-amount="<%= item["amount"] %>">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                          </svg>
+                        </button>
+                        <button type="button" class="text-gray-400 hover:text-red-500 p-1"
+                                data-action="click->financials-form#removeExpenseItem" data-index="<%= index %>">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][category]" value="<%= category %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][description]" value="<%= item["description"] %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][amount]" value="<%= item["amount"] %>">
+                      <input type="hidden" name="show_financials[expense_items_attributes][<%= index %>][position]" value="<%= index %>">
+                    </div>
+                  <% end %>
                 <% end %>
               </div>
               <div class="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -339,6 +458,68 @@
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
         <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeExpenseModal" } %>
         <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :button, data: { action: "click->financials-form#saveExpenseItem" } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Upload Modal -->
+  <div data-financials-form-target="receiptModal"
+       class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+       data-action="click->financials-form#closeReceiptModal">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->financials-form#stopPropagation">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Upload Receipt</h2>
+        <button type="button" data-action="click->financials-form#closeReceiptModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div data-financials-form-target="receiptCurrentSection" class="hidden">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Current Receipt</label>
+          <div class="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+            <a data-financials-form-target="receiptCurrentLink" href="#" target="_blank" class="text-pink-600 hover:text-pink-700 text-sm font-medium flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              View Receipt
+            </a>
+            <button type="button" class="text-red-500 hover:text-red-600 text-sm font-medium"
+                    data-action="click->financials-form#removeReceipt">
+              Remove
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            <span data-financials-form-target="receiptUploadLabel">Upload Receipt</span>
+          </label>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors">
+            <input type="file" data-financials-form-target="receiptFile"
+                   accept=".pdf,.jpg,.jpeg,.png"
+                   class="hidden"
+                   data-action="change->financials-form#handleReceiptSelect">
+            <button type="button" class="cursor-pointer" data-action="click->financials-form#triggerReceiptFileInput">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p class="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
+              <p class="mt-1 text-xs text-gray-500">PDF, JPG, or PNG up to 10MB</p>
+            </button>
+          </div>
+          <div data-financials-form-target="receiptFileName" class="hidden mt-2 text-sm text-gray-600 flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span data-financials-form-target="receiptFileNameText"></span>
+          </div>
+        </div>
+        <input type="hidden" data-financials-form-target="receiptExpenseItemId" value="">
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeReceiptModal" } %>
+        <%= render "shared/button", text: "Upload", variant: "primary", size: "medium", type: :button, data: { action: "click->financials-form#uploadReceipt", financials_form_target: "receiptUploadButton" } %>
       </div>
     </div>
   </div>

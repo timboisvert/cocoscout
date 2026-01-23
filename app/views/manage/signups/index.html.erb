@@ -14,7 +14,7 @@
     ]
   } %>
 
-  <div class="border-t border-gray-200 pt-6 mt-2">
+  <div class="mt-6">
     <%# Wizard in progress alerts %>
     <% if @sign_up_wizard_in_progress || @audition_wizard_in_progress %>
       <div class="space-y-3 mb-6">
@@ -54,30 +54,32 @@
       </div>
     <% end %>
 
-    <%# Unified list of sign-up forms and active audition cycle %>
-    <% if @sign_up_forms.any? || @active_audition_cycle.present? %>
-      <div class="space-y-1">
-        <%# Sign-up forms %>
-        <% @sign_up_forms.each do |form| %>
-          <% form_status = form.current_status %>
-          <%
-            # Get current instance to check closes_at
-            current_instance = if form.repeated?
-              form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC, sign_up_form_instances.id ASC").first
-            else
-              form.sign_up_form_instances.first
-            end
-            closes_at = current_instance&.closes_at
-          %>
-          <%= link_to manage_signups_form_path(@production, form), class: "block px-4 py-3 border border-gray-200 rounded-lg hover:border-gray-400 bg-white transition-all no-underline" do %>
-            <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
-              <%# Left third: Name and details %>
-              <div class="w-full md:w-1/3 flex items-center">
-                <div class="flex-1 min-w-0">
-                  <h3 class="text-base font-medium text-gray-900 truncate"><%= form.name %></h3>
-                  <div class="text-sm text-gray-500">
-                    <% if form.repeated? %>
-                      <%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %>
+    <%# Sign-up Forms Section %>
+    <% if @sign_up_forms.any? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Sign-up Forms</h3>
+        <div class="space-y-1">
+          <%# Sign-up forms %>
+          <% @sign_up_forms.each do |form| %>
+            <% form_status = form.current_status %>
+            <%
+              # Get current instance to check closes_at
+              current_instance = if form.repeated?
+                form.sign_up_form_instances.joins(:show).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time ASC, sign_up_form_instances.id ASC").first
+              else
+                form.sign_up_form_instances.first
+              end
+              closes_at = current_instance&.closes_at
+            %>
+            <%= link_to manage_signups_form_path(@production, form), class: "block px-4 py-3 border border-gray-200 rounded-lg hover:border-gray-400 bg-white transition-all no-underline" do %>
+              <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+                <%# Left third: Name and details %>
+                <div class="w-full md:w-1/3 flex items-center">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-medium text-gray-900 truncate"><%= form.name %></h3>
+                    <div class="text-sm text-gray-500">
+                      <% if form.repeated? %>
+                        <%= form.sign_up_form_instances.count %> event<%= form.sign_up_form_instances.count == 1 ? '' : 's' %>
                     <% elsif form.shared_pool? %>
                       Waitlist · <%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %>
                     <% elsif form.single_event? && form.show.present? %>
@@ -173,9 +175,16 @@
             </div>
           <% end %>
         <% end %>
+        </div>
+      </div>
+    <% end %>
 
-        <%# Active audition cycle - same 3-column style %>
-        <% if @active_audition_cycle.present? %>
+    <%# Auditions Section %>
+    <% if @active_audition_cycle.present? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Auditions</h3>
+        <div class="space-y-1">
+          <%# Active audition cycle - same 3-column style %>
           <%
             if @active_audition_cycle.opens_at > Time.current
               audition_status_text = "Opens Soon"
@@ -245,9 +254,11 @@
               </div>
             </div>
           <% end %>
-        <% end %>
+        </div>
       </div>
-    <% else %>
+    <% end %>
+
+    <% unless @sign_up_forms.any? || @active_audition_cycle.present? %>
       <%# Empty state %>
       <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

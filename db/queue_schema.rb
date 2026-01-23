@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_23_200215) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -402,6 +402,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
     t.index ["production_id"], name: "index_event_linkages_on_production_id"
   end
 
+  create_table "expense_items", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.string "category", default: "other", null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.integer "position", default: 0
+    t.bigint "show_financials_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_financials_id", "position"], name: "index_expense_items_on_show_financials_id_and_position"
+    t.index ["show_financials_id"], name: "index_expense_items_on_show_financials_id"
+  end
+
   create_table "group_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -652,6 +664,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
     t.index ["parent_id"], name: "index_posts_on_parent_id"
     t.index ["production_id", "created_at"], name: "index_posts_on_production_id_and_created_at"
     t.index ["production_id"], name: "index_posts_on_production_id"
+  end
+
+  create_table "production_expense_allocations", force: :cascade do |t|
+    t.decimal "allocated_amount", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_override", default: false
+    t.text "override_reason"
+    t.bigint "production_expense_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_expense_id", "show_id"], name: "idx_prod_exp_alloc_unique", unique: true
+    t.index ["production_expense_id"], name: "index_production_expense_allocations_on_production_expense_id"
+    t.index ["show_id"], name: "index_production_expense_allocations_on_show_id"
+  end
+
+  create_table "production_expenses", force: :cascade do |t|
+    t.boolean "active", default: true
+    t.string "category", default: "other"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.jsonb "event_type_filter", default: []
+    t.boolean "exclude_canceled", default: true
+    t.boolean "exclude_non_revenue", default: true
+    t.string "name", null: false
+    t.bigint "production_id", null: false
+    t.date "purchase_date"
+    t.jsonb "selected_show_ids", default: []
+    t.date "spread_end_date"
+    t.integer "spread_event_count"
+    t.string "spread_method", default: "fixed_months", null: false
+    t.integer "spread_months"
+    t.date "spread_start_date"
+    t.decimal "total_amount", precision: 10, scale: 2, null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id", "active"], name: "index_production_expenses_on_production_id_and_active"
+    t.index ["production_id"], name: "index_production_expenses_on_production_id"
   end
 
   create_table "production_permissions", force: :cascade do |t|
@@ -970,6 +1018,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
     t.string "revenue_type", default: "ticket_sales"
     t.bigint "show_id", null: false
     t.integer "ticket_count", default: 0
+    t.jsonb "ticket_fees", default: []
     t.decimal "ticket_revenue", precision: 10, scale: 2, default: "0.0"
     t.datetime "updated_at", null: false
     t.index ["show_id"], name: "index_show_financials_on_show_id", unique: true
@@ -1137,6 +1186,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
     t.string "edit_cutoff_mode"
     t.string "event_matching", default: "all"
     t.jsonb "event_type_filter", default: []
+    t.string "hide_registrations_mode", default: "event_start"
+    t.string "hide_registrations_offset_unit", default: "hours"
+    t.integer "hide_registrations_offset_value", default: 2
     t.boolean "holdback_visible", default: true, null: false
     t.text "instruction_text"
     t.string "name", null: false
@@ -1404,6 +1456,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
+  create_table "ticket_fee_templates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "flat_per_ticket", precision: 10, scale: 4, default: "0.0"
+    t.boolean "is_default", default: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.decimal "percentage", precision: 5, scale: 4, default: "0.0"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "name"], name: "index_ticket_fee_templates_on_organization_id_and_name", unique: true
+    t.index ["organization_id"], name: "index_ticket_fee_templates_on_organization_id"
+  end
+
   create_table "training_credits", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "institution", limit: 200, null: false
@@ -1485,6 +1549,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
   add_foreign_key "email_logs", "users"
   add_foreign_key "event_linkages", "productions"
   add_foreign_key "event_linkages", "shows", column: "primary_show_id"
+  add_foreign_key "expense_items", "show_financials", column: "show_financials_id"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
@@ -1502,6 +1567,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
   add_foreign_key "posters", "productions"
   add_foreign_key "posts", "posts", column: "parent_id"
   add_foreign_key "posts", "productions"
+  add_foreign_key "production_expense_allocations", "production_expenses"
+  add_foreign_key "production_expense_allocations", "shows"
+  add_foreign_key "production_expenses", "productions"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
   add_foreign_key "productions", "organizations"
@@ -1566,6 +1634,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_154853) do
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
+  add_foreign_key "ticket_fee_templates", "organizations"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

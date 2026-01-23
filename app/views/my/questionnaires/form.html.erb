@@ -45,7 +45,7 @@
                 <button type="button"
                         data-action="click->questionnaire-respondent-selector#toggleDropdown"
                         class="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:border-pink-400 transition-all duration-200 cursor-pointer">
-                  <% entity_headshot = @respondent.profile_headshots.first %>
+                  <% entity_headshot = @respondent.primary_headshot %>
                   <% if entity_headshot&.image&.attached? %>
                     <%= image_tag entity_headshot.image.variant(resize_to_fill: [48, 48]), class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
                   <% else %>
@@ -83,7 +83,7 @@
                           data-type="Person"
                           data-id="<%= @person.id %>"
                           class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 cursor-pointer">
-                    <% person_headshot = @person.profile_headshots.first %>
+                    <% person_headshot = @person.primary_headshot %>
                     <% if person_headshot&.image&.attached? %>
                       <%= image_tag person_headshot.image.variant(resize_to_fill: [48, 48]), class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
                     <% else %>
@@ -106,7 +106,7 @@
                             data-type="Group"
                             data-id="<%= group.id %>"
                             class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 cursor-pointer">
-                      <% group_headshot = group.profile_headshots.first %>
+                      <% group_headshot = group.primary_headshot %>
                       <% if group_headshot&.image&.attached? %>
                         <%= image_tag group_headshot.image.variant(resize_to_fill: [48, 48]), class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
                       <% else %>
@@ -130,7 +130,7 @@
               <%= hidden_field_tag :respondent_id, @respondent.id %>
 
               <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <% entity_headshot = @respondent.profile_headshots.first %>
+                <% entity_headshot = @respondent.primary_headshot %>
                 <% if entity_headshot&.image&.attached? %>
                   <%= image_tag entity_headshot.image.variant(resize_to_fill: [48, 48]), class: "w-12 h-12 rounded-lg object-cover flex-shrink-0" %>
                 <% else %>

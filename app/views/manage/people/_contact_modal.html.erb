@@ -17,14 +17,36 @@
           <strong>Recipient:</strong> <%= @person.email %>
         </p>
 
-        <%= form_with model: @email_draft, url: send_contact_email_manage_person_path(@person), method: :post, data: { turbo_frame: "_top" } do |f| %>
+        <%= form_with model: @email_draft, url: send_contact_email_manage_person_path(@person), method: :post, data: { turbo_frame: "_top", controller: "contact-email-form" } do |f| %>
+          <% if @productions.any? %>
+            <div class="mb-4">
+              <label class="block text-sm font-semibold text-gray-900 mb-2">Send From Production <span class="font-normal text-gray-500">(optional)</span></label>
+              <select name="production_id" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      data-contact-email-form-target="productionSelect"
+                      data-action="change->contact-email-form#updateSubjectPrefix">
+                <option value="" data-name="<%= Current.organization.name %>">None (use organization name)</option>
+                <% @productions.each do |production| %>
+                  <option value="<%= production.id %>" data-name="<%= production.name %>">
+                    <%= production.name %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+          <% end %>
+
           <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-900 mb-2">Subject</label>
-            <% if Current.production %>
-              <%= render "shared/subject_field_with_prefix", form: f, field_name: :title, production: Current.production, placeholder: "Email subject...", required: true %>
-            <% else %>
-              <%= f.text_field :title, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500", placeholder: "Email subject", required: true %>
-            <% end %>
+            <div class="flex items-stretch">
+              <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-600 text-sm whitespace-nowrap"
+                    data-contact-email-form-target="subjectPrefix">
+                [<%= Current.organization.name %>]
+              </span>
+              <%= f.text_field :title, 
+                  class: "block w-full min-w-0 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", 
+                  placeholder: "Email subject...", 
+                  required: true %>
+            </div>
           </div>
 
           <div class="mb-4">

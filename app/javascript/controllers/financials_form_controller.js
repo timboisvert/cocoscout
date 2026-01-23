@@ -25,7 +25,20 @@ export default class extends Controller {
     "expenseItems",
     "expensesTotal",
     "expensesEmpty",
-    "expensesTotalRow"
+    "expensesTotalRow",
+    // Receipt targets
+    "receiptModal",
+    "receiptCurrentSection",
+    "receiptCurrentLink",
+    "receiptUploadLabel",
+    "receiptFile",
+    "receiptFileName",
+    "receiptFileNameText",
+    "receiptExpenseItemId",
+    "receiptUploadButton",
+    // Ticket Fees targets
+    "ticketFeesSection",
+    "ticketFeesTotal"
   ]
 
   connect() {
@@ -39,10 +52,22 @@ export default class extends Controller {
     if (revenueType === "flat_fee") {
       this.ticketSalesFieldsTarget.classList.add("hidden")
       this.flatFeeFieldsTarget.classList.remove("hidden")
+      if (this.hasTicketFeesSectionTarget) {
+        this.ticketFeesSectionTarget.classList.add("hidden")
+      }
     } else {
       this.ticketSalesFieldsTarget.classList.remove("hidden")
       this.flatFeeFieldsTarget.classList.add("hidden")
+      if (this.hasTicketFeesSectionTarget) {
+        this.ticketFeesSectionTarget.classList.remove("hidden")
+      }
     }
+  }
+
+  // Update ticket fees when checkboxes are changed
+  updateTicketFees(event) {
+    // Fees are calculated on form submit based on ticket count/revenue
+    // This could be enhanced to show live calculations
   }
 
   // ===== Other Revenue Modal Methods =====
@@ -298,14 +323,25 @@ export default class extends Controller {
     const categoryLabel = this.getCategoryLabel(category)
     const displayText = description ? `${categoryLabel}: ${description}` : categoryLabel
 
-    // Update display
-    item.querySelector('span.text-gray-900').textContent = displayText
-    item.querySelector('.font-medium.text-red-600').textContent = this.formatCurrency(amount)
+    // Update display - find the span with the text (inside the flex container)
+    const textSpan = item.querySelector('span.text-gray-900.truncate') || item.querySelector('span.text-gray-900')
+    if (textSpan) {
+      textSpan.textContent = displayText
+    }
+
+    // Update amount display
+    const amountSpan = item.querySelector('.font-medium.text-red-600')
+    if (amountSpan) {
+      amountSpan.textContent = this.formatCurrency(amount)
+    }
 
     // Update hidden fields
-    item.querySelector(`input[name*="[category]"]`).value = category
-    item.querySelector(`input[name*="[description]"]`).value = description
-    item.querySelector(`input[name*="[amount]"]`).value = amount
+    const categoryInput = item.querySelector(`input[name*="[category]"]`)
+    const descriptionInput = item.querySelector(`input[name*="[description]"]`)
+    const amountInput = item.querySelector(`input[name*="[amount]"]`)
+    if (categoryInput) categoryInput.value = category
+    if (descriptionInput) descriptionInput.value = description
+    if (amountInput) amountInput.value = amount
 
     // Update data attributes on edit button
     const editButton = item.querySelector('[data-action*="editExpenseItem"]')
@@ -318,16 +354,31 @@ export default class extends Controller {
 
   removeExpenseItem(event) {
     event.preventDefault()
+    event.stopPropagation()
     const button = event.currentTarget
     const index = button.dataset.index
+    const expenseItemId = button.dataset.expenseItemId
     const item = this.expenseItemsTarget.querySelector(`[data-line-item][data-index="${index}"]`)
 
     if (item) {
-      item.remove()
+      if (expenseItemId) {
+        // For persisted records, add _destroy field instead of removing from DOM
+        const destroyInput = document.createElement('input')
+        destroyInput.type = 'hidden'
+        destroyInput.name = `show_financials[expense_items_attributes][${index}][_destroy]`
+        destroyInput.value = '1'
+        item.appendChild(destroyInput)
+        item.classList.add('hidden')
+      } else {
+        // For new items, just remove from DOM
+        item.remove()
+      }
+
       this.updateExpensesTotal()
 
-      // If no items left, show simple input and hide total row
-      if (this.expenseItemsTarget.querySelectorAll('[data-line-item]').length === 0) {
+      // If no visible items left, show simple input and hide total row
+      const visibleItems = this.expenseItemsTarget.querySelectorAll('[data-line-item]:not(.hidden)')
+      if (visibleItems.length === 0) {
         if (this.hasExpensesEmptyTarget) {
           this.expensesEmptyTarget.classList.remove("hidden")
         }
@@ -342,7 +393,9 @@ export default class extends Controller {
 
     return `
       <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="${index}">
-        <span class="text-sm text-gray-900">${displayText}</span>
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <span class="text-sm text-gray-900 truncate">${displayText}</span>
+        </div>
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-red-600">${this.formatCurrency(amount)}</span>
           <button type="button"
@@ -365,15 +418,17 @@ export default class extends Controller {
             </svg>
           </button>
         </div>
-        <input type="hidden" name="show_financials[expense_details][${index}][category]" value="${category}">
-        <input type="hidden" name="show_financials[expense_details][${index}][description]" value="${this.escapeHtml(description)}">
-        <input type="hidden" name="show_financials[expense_details][${index}][amount]" value="${amount}">
+        <input type="hidden" name="show_financials[expense_items_attributes][${index}][category]" value="${category}">
+        <input type="hidden" name="show_financials[expense_items_attributes][${index}][description]" value="${this.escapeHtml(description)}">
+        <input type="hidden" name="show_financials[expense_items_attributes][${index}][amount]" value="${amount}">
+        <input type="hidden" name="show_financials[expense_items_attributes][${index}][position]" value="${index}">
       </div>
     `
   }
 
   updateExpensesTotal() {
-    const items = this.expenseItemsTarget.querySelectorAll('[data-line-item]')
+    // Only count visible (non-deleted) items
+    const items = this.expenseItemsTarget.querySelectorAll('[data-line-item]:not(.hidden)')
     let total = 0
     items.forEach(item => {
       const input = item.querySelector('input[name*="[amount]"]')
@@ -433,5 +488,145 @@ export default class extends Controller {
       other: "Other"
     }
     return labels[category] || "Other"
+  }
+
+  // ===== Receipt Modal Methods =====
+
+  openReceiptModal(event) {
+    if (event) event.preventDefault()
+    event.stopPropagation()
+
+    const button = event.currentTarget
+    const expenseItemId = button.dataset.expenseItemId
+    const hasReceipt = button.dataset.hasReceipt === "true"
+
+    this.receiptExpenseItemIdTarget.value = expenseItemId
+
+    // Reset file input
+    this.receiptFileTarget.value = ""
+    this.receiptFileNameTarget.classList.add("hidden")
+
+    // Show/hide current receipt section
+    if (hasReceipt) {
+      this.receiptCurrentSectionTarget.classList.remove("hidden")
+      this.receiptCurrentLinkTarget.href = `/manage/money/expense_items/${expenseItemId}/receipt`
+      this.receiptUploadLabelTarget.textContent = "Replace Receipt"
+    } else {
+      this.receiptCurrentSectionTarget.classList.add("hidden")
+      this.receiptUploadLabelTarget.textContent = "Upload Receipt"
+    }
+
+    this.receiptModalTarget.classList.remove("hidden")
+    document.body.classList.add("overflow-hidden")
+  }
+
+  closeReceiptModal(event) {
+    if (event) event.preventDefault()
+    this.receiptModalTarget.classList.add("hidden")
+    document.body.classList.remove("overflow-hidden")
+  }
+
+  triggerReceiptFileInput(event) {
+    event.preventDefault()
+    this.receiptFileTarget.click()
+  }
+
+  handleReceiptSelect(event) {
+    const file = event.target.files[0]
+    if (file) {
+      this.receiptFileNameTextTarget.textContent = file.name
+      this.receiptFileNameTarget.classList.remove("hidden")
+    } else {
+      this.receiptFileNameTarget.classList.add("hidden")
+    }
+  }
+
+  async uploadReceipt(event) {
+    event.preventDefault()
+
+    const file = this.receiptFileTarget.files[0]
+    if (!file) {
+      alert("Please select a file to upload")
+      return
+    }
+
+    const expenseItemId = this.receiptExpenseItemIdTarget.value
+    if (!expenseItemId) {
+      alert("No expense item selected")
+      return
+    }
+
+    // Disable button and show loading state
+    const button = this.receiptUploadButtonTarget
+    const originalText = button.textContent
+    button.disabled = true
+    button.textContent = "Uploading..."
+
+    try {
+      const formData = new FormData()
+      formData.append("receipt", file)
+
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content
+
+      const response = await fetch(`/manage/money/expense_items/${expenseItemId}/upload_receipt`, {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken
+        },
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Reload the page to show the updated receipt icon
+        window.location.reload()
+      } else {
+        alert(result.error || "Failed to upload receipt")
+        button.disabled = false
+        button.textContent = originalText
+      }
+    } catch (error) {
+      console.error("Error uploading receipt:", error)
+      alert("An error occurred while uploading")
+      button.disabled = false
+      button.textContent = originalText
+    }
+  }
+
+  async removeReceipt(event) {
+    event.preventDefault()
+
+    if (!confirm("Remove this receipt?")) {
+      return
+    }
+
+    const expenseItemId = this.receiptExpenseItemIdTarget.value
+    if (!expenseItemId) {
+      return
+    }
+
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content
+
+      const response = await fetch(`/manage/money/expense_items/${expenseItemId}/remove_receipt`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken
+        }
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Reload the page to update the UI
+        window.location.reload()
+      } else {
+        alert(result.error || "Failed to remove receipt")
+      }
+    } catch (error) {
+      console.error("Error removing receipt:", error)
+      alert("An error occurred")
+    }
   }
 }

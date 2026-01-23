@@ -311,6 +311,30 @@ class SignUpForm < ApplicationRecord
     end
   end
 
+  # Calculate when registration names should be hidden for a given show
+  # Returns nil if names should never be hidden, or a Time when they should be hidden
+  def calculate_hide_registrations_at(show)
+    return nil unless show_registrations
+    return nil unless show&.date_and_time
+
+    case hide_registrations_mode
+    when "midnight_after"
+      # Hide at midnight after the event (in the show's timezone or default)
+      show.date_and_time.end_of_day
+    else # "event_start" or default
+      show.date_and_time
+    end
+  end
+
+  # Check if registration names should currently be visible for a given show
+  def registrations_visible_for_show?(show)
+    return false unless show_registrations
+    return true unless show&.date_and_time
+
+    hide_at = calculate_hide_registrations_at(show)
+    Time.current < hide_at
+  end
+
   private
 
   def sync_single_event_instance_show
