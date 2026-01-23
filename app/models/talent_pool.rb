@@ -20,7 +20,7 @@ class TalentPool < ApplicationRecord
 
   # Display name showing all production names (for dropdowns)
   def production_names
-    names = [production.name]
+    names = [ production.name ]
     names += shared_productions.pluck(:name)
     names.join(", ")
   end

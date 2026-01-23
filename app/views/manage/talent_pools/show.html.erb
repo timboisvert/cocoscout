@@ -1,0 +1,163 @@
+<%
+  # Get all productions that share this talent pool (owner first, then shared)
+  pool_productions = [@talent_pool.production] + @talent_pool.shared_productions.to_a
+  production_names = pool_productions.map(&:name).join(", ")
+%>
+<% content_for :title, "Talent Pool - #{production_names}" %>
+
+<div class="w-full mb-10" data-controller="talent-pool-inline talent-pool-sharing"
+     data-talent-pool-inline-search-url-value="<%= manage_casting_talent_pool_search_people_path(@production) %>"
+     data-talent-pool-inline-add-person-url-value="<%= manage_casting_talent_pool_add_person_path(@production) %>"
+     data-talent-pool-inline-add-group-url-value="<%= manage_casting_talent_pool_add_group_path(@production) %>"
+     data-talent-pool-inline-remove-person-url-value="<%= manage_casting_talent_pool_remove_person_path(@production) %>"
+     data-talent-pool-inline-remove-group-url-value="<%= manage_casting_talent_pool_remove_group_path(@production) %>"
+     data-talent-pool-inline-members-url-value="<%= manage_casting_talent_pool_path(@production) %>">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      ["Talent Pools", manage_casting_talent_pools_path]
+    ],
+    text: production_names,
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-500 mb-4">The talent pool contains the people and groups available for casting in this production.</p>
+
+  <div data-talent-pool-inline-target="membersList">
+    <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
+  </div>
+
+  <%# Sharing Section %>
+  <% if current_user_can_manage?(@production) %>
+    <% sibling_productions = @production.sibling_productions %>
+
+    <% if @production.uses_shared_pool? %>
+      <%# This production uses a shared pool from another production %>
+      <% all_sharing_productions = @production.shared_pool_productions %>
+      <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h4 class="text-sm font-semibold text-gray-900">Shared Talent Pool</h4>
+          <%= link_to manage_casting_talent_pool_leave_shared_pool_confirm_path(@production),
+              data: { turbo_frame: "leave_pool_modal" } do %>
+            <%= render "shared/button", text: "Leave Shared Pool", variant: "secondary", size: "small", tag: :span %>
+          <% end %>
+        </div>
+        <div class="p-4">
+          <p class="text-sm text-gray-600">
+            This talent pool is shared with: <strong><%= all_sharing_productions.map(&:name).to_sentence %></strong>.
+          </p>
+          <p class="mt-2 text-sm text-gray-500">
+            Any changes to the talent pool will affect all productions sharing it.
+          </p>
+        </div>
+      </div>
+    <% elsif sibling_productions.any? %>
+      <%# This production owns its pool - show sharing options %>
+      <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h4 class="text-sm font-semibold text-gray-900">Share Talent Pool</h4>
+          <p class="text-sm text-gray-500 mt-0.5">Share this talent pool with other productions in your organization.</p>
+        </div>
+
+        <%= form_with url: manage_casting_talent_pool_update_shares_path(@production), method: :patch, data: { turbo: false, talent_pool_sharing_target: "form" } do |f| %>
+          <div class="divide-y divide-gray-100">
+            <% sibling_productions.each do |sibling| %>
+              <% is_shared = @production.talent_pool.shared_productions.include?(sibling) %>
+              <% sibling_uses_other_pool = sibling.uses_shared_pool? && sibling.effective_talent_pool != @production.talent_pool %>
+              <% sibling_member_count = sibling.effective_talent_pool.cached_member_counts[:total] %>
+
+              <label class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer <%= sibling_uses_other_pool ? 'opacity-50 cursor-not-allowed' : '' %>">
+                <% if sibling_uses_other_pool %>
+                  <div class="w-5 h-5 rounded border-2 border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-gray-400">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                  </div>
+                <% else %>
+                  <input type="checkbox"
+                         name="shared_production_ids[]"
+                         value="<%= sibling.id %>"
+                         <%= 'checked' if is_shared %>
+                         class="w-5 h-5 rounded border-gray-300 text-pink-600 accent-pink-600 focus:ring-pink-500 focus:ring-offset-0 cursor-pointer"
+                         data-action="change->talent-pool-sharing#markChanged"
+                         data-original-checked="<%= is_shared %>"
+                         data-production-id="<%= sibling.id %>"
+                         data-production-name="<%= sibling.name %>"
+                         data-member-count="<%= sibling_member_count %>">
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium text-gray-900"><%= sibling.name %></span>
+                  <% if sibling_uses_other_pool %>
+                    <span class="text-xs text-gray-500 ml-2">(uses another shared pool)</span>
+                  <% elsif !is_shared && sibling_member_count > 0 %>
+                    <span class="text-xs text-gray-500 ml-2">(<%= pluralize(sibling_member_count, "member") %> in their pool)</span>
+                  <% end %>
+                </div>
+              </label>
+            <% end %>
+          </div>
+
+          <%# Hidden field to handle unchecking all boxes %>
+          <input type="hidden" name="shared_production_ids[]" value="">
+
+          <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-end" data-talent-pool-sharing-target="saveSection">
+            <%= render "shared/button", text: "Save Sharing Settings", variant: "primary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Turbo frames for modals %>
+  <%= turbo_frame_tag "leave_pool_modal" %>
+  <%= turbo_frame_tag "merge_members_modal" %>
+
+  <!-- Modal for adding members -->
+  <% if current_user_can_manage?(@production) %>
+    <div data-talent-pool-inline-target="addModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->talent-pool-inline#closeAddModal keydown.esc@window->talent-pool-inline#closeAddModal">
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->talent-pool-inline#stopPropagation">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Add Person or Group to Talent Pool</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="talent-pool-inline#closeAddModal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <input type="text"
+            data-talent-pool-inline-target="searchInput"
+            data-action="input->talent-pool-inline#search"
+            class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+            placeholder="Search People and Groups">
+          <div class="mt-3 max-h-96 overflow-y-auto space-y-2" data-talent-pool-inline-target="searchResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for confirming removal -->
+    <div data-talent-pool-inline-target="removeModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->talent-pool-inline#closeRemoveModal keydown.esc@window->talent-pool-inline#closeRemoveModal">
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white" data-action="click->talent-pool-inline#stopPropagation">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Remove from Talent Pool</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="talent-pool-inline#closeRemoveModal">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <p class="text-sm text-gray-600">
+            Are you sure you want to remove <strong data-talent-pool-inline-target="removePersonName"></strong> from the talent pool?
+          </p>
+          <div data-talent-pool-inline-target="removeWarning" class="mt-3"></div>
+          <div class="flex justify-end gap-2 mt-4">
+            <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "talent-pool-inline#closeRemoveModal" } %>
+            <%= render "shared/button", text: "Remove", variant: "danger", size: "small", type: :button, data: { action: "talent-pool-inline#confirmRemove" } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

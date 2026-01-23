@@ -91,13 +91,13 @@
                   key = [show.id, member_type, member_id]
                   availability_key = [show.id, member_type, member_id]
                   availability = @availability[availability_key]
-                  
+
                   draft_assignment = @draft_assignments[key]&.first
                   existing_assignment = @existing_assignments[key]&.first
-                  
+
                   has_draft = draft_assignment.present?
                   has_existing = existing_assignment.present?
-                  
+
                   # Availability display - status is enum: "available", "unavailable", "unset"
                   if availability == "available"
                     avail_display = "A"
@@ -226,19 +226,19 @@
 
 <!-- Roles Data for JavaScript (keyed by show_id now) -->
 <script type="application/json" id="roles-data">
-<%= raw @roles_by_show.transform_values { |roles| 
-  roles.map { |r| 
-    role_data = { 
-      id: r.id, 
-      name: r.name, 
-      restricted: r.restricted, 
-      quantity: r.quantity 
+<%= raw @roles_by_show.transform_values { |roles|
+  roles.map { |r|
+    role_data = {
+      id: r.id,
+      name: r.name,
+      restricted: r.restricted,
+      quantity: r.quantity
     }
     if r.restricted?
       role_data[:eligible_members] = r.eligible_members.map { |m| { type: m.class.name, id: m.id, name: m.name } }
     end
     role_data
-  } 
+  }
 }.to_json %>
 </script>
 

@@ -5,13 +5,13 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_talent_pool
-    before_action :ensure_user_is_manager, except: %i[members]
+    before_action :ensure_user_is_manager, except: %i[show]
 
     # Each production has exactly one talent pool
     # This controller manages membership in that pool (no index view - managed via casting settings tab)
 
-    def members
-      render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+    def show
+      # Full page view for direct navigation to a production's talent pool
     end
 
     def add_person

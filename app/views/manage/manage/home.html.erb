@@ -14,7 +14,7 @@
         <% @productions.each do |production| %>
           <% dashboard = @production_dashboards[production.id] %>
           <% next unless dashboard %>
-          
+
           <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
             <%# Production Header %>
             <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -34,7 +34,7 @@
 
             <div class="p-4">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                
+
                 <%# Open Auditions Card %>
                 <% if dashboard[:open_calls][:total_open] > 0 %>
                   <%= link_to manage_signups_auditions_path(production), class: "block p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition-all" do %>
@@ -101,9 +101,9 @@
               </div>
 
               <%# Show message if nothing needs attention %>
-              <% has_content = dashboard[:open_calls][:total_open] > 0 || 
-                               dashboard[:open_vacancies].any? || 
-                               dashboard[:upcoming_shows].any? || 
+              <% has_content = dashboard[:open_calls][:total_open] > 0 ||
+                               dashboard[:open_vacancies].any? ||
+                               dashboard[:upcoming_shows].any? ||
                                dashboard[:sign_up_forms].any? %>
               <% unless has_content %>
                 <div class="text-center py-4 text-gray-500">

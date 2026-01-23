@@ -43,6 +43,11 @@ module Manage
         Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage' for user #{Current.user.id}"
       end
 
+      # Redirect to organization selection if no organization is set
+      unless Current.organization
+        redirect_to select_organization_path and return
+      end
+
       # Build org-level home page data
       @productions = Current.organization.productions.order(:name)
       @production_dashboards = {}

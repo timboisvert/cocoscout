@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Controls the casting source selection and dynamic tab visibility
+// Controls the casting source selection
 export default class extends Controller {
-    static targets = ["radio", "option", "talentPoolTab", "talentPoolPanel"]
+    static targets = ["radio", "option"]
     static values = {
         updateUrl: String
     }
@@ -19,9 +19,6 @@ export default class extends Controller {
         // Update visual styling immediately
         this.updateOptionStyles()
 
-        // Show/hide talent pool tab based on selection
-        this.updateTalentPoolVisibility(selectedValue)
-
         // Auto-save to server
         this.saveSelection(selectedValue)
     }
@@ -37,35 +34,6 @@ export default class extends Controller {
                 option.classList.add('border-gray-200')
             }
         })
-    }
-
-    updateTalentPoolVisibility(selectedValue) {
-        const showTalentPool = selectedValue === 'talent_pool' || selectedValue === 'hybrid'
-
-        if (this.hasTalentPoolTabTarget) {
-            if (showTalentPool) {
-                this.talentPoolTabTarget.classList.remove('hidden')
-            } else {
-                this.talentPoolTabTarget.classList.add('hidden')
-
-                // If we're currently on the talent pool tab (index 2), switch to first tab
-                const currentHash = window.location.hash
-                if (currentHash === '#tab-2') {
-                    // Find the tabs controller on the same element and call show(0)
-                    const tabsController = this.application.getControllerForElementAndIdentifier(this.element, 'tabs')
-                    if (tabsController) {
-                        tabsController.show(0)
-                        history.replaceState(null, '', '#tab-0')
-                    }
-                }
-            }
-        }
-
-        if (this.hasTalentPoolPanelTarget) {
-            if (!showTalentPool) {
-                this.talentPoolPanelTarget.classList.add('hidden')
-            }
-        }
     }
 
     async saveSelection(value) {

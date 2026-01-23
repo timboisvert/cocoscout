@@ -510,7 +510,7 @@ Rails.application.routes.draw do
     post "/casting/:production_id/roles/reorder", to: "roles#reorder", as: "reorder_casting_roles"
 
     # Casting > Talent Pools
-    get  "/casting/:production_id/talent-pools/members", to: "talent_pools#members", as: "casting_talent_pool_members"
+    get  "/casting/:production_id/talent-pools", to: "talent_pools#show", as: "casting_talent_pool"
     get  "/casting/:production_id/talent-pools/search_people", to: "talent_pools#search_people", as: "casting_talent_pool_search_people"
     post "/casting/:production_id/talent-pools/add_person", to: "talent_pools#add_person", as: "casting_talent_pool_add_person"
     get  "/casting/:production_id/talent-pools/confirm-remove-person/:person_id", to: "talent_pools#confirm_remove_person", as: "casting_talent_pool_confirm_remove_person"

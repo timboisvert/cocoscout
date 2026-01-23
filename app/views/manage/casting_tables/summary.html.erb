@@ -30,7 +30,7 @@
           <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Casting Summary</h3>
           <p class="text-sm text-gray-600 mt-1">Review all assignments before finalizing.</p>
         </div>
-        
+
         <div class="space-y-2 px-4 py-3">
           <% @assignments_by_show.each do |show, assignments| %>
             <%
@@ -61,7 +61,7 @@
             <strong><%= @people_to_notify.count %></strong> people will be notified of their casting.
           </p>
         </div>
-        
+
         <div class="p-6">
           <div class="flex flex-wrap gap-3">
             <% @people_to_notify.each do |person| %>
@@ -78,7 +78,7 @@
               </div>
             <% end %>
           </div>
-          
+
           <% if @groups_to_notify.any? %>
             <div class="mt-4 pt-4 border-t border-gray-200">
               <p class="text-sm text-gray-600 mb-2">
@@ -115,7 +115,7 @@
             This action cannot be undone.
           </p>
         </div>
-        
+
         <div class="p-6">
           <%= form_with url: manage_casting_table_finalize_path(@casting_table), method: :post, local: true do |form| %>
             <div class="mb-6">
@@ -128,7 +128,7 @@
                 </div>
               </label>
             </div>
-            
+
             <div class="flex items-center justify-between">
               <%= render "shared/button", text: "← Back to Casting Table", variant: "ghost", size: "medium", path: manage_casting_table_path(@casting_table) %>
               <%= render "shared/button", text: "Finalize Casting (#{@draft_assignments.count} assignments)", variant: "primary", size: "medium", type: :submit %>

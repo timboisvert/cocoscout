@@ -20,7 +20,7 @@
           <% memberships = group[:memberships] %>
           <% first_production = productions.first %>
 
-          <%= link_to manage_casting_talent_pool_members_path(first_production), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+          <%= link_to manage_casting_talent_pool_path(first_production), class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
             <%# Left Section: Productions that use this pool %>
             <div class="w-1/2 flex flex-col justify-center gap-2 pr-4">
               <% productions.each do |production| %>

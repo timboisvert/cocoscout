@@ -90,9 +90,9 @@ module Manage
 
       people = if talent_pool
                  talent_pool.people.order(:name).map { |p| { id: p.id, name: p.name } }
-               else
+      else
                  []
-               end
+      end
 
       render json: { people: people }
     end

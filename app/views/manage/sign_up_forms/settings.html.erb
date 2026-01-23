@@ -28,7 +28,7 @@
     ]
   } %>
 
-  <%= form_with model: [:manage, @production, @sign_up_form], url: update_manage_settings_signups_form_path(@production, @sign_up_form), method: :patch, data: { turbo: true, "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
+  <%= form_with model: [:manage, @production, @sign_up_form], url: manage_update_settings_signups_form_path(@production, @sign_up_form), method: :patch, data: { turbo: true, "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
 
     <%# Tab Navigation %>
     <nav class="flex space-x-1 border-b border-gray-200 mb-6 overflow-x-auto">

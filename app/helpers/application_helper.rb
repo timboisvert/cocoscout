@@ -278,14 +278,12 @@ module ApplicationHelper
     slot = registration.sign_up_slot
     sign_up_form = registration.sign_up_form
 
-    slot_text = if sign_up_form && slot
-      # For time_based or named modes, use the slot's name directly
-      # For numbered and open_list modes, show "Position X"
-      if sign_up_form.slot_generation_mode.in?(%w[time_based named])
-        slot.name.presence || "Position #{registration.position}"
-      else
-        "Position #{registration.position}"
-      end
+    slot_text = if slot&.name.present?
+      # Always prefer the slot's name if it exists (covers all modes)
+      slot.name
+    elsif sign_up_form
+      # Fallback for missing slot name
+      "Position #{registration.position}"
     else
       "Position #{registration.position}"
     end

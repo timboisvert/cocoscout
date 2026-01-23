@@ -1,7 +1,5 @@
 <% content_for :title, "Casting Settings" %>
 
-<% show_talent_pool = @production.casting_talent_pool? %>
-
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -18,12 +16,6 @@
     <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Casting Source</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Roles</button>
-      <button type="button"
-              data-tabs-target="tab"
-              data-casting-source-target="talentPoolTab"
-              data-index="2"
-              data-action="tabs#select"
-              class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap <%= 'hidden' unless show_talent_pool %>">Talent Pool</button>
     </nav>
 
     <!-- Tab 1: Casting Source -->
@@ -68,11 +60,6 @@
     <!-- Tab 2: Roles -->
     <div data-tabs-target="panel" class="hidden">
       <%= render "manage/casting_settings/roles_tab" %>
-    </div>
-
-    <!-- Tab 3: Talent Pool -->
-    <div data-tabs-target="panel" data-casting-source-target="talentPoolPanel" class="hidden">
-      <%= render "manage/casting_settings/talent_pool_tab" %>
     </div>
   </div>
 </div>
