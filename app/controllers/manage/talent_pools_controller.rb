@@ -12,6 +12,10 @@ module Manage
 
     def show
       # Full page view for direct navigation to a production's talent pool
+      # If XHR request, just return the members partial for refresh
+      if request.xhr?
+        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+      end
     end
 
     def add_person
@@ -50,9 +54,9 @@ module Manage
       @talent_pool.people.delete(person)
 
       if request.xhr?
-        render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
       else
-        redirect_to "#{manage_casting_settings_path(@production)}#tab-2",
+        redirect_to manage_casting_talent_pool_path(@production),
                     notice: "#{person.name} removed from talent pool"
       end
     end
@@ -88,9 +92,9 @@ module Manage
       @talent_pool.groups.delete(group)
 
       if request.xhr?
-        render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
+        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
       else
-        redirect_to "#{manage_casting_settings_path(@production)}#tab-2",
+        redirect_to manage_casting_talent_pool_path(@production),
                     notice: "#{group.name} removed from talent pool"
       end
     end
