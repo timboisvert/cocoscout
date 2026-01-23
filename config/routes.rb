@@ -490,6 +490,17 @@ Rails.application.routes.draw do
     get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"
     post  "/casting/tables/:id/finalize",  to: "casting_tables#finalize", as: "casting_table_finalize"
 
+    # Organization-wide Availability (must be before :production_id routes)
+    get  "/casting/availability", to: "org_availability#index", as: "org_availability"
+    get  "/casting/availability/person_modal/:id", to: "org_availability#person_modal", as: "org_availability_person_modal"
+    get  "/casting/availability/show_modal/:id", to: "org_availability#show_modal", as: "org_availability_show_modal"
+    post "/casting/availability/cast_person", to: "org_availability#cast_person", as: "org_availability_cast_person"
+    post "/casting/availability/sign_up_person", to: "org_availability#sign_up_person", as: "org_availability_sign_up_person"
+    post "/casting/availability/register_person", to: "org_availability#register_person", as: "org_availability_register_person"
+    post "/casting/availability/pre_register", to: "org_availability#pre_register", as: "org_availability_pre_register"
+    post "/casting/availability/pre_register_all", to: "org_availability#pre_register_all", as: "org_availability_pre_register_all"
+    post "/casting/availability/set_availability", to: "org_availability#set_availability", as: "org_availability_set_availability"
+
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
     get  "/casting/:production_id/settings", to: "casting_settings#show", as: "casting_settings"

@@ -1,0 +1,25 @@
+<%# Person Modal Container %>
+<div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+     data-org-availability-target="personModal"
+     data-action="click->org-availability#closePersonModal keydown.escape@window->org-availability#closePersonModal">
+  <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+       data-action="click->org-availability#stopPropagation">
+    <div data-org-availability-target="personContent">
+      <%# Content loaded dynamically %>
+      <div class="p-6 text-center text-gray-500">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<%# Show Modal Container %>
+<div class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+     data-org-availability-target="showModal"
+     data-action="click->org-availability#closeShowModal keydown.escape@window->org-availability#closeShowModal">
+  <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+       data-action="click->org-availability#stopPropagation">
+    <div data-org-availability-target="showContent">
+      <%# Content loaded dynamically %>
+      <div class="p-6 text-center text-gray-500">Loading...</div>
+    </div>
+  </div>
+</div>

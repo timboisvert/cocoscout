@@ -1,0 +1,124 @@
+<%
+  member = member_data[:member]
+  is_cast = member_data[:is_cast]
+  is_signed_up = member_data[:is_signed_up]
+  cast_roles = member_data[:cast_roles] || []
+  registration = member_data[:registration]
+  disabled = local_assigns[:disabled] || false
+  is_person = member.is_a?(Person)
+  can_cast = is_person && !disabled && open_roles.any?
+  can_sign_up = is_person && !disabled && sign_up_form.present? && !is_signed_up
+  is_clickable = is_person && !disabled
+%>
+
+<div class="flex items-stretch border border-gray-200 rounded-lg hover:bg-gray-50 transition overflow-visible relative <%= is_clickable ? 'cursor-pointer' : '' %>"
+     data-controller="<%= is_clickable ? 'dropdown' : '' %>"
+     <% if is_clickable %>data-action="click->dropdown#toggle"<% end %>>
+  <%# Left panel (50%): Headshot and name %>
+  <div class="w-1/2 flex items-center gap-3 p-3">
+    <% headshot = member.safe_headshot_variant(:thumb) %>
+    <% if headshot %>
+      <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover" %>
+    <% else %>
+      <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
+        <%= member.initials %>
+      </div>
+    <% end %>
+    <div class="flex-1 min-w-0">
+      <div class="font-medium text-sm text-gray-900 truncate"><%= member.name %></div>
+    </div>
+  </div>
+
+  <%# Middle panel (25%): Availability %>
+  <div class="w-1/4 flex items-center justify-center border-l border-gray-200">
+    <%
+      if member_data[:availability] == 'available'
+        avail_display = "A"
+        avail_class = "text-pink-500 font-medium"
+      elsif member_data[:availability] == 'unavailable'
+        avail_display = "U"
+        avail_class = "text-gray-400"
+      else
+        avail_display = "—"
+        avail_class = "text-gray-300"
+      end
+    %>
+    <span class="text-sm <%= avail_class %>"><%= avail_display %></span>
+  </div>
+
+  <%# Right panel (25%): Casting or Registration status %>
+  <div class="w-1/4 flex flex-col justify-center px-3 py-2 border-l border-gray-200">
+    <% if is_cast %>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Casting</div>
+      <% if cast_roles.any? %>
+        <div class="text-sm font-semibold text-pink-500"><%= cast_roles.join(', ') %></div>
+      <% end %>
+    <% elsif is_signed_up && registration %>
+      <%
+        slot = registration.sign_up_slot
+        form = slot&.sign_up_form
+        is_open_list = form&.slot_generation_mode == 'open_list'
+      %>
+      <% if is_open_list %>
+        <div class="text-sm font-semibold text-pink-500">Registered</div>
+      <% else %>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide">Registration</div>
+        <%
+          if slot&.name.present?
+            slot_display = slot.name
+          elsif form&.slot_generation_mode == 'time_based' && slot&.start_time.present?
+            slot_display = slot.start_time.strftime("%l:%M %p").strip
+          else
+            slot_display = "Position #{registration.position}"
+          end
+        %>
+        <div class="text-sm font-semibold text-pink-500"><%= slot_display %></div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# Action popup (hidden dropdown) %>
+  <% if is_clickable %>
+    <div class="hidden absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50"
+         data-dropdown-target="menu">
+      <% if can_cast %>
+        <div class="px-3 py-2 text-xs font-medium text-gray-500 uppercase border-b border-gray-100">Cast as...</div>
+        <% open_roles.each do |role| %>
+          <button type="button"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-pink-50 cursor-pointer"
+                  data-action="click->org-availability#castPerson"
+                  data-show-id="<%= show.id %>"
+                  data-role-id="<%= role.id %>"
+                  data-person-id="<%= member.id %>">
+            <%= role.name %>
+          </button>
+        <% end %>
+      <% end %>
+      <% if can_sign_up %>
+        <% if can_cast %>
+          <div class="border-t border-gray-100"></div>
+        <% end %>
+        <button type="button"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+                data-action="click->org-availability#signUpPerson"
+                data-show-id="<%= show.id %>"
+                data-person-id="<%= member.id %>">
+          Sign Up
+        </button>
+      <% end %>
+      <% if !can_cast && !can_sign_up %>
+        <div class="px-3 py-2 text-sm text-gray-500">
+          <% if is_cast && is_signed_up %>
+            Already cast and signed up
+          <% elsif is_cast %>
+            Already cast
+          <% elsif is_signed_up %>
+            Already signed up
+          <% else %>
+            No actions available
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

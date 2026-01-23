@@ -1,0 +1,93 @@
+<%
+  member = member_data[:member]
+  is_unavailable = member_data[:availability] == 'unavailable'
+  is_unset = member_data[:availability].nil? || member_data[:availability] == 'unset'
+  is_person = member.is_a?(Person)
+  cast_roles = member_data[:cast_roles] || []
+  is_signed_up = member_data[:is_signed_up]
+  registration = member_data[:registration]
+%>
+<div class="<%= is_unavailable ? 'opacity-50' : (is_unset ? 'opacity-70' : '') %>">
+  <div class="flex items-stretch border border-gray-200 rounded-lg hover:bg-gray-50 transition overflow-visible relative <%= is_person ? 'cursor-pointer' : '' %>"
+       <% if is_person %>
+       data-action="click->availability-popup#openPopup"
+       data-show-id="<%= show.id %>"
+       data-member-id="<%= member.id %>"
+       data-member-name="<%= member.name %>"
+       data-cast-roles="<%= cast_roles.to_json %>"
+       data-is-signed-up="<%= is_signed_up %>"
+       data-availability="<%= member_data[:availability] || 'unset' %>"
+       <% end %>>
+    <%# Left panel (50%): Headshot and name %>
+    <div class="w-1/2 flex items-center gap-3 p-3">
+      <% headshot = member.safe_headshot_variant(:thumb) %>
+      <% if headshot %>
+        <%= image_tag headshot, class: "w-10 h-10 rounded-lg object-cover" %>
+      <% else %>
+        <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
+          <%= member.initials %>
+        </div>
+      <% end %>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-sm text-gray-900 truncate"><%= member.name %></div>
+      </div>
+    </div>
+
+    <%# Middle panel (25%): Availability %>
+    <div class="w-1/4 flex items-center justify-center border-l border-gray-200">
+      <%
+        if member_data[:availability] == 'available'
+          avail_display = "A"
+          avail_class = "text-pink-500 font-medium"
+        elsif member_data[:availability] == 'unavailable'
+          avail_display = "U"
+          avail_class = "text-gray-400"
+        else
+          avail_display = "—"
+          avail_class = "text-gray-300"
+        end
+      %>
+      <span class="text-sm <%= avail_class %>"><%= avail_display %></span>
+    </div>
+
+    <%# Right panel (25%): Casting and/or Registration status %>
+    <div class="w-1/4 flex flex-col justify-center px-3 py-2 border-l border-gray-200 gap-1">
+      <% if member_data[:is_cast] && cast_roles.any? %>
+        <div class="leading-tight">
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide">Cast</div>
+          <div class="text-sm font-semibold text-pink-500"><%= cast_roles.join(', ') %></div>
+        </div>
+      <% end %>
+      <% if is_signed_up && registration %>
+        <%
+          slot = registration.sign_up_slot
+          form = slot&.sign_up_form
+          is_open_list = form&.slot_generation_mode == 'open_list'
+        %>
+        <div class="leading-tight">
+          <% if is_open_list %>
+            <div class="text-sm font-semibold text-pink-500">Registered</div>
+          <% else %>
+            <div class="text-[10px] text-gray-400 uppercase tracking-wide">Signed up</div>
+            <%
+              if slot&.name.present? && slot.name !~ /\A\d+\z/
+                # Named slot (not just a number)
+                slot_display = slot.name
+              elsif form&.slot_generation_mode == 'time_based' && slot&.start_time.present?
+                # Time-based slot
+                slot_display = slot.start_time.strftime("%l:%M %p").strip
+              elsif slot&.name.present? && slot.name =~ /\A\d+\z/
+                # Numbered slot - show the slot number as the position
+                slot_display = "Position #{slot.name}"
+              else
+                # Fallback - use slot position or registration position
+                slot_display = "Position #{slot&.position || registration.position}"
+              end
+            %>
+            <div class="text-sm font-semibold text-pink-500"><%= slot_display %></div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

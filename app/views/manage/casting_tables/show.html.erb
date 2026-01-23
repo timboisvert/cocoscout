@@ -28,9 +28,9 @@
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
     <div class="overflow-auto <%= @casting_table.draft? ? 'max-h-[calc(100vh-280px)]' : 'max-h-[calc(100vh-200px)]' %> rounded-lg">
       <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+        <thead class="bg-gray-50 sticky top-0 z-20">
           <tr>
-            <th class="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[280px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative">
+            <th class="sticky left-0 z-30 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[280px] min-w-[280px] max-w-[280px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-300 relative">
               Event
             </th>
             <% @members.each do |member| %>
@@ -52,7 +52,7 @@
                 </div>
               </th>
             <% end %>
-            <th class="sticky right-0 z-10 bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[45px] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-300 relative">
+            <th class="sticky right-0 z-30 bg-gray-50 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[45px] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-300 relative">
               Cast
             </th>
           </tr>
