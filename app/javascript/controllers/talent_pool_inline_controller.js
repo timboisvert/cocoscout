@@ -185,7 +185,7 @@ export default class extends Controller {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "text/html",
+          "Accept": "application/json",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
           "X-Requested-With": "XMLHttpRequest"
         },
@@ -193,9 +193,10 @@ export default class extends Controller {
       })
 
       if (response.ok) {
-        await this.refreshMembersList()
+        const memberName = this.pendingRemoval.name
         this.closeRemoveModal()
-        this.showNotice(`Removed ${this.pendingRemoval.name} from talent pool`)
+        await this.refreshMembersList()
+        this.showNotice(`Removed ${memberName} from talent pool`)
       } else {
         button.disabled = false
         button.textContent = "Remove"

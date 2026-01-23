@@ -54,7 +54,7 @@ module Manage
       @talent_pool.people.delete(person)
 
       if request.xhr?
-        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+        render json: { success: true, message: "#{person.name} removed from talent pool" }
       else
         redirect_to manage_casting_talent_pool_path(@production),
                     notice: "#{person.name} removed from talent pool"
@@ -92,7 +92,7 @@ module Manage
       @talent_pool.groups.delete(group)
 
       if request.xhr?
-        render partial: "manage/casting_settings/talent_pool_members", locals: { talent_pool: @talent_pool }
+        render json: { success: true, message: "#{group.name} removed from talent pool" }
       else
         redirect_to manage_casting_talent_pool_path(@production),
                     notice: "#{group.name} removed from talent pool"

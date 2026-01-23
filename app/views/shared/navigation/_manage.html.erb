@@ -24,22 +24,22 @@
             {
               label: "Shows & Events",
               path: manage_shows_path,
-              active: ["shows", "org_shows", "vacancies"].include?(controller_name)
+              active: ["shows", "org_shows", "vacancies", "show_wizard"].include?(controller_name)
             },
             {
               label: "Casting",
               path: manage_casting_path,
-              active: ["casting", "org_casting", "casting_availability", "roles", "talent_pools"].include?(controller_name)
+              active: ["casting", "org_casting", "casting_availability", "roles", "talent_pools", "casting_tables", "org_roles", "org_talent_pools"].include?(controller_name)
             },
             {
               label: "Sign-ups",
               path: manage_signups_path,
-              active: ["signups", "org_signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions"].include?(controller_name)
+              active: ["signups", "org_signups", "sign_up_forms", "auditions", "audition_cycles", "audition_requests", "audition_sessions", "sign_up_form_wizard", "audition_cycle_wizard", "org_auditions", "org_forms"].include?(controller_name)
             },
             {
               label: "Communications",
               path: manage_communications_path,
-              active: ["communications", "org_communications", "questionnaires"].include?(controller_name)
+              active: ["communications", "org_communications", "questionnaires", "org_questionnaires"].include?(controller_name)
             },
             {
               label: "Money",

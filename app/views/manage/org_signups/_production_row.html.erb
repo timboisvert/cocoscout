@@ -1,19 +1,17 @@
 <%#
-  Sign-ups Production Row - Four Panel Layout
+  Sign-ups Production Row - Three Panel Layout
 
   Required:
     - summary: Hash with production summary data
 
   Panels:
-    1. Production name and basic info
-    2. Sign-up Forms
-    3. Active Forms
-    4. Auditions
+    1. Production logo and name (50%)
+    2. Active Sign-up Forms (25%)
+    3. Auditions status (25%)
 %>
 
 <%
   production = summary[:production]
-  sign_up_forms_count = summary[:sign_up_forms_count] || 0
   active_forms_count = summary[:active_sign_up_forms_count] || 0
   has_active_audition = summary[:active_audition_cycle].present?
   audition_requests_count = summary[:audition_requests_count] || 0
@@ -24,8 +22,8 @@
   <%= link_to row_link_path, class: "block" do %>
     <div class="flex flex-col lg:flex-row lg:items-stretch">
 
-      <%# Panel 1: Production Info %>
-      <div class="flex-1 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
+      <%# Panel 1: Production Info (50%) %>
+      <div class="w-full lg:w-1/2 flex items-center gap-4 px-4 py-3 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none">
         <%# Production Logo or Initials %>
         <% logo_variant = production.safe_logo_variant(:small) %>
         <% if logo_variant %>
@@ -38,24 +36,13 @@
           </div>
         <% end %>
 
-        <%# Production Details %>
-        <div class="flex-1 min-w-0">
-          <div class="font-medium text-gray-900"><%= production.name %></div>
-          <div class="text-sm text-gray-600">
-            <%= sign_up_forms_count %> <%= "form".pluralize(sign_up_forms_count) %>
-          </div>
-        </div>
+        <%# Production Name %>
+        <div class="font-medium text-gray-900"><%= production.name %></div>
       </div>
 
-      <%# Panel 2: Sign-up Forms %>
+      <%# Panel 2: Active Sign-up Forms (25%) %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Sign-up Forms</div>
-        <div class="text-sm font-medium text-gray-900"><%= sign_up_forms_count %></div>
-      </div>
-
-      <%# Panel 3: Active Forms %>
-      <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col justify-center">
-        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Active Forms</div>
+        <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Active Sign-up Forms</div>
         <% if active_forms_count > 0 %>
           <div class="text-sm font-medium text-green-600"><%= active_forms_count %></div>
         <% else %>
@@ -63,16 +50,14 @@
         <% end %>
       </div>
 
-      <%# Panel 4: Auditions %>
+      <%# Panel 3: Auditions (25%) %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
         <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Auditions</div>
         <% if has_active_audition %>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-green-600">Open</span>
-            <% if audition_requests_count > 0 %>
-              <span class="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full text-xs font-medium"><%= audition_requests_count %> pending</span>
-            <% end %>
-          </div>
+          <div class="text-sm font-medium text-green-600">Open</div>
+          <% if audition_requests_count > 0 %>
+            <div class="text-xs text-pink-600"><%= audition_requests_count %> pending</div>
+          <% end %>
         <% else %>
           <div class="text-sm text-gray-400">None</div>
         <% end %>

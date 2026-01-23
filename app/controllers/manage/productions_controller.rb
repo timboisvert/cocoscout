@@ -6,11 +6,13 @@ module Manage
     before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member update_team_permission remove_team_member]
     before_action :ensure_user_is_global_manager, only: %i[new create]
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member]
-    skip_before_action :show_manage_sidebar, only: %i[index new create]
+    skip_before_action :show_manage_sidebar, only: %i[new create]
 
     def index
-      # Redirect to production selection
-      redirect_to select_production_path
+      @productions = Current.user.accessible_productions
+        .where(organization: Current.organization)
+        .includes(:logo_attachment)
+        .order(:name)
     end
 
     def show

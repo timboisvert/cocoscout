@@ -164,9 +164,16 @@
 
         <!-- Actions row -->
         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
-          <%= link_to account_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
-            My Account
-          <% end %>
+          <div class="flex items-center gap-3">
+            <%= link_to account_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
+              My Account
+            <% end %>
+            <% if Current.organization.present? %>
+              <%= link_to manage_productions_path, class: "text-xs text-gray-600 hover:text-gray-900" do %>
+                Productions
+              <% end %>
+            <% end %>
+          </div>
           <div class="flex items-center gap-3">
             <% if Current.user.superadmin? %>
               <%= link_to "Superadmin", superadmin_path, class: "text-[10px] font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded" %>

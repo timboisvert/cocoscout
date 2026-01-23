@@ -118,6 +118,9 @@
 
     <%# Show Details %>
     <div class="flex-1 min-w-0">
+      <% if show_production %>
+        <div class="text-xs text-gray-400 mb-0.5"><%= show.production.name %></div>
+      <% end %>
       <div class="flex items-center gap-2 flex-wrap">
         <% if is_canceled %>
           <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
@@ -145,9 +148,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
             </svg>
           </span>
-        <% end %>
-        <% if show_production %>
-          <span class="text-sm text-gray-600"><%= show.production.name %></span>
         <% end %>
       </div>
       <div class="text-sm text-gray-600">

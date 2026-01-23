@@ -42,8 +42,19 @@
           <% if Current.organization.present? %>
             <div class="border-t border-slate-200 my-1"></div>
 
-            <!-- Organization Section -->
+            <!-- Productions Section -->
             <div class="px-4 py-3">
+              <div class="text-xs text-slate-500 font-semibold uppercase mb-2">Productions</div>
+              <div class="flex flex-col gap-1">
+                <%= link_to "Manage Productions", manage_productions_path, class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
+                <% if current_user_is_global_manager? %>
+                  <%= link_to "Add a Production", new_manage_production_path, class: "text-xs text-pink-500 hover:text-pink-600 underline" %>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Organization Section -->
+            <div class="px-4 py-3 border-t border-slate-100">
               <div class="text-xs text-slate-500 font-semibold uppercase mb-2">Organization</div>
               <div class="flex items-center justify-between mb-2">
                 <div class="text-sm text-slate-900 font-medium"><%= Current.organization.name %></div>
