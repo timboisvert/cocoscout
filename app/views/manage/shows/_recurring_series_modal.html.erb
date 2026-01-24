@@ -1,0 +1,150 @@
+<%# Modal for viewing and extending a recurring series %>
+<%= turbo_frame_tag "recurring_series_modal" do %>
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+       data-controller="recurring-series-modal"
+       data-action="click->recurring-series-modal#closeOnBackdrop keydown.esc@window->recurring-series-modal#close">
+    <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg max-h-[85vh] flex flex-col" data-action="click->recurring-series-modal#stopPropagation">
+      <%# Header %>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Recurring Series</h3>
+          <p class="text-sm text-gray-500 mt-0.5">
+            <%= @shows_in_series.length %> events
+            <% if @pattern.present? %>
+              · <%= @pattern.gsub("_", " ").titleize %>
+            <% end %>
+          </p>
+        </div>
+        <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="click->recurring-series-modal#close">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <%# Body - scrollable %>
+      <div class="flex-1 overflow-y-auto p-6">
+        <%# Series summary %>
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-500">First event:</span>
+              <span class="font-medium text-gray-900 ml-1">
+                <%= @first_show.date_and_time.strftime("%B %-d, %Y") %>
+              </span>
+            </div>
+            <div>
+              <span class="text-gray-500">Last event:</span>
+              <span class="font-medium text-gray-900 ml-1">
+                <%= @last_show.date_and_time.strftime("%B %-d, %Y") %>
+              </span>
+            </div>
+            <div>
+              <span class="text-gray-500">Time:</span>
+              <span class="font-medium text-gray-900 ml-1">
+                <%= @first_show.date_and_time.strftime("%l:%M %p").strip %>
+              </span>
+            </div>
+            <div>
+              <span class="text-gray-500">Location:</span>
+              <span class="font-medium text-gray-900 ml-1">
+                <%= @first_show.is_online ? "Online" : (@first_show.location&.name || "TBD") %>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <%# Upcoming shows %>
+        <% if @upcoming_shows.any? %>
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">
+              Upcoming (<%= @upcoming_shows.length %>)
+            </h4>
+            <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
+              <% @upcoming_shows.each do |show| %>
+                <%= render partial: "shared/show_row", locals: {
+                  show: show,
+                  link_path: manage_show_path(@production, show),
+                  show_canceled: true,
+                  show_recurring: false,
+                  show_linked: false,
+                  show_location: false
+                } %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Past shows (collapsed by default) %>
+        <% if @past_shows.any? %>
+          <details class="mb-6">
+            <summary class="text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+              Past events (<%= @past_shows.length %>)
+            </summary>
+            <div class="mt-3 space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg opacity-60">
+              <% @past_shows.each do |show| %>
+                <%= render partial: "shared/show_row", locals: {
+                  show: show,
+                  link_path: manage_show_path(@production, show),
+                  show_canceled: true,
+                  show_recurring: false,
+                  show_linked: false,
+                  show_location: false
+                } %>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+
+        <%# Extend Series Form %>
+        <div class="bg-pink-50 border border-pink-200 rounded-lg p-4">
+          <h4 class="text-sm font-semibold text-pink-900 mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Extend this series
+          </h4>
+          <%= form_with url: extend_series_manage_production_shows_path(@production), method: :post, local: true, class: "space-y-4" do |f| %>
+            <input type="hidden" name="recurrence_group_id" value="<%= @recurrence_group_id %>">
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Add more events through:</label>
+              <select name="extend_duration" required
+                      data-action="change->recurring-series-modal#toggleCustomDate"
+                      data-recurring-series-modal-target="durationSelect"
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                <option value="3_months">3 more months (until <%= (@last_show.date_and_time.to_date + 3.months).strftime("%B %Y") %>)</option>
+                <option value="6_months">6 more months (until <%= (@last_show.date_and_time.to_date + 6.months).strftime("%B %Y") %>)</option>
+                <option value="12_months">12 more months (until <%= (@last_show.date_and_time.to_date + 12.months).strftime("%B %Y") %>)</option>
+                <option value="end_of_year">End of <%= @last_show.date_and_time.year %></option>
+                <option value="custom">Custom end date...</option>
+              </select>
+            </div>
+
+            <div data-recurring-series-modal-target="customDateField" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Custom end date:</label>
+              <input type="date"
+                     name="custom_end_date"
+                     min="<%= (@last_show.date_and_time.to_date + 1.day).to_s %>"
+                     value="<%= (@last_show.date_and_time.to_date + 3.months).to_s %>"
+                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <%= render "shared/button", text: "Extend Series", variant: "primary", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Footer %>
+      <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-end flex-shrink-0">
+        <%= render "shared/button",
+                text: "Done",
+                variant: "secondary",
+                type: :button,
+                data: { action: "click->recurring-series-modal#close" } %>
+      </div>
+    </div>
+  </div>
+<% end %>

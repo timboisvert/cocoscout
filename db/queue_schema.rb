@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_24_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_24_190001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -1121,6 +1121,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_190000) do
     t.integer "production_id", null: false
     t.boolean "public_profile_visible"
     t.string "recurrence_group_id"
+    t.string "recurrence_pattern"
     t.string "secondary_name"
     t.boolean "signup_based_casting", default: false, null: false
     t.datetime "updated_at", null: false

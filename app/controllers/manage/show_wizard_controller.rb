@@ -218,6 +218,9 @@ module Manage
       dates = generate_recurring_dates(start_datetime, pattern, end_date)
       created_count = 0
 
+      # Generate a shared recurrence_group_id for all shows in this series
+      recurrence_group_id = SecureRandom.uuid
+
       dates.each do |date|
         show = @production.shows.new(
           event_type: @wizard_state[:event_type],
@@ -227,7 +230,9 @@ module Manage
           online_location_info: @wizard_state[:online_location_info],
           secondary_name: @wizard_state[:secondary_name],
           casting_enabled: @wizard_state[:casting_enabled],
-          public_profile_visible: @wizard_state[:public_profile_visible]
+          public_profile_visible: @wizard_state[:public_profile_visible],
+          recurrence_group_id: recurrence_group_id,
+          recurrence_pattern: pattern
         )
         created_count += 1 if show.save
       end

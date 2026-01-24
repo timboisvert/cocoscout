@@ -208,7 +208,7 @@ module Manage
       # Explicitly exclude guest line items (is_guest: true) - they have separate payment handling
       person_ids = ShowPayoutLineItem.where(show_payout_id: awaiting_payout_ids)
                                       .where(payee_type: "Person")
-                                      .where(is_guest: [false, nil])
+                                      .where(is_guest: [ false, nil ])
                                       .not_already_paid
                                       .pluck(:payee_id)
                                       .uniq

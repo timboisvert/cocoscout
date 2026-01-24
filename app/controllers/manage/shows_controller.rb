@@ -5,7 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer toggle_signup_based_casting toggle_attendance attendance update_attendance]
-    before_action :ensure_user_is_manager, except: %i[index show]
+    before_action :ensure_user_is_manager, except: %i[index show recurring_series]
 
     def index
       # Store the shows filter
@@ -156,6 +156,95 @@ module Manage
 
       # Load into memory and group shows by month for calendar display
       @shows_by_month = @shows.to_a.group_by { |show| show.date_and_time.beginning_of_month }
+    end
+
+    # GET /manage/productions/:production_id/shows/recurring_series
+    # Modal to view and manage a recurring series
+    def recurring_series
+      @recurrence_group_id = params[:recurrence_group_id]
+      return head :not_found unless @recurrence_group_id.present?
+
+      @shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
+      return head :not_found if @shows_in_series.empty?
+
+      @first_show = @shows_in_series.first
+      @last_show = @shows_in_series.last
+      @pattern = @first_show.recurrence_pattern
+
+      # Infer pattern from dates if not stored
+      if @pattern.blank? && @shows_in_series.length >= 2
+        @pattern = infer_recurrence_pattern(@shows_in_series)
+      end
+
+      @upcoming_shows = @shows_in_series.select { |s| s.date_and_time > Time.current }
+      @past_shows = @shows_in_series.select { |s| s.date_and_time <= Time.current }
+
+      respond_to do |format|
+        format.html { render partial: "manage/shows/recurring_series_modal", layout: false }
+        format.turbo_stream
+      end
+    end
+
+    # POST /manage/productions/:production_id/shows/extend_series
+    # Extend a recurring series with more shows
+    def extend_series
+      @recurrence_group_id = params[:recurrence_group_id]
+      return head :not_found unless @recurrence_group_id.present?
+
+      @shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
+      return head :not_found if @shows_in_series.empty?
+
+      @last_show = @shows_in_series.last
+      @pattern = @last_show.recurrence_pattern || infer_recurrence_pattern(@shows_in_series)
+
+      # Calculate new end date
+      extend_through = case params[:extend_duration]
+      when "3_months"
+        @last_show.date_and_time.to_date + 3.months
+      when "6_months"
+        @last_show.date_and_time.to_date + 6.months
+      when "12_months"
+        @last_show.date_and_time.to_date + 12.months
+      when "end_of_year"
+        end_of_year = Date.new(@last_show.date_and_time.year, 12, 31)
+        # If we're already past end of year or at end of year, extend to next year
+        end_of_year <= @last_show.date_and_time.to_date ? Date.new(@last_show.date_and_time.year + 1, 12, 31) : end_of_year
+      when "custom"
+        Date.parse(params[:custom_end_date])
+      else
+        @last_show.date_and_time.to_date + 3.months
+      end
+
+      # Generate new dates starting from the last show
+      new_dates = generate_recurring_dates(@last_show.date_and_time, @pattern, extend_through)
+      # Remove the first date as it's the last existing show
+      new_dates = new_dates.drop(1)
+
+      if new_dates.empty?
+        redirect_to manage_production_shows_path(@production), alert: "No new dates to add. The series may already extend past the selected date."
+        return
+      end
+
+      created_count = 0
+      new_dates.each do |datetime|
+        show = @production.shows.new(
+          event_type: @last_show.event_type,
+          secondary_name: @last_show.secondary_name,
+          location_id: @last_show.location_id,
+          is_online: @last_show.is_online,
+          online_location_info: @last_show.online_location_info,
+          casting_enabled: @last_show.casting_enabled,
+          casting_source: @last_show.casting_source,
+          public_profile_visible: @last_show.public_profile_visible,
+          date_and_time: datetime,
+          recurrence_group_id: @recurrence_group_id,
+          recurrence_pattern: @pattern
+        )
+        created_count += 1 if show.save
+      end
+
+      redirect_to manage_production_shows_path(@production),
+                  notice: "Extended series with #{created_count} new events through #{extend_through.strftime('%B %d, %Y')}"
     end
 
     def new
@@ -1100,6 +1189,74 @@ module Manage
           email_batch_id: email_batch&.id
         ).deliver_later
       end
+    end
+
+    # Infer recurrence pattern from a series of shows
+    def infer_recurrence_pattern(shows)
+      return nil if shows.length < 2
+
+      # Calculate average days between shows
+      days_between = []
+      shows.each_cons(2) do |a, b|
+        days_between << (b.date_and_time.to_date - a.date_and_time.to_date).to_i
+      end
+
+      avg_days = days_between.sum / days_between.length.to_f
+
+      # Determine pattern based on average days
+      case avg_days
+      when 0..2
+        "daily"
+      when 5..9
+        "weekly"
+      when 12..16
+        "biweekly"
+      when 25..35
+        # Check if it's same date of month (monthly_date) or same week/day (monthly_week)
+        # For now, default to monthly_date
+        "monthly_date"
+      else
+        "weekly" # Default fallback
+      end
+    end
+
+    # Generate recurring dates for extending a series
+    def generate_recurring_dates(start_datetime, pattern, end_date)
+      dates = [ start_datetime ]
+      current = start_datetime
+
+      # Store initial values for monthly_week pattern
+      initial_day_of_week = start_datetime.wday
+      initial_week_of_month = (start_datetime.day - 1) / 7 + 1
+
+      while current < end_date.end_of_day
+        next_date = case pattern
+        when "daily"
+          current + 1.day
+        when "weekly"
+          current + 1.week
+        when "biweekly"
+          current + 2.weeks
+        when "monthly_date"
+          current + 1.month
+        when "monthly_week"
+          # Same week and day of month
+          next_month = current + 1.month
+          first_of_month = next_month.beginning_of_month
+          days_until_target_day = (initial_day_of_week - first_of_month.wday) % 7
+          first_occurrence = first_of_month + days_until_target_day.days
+          target_date = first_occurrence + (initial_week_of_month - 1).weeks
+          target_date.change(hour: start_datetime.hour, min: start_datetime.min, sec: start_datetime.sec)
+        else
+          current + 1.week
+        end
+
+        break if next_date > end_date.end_of_day
+        dates << next_date
+        current = next_date
+      end
+
+      dates
     end
   end
 end

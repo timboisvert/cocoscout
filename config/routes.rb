@@ -766,6 +766,8 @@ Rails.application.routes.draw do
       resources :shows do
         collection do
           get :calendar
+          get :recurring_series, to: "shows#recurring_series"
+          post :extend_series, to: "shows#extend_series"
         end
         member do
           get   :cancel, action: :cancel

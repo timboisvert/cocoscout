@@ -39,7 +39,7 @@ class PayoutCalculator
 
     # Get performers from show assignments (including guests)
     assignments = @show.show_person_role_assignments.includes(:assignable, :role)
-    
+
     # Separate regular performers and guest assignments
     regular_performers = assignments.reject(&:guest?).map(&:assignable).compact.uniq
     guest_assignments = assignments.select(&:guest?)
@@ -80,14 +80,14 @@ class PayoutCalculator
       # Flat fee: each person gets the flat amount (or their override)
       flat_amount = distribution["flat_amount"].to_f || 0
       per_person_amount = flat_amount
-      
+
       # Don't adjust regular performer line items - they already have correct amounts from distribute_flat_fee
       adjusted_line_items = result[:line_items]
-      
+
       # Calculate guest payouts with flat fee
       guest_line_items = calculate_guest_payouts_flat_fee(
-        guest_assignments, 
-        flat_amount, 
+        guest_assignments,
+        flat_amount,
         overrides
       )
     when "no_pay"
@@ -136,9 +136,9 @@ class PayoutCalculator
 
       # Calculate guest payouts using the same per-person amount (with overrides)
       guest_line_items = calculate_guest_payouts(
-        guest_assignments, 
-        inputs, 
-        per_person_amount, 
+        guest_assignments,
+        inputs,
+        per_person_amount,
         overrides,
         result[:performer_pool],
         total_performer_count
