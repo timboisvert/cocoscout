@@ -17,7 +17,9 @@
   default_shares = distribution["default_shares"] || 1.0
 
   # Get available people from effective talent pool (may be shared)
-  talent_pool = @production.effective_talent_pool
+  # payout_scheme may be organization-level (no production) or production-level
+  production = payout_scheme.production
+  talent_pool = production&.effective_talent_pool
   available_people = talent_pool&.people&.order(:name) || []
 %>
 

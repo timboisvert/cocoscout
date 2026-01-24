@@ -1,0 +1,90 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Money", manage_money_index_path],
+    ["Financials", manage_money_production_financials_path(@production)],
+    [@production.name, manage_money_production_financials_path(@production)],
+    ["Ticketing", manage_money_ticketing_production_links_path(@production)]
+  ],
+  text: "Link Ticketing Event"
+} %>
+
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <div class="bg-white shadow rounded-lg p-6">
+    <%= form_with model: @ticketing_production_link, url: manage_money_ticketing_production_links_path(@production), class: "space-y-6" do |f| %>
+      <% if @ticketing_production_link.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <ul class="text-sm text-red-700 list-disc list-inside">
+            <% @ticketing_production_link.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div>
+        <label for="ticketing_production_link_ticketing_provider_id" class="block text-sm font-medium text-gray-700">
+          Ticketing Platform
+        </label>
+        <%= f.collection_select :ticketing_provider_id, @providers, :id, :name,
+                               { prompt: "Select a platform..." },
+                               { class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500",
+                                 data: { action: "change->ticketing-link#selectProvider" } } %>
+      </div>
+
+      <div>
+        <label for="ticketing_production_link_provider_event_id" class="block text-sm font-medium text-gray-700">
+          Event ID
+        </label>
+        <p class="text-sm text-gray-500">
+          The event series ID from your ticketing platform
+        </p>
+        <%= f.text_field :provider_event_id,
+                        placeholder: "e.g., es_12345",
+                        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 font-mono" %>
+      </div>
+
+      <div>
+        <label for="ticketing_production_link_provider_event_name" class="block text-sm font-medium text-gray-700">
+          Event Name (optional)
+        </label>
+        <p class="text-sm text-gray-500">
+          For your reference - will be auto-filled after first sync
+        </p>
+        <%= f.text_field :provider_event_name,
+                        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+
+      <div class="border-t pt-6">
+        <h4 class="text-sm font-medium text-gray-700 mb-3">Sync Settings</h4>
+
+        <div class="space-y-3">
+          <label class="flex items-center">
+            <%= f.check_box :sync_ticket_sales, checked: true,
+                           class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+            <span class="ml-2 text-sm text-gray-700">Sync ticket sales data</span>
+          </label>
+
+          <label class="flex items-center">
+            <%= f.check_box :sync_enabled, checked: true,
+                           class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+            <span class="ml-2 text-sm text-gray-700">Enable sync for this production</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+        <%= link_to "Cancel", manage_money_ticketing_production_links_path(@production),
+                   class: "text-sm text-gray-500 hover:text-gray-700" %>
+        <%= f.submit "Link Event", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <h4 class="text-sm font-medium text-blue-800">Where to find your Event ID</h4>
+    <ul class="mt-2 text-sm text-blue-700 space-y-1">
+      <li><strong>Ticket Tailor:</strong> The event series URL, e.g., es_12345</li>
+      <li><strong>Eventbrite:</strong> The event ID from the event dashboard URL</li>
+    </ul>
+  </div>
+</div>

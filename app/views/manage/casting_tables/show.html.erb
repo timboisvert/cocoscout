@@ -9,7 +9,7 @@
       ["Casting Tables", manage_casting_tables_path]
     ],
     text: @casting_table.name,
-    links: @casting_table.draft? ? [{ text: "Edit Name", path: manage_edit_casting_table_path(@casting_table) }] : []
+    links: [{ text: "Edit", path: manage_edit_casting_table_path(@casting_table) }]
   } %>
 
   <% unless @casting_table.draft? %>

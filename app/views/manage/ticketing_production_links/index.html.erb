@@ -1,0 +1,87 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Money", manage_money_index_path],
+    ["Financials", manage_money_production_financials_path(@production)],
+    [@production.name, manage_money_production_financials_path(@production)]
+  ],
+  text: "Ticketing Integrations",
+  links: @available_providers.any? ? [
+    { text: "Link Ticketing Event", path: manage_new_money_ticketing_production_link_path(@production) }
+  ] : []
+} %>
+
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <% if @ticketing_production_links.any? %>
+    <div class="bg-white shadow rounded-lg divide-y divide-gray-200">
+      <% @ticketing_production_links.each do |link| %>
+        <div class="px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-medium text-gray-900">
+                  <%= link.provider_event_name || link.provider_event_id %>
+                </h3>
+                <p class="text-sm text-gray-500">
+                  via <%= link.ticketing_provider.name %>
+                  &middot;
+                  <%= link.ticketing_show_links.count %> shows linked
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+              <% if link.sync_enabled? %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Syncing
+                </span>
+              <% else %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  Paused
+                </span>
+              <% end %>
+
+              <%= link_to "Manage", manage_money_ticketing_production_link_path(@production, link),
+                          class: "text-sm text-pink-600 hover:text-pink-800" %>
+            </div>
+          </div>
+
+          <% if link.last_synced_at.present? %>
+            <p class="mt-2 text-xs text-gray-400">
+              Last synced <%= time_ago_in_words(link.last_synced_at) %> ago
+            </p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-12 bg-white shadow rounded-lg">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+      </svg>
+      <h3 class="mt-2 text-sm font-semibold text-gray-900">No ticketing integration</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Connect a ticketing platform to automatically sync ticket sales.
+      </p>
+
+      <% if @available_providers.any? %>
+        <div class="mt-6">
+          <%= link_to manage_new_money_ticketing_production_link_path(@production) do %>
+            <%= render "shared/button", text: "Link Ticketing Event", variant: "primary", size: "medium" %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="mt-6">
+          <p class="text-sm text-gray-500 mb-3">First, connect a ticketing platform in settings</p>
+          <%= link_to manage_ticketing_providers_path do %>
+            <%= render "shared/button", text: "Connect Platform", variant: "secondary", size: "medium" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

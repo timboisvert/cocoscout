@@ -483,12 +483,19 @@ Rails.application.routes.draw do
 
     # Casting Table (individual)
     get   "/casting/tables/:id",           to: "casting_tables#show", as: "casting_table"
-    get   "/casting/tables/:id/edit",      to: "casting_tables#edit", as: "edit_casting_table"
+    get   "/casting/tables/:id/edit",      to: "casting_tables#edit_events", as: "edit_casting_table"
     patch "/casting/tables/:id",           to: "casting_tables#update", as: "update_casting_table"
     post  "/casting/tables/:id/assign",    to: "casting_tables#assign", as: "casting_table_assign"
     delete "/casting/tables/:id/unassign", to: "casting_tables#unassign", as: "casting_table_unassign"
     get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"
     post  "/casting/tables/:id/finalize",  to: "casting_tables#finalize", as: "casting_table_finalize"
+
+    # Casting Table - Edit Members (separate tab)
+    get   "/casting/tables/:id/edit/members", to: "casting_tables#edit_members", as: "casting_table_edit_members"
+    post  "/casting/tables/:id/add_event",    to: "casting_tables#add_event", as: "casting_table_add_event"
+    delete "/casting/tables/:id/remove_event/:show_id", to: "casting_tables#remove_event", as: "casting_table_remove_event"
+    post "/casting/tables/:id/add_member",   to: "casting_tables#add_member", as: "casting_table_add_member"
+    delete "/casting/tables/:id/remove_member/:memberable_type/:memberable_id", to: "casting_tables#remove_member", as: "casting_table_remove_member"
 
     # Organization-wide Availability (must be before :production_id routes)
     get  "/casting/availability", to: "org_availability#index", as: "org_availability"
@@ -817,6 +824,33 @@ Rails.application.routes.draw do
 
     # Ticket fee templates
     resources :ticket_fee_templates, only: [ :index, :create, :update, :destroy ], path: "money/fees"
+
+    # Ticketing integrations - organization level (connected accounts)
+    scope "settings" do
+      get  "ticketing",           to: "ticketing_providers#index",   as: "ticketing_providers"
+      get  "ticketing/new",       to: "ticketing_providers#new",     as: "new_ticketing_provider"
+      post "ticketing",           to: "ticketing_providers#create"
+      get  "ticketing/:id",       to: "ticketing_providers#show",    as: "ticketing_provider"
+      get  "ticketing/:id/edit",  to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
+      patch "ticketing/:id",      to: "ticketing_providers#update"
+      delete "ticketing/:id",     to: "ticketing_providers#destroy"
+      post "ticketing/:id/test",  to: "ticketing_providers#test",    as: "test_ticketing_provider"
+      post "ticketing/:id/sync",  to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
+    end
+
+    # Ticketing production links - production level
+    scope "money/financials/:production_id" do
+      get  "ticketing",                   to: "ticketing_production_links#index",       as: "money_ticketing_production_links"
+      get  "ticketing/new",               to: "ticketing_production_links#new",         as: "new_money_ticketing_production_link"
+      post "ticketing",                   to: "ticketing_production_links#create"
+      get  "ticketing/:id",               to: "ticketing_production_links#show",        as: "money_ticketing_production_link"
+      get  "ticketing/:id/edit",          to: "ticketing_production_links#edit",        as: "edit_money_ticketing_production_link"
+      patch "ticketing/:id",              to: "ticketing_production_links#update"
+      delete "ticketing/:id",             to: "ticketing_production_links#destroy"
+      post "ticketing/:id/sync",          to: "ticketing_production_links#sync",        as: "sync_money_ticketing_production_link"
+      get  "ticketing/:id/match",         to: "ticketing_production_links#match",       as: "match_money_ticketing_production_link"
+      post "ticketing/:id/apply_matches", to: "ticketing_production_links#apply_matches", as: "apply_matches_money_ticketing_production_link"
+    end
 
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses

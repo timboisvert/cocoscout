@@ -1,0 +1,133 @@
+<% content_for :title, "Edit Events - #{@casting_table.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      ["Casting Tables", manage_casting_tables_path],
+      [@casting_table.name, manage_casting_table_path(@casting_table)]
+    ],
+    text: "Edit Casting Table",
+    links: []
+  } %>
+
+  <!-- Name Editing -->
+  <div class="mb-6">
+    <%= form_with model: @casting_table, url: manage_update_casting_table_path(@casting_table), method: :patch, class: "flex items-center gap-3" do |form| %>
+      <%= form.text_field :name, class: "text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:border-pink-500", style: "width: 300px;" %>
+      <%= render "shared/button", text: "Save Name", variant: "primary", size: "small" %>
+    <% end %>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="border-b border-gray-200 mb-6">
+    <nav class="-mb-px flex space-x-8">
+      <%= link_to manage_edit_casting_table_path(@casting_table),
+          class: "border-b-2 border-pink-500 py-4 px-1 text-sm font-medium text-pink-600" do %>
+        Events
+        <span class="ml-2 py-0.5 px-2 text-xs rounded-full bg-pink-100 text-pink-600"><%= @shows.count %></span>
+      <% end %>
+      <%= link_to manage_casting_table_edit_members_path(@casting_table),
+          class: "border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" do %>
+        Talent Pool
+      <% end %>
+    </nav>
+  </div>
+
+  <% unless @casting_table.draft? %>
+    <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <span class="text-sm font-medium text-amber-800">This casting table is finalized</span>
+        <span class="text-sm text-amber-700">— You can remove events to free them up for future casting tables, but cannot add new events.</span>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Current Events -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="px-5 py-4 border-b border-gray-200">
+        <h3 class="text-base font-semibold text-gray-900">Current Events (<%= @shows.count %>)</h3>
+      </div>
+      <div class="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+        <% if @shows.any? %>
+          <% @shows.each do |show| %>
+            <% draft_count = @draft_counts[show.id] || 0 %>
+            <div class="flex items-center justify-between hover:bg-gray-50 pr-3">
+              <div class="flex-1">
+                <%= render partial: "shared/show_row", locals: {
+                  show: show,
+                  show_production: true,
+                  show_location: false
+                } %>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <% if draft_count > 0 && @casting_table.draft? %>
+                  <span class="text-xs text-amber-600 font-medium"><%= draft_count %> draft<%= draft_count > 1 ? 's' : '' %></span>
+                <% end %>
+                <%= form_with url: manage_casting_table_remove_event_path(@casting_table, show), method: :delete, data: {
+                      turbo_confirm: draft_count > 0 && @casting_table.draft? ?
+                        "Remove \"#{show.secondary_name.presence || show.event_type.titleize}\" from this casting table?\n\nThis will also delete #{draft_count} draft assignment(s)." :
+                        "Remove \"#{show.secondary_name.presence || show.event_type.titleize}\" from this casting table?"
+                    } do %>
+                  <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash" %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="px-5 py-8 text-center text-gray-500">
+            No events in this casting table
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Add Events (only for draft) -->
+    <% if @casting_table.draft? %>
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-200">
+          <h3 class="text-base font-semibold text-gray-900">Add Events</h3>
+          <p class="text-sm text-gray-500 mt-1">Events from <%= @productions.map(&:name).join(", ") %></p>
+        </div>
+        <div class="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+          <% if @available_shows.any? %>
+            <% @available_shows.each do |show| %>
+              <div class="flex items-center justify-between hover:bg-gray-50 pr-3">
+                <div class="flex-1 opacity-70">
+                  <%= render partial: "shared/show_row", locals: {
+                    show: show,
+                    show_production: true,
+                    show_location: false
+                  } %>
+                </div>
+                <%= form_with url: manage_casting_table_add_event_path(@casting_table, show_id: show.id), method: :post, class: "flex-shrink-0" do %>
+                  <%= render "shared/button", text: "Add", variant: "primary", size: "small", icon: "plus" %>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="px-5 py-8 text-center text-gray-500">
+              No available events to add
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg border border-gray-200 border-dashed p-8 flex items-center justify-center">
+        <p class="text-gray-500 text-center">
+          Adding events is disabled for finalized casting tables.
+        </p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6">
+    <%= render "shared/button", text: "Back to Casting Table", variant: "secondary", size: "small", icon: "arrow-left", path: manage_casting_table_path(@casting_table) %>
+  </div>
+</div>

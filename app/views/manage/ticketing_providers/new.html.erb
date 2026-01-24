@@ -1,0 +1,105 @@
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [
+    ["Settings", "#"],
+    ["Ticketing", manage_ticketing_providers_path]
+  ],
+  text: "Connect Ticketing Platform"
+} %>
+
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <div class="bg-white shadow rounded-lg p-6">
+    <%= form_with model: @ticketing_provider, url: manage_ticketing_providers_path, class: "space-y-6" do |f| %>
+      <% if @ticketing_provider.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% @ticketing_provider.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div>
+        <label for="ticketing_provider_provider_type" class="block text-sm font-medium text-gray-700">
+          Platform
+        </label>
+        <div class="mt-2 grid grid-cols-2 gap-3">
+          <% @provider_types.each do |type| %>
+            <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-pink-500">
+              <%= f.radio_button :provider_type, type,
+                                 class: "sr-only peer",
+                                 checked: @ticketing_provider.provider_type == type %>
+              <div class="flex items-center space-x-3 w-full peer-checked:text-pink-600">
+                <div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                  <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+                <span class="font-medium"><%= Ticketing::ServiceFactory.provider_display_name(type) %></span>
+              </div>
+              <div class="absolute inset-0 border-2 border-transparent rounded-lg peer-checked:border-pink-500 pointer-events-none"></div>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div>
+        <label for="ticketing_provider_name" class="block text-sm font-medium text-gray-700">
+          Display Name
+        </label>
+        <p class="text-sm text-gray-500">A friendly name to identify this connection</p>
+        <%= f.text_field :name,
+                        placeholder: "e.g., Our Ticket Tailor Account",
+                        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
+      </div>
+
+      <div>
+        <label for="ticketing_provider_api_key" class="block text-sm font-medium text-gray-700">
+          API Key
+        </label>
+        <p class="text-sm text-gray-500">
+          Find this in your ticketing platform's settings or developer section
+        </p>
+        <%= f.password_field :api_key,
+                            placeholder: "sk_live_...",
+                            autocomplete: "off",
+                            class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 font-mono" %>
+      </div>
+
+      <div class="border-t pt-6">
+        <h4 class="text-sm font-medium text-gray-700 mb-3">Sync Settings</h4>
+
+        <div class="space-y-3">
+          <label class="flex items-center">
+            <%= f.check_box :auto_sync_enabled,
+                           class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
+            <span class="ml-2 text-sm text-gray-700">Enable automatic sync</span>
+          </label>
+
+          <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-700">Sync every</span>
+            <%= f.select :sync_interval_minutes,
+                        [[15, 15], [30, 30], [60, 60], [120, 120]].map { |label, val| ["#{label} minutes", val] },
+                        {},
+                        class: "rounded-md border-gray-300 text-sm focus:border-pink-500 focus:ring-pink-500" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+        <%= link_to "Cancel", manage_ticketing_providers_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+        <%= f.submit "Connect Platform", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6 bg-gray-50 border rounded-lg p-4">
+    <h4 class="text-sm font-medium text-gray-700">Where to find your API key</h4>
+    <ul class="mt-2 text-sm text-gray-600 space-y-1">
+      <li><strong>Ticket Tailor:</strong> Box Office Settings → API → Generate a new key</li>
+      <li><strong>Eventbrite:</strong> Account Settings → Developer Links → API Keys</li>
+      <li><strong>Wix:</strong> Wix Developers → API Keys</li>
+    </ul>
+  </div>
+</div>

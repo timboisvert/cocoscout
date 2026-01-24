@@ -3,7 +3,10 @@
 module Manage
   class CastingTablesController < Manage::ManageController
     before_action :ensure_user_is_manager, except: [ :index, :show ]
-    before_action :set_casting_table, only: [ :show, :edit, :update, :assign, :unassign, :summary, :finalize ]
+    before_action :set_casting_table, only: [
+      :show, :update, :assign, :unassign, :summary, :finalize,
+      :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member
+    ]
 
     def index
       @casting_tables = Current.organization.casting_tables
@@ -66,15 +69,11 @@ module Manage
       end
     end
 
-    def edit
-      redirect_to manage_casting_table_path(@casting_table) unless @casting_table.draft?
-    end
-
     def update
       if @casting_table.update(casting_table_params)
-        redirect_to manage_casting_table_path(@casting_table), notice: "Casting table updated"
+        redirect_back fallback_location: manage_casting_table_path(@casting_table), notice: "Casting table updated"
       else
-        render :edit, status: :unprocessable_entity
+        redirect_back fallback_location: manage_edit_casting_table_path(@casting_table), alert: @casting_table.errors.full_messages.join(", ")
       end
     end
 
@@ -207,6 +206,188 @@ module Manage
       else
         redirect_to manage_casting_table_summary_path(@casting_table), alert: "Error finalizing casting table"
       end
+    end
+
+    # Edit events page
+    def edit_events
+      @shows = @casting_table.shows.order(:date_and_time).includes(:production)
+      @productions = @casting_table.productions
+
+      # For adding events (only if draft)
+      if @casting_table.draft?
+        # Get shows from the same productions that aren't in ANY casting table
+        existing_show_ids = CastingTableEvent.pluck(:show_id)
+        @available_shows = Show.where(production_id: @productions.pluck(:id))
+                               .where.not(id: existing_show_ids)
+                               .where("date_and_time > ?", 1.day.ago)
+                               .order(:date_and_time)
+                               .includes(:production)
+      end
+
+      # For each show, count draft assignments (needed for removal confirmation)
+      @draft_counts = @casting_table.casting_table_draft_assignments
+                                     .group(:show_id)
+                                     .count
+    end
+
+    # Edit members/talent pool page
+    def edit_members
+      person_ids = @casting_table.casting_table_members.where(memberable_type: "Person").pluck(:memberable_id)
+      group_ids = @casting_table.casting_table_members.where(memberable_type: "Group").pluck(:memberable_id)
+
+      @people = Person.where(id: person_ids)
+                      .includes(profile_headshots: { image_attachment: :blob })
+                      .order(:name)
+      @groups = Group.where(id: group_ids)
+                     .includes(profile_headshots: { image_attachment: :blob })
+                     .order(:name)
+
+      @productions = @casting_table.productions
+
+      # For adding members (only if draft)
+      if @casting_table.draft?
+        # Get all people from the org's talent pools for these productions
+        existing_member_ids = @casting_table.casting_table_members.where(memberable_type: "Person").pluck(:memberable_id)
+        @available_people = Current.organization.people
+                                    .where.not(id: existing_member_ids)
+                                    .order(:name)
+                                    .limit(100)
+
+        existing_group_ids = @casting_table.casting_table_members.where(memberable_type: "Group").pluck(:memberable_id)
+        @available_groups = Current.organization.groups
+                                    .where.not(id: existing_group_ids)
+                                    .order(:name)
+      end
+
+      # For each member, count draft assignments (needed for removal confirmation)
+      @draft_counts_by_member = {}
+      @casting_table.casting_table_draft_assignments.each do |da|
+        key = [ da.assignable_type, da.assignable_id ]
+        @draft_counts_by_member[key] ||= 0
+        @draft_counts_by_member[key] += 1
+      end
+    end
+
+    # Add an event to the casting table
+    def add_event
+      unless @casting_table.draft?
+        redirect_to manage_edit_casting_table_path(@casting_table), alert: "Cannot add events to a finalized casting table"
+        return
+      end
+
+      show = Show.joins(:production)
+                 .where(productions: { organization_id: Current.organization.id })
+                 .find_by(id: params[:show_id])
+
+      unless show
+        redirect_to manage_edit_casting_table_path(@casting_table), alert: "Event not found"
+        return
+      end
+
+      # Check if show is already in another casting table
+      if CastingTableEvent.exists?(show_id: show.id)
+        redirect_to manage_edit_casting_table_path(@casting_table), alert: "This event is already in a casting table"
+        return
+      end
+
+      # Add to casting table
+      @casting_table.casting_table_events.create!(show: show)
+
+      # Also ensure the production is linked
+      unless @casting_table.productions.include?(show.production)
+        @casting_table.casting_table_productions.create!(production: show.production)
+      end
+
+      redirect_to manage_edit_casting_table_path(@casting_table), notice: "Event added to casting table"
+    end
+
+    # Remove an event from the casting table
+    def remove_event
+      event = @casting_table.casting_table_events.find_by(show_id: params[:show_id])
+
+      unless event
+        redirect_to manage_edit_casting_table_path(@casting_table), alert: "Event not found in casting table"
+        return
+      end
+
+      # If draft, delete any draft assignments for this show
+      if @casting_table.draft?
+        deleted_count = @casting_table.casting_table_draft_assignments.where(show_id: params[:show_id]).delete_all
+        event.destroy
+        notice = deleted_count > 0 ? "Event removed along with #{deleted_count} draft assignment(s)" : "Event removed from casting table"
+      else
+        # If finalized, just unlink the event (real assignments stay)
+        event.destroy
+        notice = "Event removed from casting table (existing assignments preserved)"
+      end
+
+      redirect_to manage_edit_casting_table_path(@casting_table), notice: notice
+    end
+
+    # Add a member to the talent pool
+    def add_member
+      unless @casting_table.draft?
+        redirect_to manage_casting_table_edit_members_path(@casting_table), alert: "Cannot add members to a finalized casting table"
+        return
+      end
+
+      memberable_type = params[:memberable_type]
+      memberable_id = params[:memberable_id]
+
+      unless %w[Person Group].include?(memberable_type)
+        redirect_to manage_casting_table_edit_members_path(@casting_table), alert: "Invalid member type"
+        return
+      end
+
+      # Verify the member belongs to this organization
+      memberable = if memberable_type == "Person"
+        Current.organization.people.find_by(id: memberable_id)
+      else
+        Current.organization.groups.find_by(id: memberable_id)
+      end
+
+      unless memberable
+        redirect_to manage_casting_table_edit_members_path(@casting_table), alert: "Member not found"
+        return
+      end
+
+      # Check if already in this casting table
+      if @casting_table.casting_table_members.exists?(memberable_type: memberable_type, memberable_id: memberable_id)
+        redirect_to manage_casting_table_edit_members_path(@casting_table), alert: "Member already in casting table"
+        return
+      end
+
+      @casting_table.casting_table_members.create!(memberable: memberable)
+
+      redirect_to manage_casting_table_edit_members_path(@casting_table), notice: "#{memberable.name} added to talent pool"
+    end
+
+    # Remove a member from the talent pool
+    def remove_member
+      member = @casting_table.casting_table_members.find_by(
+        memberable_type: params[:memberable_type],
+        memberable_id: params[:memberable_id]
+      )
+
+      unless member
+        redirect_to manage_casting_table_edit_members_path(@casting_table), alert: "Member not found in casting table"
+        return
+      end
+
+      # If draft, delete any draft assignments for this member
+      if @casting_table.draft?
+        deleted_count = @casting_table.casting_table_draft_assignments
+                                       .where(assignable_type: params[:memberable_type], assignable_id: params[:memberable_id])
+                                       .delete_all
+        member.destroy
+        notice = deleted_count > 0 ? "Member removed along with #{deleted_count} draft assignment(s)" : "Member removed from talent pool"
+      else
+        # If finalized, just unlink the member (real assignments stay)
+        member.destroy
+        notice = "Member removed from talent pool (existing assignments preserved)"
+      end
+
+      redirect_to manage_casting_table_edit_members_path(@casting_table), notice: notice
     end
 
     private
