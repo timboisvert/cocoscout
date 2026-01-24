@@ -25,14 +25,23 @@
     actions: casting_actions
   %>
 
-  <div class="border-t border-gray-200 pt-4 mt-2">
+  <div class="border-t border-gray-200 pt-4 mt-2" data-controller="casting-filter">
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
         label: "View",
         filters: [
-          { text: "Upcoming", path: manage_casting_path(filter: "upcoming"), active: @filter == "upcoming" },
-          { text: "Past", path: manage_casting_path(filter: "past"), active: @filter == "past" }
+          { text: "Upcoming", path: manage_casting_path(filter: "upcoming", hide_canceled: @hide_canceled), active: @filter == "upcoming" },
+          { text: "Past", path: manage_casting_path(filter: "past", hide_canceled: @hide_canceled), active: @filter == "past" }
         ]
+      },
+      { separator: true },
+      {
+        partial: "shared/filters/toggle_filter",
+        locals: {
+          label: "Hide Canceled Events",
+          active: @hide_canceled,
+          toggle_action: "click->casting-filter#toggle"
+        }
       }
     ] %>
 

@@ -50,9 +50,12 @@
   sign_up_regs = local_assigns[:sign_up_registrations] || []
   sign_up_regs_key = sign_up_regs.map { |r| [r.id, r.updated_at.to_i] }.hash
 
+  # Check if show is canceled
+  is_canceled = show.canceled?
+
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v12",
+    "cast_card_v13",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
@@ -62,6 +65,7 @@
     cancelled_vacancies_key,
     open_vacancies_key,
     sign_up_regs_key,
+    is_canceled,
     title.presence || "default"
   ]
 %>
@@ -84,7 +88,7 @@
         <%# Date Box %>
         <div class="flex-shrink-0 w-12 sm:w-14 text-center">
           <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
-          <div class="text-2xl font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></div>
+          <div class="text-2xl font-bold <%= is_canceled ? 'line-through text-red-400' : 'text-gray-900' %>"><%= show.date_and_time.strftime("%-d") %></div>
           <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
         </div>
 
@@ -108,6 +112,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                 </svg>
               </span>
+            <% end %>
+            <% if is_canceled %>
+              <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>
             <% end %>
           </div>
           <div class="text-sm text-gray-600">

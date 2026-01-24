@@ -7,12 +7,23 @@ module Manage
       @filter = params[:filter] || session[:casting_filter] || "upcoming"
       session[:casting_filter] = @filter
 
+      # Hide canceled events toggle (default: true - hide canceled)
+      @hide_canceled = if params[:hide_canceled].present?
+        params[:hide_canceled] == "true"
+      else
+        session[:casting_hide_canceled].nil? ? true : session[:casting_hide_canceled]
+      end
+      session[:casting_hide_canceled] = @hide_canceled
+
       # Get all productions for the organization
       @productions = Current.organization.productions.order(:name)
 
       # Get shows with casting enabled across all productions
       base_shows = Show.where(production: @productions, casting_enabled: true)
                        .includes(:production, :location, :custom_roles, show_person_role_assignments: :role)
+
+      # Apply canceled filter
+      base_shows = base_shows.where(canceled: false) if @hide_canceled
 
       case @filter
       when "past"

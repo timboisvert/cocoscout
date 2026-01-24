@@ -3,11 +3,10 @@ import { Controller } from "@hotwired/stimulus"
 // Controls hiding/showing non-revenue events in the money page list
 // Uses server-side filtering with cookie persistence
 export default class extends Controller {
-    static targets = ["toggle"]
-
-    toggle() {
+    toggle(event) {
         // Read current state from aria-checked attribute
-        const currentState = this.toggleTarget.getAttribute("aria-checked") === "true"
+        const button = event.currentTarget
+        const currentState = button.getAttribute("aria-checked") === "true"
         const newState = !currentState
 
         // Update URL with toggle parameter and reload via Turbo

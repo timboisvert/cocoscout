@@ -11,14 +11,23 @@
     links: []
   } %>
 
-  <div class="pt-4 mt-2">
+  <div class="pt-4 mt-2" data-controller="casting-filter">
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
         label: "View",
         filters: [
-          { text: "Upcoming", path: manage_casting_production_path(@production, filter: "upcoming"), active: @filter == "upcoming" },
-          { text: "Past", path: manage_casting_production_path(@production, filter: "past"), active: @filter == "past" }
+          { text: "Upcoming", path: manage_casting_production_path(@production, filter: "upcoming", hide_canceled: @hide_canceled), active: @filter == "upcoming" },
+          { text: "Past", path: manage_casting_production_path(@production, filter: "past", hide_canceled: @hide_canceled), active: @filter == "past" }
         ]
+      },
+      { separator: true },
+      {
+        partial: "shared/filters/toggle_filter",
+        locals: {
+          label: "Hide Canceled Events",
+          active: @hide_canceled,
+          toggle_action: "click->casting-filter#toggle"
+        }
       }
     ] %>
 
