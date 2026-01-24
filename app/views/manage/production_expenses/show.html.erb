@@ -71,7 +71,7 @@
               <div class="font-medium text-gray-900">
                 <%= allocation.show.date_and_time.strftime("%b %d, %Y") %>
                 &middot;
-                <%= allocation.show.secondary_name.presence || allocation.show.event_type.titleize %>
+                <%= allocation.show.display_name %>
               </div>
               <div class="text-sm text-gray-500">
                 <%= allocation.show.date_and_time.strftime("%l:%M %p").strip %>

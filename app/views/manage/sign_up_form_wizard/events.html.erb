@@ -57,7 +57,7 @@
             <div class="flex-1 min-w-0 flex flex-col justify-center">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-900">
-                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                  <%= show.display_name %>
                 </span>
                 <% if show.recurring? %>
                   <span title="Recurring event">
@@ -204,7 +204,7 @@
               <%# Show Details %>
               <div class="flex-1 min-w-0 flex flex-col justify-center">
                 <span class="font-medium text-gray-900 text-sm">
-                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                  <%= show.display_name %>
                 </span>
                 <div class="text-xs text-gray-600">
                   <%= show.date_and_time.strftime("%l:%M %p").strip %>

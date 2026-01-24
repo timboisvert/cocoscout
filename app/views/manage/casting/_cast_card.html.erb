@@ -94,12 +94,12 @@
             <div class="text-xs text-gray-400 mb-0"><%= production.name %></div>
           <% end %>
           <div class="font-medium text-gray-900 flex items-center gap-1.5">
-            <%= show.secondary_name.presence || show.event_type.titleize %>
+            <%= show.display_name %>
             <% if show.linked? %>
               <%
                 other_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time)
                 linked_tooltip = "Linked with: " + other_shows.map { |s|
-                  name = s.secondary_name.presence || s.event_type.titleize
+                  name = s.display_name
                   "#{s.date_and_time.strftime('%b %-d')} #{name}"
                 }.join(", ")
               %>

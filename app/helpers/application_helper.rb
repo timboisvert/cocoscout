@@ -258,7 +258,7 @@ module ApplicationHelper
   # Returns a display string for a show (for breadcrumbs, titles, etc.)
   # Format: "Dec 15 - Performance" or just "Performance" if include_date is false
   def show_display_name(show, include_date: true)
-    name = show.secondary_name.presence || show.event_type.titleize
+    name = show.display_name
     if include_date
       "#{show.date_and_time.strftime('%b %-d')} - #{name}"
     else

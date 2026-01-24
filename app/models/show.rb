@@ -192,10 +192,16 @@ class Show < ApplicationRecord
     date_and_time < Time.current
   end
 
+  # Display name for the show (secondary_name if set, otherwise production name + event type)
+  def display_name
+    return secondary_name if secondary_name.present?
+    return "#{production.name} #{event_type.titleize}" if production.present? && event_type.present?
+    "Show"
+  end
+
   # Display name with date for select dropdowns
   def name_with_date
-    name = secondary_name.presence || event_type&.titleize || "Show"
-    "#{name} - #{date_and_time&.strftime('%b %-d, %Y at %-I:%M %p')}"
+    "#{display_name} - #{date_and_time&.strftime('%b %-d, %Y at %-I:%M %p')}"
   end
 
   # Check if casting has been finalized for this show

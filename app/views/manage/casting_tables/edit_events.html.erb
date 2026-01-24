@@ -72,8 +72,8 @@
                 <% end %>
                 <%= form_with url: manage_casting_table_remove_event_path(@casting_table, show), method: :delete, data: {
                       turbo_confirm: draft_count > 0 && @casting_table.draft? ?
-                        "Remove \"#{show.secondary_name.presence || show.event_type.titleize}\" from this casting table?\n\nThis will also delete #{draft_count} draft assignment(s)." :
-                        "Remove \"#{show.secondary_name.presence || show.event_type.titleize}\" from this casting table?"
+                        "Remove \"#{show.display_name}\" from this casting table?\n\nThis will also delete #{draft_count} draft assignment(s)." :
+                        "Remove \"#{show.display_name}\" from this casting table?"
                     } do %>
                   <%= render "shared/button", text: "Remove", variant: "danger", size: "small", icon: "trash" %>
                 <% end %>

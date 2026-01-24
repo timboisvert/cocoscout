@@ -214,7 +214,7 @@
                       </div>
                       <div class="min-w-0">
                         <div class="font-medium text-gray-900">
-                          <%= affected_show.secondary_name.presence || affected_show.event_type.titleize %>
+                          <%= affected_show.display_name %>
                         </div>
                         <div class="text-sm text-gray-600">
                           <%= affected_show.date_and_time.strftime("%l:%M %p").strip %>
@@ -238,7 +238,7 @@
                   </div>
                   <div class="min-w-0">
                     <div class="font-medium text-gray-900">
-                      <%= show.secondary_name.presence || show.event_type.titleize %>
+                      <%= show.display_name %>
                     </div>
                     <div class="text-sm text-gray-600">
                       <%= show.date_and_time.strftime("%l:%M %p").strip %>
@@ -313,7 +313,7 @@
                     <%# Show Details %>
                     <div class="min-w-0">
                       <div class="font-medium text-gray-900">
-                        <%= show.secondary_name.presence || show.event_type.titleize %>
+                        <%= show.display_name %>
                       </div>
                       <div class="text-sm text-gray-600">
                         <%= show.date_and_time.strftime("%l:%M %p").strip %>

@@ -10,7 +10,7 @@
 
 <% if @show %>
 <p>
-  <strong>Event:</strong> <%= @show.secondary_name.presence || @show.event_type.titleize %> on <%= @show.date_and_time.strftime("%B %-d, %Y at %l:%M %p") %>
+  <strong>Event:</strong> <%= @show.display_name %> on <%= @show.date_and_time.strftime("%B %-d, %Y at %l:%M %p") %>
 </p>
 <% end %>
 

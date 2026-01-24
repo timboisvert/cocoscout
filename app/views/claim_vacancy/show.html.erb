@@ -55,7 +55,7 @@
             <h2 class="font-semibold text-gray-900"><%= @production.name %></h2>
             <% unless @show.linked? %>
               <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %d, %Y at %l:%M %p") %></p>
-              <p class="text-xs text-pink-600 font-medium"><%= @show.secondary_name.presence || @show.event_type.titleize %></p>
+              <p class="text-xs text-pink-600 font-medium"><%= @show.display_name %></p>
               <% if @show.location %>
                 <p class="text-xs text-gray-500"><%= @show.location.name %></p>
               <% end %>
@@ -96,7 +96,7 @@
                       <span class="<%= is_past ? 'text-gray-400' : 'text-gray-500' %> font-normal">at <%= event_show.date_and_time.strftime("%l:%M %p").strip %></span>
                     </p>
                     <p class="text-xs <%= is_past ? 'text-gray-400' : 'text-gray-500' %>">
-                      <%= event_show.secondary_name.presence || event_show.event_type.titleize %>
+                      <%= event_show.display_name %>
                     </p>
                   </div>
                 </div>

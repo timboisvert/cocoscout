@@ -64,7 +64,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="font-medium text-gray-900 <%= 'line-through' if is_canceled %>">
-              <%= show.secondary_name.presence || show.event_type.titleize %>
+              <%= show.display_name %>
             </span>
             <% if is_canceled %>
               <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Canceled</span>

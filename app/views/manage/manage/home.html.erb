@@ -239,7 +239,7 @@
               <%# Middle third: Show details %>
               <div class="sm:w-1/3 border-t sm:border-t-0 sm:border-l border-pink-200 px-3 py-2 flex flex-col justify-center">
                 <div class="font-medium text-gray-900">
-                  <%= show.secondary_name.presence || show.event_type.titleize %>
+                  <%= show.display_name %>
                 </div>
                 <% if show.is_online %>
                   <div class="text-sm text-gray-600">Online</div>
@@ -292,20 +292,8 @@
               <%= link_to manage_show_path(production, show), class: "block no-underline" do %>
                 <div class="px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
                   <div class="flex flex-col sm:flex-row sm:items-stretch gap-3 sm:gap-4">
-                    <%# Left Third: Production + Date & Show Details %>
+                    <%# Left Third: Date & Show Details (matching shared/show_row) %>
                     <div class="flex-1 flex items-center gap-4">
-                      <%# Production Logo %>
-                      <% logo_variant = production.safe_logo_variant(:small) %>
-                      <% if logo_variant %>
-                        <div class="flex-shrink-0 w-10 h-6 rounded flex items-center justify-center overflow-hidden">
-                          <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                        </div>
-                      <% else %>
-                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                          <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-                        </div>
-                      <% end %>
-
                       <%# Date Box %>
                       <div class="flex-shrink-0 w-14 text-center">
                         <div class="text-xs font-semibold text-pink-600 uppercase"><%= show.date_and_time.strftime("%b") %></div>
@@ -314,12 +302,31 @@
                       </div>
 
                       <%# Show Details %>
-                      <div class="min-w-0">
-                        <div class="font-medium text-gray-900">
-                          <%= show.secondary_name.presence || show.event_type.titleize %>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-400 mb-0"><%= production.name %></div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-medium text-gray-900"><%= show.display_name %></span>
+                          <% if show.recurring? %>
+                            <span data-controller="tooltip" data-tooltip-text="This is a recurring event">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                              </svg>
+                            </span>
+                          <% end %>
+                          <% if show.linked? %>
+                            <%
+                              other_shows = show.event_linkage.shows.where.not(id: show.id).order(:date_and_time)
+                              linked_tooltip = "Linked with: " + other_shows.map { |s| "#{s.date_and_time.strftime('%b %-d')} #{s.display_name}" }.join(", ")
+                            %>
+                            <span data-controller="tooltip" data-tooltip-text="<%= linked_tooltip %>">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-pink-500 size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                              </svg>
+                            </span>
+                          <% end %>
                         </div>
                         <div class="text-sm text-gray-600">
-                          <%= production.name %> · <%= show.date_and_time.strftime("%l:%M %p").strip %>
+                          <%= show.date_and_time.strftime("%l:%M %p").strip %>
                           <% if show.is_online %>
                             · Online
                           <% elsif show.location.present? %>

@@ -109,7 +109,7 @@
                     <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col justify-center">
-                    <span class="font-medium text-gray-900"><%= show.secondary_name.presence || show.event_type.titleize %></span>
+                    <span class="font-medium text-gray-900"><%= show.display_name %></span>
                     <div class="text-sm text-gray-600">
                       <%= show.date_and_time.strftime("%l:%M %p").strip %>
                       <% if show.location.present? %>· <%= show.location.name %><% elsif show.is_online %>· Online<% end %>
@@ -180,7 +180,7 @@
                     <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col justify-center">
-                    <span class="font-medium text-gray-900 text-sm"><%= show.secondary_name.presence || show.event_type.titleize %></span>
+                    <span class="font-medium text-gray-900 text-sm"><%= show.display_name %></span>
                     <div class="text-xs text-gray-600">
                       <%= show.date_and_time.strftime("%l:%M %p").strip %>
                       <% if show.location.present? %>· <%= show.location.name %><% elsif show.is_online %>· Online<% end %>

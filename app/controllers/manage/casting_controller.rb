@@ -1346,7 +1346,7 @@ module Manage
           # Personalize the email body
           personalized_body = email_body.gsub("[Name]", person.name)
                                          .gsub("[Role]", role.name)
-                                         .gsub("[Show]", @show.secondary_name.presence || @show.event_type.titleize)
+                                         .gsub("[Show]", @show.display_name)
                                          .gsub("[Date]", @show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"))
                                          .gsub("[Production]", @production.name)
 
@@ -1377,7 +1377,7 @@ module Manage
         show = a[:show]
         role = a[:role]
         {
-          show_name: show.secondary_name.presence || show.event_type.titleize,
+          show_name: show.display_name,
           show_date: show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
           role_name: role.name
         }
@@ -1471,7 +1471,7 @@ module Manage
       end
 
       shows_list = sorted_shows.map do |s|
-        show_name = s.secondary_name.presence || s.event_type.titleize
+        show_name = s.display_name
         date = s.date_and_time.strftime("%A, %B %-d at %-l:%M %p")
         "<li>#{date}: #{show_name}</li>"
       end.join("\n")

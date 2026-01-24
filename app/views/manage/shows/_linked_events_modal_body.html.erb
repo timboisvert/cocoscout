@@ -61,7 +61,7 @@
     <% if linkable_shows.any? %>
       <div class="space-y-1 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-2">
         <% linkable_shows.each do |linkable_show| %>
-          <% linkable_event_name = linkable_show.secondary_name.presence || linkable_show.event_type.titleize %>
+          <% linkable_event_name = linkable_show.display_name %>
           <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer group">
             <input type="checkbox"
                    class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer"

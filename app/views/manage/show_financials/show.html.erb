@@ -1,4 +1,4 @@
-<% content_for :title, "#{@show.secondary_name.presence || @show.event_type.titleize} - #{show_display_name(@show)}" %>
+<% content_for :title, "#{@show.display_name} - #{show_display_name(@show)}" %>
 
 <%
   has_data = @show_financials.has_data?

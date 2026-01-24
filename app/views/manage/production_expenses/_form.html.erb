@@ -134,7 +134,7 @@
                 <%= check_box_tag "production_expense[selected_show_ids][]", show.id, @production_expense.selected_show_ids&.include?(show.id), class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-600" %>
                 <div class="flex-1">
                   <div class="text-sm font-medium text-gray-900">
-                    <%= show.date_and_time.strftime("%b %d, %Y") %> - <%= show.secondary_name.presence || show.event_type.titleize %>
+                    <%= show.date_and_time.strftime("%b %d, %Y") %> - <%= show.display_name %>
                   </div>
                   <div class="text-xs text-gray-500"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
                 </div>

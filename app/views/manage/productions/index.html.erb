@@ -9,40 +9,35 @@
     links: current_user_is_global_manager? ? [{ text: "Add a Production", path: new_manage_production_path }] : []
   } %>
 
-  <div class="pt-4">
-    <% if @productions.any? %>
-      <div class="space-y-1">
-        <% @productions.each do |production| %>
-          <%= link_to "#{edit_manage_production_path(production)}#tab-0", class: "flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
-            <%# Left Section: Production Logo + Name %>
-            <div class="flex items-center gap-4 pr-4">
-              <% logo_variant = production.safe_logo_variant(:small) %>
-              <% if logo_variant %>
-                <div class="flex-shrink-0 w-14 h-8 rounded flex items-center justify-center overflow-hidden">
-                  <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
-                </div>
-              <% else %>
-                <div class="flex-shrink-0 w-14 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <span class="text-sm font-bold text-pink-600"><%= production.initials %></span>
-                </div>
-              <% end %>
-              <span class="font-medium text-gray-900"><%= production.name %></span>
+<% if @productions.any? %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <% @productions.each do |production| %>
+        <%= link_to "#{edit_manage_production_path(production)}#tab-0", class: "flex flex-col items-center p-4 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
+        <% logo_variant = production.safe_logo_variant(:small) %>
+        <% if logo_variant %>
+            <div class="w-24 h-14 rounded flex items-center justify-center overflow-hidden mb-3">
+            <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover rounded" %>
             </div>
-          <% end %>
+        <% else %>
+            <div class="w-24 h-14 rounded bg-pink-100 flex items-center justify-center mb-3">
+            <span class="text-lg font-bold text-pink-600"><%= production.initials %></span>
+            </div>
         <% end %>
-      </div>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600 mb-4">No productions found in this organization.</p>
-        <% if current_user_is_global_manager? %>
-          <%= link_to new_manage_production_path, class: "inline-flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg text-sm transition-colors" do %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Create your first production
-          <% end %>
+        <span class="font-medium text-gray-900 text-center text-sm"><%= production.name %></span>
         <% end %>
-      </div>
     <% end %>
-  </div>
+    </div>
+<% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <p class="text-gray-600 mb-4">No productions found in this organization.</p>
+    <% if current_user_is_global_manager? %>
+        <%= link_to new_manage_production_path, class: "inline-flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg text-sm transition-colors" do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Create your first production
+        <% end %>
+    <% end %>
+    </div>
+<% end %>
 </div>

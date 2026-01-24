@@ -103,7 +103,7 @@
                         <div class="text-xs text-gray-400 mb-0"><%= show.production.name %></div>
                       <% end %>
                       <div class="font-medium text-sm text-gray-900 truncate">
-                        <%= show.secondary_name.presence || show.event_type.titleize %>
+                        <%= show.display_name %>
                       </div>
                       <div class="text-xs text-gray-500">
                         <%= show.date_and_time.strftime("%l:%M %p").strip %>

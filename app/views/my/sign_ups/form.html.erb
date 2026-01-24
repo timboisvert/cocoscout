@@ -554,7 +554,7 @@
               </div>
               <%# Show Details %>
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-gray-900"><%= @show.secondary_name.presence || @show.event_type.titleize %></p>
+                <p class="font-medium text-gray-900"><%= @show.display_name %></p>
                 <p class="text-sm text-gray-500"><%= @show.date_and_time.strftime("%-I:%M %p") %></p>
                 <% if @show.location.present? %>
                   <p class="text-sm text-gray-500"><%= @show.location.name %></p>

@@ -123,7 +123,7 @@
                       <span class="text-gray-500 font-normal">at <%= event_show.date_and_time.strftime("%l:%M %p").strip %></span>
                     </p>
                     <p class="text-xs text-gray-500">
-                      <%= event_show.secondary_name.presence || event_show.event_type.titleize %>
+                      <%= event_show.display_name %>
                       <%= "(this event)" if is_current %>
                     </p>
                   </div>
