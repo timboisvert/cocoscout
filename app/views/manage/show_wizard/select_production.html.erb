@@ -65,7 +65,7 @@
         <% if @productions.empty? %>
           <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
             <p class="text-gray-600">No productions found. Create a production first.</p>
-            <%= link_to "Create Production", new_manage_production_path, class: "mt-2 inline-block text-pink-600 hover:text-pink-700" %>
+            <%= link_to "Create Production", manage_productions_wizard_path, class: "mt-2 inline-block text-pink-600 hover:text-pink-700" %>
           </div>
         <% end %>
 

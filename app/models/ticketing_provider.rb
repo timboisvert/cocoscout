@@ -6,13 +6,9 @@ class TicketingProvider < ApplicationRecord
   has_many :ticketing_production_links, dependent: :destroy
   has_many :productions, through: :ticketing_production_links
   has_many :ticketing_sync_logs, dependent: :destroy
+  has_many :ticketing_pending_events, dependent: :destroy
 
-  # Encryption for OAuth tokens and API keys
-  encrypts :access_token_ciphertext, deterministic: false
-  encrypts :refresh_token_ciphertext, deterministic: false
-  encrypts :api_key_ciphertext, deterministic: false
-
-  # Aliases for cleaner access
+  # Aliases for cleaner access to credential columns
   def access_token
     access_token_ciphertext
   end

@@ -77,7 +77,7 @@
       <% else %>
         <div class="mt-6">
           <p class="text-sm text-gray-500 mb-3">First, connect a ticketing platform in settings</p>
-          <%= link_to manage_ticketing_providers_path do %>
+          <%= link_to manage_ticketing_wizard_path(@production.organization) do %>
             <%= render "shared/button", text: "Connect Platform", variant: "secondary", size: "medium" %>
           <% end %>
         </div>

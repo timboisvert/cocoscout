@@ -17,8 +17,9 @@
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Organization Team Members</button>
     <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Locations</button>
     <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Messages</button>
+    <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Ticketing</button>
     <% if @is_owner %>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
     <% end %>
   </nav>
 
@@ -441,7 +442,59 @@
     <% end %>
   </div>
 
-  <!-- Tab 5: Danger Zone (Owner only) -->
+  <!-- Tab 5: Ticketing Integrations -->
+  <div data-tabs-target="panel" class="hidden">
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Ticketing Integrations" %>
+      <div class="p-6 bg-white">
+        <p class="text-sm text-gray-600 mb-4">
+          Connect your ticketing platforms to automatically sync ticket sales data into your show financials.
+        </p>
+
+        <% ticketing_providers = Current.organization.ticketing_providers.order(:name) %>
+        <% if ticketing_providers.any? %>
+          <div class="space-y-2 mb-6">
+            <% ticketing_providers.each do |provider| %>
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-pink-600">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-sm text-gray-900"><%= provider.name %></div>
+                    <div class="text-xs text-gray-500"><%= provider.provider_display_name %></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <% if provider.healthy? %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Connected</span>
+                  <% else %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Error</span>
+                  <% end %>
+                  <%= link_to "Manage", manage_ticketing_provider_path(@organization, provider), class: "text-sm text-pink-600 hover:text-pink-700 font-medium" %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-gray-400 mx-auto mb-2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+            </svg>
+            <p class="text-sm text-gray-600">No ticketing platforms connected yet.</p>
+          </div>
+        <% end %>
+
+        <%= link_to manage_ticketing_wizard_path(@organization) do %>
+          <%= render "shared/button", text: "Connect Ticketing Platform", variant: "primary", size: "medium" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 6: Danger Zone (Owner only) -->
   <% if @is_owner %>
     <div data-tabs-target="panel" class="hidden">
       <!-- Transfer Ownership Section -->

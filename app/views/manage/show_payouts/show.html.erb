@@ -24,11 +24,34 @@
     payout_class = "bg-pink-100 text-pink-700"
   end
 
-  # Check for missing cast (people in show who aren't in payout)
-  current_cast_ids = @show.show_person_role_assignments.pluck(:assignable_id)
-  payout_payee_ids = @show_payout.line_items.where(payee_type: "Person").pluck(:payee_id)
+  # Check for missing cast (non-guest people in show who aren't in payout)
+  non_guest_assignments = @show.show_person_role_assignments.where.not(assignable_id: nil)
+  current_cast_ids = non_guest_assignments.pluck(:assignable_id).compact
+  payout_payee_ids = @show_payout.line_items.where(payee_type: "Person").where(is_guest: false).pluck(:payee_id)
   missing_cast_count = (current_cast_ids - payout_payee_ids).size
   has_missing_cast = is_calculated && missing_cast_count > 0
+
+  # Check for stale cast (people in payout who are no longer in the show's cast)
+  stale_cast_ids = payout_payee_ids - current_cast_ids
+  stale_cast_count = stale_cast_ids.size
+  has_stale_cast = is_calculated && stale_cast_count > 0
+
+  # Check for guests in cast who aren't in payout yet
+  guest_assignments = @show.show_person_role_assignments.where(assignable_id: nil).where.not(guest_name: nil)
+  current_guest_names = guest_assignments.pluck(:guest_name).compact
+  payout_guest_names = @show_payout.line_items.where(is_guest: true).pluck(:guest_name).compact
+  missing_guests_count = (current_guest_names - payout_guest_names).size
+  has_missing_guests = is_calculated && missing_guests_count > 0
+
+  # Check for guests in payout who need payment info
+  guest_line_items = @show_payout.line_items.where(is_guest: true)
+  guests_without_payment = guest_line_items.reject(&:paid?).select { |li| !li.guest_has_payment_method? }
+  has_guests_needing_payment = guests_without_payment.any?
+
+  # Check for regular performers (non-guests) who need payment info
+  regular_line_items = @show_payout.line_items.where(payee_type: "Person").where(is_guest: [false, nil])
+  performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.payee.venmo_configured? && !li.payee.zelle_configured? }
+  has_performers_needing_payment = performers_without_payment.any?
 
   # Get list of people in production for add person dropdown
   production_people = @production.effective_talent_pool&.people&.order(:name) || []
@@ -76,6 +99,41 @@
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
 
+      <% if has_stale_cast || has_missing_guests %>
+        <!-- Cast Has Changed Alert - needs recalculation -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm text-red-800 font-medium">
+                Cast has changed since this payout was calculated
+              </p>
+              <p class="text-sm text-red-700 mt-1">
+                <% if has_stale_cast && has_missing_guests %>
+                  <%= stale_cast_count %> performer<%= stale_cast_count == 1 ? " is" : "s are" %> no longer in the cast, and <%= missing_guests_count %> guest<%= missing_guests_count == 1 ? " is" : "s are" %> missing from this payout.
+                <% elsif has_stale_cast %>
+                  <%= stale_cast_count %> performer<%= stale_cast_count == 1 ? " is" : "s are" %> no longer in the show's cast.
+                <% else %>
+                  <%= missing_guests_count %> guest<%= missing_guests_count == 1 ? " is" : "s are" %> missing from this payout.
+                <% end %>
+                Recalculate to update the payout.
+              </p>
+              <div class="mt-3">
+                <%= render "shared/button", 
+                      text: "Recalculate Payout", 
+                      variant: "secondary", 
+                      size: "small",
+                      icon: "arrow-path",
+                      path: manage_calculate_money_show_payout_path(@show),
+                      method: :post %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <% if has_missing_cast %>
         <!-- Missing Cast Alert -->
         <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -98,6 +156,96 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                   </svg>
                   Add Missing Cast
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <% if has_guests_needing_payment %>
+        <!-- Guest Payment Info Needed -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm text-blue-800 font-medium">
+                <%= guests_without_payment.size %> guest<%= guests_without_payment.size == 1 ? " needs" : "s need" %> payment info
+              </p>
+              <p class="text-sm text-blue-700 mt-1">
+                Add Venmo or Zelle details for guest performers so you can pay them.
+              </p>
+              <div class="mt-3">
+                <button type="button"
+                        data-action="click->payment-actions#showGuestPaymentModal"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                  Add Guest Payment Info
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <% if has_performers_needing_payment %>
+        <!-- Payment Setup Section (matches /manage/money/payouts style) -->
+        <div class="bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-semibold text-gray-900">Payment Setup</h3>
+              <p class="text-sm text-gray-500 mt-0.5">
+                <%= performers_without_payment.size %> performer<%= performers_without_payment.size == 1 ? " hasn't" : "s haven't" %> set up their payment info
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <%= render "shared/button", text: "QR Code", variant: "outline", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
+              <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "paper-airplane", path: manage_send_payment_reminders_money_show_payout_path(@show), method: :post %>
+            </div>
+          </div>
+
+          <button type="button" data-action="click->show-toggle#toggle" class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
+            <svg data-show-toggle-target="icon" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            Show names
+          </button>
+          <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
+            <div class="flex flex-wrap gap-1.5">
+              <% performers_without_payment.each do |li| %>
+                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                  <%= li.payee&.name %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+
+          <%# QR Code Modal %>
+          <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Payment Setup QR Code</h3>
+                <button type="button" data-action="click->qr-code#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6 text-center">
+                <p class="text-sm text-gray-600 mb-4">Show this QR code at your venue. When scanned, it takes performers to their payment setup page.</p>
+                <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                  <canvas data-qr-code-target="canvas" width="200" height="200"></canvas>
+                </div>
+                <p class="text-xs text-gray-500 mt-4"><%= my_payments_setup_url %></p>
+                <button type="button" data-action="click->qr-code#download" class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  </svg>
+                  Download
                 </button>
               </div>
             </div>
@@ -285,13 +433,19 @@
                   <tr>
                     <td class="py-3">
                       <div class="flex items-center gap-2">
-                        <% headshot_variant = item.payee.respond_to?(:safe_headshot_variant) ? item.payee.safe_headshot_variant(:thumb) : nil %>
-                        <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: item.payee_name, class: "w-8 h-8 rounded-lg object-cover" %>
-                        <% else %>
-                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-medium text-sm">
-                            <%= item.payee_name[0].upcase %>
+                        <% if item.is_guest? %>
+                          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
+                            <%= item.guest_name[0].upcase rescue "?" %>
                           </div>
+                        <% else %>
+                          <% headshot_variant = item.payee.respond_to?(:safe_headshot_variant) ? item.payee.safe_headshot_variant(:thumb) : nil %>
+                          <% if headshot_variant %>
+                            <%= image_tag headshot_variant, alt: item.payee_name, class: "w-8 h-8 rounded-lg object-cover" %>
+                          <% else %>
+                            <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-medium text-sm">
+                              <%= item.payee_name[0].upcase %>
+                            </div>
+                          <% end %>
                         <% end %>
                         <div>
                           <div class="font-medium text-gray-900"><%= item.payee_name %></div>
@@ -315,7 +469,13 @@
                                 </span>
                               <% end %>
                             <% elsif !item.paid? %>
-                              <span class="text-gray-400">(no payment method)</span>
+                              <% if item.is_guest? %>
+                                <button type="button" 
+                                        data-action="click->payment-actions#showGuestPaymentModal"
+                                        class="text-blue-500 hover:text-blue-600 underline cursor-pointer">(add payment info)</button>
+                              <% else %>
+                                <span class="text-gray-400">(no payment method)</span>
+                              <% end %>
                             <% end %>
                           </div>
                         </div>
@@ -891,6 +1051,64 @@
             <div class="flex items-center justify-end gap-3">
               <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->payment-actions#hideAddMissingCastModal" } %>
               <%= render "shared/button", text: "Add #{missing_cast_count} #{missing_cast_count == 1 ? 'Person' : 'People'}", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Guest Payment Info Modal -->
+    <% if guest_line_items.any? %>
+      <div data-payment-actions-target="guestPaymentModal"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+           data-action="click->payment-actions#closeOnBackdrop">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Guest Payment Info</h3>
+          <p class="text-sm text-gray-600 mb-4">
+            Add Venmo or Zelle details for each guest so you can pay them.
+          </p>
+          <%= form_with url: manage_update_guest_payments_money_show_payout_path(@show), method: :post, local: true do |f| %>
+            <div class="space-y-4">
+              <% guest_line_items.reject(&:paid?).each do |guest_item| %>
+                <div class="p-4 border border-gray-200 rounded-lg">
+                  <div class="flex items-center justify-between mb-3">
+                    <div>
+                      <p class="font-medium text-gray-900"><%= guest_item.guest_name %></p>
+                      <p class="text-sm text-gray-500">Payout: <%= number_to_currency(guest_item.amount) %></p>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Guest</span>
+                  </div>
+                  <input type="hidden" name="guests[<%= guest_item.id %>][id]" value="<%= guest_item.id %>">
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Venmo</label>
+                      <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">@</span>
+                        <input type="text" 
+                               name="guests[<%= guest_item.id %>][venmo]" 
+                               value="<%= guest_item.guest_venmo %>"
+                               placeholder="username"
+                               class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">Zelle (email/phone)</label>
+                      <input type="text" 
+                             name="guests[<%= guest_item.id %>][zelle]" 
+                             value="<%= guest_item.guest_zelle %>"
+                             placeholder="email or phone"
+                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500">
+                    </div>
+                  </div>
+                  <% if guest_item.guest_has_payment_method? %>
+                    <p class="text-xs text-green-600 mt-2">✓ Payment method configured</p>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-end gap-3 mt-6">
+              <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->payment-actions#hideGuestPaymentModal" } %>
+              <%= render "shared/button", text: "Save Guest Payment Info", variant: "primary", size: "medium", type: :submit %>
             </div>
           <% end %>
         </div>

@@ -1,0 +1,191 @@
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: 6, step_name: "Schedule" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Schedule your shows</h2>
+    <p class="text-gray-600 mt-2">Is this a single event or a repeating series?</p>
+  </div>
+
+  <%= form_with url: manage_productions_wizard_save_schedule_path, method: :post, local: true, id: "schedule-form" do |form| %>
+    <div class="space-y-4">
+      <!-- Single event option -->
+      <label class="block cursor-pointer">
+        <div id="single-event-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:schedule_type] == 'single' || @wizard_state[:schedule_type].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+          <div class="flex items-start">
+            <input type="radio" name="schedule_type" value="single"
+                   <%= "checked" if @wizard_state[:schedule_type] == 'single' || @wizard_state[:schedule_type].nil? %>
+                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <p class="font-medium text-gray-900">Single event</p>
+              <p class="text-sm text-gray-500 mt-1">Just one show for now</p>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <!-- Repeating event option -->
+      <label class="block cursor-pointer">
+        <div id="repeating-event-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:schedule_type] == 'repeating' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+          <div class="flex items-start">
+            <input type="radio" name="schedule_type" value="repeating"
+                   <%= "checked" if @wizard_state[:schedule_type] == 'repeating' %>
+                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <p class="font-medium text-gray-900">Repeating event</p>
+              <p class="text-sm text-gray-500 mt-1">A recurring series (weekly, monthly, etc.)</p>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <!-- Single Event Form -->
+      <div id="single-event-form" class="<%= @wizard_state[:schedule_type] == 'repeating' ? 'hidden' : '' %> space-y-4">
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+              <select name="shows[0][event_type]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <% EventTypes.for_select.each do |label, value| %>
+                  <% show = @wizard_state[:shows]&.first || {} %>
+                  <option value="<%= value %>" <%= "selected" if (show[:event_type] || show['event_type'] || 'show') == value %>><%= label %></option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+              <% show = @wizard_state[:shows]&.first || {} %>
+              <input type="datetime-local"
+                     name="shows[0][date_and_time]"
+                     value="<%= show[:date_and_time] || show['date_and_time'] %>"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <select name="shows[0][location_id]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="">Select a location...</option>
+                <% @locations.each do |location| %>
+                  <% show = @wizard_state[:shows]&.first || {} %>
+                  <option value="<%= location.id %>" <%= "selected" if (show[:location_id] || show['location_id']).to_s == location.id.to_s %>><%= location.name %></option>
+                <% end %>
+              </select>
+              <% if @locations.empty? %>
+                <p class="text-xs text-gray-500 mt-1">You can add locations in Settings after creating your production.</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Repeating Event Form -->
+      <div id="repeating-event-form" class="<%= @wizard_state[:schedule_type] == 'repeating' ? '' : 'hidden' %> space-y-4">
+        <div class="bg-pink-50 border border-pink-200 rounded-lg p-4">
+          <p class="text-sm text-pink-800">
+            <strong>Tip:</strong> You can always add more dates and extend your recurring series later. Just get started with what you know now!
+          </p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+              <select name="recurring[event_type]" id="recurring-event-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <% EventTypes.for_select.each do |label, value| %>
+                  <option value="<%= value %>" <%= "selected" if (@wizard_state[:recurring_event_type] || 'show') == value %>><%= label %></option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <select name="recurring[frequency]" id="recurring-frequency" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="weekly" <%= "selected" if @wizard_state[:recurring_frequency] == 'weekly' %>>Weekly</option>
+                <option value="biweekly" <%= "selected" if @wizard_state[:recurring_frequency] == 'biweekly' %>>Every 2 weeks</option>
+                <option value="monthly" <%= "selected" if @wizard_state[:recurring_frequency] == 'monthly' %>>Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+              <select name="recurring[day_of_week]" id="recurring-day" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <% %w[Sunday Monday Tuesday Wednesday Thursday Friday Saturday].each_with_index do |day, index| %>
+                  <option value="<%= index %>" <%= "selected" if @wizard_state[:recurring_day_of_week].to_s == index.to_s %>><%= day %></option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+              <input type="time"
+                     name="recurring[time]"
+                     value="<%= @wizard_state[:recurring_time] || '20:00' %>"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Starting From</label>
+              <input type="date"
+                     name="recurring[start_date]"
+                     value="<%= @wizard_state[:recurring_start_date] || Date.current.to_s %>"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Number of Shows</label>
+              <select name="recurring[count]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <% [4, 8, 12, 16, 24, 52].each do |count| %>
+                  <option value="<%= count %>" <%= "selected" if (@wizard_state[:recurring_count] || 8) == count %>><%= count %> shows</option>
+                <% end %>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <select name="recurring[location_id]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="">Select a location...</option>
+                <% @locations.each do |location| %>
+                  <option value="<%= location.id %>" <%= "selected" if @wizard_state[:recurring_location_id].to_s == location.id.to_s %>><%= location.name %></option>
+                <% end %>
+              </select>
+              <% if @locations.empty? %>
+                <p class="text-xs text-gray-500 mt-1">You can add locations in Settings after creating your production.</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to manage_productions_wizard_shows_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+(function() {
+  const singleOption = document.getElementById('single-event-option');
+  const repeatingOption = document.getElementById('repeating-event-option');
+  const singleForm = document.getElementById('single-event-form');
+  const repeatingForm = document.getElementById('repeating-event-form');
+
+  document.querySelectorAll('input[name="schedule_type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      if (this.value === 'repeating') {
+        repeatingOption.classList.add('border-pink-500', 'bg-pink-50');
+        repeatingOption.classList.remove('border-gray-200', 'bg-gray-50');
+        singleOption.classList.remove('border-pink-500', 'bg-pink-50');
+        singleOption.classList.add('border-gray-200', 'bg-gray-50');
+        singleForm.classList.add('hidden');
+        repeatingForm.classList.remove('hidden');
+      } else {
+        singleOption.classList.add('border-pink-500', 'bg-pink-50');
+        singleOption.classList.remove('border-gray-200', 'bg-gray-50');
+        repeatingOption.classList.remove('border-pink-500', 'bg-pink-50');
+        repeatingOption.classList.add('border-gray-200', 'bg-gray-50');
+        singleForm.classList.remove('hidden');
+        repeatingForm.classList.add('hidden');
+      }
+    });
+  });
+})();
+</script>

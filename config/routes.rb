@@ -235,6 +235,23 @@ Rails.application.routes.draw do
     get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
+    # Productions > Wizard
+    get    "/productions/new",                to: "production_wizard#name",          as: "productions_wizard"
+    post   "/productions/wizard/name",        to: "production_wizard#save_name",     as: "productions_wizard_save_name"
+    get    "/productions/wizard/logo",        to: "production_wizard#logo",          as: "productions_wizard_logo"
+    post   "/productions/wizard/logo",        to: "production_wizard#save_logo",     as: "productions_wizard_save_logo"
+    get    "/productions/wizard/casting",     to: "production_wizard#casting",       as: "productions_wizard_casting"
+    post   "/productions/wizard/casting",     to: "production_wizard#save_casting",  as: "productions_wizard_save_casting"
+    get    "/productions/wizard/roles",       to: "production_wizard#roles",         as: "productions_wizard_roles"
+    post   "/productions/wizard/roles",       to: "production_wizard#save_roles",    as: "productions_wizard_save_roles"
+    get    "/productions/wizard/shows",       to: "production_wizard#shows",         as: "productions_wizard_shows"
+    post   "/productions/wizard/shows",       to: "production_wizard#save_shows",    as: "productions_wizard_save_shows"
+    get    "/productions/wizard/schedule",    to: "production_wizard#schedule",      as: "productions_wizard_schedule"
+    post   "/productions/wizard/schedule",    to: "production_wizard#save_schedule", as: "productions_wizard_save_schedule"
+    get    "/productions/wizard/review",      to: "production_wizard#review",        as: "productions_wizard_review"
+    post   "/productions/wizard/create",      to: "production_wizard#create_production", as: "productions_wizard_create"
+    delete "/productions/wizard/cancel",      to: "production_wizard#cancel",        as: "productions_wizard_cancel"
+
     # Shows & Events - org-level (aggregates all productions)
     get  "/shows",              to: "org_shows#index", as: "shows"
     get  "/shows/calendar",     to: "org_shows#calendar", as: "shows_calendar"
@@ -717,7 +734,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :productions do
+    resources :productions, except: [ :new, :create ] do
       member do
         get :confirm_delete
         post :check_url_availability
@@ -825,17 +842,26 @@ Rails.application.routes.draw do
     # Ticket fee templates
     resources :ticket_fee_templates, only: [ :index, :create, :update, :destroy ], path: "money/fees"
 
-    # Ticketing integrations - organization level (connected accounts)
-    scope "settings" do
-      get  "ticketing",           to: "ticketing_providers#index",   as: "ticketing_providers"
-      get  "ticketing/new",       to: "ticketing_providers#new",     as: "new_ticketing_provider"
-      post "ticketing",           to: "ticketing_providers#create"
-      get  "ticketing/:id",       to: "ticketing_providers#show",    as: "ticketing_provider"
-      get  "ticketing/:id/edit",  to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
-      patch "ticketing/:id",      to: "ticketing_providers#update"
-      delete "ticketing/:id",     to: "ticketing_providers#destroy"
-      post "ticketing/:id/test",  to: "ticketing_providers#test",    as: "test_ticketing_provider"
-      post "ticketing/:id/sync",  to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
+    # Ticketing integrations - nested under organizations
+    scope "organizations/:organization_id" do
+      # Ticketing provider wizard (connect new platform)
+      get  "ticketing/wizard",             to: "ticketing_provider_wizard#platform",         as: "ticketing_wizard"
+      post "ticketing/wizard/platform",    to: "ticketing_provider_wizard#save_platform",    as: "ticketing_wizard_save_platform"
+      get  "ticketing/wizard/credentials", to: "ticketing_provider_wizard#credentials",      as: "ticketing_wizard_credentials"
+      post "ticketing/wizard/credentials", to: "ticketing_provider_wizard#save_credentials", as: "ticketing_wizard_save_credentials"
+      get  "ticketing/wizard/test",        to: "ticketing_provider_wizard#test",             as: "ticketing_wizard_test"
+      post "ticketing/wizard/retry",       to: "ticketing_provider_wizard#retry_test",       as: "ticketing_wizard_retry"
+      get  "ticketing/wizard/review",      to: "ticketing_provider_wizard#review",           as: "ticketing_wizard_review"
+      post "ticketing/wizard/create",      to: "ticketing_provider_wizard#create_provider",  as: "ticketing_wizard_create"
+      delete "ticketing/wizard/cancel",    to: "ticketing_provider_wizard#cancel",           as: "ticketing_wizard_cancel"
+
+      # Ticketing provider management (existing connections)
+      get    "ticketing/:id",       to: "ticketing_providers#show",    as: "ticketing_provider"
+      get    "ticketing/:id/edit",  to: "ticketing_providers#edit",    as: "edit_ticketing_provider"
+      patch  "ticketing/:id",       to: "ticketing_providers#update"
+      delete "ticketing/:id",       to: "ticketing_providers#destroy"
+      post   "ticketing/:id/test",  to: "ticketing_providers#test",    as: "test_ticketing_provider"
+      post   "ticketing/:id/sync",  to: "ticketing_providers#sync",    as: "sync_ticketing_provider"
     end
 
     # Ticketing production links - production level
@@ -886,6 +912,7 @@ Rails.application.routes.draw do
     post "money/shows/:id/payouts/add_line_item", to: "show_payouts#add_line_item", as: "add_line_item_money_show_payout"
     delete "money/shows/:id/payouts/line_items/:line_item_id", to: "show_payouts#remove_line_item", as: "remove_line_item_money_show_payout"
     post "money/shows/:id/payouts/add_missing_cast", to: "show_payouts#add_missing_cast", as: "add_missing_cast_money_show_payout"
+    post "money/shows/:id/payouts/update_guest_payments", to: "show_payouts#update_guest_payments", as: "update_guest_payments_money_show_payout"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
     # resources :email_groups, only: %i[create update destroy] (moved to communications)

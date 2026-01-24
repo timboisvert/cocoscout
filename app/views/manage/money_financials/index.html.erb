@@ -12,7 +12,8 @@
     ],
     text: @production ? @production.name : "Financials",
     links: @production ? [
-      { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) }
+      { text: "Production Expenses", path: manage_money_financials_production_expenses_path(@production) },
+      { text: "Ticketing", path: manage_money_ticketing_production_links_path(@production) }
     ] : []
   } %>
 

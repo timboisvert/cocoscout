@@ -63,7 +63,7 @@
       <% if Current.user.manager? %>
         <div class="text-center mt-8">
           <p class="text-sm text-slate-600 mb-3">Looking to start another production?</p>
-          <%= link_to new_manage_production_path, class: "inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors" do %>
+          <%= link_to manage_productions_wizard_path, class: "inline-flex items-center justify-center gap-2 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg shadow-sm transition-colors" do %>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>

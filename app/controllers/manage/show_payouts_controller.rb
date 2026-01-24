@@ -12,7 +12,8 @@ module Manage
       :mark_line_item_paid, :unmark_line_item_paid,
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
-      :add_line_item, :remove_line_item, :add_missing_cast
+      :add_line_item, :remove_line_item, :add_missing_cast,
+      :update_guest_payments
     ]
 
     def show
@@ -404,6 +405,30 @@ module Manage
       notice += " Payout reopened." if was_paid
 
       redirect_to manage_money_show_payout_path(@show), notice: notice
+    end
+
+    # Update payment info for guest performers
+    def update_guest_payments
+      guests_params = params[:guests] || {}
+      updated_count = 0
+
+      guests_params.each do |_key, guest_data|
+        line_item = @show_payout.line_items.find_by(id: guest_data[:id], is_guest: true)
+        next unless line_item
+
+        # Normalize Venmo handle (remove @ prefix if present)
+        venmo = guest_data[:venmo]&.strip
+        venmo = venmo[1..] if venmo&.start_with?("@")
+
+        line_item.update!(
+          guest_venmo: venmo.presence,
+          guest_zelle: guest_data[:zelle]&.strip.presence
+        )
+        updated_count += 1
+      end
+
+      redirect_to manage_money_show_payout_path(@show),
+                  notice: "Updated payment info for #{updated_count} guest#{'s' if updated_count != 1}."
     end
 
     private

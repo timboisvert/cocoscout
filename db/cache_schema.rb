@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_23_221203) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_24_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "extensions.pg_stat_statements"
   enable_extension "extensions.pgcrypto"
@@ -1037,13 +1037,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_221203) do
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.jsonb "calculation_details", default: {}
     t.datetime "created_at", null: false
+    t.string "guest_name"
+    t.string "guest_venmo"
+    t.string "guest_zelle"
+    t.boolean "is_guest", default: false, null: false
     t.boolean "manually_paid", default: false, null: false
     t.datetime "manually_paid_at"
     t.bigint "manually_paid_by_id"
     t.text "notes"
     t.datetime "paid_at"
-    t.bigint "payee_id", null: false
-    t.string "payee_type", null: false
+    t.bigint "payee_id"
+    t.string "payee_type"
     t.string "payment_method"
     t.text "payment_notes"
     t.text "payout_error"
@@ -1468,6 +1472,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_221203) do
     t.index ["organization_id"], name: "index_ticket_fee_templates_on_organization_id"
   end
 
+  create_table "ticketing_pending_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "dismissed_at"
+    t.bigint "dismissed_by_id"
+    t.datetime "first_occurrence_at"
+    t.datetime "last_occurrence_at"
+    t.float "match_confidence"
+    t.bigint "matched_production_link_id"
+    t.integer "occurrence_count", default: 0
+    t.jsonb "provider_event_data", default: {}
+    t.string "provider_event_id", null: false
+    t.string "provider_event_name"
+    t.string "status", default: "pending", null: false
+    t.bigint "suggested_production_id"
+    t.bigint "ticketing_provider_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dismissed_by_id"], name: "index_ticketing_pending_events_on_dismissed_by_id"
+    t.index ["matched_production_link_id"], name: "index_ticketing_pending_events_on_matched_production_link_id"
+    t.index ["status"], name: "index_ticketing_pending_events_on_status"
+    t.index ["suggested_production_id"], name: "index_ticketing_pending_events_on_suggested_production_id"
+    t.index ["ticketing_provider_id", "provider_event_id"], name: "idx_pending_events_provider_event", unique: true
+    t.index ["ticketing_provider_id"], name: "index_ticketing_pending_events_on_ticketing_provider_id"
+  end
+
   create_table "ticketing_production_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "field_mappings", default: {}
@@ -1726,6 +1754,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_23_221203) do
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
   add_foreign_key "ticket_fee_templates", "organizations"
+  add_foreign_key "ticketing_pending_events", "productions", column: "suggested_production_id"
+  add_foreign_key "ticketing_pending_events", "ticketing_production_links", column: "matched_production_link_id"
+  add_foreign_key "ticketing_pending_events", "ticketing_providers"
+  add_foreign_key "ticketing_pending_events", "users", column: "dismissed_by_id"
   add_foreign_key "ticketing_production_links", "productions"
   add_foreign_key "ticketing_production_links", "ticketing_providers"
   add_foreign_key "ticketing_providers", "organizations"

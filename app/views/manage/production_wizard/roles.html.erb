@@ -1,0 +1,154 @@
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: 4, step_name: "Roles" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Do you have set roles?</h2>
+    <p class="text-gray-600 mt-2">Roles are positions you need to fill for each show — like "Host", "Featured Comic", or "Lead". You can always add or change roles later.</p>
+  </div>
+
+  <%= form_with url: manage_productions_wizard_save_roles_path, method: :post, local: true, id: "roles-form" do |form| %>
+    <div class="space-y-4">
+      <!-- No roles option -->
+      <label class="block cursor-pointer">
+        <div id="no-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+          <div class="flex items-start">
+            <input type="radio" name="has_roles" value="no"
+                   <%= "checked" if @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? %>
+                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <p class="font-medium text-gray-900">I don't have set roles</p>
+              <p class="text-sm text-gray-500 mt-1">Skip this step and add roles later if needed</p>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <!-- Has roles option -->
+      <label class="block cursor-pointer">
+        <div id="yes-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'yes' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+          <div class="flex items-start">
+            <input type="radio" name="has_roles" value="yes"
+                   <%= "checked" if @wizard_state[:has_roles] == 'yes' %>
+                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <div class="ml-3">
+              <p class="font-medium text-gray-900">I have set roles</p>
+              <p class="text-sm text-gray-500 mt-1">Define the roles you need to fill for each show</p>
+            </div>
+          </div>
+        </div>
+      </label>
+
+      <!-- Roles Form (shown when yes is selected) -->
+      <div id="roles-form-section" class="<%= @wizard_state[:has_roles] == 'yes' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200">
+        <div id="roles-list" class="space-y-3">
+          <% roles = @wizard_state[:roles].present? && @wizard_state[:roles].any? ? @wizard_state[:roles] : [{ name: "", quantity: 1, category: "performing" }] %>
+          <% roles.each_with_index do |role, index| %>
+            <div class="flex items-center gap-2 role-row">
+              <input type="text"
+                     name="roles[<%= index %>][name]"
+                     value="<%= role[:name] || role['name'] %>"
+                     placeholder="Role name (e.g., Host)"
+                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+              <input type="number"
+                     name="roles[<%= index %>][quantity]"
+                     value="<%= role[:quantity] || role['quantity'] || 1 %>"
+                     min="1"
+                     class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-pink-500 focus:border-pink-500"
+                     title="Number of slots">
+              <select name="roles[<%= index %>][category]"
+                      class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                <option value="performing" <%= "selected" if (role[:category] || role['category'] || 'performing') == "performing" %>>Performing</option>
+                <option value="crew" <%= "selected" if (role[:category] || role['category']) == "crew" %>>Crew</option>
+              </select>
+              <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          <% end %>
+        </div>
+        <button type="button" id="add-role-btn" class="mt-3 text-sm text-pink-500 hover:text-pink-600 font-medium">
+          + Add another role
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to manage_productions_wizard_casting_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+(function() {
+  const noRolesOption = document.getElementById('no-roles-option');
+  const yesRolesOption = document.getElementById('yes-roles-option');
+  const rolesFormSection = document.getElementById('roles-form-section');
+  const rolesList = document.getElementById('roles-list');
+  const addRoleBtn = document.getElementById('add-role-btn');
+  let roleIndex = rolesList ? rolesList.querySelectorAll('.role-row').length : 1;
+
+  // Handle radio button changes
+  document.querySelectorAll('input[name="has_roles"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      if (this.value === 'yes') {
+        rolesFormSection.classList.remove('hidden');
+        yesRolesOption.classList.add('border-pink-500', 'bg-pink-50');
+        yesRolesOption.classList.remove('border-gray-200', 'bg-gray-50');
+        noRolesOption.classList.remove('border-pink-500', 'bg-pink-50');
+        noRolesOption.classList.add('border-gray-200', 'bg-gray-50');
+      } else {
+        rolesFormSection.classList.add('hidden');
+        noRolesOption.classList.add('border-pink-500', 'bg-pink-50');
+        noRolesOption.classList.remove('border-gray-200', 'bg-gray-50');
+        yesRolesOption.classList.remove('border-pink-500', 'bg-pink-50');
+        yesRolesOption.classList.add('border-gray-200', 'bg-gray-50');
+      }
+    });
+  });
+
+  // Add role button
+  if (addRoleBtn) {
+    addRoleBtn.addEventListener('click', function() {
+      const newRow = document.createElement('div');
+      newRow.className = 'flex items-center gap-2 role-row';
+      newRow.innerHTML = `
+        <input type="text" name="roles[${roleIndex}][name]" placeholder="Role name (e.g., Host)" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+        <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-pink-500 focus:border-pink-500" title="Number of slots">
+        <select name="roles[${roleIndex}][category]" class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+          <option value="performing">Performing</option>
+          <option value="crew">Crew</option>
+        </select>
+        <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      `;
+      rolesList.appendChild(newRow);
+      roleIndex++;
+      attachRemoveHandlers();
+    });
+  }
+
+  // Remove role button
+  function attachRemoveHandlers() {
+    document.querySelectorAll('.remove-role-btn').forEach(btn => {
+      btn.onclick = function() {
+        const row = this.closest('.role-row');
+        if (rolesList.querySelectorAll('.role-row').length > 1) {
+          row.remove();
+        }
+      };
+    });
+  }
+  attachRemoveHandlers();
+})();
+</script>

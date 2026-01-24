@@ -2,7 +2,7 @@
 
 module Ticketing
   module Providers
-    class TicketTailorService < BaseService
+    class TicketTailorService < Ticketing::BaseService
       BASE_URL = "https://api.tickettailor.com/v1"
 
       def capabilities

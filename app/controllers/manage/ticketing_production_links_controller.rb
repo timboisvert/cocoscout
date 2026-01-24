@@ -21,11 +21,17 @@ module Manage
 
     def new
       @ticketing_production_link = @production.ticketing_production_links.build
-      @providers = Current.organization.ticketing_providers.enabled
+      @providers = Current.organization.ticketing_providers
 
       if @providers.empty?
-        redirect_to manage_ticketing_providers_path,
+        redirect_to manage_ticketing_wizard_path(Current.organization),
                     alert: "Connect a ticketing platform first before linking a production."
+        return
+      end
+
+      # If only one provider, auto-select it
+      if @providers.count == 1 && params[:provider_id].blank?
+        redirect_to manage_new_money_ticketing_production_link_path(@production, provider_id: @providers.first.id)
         return
       end
 

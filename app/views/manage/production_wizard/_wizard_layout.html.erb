@@ -1,0 +1,82 @@
+<% content_for :title, "Create Production - #{step_name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Productions", manage_productions_path]
+    ],
+    text: "Create Production",
+    links: []
+  } %>
+
+  <div class="max-w-2xl mx-auto">
+    <!-- Progress Steps -->
+    <div class="mb-8">
+      <div class="flex items-center justify-center">
+        <%
+          # Build dynamic steps based on wizard state
+          base_steps = [
+            { num: 1, name: "Name", path: manage_productions_wizard_path },
+            { num: 2, name: "Logo", path: manage_productions_wizard_logo_path },
+            { num: 3, name: "Casting", path: manage_productions_wizard_casting_path },
+            { num: 4, name: "Roles", path: manage_productions_wizard_roles_path },
+            { num: 5, name: "Shows", path: manage_productions_wizard_shows_path }
+          ]
+
+          # Add Schedule step if user said they have shows
+          if @wizard_state[:has_shows] == "yes"
+            base_steps << { num: 6, name: "Schedule", path: manage_productions_wizard_schedule_path }
+            base_steps << { num: 7, name: "Review", path: manage_productions_wizard_review_path }
+          else
+            base_steps << { num: 6, name: "Review", path: manage_productions_wizard_review_path }
+          end
+
+          steps = base_steps
+        %>
+        <% steps.each_with_index do |step, index| %>
+          <% is_current = step[:num] == current_step %>
+          <% is_completed = step[:num] < current_step %>
+          <% is_clickable = is_completed %>
+
+          <div class="flex items-center">
+            <% if is_clickable %>
+              <%= link_to step[:path], class: "flex items-center" do %>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium bg-pink-500 text-white">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span class="ml-2 text-sm font-medium text-pink-500 hidden sm:inline"><%= step[:name] %></span>
+              <% end %>
+            <% else %>
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium <%= is_current ? 'bg-pink-500 text-white' : 'bg-gray-200 text-gray-600' %>">
+                  <%= step[:num] %>
+                </div>
+                <span class="ml-2 text-sm font-medium <%= is_current ? 'text-pink-600' : 'text-gray-500' %> hidden sm:inline"><%= step[:name] %></span>
+              </div>
+            <% end %>
+          </div>
+
+          <% if index < steps.length - 1 %>
+            <div class="flex-1 h-0.5 mx-2 <%= step[:num] < current_step ? 'bg-pink-500' : 'bg-gray-200' %>" style="max-width: 40px;"></div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <%= yield %>
+    </div>
+
+    <!-- Cancel Link -->
+    <div class="mt-4 text-center">
+      <%= link_to "Cancel", manage_productions_wizard_cancel_path,
+          data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." },
+          class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+</div>

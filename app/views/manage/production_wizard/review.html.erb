@@ -1,0 +1,162 @@
+<%
+  # Calculate correct step number based on whether schedule step is included
+  review_step = @wizard_state[:has_shows] == "yes" ? 7 : 6
+%>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: review_step, step_name: "Review" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Almost there!</h2>
+    <p class="text-gray-600 mt-2">Review your production details and click create when you're ready.</p>
+  </div>
+
+  <div class="space-y-4">
+    <!-- Production Name -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Production Name</p>
+        <p class="text-lg font-semibold text-gray-900"><%= @wizard_state[:name] %></p>
+        <% if @wizard_state[:description].present? %>
+          <p class="text-sm text-gray-600 mt-1"><%= truncate(@wizard_state[:description], length: 100) %></p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_productions_wizard_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Logo -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Logo</p>
+        <% if @wizard_state[:logo_temp_path].present? && File.exist?(@wizard_state[:logo_temp_path]) %>
+          <div class="mt-2">
+            <img src="<%= "data:#{@wizard_state[:logo_content_type]};base64,#{Base64.strict_encode64(File.read(@wizard_state[:logo_temp_path]))}" %>"
+                 alt="Logo preview"
+                 class="max-h-20 rounded-lg border border-gray-200">
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">No logo added</p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_productions_wizard_logo_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Casting -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Casting Method</p>
+        <% casting_source = @wizard_state[:casting_source] || 'talent_pool' %>
+        <p class="text-sm text-gray-900 mt-1">
+          <% if casting_source == 'talent_pool' %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Talent Pool</span>
+            <span class="text-gray-600 ml-1">— Build a pool of performers and cast them into shows</span>
+          <% else %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Manual Entry</span>
+            <span class="text-gray-600 ml-1">— Add performers by name or email as needed</span>
+          <% end %>
+        </p>
+      </div>
+      <%= link_to "Edit", manage_productions_wizard_casting_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Roles -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Roles</p>
+        <% if @wizard_state[:has_roles] == 'yes' && @wizard_state[:roles].present? && @wizard_state[:roles].any? %>
+          <div class="mt-1 flex flex-wrap gap-1">
+            <% @wizard_state[:roles].each do |role| %>
+              <% role_name = role[:name] || role['name'] %>
+              <% role_qty = role[:quantity] || role['quantity'] %>
+              <% if role_name.present? %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                  <%= role_name %><% if role_qty.to_i > 1 %> (<%= role_qty %>)<% end %>
+                </span>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">No roles defined yet</p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_productions_wizard_roles_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+
+    <!-- Shows -->
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div class="flex-1">
+        <p class="text-sm font-medium text-gray-500">Shows</p>
+        <% if @wizard_state[:has_shows] == 'yes' && @wizard_state[:shows].present? && @wizard_state[:shows].any? %>
+          <div class="mt-2 space-y-2">
+            <% @wizard_state[:shows].each do |show| %>
+              <% datetime = begin
+                dt_val = show[:date_and_time] || show['date_and_time']
+                dt_val.is_a?(String) ? Time.zone.parse(dt_val) : dt_val
+              rescue
+                nil
+              end %>
+              <% if datetime %>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                    <%= (show[:event_type] || show['event_type'])&.titleize %>
+                  </span>
+                  <span class="text-sm text-gray-900"><%= datetime.strftime("%B %-d, %Y at %-I:%M %p") %></span>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">No shows scheduled yet</p>
+        <% end %>
+      </div>
+      <% back_path = @wizard_state[:has_shows] == 'yes' ? manage_productions_wizard_schedule_path : manage_productions_wizard_shows_path %>
+      <%= link_to "Edit", back_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
+  </div>
+
+  <!-- Summary Box -->
+  <div class="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
+    <p class="text-sm text-gray-700">
+      <strong>What happens next?</strong>
+      You'll be taken to your new production dashboard where you can:
+    </p>
+    <ul class="mt-2 text-sm text-gray-600 space-y-1">
+      <li class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Add team members to your talent pool
+      </li>
+      <li class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Schedule more shows and events
+      </li>
+      <li class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Set up auditions and sign-up forms
+      </li>
+      <li class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Configure your public profile
+      </li>
+    </ul>
+  </div>
+
+  <%= form_with url: manage_productions_wizard_create_path, method: :post, local: true do |form| %>
+    <div class="mt-8 flex justify-between items-center">
+      <% back_path = @wizard_state[:has_shows] == 'yes' ? manage_productions_wizard_schedule_path : manage_productions_wizard_shows_path %>
+      <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Create #{@wizard_state[:name]}", variant: "primary", size: "medium", type: :submit, icon: "check" %>
+    </div>
+  <% end %>
+<% end %>

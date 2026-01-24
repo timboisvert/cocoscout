@@ -37,11 +37,16 @@ class PayoutCalculator
     financials = @show.show_financials
     return { success: false, error: "No financial data" } unless financials&.complete?
 
-    # Get performers from show assignments
+    # Get performers from show assignments (including guests)
     assignments = @show.show_person_role_assignments.includes(:assignable, :role)
-    performers = assignments.map(&:assignable).compact.uniq
+    
+    # Separate regular performers and guest assignments
+    regular_performers = assignments.reject(&:guest?).map(&:assignable).compact.uniq
+    guest_assignments = assignments.select(&:guest?)
 
-    return { success: false, error: "No performers assigned to this show" } if performers.empty?
+    total_performer_count = regular_performers.count + guest_assignments.count
+
+    return { success: false, error: "No performers assigned to this show" } if total_performer_count == 0
 
     # Build inputs
     inputs = {
@@ -52,23 +57,111 @@ class PayoutCalculator
       expenses: financials.calculated_expenses,
       total_revenue: financials.total_revenue,
       net_revenue: financials.net_revenue,
-      performer_count: performers.count,
+      performer_count: total_performer_count,
       revenue_type: financials.revenue_type
     }
 
-    # Calculate performer pool and individual amounts
-    result = calculate_payouts(inputs, performers)
+    # Get distribution method and overrides
+    distribution = @rules["distribution"] || {}
+    method = distribution["method"] || "equal"
+    overrides = @rules["performer_overrides"] || {}
+
+    # Calculate performer pool and individual amounts for regular performers
+    result = calculate_payouts(inputs, regular_performers)
 
     return { success: false, error: result[:error] } if result[:error]
+
+    # Determine per-person amount and whether to adjust line items
+    # For pool-based methods (equal, shares, per_ticket, per_ticket_guaranteed), divide pool by total performers
+    # For flat_fee, use the flat_amount directly
+    # For no_pay, everyone gets $0
+    case method
+    when "flat_fee"
+      # Flat fee: each person gets the flat amount (or their override)
+      flat_amount = distribution["flat_amount"].to_f || 0
+      per_person_amount = flat_amount
+      
+      # Don't adjust regular performer line items - they already have correct amounts from distribute_flat_fee
+      adjusted_line_items = result[:line_items]
+      
+      # Calculate guest payouts with flat fee
+      guest_line_items = calculate_guest_payouts_flat_fee(
+        guest_assignments, 
+        flat_amount, 
+        overrides
+      )
+    when "no_pay"
+      # No pay: everyone gets $0
+      per_person_amount = 0
+      adjusted_line_items = result[:line_items]
+      guest_line_items = guest_assignments.map do |assignment|
+        {
+          guest_name: assignment.guest_name,
+          guest_assignment_id: assignment.id,
+          amount: 0,
+          shares: nil,
+          calculation_details: {
+            formula: "No pay (non-revenue event)",
+            inputs: {},
+            breakdown: [ "Non-revenue: $0.00" ]
+          }
+        }
+      end
+    else
+      # Pool-based methods: divide pool by total performers (including guests)
+      per_person_amount = if total_performer_count > 0 && result[:performer_pool]
+        (result[:performer_pool] / total_performer_count).round(2)
+      else
+        result[:per_person] || 0
+      end
+
+      # Adjust regular performer line items if there are guests
+      # (they need to share the pool with guests)
+      adjusted_line_items = if guest_assignments.any? && regular_performers.any?
+        result[:line_items].map do |item|
+          calc_details = item[:calculation_details] || {}
+          existing_inputs = calc_details[:inputs] || calc_details["inputs"] || {}
+          item.merge(
+            amount: per_person_amount,
+            calculation_details: {
+              formula: "#{format_currency(result[:performer_pool])} ÷ #{total_performer_count} performers (including #{guest_assignments.count} guests)",
+              inputs: existing_inputs.merge(total_performer_count: total_performer_count),
+              breakdown: calc_details[:breakdown] || calc_details["breakdown"] || []
+            }
+          )
+        end
+      else
+        result[:line_items]
+      end
+
+      # Calculate guest payouts using the same per-person amount (with overrides)
+      guest_line_items = calculate_guest_payouts(
+        guest_assignments, 
+        inputs, 
+        per_person_amount, 
+        overrides,
+        result[:performer_pool],
+        total_performer_count
+      )
+    end
 
     # Persist line items
     payout = @show.show_payout
     ActiveRecord::Base.transaction do
+      # Preserve existing guest payment info before destroying line items
+      existing_guest_payment_info = {}
+      payout.line_items.where(is_guest: true).each do |li|
+        existing_guest_payment_info[li.guest_name] = {
+          venmo: li.guest_venmo,
+          zelle: li.guest_zelle
+        }
+      end
+
       # Clear existing line items
       payout.line_items.destroy_all
 
-      # Create new line items
-      result[:line_items].each do |item|
+      # Create line items for regular performers
+      adjusted_line_items.each do |item|
         payout.line_items.create!(
           payee: item[:payee],
           amount: item[:amount],
@@ -77,13 +170,29 @@ class PayoutCalculator
         )
       end
 
+      # Create line items for guests (restoring payment info if it existed)
+      guest_line_items.each do |item|
+        existing_info = existing_guest_payment_info[item[:guest_name]] || {}
+        payout.line_items.create!(
+          is_guest: true,
+          guest_name: item[:guest_name],
+          guest_venmo: existing_info[:venmo],
+          guest_zelle: existing_info[:zelle],
+          amount: item[:amount],
+          shares: item[:shares],
+          calculation_details: item[:calculation_details]
+        )
+      end
+
+      total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] }
       payout.update!(
         calculated_at: Time.current,
-        total_payout: result[:total]
+        total_payout: total
       )
     end
 
-    { success: true, total: result[:total], line_items: payout.line_items.reload }
+    total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] }
+    { success: true, total: total, line_items: payout.line_items.reload }
   rescue => e
     Rails.logger.error "PayoutCalculator error: #{e.message}"
     { success: false, error: e.message }
@@ -337,6 +446,71 @@ class PayoutCalculator
           formula: "No pay",
           inputs: {},
           breakdown: [ "Non-paying event" ]
+        }
+      }
+    end
+  end
+
+  # Calculate payouts for guest performers using flat fee method
+  def calculate_guest_payouts_flat_fee(guest_assignments, flat_amount, overrides = {})
+    return [] if guest_assignments.empty?
+
+    guest_assignments.map do |assignment|
+      # Check for guest-specific override (keyed as "guest_#{assignment.id}")
+      override = overrides["guest_#{assignment.id}"] || {}
+      amount = override["flat_amount"]&.to_f || flat_amount
+
+      formula = if override["flat_amount"].present?
+        "Custom flat fee"
+      else
+        "Flat fee"
+      end
+
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount.round(2),
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { flat_amount: amount },
+          breakdown: [ "Fixed: #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  # Calculate payouts for guest performers (those without CocoScout accounts)
+  def calculate_guest_payouts(guest_assignments, inputs, per_person_amount, overrides = {}, performer_pool = nil, total_performer_count = nil)
+    return [] if guest_assignments.empty?
+
+    per_person = per_person_amount || 0
+    pool = performer_pool || inputs[:net_revenue]
+    count = total_performer_count || inputs[:performer_count]
+    guest_count = guest_assignments.count
+
+    guest_assignments.map do |assignment|
+      # Check for guest-specific override (keyed as "guest_#{assignment.id}")
+      override = overrides["guest_#{assignment.id}"] || {}
+      amount = override["flat_amount"]&.to_f || per_person
+
+      formula = if override["flat_amount"].present?
+        "Custom amount"
+      elsif guest_count > 0
+        "#{format_currency(pool)} ÷ #{count} performers (including #{guest_count} #{'guest'.pluralize(guest_count)})"
+      else
+        "#{format_currency(pool)} ÷ #{count} performers"
+      end
+
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount.round(2),
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { performer_pool: pool, performer_count: count },
+          breakdown: [ "Guest performer: #{format_currency(amount)}" ]
         }
       }
     end

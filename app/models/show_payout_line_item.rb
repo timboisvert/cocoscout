@@ -2,7 +2,7 @@
 
 class ShowPayoutLineItem < ApplicationRecord
   belongs_to :show_payout
-  belongs_to :payee, polymorphic: true  # Person or Group
+  belongs_to :payee, polymorphic: true, optional: true  # Person or Group (optional for guests)
   belongs_to :manually_paid_by, class_name: "User", optional: true
 
   has_one :show, through: :show_payout
@@ -15,9 +15,13 @@ class ShowPayoutLineItem < ApplicationRecord
   PAYOUT_STATUSES = %w[pending success failed].freeze
 
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }
+  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type ] }, if: -> { payee_id.present? }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
   validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
+  # Guests must have a name
+  validates :guest_name, presence: true, if: :is_guest?
+  # Non-guests must have a payee
+  validates :payee, presence: true, unless: :is_guest?
 
   after_save :check_all_paid, if: :saved_change_to_manually_paid?
 
@@ -113,29 +117,6 @@ class ShowPayoutLineItem < ApplicationRecord
     end
   end
 
-  # Check if payee can receive Venmo payments
-  def payee_venmo_ready?
-    return false unless payee.respond_to?(:venmo_ready_for_payouts?)
-    payee.venmo_ready_for_payouts?
-  end
-
-  # Check if payee can receive Zelle payments
-  def payee_zelle_ready?
-    return false unless payee.respond_to?(:zelle_ready_for_payouts?)
-    payee.zelle_ready_for_payouts?
-  end
-
-  # Check if payee has any payment method configured
-  def payee_has_payment_method?
-    payee_venmo_ready? || payee_zelle_ready?
-  end
-
-  # Get payee's preferred payment info (returns hash with :method and :identifier)
-  def payee_preferred_payment
-    return nil unless payee.respond_to?(:preferred_payment_info)
-    payee.preferred_payment_info
-  end
-
   # Calculation details accessors
   def calculation_breakdown
     calculation_details["breakdown"] || []
@@ -165,15 +146,78 @@ class ShowPayoutLineItem < ApplicationRecord
 
   # Payee display name
   def payee_name
-    payee&.name || "Unknown"
+    is_guest? ? guest_name : (payee&.name || "Unknown")
   end
 
   # Payee type label
   def payee_type_label
+    return "Guest" if is_guest?
     case payee_type
     when "Person" then "Individual"
     when "Group" then "Group"
     else payee_type
+    end
+  end
+
+  # Guest payment methods
+  def guest_venmo_configured?
+    is_guest? && guest_venmo.present?
+  end
+
+  def guest_zelle_configured?
+    is_guest? && guest_zelle.present?
+  end
+
+  def guest_has_payment_method?
+    guest_venmo_configured? || guest_zelle_configured?
+  end
+
+  # Get guest's preferred payment info
+  def guest_preferred_payment
+    return nil unless is_guest?
+    if guest_venmo.present?
+      { method: "venmo", identifier: guest_venmo }
+    elsif guest_zelle.present?
+      { method: "zelle", identifier: guest_zelle }
+    end
+  end
+
+  # Override payee_has_payment_method? to handle guests
+  def payee_has_payment_method?
+    if is_guest?
+      guest_has_payment_method?
+    else
+      payee_venmo_ready? || payee_zelle_ready?
+    end
+  end
+
+  # Override payee_venmo_ready? to handle guests
+  def payee_venmo_ready?
+    if is_guest?
+      guest_venmo_configured?
+    else
+      return false unless payee.respond_to?(:venmo_ready_for_payouts?)
+      payee.venmo_ready_for_payouts?
+    end
+  end
+
+  # Override payee_zelle_ready? to handle guests
+  def payee_zelle_ready?
+    if is_guest?
+      guest_zelle_configured?
+    else
+      return false unless payee.respond_to?(:zelle_ready_for_payouts?)
+      payee.zelle_ready_for_payouts?
+    end
+  end
+
+  # Get payee's preferred payment info (handles both guests and regular payees)
+  def payee_preferred_payment
+    if is_guest?
+      guest_preferred_payment
+    else
+      return nil unless payee.respond_to?(:preferred_payment_info)
+      payee.preferred_payment_info
     end
   end
 
