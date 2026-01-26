@@ -512,7 +512,7 @@
         <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->show-actions#closeMoveModal" } %>
         <%= form_with url: manage_transfer_show_path(@production, @show), method: :patch, data: { show_actions_target: "moveForm" } do |f| %>
           <%= f.hidden_field :target_production_id, value: "", data: { show_actions_target: "targetProductionId" } %>
-          <%= render "shared/button", text: "Move #{@show.event_type.titleize}", variant: "primary", size: "medium", type: :submit, disabled: true, data: { show_actions_target: "moveButton" } %>
+          <%= render "shared/button", text: "Move #{h(@show.event_type.titleize)}", variant: "primary", size: "medium", type: :submit, disabled: true, data: { show_actions_target: "moveButton" } %>
         <% end %>
       </div>
     </div>

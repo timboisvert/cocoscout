@@ -32,7 +32,7 @@
             end
           %>
           <%= link_to vote_label,
-              cast_vote_manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition.audition_session, audition, vote: vote_type),
+              manage_cast_vote_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, audition.audition_session, audition, vote: vote_type),
               class: classes,
               data: { turbo_method: :post } %>
         <% end %>

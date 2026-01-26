@@ -2,7 +2,7 @@
 
 <% content_for :head do %>
   <meta name="description" content="Respond to questionnaire for <%= @production.name %>">
-  <link rel="canonical" href="<%= questionnaire_entry_url(@questionnaire.token) %>">
+  <link rel="canonical" href="<%= my_questionnaire_form_url(token: @questionnaire.token) %>">
 <% end %>
 
 <div class="min-h-screen bg-white flex items-center justify-center px-4 py-12">

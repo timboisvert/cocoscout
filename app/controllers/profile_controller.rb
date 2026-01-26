@@ -316,7 +316,7 @@ class ProfileController < ApplicationController
       end
     end
 
-    permitted_params.permit!
+    permitted_params
   end
 
   def search_groups

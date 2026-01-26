@@ -194,7 +194,7 @@
                        data-availability-entity-key="audition_session"
                        data-availability-entity-id="<%= @requestable.id %>"
                        data-availability-entity-type="<%= @requestable.class.name %>"
-                       data-availability-update-url-value="<%= update_audition_session_availability_manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
+                       data-availability-update-url-value="<%= manage_update_session_availability_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
                        data-availability-person-id-value="<%= @requestable.is_a?(Person) ? @requestable.id : nil %>">
                     <div class="w-1/2 flex items-center gap-4">
                       <div class="flex-shrink-0 w-14 text-center">

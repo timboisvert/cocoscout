@@ -757,10 +757,11 @@ class SuperadminController < ApplicationController
         newest_at: nil
       }
 
-      # Get row count
+      # Get row count (use quote_table_name to prevent SQL injection)
       begin
+        quoted_table = ActiveRecord::Base.connection.quote_table_name(table_name)
         table_info[:row_count] = ActiveRecord::Base.connection.execute(
-          "SELECT COUNT(*) FROM #{table_name}"
+          "SELECT COUNT(*) FROM #{quoted_table}"
         ).first.values.first
       rescue StandardError
         table_info[:row_count] = 0

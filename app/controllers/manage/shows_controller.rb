@@ -972,7 +972,13 @@ module Manage
     end
 
     def update_attendance
-      attendance_params = params.require(:attendance).permit!.to_h
+      # Permit each record ID with its status value (present, absent, late, excused, unknown)
+      raw_attendance = params.require(:attendance)
+      valid_statuses = %w[present absent late excused unknown]
+      attendance_params = {}
+      raw_attendance.each do |key, value|
+        attendance_params[key.to_s] = value.to_s if valid_statuses.include?(value.to_s)
+      end
 
       attendance_params.each do |record_id, status|
         if record_id.start_with?("signup_")

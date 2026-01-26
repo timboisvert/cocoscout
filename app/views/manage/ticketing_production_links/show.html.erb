@@ -52,10 +52,11 @@
       </div>
     </div>
 
-    <% if @ticketing_production_link.provider_event_url.present? %>
+    <% safe_url = @ticketing_production_link.safe_provider_event_url %>
+    <% if safe_url.present? %>
       <div class="mt-4">
-        <%= link_to @ticketing_production_link.provider_event_url, @ticketing_production_link.provider_event_url,
-                   target: "_blank", class: "text-sm text-pink-600 hover:text-pink-800" %>
+        <%= link_to safe_url, safe_url,
+                   target: "_blank", rel: "noopener noreferrer", class: "text-sm text-pink-600 hover:text-pink-800" %>
       </div>
     <% end %>
   </div>

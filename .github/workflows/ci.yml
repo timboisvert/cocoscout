@@ -68,3 +68,5 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+      - name: Validate route helpers in views
+        run: bin/rails routes:validate_helpers

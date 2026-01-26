@@ -9,7 +9,7 @@
 
 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
      data-controller="attendance-modal"
-     data-attendance-modal-update-url-value="<%= update_manage_attendance_show_path(show.production, show) %>">
+     data-attendance-modal-update-url-value="<%= manage_update_attendance_show_path(show.production, show) %>">
   <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" data-action="click->attendance-modal#stopPropagation">
     <%# Header %>
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">

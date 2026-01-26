@@ -44,4 +44,14 @@ class TicketingProductionLink < ApplicationRecord
   def provider_dashboard_url
     provider_event_url.presence || service.event_dashboard_url(provider_event_id)
   end
+
+  # Returns the provider_event_url only if it has a safe scheme (http/https)
+  def safe_provider_event_url
+    return nil if provider_event_url.blank?
+
+    uri = URI.parse(provider_event_url)
+    %w[http https].include?(uri.scheme) ? provider_event_url : nil
+  rescue URI::InvalidURIError
+    nil
+  end
 end

@@ -208,7 +208,7 @@
 
                 <div class="flex flex-col gap-3 mt-6">
                   <%= render "shared/button",
-                      text: "Accept & Join #{@organization.name}",
+                      text: "Accept & Join #{h(@organization.name)}",
                       variant: "primary",
                       size: "jumbo",
                       type: :submit,
